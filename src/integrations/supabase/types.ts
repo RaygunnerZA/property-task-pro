@@ -1,0 +1,1084 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
+  public: {
+    Tables: {
+      compliance_rule_reviews: {
+        Row: {
+          comments: string | null
+          created_at: string
+          id: string
+          org_id: string | null
+          review_type: Database["public"]["Enums"]["compliance_review_type"]
+          reviewer_id: string | null
+          rule_id: string
+          verdict: Database["public"]["Enums"]["compliance_review_verdict"]
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          org_id?: string | null
+          review_type: Database["public"]["Enums"]["compliance_review_type"]
+          reviewer_id?: string | null
+          rule_id: string
+          verdict: Database["public"]["Enums"]["compliance_review_verdict"]
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          org_id?: string | null
+          review_type?: Database["public"]["Enums"]["compliance_review_type"]
+          reviewer_id?: string | null
+          rule_id?: string
+          verdict?: Database["public"]["Enums"]["compliance_review_verdict"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_rule_reviews_org_fk"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_rule_reviews_rule_fk"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_rules: {
+        Row: {
+          ai_confidence: number | null
+          ai_consensus: boolean
+          country: string
+          created_at: string
+          created_by: string | null
+          domain: Database["public"]["Enums"]["compliance_domain"]
+          effective_from: string | null
+          entity_type: string | null
+          id: string
+          last_updated: string | null
+          obligation_text: string
+          obligation_type: Database["public"]["Enums"]["compliance_obligation_type"]
+          org_id: string | null
+          region_or_city: string | null
+          source_id: string
+          source_quote: string
+          source_reference: string | null
+          source_url: string | null
+          status: Database["public"]["Enums"]["compliance_rule_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_consensus?: boolean
+          country: string
+          created_at?: string
+          created_by?: string | null
+          domain: Database["public"]["Enums"]["compliance_domain"]
+          effective_from?: string | null
+          entity_type?: string | null
+          id?: string
+          last_updated?: string | null
+          obligation_text: string
+          obligation_type: Database["public"]["Enums"]["compliance_obligation_type"]
+          org_id?: string | null
+          region_or_city?: string | null
+          source_id: string
+          source_quote: string
+          source_reference?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["compliance_rule_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_consensus?: boolean
+          country?: string
+          created_at?: string
+          created_by?: string | null
+          domain?: Database["public"]["Enums"]["compliance_domain"]
+          effective_from?: string | null
+          entity_type?: string | null
+          id?: string
+          last_updated?: string | null
+          obligation_text?: string
+          obligation_type?: Database["public"]["Enums"]["compliance_obligation_type"]
+          org_id?: string | null
+          region_or_city?: string | null
+          source_id?: string
+          source_quote?: string
+          source_reference?: string | null
+          source_url?: string | null
+          status?: Database["public"]["Enums"]["compliance_rule_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_rules_org_fk"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_rules_source_fk"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_sources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          jurisdiction_hint: string | null
+          notes: string | null
+          org_id: string | null
+          source_type: Database["public"]["Enums"]["compliance_source_type"]
+          title: string
+          url_or_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction_hint?: string | null
+          notes?: string | null
+          org_id?: string | null
+          source_type?: Database["public"]["Enums"]["compliance_source_type"]
+          title: string
+          url_or_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction_hint?: string | null
+          notes?: string | null
+          org_id?: string | null
+          source_type?: Database["public"]["Enums"]["compliance_source_type"]
+          title?: string
+          url_or_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_sources_org_fk"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          channel: string
+          created_at: string | null
+          external_ref: string | null
+          id: string
+          organisation_id: string
+          property_id: string | null
+          subject: string | null
+          task_id: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          external_ref?: string | null
+          id?: string
+          organisation_id: string
+          property_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          external_ref?: string | null
+          id?: string
+          organisation_id?: string
+          property_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          author_name: string
+          author_role: string | null
+          author_user_id: string | null
+          body: string
+          conversation_id: string
+          created_at: string | null
+          direction: string
+          id: string
+          organisation_id: string
+          raw_payload: Json | null
+          source: string
+        }
+        Insert: {
+          author_name: string
+          author_role?: string | null
+          author_user_id?: string | null
+          body: string
+          conversation_id: string
+          created_at?: string | null
+          direction: string
+          id?: string
+          organisation_id: string
+          raw_payload?: Json | null
+          source: string
+        }
+        Update: {
+          author_name?: string
+          author_role?: string | null
+          author_user_id?: string | null
+          body?: string
+          conversation_id?: string
+          created_at?: string | null
+          direction?: string
+          id?: string
+          organisation_id?: string
+          raw_payload?: Json | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisation_members: {
+        Row: {
+          created_at: string
+          id: string
+          organisation_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organisation_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organisation_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organisation_members_org_fk"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organisations: {
+        Row: {
+          billing_email: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          slug: string | null
+        }
+        Insert: {
+          billing_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          slug?: string | null
+        }
+        Update: {
+          billing_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          slug?: string | null
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          created_at: string | null
+          health_score: number | null
+          icon_color_hex: string | null
+          icon_name: string | null
+          id: string
+          nickname: string | null
+          org_id: string | null
+          thumbnail_url: string | null
+          units: number | null
+        }
+        Insert: {
+          address: string
+          created_at?: string | null
+          health_score?: number | null
+          icon_color_hex?: string | null
+          icon_name?: string | null
+          id?: string
+          nickname?: string | null
+          org_id?: string | null
+          thumbnail_url?: string | null
+          units?: number | null
+        }
+        Update: {
+          address?: string
+          created_at?: string | null
+          health_score?: number | null
+          icon_color_hex?: string | null
+          icon_name?: string | null
+          id?: string
+          nickname?: string | null
+          org_id?: string | null
+          thumbnail_url?: string | null
+          units?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_org_fk"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signals: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          due_at: string | null
+          id: string
+          metadata: Json | null
+          organisation_id: string
+          property_id: string | null
+          snooze_until: string | null
+          source: string
+          status: string
+          task_id: string | null
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string
+          metadata?: Json | null
+          organisation_id: string
+          property_id?: string | null
+          snooze_until?: string | null
+          source?: string
+          status?: string
+          task_id?: string | null
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          due_at?: string | null
+          id?: string
+          metadata?: Json | null
+          organisation_id?: string
+          property_id?: string | null
+          snooze_until?: string | null
+          source?: string
+          status?: string
+          task_id?: string | null
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signals_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subtasks: {
+        Row: {
+          completed: boolean
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_completed: boolean
+          order_index: number
+          organisation_id: string
+          task_id: string
+          title: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          organisation_id: string
+          task_id: string
+          title: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_completed?: boolean
+          order_index?: number
+          organisation_id?: string
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_attachments: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_type: string
+          file_url: string
+          id: string
+          message_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_type: string
+          file_url: string
+          id?: string
+          message_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          message_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "task_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_image_actions: {
+        Row: {
+          action_type: string | null
+          created_at: string | null
+          id: string
+          image_version_id: string | null
+          metadata: Json | null
+          task_image_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type?: string | null
+          created_at?: string | null
+          id?: string
+          image_version_id?: string | null
+          metadata?: Json | null
+          task_image_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string | null
+          created_at?: string | null
+          id?: string
+          image_version_id?: string | null
+          metadata?: Json | null
+          task_image_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_image_actions_image_version_id_fkey"
+            columns: ["image_version_id"]
+            isOneToOne: false
+            referencedRelation: "task_image_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_actions_task_image_id_fkey"
+            columns: ["task_image_id"]
+            isOneToOne: false
+            referencedRelation: "task_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_image_versions: {
+        Row: {
+          annotation_summary: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_original: boolean | null
+          storage_path: string | null
+          task_image_id: string | null
+          version_number: number | null
+        }
+        Insert: {
+          annotation_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_original?: boolean | null
+          storage_path?: string | null
+          task_image_id?: string | null
+          version_number?: number | null
+        }
+        Update: {
+          annotation_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_original?: boolean | null
+          storage_path?: string | null
+          task_image_id?: string | null
+          version_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_image_versions_task_image_id_fkey"
+            columns: ["task_image_id"]
+            isOneToOne: false
+            referencedRelation: "task_images"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_images: {
+        Row: {
+          ai_caption: string | null
+          created_at: string | null
+          created_by: string | null
+          display_name: string | null
+          file_type: string | null
+          id: string
+          image_url: string | null
+          is_deleted: boolean | null
+          latest_version_id: string | null
+          organisation_id: string | null
+          original_filename: string | null
+          status: string | null
+          storage_path: string | null
+          task_id: string | null
+        }
+        Insert: {
+          ai_caption?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_name?: string | null
+          file_type?: string | null
+          id?: string
+          image_url?: string | null
+          is_deleted?: boolean | null
+          latest_version_id?: string | null
+          organisation_id?: string | null
+          original_filename?: string | null
+          status?: string | null
+          storage_path?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          ai_caption?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          display_name?: string | null
+          file_type?: string | null
+          id?: string
+          image_url?: string | null
+          is_deleted?: boolean | null
+          latest_version_id?: string | null
+          organisation_id?: string | null
+          original_filename?: string | null
+          status?: string | null
+          storage_path?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_images_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_images_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_messages: {
+        Row: {
+          author_name: string | null
+          author_role: string | null
+          body_html: string | null
+          body_text: string | null
+          created_at: string | null
+          id: string
+          message_type: string | null
+          organisation_id: string | null
+          source: string | null
+          task_id: string | null
+        }
+        Insert: {
+          author_name?: string | null
+          author_role?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          organisation_id?: string | null
+          source?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          author_name?: string | null
+          author_role?: string | null
+          body_html?: string | null
+          body_text?: string | null
+          created_at?: string | null
+          id?: string
+          message_type?: string | null
+          organisation_id?: string | null
+          source?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_messages_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_team_ids: string[]
+          assigned_user_id: string | null
+          assigned_vendor_name: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_at: string | null
+          id: string
+          image_url: string | null
+          organisation_id: string | null
+          priority: string | null
+          property_id: string | null
+          source: string | null
+          status: string | null
+          title: string
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_team_ids?: string[]
+          assigned_user_id?: string | null
+          assigned_vendor_name?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          image_url?: string | null
+          organisation_id?: string | null
+          priority?: string | null
+          property_id?: string | null
+          source?: string | null
+          status?: string | null
+          title: string
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_team_ids?: string[]
+          assigned_user_id?: string | null
+          assigned_vendor_name?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          image_url?: string | null
+          organisation_id?: string | null
+          priority?: string | null
+          property_id?: string | null
+          source?: string | null
+          status?: string | null
+          title?: string
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          color: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          member_ids: string[]
+          name: string
+          organisation_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_ids?: string[]
+          name: string
+          organisation_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          member_ids?: string[]
+          name?: string
+          organisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      current_org_id: { Args: never; Returns: string }
+    }
+    Enums: {
+      compliance_domain:
+        | "safety"
+        | "occupancy"
+        | "landlord_duties"
+        | "data_protection"
+        | "building_maintenance"
+        | "other"
+      compliance_obligation_type:
+        | "must_do"
+        | "must_not_do"
+        | "must_document"
+        | "must_report"
+      compliance_review_type: "ai_critic" | "ai_cross_model" | "human"
+      compliance_review_verdict: "ok" | "uncertain" | "incorrect"
+      compliance_rule_status:
+        | "extracted"
+        | "critiqued"
+        | "disagreed"
+        | "approved"
+        | "rejected"
+      compliance_source_type: "pdf_upload" | "url" | "manual"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      compliance_domain: [
+        "safety",
+        "occupancy",
+        "landlord_duties",
+        "data_protection",
+        "building_maintenance",
+        "other",
+      ],
+      compliance_obligation_type: [
+        "must_do",
+        "must_not_do",
+        "must_document",
+        "must_report",
+      ],
+      compliance_review_type: ["ai_critic", "ai_cross_model", "human"],
+      compliance_review_verdict: ["ok", "uncertain", "incorrect"],
+      compliance_rule_status: [
+        "extracted",
+        "critiqued",
+        "disagreed",
+        "approved",
+        "rejected",
+      ],
+      compliance_source_type: ["pdf_upload", "url", "manual"],
+    },
+  },
+} as const
