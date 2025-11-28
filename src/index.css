@@ -2,45 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Filla Design System v3.3 - "Dimensional Paper Edition"
+   Tactile, neomorphic UI with warm paper tones
+   All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 215 25% 15%;
+    /* Core Background & Foreground */
+    --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
+    --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
 
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    /* Surface Colors */
+    --card: 0 0% 100%;              /* Pure white surface */
+    --card-foreground: 248 15% 18%; /* Ink text */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 248 15% 18%;
 
-    --primary: 187 85% 35%;
+    /* Primary - Teal */
+    --primary: 182 29% 63%;          /* #8EC9CE */
     --primary-foreground: 0 0% 100%;
+    --primary-deep: 182 23% 56%;     /* #71AEB3 - Darker teal */
 
-    --secondary: 210 30% 92%;
-    --secondary-foreground: 215 25% 20%;
+    /* Secondary - Light paper tone */
+    --secondary: 40 15% 96%;
+    --secondary-foreground: 248 15% 18%;
 
-    --muted: 210 30% 94%;
-    --muted-foreground: 215 15% 50%;
+    /* Muted */
+    --muted: 40 12% 92%;
+    --muted-foreground: 40 2% 55%;   /* #8C8C85 */
 
-    --accent: 187 70% 45%;
+    /* Accent - Coral/Orange */
+    --accent: 16 83% 56%;            /* #EB6834 */
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    /* Status Colors */
+    --destructive: 0 84% 60%;        /* Red */
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 145 62% 85%;          /* Light green */
+    --success-foreground: 145 70% 25%;
 
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 43 100% 85%;          /* Light yellow */
+    --warning-foreground: 43 100% 35%;
 
-    --border: 210 25% 88%;
-    --input: 210 25% 88%;
-    --ring: 187 85% 35%;
+    --signal: 30 100% 91%;           /* Warm orange signal */
+    --signal-foreground: 16 83% 56%;
+
+    /* Borders & Inputs */
+    --border: 40 12% 88%;            /* #E3DFD7 - Concrete */
+    --input: 40 12% 88%;
+    --ring: 182 29% 63%;             /* Primary teal */
+
+    /* Special Tokens */
+    --concrete: 40 12% 88%;          /* Border gray */
+    --ink: 248 15% 18%;              /* Text color */
 
     --radius: 0.75rem;
 
@@ -62,39 +79,47 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 215 28% 17%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - Adjusted for paper aesthetic */
+    --background: 248 15% 12%;
+    --foreground: 40 20% 94%;
 
-    --card: 215 25% 20%;
-    --card-foreground: 210 40% 98%;
+    --card: 248 15% 16%;
+    --card-foreground: 40 20% 94%;
 
-    --popover: 215 25% 20%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 248 15% 16%;
+    --popover-foreground: 40 20% 94%;
 
-    --primary: 187 85% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 182 29% 63%;
+    --primary-foreground: 248 15% 12%;
+    --primary-deep: 182 23% 56%;
 
-    --secondary: 215 20% 25%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 248 10% 20%;
+    --secondary-foreground: 40 20% 94%;
 
-    --muted: 215 20% 25%;
-    --muted-foreground: 215 15% 65%;
+    --muted: 248 10% 22%;
+    --muted-foreground: 40 5% 60%;
 
-    --accent: 187 70% 50%;
+    --accent: 16 83% 56%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 145 62% 50%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 36 100% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 43 100% 60%;
+    --warning-foreground: 248 15% 12%;
 
-    --border: 215 20% 30%;
-    --input: 215 20% 30%;
-    --ring: 187 85% 45%;
+    --signal: 30 100% 70%;
+    --signal-foreground: 248 15% 12%;
+
+    --border: 248 10% 25%;
+    --input: 248 10% 25%;
+    --ring: 182 29% 63%;
+
+    --concrete: 248 10% 25%;
+    --ink: 40 20% 94%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -113,5 +138,61 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  }
+  
+  /* Font families */
+  .font-sans {
+    font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
+  }
+}
+
+@layer utilities {
+  /* Neomorphic Paper Shadows */
+  .shadow-e1 {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  }
+  
+  .shadow-e2 {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  
+  .shadow-e3 {
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  
+  .shadow-engraved {
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 2px rgba(0,0,0,0.06);
+  }
+  
+  .shadow-paper-edge {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+  }
+  
+  .shadow-primary-btn {
+    box-shadow: 0 4px 12px rgba(142,201,206,0.3), 0 2px 4px rgba(142,201,206,0.2);
+  }
+  
+  .shadow-fab {
+    box-shadow: 0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3);
+  }
+  
+  /* Scrollbar hide utility */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Gradient mask for scroll indicators */
+  .mask-gradient-right {
+    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
   }
 }

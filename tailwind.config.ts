@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter Tight', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -22,6 +26,13 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          deep: "hsl(var(--primary-deep))",
+        },
+        concrete: "hsl(var(--concrete))",
+        ink: "hsl(var(--ink))",
+        signal: {
+          DEFAULT: "hsl(var(--signal))",
+          foreground: "hsl(var(--signal-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -70,6 +81,17 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        sharp: "8px",   // Filla core radius
+        button: "14px", // Filla button radius
+      },
+      boxShadow: {
+        'e1': '0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+        'e2': '0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8)',
+        'e3': '0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
+        'engraved': 'inset 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 2px rgba(0,0,0,0.06)',
+        'paper-edge': 'inset 0 1px 0 rgba(255,255,255,0.8)',
+        'primary-btn': '0 4px 12px rgba(142,201,206,0.3), 0 2px 4px rgba(142,201,206,0.2)',
+        'fab': '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
       },
       keyframes: {
         "accordion-down": {
