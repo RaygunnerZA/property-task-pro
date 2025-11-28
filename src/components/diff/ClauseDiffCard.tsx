@@ -13,13 +13,17 @@ export default function ClauseDiffCard({ oldClause, newClause }: ClauseDiffCardP
         <div>
           <Text variant="caption" className="mb-2">Old</Text>
           <Surface variant="engraved" className="p-3">
-            <Text variant="body">{oldClause?.text ?? '—'}</Text>
+            <Text variant="body" className="whitespace-pre-line text-sm">
+              {oldClause?.text ?? '—'}
+            </Text>
           </Surface>
         </div>
         <div>
           <Text variant="caption" className="mb-2">New</Text>
           <Surface variant="engraved" className="p-3">
-            <Text variant="body">{newClause?.text ?? '—'}</Text>
+            <Text variant="body" className="whitespace-pre-line text-sm">
+              {newClause?.text ?? '—'}
+            </Text>
           </Surface>
         </div>
       </div>
