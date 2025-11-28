@@ -23,3 +23,10 @@ export interface ComplianceClause extends BaseEntity {
   flagged?: boolean;
   critic_notes?: string;
 }
+
+export interface PropertyComplianceStatus {
+  org_id: string;
+  property_id: string;
+  rule_version_id: string;
+  status: 'compliant' | 'non_compliant' | 'pending';
+}

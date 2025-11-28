@@ -1,7 +1,6 @@
 import { tryCatch } from '../../lib/async';
-import { complianceRules } from './rules';
 import { versioningService } from './versioning';
-import { complianceClauses } from './clauses';
+import { propertyCompliance } from './propertyCompliance';
 
 export const ruleBuilder = {
   async publishVersion(ruleId: string, orgId: string) {
@@ -9,9 +8,7 @@ export const ruleBuilder = {
       const { data: version } = await versioningService.createVersion(ruleId, orgId);
       if (!version) throw new Error('Failed to create version.');
 
-      await complianceClauses.bindClausesToVersion(ruleId, version.id);
-
-      await complianceRules.updateRuleStatus(ruleId, 'approved');
+      await propertyCompliance.assignVersionToAllProperties(orgId, version.id);
 
       return version;
     });
