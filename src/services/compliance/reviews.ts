@@ -12,4 +12,16 @@ export const complianceReviews = {
       return data;
     });
   },
+
+  async createPendingReview(payload: { org_id: string; source_id: string; status: string }) {
+    return tryCatch(async () => {
+      const { data, error } = await supabase
+        .from('compliance_reviews')
+        .insert(payload)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    });
+  }
 };
