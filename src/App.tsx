@@ -8,6 +8,12 @@ import TaskDetail from "./pages/TaskDetail";
 import Schedule from "./pages/Schedule";
 import Properties from "./pages/Properties";
 import AddTask from "./pages/AddTask";
+import ComplianceReviews from "./pages/ComplianceReviews";
+import ReviewWorkspace from "./pages/ReviewWorkspace";
+import ReviewSummary from "./pages/ReviewSummary";
+import ComplianceProperties from "./pages/ComplianceProperties";
+import RuleCompliance from "./pages/RuleCompliance";
+import PropertyCompliance from "./pages/PropertyCompliance";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +29,13 @@ const App = () => (
           <Route path="/task/:id" element={<TaskDetail />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/properties" element={<Properties />} />
+          <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
           <Route path="/add-task" element={<AddTask />} />
+          <Route path="/compliance/reviews" element={<ComplianceReviews />} />
+          <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
+          <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+          <Route path="/compliance/properties" element={<ComplianceProperties />} />
+          <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
