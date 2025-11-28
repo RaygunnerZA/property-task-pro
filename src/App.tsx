@@ -14,6 +14,9 @@ import ReviewSummary from "./pages/ReviewSummary";
 import ComplianceProperties from "./pages/ComplianceProperties";
 import RuleCompliance from "./pages/RuleCompliance";
 import PropertyCompliance from "./pages/PropertyCompliance";
+import RuleDetail from "./pages/RuleDetail";
+import RuleVersions from "./pages/RuleVersions";
+import VersionDetail from "./pages/VersionDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +38,9 @@ const App = () => (
           <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
           <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
           <Route path="/compliance/properties" element={<ComplianceProperties />} />
+          <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
+          <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
+          <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
           <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
