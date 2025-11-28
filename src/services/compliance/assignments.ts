@@ -1,3 +1,15 @@
+import { supabase } from '../supabase/client';
+import { tryCatch } from '../../lib/async';
+
 export const complianceAssignments = {
-  // Rule → property assignment logic will be implemented in Phase 6
+  async getAssignmentsForProperty(propertyId: string) {
+    return tryCatch(async () => {
+      const { data, error } = await supabase
+        .from('property_compliance_status')
+        .select('*')
+        .eq('property_id', propertyId);
+      if (error) throw error;
+      return data;
+    });
+  }
 };
