@@ -19,6 +19,7 @@ import RuleVersions from "./pages/RuleVersions";
 import VersionDetail from "./pages/VersionDetail";
 import ComplianceTasks from "./pages/ComplianceTasks";
 import PropertyTasks from "./pages/PropertyTasks";
+import BatchRewrite from "./pages/BatchRewrite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/compliance/reviews" element={<ComplianceReviews />} />
           <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
           <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+          <Route path="/compliance/reviews/:reviewId/batch-rewrite" element={<BatchRewrite />} />
           <Route path="/compliance/properties" element={<ComplianceProperties />} />
           <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
           <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
