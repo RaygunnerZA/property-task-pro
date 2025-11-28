@@ -30,5 +30,17 @@ export const complianceClauses = {
       if (error) throw error;
       return true;
     });
+  },
+
+  async bindClausesToVersion(ruleId: string, versionId: string) {
+    return tryCatch(async () => {
+      const { error } = await supabase
+        .from('compliance_clauses')
+        .update({ rule_id: ruleId, version_id: versionId })
+        .eq('rule_id', null)
+        .eq('version_id', null);
+      if (error) throw error;
+      return true;
+    });
   }
 };

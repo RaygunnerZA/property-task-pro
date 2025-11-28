@@ -23,5 +23,21 @@ export const complianceReviews = {
       if (error) throw error;
       return data;
     });
+  },
+
+  async completeReview(reviewId: string, reviewerId: string) {
+    return tryCatch(async () => {
+      const { error } = await supabase
+        .from('compliance_reviews')
+        .update({
+          status: 'approved',
+          reviewer_id: reviewerId,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', reviewId);
+
+      if (error) throw error;
+      return true;
+    });
   }
 };
