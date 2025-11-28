@@ -8,7 +8,8 @@ export const aiCritic = {
       const results: CriticResult[] = clauses.map(c => ({
         clause: c,
         flagged: c.confidence < 0.7,
-        notes: c.confidence < 0.7 ? 'Low confidence extraction' : null
+        notes: c.confidence < 0.7 ? 'Low confidence extraction' : null,
+        reasons: c.confidence < 0.7 ? ['Low confidence score'] : []
       }));
       return results;
     });
