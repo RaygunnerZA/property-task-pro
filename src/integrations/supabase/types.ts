@@ -14,6 +14,188 @@ export type Database = {
   }
   public: {
     Tables: {
+      compliance_assignments: {
+        Row: {
+          assigned_at: string | null
+          id: string
+          org_id: string
+          property_id: string
+          rule_version_id: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          id?: string
+          org_id: string
+          property_id: string
+          rule_version_id?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          id?: string
+          org_id?: string
+          property_id?: string
+          rule_version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_assignments_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rule_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_assignments_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "latest_rule_versions"
+            referencedColumns: ["version_id"]
+          },
+        ]
+      }
+      compliance_clauses: {
+        Row: {
+          category: string | null
+          confidence: number | null
+          created_at: string | null
+          critic_notes: string | null
+          flagged: boolean | null
+          id: string
+          org_id: string
+          rule_id: string | null
+          text: string
+          updated_at: string | null
+          version_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          critic_notes?: string | null
+          flagged?: boolean | null
+          id?: string
+          org_id: string
+          rule_id?: string | null
+          text: string
+          updated_at?: string | null
+          version_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          confidence?: number | null
+          created_at?: string | null
+          critic_notes?: string | null
+          flagged?: boolean | null
+          id?: string
+          org_id?: string
+          rule_id?: string | null
+          text?: string
+          updated_at?: string | null
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_clauses_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_clauses_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rule_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_clauses_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "latest_rule_versions"
+            referencedColumns: ["version_id"]
+          },
+        ]
+      }
+      compliance_jobs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          org_id: string
+          source_id: string | null
+          status: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          org_id: string
+          source_id?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          org_id?: string
+          source_id?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_reviews: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          reviewer_id: string | null
+          rule_id: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          reviewer_id?: string | null
+          rule_id?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          reviewer_id?: string | null
+          rule_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_reviews_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compliance_rule_reviews: {
         Row: {
           comments: string | null
@@ -55,6 +237,44 @@ export type Database = {
           },
           {
             foreignKeyName: "compliance_rule_reviews_rule_fk"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_rule_versions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string | null
+          id: string
+          org_id: string
+          rule_id: string | null
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          org_id: string
+          rule_id?: string | null
+          version_number: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          rule_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_rule_versions_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
             referencedRelation: "compliance_rules"
@@ -305,6 +525,36 @@ export type Database = {
           },
         ]
       }
+      org_compliance_summary: {
+        Row: {
+          compliant: number | null
+          id: string
+          non_compliant: number | null
+          org_id: string
+          pending: number | null
+          total_rules: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          compliant?: number | null
+          id?: string
+          non_compliant?: number | null
+          org_id: string
+          pending?: number | null
+          total_rules?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          compliant?: number | null
+          id?: string
+          non_compliant?: number | null
+          org_id?: string
+          pending?: number | null
+          total_rules?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       organisation_members: {
         Row: {
           created_at: string
@@ -410,6 +660,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      property_compliance_status: {
+        Row: {
+          id: string
+          org_id: string
+          property_id: string
+          reason: string | null
+          rule_version_id: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          property_id: string
+          reason?: string | null
+          rule_version_id?: string | null
+          status: string
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          property_id?: string
+          reason?: string | null
+          rule_version_id?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_compliance_status_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rule_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_compliance_status_rule_version_id_fkey"
+            columns: ["rule_version_id"]
+            isOneToOne: false
+            referencedRelation: "latest_rule_versions"
+            referencedColumns: ["version_id"]
+          },
+        ]
+      }
+      rule_categories: {
+        Row: {
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: []
       }
       signals: {
         Row: {
@@ -901,10 +1217,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      latest_rule_versions: {
+        Row: {
+          approved_at: string | null
+          rule_id: string | null
+          version_id: string | null
+          version_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_rule_versions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       current_org_id: { Args: never; Returns: string }
+      update_org_compliance_summary: {
+        Args: { org: string }
+        Returns: undefined
+      }
     }
     Enums: {
       compliance_domain:
