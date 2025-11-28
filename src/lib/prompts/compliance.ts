@@ -1,8 +1,16 @@
 export const extractorPrompt = `
-Extract compliance clauses from the following text.
-Return clauses with category and confidence.
+You are a compliance extraction engine.
+
+Extract individual compliance clauses from the input text.
+Return each clause with:
+- text
+- category (if identifiable)
+- confidence score (0 to 1)
+
+Be accurate, structured, and conservative.
 `;
 
 export const criticPrompt = `
-Review extracted clauses. Flag low-confidence issues and provide notes.
+Review extracted clauses.
+Flag any low-confidence clauses and provide notes.
 `;
