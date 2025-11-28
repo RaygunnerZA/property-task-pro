@@ -17,6 +17,8 @@ import PropertyCompliance from "./pages/PropertyCompliance";
 import RuleDetail from "./pages/RuleDetail";
 import RuleVersions from "./pages/RuleVersions";
 import VersionDetail from "./pages/VersionDetail";
+import ComplianceTasks from "./pages/ComplianceTasks";
+import PropertyTasks from "./pages/PropertyTasks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
           <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
           <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
           <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
+          <Route path="/tasks/compliance" element={<ComplianceTasks />} />
+          <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
