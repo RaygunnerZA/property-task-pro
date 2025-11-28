@@ -4,6 +4,7 @@ export interface OpenAIExtractorInput {
 }
 
 export interface ExtractedClause {
+  id?: string;
   text: string;
   category?: string;
   confidence?: number;
@@ -13,4 +14,7 @@ export interface CriticResult {
   clause: ExtractedClause;
   flagged: boolean;
   notes: string | null;
+  reasons: string[];
+  suggested_category?: string;
+  rewrite?: string;
 }
