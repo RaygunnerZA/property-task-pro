@@ -3,10 +3,10 @@ import { complianceSources } from './sources';
 import { complianceJobs } from './jobs';
 import { aiExtractor } from '../ai/extractor';
 import { clauseInserter } from './clauseInserter';
-import { IngestSourceInput, IngestResult } from '../../types/ingestion';
+import { IngestSourceInput } from '../../types/ingestion';
 
 export const ingestionService = {
-  async ingestSource(input: IngestSourceInput): Promise<IngestResult> {
+  async ingestSource(input: IngestSourceInput) {
     return tryCatch(async () => {
       // 1. Create source
       const { data: source } = await complianceSources.createSource({
