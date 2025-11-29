@@ -35,11 +35,13 @@ const Schedule = () => {
   /* --------------------------------------------
      FETCH DATA
   --------------------------------------------- */
+  const filters = useMemo(() => ({}), []);
+  
   const { items, loading, error } = useScheduleData({
     viewMode,
     rangeStart: start,
     rangeEnd: end,
-    filters: {}, // property filters go here later
+    filters,
   });
 
   /* --------------------------------------------
