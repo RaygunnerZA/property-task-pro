@@ -1,136 +1,220 @@
-import { useState } from 'react';
-import { BottomNav } from '@/components/BottomNav';
-import { mockTasks, mockProperties } from '@/data/mockData';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
-import { Calendar as CalendarIcon, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Task } from '@/types/task';
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ContextHeader } from "@/components/ContextHeader";
+import { BottomNav } from "@/components/BottomNav";
+import { SegmentedControl } from "@/components/filla/SegmentedControl";
+import { useScheduleData } from "@/hooks/useScheduleData";
+import { getScheduleRange, ScheduleViewMode } from "@/utils/scheduleRange";
+import { MonthCalendar } from "@/components/schedule/MonthCalendar";
+import { WeekStripCalendar } from "@/components/schedule/WeekStripCalendar";
+import { DayScheduleDrawer } from "@/components/schedule/DayScheduleDrawer";
+import { ScheduleItemBase } from "@/types/schedule";
+import { Search, SlidersHorizontal } from "lucide-react";
 
-const getStatusColor = (status: Task['status']) => {
-  switch (status) {
-    case 'completed':
-      return 'bg-success text-success-foreground';
-    case 'in-progress':
-      return 'bg-warning text-warning-foreground';
-    case 'pending':
-      return 'bg-primary text-primary-foreground';
-  }
-};
+/**
+ * SCHEDULE SCREEN
+ * - Month, Week, List view modes
+ * - Unified header with property selector and filters
+ * - Soft tactile scroll container
+ */
 
 const Schedule = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
   const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<ScheduleViewMode>("month");
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const monthStart = startOfMonth(selectedDate);
-  const monthEnd = endOfMonth(selectedDate);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  const tasksOnSelectedDate = mockTasks.filter(task => 
-    isSameDay(task.dueDate, selectedDate)
+  /* --------------------------------------------
+     BUILD DATE RANGE BASED ON VIEW MODE
+  --------------------------------------------- */
+  const { start, end } = useMemo(
+    () => getScheduleRange(viewMode, currentDate),
+    [viewMode, currentDate]
   );
 
-  const getTasksForDay = (day: Date) => {
-    return mockTasks.filter(task => isSameDay(task.dueDate, day));
+  /* --------------------------------------------
+     FETCH DATA
+  --------------------------------------------- */
+  const { items, loading, error } = useScheduleData({
+    viewMode,
+    rangeStart: start,
+    rangeEnd: end,
+    filters: {}, // property filters go here later
+  });
+
+  /* --------------------------------------------
+     ITEMS FOR SELECTED DATE
+  --------------------------------------------- */
+  const selectedISO = selectedDate.toISOString().slice(0, 10);
+
+  const itemsForSelectedDate: ScheduleItemBase[] = useMemo(() => {
+    return items.filter((i) => i.date === selectedISO);
+  }, [items, selectedISO]);
+
+  const daysWithItems = useMemo(() => {
+    return Array.from(new Set(items.map((i) => i.date)));
+  }, [items]);
+
+  /* --------------------------------------------
+     VIEW MODE OPTIONS
+  --------------------------------------------- */
+
+  const segmentOptions = [
+    { id: "list", label: "List" },
+    { id: "week", label: "Week" },
+    { id: "month", label: "Month" },
+  ];
+
+  /* --------------------------------------------
+     DATE NAVIGATION HANDLERS
+  --------------------------------------------- */
+
+  const handleChangeMonth = (direction: "prev" | "next") => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(currentDate.getMonth() + (direction === "prev" ? -1 : 1));
+    setCurrentDate(newDate);
   };
+
+  const handleChangeWeek = (direction: "prev" | "next") => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (direction === "prev" ? -7 : 7));
+    setCurrentDate(newDate);
+  };
+
+  const handleSelectDate = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  const handleItemPress = (item: ScheduleItemBase) => {
+    if (item.kind === "task") {
+      navigate(`/task/${item.id}`);
+    }
+    // Handle signal navigation later if needed
+  };
+
+  /* --------------------------------------------
+     GET START OF WEEK FOR WEEK VIEW
+  --------------------------------------------- */
+  const startOfWeek = useMemo(() => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diffToMonday);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [currentDate]);
+
+  /* --------------------------------------------
+     DATE LABEL FOR DRAWER
+  --------------------------------------------- */
+  const dateLabel = useMemo(() => {
+    if (viewMode === "list") {
+      return "All upcoming";
+    }
+    return selectedDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+  }, [viewMode, selectedDate]);
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 bg-card border-b border-border z-40">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Schedule</h1>
-          <p className="text-sm text-muted-foreground">{format(selectedDate, 'MMMM yyyy')}</p>
-        </div>
-      </header>
-
-      <div className="max-w-md mx-auto px-4 py-4 space-y-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="grid grid-cols-7 gap-2 mb-4">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground">
-                  {day}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-2">
-              {daysInMonth.map(day => {
-                const tasksForDay = getTasksForDay(day);
-                const isSelected = isSameDay(day, selectedDate);
-                const isCurrentDay = isToday(day);
-                
-                return (
-                  <button
-                    key={day.toISOString()}
-                    onClick={() => setSelectedDate(day)}
-                    className={`
-                      aspect-square rounded-lg p-2 text-sm font-medium transition-all
-                      ${isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary'}
-                      ${isCurrentDay && !isSelected ? 'border-2 border-primary' : ''}
-                      relative
-                    `}
-                  >
-                    {format(day, 'd')}
-                    {tasksForDay.length > 0 && (
-                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 flex gap-0.5">
-                        {tasksForDay.slice(0, 3).map((_, i) => (
-                          <div key={i} className="w-1 h-1 rounded-full bg-accent" />
-                        ))}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div>
-          <div className="flex items-center gap-2 mb-4">
-            <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">
-              Tasks on {format(selectedDate, 'MMMM d, yyyy')}
-            </h2>
+      {/* HEADER */}
+      <ContextHeader
+        title="Schedule"
+        action={
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+              <Search className="h-5 w-5" />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+              <SlidersHorizontal className="h-5 w-5" />
+            </button>
           </div>
+        }
+      />
 
-          {tasksOnSelectedDate.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">No tasks scheduled for this day</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {tasksOnSelectedDate.map(task => {
-                const property = mockProperties.find(p => p.id === task.propertyId)!;
-                return (
-                  <Card 
-                    key={task.id} 
-                    className="cursor-pointer transition-all hover:shadow-md active:scale-[0.98]"
-                    onClick={() => navigate(`/task/${task.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className="font-semibold flex-1">{task.title}</h3>
-                        <Badge className={getStatusColor(task.status)} variant="secondary">
-                          {task.status.replace('-', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
-                        {task.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span className="truncate">{property.name}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* VIEW MODE SEGMENT CONTROL */}
+      <div className="px-4 pt-4 pb-2 flex justify-center">
+        <SegmentedControl
+          options={segmentOptions}
+          selectedId={viewMode}
+          onChange={(id) => setViewMode(id as ScheduleViewMode)}
+        />
+      </div>
+
+      {/* SCROLL CONTAINER */}
+      <div className="max-w-md mx-auto px-0 pb-4">
+        {/* LOADING STATE */}
+        {loading && (
+          <div className="py-12 text-center">
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          </div>
+        )}
+
+        {/* ERROR STATE */}
+        {error && (
+          <div className="px-4 py-12 text-center">
+            <div className="text-sm text-destructive">{error}</div>
+          </div>
+        )}
+
+        {/* CONTENT */}
+        {!loading && !error && (
+          <>
+            {/* MONTH VIEW */}
+            {viewMode === "month" && (
+              <>
+                <MonthCalendar
+                  currentDate={currentDate}
+                  selectedDate={selectedDate}
+                  daysWithItems={daysWithItems}
+                  onSelectDate={handleSelectDate}
+                  onChangeMonth={handleChangeMonth}
+                />
+                <div className="px-4">
+                  <DayScheduleDrawer
+                    dateLabel={dateLabel}
+                    items={itemsForSelectedDate}
+                    onItemPress={handleItemPress}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* WEEK VIEW */}
+            {viewMode === "week" && (
+              <>
+                <WeekStripCalendar
+                  startOfWeek={startOfWeek}
+                  selectedDate={selectedDate}
+                  daysWithItems={daysWithItems}
+                  onSelectDate={handleSelectDate}
+                  onChangeWeek={handleChangeWeek}
+                />
+                <div className="px-4">
+                  <DayScheduleDrawer
+                    dateLabel={dateLabel}
+                    items={itemsForSelectedDate}
+                    onItemPress={handleItemPress}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* LIST VIEW */}
+            {viewMode === "list" && (
+              <div className="px-4">
+                <DayScheduleDrawer
+                  dateLabel={dateLabel}
+                  items={items}
+                  onItemPress={handleItemPress}
+                />
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <BottomNav />
