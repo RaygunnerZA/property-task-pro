@@ -23,6 +23,10 @@ import BatchRewrite from "./pages/BatchRewrite";
 import ComplianceDashboard from "./pages/ComplianceDashboard";
 import AuditExport from "./pages/AuditExport";
 import NotFound from "./pages/NotFound";
+import VendorDashboard from "./pages/VendorDashboard";
+import VendorTasks from "./pages/VendorTasks";
+import VendorTaskDetail from "./pages/VendorTaskDetail";
+import VendorProfile from "./pages/VendorProfile";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +56,10 @@ const App = () => (
           <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
           <Route path="/tasks/compliance" element={<ComplianceTasks />} />
           <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
+          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/tasks" element={<VendorTasks />} />
+          <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
+          <Route path="/vendor/profile" element={<VendorProfile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

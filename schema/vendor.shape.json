@@ -1,0 +1,14 @@
+{
+  "vendors": {
+    "id": "uuid",
+    "org_id": "uuid",
+    "name": "text",
+    "email": "text",
+    "phone": "text"
+  },
+  "vendor_tasks": {
+    "task_id": "uuid",
+    "vendor_id": "uuid",
+    "assigned_at": "timestamp"
+  }
+}
