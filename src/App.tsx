@@ -3,6 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Work from "./pages/Work";
+import Spaces from "./pages/Spaces";
+import Account from "./pages/Account";
+import AccountDeveloper from "./pages/AccountDeveloper";
 import Tasks from "./pages/Tasks";
 import TaskDetail from "./pages/TaskDetail";
 import Schedule from "./pages/Schedule";
@@ -40,7 +45,12 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Tasks />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/work" element={<Work />} />
+          <Route path="/spaces" element={<Spaces />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/account/developer" element={<AccountDeveloper />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/task/:id" element={<TaskDetail />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/properties" element={<Properties />} />
