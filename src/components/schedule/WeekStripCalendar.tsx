@@ -24,6 +24,9 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
   onSelectDate,
   onChangeWeek,
 }) => {
+  const [slideDirection, setSlideDirection] = React.useState<"left" | "right" | null>(null);
+  const [key, setKey] = React.useState(0);
+  
   // Build the 7-day array
   const days: Date[] = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(startOfWeek);
@@ -33,6 +36,15 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const selectedISO = selectedDate.toISOString().slice(0, 10);
+
+  const handleChangeWeek = (direction: "prev" | "next") => {
+    setSlideDirection(direction === "prev" ? "right" : "left");
+    setKey(prev => prev + 1);
+    setTimeout(() => {
+      onChangeWeek(direction);
+      setSlideDirection(null);
+    }, 150);
+  };
 
   const fmt = (date: Date) => date.toISOString().slice(0, 10);
   const dayNum = (date: Date) => date.getDate();
@@ -44,7 +56,7 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
       {/* Left arrow */}
       <button
         type="button"
-        onClick={() => onChangeWeek("prev")}
+        onClick={() => handleChangeWeek("prev")}
         className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm shrink-0"
         aria-label="Previous week"
       >
@@ -52,7 +64,14 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
       </button>
 
       {/* DAYS */}
-      <div className="flex-1 flex justify-between gap-1">
+      <div 
+        key={key}
+        className={`flex-1 flex justify-between gap-1 transition-all duration-200 ${
+          slideDirection === "left" ? "animate-slide-out-left" : 
+          slideDirection === "right" ? "animate-slide-out-right" : 
+          "animate-fade-in"
+        }`}
+      >
         {days.map((date, idx) => {
           const iso = fmt(date);
           const isSelected = iso === selectedISO;
@@ -89,7 +108,7 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
       {/* Right arrow */}
       <button
         type="button"
-        onClick={() => onChangeWeek("next")}
+        onClick={() => handleChangeWeek("next")}
         className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm shrink-0"
         aria-label="Next week"
       >

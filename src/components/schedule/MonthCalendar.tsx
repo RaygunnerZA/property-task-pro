@@ -24,6 +24,9 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   onSelectDate,
   onChangeMonth,
 }) => {
+  const [slideDirection, setSlideDirection] = React.useState<"left" | "right" | null>(null);
+  const [key, setKey] = React.useState(0);
+  
   const todayISO = new Date().toISOString().slice(0, 10);
   const selectedISO = selectedDate.toISOString().slice(0, 10);
 
@@ -32,6 +35,15 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     month: "long",
     year: "numeric",
   });
+
+  const handleChangeMonth = (direction: "prev" | "next") => {
+    setSlideDirection(direction === "prev" ? "right" : "left");
+    setKey(prev => prev + 1);
+    setTimeout(() => {
+      onChangeMonth(direction);
+      setSlideDirection(null);
+    }, 150);
+  };
 
   /* --------------------------------------------
      BUILD MONTH GRID
@@ -64,25 +76,27 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
     <div className="px-4 pt-2 pb-3">
       {/* HEADER */}
       <div className="flex items-center justify-between mb-2">
-        <button
-          type="button"
-          onClick={() => onChangeMonth("prev")}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm"
-          aria-label="Previous month"
-        >
-          ←
-        </button>
-
         <div className="text-sm font-semibold">{monthLabel}</div>
 
-        <button
-          type="button"
-          onClick={() => onChangeMonth("next")}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm"
-          aria-label="Next month"
-        >
-          →
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleChangeMonth("prev")}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm"
+            aria-label="Previous month"
+          >
+            ←
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleChangeMonth("next")}
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-card shadow-engraved text-sm"
+            aria-label="Next month"
+          >
+            →
+          </button>
+        </div>
       </div>
 
       {/* WEEKDAY LABELS */}
@@ -98,7 +112,14 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
       </div>
 
       {/* CALENDAR GRID */}
-      <div className="grid grid-cols-7 gap-1">
+      <div 
+        key={key}
+        className={`grid grid-cols-7 gap-1 transition-all duration-200 ${
+          slideDirection === "left" ? "animate-slide-out-left" : 
+          slideDirection === "right" ? "animate-slide-out-right" : 
+          "animate-fade-in"
+        }`}
+      >
         {cells.map((date, idx) => {
           if (!date) {
             return <div key={idx} className="aspect-square" />;
