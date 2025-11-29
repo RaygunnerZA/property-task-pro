@@ -27,6 +27,7 @@ import VendorDashboard from "./pages/VendorDashboard";
 import VendorTasks from "./pages/VendorTasks";
 import VendorTaskDetail from "./pages/VendorTaskDetail";
 import VendorProfile from "./pages/VendorProfile";
+import VendorReporting from "./pages/VendorReporting";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/vendor/tasks" element={<VendorTasks />} />
           <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
           <Route path="/vendor/profile" element={<VendorProfile />} />
+          <Route path="/vendor/reporting" element={<VendorReporting />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
