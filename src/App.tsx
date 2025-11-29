@@ -20,6 +20,7 @@ import VersionDetail from "./pages/VersionDetail";
 import ComplianceTasks from "./pages/ComplianceTasks";
 import PropertyTasks from "./pages/PropertyTasks";
 import BatchRewrite from "./pages/BatchRewrite";
+import ComplianceDashboard from "./pages/ComplianceDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/properties" element={<Properties />} />
           <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
           <Route path="/add-task" element={<AddTask />} />
+          <Route path="/compliance/dashboard" element={<ComplianceDashboard />} />
           <Route path="/compliance/reviews" element={<ComplianceReviews />} />
           <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
           <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
