@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { generateAuditPack } from '@/frontend/audit/generateAuditPack';
 
 export interface AuditExportProgress {
   step: string;
@@ -34,6 +35,9 @@ export const useAuditExport = (): UseAuditExportResult => {
 
     await new Promise(resolve => setTimeout(resolve, 1000));
     setProgress({ step: 'Generating Report', progress: 66, message: 'Building PDF document...' });
+
+    // Call frontend-only audit pipeline
+    await generateAuditPack(type, options);
 
     await new Promise(resolve => setTimeout(resolve, 1000));
     setProgress({ step: 'Complete', progress: 100, message: 'Export ready!' });
