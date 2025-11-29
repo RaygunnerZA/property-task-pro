@@ -2,6 +2,11 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Surface, Heading, Text, Button } from '@/components/filla';
 import { VendorTaskStatusBadge } from '@/components/vendor/VendorTaskStatusBadge';
+import { VendorTaskActionBar } from '@/components/vendor/VendorTaskActionBar';
+import { VendorEvidenceUpload } from '@/components/vendor/VendorEvidenceUpload';
+import { VendorPhotoViewer } from '@/components/vendor/VendorPhotoViewer';
+import { VendorCommentThread } from '@/components/vendor/VendorCommentThread';
+import { SLAIndicator } from '@/components/vendor/SLAIndicator';
 import { useVendorTaskDetail } from '@/hooks/vendor/useVendorTaskDetail';
 import { ArrowLeft, MapPin, Calendar, AlertCircle } from 'lucide-react';
 
@@ -73,42 +78,26 @@ export default function VendorTaskDetail() {
         </div>
       </Surface>
 
+      {/* SLA Indicator */}
+      <SLAIndicator due_at={task.due_at} />
+
       {/* Actions */}
-      <Surface variant="neomorphic" className="p-6 space-y-3">
-        <Heading variant="m">Update Status</Heading>
-        
-        {task.status === 'Assigned' && (
-          <Button 
-            variant="primary" 
-            fullWidth
-            onClick={() => updateStatus('In Progress')}
-          >
-            Start Task
-          </Button>
-        )}
+      <VendorTaskActionBar
+        status={task.status}
+        onStart={() => updateStatus('In Progress')}
+        onComplete={() => updateStatus('Waiting Review')}
+      />
 
-        {task.status === 'In Progress' && (
-          <Button 
-            variant="primary" 
-            fullWidth
-            onClick={() => updateStatus('Waiting Review')}
-          >
-            Mark as Complete
-          </Button>
-        )}
+      {/* Evidence Upload */}
+      {(task.status === 'In Progress' || task.status === 'Waiting Review') && (
+        <VendorEvidenceUpload />
+      )}
 
-        {task.status === 'Waiting Review' && (
-          <div className="text-center py-4">
-            <Text variant="muted">Waiting for manager review</Text>
-          </div>
-        )}
+      {/* Photo Viewer */}
+      <VendorPhotoViewer photos={[]} />
 
-        {task.status === 'Completed' && (
-          <div className="text-center py-4">
-            <Text variant="muted">Task completed</Text>
-          </div>
-        )}
-      </Surface>
+      {/* Comments */}
+      <VendorCommentThread comments={[]} />
     </div>
   );
 }
