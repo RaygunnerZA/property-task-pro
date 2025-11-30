@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import type { Tables } from "../integrations/supabase/types";
+import { useRealtime } from "./useRealtime";
 
 type TaskRow = Tables<"tasks">;
 
@@ -29,6 +30,8 @@ export function useTasks(orgId?: string) {
   useEffect(() => {
     fetchTasks();
   }, [orgId]);
+
+  useRealtime("tasks", "tasks", fetchTasks);
 
   return { tasks, loading, error, refresh: fetchTasks };
 }
