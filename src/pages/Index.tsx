@@ -1,18 +1,37 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in
-    const isLoggedIn = localStorage.getItem('filla_onboarding_complete');
-    
-    if (isLoggedIn) {
-      navigate("/work/tasks");
-    } else {
-      navigate("/welcome");
-    }
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Not logged in
+        navigate("/welcome");
+        return;
+      }
+
+      // Check if user has organisation (onboarding complete)
+      const { data: memberData } = await supabase
+        .from('organisation_members')
+        .select('org_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!memberData?.org_id) {
+        // Logged in but no organisation - needs onboarding
+        navigate("/onboarding/create-organisation");
+      } else {
+        // Fully onboarded
+        navigate("/work/tasks");
+      }
+    };
+
+    checkAuth();
   }, [navigate]);
 
   return (

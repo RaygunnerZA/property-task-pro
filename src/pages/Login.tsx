@@ -19,7 +19,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -29,8 +29,24 @@ export default function LoginPage() {
         return;
       }
 
-      toast.success("Welcome back!");
-      navigate("/work/tasks");
+      if (data.session) {
+        // Check if user has completed onboarding by checking for organisation membership
+        const { data: memberData } = await supabase
+          .from('organisation_members')
+          .select('org_id')
+          .eq('user_id', data.user.id)
+          .single();
+
+        if (!memberData?.org_id) {
+          // No organisation - needs onboarding
+          toast.success("Welcome! Let's set up your account.");
+          navigate("/onboarding/create-organisation");
+        } else {
+          // Has organisation - onboarding complete
+          toast.success("Welcome back!");
+          navigate("/work/tasks");
+        }
+      }
     } catch (error: any) {
       toast.error("Something went wrong");
     } finally {
