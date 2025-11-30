@@ -3,39 +3,53 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import Work from "./pages/Work";
-import Spaces from "./pages/Spaces";
-import Account from "./pages/Account";
-import AccountDeveloper from "./pages/AccountDeveloper";
-import Tasks from "./pages/Tasks";
+import { AppLayout } from "@/components/AppLayout";
+import Login from "@/pages/Login";
+import NotFound from "./pages/NotFound";
+
+// WORK pillar
+import WorkTasks from "./pages/work/WorkTasks";
+import WorkCalendar from "./pages/work/WorkCalendar";
+import WorkNotes from "./pages/work/WorkNotes";
+import WorkAI from "./pages/work/WorkAI";
+
+// MANAGE pillar
+import ManageProperties from "./pages/manage/ManageProperties";
+import ManageSpaces from "./pages/manage/ManageSpaces";
+import ManagePeople from "./pages/manage/ManagePeople";
+import ManageVendors from "./pages/manage/ManageVendors";
+import ManageTemplates from "./pages/manage/ManageTemplates";
+import ManageSettings from "./pages/manage/ManageSettings";
+
+// RECORD pillar
+import RecordDocuments from "./pages/record/RecordDocuments";
+import RecordCompliance from "./pages/record/RecordCompliance";
+import RecordHistory from "./pages/record/RecordHistory";
+import RecordReports from "./pages/record/RecordReports";
+import RecordLibrary from "./pages/record/RecordLibrary";
+
+// Legacy pages (kept for deep links)
 import TaskDetail from "./pages/TaskDetail";
-import Schedule from "./pages/Schedule";
-import Properties from "./pages/Properties";
 import AddTask from "./pages/AddTask";
+import PropertyCompliance from "./pages/PropertyCompliance";
+import PropertyTasks from "./pages/PropertyTasks";
+import PropertyPhotos from "./pages/PropertyPhotos";
+import PropertyDocuments from "./pages/PropertyDocuments";
 import ComplianceReviews from "./pages/ComplianceReviews";
 import ReviewWorkspace from "./pages/ReviewWorkspace";
 import ReviewSummary from "./pages/ReviewSummary";
-import ComplianceProperties from "./pages/ComplianceProperties";
-import RuleCompliance from "./pages/RuleCompliance";
-import PropertyCompliance from "./pages/PropertyCompliance";
+import BatchRewrite from "./pages/BatchRewrite";
 import RuleDetail from "./pages/RuleDetail";
 import RuleVersions from "./pages/RuleVersions";
 import VersionDetail from "./pages/VersionDetail";
-import ComplianceTasks from "./pages/ComplianceTasks";
-import PropertyTasks from "./pages/PropertyTasks";
-import BatchRewrite from "./pages/BatchRewrite";
-import ComplianceDashboard from "./pages/ComplianceDashboard";
+import RuleCompliance from "./pages/RuleCompliance";
 import AuditExport from "./pages/AuditExport";
-import NotFound from "./pages/NotFound";
+import AccountDeveloper from "./pages/AccountDeveloper";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorTasks from "./pages/VendorTasks";
 import VendorTaskDetail from "./pages/VendorTaskDetail";
 import VendorProfile from "./pages/VendorProfile";
 import VendorReporting from "./pages/VendorReporting";
-import PropertyPhotos from "./pages/PropertyPhotos";
-import PropertyDocuments from "./pages/PropertyDocuments";
-import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -46,40 +60,63 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/work" element={<Work />} />
-          <Route path="/spaces" element={<Spaces />} />
-          <Route path="/account" element={<Account />} />
-          <Route path="/account/developer" element={<AccountDeveloper />} />
-          <Route path="/tasks" element={<Tasks />} />
-          <Route path="/task/:id" element={<TaskDetail />} />
-          <Route path="/schedule" element={<Schedule />} />
-          <Route path="/properties" element={<Properties />} />
-          <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
-          <Route path="/add-task" element={<AddTask />} />
-          <Route path="/compliance/dashboard" element={<ComplianceDashboard />} />
-          <Route path="/compliance/audit" element={<AuditExport />} />
-          <Route path="/compliance/reviews" element={<ComplianceReviews />} />
-          <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
-          <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
-          <Route path="/compliance/reviews/:reviewId/batch-rewrite" element={<BatchRewrite />} />
-          <Route path="/compliance/properties" element={<ComplianceProperties />} />
-          <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
-          <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
-          <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
-          <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
-          <Route path="/tasks/compliance" element={<ComplianceTasks />} />
-          <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
-          <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-          <Route path="/vendor/tasks" element={<VendorTasks />} />
-          <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
-          <Route path="/vendor/profile" element={<VendorProfile />} />
-          <Route path="/vendor/reporting" element={<VendorReporting />} />
-          <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
-          <Route path="/properties/:id/documents" element={<PropertyDocuments />} />
+          {/* Login route (no layout) */}
           <Route path="/login" element={<Login />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          
+          {/* All main app routes wrapped in AppLayout */}
+          <Route path="/*" element={
+            <AppLayout>
+              <Routes>
+                {/* WORK pillar */}
+                <Route path="/" element={<WorkTasks />} />
+                <Route path="/work/tasks" element={<WorkTasks />} />
+                <Route path="/work/calendar" element={<WorkCalendar />} />
+                <Route path="/work/notes" element={<WorkNotes />} />
+                <Route path="/work/ai" element={<WorkAI />} />
+                
+                {/* MANAGE pillar */}
+                <Route path="/manage/properties" element={<ManageProperties />} />
+                <Route path="/manage/spaces" element={<ManageSpaces />} />
+                <Route path="/manage/people" element={<ManagePeople />} />
+                <Route path="/manage/vendors" element={<ManageVendors />} />
+                <Route path="/manage/templates" element={<ManageTemplates />} />
+                <Route path="/manage/settings" element={<ManageSettings />} />
+                
+                {/* RECORD pillar */}
+                <Route path="/record/documents" element={<RecordDocuments />} />
+                <Route path="/record/compliance" element={<RecordCompliance />} />
+                <Route path="/record/history" element={<RecordHistory />} />
+                <Route path="/record/reports" element={<RecordReports />} />
+                <Route path="/record/library" element={<RecordLibrary />} />
+                
+                {/* Legacy/deep-link routes */}
+                <Route path="/task/:id" element={<TaskDetail />} />
+                <Route path="/add-task" element={<AddTask />} />
+                <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
+                <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
+                <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
+                <Route path="/properties/:id/documents" element={<PropertyDocuments />} />
+                <Route path="/compliance/reviews" element={<ComplianceReviews />} />
+                <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
+                <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+                <Route path="/compliance/reviews/:reviewId/batch-rewrite" element={<BatchRewrite />} />
+                <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
+                <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
+                <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
+                <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
+                <Route path="/compliance/audit" element={<AuditExport />} />
+                <Route path="/account/developer" element={<AccountDeveloper />} />
+                <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+                <Route path="/vendor/tasks" element={<VendorTasks />} />
+                <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
+                <Route path="/vendor/profile" element={<VendorProfile />} />
+                <Route path="/vendor/reporting" element={<VendorReporting />} />
+                
+                {/* 404 */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppLayout>
+          } />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
