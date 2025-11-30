@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
-  const { orgName, orgSlug, userId, setOrgName, setOrgId, propertyType, setPropertyType } = useOnboardingStore();
+  const { orgName, orgSlug, setOrgName, setOrgId } = useOnboardingStore();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -90,36 +90,6 @@ export default function CreateOrganisationScreen() {
             }}
             error={error}
           />
-
-          <div>
-            <label className="block text-sm font-medium text-[#6D7480] mb-3">
-              Property Type (Optional)
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {(['residential', 'hospitality', 'commercial'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setPropertyType(type)}
-                  className={`
-                    px-4 py-3 rounded-xl text-sm font-medium capitalize
-                    transition-all duration-150 ease-out
-                    ${propertyType === type 
-                      ? 'text-[#FF6B6B]' 
-                      : 'text-[#6D7480] hover:text-[#1C1C1C]'
-                    }
-                  `}
-                  style={{
-                    boxShadow: propertyType === type
-                      ? "inset 2px 2px 4px rgba(255,107,107,0.15), inset -2px -2px 4px rgba(255,255,255,0.7)"
-                      : "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.7)"
-                  }}
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="text-center">
             <p className="text-sm text-[#6D7480]">

@@ -10,7 +10,6 @@ interface OnboardingState {
   orgName: string;
   orgSlug: string;
   orgId: string | null;
-  propertyType: 'residential' | 'hospitality' | 'commercial' | null;
   
   // Property data
   propertyNickname: string;
@@ -35,7 +34,6 @@ interface OnboardingState {
   setOrgName: (name: string) => void;
   setOrgSlug: (slug: string) => void;
   setOrgId: (id: string | null) => void;
-  setPropertyType: (type: 'residential' | 'hospitality' | 'commercial') => void;
   setPropertyNickname: (nickname: string) => void;
   setPropertyAddress: (address: string) => void;
   setPropertyUnits: (units: number) => void;
@@ -57,7 +55,6 @@ const initialState = {
   orgName: '',
   orgSlug: '',
   orgId: null,
-  propertyType: null,
   propertyNickname: '',
   propertyAddress: '',
   propertyUnits: 1,
@@ -82,7 +79,6 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   },
   setOrgSlug: (orgSlug) => set({ orgSlug }),
   setOrgId: (orgId) => set({ orgId }),
-  setPropertyType: (propertyType) => set({ propertyType }),
   setPropertyNickname: (propertyNickname) => set({ propertyNickname }),
   setPropertyAddress: (propertyAddress) => set({ propertyAddress }),
   setPropertyUnits: (propertyUnits) => set({ propertyUnits }),
