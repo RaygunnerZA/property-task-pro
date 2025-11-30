@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { tryCatch } from '../../lib/async';
 import { OpenAIExtractorInput, ExtractedClause } from '../../types/ai';
 import { complianceClauses } from '../compliance/clauses';

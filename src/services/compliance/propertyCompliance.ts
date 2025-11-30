@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { tryCatch } from '../../lib/async';
 
 export const propertyCompliance = {
@@ -28,11 +28,11 @@ export const propertyCompliance = {
 
   async markOutdatedVersions(orgId: string, ruleId: string, latestVersionId: string) {
     return tryCatch(async () => {
+      // Note: property_compliance_status doesn't have rule_id field, only rule_version_id
       const { error } = await supabase
         .from('property_compliance_status')
         .update({ status: 'pending' })
         .eq('org_id', orgId)
-        .eq('rule_id', ruleId)
         .neq('rule_version_id', latestVersionId);
       if (error) throw error;
       return true;
