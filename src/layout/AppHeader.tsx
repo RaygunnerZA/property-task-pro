@@ -1,41 +1,34 @@
-import { Search, User } from "lucide-react";
-import { DS } from "@/design-system/DesignSystem";
+import { useLocation } from "react-router-dom";
+import { DS } from "../design-system/DesignSystem";
+
+const TITLES: Record<string, string> = {
+  "/": "Home",
+  "/work": "Work",
+  "/manage": "Manage",
+  "/record": "Record",
+};
 
 export default function AppHeader() {
+  const location = useLocation();
+  const title = TITLES[location.pathname] || "Filla";
+
   return (
-    <header 
-      className="h-14 px-4 flex items-center justify-between border-b"
+    <header
+      className="px-4 py-3 flex items-center justify-between"
       style={{ 
-        backgroundColor: DS.colour.bg,
-        borderColor: DS.colour.border 
+        fontFamily: DS.font.family 
       }}
     >
-      <h1 
-        className="text-[17px] font-semibold"
-        style={{ color: DS.colour.text }}
-      >
-        Filla
+      <h1 className="text-[20px] font-semibold text-[#1A1A1A]">
+        {title}
       </h1>
 
-      <div className="flex items-center gap-2">
-        <button
-          className="p-2 rounded-lg transition-all"
-          style={{
-            boxShadow: DS.shadow.soft
-          }}
-          aria-label="Search"
-        >
-          <Search size={18} color={DS.colour.textMuted} />
+      <div className="flex gap-3">
+        <button className="w-9 h-9 rounded-full bg-white/60 backdrop-blur-md shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)]">
+          🔍
         </button>
-
-        <button
-          className="p-2 rounded-lg transition-all"
-          style={{
-            boxShadow: DS.shadow.soft
-          }}
-          aria-label="Account"
-        >
-          <User size={18} color={DS.colour.textMuted} />
+        <button className="w-9 h-9 rounded-full bg-white/60 backdrop-blur-md shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)]">
+          👤
         </button>
       </div>
     </header>
