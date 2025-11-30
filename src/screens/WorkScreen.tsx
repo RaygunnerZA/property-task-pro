@@ -1,23 +1,19 @@
-import { SectionTitle } from "../design-system/DesignSystem";
-import PageSection from "../components/PageSection";
+import { useState } from "react";
+import WorkSegmentControl from "../components/WorkSegmentControl";
+import TaskList from "../components/TaskList";
+import MessageList from "../components/MessageList";
+import ReminderList from "../components/ReminderList";
 
 export default function WorkScreen() {
+  const [segment, setSegment] = useState<"tasks" | "messages" | "reminders">("tasks");
+
   return (
-    <div className="space-y-6">
-      <PageSection>
-        <SectionTitle>Tasks</SectionTitle>
-        <p className="text-[#6F6F6F] text-sm">Your task list will appear here.</p>
-      </PageSection>
+    <div className="space-y-4">
+      <WorkSegmentControl value={segment} onChange={setSegment} />
 
-      <PageSection>
-        <SectionTitle>Messages</SectionTitle>
-        <p className="text-[#6F6F6F] text-sm">Task-related messages will show here.</p>
-      </PageSection>
-
-      <PageSection>
-        <SectionTitle>Reminders</SectionTitle>
-        <p className="text-[#6F6F6F] text-sm">Scheduled reminders appear here.</p>
-      </PageSection>
+      {segment === "tasks" && <TaskList />}
+      {segment === "messages" && <MessageList />}
+      {segment === "reminders" && <ReminderList />}
     </div>
   );
 }
