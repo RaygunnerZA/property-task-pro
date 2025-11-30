@@ -1,17 +1,18 @@
 import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 
 export default function AuthCallback() {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
+  const type = searchParams.get("type");
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(() => {
-      navigate("/");
-    });
+    if (type === "recovery" && token) {
+      window.location.href = `/reset-password?access_token=${token}`;
+    } else {
+      window.location.href = "/login";
+    }
+  }, [token, type]);
 
-    return () => listener.subscription.unsubscribe();
-  }, [navigate]);
-
-  return <div className="p-6">Signing you in…</div>;
+  return <div className="p-6 text-center">Redirecting…</div>;
 }
