@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { tryCatch } from '../../lib/async';
 
 export const complianceRules = {
@@ -14,11 +14,21 @@ export const complianceRules = {
     });
   },
 
-  async createRule(payload: { org_id: string; title: string; description: string; source_id: string }) {
+  async createRule(payload: { 
+    org_id: string; 
+    title?: string; 
+    description?: string; 
+    source_id: string;
+    country: string;
+    domain: 'safety' | 'occupancy' | 'landlord_duties' | 'data_protection' | 'building_maintenance' | 'other';
+    obligation_text: string;
+    obligation_type: 'must_do' | 'must_not_do' | 'must_document' | 'must_report';
+    source_quote: string;
+  }) {
     return tryCatch(async () => {
       const { data, error } = await supabase
         .from('compliance_rules')
-        .insert(payload)
+        .insert(payload as any)
         .select()
         .single();
       if (error) throw error;
@@ -26,7 +36,7 @@ export const complianceRules = {
     });
   },
 
-  async updateRuleStatus(ruleId: string, status: string) {
+  async updateRuleStatus(ruleId: string, status: 'extracted' | 'critiqued' | 'disagreed' | 'approved' | 'rejected') {
     return tryCatch(async () => {
       const { error } = await supabase
         .from('compliance_rules')
