@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TaskCard } from '@/components/TaskCard';
+import TaskCard from '@/components/TaskCard';
 import { BottomNav } from '@/components/BottomNav';
 import { mockTasks, mockProperties } from '@/data/mockData';
 import { TaskStatus } from '@/types/task';

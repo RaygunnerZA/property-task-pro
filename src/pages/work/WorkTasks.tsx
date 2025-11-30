@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TaskCard } from '@/components/TaskCard';
+import TaskCard from '@/components/TaskCard';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Surface, Heading, SegmentControl, SegmentedControlOption } from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
