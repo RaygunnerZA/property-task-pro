@@ -167,6 +167,21 @@ export default function AddPropertyScreen() {
             </div>
           </div>
 
+          <div className="text-center pt-4">
+            <p className="text-sm text-[#6D7480]">
+              If you have multiple properties,{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  toast.info("CSV upload coming soon");
+                }}
+                className="text-[#FF6B6B] font-medium hover:underline"
+              >
+                click here to upload CSV
+              </button>
+            </p>
+          </div>
+
           <div className="pt-4 space-y-3">
             <NeomorphicButton
               variant="primary"
