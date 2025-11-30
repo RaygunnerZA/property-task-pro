@@ -1,46 +1,53 @@
 import { Home, Briefcase, Building2, User } from 'lucide-react';
-import { NavLink } from '@/components/NavLink';
+import { useLocation, Link } from 'react-router-dom';
+import { colors, shadows } from '@/components/filla/DesignSystem';
 
 export const BottomNav = () => {
+  const location = useLocation();
+  
+  const navItems = [
+    { to: '/', icon: Home, label: 'Home' },
+    { to: '/work', icon: Briefcase, label: 'Work' },
+    { to: '/spaces', icon: Building2, label: 'Spaces' },
+    { to: '/account', icon: User, label: 'Account' },
+  ];
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t border-border z-50 shadow-e2">
-      <div className="max-w-md mx-auto px-2 py-2">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 border-t"
+      style={{ 
+        backgroundColor: colors.surface,
+        borderColor: colors.concrete,
+        boxShadow: shadows.card
+      }}
+    >
+      <div className="max-w-md mx-auto px-2 py-1.5">
         <div className="flex items-center justify-around">
-          <NavLink 
-            to="/"
-            className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-muted-foreground transition-colors"
-            activeClassName="text-primary bg-secondary"
-          >
-            <Home className="h-5 w-5" />
-            <span className="text-xs font-medium">Home</span>
-          </NavLink>
-
-          <NavLink 
-            to="/work"
-            className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-muted-foreground transition-colors"
-            activeClassName="text-primary bg-secondary"
-          >
-            <Briefcase className="h-5 w-5" />
-            <span className="text-xs font-medium">Work</span>
-          </NavLink>
-
-          <NavLink 
-            to="/spaces"
-            className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-muted-foreground transition-colors"
-            activeClassName="text-primary bg-secondary"
-          >
-            <Building2 className="h-5 w-5" />
-            <span className="text-xs font-medium">Spaces</span>
-          </NavLink>
-
-          <NavLink 
-            to="/account"
-            className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-muted-foreground transition-colors"
-            activeClassName="text-primary bg-secondary"
-          >
-            <User className="h-5 w-5" />
-            <span className="text-xs font-medium">Account</span>
-          </NavLink>
+          {navItems.map(({ to, icon: Icon, label }) => {
+            const isActive = location.pathname === to;
+            
+            return (
+              <Link
+                key={to}
+                to={to}
+                className="flex flex-col items-center gap-0.5 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{
+                  transform: isActive ? 'scale(1.05)' : 'scale(1)'
+                }}
+              >
+                <Icon 
+                  className="h-5 w-5" 
+                  style={{ color: isActive ? colors.primary : colors.textMuted }}
+                />
+                <span 
+                  className="text-[10px] font-semibold tracking-tight"
+                  style={{ color: isActive ? colors.primary : colors.textMuted }}
+                >
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </nav>
