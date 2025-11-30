@@ -7,6 +7,16 @@ import { AppLayout } from "@/components/AppLayout";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 
+// Onboarding screens
+import WelcomeScreen from "./pages/onboarding/WelcomeScreen";
+import SignUpScreen from "./pages/onboarding/SignUpScreen";
+import VerifyEmailScreen from "./pages/onboarding/VerifyEmailScreen";
+import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
+import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
+import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
+import PreferencesScreen from "./pages/onboarding/PreferencesScreen";
+import OnboardingCompleteScreen from "./pages/onboarding/OnboardingCompleteScreen";
+
 // WORK pillar
 import WorkTasks from "./pages/work/WorkTasks";
 import WorkInbox from "./pages/work/WorkInbox";
@@ -60,6 +70,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Onboarding routes (no layout) */}
+          <Route path="/welcome" element={<WelcomeScreen />} />
+          <Route path="/signup" element={<SignUpScreen />} />
+          <Route path="/verify" element={<VerifyEmailScreen />} />
+          <Route path="/onboarding/create-organisation" element={<CreateOrganisationScreen />} />
+          <Route path="/onboarding/add-property" element={<AddPropertyScreen />} />
+          <Route path="/onboarding/invite-team" element={<InviteTeamScreen />} />
+          <Route path="/onboarding/preferences" element={<PreferencesScreen />} />
+          <Route path="/onboarding/complete" element={<OnboardingCompleteScreen />} />
+          
           {/* Login route (no layout) */}
           <Route path="/login" element={<Login />} />
           
