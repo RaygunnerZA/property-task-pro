@@ -1,120 +1,90 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
+import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
+import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
+import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { toast } from "sonner";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [resetMode, setResetMode] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
-      return;
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      toast.success("Welcome back!");
+      navigate("/work/tasks");
+    } catch (error: any) {
+      toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
     }
-
-    window.location.href = "/";
-  }
-
-  async function handleResetPassword(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setResetSuccess(false);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
-    });
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    setResetSuccess(true);
   }
 
   return (
-    <div className="p-6 max-w-sm mx-auto mt-20 flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{resetMode ? "Reset Password" : "Sign in"}</h1>
+    <OnboardingContainer>
+      <div className="animate-fade-in">
+        <OnboardingHeader
+          title="Welcome back"
+          subtitle="Sign in to your Filla workspace"
+          showBack
+          onBack={() => navigate("/welcome")}
+        />
 
-      {!resetMode ? (
-        <form onSubmit={handleSignIn} className="flex flex-col gap-3">
-          <input
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <NeomorphicInput
+            label="Email"
             type="email"
-            className="border rounded px-3 py-2"
-            placeholder="you@example.com"
+            placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
 
-          <input
-            type="password"
-            className="border rounded px-3 py-2"
-            placeholder="Password"
+          <NeomorphicPasswordInput
+            label="Password"
+            placeholder="Your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+          <div className="pt-4 space-y-3">
+            <NeomorphicButton
+              type="submit"
+              variant="primary"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </NeomorphicButton>
 
-          <button type="submit" className="px-4 py-2 bg-primary text-white rounded">
-            Sign in
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setResetMode(true)}
-            className="text-sm text-primary underline"
-          >
-            Forgot password?
-          </button>
+            <NeomorphicButton
+              type="button"
+              variant="ghost"
+              onClick={() => navigate("/signup")}
+            >
+              Don't have an account? Sign up
+            </NeomorphicButton>
+          </div>
         </form>
-      ) : (
-        <form onSubmit={handleResetPassword} className="flex flex-col gap-3">
-          <input
-            type="email"
-            className="border rounded px-3 py-2"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          {resetSuccess && (
-            <div className="text-green-600 text-sm">
-              Check your email for the password reset link
-            </div>
-          )}
-
-          <button type="submit" className="px-4 py-2 bg-primary text-white rounded">
-            Send Reset Link
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setResetMode(false);
-              setResetSuccess(false);
-              setError("");
-            }}
-            className="text-sm text-primary underline"
-          >
-            Back to sign in
-          </button>
-        </form>
-      )}
-    </div>
+      </div>
+    </OnboardingContainer>
   );
 }

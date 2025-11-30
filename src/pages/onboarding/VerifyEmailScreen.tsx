@@ -1,0 +1,103 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
+import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { ProgressDots } from "@/components/onboarding/ProgressDots";
+import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { toast } from "sonner";
+import { Mail, RefreshCw } from "lucide-react";
+
+export default function VerifyEmailScreen() {
+  const navigate = useNavigate();
+  const { email } = useOnboardingStore();
+  const [checking, setChecking] = useState(false);
+  const [resending, setResending] = useState(false);
+
+  const checkVerification = async () => {
+    setChecking(true);
+    try {
+      const { data: { session }, error } = await supabase.auth.refreshSession();
+      
+      if (error) throw error;
+
+      if (session?.user?.email_confirmed_at) {
+        toast.success("Email verified!");
+        navigate("/onboarding/create-organisation");
+      } else {
+        toast.info("Please verify your email first");
+      }
+    } catch (error: any) {
+      toast.error("Unable to check verification status");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const resendEmail = async () => {
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      });
+
+      if (error) throw error;
+      
+      toast.success("Verification email sent!");
+    } catch (error: any) {
+      toast.error("Failed to resend email");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  return (
+    <OnboardingContainer>
+      <div className="animate-fade-in">
+        <ProgressDots current={1} total={6} />
+        
+        <OnboardingHeader
+          title="Check your email"
+          subtitle={`We sent a verification link to ${email}`}
+          showBack
+        />
+
+        <div className="mb-8 flex justify-center">
+          <div 
+            className="p-6 rounded-3xl inline-block"
+            style={{
+              boxShadow: "inset 2px 2px 6px rgba(0,0,0,0.08), inset -2px -2px 6px rgba(255,255,255,0.7)"
+            }}
+          >
+            <Mail className="w-12 h-12 text-[#FF6B6B]" />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <NeomorphicButton
+            variant="primary"
+            onClick={checkVerification}
+            disabled={checking}
+          >
+            {checking ? "Checking..." : "I've verified my email"}
+          </NeomorphicButton>
+
+          <NeomorphicButton
+            variant="secondary"
+            onClick={resendEmail}
+            disabled={resending}
+          >
+            <RefreshCw className={`w-4 h-4 inline mr-2 ${resending ? 'animate-spin' : ''}`} />
+            Resend verification email
+          </NeomorphicButton>
+        </div>
+
+        <p className="text-sm text-[#6D7480] text-center mt-6">
+          Can't find the email? Check your spam folder or try resending.
+        </p>
+      </div>
+    </OnboardingContainer>
+  );
+}
