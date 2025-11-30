@@ -3,11 +3,18 @@ import { TaskCard } from '@/components/TaskCard';
 import { mockTasks, mockProperties } from '@/data/mockData';
 import { TaskStatus } from '@/types/task';
 import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SegmentControl, SegmentOption } from '@/components/filla';
 
 const WorkTasks = () => {
   const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
   const navigate = useNavigate();
+
+  const filterOptions: SegmentOption[] = [
+    { id: 'all', label: 'All' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'in-progress', label: 'Active' },
+    { id: 'completed', label: 'Done' },
+  ];
 
   const filteredTasks = filter === 'all' 
     ? mockTasks 
@@ -18,14 +25,11 @@ const WorkTasks = () => {
 
   return (
     <div className="space-y-4">
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as TaskStatus | 'all')}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="in-progress">Active</TabsTrigger>
-          <TabsTrigger value="completed">Done</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <SegmentControl 
+        options={filterOptions}
+        selectedId={filter}
+        onChange={(id) => setFilter(id as TaskStatus | 'all')}
+      />
 
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
