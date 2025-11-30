@@ -10,6 +10,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true, // <-- REQUIRED for magic links + sessions
+    detectSessionInUrl: true,
   },
 });
+
+// Debug only
+if (import.meta.env.DEV) {
+  // @ts-ignore
+  window.supabase = supabase;
+}
