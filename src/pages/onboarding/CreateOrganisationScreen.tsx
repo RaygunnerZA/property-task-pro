@@ -91,21 +91,6 @@ export default function CreateOrganisationScreen() {
             error={error}
           />
 
-          <div className="text-center">
-            <p className="text-sm text-[#6D7480]">
-              If you have multiple properties,{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  toast.info("CSV upload coming soon");
-                }}
-                className="text-[#FF6B6B] font-medium hover:underline"
-              >
-                click here to upload CSV
-              </button>
-            </p>
-          </div>
-
           <div className="pt-4">
             <NeomorphicButton
               variant="primary"
