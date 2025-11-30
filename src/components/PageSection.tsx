@@ -1,17 +1,7 @@
-import { ReactNode } from "react";
-import { DS } from "../design-system/DesignSystem";
-
-interface PageSectionProps {
-  children: ReactNode;
-}
-
-export default function PageSection({ children }: PageSectionProps) {
+export default function PageSection({ children }: { children: React.ReactNode }) {
   return (
-    <section
-      className="p-4 rounded-[16px] bg-white/60 backdrop-blur-md"
-      style={{ boxShadow: DS.shadow.soft }}
-    >
+    <div className="p-4 bg-white/60 backdrop-blur-md rounded-[16px] shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)]">
       {children}
-    </section>
+    </div>
   );
 }
