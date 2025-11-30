@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Surface, Heading, Text } from '@/components/filla';
-import { TaskCard } from '@/components/TaskCard';
+import TaskCard from '@/components/TaskCard';
 import { useTasks } from '@/hooks/useTasks';
 
 type TimeGroup = 'overdue' | 'today' | 'tomorrow' | 'next_7_days' | 'later';

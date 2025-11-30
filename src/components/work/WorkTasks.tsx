@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TaskCard } from '@/components/TaskCard';
+import TaskCard from '@/components/TaskCard';
 import { mockTasks, mockProperties } from '@/data/mockData';
 import { TaskStatus } from '@/types/task';
 import { useNavigate } from 'react-router-dom';

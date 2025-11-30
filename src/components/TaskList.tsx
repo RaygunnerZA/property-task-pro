@@ -1,4 +1,4 @@
-import SimpleTaskCard from "./SimpleTaskCard";
+import TaskCard from "./TaskCard";
 import EmptyState from "./EmptyState";
 
 export default function TaskList() {
@@ -9,7 +9,7 @@ export default function TaskList() {
   return (
     <div className="space-y-3">
       {tasks.map(task => (
-        <SimpleTaskCard key={task.id} task={task} />
+        <TaskCard key={task.id} task={task} />
       ))}
     </div>
   );
