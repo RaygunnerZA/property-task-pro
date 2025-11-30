@@ -39,9 +39,19 @@ export function useScheduleData({
         --------------------------------------------- */
         let taskQuery = supabase
           .from("tasks")
-          .select(
-            "id, title, description, due_at, property_id, priority, status"
-          )
+          .select(`
+            id,
+            title,
+            description,
+            due_at,
+            property_id,
+            priority,
+            status,
+            properties:properties!inner (
+              id,
+              org_id
+            )
+          `)
           .gte("due_at", rangeStart)
           .lte("due_at", rangeEnd);
 
@@ -73,9 +83,19 @@ export function useScheduleData({
         --------------------------------------------- */
         let signalQuery = supabase
           .from("signals")
-          .select(
-            "id, title, body, type, status, due_at, property_id"
-          )
+          .select(`
+            id,
+            title,
+            body,
+            type,
+            status,
+            due_at,
+            property_id,
+            properties:properties!inner (
+              id,
+              org_id
+            )
+          `)
           .gte("due_at", rangeStart)
           .lte("due_at", rangeEnd);
 
