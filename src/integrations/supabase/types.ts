@@ -44,13 +44,6 @@ export type Database = {
             referencedRelation: "compliance_rule_versions"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "compliance_assignments_rule_version_id_fkey"
-            columns: ["rule_version_id"]
-            isOneToOne: false
-            referencedRelation: "latest_rule_versions"
-            referencedColumns: ["version_id"]
-          },
         ]
       }
       compliance_clauses: {
@@ -107,13 +100,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "compliance_rule_versions"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "compliance_clauses_version_id_fkey"
-            columns: ["version_id"]
-            isOneToOne: false
-            referencedRelation: "latest_rule_versions"
-            referencedColumns: ["version_id"]
           },
         ]
       }
@@ -413,13 +399,42 @@ export type Database = {
           },
         ]
       }
+      contractor_task_access: {
+        Row: {
+          accessed_at: string | null
+          contractor_token: string
+          id: string
+          task_id: string
+        }
+        Insert: {
+          accessed_at?: string | null
+          contractor_token: string
+          id?: string
+          task_id: string
+        }
+        Update: {
+          accessed_at?: string | null
+          contractor_token?: string
+          id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_task_access_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           channel: string
           created_at: string | null
           external_ref: string | null
           id: string
-          organisation_id: string
+          org_id: string
           property_id: string | null
           subject: string | null
           task_id: string | null
@@ -429,7 +444,7 @@ export type Database = {
           created_at?: string | null
           external_ref?: string | null
           id?: string
-          organisation_id: string
+          org_id: string
           property_id?: string | null
           subject?: string | null
           task_id?: string | null
@@ -439,15 +454,22 @@ export type Database = {
           created_at?: string | null
           external_ref?: string | null
           id?: string
-          organisation_id?: string
+          org_id?: string
           property_id?: string | null
           subject?: string | null
           task_id?: string | null
         }
         Relationships: [
           {
+            foreignKeyName: "conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "conversations_organisation_id_fkey"
-            columns: ["organisation_id"]
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -478,7 +500,7 @@ export type Database = {
           created_at: string | null
           direction: string
           id: string
-          organisation_id: string
+          org_id: string
           raw_payload: Json | null
           source: string
         }
@@ -491,7 +513,7 @@ export type Database = {
           created_at?: string | null
           direction: string
           id?: string
-          organisation_id: string
+          org_id: string
           raw_payload?: Json | null
           source: string
         }
@@ -504,7 +526,7 @@ export type Database = {
           created_at?: string | null
           direction?: string
           id?: string
-          organisation_id?: string
+          org_id?: string
           raw_payload?: Json | null
           source?: string
         }
@@ -517,8 +539,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "messages_organisation_id_fkey"
-            columns: ["organisation_id"]
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -559,28 +588,35 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          organisation_id: string
+          org_id: string
           role: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          organisation_id: string
+          org_id: string
           role?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          organisation_id?: string
+          org_id?: string
           role?: string
           user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "organisation_members_org_fk"
-            columns: ["organisation_id"]
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organisation_members_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -659,6 +695,13 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "properties_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       property_compliance_status: {
@@ -696,13 +739,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "compliance_rule_versions"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "property_compliance_status_rule_version_id_fkey"
-            columns: ["rule_version_id"]
-            isOneToOne: false
-            referencedRelation: "latest_rule_versions"
-            referencedColumns: ["version_id"]
           },
         ]
       }
@@ -796,6 +832,58 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spaces: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+          property_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+          property_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          property_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spaces_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaces_organisation_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaces_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -1113,7 +1201,7 @@ export type Database = {
           due_at: string | null
           id: string
           image_url: string | null
-          organisation_id: string | null
+          org_id: string | null
           priority: string | null
           property_id: string | null
           source: string | null
@@ -1132,7 +1220,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           image_url?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           priority?: string | null
           property_id?: string | null
           source?: string | null
@@ -1151,7 +1239,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           image_url?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           priority?: string | null
           property_id?: string | null
           source?: string | null
@@ -1163,7 +1251,7 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tasks_organisation_id_fkey"
-            columns: ["organisation_id"]
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -1185,7 +1273,7 @@ export type Database = {
           id: string
           member_ids: string[]
           name: string
-          organisation_id: string
+          org_id: string
         }
         Insert: {
           color?: string | null
@@ -1194,7 +1282,7 @@ export type Database = {
           id?: string
           member_ids?: string[]
           name: string
-          organisation_id: string
+          org_id: string
         }
         Update: {
           color?: string | null
@@ -1203,12 +1291,19 @@ export type Database = {
           id?: string
           member_ids?: string[]
           name?: string
-          organisation_id?: string
+          org_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "teams_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "teams_organisation_id_fkey"
-            columns: ["organisation_id"]
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -1217,26 +1312,13 @@ export type Database = {
       }
     }
     Views: {
-      latest_rule_versions: {
-        Row: {
-          approved_at: string | null
-          rule_id: string | null
-          version_id: string | null
-          version_number: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "compliance_rule_versions_rule_id_fkey"
-            columns: ["rule_id"]
-            isOneToOne: false
-            referencedRelation: "compliance_rules"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      can_access_task: { Args: { task_id: string }; Returns: boolean }
+      current_contractor_token: { Args: never; Returns: string }
       current_org_id: { Args: never; Returns: string }
+      current_user_id: { Args: never; Returns: string }
       update_org_compliance_summary: {
         Args: { org: string }
         Returns: undefined
