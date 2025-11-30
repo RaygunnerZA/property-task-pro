@@ -35,6 +35,7 @@ import VendorProfile from "./pages/VendorProfile";
 import VendorReporting from "./pages/VendorReporting";
 import PropertyPhotos from "./pages/PropertyPhotos";
 import PropertyDocuments from "./pages/PropertyDocuments";
+import Login from "@/pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
           <Route path="/vendor/reporting" element={<VendorReporting />} />
           <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
           <Route path="/properties/:id/documents" element={<PropertyDocuments />} />
+          <Route path="/login" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
