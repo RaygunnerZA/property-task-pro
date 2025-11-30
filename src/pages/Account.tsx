@@ -3,9 +3,15 @@ import { ContextHeader } from '@/components/ContextHeader';
 import { Surface, Heading, Text } from '@/components/filla';
 import { User, Settings, Bell, Shield, Palette, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const Account = () => {
   const navigate = useNavigate();
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  }
 
   const menuSections = [
     {
@@ -86,7 +92,7 @@ const Account = () => {
         {/* Logout */}
         <Surface variant="neomorphic" className="overflow-hidden">
           <button
-            onClick={() => {/* Handle logout */}}
+            onClick={handleLogout}
             className="w-full flex items-center gap-3 p-4 hover:bg-destructive/10 transition-colors text-destructive"
           >
             <LogOut className="h-5 w-5" />
