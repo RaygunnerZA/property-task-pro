@@ -1,6 +1,6 @@
 import { BottomNav } from '@/components/BottomNav';
 import { ContextHeader } from '@/components/ContextHeader';
-import { Surface, Heading, Text } from '@/components/filla';
+import { colors, shadows } from '@/components/filla';
 import { User, Settings, Bell, Shield, Palette, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +23,7 @@ const Account = () => {
       ],
     },
     {
-      title: 'Security',
+      title: 'Organization',
       items: [
         { label: 'Privacy & Security', icon: Shield, path: '/account/security' },
       ],
@@ -43,64 +43,112 @@ const Account = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-paper pb-20">
-      <ContextHeader title="Account" subtitle="Manage your settings" />
+    <div 
+      className="min-h-screen pb-20"
+      style={{ backgroundColor: colors.background }}
+    >
+      <ContextHeader 
+        title="Account" 
+        subtitle="Manage your settings" 
+        showSearch={false}
+      />
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Profile Card */}
-        <Surface variant="neomorphic" className="p-6">
+        <div 
+          className="rounded-lg p-6"
+          style={{
+            backgroundColor: colors.surface,
+            boxShadow: shadows.outset
+          }}
+        >
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-8 w-8 text-primary" />
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center"
+              style={{
+                backgroundColor: colors.background,
+                boxShadow: shadows.inset
+              }}
+            >
+              <User className="h-8 w-8" style={{ color: colors.primary }} />
             </div>
             <div>
-              <Heading variant="l">John Doe</Heading>
-              <Text variant="caption" className="text-muted-foreground">
+              <h2 
+                className="text-2xl font-semibold tracking-tight"
+                style={{ color: colors.ink }}
+              >
+                John Doe
+              </h2>
+              <p 
+                className="text-xs mt-0.5"
+                style={{ color: colors.textLight }}
+              >
                 john.doe@example.com
-              </Text>
+              </p>
             </div>
           </div>
-        </Surface>
+        </div>
 
         {/* Menu Sections */}
         {menuSections.map((section) => (
           <div key={section.title} className="space-y-2">
-            <Heading variant="m" className="px-1 text-muted-foreground">
+            <h3 
+              className="text-xs font-bold uppercase tracking-wide px-1"
+              style={{ color: colors.textMuted }}
+            >
               {section.title}
-            </Heading>
-            <Surface variant="neomorphic" className="overflow-hidden">
+            </h3>
+            <div 
+              className="rounded-lg overflow-hidden"
+              style={{
+                backgroundColor: colors.surface,
+                boxShadow: shadows.outset
+              }}
+            >
               {section.items.map((item, index) => (
                 <button
                   key={item.label}
                   onClick={() => navigate(item.path)}
-                  className={`
-                    w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors
-                    ${index !== section.items.length - 1 ? 'border-b border-border' : ''}
-                  `}
+                  className="w-full flex items-center gap-3 p-4 transition-all duration-200 hover:brightness-95 active:scale-[0.99]"
+                  style={{
+                    borderBottom: index !== section.items.length - 1 ? `1px solid ${colors.concrete}` : 'none'
+                  }}
                 >
-                  <item.icon className="h-5 w-5 text-muted-foreground" />
-                  <Text variant="body" className="flex-1 text-left">
+                  <item.icon className="h-5 w-5" style={{ color: colors.textMuted }} />
+                  <span 
+                    className="flex-1 text-left text-sm font-medium"
+                    style={{ color: colors.ink }}
+                  >
                     {item.label}
-                  </Text>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </span>
+                  <ChevronRight className="h-4 w-4" style={{ color: colors.textLight }} />
                 </button>
               ))}
-            </Surface>
+            </div>
           </div>
         ))}
 
         {/* Logout */}
-        <Surface variant="neomorphic" className="overflow-hidden">
+        <div 
+          className="rounded-lg overflow-hidden"
+          style={{
+            backgroundColor: colors.surface,
+            boxShadow: shadows.outset
+          }}
+        >
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 p-4 hover:bg-destructive/10 transition-colors text-destructive"
+            className="w-full flex items-center gap-3 p-4 transition-all duration-200 hover:brightness-95 active:scale-[0.99]"
           >
-            <LogOut className="h-5 w-5" />
-            <Text variant="body" className="flex-1 text-left">
+            <LogOut className="h-5 w-5" style={{ color: colors.danger }} />
+            <span 
+              className="flex-1 text-left text-sm font-medium"
+              style={{ color: colors.danger }}
+            >
               Log Out
-            </Text>
+            </span>
           </button>
-        </Surface>
+        </div>
       </div>
 
       <BottomNav />
