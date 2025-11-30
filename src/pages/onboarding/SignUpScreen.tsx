@@ -57,8 +57,14 @@ export default function SignUpScreen() {
       });
 
       if (error) {
-        if (error.message.includes("already registered")) {
-          toast.error("This email is already registered. Please log in instead.");
+        if (error.message.includes("already registered") || error.message.includes("User already registered")) {
+          toast.error("This email is already registered.", {
+            description: "Try logging in instead or use a different email.",
+            action: {
+              label: "Go to Login",
+              onClick: () => navigate("/login")
+            }
+          });
         } else {
           toast.error(error.message);
         }
@@ -67,8 +73,25 @@ export default function SignUpScreen() {
 
       if (data.user) {
         setUserId(data.user.id);
-        toast.success("Account created! Please check your email to verify.");
-        navigate("/verify");
+        
+        // Check if email confirmation is disabled or user is already confirmed
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData.session || data.user.email_confirmed_at) {
+          // Email confirmation is disabled or already confirmed - skip verification
+          toast.success("Account created!");
+          navigate("/onboarding/create-organisation");
+        } else if (data.user.identities && data.user.identities.length === 0) {
+          // User exists but unconfirmed - this is a repeated signup
+          toast.info("Account already exists but unconfirmed.", {
+            description: "Check your email for the verification link, or try logging in."
+          });
+          navigate("/verify");
+        } else {
+          // Normal signup - email sent
+          toast.success("Account created! Check your email to verify.");
+          navigate("/verify");
+        }
       }
     } catch (error: any) {
       toast.error("Something went wrong. Please try again.");

@@ -22,11 +22,14 @@ export default function VerifyEmailScreen() {
       
       if (error) throw error;
 
-      if (session?.user?.email_confirmed_at) {
+      if (session?.user) {
+        // User has a session - either verified or confirmation is disabled
         toast.success("Email verified!");
         navigate("/onboarding/create-organisation");
       } else {
-        toast.info("Please verify your email first");
+        toast.info("Please verify your email first", {
+          description: "Check your inbox and spam folder"
+        });
       }
     } catch (error: any) {
       toast.error("Unable to check verification status");
@@ -92,10 +95,18 @@ export default function VerifyEmailScreen() {
             <RefreshCw className={`w-4 h-4 inline mr-2 ${resending ? 'animate-spin' : ''}`} />
             Resend verification email
           </NeomorphicButton>
+
+          <NeomorphicButton
+            variant="ghost"
+            onClick={() => navigate("/login")}
+          >
+            Already have a verified account? Log in
+          </NeomorphicButton>
         </div>
 
         <p className="text-sm text-[#6D7480] text-center mt-6">
-          Can't find the email? Check your spam folder or try resending.
+          Can't find the email? Check your spam folder.<br />
+          <strong>For testing:</strong> Disable email confirmation in Supabase → Authentication → Providers → Email
         </p>
       </div>
     </OnboardingContainer>
