@@ -9,9 +9,9 @@ import NotFound from "./pages/NotFound";
 
 // WORK pillar
 import WorkTasks from "./pages/work/WorkTasks";
-import WorkCalendar from "./pages/work/WorkCalendar";
-import WorkNotes from "./pages/work/WorkNotes";
-import WorkAI from "./pages/work/WorkAI";
+import WorkInbox from "./pages/work/WorkInbox";
+import WorkSchedule from "./pages/work/WorkSchedule";
+import WorkAutomations from "./pages/work/WorkAutomations";
 
 // MANAGE pillar
 import ManageProperties from "./pages/manage/ManageProperties";
@@ -69,10 +69,10 @@ const App = () => (
               <Routes>
                 {/* WORK pillar */}
                 <Route path="/" element={<WorkTasks />} />
-                <Route path="/work/tasks" element={<WorkTasks />} />
-                <Route path="/work/calendar" element={<WorkCalendar />} />
-                <Route path="/work/notes" element={<WorkNotes />} />
-                <Route path="/work/ai" element={<WorkAI />} />
+            <Route path="/work/tasks" element={<WorkTasks />} />
+            <Route path="/work/inbox" element={<WorkInbox />} />
+            <Route path="/work/schedule" element={<WorkSchedule />} />
+            <Route path="/work/automations" element={<WorkAutomations />} />
                 
                 {/* MANAGE pillar */}
                 <Route path="/manage/properties" element={<ManageProperties />} />

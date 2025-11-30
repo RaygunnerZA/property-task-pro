@@ -30,9 +30,9 @@ import {
 
 const workItems = [
   { title: 'Tasks', url: '/work/tasks', icon: CheckSquare },
-  { title: 'Calendar', url: '/work/calendar', icon: Calendar },
-  { title: 'Notes', url: '/work/notes', icon: FileText },
-  { title: 'AI Suggestions', url: '/work/ai', icon: Sparkles },
+  { title: 'Inbox', url: '/work/inbox', icon: FileText },
+  { title: 'Schedule', url: '/work/schedule', icon: Calendar },
+  { title: 'Automations', url: '/work/automations', icon: Sparkles },
 ];
 
 const manageItems = [
