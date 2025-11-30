@@ -121,14 +121,20 @@ export default function CreateOrganisationScreen() {
             </div>
           </div>
 
-          {orgSlug && (
-            <div className="p-4 rounded-xl bg-[#F6F4F2]" style={{
-              boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.06), inset -2px -2px 4px rgba(255,255,255,0.5)"
-            }}>
-              <p className="text-xs text-[#6D7480] mb-1">Your organisation URL</p>
-              <p className="text-sm text-[#1C1C1C] font-mono">{orgSlug}</p>
-            </div>
-          )}
+          <div className="text-center">
+            <p className="text-sm text-[#6D7480]">
+              If you have multiple properties,{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  toast.info("CSV upload coming soon");
+                }}
+                className="text-[#FF6B6B] font-medium hover:underline"
+              >
+                click here to upload CSV
+              </button>
+            </p>
+          </div>
 
           <div className="pt-4">
             <NeomorphicButton
