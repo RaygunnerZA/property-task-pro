@@ -11,6 +11,10 @@ export function useTasks(orgId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  if (!orgId) {
+    return { tasks: [], loading: false, error: null, refresh: () => {} };
+  }
+
   async function fetchTasks() {
     setLoading(true);
     setError(null);
