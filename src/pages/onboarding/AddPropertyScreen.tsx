@@ -41,17 +41,34 @@ export default function AddPropertyScreen() {
   const handleSave = async () => {
     if (!validateForm()) return;
 
-    if (!orgId) {
-      toast.error("Organisation not found");
-      return;
-    }
-
     setLoading(true);
     try {
+      // Get current user and their organisation
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast.error("Please sign in to continue");
+        navigate("/login");
+        return;
+      }
+
+      // Get user's org_id from organisation_members
+      const { data: memberData } = await supabase
+        .from('organisation_members')
+        .select('org_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (!memberData?.org_id) {
+        toast.error("Organisation not found. Please create one first.");
+        navigate("/onboarding/create-organisation");
+        return;
+      }
+
       const { error } = await supabase
         .from('properties')
         .insert({
-          org_id: orgId,
+          org_id: memberData.org_id,
           address: propertyAddress,
           nickname: propertyNickname || null,
           units: propertyUnits,

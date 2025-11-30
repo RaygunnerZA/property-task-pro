@@ -22,21 +22,26 @@ export default function CreateOrganisationScreen() {
       return;
     }
 
-    if (!userId) {
-      toast.error("User session not found. Please sign up again.");
-      navigate("/signup");
-      return;
-    }
-
     setLoading(true);
     try {
+      // Get current user from session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        toast.error("Please sign in to continue");
+        navigate("/login");
+        return;
+      }
+
+      const currentUserId = session.user.id;
+
       // Create organisation
       const { data: org, error: orgError } = await supabase
         .from('organisations')
         .insert({
           name: orgName,
           slug: orgSlug,
-          created_by: userId
+          created_by: currentUserId
         })
         .select()
         .single();
@@ -48,7 +53,7 @@ export default function CreateOrganisationScreen() {
         .from('organisation_members')
         .insert({
           org_id: org.id,
-          user_id: userId,
+          user_id: currentUserId,
           role: 'owner'
         });
 
