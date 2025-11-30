@@ -2,10 +2,10 @@ import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { ContextHeader } from '@/components/ContextHeader';
 import { mockProperties, mockTasks } from '@/data/mockData';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { colors, shadows } from '@/components/filla';
+import { Badge } from '@/components/filla/DesignSystem';
 import { useNavigate } from 'react-router-dom';
-import { Building2, MapPin } from 'lucide-react';
+import { Building2, MapPin, CheckCircle2 } from 'lucide-react';
 
 const Spaces = () => {
   const navigate = useNavigate();
@@ -15,54 +15,84 @@ const Spaces = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper pb-20">
+    <div 
+      className="min-h-screen pb-20"
+      style={{ backgroundColor: colors.background }}
+    >
       <ContextHeader 
         title="Spaces" 
         subtitle={`${mockProperties.length} properties`}
       />
 
-      <div className="max-w-md mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-md mx-auto px-4 py-6 space-y-3">
         {mockProperties.map(property => {
-          const totalTasks = getTaskCount(property.id);
+          const activeTasks = getTaskCount(property.id);
           
           return (
-            <Card 
+            <button
               key={property.id}
-              className="cursor-pointer hover:shadow-lg transition-all"
               onClick={() => navigate(`/properties/${property.id}/compliance`)}
+              className="w-full text-left rounded-lg p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              style={{
+                backgroundColor: colors.surface,
+                boxShadow: shadows.outset
+              }}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <Building2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <CardTitle className="text-base font-semibold truncate">
-                        {property.name}
-                      </CardTitle>
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                        <MapPin className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{property.address}</span>
-                      </div>
-                    </div>
+              <div className="flex items-start gap-3 mb-3">
+                <div 
+                  className="p-3 rounded-lg shrink-0"
+                  style={{
+                    backgroundColor: colors.background,
+                    boxShadow: shadows.inset
+                  }}
+                >
+                  <Building2 className="h-5 w-5" style={{ color: colors.primary }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 
+                    className="text-base font-semibold tracking-tight truncate mb-1"
+                    style={{ color: colors.ink }}
+                  >
+                    {property.name}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: colors.textLight }} />
+                    <span 
+                      className="text-sm truncate"
+                      style={{ color: colors.textMuted }}
+                    >
+                      {property.address}
+                    </span>
                   </div>
                 </div>
-              </CardHeader>
+              </div>
 
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-xs">
-                    {property.type}
-                  </Badge>
-                  {totalTasks > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {totalTasks} active task{totalTasks !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  style={{
+                    backgroundColor: colors.background,
+                    color: colors.textMuted,
+                    border: `1px solid ${colors.concrete}`
+                  }}
+                >
+                  {property.type}
+                </span>
+                {activeTasks > 0 && (
+                  <span
+                    className="px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1"
+                    style={{
+                      backgroundColor: `${colors.signal}33`,
+                      color: colors.ink,
+                      border: `1px solid ${colors.signal}66`
+                    }}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    {activeTasks} active task{activeTasks !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </button>
           );
         })}
       </div>
