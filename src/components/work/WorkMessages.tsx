@@ -1,4 +1,4 @@
-import { Surface, Text, Heading } from '@/components/filla';
+import { colors, shadows } from '@/components/filla';
 import { MessageSquare, User } from 'lucide-react';
 
 const WorkMessages = () => {
@@ -32,45 +32,70 @@ const WorkMessages = () => {
   return (
     <div className="space-y-3">
       {messages.map((message) => (
-        <Surface
+        <button
           key={message.id}
-          variant="neomorphic"
-          interactive
-          className="p-4"
+          className="w-full text-left rounded-lg p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+          style={{
+            backgroundColor: colors.surface,
+            boxShadow: shadows.outset
+          }}
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-full bg-primary/10 shrink-0">
-              <User className="h-4 w-4 text-primary" />
+            <div 
+              className="p-2 rounded-full shrink-0"
+              style={{
+                backgroundColor: `${colors.primary}1a`,
+              }}
+            >
+              <User className="h-4 w-4" style={{ color: colors.primary }} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-1">
-                <Heading variant="m" className="truncate">
+                <span 
+                  className="text-base font-semibold truncate"
+                  style={{ color: colors.ink }}
+                >
                   {message.from}
-                </Heading>
-                <Text variant="caption" className="text-muted-foreground shrink-0">
+                </span>
+                <span 
+                  className="text-xs shrink-0"
+                  style={{ color: colors.textLight }}
+                >
                   {message.time}
-                </Text>
+                </span>
               </div>
-              <Text variant="body" className="font-medium mb-1 truncate">
+              <p 
+                className="text-sm font-medium mb-0.5 truncate"
+                style={{ color: colors.ink }}
+              >
                 {message.subject}
-              </Text>
-              <Text variant="caption" className="text-muted-foreground truncate">
+              </p>
+              <p 
+                className="text-xs truncate"
+                style={{ color: colors.textMuted }}
+              >
                 {message.preview}
-              </Text>
+              </p>
             </div>
             {message.unread && (
-              <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
+              <div 
+                className="w-2 h-2 rounded-full shrink-0 mt-2"
+                style={{ backgroundColor: colors.primary }}
+              />
             )}
           </div>
-        </Surface>
+        </button>
       ))}
 
       {messages.length === 0 && (
         <div className="text-center py-12">
-          <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <Text variant="body" className="text-muted-foreground">
+          <MessageSquare 
+            className="h-12 w-12 mx-auto mb-3 opacity-50"
+            style={{ color: colors.textMuted }}
+          />
+          <p style={{ color: colors.textMuted }}>
             No messages yet
-          </Text>
+          </p>
         </div>
       )}
     </div>
