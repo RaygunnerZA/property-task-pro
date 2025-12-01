@@ -770,7 +770,7 @@ export type Database = {
           due_at: string | null
           id: string
           metadata: Json | null
-          organisation_id: string
+          org_id: string
           property_id: string | null
           snooze_until: string | null
           source: string
@@ -786,7 +786,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           metadata?: Json | null
-          organisation_id: string
+          org_id: string
           property_id?: string | null
           snooze_until?: string | null
           source?: string
@@ -802,7 +802,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           metadata?: Json | null
-          organisation_id?: string
+          org_id?: string
           property_id?: string | null
           snooze_until?: string | null
           source?: string
@@ -814,8 +814,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "signals_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "signals_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -896,7 +896,7 @@ export type Database = {
           id: string
           is_completed: boolean
           order_index: number
-          organisation_id: string
+          org_id: string
           task_id: string
           title: string
         }
@@ -907,7 +907,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
-          organisation_id: string
+          org_id: string
           task_id: string
           title: string
         }
@@ -918,14 +918,14 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
-          organisation_id?: string
+          org_id?: string
           task_id?: string
           title?: string
         }
         Relationships: [
           {
-            foreignKeyName: "subtasks_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "subtasks_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -1081,7 +1081,7 @@ export type Database = {
           image_url: string | null
           is_deleted: boolean | null
           latest_version_id: string | null
-          organisation_id: string | null
+          org_id: string | null
           original_filename: string | null
           status: string | null
           storage_path: string | null
@@ -1097,7 +1097,7 @@ export type Database = {
           image_url?: string | null
           is_deleted?: boolean | null
           latest_version_id?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           original_filename?: string | null
           status?: string | null
           storage_path?: string | null
@@ -1113,7 +1113,7 @@ export type Database = {
           image_url?: string | null
           is_deleted?: boolean | null
           latest_version_id?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           original_filename?: string | null
           status?: string | null
           storage_path?: string | null
@@ -1121,8 +1121,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "task_images_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "task_images_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]
@@ -1145,7 +1145,7 @@ export type Database = {
           created_at: string | null
           id: string
           message_type: string | null
-          organisation_id: string | null
+          org_id: string | null
           source: string | null
           task_id: string | null
         }
@@ -1157,7 +1157,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_type?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           source?: string | null
           task_id?: string | null
         }
@@ -1169,14 +1169,14 @@ export type Database = {
           created_at?: string | null
           id?: string
           message_type?: string | null
-          organisation_id?: string | null
+          org_id?: string | null
           source?: string | null
           task_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "task_messages_organisation_id_fkey"
-            columns: ["organisation_id"]
+            foreignKeyName: "task_messages_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
             referencedColumns: ["id"]

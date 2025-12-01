@@ -16,7 +16,7 @@ export function useReminders(orgId?: string) {
 
     let query = supabase.from("signals").select("*").eq("type", "reminder");
 
-    if (orgId) query = query.eq("organisation_id", orgId);
+    if (orgId) query = query.eq("org_id", orgId);
 
     query = query.order("due_at", { ascending: true });
 

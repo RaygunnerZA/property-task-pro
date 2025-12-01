@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { DataProvider } from "@/providers/DataProvider";
+import { AppInitializer } from "@/components/AppInitializer";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -69,6 +72,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <DataProvider>
+          <AppInitializer>
         <Routes>
           {/* Onboarding routes (no layout) */}
           <Route path="/welcome" element={<WelcomeScreen />} />
@@ -85,8 +90,9 @@ const App = () => (
           
           {/* All main app routes wrapped in AppLayout */}
           <Route path="/*" element={
-            <AppLayout>
-              <Routes>
+            <ProtectedRoute>
+              <AppLayout>
+                <Routes>
                 {/* WORK pillar */}
                 <Route path="/" element={<WorkTasks />} />
             <Route path="/work/tasks" element={<WorkTasks />} />
@@ -136,8 +142,11 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>
+            </ProtectedRoute>
           } />
         </Routes>
+          </AppInitializer>
+        </DataProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
