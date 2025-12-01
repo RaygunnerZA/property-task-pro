@@ -14,6 +14,32 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
+// Safe call wrapper for error handling
+let errorHandler: ((msg: string | null) => void) | null = null;
+
+export function registerErrorHandler(handler: (msg: string | null) => void) {
+  errorHandler = handler;
+}
+
+export async function safeCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    const result: any = await fn();
+    if (result?.error) {
+      if (errorHandler) {
+        const message = result.error.message || "Database operation failed";
+        errorHandler(message);
+      }
+    }
+    return result;
+  } catch (err: any) {
+    if (errorHandler) {
+      const message = err.message || "Unexpected error occurred";
+      errorHandler(message);
+    }
+    return { data: null, error: err } as T;
+  }
+}
+
 // Debug only
 if (import.meta.env.DEV) {
   // @ts-ignore
