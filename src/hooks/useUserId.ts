@@ -1,6 +1,8 @@
-import { useSession } from "./useSession";
+// Thin wrapper around DataContext for user ID
+// Maintains backward compatibility with existing imports
+import { useDataContext } from "@/contexts/DataContext";
 
 export function useUserId() {
-  const { session } = useSession();
-  return session?.user?.id ?? null;
+  const { userId } = useDataContext();
+  return userId;
 }

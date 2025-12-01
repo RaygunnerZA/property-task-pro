@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useDataContext } from "@/providers/DataProvider";
-import { supabase } from "@/integrations/supabase/client";
+import { useDataContext } from "@/contexts/DataContext";
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();

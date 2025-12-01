@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useDataContext } from "@/providers/DataProvider";
+import { useDataContext } from "@/contexts/DataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProtectedRouteProps {

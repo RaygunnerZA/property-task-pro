@@ -7,11 +7,13 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { useDataContext } from "@/contexts/DataContext";
 import { toast } from "sonner";
 
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
   const { orgName, orgSlug, setOrgName, setOrgId } = useOnboardingStore();
+  const { refresh, session } = useDataContext();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,9 +26,7 @@ export default function CreateOrganisationScreen() {
 
     setLoading(true);
     try {
-      // Get current user from session
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      // Use session from context instead of fetching again
       if (!session?.user) {
         toast.error("Please sign in to continue");
         navigate("/login");
@@ -59,7 +59,22 @@ export default function CreateOrganisationScreen() {
 
       if (memberError) throw memberError;
 
+      // Update user metadata with org_id so JWT claims include it
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { org_id: org.id }
+      });
+
+      if (updateError) {
+        console.error('Failed to update user metadata:', updateError);
+        // Continue anyway - the trigger should have set it
+      }
+
+      // Store in local onboarding state
       setOrgId(org.id);
+      
+      // Refresh DataContext to pick up the new org_id
+      await refresh();
+      
       toast.success("Organisation created!");
       navigate("/onboarding/add-property");
     } catch (error: any) {
