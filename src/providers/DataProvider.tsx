@@ -1,6 +1,8 @@
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import { useSession } from "@/hooks/useSession";
 import { useFillaIdentity } from "@/hooks/useFillaIdentity";
+import { useSystemStatus } from "@/hooks/useSystemStatus";
+import { registerErrorHandler } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface DataContextValue {
@@ -30,6 +32,12 @@ interface DataProviderProps {
 export function DataProvider({ children }: DataProviderProps) {
   const { session, loading: sessionLoading } = useSession();
   const { orgId, userId, contractorToken, isOrgUser, isContractor } = useFillaIdentity();
+  const { setError, status } = useSystemStatus();
+
+  // Register error handler with Supabase client
+  useEffect(() => {
+    registerErrorHandler(setError);
+  }, [setError]);
 
   const isAuthenticated = !!session;
   const loading = sessionLoading;
