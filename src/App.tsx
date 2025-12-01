@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
-import { DataProvider } from "@/providers/DataProvider";
+import { DataProvider } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { StatusBanner } from "@/components/ui/StatusBanner";
@@ -78,79 +78,79 @@ const App = () => (
           <StatusBanner />
           <DataProvider>
             <AppInitializer>
-        <Routes>
-          {/* Onboarding routes (no layout) */}
-          <Route path="/welcome" element={<WelcomeScreen />} />
-          <Route path="/signup" element={<SignUpScreen />} />
-          <Route path="/verify" element={<VerifyEmailScreen />} />
-          <Route path="/onboarding/create-organisation" element={<CreateOrganisationScreen />} />
-          <Route path="/onboarding/add-property" element={<AddPropertyScreen />} />
-          <Route path="/onboarding/invite-team" element={<InviteTeamScreen />} />
-          <Route path="/onboarding/preferences" element={<PreferencesScreen />} />
-          <Route path="/onboarding/complete" element={<OnboardingCompleteScreen />} />
-          
-          {/* Login route (no layout) */}
-          <Route path="/login" element={<Login />} />
-          
-          {/* All main app routes wrapped in AppLayout */}
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <AppLayout>
-                <Routes>
-                {/* WORK pillar */}
-                <Route path="/" element={<WorkTasks />} />
-            <Route path="/work/tasks" element={<WorkTasks />} />
-            <Route path="/work/inbox" element={<WorkInbox />} />
-            <Route path="/work/schedule" element={<WorkSchedule />} />
-            <Route path="/work/automations" element={<WorkAutomations />} />
+              <Routes>
+                {/* Onboarding routes (no layout) */}
+                <Route path="/welcome" element={<WelcomeScreen />} />
+                <Route path="/signup" element={<SignUpScreen />} />
+                <Route path="/verify" element={<VerifyEmailScreen />} />
+                <Route path="/onboarding/create-organisation" element={<CreateOrganisationScreen />} />
+                <Route path="/onboarding/add-property" element={<AddPropertyScreen />} />
+                <Route path="/onboarding/invite-team" element={<InviteTeamScreen />} />
+                <Route path="/onboarding/preferences" element={<PreferencesScreen />} />
+                <Route path="/onboarding/complete" element={<OnboardingCompleteScreen />} />
                 
-                {/* MANAGE pillar */}
-                <Route path="/manage/properties" element={<ManageProperties />} />
-                <Route path="/manage/spaces" element={<ManageSpaces />} />
-                <Route path="/manage/people" element={<ManagePeople />} />
-                <Route path="/manage/vendors" element={<ManageVendors />} />
-                <Route path="/manage/templates" element={<ManageTemplates />} />
-                <Route path="/manage/settings" element={<ManageSettings />} />
+                {/* Login route (no layout) */}
+                <Route path="/login" element={<Login />} />
                 
-                {/* RECORD pillar */}
-                <Route path="/record/documents" element={<RecordDocuments />} />
-                <Route path="/record/compliance" element={<RecordCompliance />} />
-                <Route path="/record/history" element={<RecordHistory />} />
-                <Route path="/record/reports" element={<RecordReports />} />
-                <Route path="/record/library" element={<RecordLibrary />} />
-                
-                {/* Legacy/deep-link routes */}
-                <Route path="/task/:id" element={<TaskDetail />} />
-                <Route path="/add-task" element={<AddTask />} />
-                <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
-                <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
-                <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
-                <Route path="/properties/:id/documents" element={<PropertyDocuments />} />
-                <Route path="/compliance/reviews" element={<ComplianceReviews />} />
-                <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
-                <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
-                <Route path="/compliance/reviews/:reviewId/batch-rewrite" element={<BatchRewrite />} />
-                <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
-                <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
-                <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
-                <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
-                <Route path="/compliance/audit" element={<AuditExport />} />
-                <Route path="/account/developer" element={<AccountDeveloper />} />
-                <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-                <Route path="/vendor/tasks" element={<VendorTasks />} />
-                <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
-                <Route path="/vendor/profile" element={<VendorProfile />} />
-                <Route path="/vendor/reporting" element={<VendorReporting />} />
-                
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
+                {/* All main app routes wrapped in AppLayout */}
+                <Route path="/*" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Routes>
+                        {/* WORK pillar */}
+                        <Route path="/" element={<WorkTasks />} />
+                        <Route path="/work/tasks" element={<WorkTasks />} />
+                        <Route path="/work/inbox" element={<WorkInbox />} />
+                        <Route path="/work/schedule" element={<WorkSchedule />} />
+                        <Route path="/work/automations" element={<WorkAutomations />} />
+                        
+                        {/* MANAGE pillar */}
+                        <Route path="/manage/properties" element={<ManageProperties />} />
+                        <Route path="/manage/spaces" element={<ManageSpaces />} />
+                        <Route path="/manage/people" element={<ManagePeople />} />
+                        <Route path="/manage/vendors" element={<ManageVendors />} />
+                        <Route path="/manage/templates" element={<ManageTemplates />} />
+                        <Route path="/manage/settings" element={<ManageSettings />} />
+                        
+                        {/* RECORD pillar */}
+                        <Route path="/record/documents" element={<RecordDocuments />} />
+                        <Route path="/record/compliance" element={<RecordCompliance />} />
+                        <Route path="/record/history" element={<RecordHistory />} />
+                        <Route path="/record/reports" element={<RecordReports />} />
+                        <Route path="/record/library" element={<RecordLibrary />} />
+                        
+                        {/* Legacy/deep-link routes */}
+                        <Route path="/task/:id" element={<TaskDetail />} />
+                        <Route path="/add-task" element={<AddTask />} />
+                        <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
+                        <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
+                        <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
+                        <Route path="/properties/:id/documents" element={<PropertyDocuments />} />
+                        <Route path="/compliance/reviews" element={<ComplianceReviews />} />
+                        <Route path="/compliance/reviews/:reviewId" element={<ReviewWorkspace />} />
+                        <Route path="/compliance/reviews/:reviewId/summary" element={<ReviewSummary />} />
+                        <Route path="/compliance/reviews/:reviewId/batch-rewrite" element={<BatchRewrite />} />
+                        <Route path="/compliance/rules/:ruleId" element={<RuleDetail />} />
+                        <Route path="/compliance/rules/:ruleId/versions" element={<RuleVersions />} />
+                        <Route path="/compliance/rules/:ruleId/versions/:versionId" element={<VersionDetail />} />
+                        <Route path="/compliance/rules/:ruleId/properties" element={<RuleCompliance />} />
+                        <Route path="/compliance/audit" element={<AuditExport />} />
+                        <Route path="/account/developer" element={<AccountDeveloper />} />
+                        <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+                        <Route path="/vendor/tasks" element={<VendorTasks />} />
+                        <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
+                        <Route path="/vendor/profile" element={<VendorProfile />} />
+                        <Route path="/vendor/reporting" element={<VendorReporting />} />
+                        
+                        {/* 404 */}
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
               </Routes>
-            </AppLayout>
-            </ProtectedRoute>
-          } />
-        </Routes>
-          </AppInitializer>
-        </DataProvider>
+            </AppInitializer>
+          </DataProvider>
         </SystemStatusProvider>
       </BrowserRouter>
     </TooltipProvider>

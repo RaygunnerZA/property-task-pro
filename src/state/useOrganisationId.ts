@@ -1,12 +1,8 @@
-import { useSession } from "../hooks/useSession";
+// Thin wrapper around DataContext for organisation ID
+// Maintains backward compatibility with existing imports
+import { useDataContext } from "@/contexts/DataContext";
 
 export function useOrganisationId() {
-  const { session } = useSession();
-
-  const orgId =
-    session?.user?.app_metadata?.org_id ||
-    session?.user?.user_metadata?.org_id ||
-    null;
-
-  return orgId as string | null;
+  const { orgId } = useDataContext();
+  return orgId;
 }
