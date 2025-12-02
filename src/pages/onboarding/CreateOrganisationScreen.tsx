@@ -97,7 +97,10 @@ export default function CreateOrganisationScreen() {
           title="Create your organisation"
           subtitle="Give your team a home"
           showBack
-          onBack={() => navigate("/login")}
+          onBack={async () => {
+            await supabase.auth.signOut();
+            navigate("/login");
+          }}
         />
 
         <div className="space-y-6">
