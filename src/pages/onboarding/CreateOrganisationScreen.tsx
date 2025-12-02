@@ -96,6 +96,8 @@ export default function CreateOrganisationScreen() {
         <OnboardingHeader
           title="Create your organisation"
           subtitle="Give your team a home"
+          showBack
+          onBack={() => navigate("/login")}
         />
 
         <div className="space-y-6">
