@@ -1320,6 +1320,7 @@ export type Database = {
       current_org_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
+      generate_unique_slug: { Args: { base: string }; Returns: string }
       update_org_compliance_summary: {
         Args: { org: string }
         Returns: undefined
