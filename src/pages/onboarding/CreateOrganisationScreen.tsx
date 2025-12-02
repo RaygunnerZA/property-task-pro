@@ -9,10 +9,11 @@ import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useDataContext } from "@/contexts/DataContext";
 import { toast } from "sonner";
+import { generateUniqueSlug } from "@/utils/generateUniqueSlug";
 
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
-  const { orgName, orgSlug, setOrgName, setOrgId } = useOnboardingStore();
+  const { orgName, setOrgName, setOrgId } = useOnboardingStore();
   const { refresh, session } = useDataContext();
   
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,9 @@ export default function CreateOrganisationScreen() {
       }
 
       const currentUserId = session.user.id;
+
+      // Generate unique slug
+      const orgSlug = await generateUniqueSlug(orgName);
 
       // Create organisation
       const { data: org, error: orgError } = await supabase
