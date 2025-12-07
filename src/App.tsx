@@ -65,6 +65,7 @@ import VendorTasks from "./pages/VendorTasks";
 import VendorTaskDetail from "./pages/VendorTaskDetail";
 import VendorProfile from "./pages/VendorProfile";
 import VendorReporting from "./pages/VendorReporting";
+import ManagerDashboard from "./pages/ManagerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -97,8 +98,11 @@ const App = () => (
                   <ProtectedRoute>
                     <AppLayout>
                       <Routes>
+                        {/* Dashboard */}
+                        <Route path="/" element={<ManagerDashboard />} />
+                        <Route path="/dashboard" element={<ManagerDashboard />} />
+                        
                         {/* WORK pillar */}
-                        <Route path="/" element={<WorkTasks />} />
                         <Route path="/work/tasks" element={<WorkTasks />} />
                         <Route path="/work/inbox" element={<WorkInbox />} />
                         <Route path="/work/schedule" element={<WorkSchedule />} />
