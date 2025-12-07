@@ -101,7 +101,7 @@ const ManagerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="pb-20 md:pb-6">
       <ContextHeader 
         title="Dashboard" 
         subtitle="Manager overview"
