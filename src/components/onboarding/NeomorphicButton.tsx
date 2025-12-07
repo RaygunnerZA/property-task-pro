@@ -34,11 +34,11 @@ export function NeomorphicButton({
 
   const variantShadows = {
     primary: disabled 
-      ? "2px 2px 6px rgba(0,0,0,0.15), -2px -2px 6px rgba(255,255,255,0.3)"
-      : "4px 4px 12px rgba(235,104,52,0.4), -3px -3px 8px rgba(255,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.2)",
+      ? "2px 2px 4px rgba(0,0,0,0.2), -2px -2px 4px rgba(255,255,255,0.05)"
+      : "-4px -4px 8px rgba(255,180,150,0.4), 4px 4px 8px rgba(180,60,30,0.5), inset 0 1px 0 rgba(255,255,255,0.15)",
     secondary: disabled
       ? "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
-      : "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.7), 2px 2px 6px rgba(0,0,0,0.05)",
+      : "-3px -3px 6px rgba(255,255,255,0.8), 3px 3px 6px rgba(0,0,0,0.1)",
     ghost: "none"
   };
 
