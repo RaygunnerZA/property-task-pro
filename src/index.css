@@ -61,16 +61,16 @@
 
     --radius: 0.75rem;
 
-    /* Sidebar - Purple branded */
-    --sidebar-background: 270 50% 25%;       /* Deep purple */
-    --sidebar-foreground: 0 0% 98%;          /* White text */
-    --sidebar-primary: 270 60% 60%;          /* Lighter purple */
+    /* Sidebar - Deep Ink #2A293E = 248 15% 20% */
+    --sidebar-background: 248 15% 20%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 182 29% 63%;           /* Teal accent */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 40% 35%;           /* Hover purple */
+    --sidebar-accent: 248 12% 28%;            /* Lighter ink hover */
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 270 40% 30%;           /* Purple border */
-    --sidebar-ring: 182 29% 63%;             /* Teal ring */
-    --sidebar-muted: 270 30% 40%;            /* Muted purple */
+    --sidebar-border: 248 12% 25%;
+    --sidebar-ring: 182 29% 63%;
+    --sidebar-muted: 248 10% 40%;
   }
 
   .dark {
@@ -115,14 +115,14 @@
 
     --concrete: 248 10% 25%;
     --ink: 40 20% 94%;
-    /* Sidebar - Dark purple */
-    --sidebar-background: 270 50% 15%;
+    /* Sidebar - Deep Ink dark mode */
+    --sidebar-background: 248 15% 12%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 270 60% 55%;
+    --sidebar-primary: 182 29% 63%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 40% 25%;
+    --sidebar-accent: 248 12% 20%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 270 40% 20%;
+    --sidebar-border: 248 12% 18%;
     --sidebar-ring: 182 29% 63%;
   }
 }

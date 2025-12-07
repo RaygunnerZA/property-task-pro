@@ -1,23 +1,22 @@
+import { useState } from 'react';
 import { 
+  LayoutDashboard,
   CheckSquare, 
   Calendar, 
-  FileText, 
-  Sparkles, 
   Building2, 
-  Users, 
-  Truck, 
-  FileStack, 
-  Settings,
   FolderOpen,
   Shield,
-  History,
-  BarChart3,
-  Archive,
-  LayoutDashboard
+  Zap,
+  Lightbulb,
+  Bell,
+  Settings,
+  LogOut,
+  Plus,
+  Package
 } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
-import fillaLogo from '@/assets/filla-logo-teal.svg';
+import fillaLogo from '@/assets/filla-logo-teal-2.svg';
 import {
   Sidebar,
   SidebarContent,
@@ -29,119 +28,226 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
-const workItems = [
-  { title: 'Tasks', url: '/work/tasks', icon: CheckSquare },
-  { title: 'Inbox', url: '/work/inbox', icon: FileText },
-  { title: 'Schedule', url: '/work/schedule', icon: Calendar },
-  { title: 'Automations', url: '/work/automations', icon: Sparkles },
+// Main navigation items with + button
+const mainNavItems = [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, hasAdd: false },
+  { title: 'Tasks', url: '/work/tasks', icon: CheckSquare, hasAdd: true, addAction: 'task' },
+  { title: 'Schedule', url: '/work/schedule', icon: Calendar, hasAdd: true, addAction: 'event' },
+  { title: 'Properties', url: '/manage/properties', icon: Building2, hasAdd: true, addAction: 'property' },
+  { title: 'Assets', url: '/record/documents', icon: Package, hasAdd: true, addAction: 'asset' },
+  { title: 'Compliance', url: '/record/compliance', icon: Shield, hasAdd: true, addAction: 'compliance' },
 ];
 
-const manageItems = [
-  { title: 'Properties', url: '/manage/properties', icon: Building2 },
-  { title: 'Spaces', url: '/manage/spaces', icon: FolderOpen },
-  { title: 'People & Teams', url: '/manage/people', icon: Users },
-  { title: 'Vendors', url: '/manage/vendors', icon: Truck },
-  { title: 'Templates', url: '/manage/templates', icon: FileStack },
-  { title: 'Settings', url: '/manage/settings', icon: Settings },
+// Intelligence section
+const intelligenceItems = [
+  { title: 'Automations', url: '/work/automations', icon: Zap },
+  { title: 'Insights', url: '/insights', icon: Lightbulb },
 ];
 
-const recordItems = [
-  { title: 'Documents', url: '/record/documents', icon: FolderOpen },
-  { title: 'Compliance', url: '/record/compliance', icon: Shield },
-  { title: 'History', url: '/record/history', icon: History },
-  { title: 'Reports', url: '/record/reports', icon: BarChart3 },
-  { title: 'Library', url: '/record/library', icon: Archive },
+// Other section
+const otherItems = [
+  { title: 'Notifications', url: '/notifications', icon: Bell },
+  { title: 'Organisation Settings', url: '/manage/settings', icon: Settings },
 ];
 
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const isActive = (path: string) => currentPath.startsWith(path);
+  // Check if current path includes a property context for Spaces
+  const hasPropertyContext = currentPath.includes('/properties/') || currentPath.includes('/property/');
 
-  const renderMenuItems = (items: typeof workItems) => (
-    <SidebarMenu>
-      {items.map((item) => (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild>
-            <NavLink 
-              to={item.url} 
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-              activeClassName="bg-sidebar-accent text-sidebar-foreground font-semibold"
+  const handleAddClick = (e: React.MouseEvent, action: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Navigate to the appropriate add route or open modal
+    switch (action) {
+      case 'task':
+        navigate('/add-task');
+        break;
+      case 'event':
+        navigate('/work/schedule?add=true');
+        break;
+      case 'property':
+        navigate('/manage/properties?add=true');
+        break;
+      case 'asset':
+        navigate('/record/documents?add=true');
+        break;
+      case 'compliance':
+        navigate('/record/compliance?add=true');
+        break;
+      case 'space':
+        navigate('/manage/spaces?add=true');
+        break;
+    }
+  };
+
+  const handleSignOut = () => {
+    // Sign out logic would go here
+    navigate('/login');
+  };
+
+  const renderNavItem = (item: typeof mainNavItems[0], showAdd = false) => (
+    <SidebarMenuItem 
+      key={item.title}
+      onMouseEnter={() => setHoveredItem(item.title)}
+      onMouseLeave={() => setHoveredItem(null)}
+    >
+      <SidebarMenuButton asChild className="group relative">
+        <NavLink 
+          to={item.url} 
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+        >
+          <item.icon className="h-5 w-5 flex-shrink-0" />
+          {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
+          
+          {/* Plus button - only show on hover */}
+          {open && showAdd && item.hasAdd && (
+            <button
+              onClick={(e) => handleAddClick(e, item.addAction!)}
+              className={cn(
+                "absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200",
+                hoveredItem === item.title ? "opacity-100" : "opacity-0"
+              )}
             >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
-              {open && <span className="text-sm">{item.title}</span>}
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar">
-      <SidebarContent className="px-2 py-4">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden">
+      {/* Noise overlay for texture */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+        }}
+      />
+      
+      <SidebarContent className="px-3 py-4 relative z-10">
         {/* Logo & Brand */}
-        <div className="px-3 py-4 mb-4">
+        <div className="px-2 py-6 mb-4">
           <div className="flex items-center gap-3">
             <img 
               src={fillaLogo} 
               alt="Filla" 
-              className="h-8 w-8"
+              className="h-12 w-auto"
             />
-            {open && (
-              <span className="text-lg font-bold text-sidebar-foreground tracking-tight">
-                Filla
-              </span>
-            )}
           </div>
         </div>
 
-        {/* Dashboard Link */}
-        <SidebarMenu className="mb-4">
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <NavLink 
-                to="/dashboard" 
-                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
-                activeClassName="bg-sidebar-accent text-sidebar-foreground font-semibold"
-              >
-                <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
-                {open && <span className="text-sm">Dashboard</span>}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-
-        {/* WORK Pillar */}
+        {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-            Work
-          </SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderMenuItems(workItems)}
+            <SidebarMenu className="space-y-1">
+              {mainNavItems.map((item) => renderNavItem(item, true))}
+              
+              {/* Spaces - only visible when property is selected */}
+              {hasPropertyContext && (
+                <SidebarMenuItem
+                  onMouseEnter={() => setHoveredItem('Spaces')}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <SidebarMenuButton asChild className="group relative pl-8">
+                    <NavLink 
+                      to="/manage/spaces" 
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                    >
+                      <FolderOpen className="h-5 w-5 flex-shrink-0" />
+                      {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
+                      
+                      {open && (
+                        <button
+                          onClick={(e) => handleAddClick(e, 'space')}
+                          className={cn(
+                            "absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200",
+                            hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0"
+                          )}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* MANAGE Pillar */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-            Manage
+        {/* Intelligence Section */}
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-sidebar-foreground/40 mb-2">
+            Intelligence
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderMenuItems(manageItems)}
+            <SidebarMenu className="space-y-1">
+              {intelligenceItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                    >
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* RECORD Pillar */}
-        <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
-            Record
+        {/* Other Section */}
+        <SidebarGroup className="mt-8">
+          <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-sidebar-foreground/40 mb-2">
+            Other
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderMenuItems(recordItems)}
+            <SidebarMenu className="space-y-1">
+              {otherItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                    >
+                      <item.icon className="h-5 w-5 flex-shrink-0" />
+                      {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              
+              {/* Sign Out */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <button 
+                    onClick={handleSignOut}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200 w-full"
+                  >
+                    <LogOut className="h-5 w-5 flex-shrink-0" />
+                    {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
