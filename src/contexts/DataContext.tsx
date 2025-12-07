@@ -147,20 +147,35 @@ export function DataProvider({ children }: DataProviderProps) {
 
   // Initialize on mount
   useEffect(() => {
-    refresh();
+    // Get initial session first
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      
+      const initialOrgId = initialSession?.user?.app_metadata?.org_id || 
+                           initialSession?.user?.user_metadata?.org_id;
+      
+      if (initialOrgId) {
+        fetchOrganisation(initialOrgId).then(setOrganisation);
+      }
+      setLoading(false);
+    });
 
     // Listen for auth state changes
+    // IMPORTANT: Do NOT use async callback or make Supabase calls directly inside
+    // This prevents auth deadlock issues
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
+      (event, newSession) => {
+        // Only synchronous state updates here
         setSession(newSession);
         
-        // Fetch organisation if we have org_id
+        // Defer Supabase calls with setTimeout to prevent deadlock
         const newOrgId = newSession?.user?.app_metadata?.org_id || 
                          newSession?.user?.user_metadata?.org_id;
         
         if (newOrgId) {
-          const org = await fetchOrganisation(newOrgId);
-          setOrganisation(org);
+          setTimeout(() => {
+            fetchOrganisation(newOrgId).then(setOrganisation);
+          }, 0);
         } else {
           setOrganisation(null);
         }
@@ -170,7 +185,7 @@ export function DataProvider({ children }: DataProviderProps) {
     );
 
     return () => subscription.unsubscribe();
-  }, [refresh, fetchOrganisation]);
+  }, [fetchOrganisation]);
 
   const value: DataContextValue = {
     session,
