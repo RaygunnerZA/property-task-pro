@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { Building2 } from "lucide-react";
+import fillaLogo from "@/assets/filla-logo-teal.svg";
+
 export default function WelcomeScreen() {
   const navigate = useNavigate();
   return <OnboardingContainer className="bg-[#2a293e]">
       <div className="text-center animate-fade-in">
         <div className="mb-8 flex justify-center">
-          
+          <img src={fillaLogo} alt="Filla" className="h-16 w-auto" />
         </div>
 
         <h1 className="text-4xl font-semibold text-[#1C1C1C] mb-4">
