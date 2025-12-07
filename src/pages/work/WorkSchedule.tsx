@@ -16,7 +16,7 @@ interface GroupedTasks {
 
 export default function WorkSchedule() {
   const navigate = useNavigate();
-  const { tasks, loading } = useTasks('all');
+  const { tasks, loading } = useTasks();
 
   const groupTasksByTime = (): GroupedTasks => {
     const grouped: GroupedTasks = {

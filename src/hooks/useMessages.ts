@@ -1,24 +1,30 @@
 import { useEffect, useState } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "../integrations/supabase/types";
+import { useDataContext } from "@/contexts/DataContext";
 
 type MessageRow = Tables<"messages">;
 
-export function useMessages(orgId?: string) {
-  const supabase = useSupabase();
+export function useMessages() {
+  const { orgId } = useDataContext();
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function fetchMessages() {
+    if (!orgId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
 
-    let query = supabase.from("messages").select("*").order("created_at", { ascending: false });
-
-    if (orgId) query = query.eq("org_id", orgId);
-
-    const { data, error: err } = await query;
+    const { data, error: err } = await supabase
+      .from("messages")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (err) setError(err.message);
     else setMessages(data ?? []);
