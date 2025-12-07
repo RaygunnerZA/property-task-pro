@@ -8,7 +8,7 @@ import { useTasks } from '@/hooks/useTasks';
 export default function WorkTasks() {
   const [filter, setFilter] = useState<string>('all');
   const navigate = useNavigate();
-  const { tasks, loading } = useTasks('all');
+  const { tasks, loading } = useTasks();
 
   const filterOptions: SegmentedControlOption[] = [
     { id: 'all', label: 'All' },

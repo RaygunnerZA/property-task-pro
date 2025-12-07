@@ -2,8 +2,8 @@ import { useMessages } from "../hooks/useMessages";
 import SkeletonTaskCard from "./SkeletonTaskCard";
 import EmptyState from "./EmptyState";
 
-export default function MessageList({ orgId }: { orgId?: string }) {
-  const { messages, loading, error } = useMessages(orgId);
+export default function MessageList() {
+  const { messages, loading, error } = useMessages();
 
   if (loading) return (
     <div className="space-y-3">

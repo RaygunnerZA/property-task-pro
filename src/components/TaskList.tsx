@@ -3,8 +3,8 @@ import EmptyState from "./EmptyState";
 import TaskCard from "./TaskCard";
 import { useTasks } from "../hooks/useTasks";
 
-export default function TaskList({ orgId }: { orgId?: string }) {
-  const { tasks, loading, error } = useTasks(orgId);
+export default function TaskList() {
+  const { tasks, loading, error } = useTasks();
 
   if (loading) return (
     <div className="space-y-3">

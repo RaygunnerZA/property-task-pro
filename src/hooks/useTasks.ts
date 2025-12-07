@@ -1,29 +1,31 @@
 import { useEffect, useState } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
+import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "../integrations/supabase/types";
 import { useRealtime } from "./useRealtime";
+import { useDataContext } from "@/contexts/DataContext";
 
 type TaskRow = Tables<"tasks">;
 
-export function useTasks(orgId?: string) {
-  const supabase = useSupabase();
+export function useTasks() {
+  const { orgId } = useDataContext();
   const [tasks, setTasks] = useState<TaskRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  if (!orgId) {
-    return { tasks: [], loading: false, error: null, refresh: () => {} };
-  }
-
   async function fetchTasks() {
+    if (!orgId) {
+      setTasks([]);
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
 
-    let query = supabase.from("tasks").select("*").order("created_at", { ascending: false });
-
-    if (orgId) query = query.eq("org_id", orgId);
-
-    const { data, error: err } = await query;
+    const { data, error: err } = await supabase
+      .from("tasks")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (err) setError(err.message);
     else setTasks(data ?? []);

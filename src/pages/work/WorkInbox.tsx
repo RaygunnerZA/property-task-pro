@@ -19,8 +19,8 @@ interface InboxItem {
 
 export default function WorkInbox() {
   const navigate = useNavigate();
-  const { tasks, loading: tasksLoading } = useTasks('all');
-  const { messages, loading: messagesLoading } = useMessages('all');
+  const { tasks, loading: tasksLoading } = useTasks();
+  const { messages, loading: messagesLoading } = useMessages();
   const [filter, setFilter] = useState<'all' | InboxItemType>('all');
 
   // Combine different data sources into inbox items

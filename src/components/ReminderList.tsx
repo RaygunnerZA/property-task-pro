@@ -2,8 +2,8 @@ import { useReminders } from "../hooks/useReminders";
 import SkeletonTaskCard from "./SkeletonTaskCard";
 import EmptyState from "./EmptyState";
 
-export default function ReminderList({ orgId }: { orgId?: string }) {
-  const { reminders, loading, error } = useReminders(orgId);
+export default function ReminderList() {
+  const { reminders, loading, error } = useReminders();
 
   if (loading) return (
     <div className="space-y-3">
