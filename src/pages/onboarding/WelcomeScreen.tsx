@@ -2,16 +2,15 @@ import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import fillaLogo from "@/assets/filla-logo-teal.svg";
-
 export default function WelcomeScreen() {
   const navigate = useNavigate();
   return <OnboardingContainer className="bg-[#2a293e]">
       <div className="text-center animate-fade-in">
         <div className="mb-8 flex justify-center">
-          <img src={fillaLogo} alt="Filla" className="h-16 w-auto" />
+          <img src={fillaLogo} alt="Filla" className="h-60 w-auto object-contain" />
         </div>
 
-        <h1 className="text-4xl font-semibold text-[#1C1C1C] mb-4">
+        <h1 className="text-4xl font-semibold mb-4 text-signal-foreground">
           Welcome to Filla
         </h1>
         
@@ -22,7 +21,7 @@ export default function WelcomeScreen() {
         </p>
 
         <div className="space-y-4">
-          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")}>
+          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="bg-signal-foreground">
             Get Started
           </NeomorphicButton>
 
