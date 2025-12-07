@@ -126,7 +126,7 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden z-50">
       {/* Noise overlay for texture */}
       <div 
         className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay"
