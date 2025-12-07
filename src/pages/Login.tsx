@@ -30,6 +30,9 @@ export default function LoginPage() {
       }
 
       if (data.session) {
+        // Refresh session to get latest JWT claims
+        await supabase.auth.refreshSession();
+        
         // Check if user has completed onboarding by checking for organisation membership
         const { data: memberData } = await supabase
           .from('organisation_members')
@@ -37,14 +40,14 @@ export default function LoginPage() {
           .eq('user_id', data.user.id)
           .single();
 
-        if (!memberData?.org_id) {
+        if (memberData?.org_id) {
+          // Has organisation - go to dashboard
+          toast.success("Welcome back!");
+          navigate("/work/tasks", { replace: true });
+        } else {
           // No organisation - needs onboarding
           toast.success("Welcome! Let's set up your account.");
-          navigate("/onboarding/create-organisation");
-        } else {
-          // Has organisation - onboarding complete
-          toast.success("Welcome back!");
-          navigate("/work/tasks");
+          navigate("/onboarding/create-organisation", { replace: true });
         }
       }
     } catch (error: any) {
