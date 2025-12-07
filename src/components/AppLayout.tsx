@@ -10,20 +10,19 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full">
         <AppSidebar />
         
-        <div className="flex-1 flex flex-col">
-          {/* Header with sidebar trigger */}
-          <header className="h-14 border-b bg-card flex items-center px-4 sticky top-0 z-40">
+        <div className="flex-1 flex flex-col bg-background">
+          {/* Header with sidebar trigger - desktop only */}
+          <header className="h-12 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center px-4 sticky top-0 z-40 md:hidden">
             <SidebarTrigger className="mr-4">
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 text-foreground" />
             </SidebarTrigger>
-            <h1 className="text-lg font-semibold text-foreground">Filla</h1>
           </header>
 
-          {/* Main content area */}
-          <main className="flex-1 overflow-auto">
+          {/* Main content area with paper background */}
+          <main className="flex-1 overflow-auto bg-background">
             {children}
           </main>
         </div>
