@@ -12,10 +12,12 @@ import {
   Shield,
   History,
   BarChart3,
-  Archive
+  Archive,
+  LayoutDashboard
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
+import fillaLogo from '@/assets/filla-logo-teal.svg';
 import {
   Sidebar,
   SidebarContent,
@@ -66,8 +68,8 @@ export function AppSidebar() {
           <SidebarMenuButton asChild>
             <NavLink 
               to={item.url} 
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors"
-              activeClassName="bg-muted text-primary font-semibold"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+              activeClassName="bg-sidebar-accent text-sidebar-foreground font-semibold"
             >
               <item.icon className="h-4 w-4 flex-shrink-0" />
               {open && <span className="text-sm">{item.title}</span>}
@@ -79,11 +81,43 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar className="border-r bg-background">
-      <SidebarContent className="px-2 py-6">
+    <Sidebar className="border-r border-sidebar-border bg-sidebar">
+      <SidebarContent className="px-2 py-4">
+        {/* Logo & Brand */}
+        <div className="px-3 py-4 mb-4">
+          <div className="flex items-center gap-3">
+            <img 
+              src={fillaLogo} 
+              alt="Filla" 
+              className="h-8 w-8"
+            />
+            {open && (
+              <span className="text-lg font-bold text-sidebar-foreground tracking-tight">
+                Filla
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Dashboard Link */}
+        <SidebarMenu className="mb-4">
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <NavLink 
+                to="/dashboard" 
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+                activeClassName="bg-sidebar-accent text-sidebar-foreground font-semibold"
+              >
+                <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
+                {open && <span className="text-sm">Dashboard</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
         {/* WORK Pillar */}
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
             Work
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -93,7 +127,7 @@ export function AppSidebar() {
 
         {/* MANAGE Pillar */}
         <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
             Manage
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -103,7 +137,7 @@ export function AppSidebar() {
 
         {/* RECORD Pillar */}
         <SidebarGroup className="mt-6">
-          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+          <SidebarGroupLabel className="px-3 text-xs font-bold uppercase tracking-wider text-sidebar-foreground/50 mb-2">
             Record
           </SidebarGroupLabel>
           <SidebarGroupContent>

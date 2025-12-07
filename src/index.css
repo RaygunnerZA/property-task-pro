@@ -61,21 +61,16 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sidebar - Purple branded */
+    --sidebar-background: 270 50% 25%;       /* Deep purple */
+    --sidebar-foreground: 0 0% 98%;          /* White text */
+    --sidebar-primary: 270 60% 60%;          /* Lighter purple */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 40% 35%;           /* Hover purple */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 270 40% 30%;           /* Purple border */
+    --sidebar-ring: 182 29% 63%;             /* Teal ring */
+    --sidebar-muted: 270 30% 40%;            /* Muted purple */
   }
 
   .dark {
@@ -120,14 +115,15 @@
 
     --concrete: 248 10% 25%;
     --ink: 40 20% 94%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    /* Sidebar - Dark purple */
+    --sidebar-background: 270 50% 15%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 270 60% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 270 40% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 270 40% 20%;
+    --sidebar-ring: 182 29% 63%;
   }
 }
 
