@@ -10,7 +10,7 @@ export default function WelcomeScreen() {
           <img src={fillaLogo} alt="Filla" className="h-60 w-auto object-contain" />
         </div>
 
-        <h1 className="text-4xl font-semibold mb-4 text-signal-foreground">
+        <h1 className="text-4xl font-semibold mb-4 text-primary">
           Welcome to Filla
         </h1>
         
@@ -21,7 +21,7 @@ export default function WelcomeScreen() {
         </p>
 
         <div className="space-y-4 px-[51px]">
-          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="px-0 mx-0 ml-0 mr-0 pr-0">
+          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="px-0 mx-0 ml-0 mr-0 pr-0 shadow-e3 bg-primary">
             Get Started
           </NeomorphicButton>
 
