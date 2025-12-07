@@ -1,19 +1,48 @@
+import { useMemo, useState } from 'react';
 import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { ContextHeader } from '@/components/ContextHeader';
-import { Surface, Heading, Text, colors, shadows } from '@/components/filla';
+import { colors, shadows } from '@/components/filla';
 import { Badge } from '@/components/filla/DesignSystem';
+import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTasks } from '@/hooks/useTasks';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const { tasks } = useTasks();
+
+  // Convert tasks to calendar events
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    const byDate = new Map<string, typeof tasks>();
+    for (const task of tasks) {
+      if (!task.due_at) continue;
+      const dateStr = task.due_at.slice(0, 10);
+      const existing = byDate.get(dateStr) || [];
+      existing.push(task);
+      byDate.set(dateStr, existing);
+    }
+
+    return Array.from(byDate.entries()).map(([date, dayTasks]) => ({
+      date,
+      tasks: dayTasks.map((t) => ({
+        priority: (t.priority || 'normal') as 'low' | 'normal' | 'high',
+      })),
+      compliance: [],
+    }));
+  }, [tasks]);
+
+  // Stats derived from real data
+  const activeTasks = tasks.filter(t => t.status !== 'completed').length;
+  const urgentTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
 
   const stats = [
-    { label: 'Active Tasks', value: 12, icon: CheckSquare, iconColor: colors.primary, link: '/work' },
-    { label: 'This Week', value: 8, icon: Calendar, iconColor: colors.signal, link: '/work' },
-    { label: 'Properties', value: 4, icon: Building2, iconColor: colors.accent, link: '/spaces' },
-    { label: 'Urgent', value: 3, icon: AlertCircle, iconColor: colors.danger, link: '/work' },
+    { label: 'Active Tasks', value: activeTasks, icon: CheckSquare, iconColor: colors.primary, link: '/work/tasks' },
+    { label: 'This Week', value: tasks.length, icon: Calendar, iconColor: colors.signal, link: '/work/schedule' },
+    { label: 'Properties', value: 4, icon: Building2, iconColor: colors.accent, link: '/manage/properties' },
+    { label: 'Urgent', value: urgentTasks, icon: AlertCircle, iconColor: colors.danger, link: '/work/tasks' },
   ];
 
   const recentActivity = [
@@ -39,6 +68,14 @@ const Home = () => {
       />
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* Mini Calendar */}
+        <MiniCalendar
+          selectedDate={selectedDate}
+          events={calendarEvents}
+          onSelect={(date) => setSelectedDate(date)}
+          showMonthNav={true}
+        />
+
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-3">
           {stats.map((stat) => (
