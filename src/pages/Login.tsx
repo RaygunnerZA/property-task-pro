@@ -19,38 +19,54 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('[Login] Starting sign in...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('[Login] Sign in error:', error);
         toast.error(error.message);
         return;
       }
 
       if (data.session) {
-        // Refresh session to get latest JWT claims
-        await supabase.auth.refreshSession();
+        console.log('[Login] Sign in successful, checking org membership...');
         
-        // Check if user has completed onboarding by checking for organisation membership
-        const { data: memberData } = await supabase
-          .from('organisation_members')
-          .select('org_id')
-          .eq('user_id', data.user.id)
-          .single();
-
-        if (memberData?.org_id) {
-          // Has organisation - go to dashboard
+        // Check org_id from JWT claims first (faster than DB query)
+        const orgIdFromJwt = data.session.user.app_metadata?.org_id;
+        
+        if (orgIdFromJwt) {
+          console.log('[Login] Found org_id in JWT:', orgIdFromJwt);
           toast.success("Welcome back!");
           navigate("/", { replace: true });
         } else {
-          // No organisation - needs onboarding
-          toast.success("Welcome! Let's set up your account.");
-          navigate("/onboarding/create-organisation", { replace: true });
+          // Fallback: check organisation_members table
+          console.log('[Login] No org_id in JWT, checking DB...');
+          const { data: memberData, error: memberError } = await supabase
+            .from('organisation_members')
+            .select('org_id')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+          if (memberError) {
+            console.error('[Login] Member query error:', memberError);
+          }
+
+          if (memberData?.org_id) {
+            console.log('[Login] Found org in DB:', memberData.org_id);
+            toast.success("Welcome back!");
+            navigate("/", { replace: true });
+          } else {
+            console.log('[Login] No org found, redirecting to onboarding');
+            toast.success("Welcome! Let's set up your account.");
+            navigate("/onboarding/create-organisation", { replace: true });
+          }
         }
       }
     } catch (error: any) {
+      console.error('[Login] Unexpected error:', error);
       toast.error("Something went wrong");
     } finally {
       setLoading(false);
