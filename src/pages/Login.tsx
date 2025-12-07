@@ -43,7 +43,7 @@ export default function LoginPage() {
         if (memberData?.org_id) {
           // Has organisation - go to dashboard
           toast.success("Welcome back!");
-          navigate("/work/tasks", { replace: true });
+          navigate("/", { replace: true });
         } else {
           // No organisation - needs onboarding
           toast.success("Welcome! Let's set up your account.");
