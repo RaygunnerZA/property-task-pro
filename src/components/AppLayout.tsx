@@ -10,10 +10,12 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
+      <div className="min-h-screen flex w-full relative">
+        <div className="relative z-50">
+          <AppSidebar />
+        </div>
         
-        <div className="flex-1 flex flex-col bg-background">
+        <div className="flex-1 flex flex-col bg-background relative z-10">
           {/* Header with sidebar trigger - desktop only */}
           <header className="h-12 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center px-4 sticky top-0 z-40 md:hidden">
             <SidebarTrigger className="mr-4">
