@@ -21,7 +21,7 @@ export default function WelcomeScreen() {
         </p>
 
         <div className="space-y-4">
-          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="bg-signal-foreground">
+          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")}>
             Get Started
           </NeomorphicButton>
 

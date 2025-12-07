@@ -16,13 +16,13 @@ export function NeomorphicButton({
   
   const variantStyles = {
     primary: `
-      bg-[#FF6B6B] text-white
-      hover:bg-[#FF5252] active:bg-[#FF4040]
+      bg-accent text-accent-foreground
+      hover:brightness-110 active:brightness-95
       disabled:opacity-50 disabled:cursor-not-allowed
     `,
     secondary: `
       bg-[#F6F4F2] text-[#1C1C1C]
-      hover:text-[#FF6B6B]
+      hover:text-accent
       disabled:opacity-50 disabled:cursor-not-allowed
     `,
     ghost: `
@@ -34,8 +34,8 @@ export function NeomorphicButton({
 
   const variantShadows = {
     primary: disabled 
-      ? "2px 2px 6px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.5)"
-      : "3px 3px 8px rgba(255,107,107,0.3), -2px -2px 6px rgba(255,255,255,0.7)",
+      ? "2px 2px 6px rgba(0,0,0,0.15), -2px -2px 6px rgba(255,255,255,0.3)"
+      : "4px 4px 12px rgba(235,104,52,0.4), -3px -3px 8px rgba(255,255,255,0.15), inset 0 1px 0 rgba(255,255,255,0.2)",
     secondary: disabled
       ? "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
       : "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.7), 2px 2px 6px rgba(0,0,0,0.05)",
