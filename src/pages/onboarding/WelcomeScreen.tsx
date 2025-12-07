@@ -20,8 +20,8 @@ export default function WelcomeScreen() {
           Manage tasks, track compliance, and collaborate—all in one place.
         </p>
 
-        <div className="space-y-4">
-          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")}>
+        <div className="space-y-4 px-[51px]">
+          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="px-0 mx-0 ml-0 mr-0 pr-0">
             Get Started
           </NeomorphicButton>
 
