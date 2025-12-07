@@ -15,6 +15,11 @@ export * from './SegmentControl';
 export * from './FilterRow';
 export * from './SectionHeader';
 
+// Mini Calendar
+export { MiniCalendar } from './MiniCalendar';
+export { MiniCalendarDayTile } from './MiniCalendarDayTile';
+export type { CalendarEvent, TaskEvent, ComplianceEvent, DayData } from './MiniCalendar';
+
 // Design system exports (includes some duplicates but with additional features)
 export { 
   colors, 

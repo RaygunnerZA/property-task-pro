@@ -5,7 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { getScheduleRange, ScheduleViewMode } from "@/utils/scheduleRange";
-import { MonthCalendar } from "@/components/schedule/MonthCalendar";
+import { MiniCalendar, type CalendarEvent } from "@/components/filla/MiniCalendar";
 import { WeekStripCalendar } from "@/components/schedule/WeekStripCalendar";
 import { DayScheduleDrawer } from "@/components/schedule/DayScheduleDrawer";
 import { ScheduleItemBase } from "@/types/schedule";
@@ -15,7 +15,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
  * SCHEDULE SCREEN
  * - Month, Week, List view modes
  * - Unified header with property selector and filters
- * - Soft tactile scroll container
+ * - New Filla MiniCalendar with task/compliance markers
  */
 
 const Schedule = () => {
@@ -53,6 +53,34 @@ const Schedule = () => {
     return items.filter((i) => i.date === selectedISO);
   }, [items, selectedISO]);
 
+  /* --------------------------------------------
+     CONVERT ITEMS TO CALENDAR EVENTS
+  --------------------------------------------- */
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    // Group items by date
+    const byDate = new Map<string, ScheduleItemBase[]>();
+    for (const item of items) {
+      const existing = byDate.get(item.date) || [];
+      existing.push(item);
+      byDate.set(item.date, existing);
+    }
+
+    // Convert to CalendarEvent format
+    return Array.from(byDate.entries()).map(([date, dayItems]) => ({
+      date,
+      tasks: dayItems
+        .filter((item) => item.kind === "task")
+        .map((item) => ({
+          priority: (item.priority || "normal") as "low" | "normal" | "high",
+        })),
+      compliance: dayItems
+        .filter((item) => item.kind === "signal")
+        .map(() => ({
+          severity: "medium" as "low" | "medium" | "high",
+        })),
+    }));
+  }, [items]);
+
   const daysWithItems = useMemo(() => {
     return Array.from(new Set(items.map((i) => i.date)));
   }, [items]);
@@ -71,12 +99,6 @@ const Schedule = () => {
      DATE NAVIGATION HANDLERS
   --------------------------------------------- */
 
-  const handleChangeMonth = (direction: "prev" | "next") => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + (direction === "prev" ? -1 : 1));
-    setCurrentDate(newDate);
-  };
-
   const handleChangeWeek = (direction: "prev" | "next") => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction === "prev" ? -7 : 7));
@@ -85,6 +107,7 @@ const Schedule = () => {
 
   const handleSelectDate = (date: Date) => {
     setSelectedDate(date);
+    setCurrentDate(date);
   };
 
   const handleItemPress = (item: ScheduleItemBase) => {
@@ -147,7 +170,7 @@ const Schedule = () => {
       </div>
 
       {/* SCROLL CONTAINER */}
-      <div className="max-w-md mx-auto px-0 pb-4">
+      <div className="max-w-md mx-auto px-4 pb-4">
         {/* LOADING STATE */}
         {loading && (
           <div className="py-12 text-center">
@@ -157,7 +180,7 @@ const Schedule = () => {
 
         {/* ERROR STATE */}
         {error && (
-          <div className="px-4 py-12 text-center">
+          <div className="py-12 text-center">
             <div className="text-sm text-destructive">{error}</div>
           </div>
         )}
@@ -165,17 +188,16 @@ const Schedule = () => {
         {/* CONTENT */}
         {!loading && !error && (
           <>
-            {/* MONTH VIEW */}
+            {/* MONTH VIEW - New MiniCalendar */}
             {viewMode === "month" && (
               <>
-                <MonthCalendar
-                  currentDate={currentDate}
+                <MiniCalendar
                   selectedDate={selectedDate}
-                  daysWithItems={daysWithItems}
-                  onSelectDate={handleSelectDate}
-                  onChangeMonth={handleChangeMonth}
+                  events={calendarEvents}
+                  onSelect={handleSelectDate}
+                  showMonthNav={true}
                 />
-                <div className="px-4">
+                <div className="mt-4">
                   <DayScheduleDrawer
                     dateLabel={dateLabel}
                     items={itemsForSelectedDate}
@@ -195,25 +217,21 @@ const Schedule = () => {
                   onSelectDate={handleSelectDate}
                   onChangeWeek={handleChangeWeek}
                 />
-                <div className="px-4">
-                  <DayScheduleDrawer
-                    dateLabel={dateLabel}
-                    items={itemsForSelectedDate}
-                    onItemPress={handleItemPress}
-                  />
-                </div>
+                <DayScheduleDrawer
+                  dateLabel={dateLabel}
+                  items={itemsForSelectedDate}
+                  onItemPress={handleItemPress}
+                />
               </>
             )}
 
             {/* LIST VIEW */}
             {viewMode === "list" && (
-              <div className="px-4">
-                <DayScheduleDrawer
-                  dateLabel={dateLabel}
-                  items={items}
-                  onItemPress={handleItemPress}
-                />
-              </div>
+              <DayScheduleDrawer
+                dateLabel={dateLabel}
+                items={items}
+                onItemPress={handleItemPress}
+              />
             )}
           </>
         )}
