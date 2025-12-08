@@ -79,7 +79,7 @@ export default function AddPropertyScreen() {
       if (error) throw error;
 
       toast.success("Property added!");
-      navigate("/onboarding/invite-team");
+      navigate("/onboarding/add-spaces");
     } catch (error: any) {
       toast.error(error.message || "Failed to add property");
     } finally {
@@ -88,7 +88,7 @@ export default function AddPropertyScreen() {
   };
 
   const handleSkip = () => {
-    navigate("/onboarding/invite-team");
+    navigate("/onboarding/add-spaces");
   };
 
   return (
