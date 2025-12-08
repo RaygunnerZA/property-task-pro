@@ -71,9 +71,10 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -162,7 +163,8 @@ const App = () => (
         </SystemStatusProvider>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+};
 
 export default App;
