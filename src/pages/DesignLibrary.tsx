@@ -8,6 +8,9 @@ import { CardsSection } from '@/components/design-system/CardsSection';
 import { NavigationSection } from '@/components/design-system/NavigationSection';
 import { TabsSection } from '@/components/design-system/TabsSection';
 import { NeumorphismSandbox } from '@/components/design-system/NeumorphismSandbox';
+import { ButtonSandbox } from '@/components/design-system/ButtonSandbox';
+import { CalendarSandbox } from '@/components/design-system/CalendarSandbox';
+import { TypographySandbox } from '@/components/design-system/TypographySandbox';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
 import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -21,7 +24,7 @@ const sections = [
   { id: 'cards', label: 'Cards', icon: LayoutGrid },
   { id: 'navigation', label: 'Navigation', icon: Navigation },
   { id: 'tabs', label: 'Tabs', icon: Layers },
-  { id: 'sandbox', label: 'Sandbox', icon: SlidersHorizontal },
+  { id: 'sandbox', label: 'Sandboxes', icon: SlidersHorizontal },
   { id: 'responsive', label: 'Responsive', icon: Monitor },
 ];
 
@@ -32,7 +35,6 @@ export default function DesignLibrary() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-concrete">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -42,12 +44,11 @@ export default function DesignLibrary() {
               </div>
               <div>
                 <h1 className="font-display text-xl font-bold text-ink tracking-tight">Filla Design System</h1>
-                <p className="text-xs text-muted-foreground">v3.3 Dimensional Paper Edition</p>
+                <p className="text-xs text-muted-foreground">v3.4 Dimensional Paper Edition</p>
               </div>
             </div>
           </div>
 
-          {/* Quick Nav */}
           <nav className="mt-4 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {sections.map((section) => {
               const Icon = section.icon;
@@ -70,67 +71,37 @@ export default function DesignLibrary() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-16">
-        <section id="colors">
-          <ColorPalette />
-        </section>
-
+        <section id="colors"><ColorPalette /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="typography">
-          <TypographySection />
-        </section>
-
+        <section id="typography"><TypographySection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="buttons">
-          <ButtonsSection />
-        </section>
-
+        <section id="buttons"><ButtonsSection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="chips">
-          <ChipsSection />
-        </section>
-
+        <section id="chips"><ChipsSection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="calendar">
-          <CalendarHeatMap />
-        </section>
-
+        <section id="calendar"><CalendarHeatMap /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="cards">
-          <CardsSection />
-        </section>
-
+        <section id="cards"><CardsSection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="navigation">
-          <NavigationSection />
-        </section>
-
+        <section id="navigation"><NavigationSection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="tabs">
-          <TabsSection />
-        </section>
-
+        <section id="tabs"><TabsSection /></section>
         <div className="h-px bg-concrete" />
-
-        <section id="sandbox">
+        
+        <section id="sandbox" className="space-y-16">
           <NeumorphismSandbox />
+          <div className="h-px bg-concrete" />
+          <ButtonSandbox />
+          <div className="h-px bg-concrete" />
+          <TypographySandbox />
+          <div className="h-px bg-concrete" />
+          <CalendarSandbox />
         </section>
-
+        
         <div className="h-px bg-concrete" />
+        <section id="responsive"><ResponsiveDemo /></section>
 
-        <section id="responsive">
-          <ResponsiveDemo />
-        </section>
-
-        {/* Footer */}
         <footer className="pt-8 pb-16 text-center">
           <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Filla Design System • Built with React + Tailwind
