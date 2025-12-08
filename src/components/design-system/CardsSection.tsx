@@ -133,7 +133,7 @@ export function CardsSection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task Card</h3>
-          <TaskCard className="bg-[#eeede8]/[0.61]" />
+          <TaskCard />
         </div>
 
         <div className="space-y-3">

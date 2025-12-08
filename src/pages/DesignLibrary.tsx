@@ -1,5 +1,6 @@
 import React from 'react';
 import { ColorPalette } from '@/components/design-system/ColorPalette';
+import { NeumorphicStylesDisplay } from '@/components/design-system/NeumorphicStylesDisplay';
 import { TypographySection } from '@/components/design-system/TypographySection';
 import { ButtonsSection } from '@/components/design-system/ButtonsSection';
 import { ChipsSection } from '@/components/design-system/ChipsSection';
@@ -73,6 +74,8 @@ export default function DesignLibrary() {
 
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-16">
         <section id="colors"><ColorPalette /></section>
+        <div className="h-px bg-concrete" />
+        <section id="neumorphic-styles"><NeumorphicStylesDisplay /></section>
         <div className="h-px bg-concrete" />
         <section id="typography"><TypographySection /></section>
         <div className="h-px bg-concrete" />
