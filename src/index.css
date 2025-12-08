@@ -136,7 +136,7 @@
     @apply text-foreground;
     font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
     background: url('/textures/white-texture2.jpg') repeat;
-    background-size: 50%;
+    background-size: 30%;
   }
   
   /* Paper background for all main content areas */
@@ -144,7 +144,7 @@
   main,
   [role="main"] {
     background: url('/textures/white-texture2.jpg') repeat !important;
-    background-size: 50% !important;
+    background-size: 30% !important;
   }
   
   /* Modal paper texture */
@@ -152,7 +152,7 @@
   .dialog-content,
   [data-radix-popper-content-wrapper] > div {
     background: url('/textures/white-texture.jpg') repeat !important;
-    background-size: 50% !important;
+    background-size: 30% !important;
   }
   
   /* Font families */
