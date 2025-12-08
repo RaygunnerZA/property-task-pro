@@ -19,6 +19,7 @@ import VerifyEmailScreen from "./pages/onboarding/VerifyEmailScreen";
 import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
 import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
+import DesignLibrary from "./pages/DesignLibrary";
 import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
 import PreferencesScreen from "./pages/onboarding/PreferencesScreen";
 import OnboardingCompleteScreen from "./pages/onboarding/OnboardingCompleteScreen";
