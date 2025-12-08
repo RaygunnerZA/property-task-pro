@@ -135,14 +135,24 @@
   body {
     @apply text-foreground;
     font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
-    background-color: hsl(40 20% 94%);
+    background: url('/textures/white-texture2.jpg') repeat;
+    background-size: 50%;
   }
   
   /* Paper background for all main content areas */
   .bg-background,
   main,
   [role="main"] {
-    background-color: hsl(40 20% 94%) !important;
+    background: url('/textures/white-texture2.jpg') repeat !important;
+    background-size: 50% !important;
+  }
+  
+  /* Modal paper texture */
+  [role="dialog"],
+  .dialog-content,
+  [data-radix-popper-content-wrapper] > div {
+    background: url('/textures/white-texture.jpg') repeat !important;
+    background-size: 50% !important;
   }
   
   /* Font families */
