@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { Copy, Check, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Copy, Check, RotateCcw, ChevronDown, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { defaultNeumorphicStyles, type NeumorphicStyle } from './NeumorphicStylesDisplay';
 
 interface ShadowLayer {
   enabled: boolean;
@@ -11,6 +12,67 @@ interface ShadowLayer {
   color: string;
   opacity: number;
   inset: boolean;
+}
+
+// Parse a box-shadow string into ShadowLayer array
+function parseBoxShadow(boxShadow: string): ShadowLayer[] {
+  const layers: ShadowLayer[] = [];
+  const shadowParts = boxShadow.split(/,(?![^(]*\))/);
+  
+  shadowParts.forEach((part) => {
+    const trimmed = part.trim();
+    const isInset = trimmed.startsWith('inset');
+    const values = trimmed.replace('inset', '').trim();
+    
+    // Match: x y blur spread color
+    const match = values.match(/(-?\d+)px\s+(-?\d+)px\s+(\d+)px\s+(-?\d+)?\s*px?\s*(rgba?\([^)]+\)|#[a-fA-F0-9]+)?/);
+    
+    if (match) {
+      const [, x, y, blur, spread, colorStr] = match;
+      let color = '#000000';
+      let opacity = 1;
+      
+      if (colorStr) {
+        if (colorStr.startsWith('rgba')) {
+          const rgbaMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
+          if (rgbaMatch) {
+            const [, r, g, b, a] = rgbaMatch;
+            color = `#${parseInt(r).toString(16).padStart(2, '0')}${parseInt(g).toString(16).padStart(2, '0')}${parseInt(b).toString(16).padStart(2, '0')}`;
+            opacity = a ? parseFloat(a) : 1;
+          }
+        } else {
+          color = colorStr;
+        }
+      }
+      
+      layers.push({
+        enabled: true,
+        x: parseInt(x),
+        y: parseInt(y),
+        blur: parseInt(blur),
+        spread: parseInt(spread) || 0,
+        color,
+        opacity,
+        inset: isInset,
+      });
+    }
+  });
+  
+  // Ensure we have at least 4 layers
+  while (layers.length < 4) {
+    layers.push({
+      enabled: false,
+      x: 0,
+      y: 0,
+      blur: 0,
+      spread: 0,
+      color: '#000000',
+      opacity: 0.1,
+      inset: layers.length >= 2,
+    });
+  }
+  
+  return layers;
 }
 
 const defaultLayers: ShadowLayer[] = [
@@ -119,6 +181,15 @@ export function NeumorphismSandbox() {
   const [layers, setLayers] = useState<ShadowLayer[]>(defaultLayers);
   const [globals, setGlobals] = useState(defaultGlobals);
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string>('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [customStyles, setCustomStyles] = useState<NeumorphicStyle[]>(() => {
+    const stored = localStorage.getItem('filla-custom-neu-styles');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const allStyles = [...defaultNeumorphicStyles, ...customStyles];
 
   const updateLayer = (index: number, layer: ShadowLayer) => {
     const newLayers = [...layers];
@@ -129,6 +200,18 @@ export function NeumorphismSandbox() {
   const reset = () => {
     setLayers(defaultLayers);
     setGlobals(defaultGlobals);
+    setSelectedPreset('');
+  };
+
+  const loadPreset = (style: NeumorphicStyle) => {
+    setSelectedPreset(style.key);
+    setGlobals({
+      ...globals,
+      borderRadius: style.borderRadius,
+      backgroundColor: style.backgroundColor,
+    });
+    setLayers(parseBoxShadow(style.boxShadow));
+    setIsDropdownOpen(false);
   };
 
   const shadowCSS = useMemo(() => {
@@ -149,11 +232,64 @@ export function NeumorphismSandbox() {
     setTimeout(() => setCopied(false), 1500);
   };
 
+  const saveAsPreset = () => {
+    const name = prompt('Enter a name for this preset:');
+    if (!name) return;
+    
+    const key = name.toLowerCase().replace(/\s+/g, '_');
+    const newStyle: NeumorphicStyle = {
+      name,
+      key,
+      boxShadow: shadowCSS,
+      borderRadius: globals.borderRadius,
+      backgroundColor: globals.backgroundColor,
+    };
+    
+    const updatedStyles = [...customStyles, newStyle];
+    setCustomStyles(updatedStyles);
+    localStorage.setItem('filla-custom-neu-styles', JSON.stringify(updatedStyles));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
   return (
     <section className="space-y-6">
       <div className="space-y-2">
         <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Neumorphism Sandbox</h2>
         <p className="text-muted-foreground text-sm">Adjust shadow layers to create custom neumorphic effects</p>
+      </div>
+
+      {/* Preset Dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="flex items-center justify-between w-full max-w-xs px-4 py-3 bg-surface rounded-lg shadow-e1 text-left"
+        >
+          <span className="font-mono text-sm text-ink">
+            {selectedPreset ? allStyles.find(s => s.key === selectedPreset)?.name : 'Select a preset...'}
+          </span>
+          <ChevronDown className={cn(
+            'w-4 h-4 text-muted-foreground transition-transform',
+            isDropdownOpen && 'rotate-180'
+          )} />
+        </button>
+        
+        {isDropdownOpen && (
+          <div className="absolute z-50 top-full left-0 mt-1 w-full max-w-xs bg-surface rounded-lg shadow-e2 border border-concrete overflow-hidden">
+            {allStyles.map((style) => (
+              <button
+                key={style.key}
+                onClick={() => loadPreset(style)}
+                className={cn(
+                  'w-full px-4 py-2.5 text-left font-mono text-sm hover:bg-concrete/50 transition-colors',
+                  selectedPreset === style.key && 'bg-primary/10 text-primary'
+                )}
+              >
+                {style.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -180,6 +316,17 @@ export function NeumorphismSandbox() {
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
+                <button
+                  onClick={saveAsPreset}
+                  className="p-1.5 rounded hover:bg-white/10 transition-colors"
+                  title="Save as preset"
+                >
+                  {saved ? (
+                    <Check className="w-4 h-4 text-green-400" />
+                  ) : (
+                    <Save className="w-4 h-4 text-white/60" />
+                  )}
+                </button>
                 <button
                   onClick={reset}
                   className="p-1.5 rounded hover:bg-white/10 transition-colors"

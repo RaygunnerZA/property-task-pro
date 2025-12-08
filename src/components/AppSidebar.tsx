@@ -100,11 +100,11 @@ export function AppSidebar() {
       onMouseLeave={() => setHoveredItem(null)}
     >
       <SidebarMenuButton asChild className="group relative">
-        <NavLink 
-          to={item.url} 
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
-          activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
-        >
+          <NavLink 
+            to={item.url} 
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
+            activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
+          >
           <item.icon className="h-5 w-5 flex-shrink-0" />
           {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
           
@@ -163,8 +163,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild className="group relative pl-8">
                     <NavLink 
                       to="/manage/spaces" 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
                     >
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
@@ -200,8 +200,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -225,8 +225,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="bg-sidebar-accent text-sidebar-foreground font-medium"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
+                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -240,7 +240,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <button 
                     onClick={handleSignOut}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition-all duration-200 w-full"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200 w-full"
                   >
                     <LogOut className="h-5 w-5 flex-shrink-0" />
                     {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}

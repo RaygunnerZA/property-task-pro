@@ -43,7 +43,7 @@ export function CalendarHeatMap() {
         <p className="text-muted-foreground text-sm">Heat circles indicate busyness level</p>
       </div>
 
-      <div className="bg-surface rounded-xl shadow-e2 p-4 max-w-md">
+      <div className="bg-surface rounded-xl shadow-e2 p-4 w-full max-w-[320px] sm:max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-lg font-semibold text-ink">
             {currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
