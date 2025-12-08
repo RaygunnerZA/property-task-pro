@@ -1,10 +1,8 @@
 import React from 'react';
 import { Calendar, MapPin, User, Clock, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 function TaskCard() {
-  return (
-    <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-3 hover:shadow-e2 transition-shadow">
+  return <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-3 hover:shadow-e2 transition-shadow">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
@@ -33,13 +31,10 @@ function TaskCard() {
           John D.
         </span>
       </div>
-    </div>
-  );
+    </div>;
 }
-
 function ComplianceCard() {
-  return (
-    <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-3 border-l-4 border-primary">
+  return <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-3 border-l-4 border-primary">
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-primary" />
         <h4 className="font-semibold text-ink">Gas Safety Certificate</h4>
@@ -61,13 +56,10 @@ function ComplianceCard() {
       <div className="h-1.5 bg-concrete rounded-full overflow-hidden">
         <div className="h-full w-full bg-primary rounded-full" />
       </div>
-    </div>
-  );
+    </div>;
 }
-
 function ScheduleCard() {
-  return (
-    <div className="bg-surface rounded-lg shadow-e1 p-4 flex gap-4">
+  return <div className="bg-surface rounded-lg shadow-e1 p-4 flex gap-4">
       <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
         <span className="font-mono text-[10px] uppercase tracking-wider text-primary">Dec</span>
         <span className="font-mono text-xl font-bold text-primary">08</span>
@@ -80,13 +72,10 @@ function ScheduleCard() {
           <span>09:00 - 12:00</span>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
-
 function PropertyCard() {
-  return (
-    <div className="bg-surface rounded-lg shadow-e1 overflow-hidden hover:shadow-e2 transition-shadow">
+  return <div className="bg-surface rounded-lg shadow-e1 overflow-hidden hover:shadow-e2 transition-shadow">
       <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
           <span className="font-display text-xl font-bold text-primary">OH</span>
@@ -103,13 +92,10 @@ function PropertyCard() {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
-
 function BriefingCard() {
-  return (
-    <div className="bg-primary/5 rounded-lg p-4 space-y-3 border border-primary/10">
+  return <div className="bg-primary/5 rounded-lg p-4 space-y-3 border border-primary/10">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -135,13 +121,10 @@ function BriefingCard() {
           Share
         </button>
       </div>
-    </div>
-  );
+    </div>;
 }
-
 export function CardsSection() {
-  return (
-    <section className="space-y-6">
+  return <section className="space-y-6">
       <div className="space-y-2">
         <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Cards & Panels</h2>
         <p className="text-muted-foreground text-sm">Neumorphic E1 depth cards for various content types</p>
@@ -150,7 +133,7 @@ export function CardsSection() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task Card</h3>
-          <TaskCard />
+          <TaskCard className="bg-[#eeede8]/[0.61]" />
         </div>
 
         <div className="space-y-3">
@@ -175,6 +158,5 @@ export function CardsSection() {
           </div>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 }
