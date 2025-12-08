@@ -133,8 +133,16 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
+    background-color: hsl(40 20% 94%);
+  }
+  
+  /* Paper background for all main content areas */
+  .bg-background,
+  main,
+  [role="main"] {
+    background-color: hsl(40 20% 94%) !important;
   }
   
   /* Font families */
