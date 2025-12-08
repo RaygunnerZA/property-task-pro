@@ -9,6 +9,12 @@ import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPassw
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const signUpSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 export default function SignUpScreen() {
   const navigate = useNavigate();
@@ -21,16 +27,14 @@ export default function SignUpScreen() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!email) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    // Validate with Zod
+    const result = signUpSchema.safeParse({ email, password });
+    if (!result.success) {
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          newErrors[err.path[0] as string] = err.message;
+        }
+      });
     }
 
     if (password !== confirmPassword) {
@@ -124,7 +128,7 @@ export default function SignUpScreen() {
 
           <NeomorphicPasswordInput
             label="Password"
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}

@@ -7,15 +7,37 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const authSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
+    setErrors({});
+
+    // Validate with Zod
+    const result = authSchema.safeParse({ email, password });
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -90,15 +112,15 @@ export default function LoginPage() {
             placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            required
+            error={errors.email}
           />
 
           <NeomorphicPasswordInput
             label="Password"
-            placeholder="Your password"
+            placeholder="At least 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            required
+            error={errors.password}
           />
 
           <div className="pt-4 space-y-3">
