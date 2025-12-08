@@ -148,6 +148,7 @@ const App = () => (
                         <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
                         <Route path="/vendor/profile" element={<VendorProfile />} />
                         <Route path="/vendor/reporting" element={<VendorReporting />} />
+                        <Route path="/design-library" element={<DesignLibrary />} />
                         
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />
