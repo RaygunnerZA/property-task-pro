@@ -1,59 +1,74 @@
 import { useState } from 'react';
-import { 
-  LayoutDashboard,
-  CheckSquare, 
-  Calendar, 
-  Building2, 
-  FolderOpen,
-  Shield,
-  Zap,
-  Lightbulb,
-  Bell,
-  Settings,
-  LogOut,
-  Plus,
-  Package
-} from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Calendar, Building2, FolderOpen, Shield, Zap, Lightbulb, Bell, Settings, LogOut, Plus, Package } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 
 // Main navigation items with + button
-const mainNavItems = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, hasAdd: false },
-  { title: 'Tasks', url: '/work/tasks', icon: CheckSquare, hasAdd: true, addAction: 'task' },
-  { title: 'Schedule', url: '/work/schedule', icon: Calendar, hasAdd: true, addAction: 'event' },
-  { title: 'Properties', url: '/manage/properties', icon: Building2, hasAdd: true, addAction: 'property' },
-  { title: 'Assets', url: '/record/documents', icon: Package, hasAdd: true, addAction: 'asset' },
-  { title: 'Compliance', url: '/record/compliance', icon: Shield, hasAdd: true, addAction: 'compliance' },
-];
+const mainNavItems = [{
+  title: 'Dashboard',
+  url: '/dashboard',
+  icon: LayoutDashboard,
+  hasAdd: false
+}, {
+  title: 'Tasks',
+  url: '/work/tasks',
+  icon: CheckSquare,
+  hasAdd: true,
+  addAction: 'task'
+}, {
+  title: 'Schedule',
+  url: '/work/schedule',
+  icon: Calendar,
+  hasAdd: true,
+  addAction: 'event'
+}, {
+  title: 'Properties',
+  url: '/manage/properties',
+  icon: Building2,
+  hasAdd: true,
+  addAction: 'property'
+}, {
+  title: 'Assets',
+  url: '/record/documents',
+  icon: Package,
+  hasAdd: true,
+  addAction: 'asset'
+}, {
+  title: 'Compliance',
+  url: '/record/compliance',
+  icon: Shield,
+  hasAdd: true,
+  addAction: 'compliance'
+}];
 
 // Intelligence section
-const intelligenceItems = [
-  { title: 'Automations', url: '/work/automations', icon: Zap },
-  { title: 'Insights', url: '/insights', icon: Lightbulb },
-];
+const intelligenceItems = [{
+  title: 'Automations',
+  url: '/work/automations',
+  icon: Zap
+}, {
+  title: 'Insights',
+  url: '/insights',
+  icon: Lightbulb
+}];
 
 // Other section
-const otherItems = [
-  { title: 'Notifications', url: '/notifications', icon: Bell },
-  { title: 'Organisation Settings', url: '/manage/settings', icon: Settings },
-];
-
+const otherItems = [{
+  title: 'Notifications',
+  url: '/notifications',
+  icon: Bell
+}, {
+  title: 'Organisation Settings',
+  url: '/manage/settings',
+  icon: Settings
+}];
 export function AppSidebar() {
-  const { open } = useSidebar();
+  const {
+    open
+  } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
@@ -61,7 +76,6 @@ export function AppSidebar() {
 
   // Check if current path includes a property context for Spaces
   const hasPropertyContext = currentPath.includes('/properties/') || currentPath.includes('/property/');
-
   const handleAddClick = (e: React.MouseEvent, action: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -87,64 +101,35 @@ export function AppSidebar() {
         break;
     }
   };
-
   const handleSignOut = () => {
     // Sign out logic would go here
     navigate('/login');
   };
-
-  const renderNavItem = (item: typeof mainNavItems[0], showAdd = false) => (
-    <SidebarMenuItem 
-      key={item.title}
-      onMouseEnter={() => setHoveredItem(item.title)}
-      onMouseLeave={() => setHoveredItem(null)}
-    >
+  const renderNavItem = (item: typeof mainNavItems[0], showAdd = false) => <SidebarMenuItem key={item.title} onMouseEnter={() => setHoveredItem(item.title)} onMouseLeave={() => setHoveredItem(null)}>
       <SidebarMenuButton asChild className="group relative">
-          <NavLink 
-            to={item.url} 
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
-            activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
-          >
+          <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
           <item.icon className="h-5 w-5 flex-shrink-0" />
           {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
           
           {/* Plus button - only show on hover */}
-          {open && showAdd && item.hasAdd && (
-            <button
-              onClick={(e) => handleAddClick(e, item.addAction!)}
-              className={cn(
-                "absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200",
-                hoveredItem === item.title ? "opacity-100" : "opacity-0"
-              )}
-            >
+          {open && showAdd && item.hasAdd && <button onClick={e => handleAddClick(e, item.addAction!)} className={cn("absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === item.title ? "opacity-100" : "opacity-0")}>
               <Plus className="h-4 w-4" />
-            </button>
-          )}
+            </button>}
         </NavLink>
       </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-
-  return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden h-screen sticky top-0">
+    </SidebarMenuItem>;
+  return <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden h-screen sticky top-0">
       {/* Noise overlay for texture */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat',
-        }}
-      />
+      <div className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay" style={{
+      backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+      backgroundRepeat: 'repeat'
+    }} />
       
-      <SidebarContent className="px-3 py-4 relative z-10">
+      <SidebarContent className="px-3 py-4 relative z-10 bg-[#2a293e]">
         {/* Logo & Brand */}
         <div className="px-2 py-6 mb-4">
           <div className="flex items-center gap-3">
-            <img 
-              src={fillaLogo} 
-              alt="Filla" 
-              className="h-12 w-auto"
-            />
+            <img src={fillaLogo} alt="Filla" className="h-28 w-auto" />
           </div>
         </div>
 
@@ -152,38 +137,21 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {mainNavItems.map((item) => renderNavItem(item, true))}
+              {mainNavItems.map(item => renderNavItem(item, true))}
               
               {/* Spaces - only visible when property is selected */}
-              {hasPropertyContext && (
-                <SidebarMenuItem
-                  onMouseEnter={() => setHoveredItem('Spaces')}
-                  onMouseLeave={() => setHoveredItem(null)}
-                >
+              {hasPropertyContext && <SidebarMenuItem onMouseEnter={() => setHoveredItem('Spaces')} onMouseLeave={() => setHoveredItem(null)}>
                   <SidebarMenuButton asChild className="group relative pl-8">
-                    <NavLink 
-                      to="/manage/spaces" 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
-                    >
+                    <NavLink to="/manage/spaces" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
                       
-                      {open && (
-                        <button
-                          onClick={(e) => handleAddClick(e, 'space')}
-                          className={cn(
-                            "absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200",
-                            hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0"
-                          )}
-                        >
+                      {open && <button onClick={e => handleAddClick(e, 'space')} className={cn("absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0")}>
                           <Plus className="h-4 w-4" />
-                        </button>
-                      )}
+                        </button>}
                     </NavLink>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+                </SidebarMenuItem>}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -195,20 +163,14 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {intelligenceItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {intelligenceItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
-                    >
+                    <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                </SidebarMenuItem>)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -220,28 +182,19 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {otherItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {otherItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200"
-                      activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium"
-                    >
+                    <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                </SidebarMenuItem>)}
               
               {/* Sign Out */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <button 
-                    onClick={handleSignOut}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200 w-full"
-                  >
+                  <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200 w-full">
                     <LogOut className="h-5 w-5 flex-shrink-0" />
                     {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}
                   </button>
@@ -251,6 +204,5 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-    </Sidebar>
-  );
+    </Sidebar>;
 }
