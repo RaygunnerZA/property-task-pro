@@ -404,21 +404,31 @@ export type Database = {
           accessed_at: string | null
           contractor_token: string
           id: string
+          org_id: string | null
           task_id: string
         }
         Insert: {
           accessed_at?: string | null
           contractor_token: string
           id?: string
+          org_id?: string | null
           task_id: string
         }
         Update: {
           accessed_at?: string | null
           contractor_token?: string
           id?: string
+          org_id?: string | null
           task_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "contractor_task_access_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contractor_task_access_task_id_fkey"
             columns: ["task_id"]
@@ -947,6 +957,7 @@ export type Database = {
           file_url: string
           id: string
           message_id: string | null
+          org_id: string | null
           task_id: string | null
         }
         Insert: {
@@ -956,6 +967,7 @@ export type Database = {
           file_url: string
           id?: string
           message_id?: string | null
+          org_id?: string | null
           task_id?: string | null
         }
         Update: {
@@ -965,6 +977,7 @@ export type Database = {
           file_url?: string
           id?: string
           message_id?: string | null
+          org_id?: string | null
           task_id?: string | null
         }
         Relationships: [
@@ -973,6 +986,13 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "task_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
           {
@@ -991,6 +1011,7 @@ export type Database = {
           id: string
           image_version_id: string | null
           metadata: Json | null
+          org_id: string | null
           task_image_id: string | null
           user_id: string | null
         }
@@ -1000,6 +1021,7 @@ export type Database = {
           id?: string
           image_version_id?: string | null
           metadata?: Json | null
+          org_id?: string | null
           task_image_id?: string | null
           user_id?: string | null
         }
@@ -1009,6 +1031,7 @@ export type Database = {
           id?: string
           image_version_id?: string | null
           metadata?: Json | null
+          org_id?: string | null
           task_image_id?: string | null
           user_id?: string | null
         }
@@ -1018,6 +1041,13 @@ export type Database = {
             columns: ["image_version_id"]
             isOneToOne: false
             referencedRelation: "task_image_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_actions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
           {
@@ -1036,6 +1066,7 @@ export type Database = {
           created_by: string | null
           id: string
           is_original: boolean | null
+          org_id: string | null
           storage_path: string | null
           task_image_id: string | null
           version_number: number | null
@@ -1046,6 +1077,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_original?: boolean | null
+          org_id?: string | null
           storage_path?: string | null
           task_image_id?: string | null
           version_number?: number | null
@@ -1056,11 +1088,19 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_original?: boolean | null
+          org_id?: string | null
           storage_path?: string | null
           task_image_id?: string | null
           version_number?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "task_image_versions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_image_versions_task_image_id_fkey"
             columns: ["task_image_id"]
