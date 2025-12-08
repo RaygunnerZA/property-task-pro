@@ -1,5 +1,5 @@
 /**
- * Filla Design System v3.3 - "Dimensional Paper Edition"
+ * Filla Design System v3.4 - "Dimensional Paper Edition"
  * Token-based design system for tactile, neomorphic UI
  */
 
@@ -28,6 +28,18 @@ export const colors = {
   warning: '43 100% 85%',       // #FFE9B2 - Yellow
   success: '145 62% 85%',       // #C1F1D6 - Green
   signal: '30 100% 91%',        // #FFE4D0 - Warm signal orange
+} as const;
+
+// === NEUMORPHIC SHADOW PRESETS ===
+export const neuShadows = {
+  // Cards
+  floatingCard: '1px 10px 12px -4px rgba(0, 0, 0, 0.19), -5px -4px 8px -3px rgba(255, 255, 255, 0), inset -1px -1px 1px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 2px 0px rgba(255, 255, 255, 1)',
+  flatCard: '2px 6px 5px -3px rgba(0, 0, 0, 0.07), -2px -2px 8px -3px rgba(255, 255, 255, 0.19), inset 0px -2px 2px 0px rgba(0, 0, 0, 0.1), inset 1px 2px 2px 0px rgba(255, 255, 255, 1)',
+  flatPressed: '3px 4px 3px -3px rgba(255, 255, 255, 1), -2px -2px 5px -3px rgba(0, 0, 0, 0.05), inset -3px -3px 2px 0px rgba(0, 0, 0, 0.01), inset 1px 2px 2px 0px rgba(0, 0, 0, 0.08)',
+  
+  // Buttons
+  buttonOut: '3px 5px 7px 2px rgba(0, 0, 0, 0.06), -4px -5px 11px 4px rgba(255, 255, 255, 0.52), inset 2px 2px 0px 0px rgba(255, 255, 255, 0), inset -2px -3px 4px 0px rgba(0, 0, 0, 0.06)',
+  buttonPressed: '0px 0px 7px 2px rgba(0, 0, 0, 0.01), inset -3px -9px 17px 0px rgba(255, 255, 255, 0.49), inset 1px 13px 19px 0px rgba(0, 0, 0, 0.09)',
 } as const;
 
 // === TYPOGRAPHY ===
@@ -70,23 +82,23 @@ export const radii = {
 // === SHADOWS ===
 // Neomorphic/Paper depth system
 export const shadows = {
-  // E1 - Subtle elevation (chips, raised elements)
-  e1: '0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02)',
+  // E1 - Subtle elevation (chips, raised elements) - Now uses flatCard
+  e1: neuShadows.flatCard,
   
-  // E2 - Standard card elevation
-  e2: '0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8)',
+  // E2 - Standard card elevation - Now uses floatingCard
+  e2: neuShadows.floatingCard,
   
   // E3 - Floating modals/popovers
   e3: '0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
   
-  // Engraved - Inset/debossed inputs
-  engraved: 'inset 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 2px rgba(0,0,0,0.06)',
+  // Engraved - Inset/debossed inputs (now uses flatPressed)
+  engraved: neuShadows.flatPressed,
   
   // Paper Edge - White inner highlight (for tactile effect)
   paperEdge: 'inset 0 1px 0 rgba(255,255,255,0.8)',
   
   // Button Shadows
-  primaryBtn: '0 4px 12px rgba(142,201,206,0.3), 0 2px 4px rgba(142,201,206,0.2)',
+  primaryBtn: neuShadows.buttonOut,
   fab: '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
 } as const;
 
