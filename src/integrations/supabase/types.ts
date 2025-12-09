@@ -16,31 +16,49 @@ export type Database = {
     Tables: {
       checklist_template_items: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
+          created_by: string | null
           id: string
+          is_archived: boolean | null
           is_yes_no: boolean | null
           order_index: number | null
           org_id: string
           template_id: string
           title: string
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_archived?: boolean | null
           is_yes_no?: boolean | null
           order_index?: number | null
           org_id: string
           template_id: string
           title: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
+          is_archived?: boolean | null
           is_yes_no?: boolean | null
           order_index?: number | null
           org_id?: string
           template_id?: string
           title?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1106,37 +1124,52 @@ export type Database = {
       }
       spaces: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
+          created_by: string | null
           description: string | null
           icon: string | null
           id: string
+          is_archived: boolean | null
           name: string
           org_id: string
           parent_space_id: string | null
           property_id: string
           updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_archived?: boolean | null
           name: string
           org_id: string
           parent_space_id?: string | null
           property_id: string
           updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_archived?: boolean | null
           name?: string
           org_id?: string
           parent_space_id?: string | null
           property_id?: string
           updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1178,10 +1211,13 @@ export type Database = {
       }
       subtasks: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           completed: boolean
           created_at: string | null
           created_by: string | null
           id: string
+          is_archived: boolean | null
           is_completed: boolean
           is_yes_no: boolean | null
           order_index: number
@@ -1192,12 +1228,17 @@ export type Database = {
           task_id: string
           template_id: string | null
           title: string
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           completed?: boolean
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           is_yes_no?: boolean | null
           order_index?: number
@@ -1208,12 +1249,17 @@ export type Database = {
           task_id: string
           template_id?: string | null
           title: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           completed?: boolean
           created_at?: string | null
           created_by?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           is_yes_no?: boolean | null
           order_index?: number
@@ -1224,6 +1270,8 @@ export type Database = {
           task_id?: string
           template_id?: string | null
           title?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
