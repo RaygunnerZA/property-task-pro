@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      checklist_template_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_yes_no: boolean | null
+          order_index: number | null
+          org_id: string
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_yes_no?: boolean | null
+          order_index?: number | null
+          org_id: string
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_yes_no?: boolean | null
+          order_index?: number | null
+          org_id?: string
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          org_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          org_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+        }
+        Relationships: []
+      }
       compliance_assignments: {
         Row: {
           assigned_at: string | null
