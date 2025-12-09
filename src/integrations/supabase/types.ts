@@ -245,36 +245,58 @@ export type Database = {
       }
       compliance_events: {
         Row: {
+          body: string | null
           details: Json | null
+          due_at: string | null
           event_type: string
           id: string
+          metadata: Json | null
           occurred_at: string | null
           org_id: string
           property_id: string | null
           rule_id: string | null
+          severity: string | null
           task_id: string | null
+          title: string | null
         }
         Insert: {
+          body?: string | null
           details?: Json | null
+          due_at?: string | null
           event_type: string
           id?: string
+          metadata?: Json | null
           occurred_at?: string | null
           org_id: string
           property_id?: string | null
           rule_id?: string | null
+          severity?: string | null
           task_id?: string | null
+          title?: string | null
         }
         Update: {
+          body?: string | null
           details?: Json | null
+          due_at?: string | null
           event_type?: string
           id?: string
+          metadata?: Json | null
           occurred_at?: string | null
           org_id?: string
           property_id?: string | null
           rule_id?: string | null
+          severity?: string | null
           task_id?: string | null
+          title?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "compliance_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
           {
             foreignKeyName: "compliance_events_property_id_fkey"
             columns: ["property_id"]
@@ -287,6 +309,13 @@ export type Database = {
             columns: ["rule_id"]
             isOneToOne: false
             referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -635,6 +664,13 @@ export type Database = {
             foreignKeyName: "contractor_task_access_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_task_access_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
@@ -697,7 +733,21 @@ export type Database = {
             foreignKeyName: "conversations_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -779,6 +829,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "groups"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
           },
           {
             foreignKeyName: "group_members_property_id_fkey"
@@ -1231,7 +1288,21 @@ export type Database = {
             foreignKeyName: "signals_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "signals_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -1332,6 +1403,13 @@ export type Database = {
             foreignKeyName: "spaces_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "spaces_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -1407,6 +1485,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -1489,6 +1574,13 @@ export type Database = {
             foreignKeyName: "task_attachments_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
@@ -1563,6 +1655,13 @@ export type Database = {
             foreignKeyName: "task_groups_task_fk"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_fk"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
@@ -1571,6 +1670,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -1765,6 +1871,13 @@ export type Database = {
             foreignKeyName: "task_images_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_images_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
@@ -1820,6 +1933,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
             referencedColumns: ["id"]
           },
           {
@@ -1936,6 +2056,13 @@ export type Database = {
             foreignKeyName: "tasks_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
@@ -2006,6 +2133,103 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_org_health: {
+        Row: {
+          completed: number | null
+          critical_overdue: number | null
+          last_update: string | null
+          org_id: string | null
+          total_tasks: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_organisation_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_property_summary: {
+        Row: {
+          completed: number | null
+          due_soon: number | null
+          org_id: string | null
+          overdue: number | null
+          property_id: string | null
+          property_name: string | null
+          total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_org_fk"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_upcoming: {
+        Row: {
+          days_until_due: number | null
+          due_at: string | null
+          id: string | null
+          org_id: string | null
+          property_id: string | null
+          title: string | null
+          urgency: string | null
+        }
+        Insert: {
+          days_until_due?: never
+          due_at?: string | null
+          id?: string | null
+          org_id?: string | null
+          property_id?: string | null
+          title?: string | null
+          urgency?: never
+        }
+        Update: {
+          days_until_due?: never
+          due_at?: string | null
+          id?: string | null
+          org_id?: string | null
+          property_id?: string | null
+          title?: string | null
+          urgency?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_organisation_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_repeat_rules: {
         Row: {
           id: string | null
@@ -2047,6 +2271,7 @@ export type Database = {
         Returns: undefined
       }
       can_access_task: { Args: { task_id: string }; Returns: boolean }
+      compliance_event_daily_expiry_check: { Args: never; Returns: undefined }
       create_compliance_task: {
         Args: {
           p_due: string
@@ -2096,6 +2321,7 @@ export type Database = {
       }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
+      get_compliance_summary: { Args: { p_org: string }; Returns: Json }
       lock_checklist_template: {
         Args: { p_org: string; p_template: string }
         Returns: undefined
