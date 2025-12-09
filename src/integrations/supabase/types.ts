@@ -639,11 +639,14 @@ export type Database = {
       }
       groups: {
         Row: {
+          accent_color: string | null
           archived_at: string | null
           category: string | null
           color: string | null
           created_at: string | null
           created_by: string | null
+          description: string | null
+          display_name: string | null
           display_order: number | null
           icon: string | null
           id: string
@@ -653,15 +656,19 @@ export type Database = {
           name: string
           org_id: string
           parent_group_id: string | null
+          slug: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          accent_color?: string | null
           archived_at?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
+          display_name?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
@@ -671,15 +678,19 @@ export type Database = {
           name: string
           org_id: string
           parent_group_id?: string | null
+          slug?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          accent_color?: string | null
           archived_at?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
           created_by?: string | null
+          description?: string | null
+          display_name?: string | null
           display_order?: number | null
           icon?: string | null
           id?: string
@@ -689,12 +700,20 @@ export type Database = {
           name?: string
           org_id?: string
           parent_group_id?: string | null
+          slug?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "groups_parent_fk"
+            columns: ["parent_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_parent_group_fk"
             columns: ["parent_group_id"]
             isOneToOne: false
             referencedRelation: "groups"
@@ -1738,6 +1757,8 @@ export type Database = {
       current_user_id: { Args: never; Returns: string }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       update_org_compliance_summary: {
         Args: { org: string }
         Returns: undefined
