@@ -4,8 +4,6 @@ import { X, Plus, Sparkles, ChevronDown, ChevronUp, User, Calendar, MapPin, Aler
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -180,30 +178,29 @@ export function CreateTaskModal({
         {/* Image Upload */}
         <ImageUploadSection images={images} onImagesChange={setImages} />
 
-        {/* Title */}
-        <div className="space-y-2">
-          <Label htmlFor="title" className="text-sm font-medium">Title *</Label>
-          <div className="relative">
-            
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors" title="AI suggestions">
-              <Sparkles className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-          <Textarea id="description" placeholder="Add details about this task..." value={description} onChange={e => setDescription(e.target.value)} rows={2} className="shadow-engraved resize-none" />
-        </div>
+        {/* Combined Description + Subtasks Panel */}
+        <SubtasksSection 
+          subtasks={subtasks} 
+          onSubtasksChange={setSubtasks}
+          description={description}
+          onDescriptionChange={setDescription}
+        />
 
         {/* AI Suggestion Chips */}
-        {aiSuggestions.length > 0 && <div className="flex flex-wrap gap-2">
-            {aiSuggestions.map((chip, idx) => <Badge key={idx} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
+        {aiSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {aiSuggestions.map((chip, idx) => (
+              <Badge 
+                key={idx} 
+                variant="outline" 
+                className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+              >
                 <Sparkles className="h-3 w-3 mr-1" />
                 {chip}
-              </Badge>)}
-          </div>}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Metadata Tabs */}
         <div className="rounded-xl bg-card shadow-e2 overflow-hidden">
@@ -242,11 +239,6 @@ export function CreateTaskModal({
               </TabsContent>
             </div>
           </Tabs>
-        </div>
-
-        {/* Subtasks */}
-        <div className="rounded-xl bg-card shadow-e2 p-4">
-          <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} />
         </div>
 
         {/* Groups */}
