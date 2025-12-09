@@ -905,9 +905,14 @@ export type Database = {
           created_by: string | null
           id: string
           is_completed: boolean
+          is_yes_no: boolean | null
           order_index: number
           org_id: string
+          requires_signature: boolean | null
+          signed_at: string | null
+          signed_by: string | null
           task_id: string
+          template_id: string | null
           title: string
         }
         Insert: {
@@ -916,9 +921,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_completed?: boolean
+          is_yes_no?: boolean | null
           order_index?: number
           org_id: string
+          requires_signature?: boolean | null
+          signed_at?: string | null
+          signed_by?: string | null
           task_id: string
+          template_id?: string | null
           title: string
         }
         Update: {
@@ -927,9 +937,14 @@ export type Database = {
           created_by?: string | null
           id?: string
           is_completed?: boolean
+          is_yes_no?: boolean | null
           order_index?: number
           org_id?: string
+          requires_signature?: boolean | null
+          signed_at?: string | null
+          signed_by?: string | null
           task_id?: string
+          template_id?: string | null
           title?: string
         }
         Relationships: [
