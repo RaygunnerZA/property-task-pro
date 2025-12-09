@@ -1539,7 +1539,9 @@ export type Database = {
           color: string | null
           created_at: string
           created_by: string | null
+          icon: string | null
           id: string
+          image_url: string | null
           member_ids: string[]
           name: string
           org_id: string
@@ -1548,7 +1550,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          icon?: string | null
           id?: string
+          image_url?: string | null
           member_ids?: string[]
           name: string
           org_id: string
@@ -1557,7 +1561,9 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          icon?: string | null
           id?: string
+          image_url?: string | null
           member_ids?: string[]
           name?: string
           org_id?: string
