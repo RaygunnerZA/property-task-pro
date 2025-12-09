@@ -997,27 +997,33 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string | null
+          icon: string | null
           id: string
           name: string
           org_id: string
+          parent_space_id: string | null
           property_id: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
           name: string
           org_id: string
+          parent_space_id?: string | null
           property_id: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
           name?: string
           org_id?: string
+          parent_space_id?: string | null
           property_id?: string
           updated_at?: string | null
         }
@@ -1034,6 +1040,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaces_parent_space_id_fkey"
+            columns: ["parent_space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
             referencedColumns: ["id"]
           },
           {
