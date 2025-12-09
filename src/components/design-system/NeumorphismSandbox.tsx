@@ -86,6 +86,7 @@ const defaultGlobals = {
   borderRadius: 16,
   noiseIntensity: 0,
   backgroundColor: '#F1EEE8',
+  cardBackgroundColor: '#F1EEE8',
   topLight: true,
 };
 
@@ -136,7 +137,7 @@ function ShadowLayerControls({
   return (
     <div className={cn(
       'p-3 rounded-lg border',
-      layer.enabled ? 'bg-surface border-primary/20' : 'bg-concrete/30 border-transparent'
+      layer.enabled ? 'bg-surface/50 border-primary/20' : 'bg-concrete/30 border-transparent'
     )}>
       <div className="flex items-center justify-between mb-3">
         <span className="font-mono text-[10px] uppercase tracking-wider text-ink font-medium">
@@ -177,11 +178,21 @@ function ShadowLayerControls({
   );
 }
 
+// Store committed styles in localStorage for global access
+export function getCommittedStyle(key: string): NeumorphicStyle | null {
+  const stored = localStorage.getItem('filla-committed-neu-styles');
+  if (stored) {
+    const styles = JSON.parse(stored) as Record<string, NeumorphicStyle>;
+    return styles[key] || null;
+  }
+  return null;
+}
+
 export function NeumorphismSandbox() {
   const [layers, setLayers] = useState<ShadowLayer[]>(defaultLayers);
   const [globals, setGlobals] = useState(defaultGlobals);
   const [copied, setCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [committed, setCommitted] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [customStyles, setCustomStyles] = useState<NeumorphicStyle[]>(() => {
@@ -209,6 +220,7 @@ export function NeumorphismSandbox() {
       ...globals,
       borderRadius: style.borderRadius,
       backgroundColor: style.backgroundColor,
+      cardBackgroundColor: style.backgroundColor,
     });
     setLayers(parseBoxShadow(style.boxShadow));
     setIsDropdownOpen(false);
@@ -224,12 +236,39 @@ export function NeumorphismSandbox() {
       .join(', ');
   }, [layers]);
 
-  const fullCSS = `box-shadow: ${shadowCSS};\nborder-radius: ${globals.borderRadius}px;\nbackground-color: ${globals.backgroundColor};`;
+  const fullCSS = `box-shadow: ${shadowCSS};\nborder-radius: ${globals.borderRadius}px;\nbackground-color: ${globals.cardBackgroundColor};`;
 
   const copyCSS = () => {
     navigator.clipboard.writeText(fullCSS);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const commitStyle = () => {
+    if (!selectedPreset) {
+      alert('Please select a preset first');
+      return;
+    }
+    
+    const updatedStyle: NeumorphicStyle = {
+      name: allStyles.find(s => s.key === selectedPreset)?.name || selectedPreset,
+      key: selectedPreset,
+      boxShadow: shadowCSS,
+      borderRadius: globals.borderRadius,
+      backgroundColor: globals.cardBackgroundColor,
+    };
+    
+    // Save to committed styles storage
+    const stored = localStorage.getItem('filla-committed-neu-styles');
+    const committedStyles: Record<string, NeumorphicStyle> = stored ? JSON.parse(stored) : {};
+    committedStyles[selectedPreset] = updatedStyle;
+    localStorage.setItem('filla-committed-neu-styles', JSON.stringify(committedStyles));
+    
+    // Dispatch custom event to notify components
+    window.dispatchEvent(new CustomEvent('filla-style-updated', { detail: { key: selectedPreset, style: updatedStyle } }));
+    
+    setCommitted(true);
+    setTimeout(() => setCommitted(false), 2000);
   };
 
   const saveAsPreset = () => {
@@ -242,14 +281,12 @@ export function NeumorphismSandbox() {
       key,
       boxShadow: shadowCSS,
       borderRadius: globals.borderRadius,
-      backgroundColor: globals.backgroundColor,
+      backgroundColor: globals.cardBackgroundColor,
     };
     
     const updatedStyles = [...customStyles, newStyle];
     setCustomStyles(updatedStyles);
     localStorage.setItem('filla-custom-neu-styles', JSON.stringify(updatedStyles));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
   };
 
   return (
@@ -263,7 +300,7 @@ export function NeumorphismSandbox() {
       <div className="relative">
         <button
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center justify-between w-full max-w-xs px-4 py-3 bg-surface rounded-lg shadow-e1 text-left"
+          className="flex items-center justify-between w-full max-w-xs px-4 py-3 bg-surface/80 rounded-lg shadow-e1 text-left"
         >
           <span className="font-mono text-sm text-ink">
             {selectedPreset ? allStyles.find(s => s.key === selectedPreset)?.name : 'Select a preset...'}
@@ -292,40 +329,45 @@ export function NeumorphismSandbox() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Preview */}
         <div className="space-y-4">
-          <div 
-            className="h-64 flex items-center justify-center rounded-xl"
-            style={{ backgroundColor: globals.backgroundColor }}
-          >
+          {/* Live Swatch Preview - Transparent Background */}
+          <div className="h-48 sm:h-64 flex items-center justify-center rounded-xl bg-transparent border border-dashed border-concrete/50">
             <div
-              className="w-32 h-32 flex items-center justify-center"
+              className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center relative"
               style={{
                 boxShadow: shadowCSS,
                 borderRadius: globals.borderRadius,
-                backgroundColor: globals.backgroundColor,
+                backgroundColor: globals.cardBackgroundColor,
+                backgroundImage: globals.noiseIntensity > 0 ? `url('/textures/white-texture.jpg')` : 'none',
+                backgroundSize: '50%',
               }}
             >
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Preview</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Swatch</span>
+              {globals.noiseIntensity > 0 && (
+                <div 
+                  className="absolute inset-0 rounded-inherit pointer-events-none"
+                  style={{ 
+                    borderRadius: globals.borderRadius,
+                    opacity: globals.noiseIntensity / 100 
+                  }} 
+                />
+              )}
             </div>
           </div>
 
           {/* CSS Output */}
-          <div className="bg-ink rounded-lg p-4 space-y-3">
+          <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button
                   onClick={saveAsPreset}
                   className="p-1.5 rounded hover:bg-white/10 transition-colors"
-                  title="Save as preset"
+                  title="Save as new preset"
                 >
-                  {saved ? (
-                    <Check className="w-4 h-4 text-green-400" />
-                  ) : (
-                    <Save className="w-4 h-4 text-white/60" />
-                  )}
+                  <Save className="w-4 h-4 text-white/60" />
                 </button>
                 <button
                   onClick={reset}
@@ -352,8 +394,28 @@ export function NeumorphismSandbox() {
             </pre>
           </div>
 
+          {/* Commit Button */}
+          <button
+            onClick={commitStyle}
+            disabled={!selectedPreset}
+            className={cn(
+              'w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all',
+              selectedPreset 
+                ? 'bg-primary text-white hover:bg-primary-deep shadow-e1' 
+                : 'bg-concrete text-ink/40 cursor-not-allowed'
+            )}
+          >
+            {committed ? (
+              <span className="flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" /> Style Committed
+              </span>
+            ) : (
+              'Commit & Apply to All Components'
+            )}
+          </button>
+
           {/* Global Controls */}
-          <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-4">
+          <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Global Controls</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider 
@@ -367,15 +429,15 @@ export function NeumorphismSandbox() {
                 label="Noise" 
                 value={globals.noiseIntensity} 
                 min={0} 
-                max={40} 
+                max={100} 
                 onChange={(v) => setGlobals({ ...globals, noiseIntensity: v })} 
               />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Background</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Card Background</span>
                 <input
                   type="color"
-                  value={globals.backgroundColor}
-                  onChange={(e) => setGlobals({ ...globals, backgroundColor: e.target.value })}
+                  value={globals.cardBackgroundColor}
+                  onChange={(e) => setGlobals({ ...globals, cardBackgroundColor: e.target.value })}
                   className="w-full h-8 rounded cursor-pointer"
                 />
               </div>
@@ -395,7 +457,7 @@ export function NeumorphismSandbox() {
         {/* Shadow Layer Controls */}
         <div className="space-y-4">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Shadow Layers</h3>
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+          <div className="space-y-3 max-h-[500px] lg:max-h-[600px] overflow-y-auto pr-2">
             {layers.map((layer, i) => (
               <ShadowLayerControls
                 key={i}

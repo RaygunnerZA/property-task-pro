@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, RotateCcw } from 'lucide-react';
+import { Copy, Check, RotateCcw, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TypographyConfig {
@@ -87,6 +87,7 @@ export function TypographySandbox() {
   const [xlLayers, setXlLayers] = useState<ShadowLayer[]>(() => parseShadow(defaultXL.textShadow));
   const [lLayers, setLLayers] = useState<ShadowLayer[]>(() => parseShadow(defaultL.textShadow));
   const [copied, setCopied] = useState(false);
+  const [committed, setCommitted] = useState(false);
 
   const currentConfig = selectedType === 'xl' ? xlConfig : lConfig;
   const setCurrentConfig = selectedType === 'xl' ? setXlConfig : setLConfig;
@@ -110,6 +111,17 @@ export function TypographySandbox() {
     }
   };
 
+  const commitStyles = () => {
+    const styles = {
+      xl: { ...xlConfig, textShadow: layersToCSS(xlLayers) },
+      l: { ...lConfig, textShadow: layersToCSS(lLayers) },
+    };
+    localStorage.setItem('filla-committed-typography-styles', JSON.stringify(styles));
+    window.dispatchEvent(new CustomEvent('filla-typography-styles-updated', { detail: styles }));
+    setCommitted(true);
+    setTimeout(() => setCommitted(false), 2000);
+  };
+
   const cssOutput = useMemo(() => `/* Heading ${selectedType.toUpperCase()} - Neumorphic */
 .heading-${selectedType}-neu {
   text-shadow: ${currentConfig.textShadow};
@@ -130,17 +142,17 @@ export function TypographySandbox() {
         <p className="text-muted-foreground text-sm">Add neumorphic text effects to headings</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Preview */}
         <div className="space-y-4">
-          <div className="bg-background rounded-xl p-8 space-y-6">
+          <div className="bg-transparent rounded-xl p-4 sm:p-8 space-y-6 border border-dashed border-concrete/50">
             {/* Type Selector */}
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedType('xl')}
                 className={cn(
                   'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-                  selectedType === 'xl' ? 'bg-primary text-white' : 'bg-surface shadow-e1 text-ink/60'
+                  selectedType === 'xl' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading XL
@@ -149,7 +161,7 @@ export function TypographySandbox() {
                 onClick={() => setSelectedType('l')}
                 className={cn(
                   'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-                  selectedType === 'l' ? 'bg-primary text-white' : 'bg-surface shadow-e1 text-ink/60'
+                  selectedType === 'l' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading L
@@ -161,7 +173,7 @@ export function TypographySandbox() {
               <h1 
                 className={cn(
                   'text-ink',
-                  selectedType === 'xl' ? 'text-4xl' : 'text-2xl'
+                  selectedType === 'xl' ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
                 )}
                 style={{
                   textShadow: currentConfig.textShadow,
@@ -178,7 +190,7 @@ export function TypographySandbox() {
           </div>
 
           {/* CSS Output */}
-          <div className="bg-ink rounded-lg p-4 space-y-3">
+          <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
@@ -192,12 +204,26 @@ export function TypographySandbox() {
             </div>
             <pre className="text-xs text-primary font-mono overflow-x-auto whitespace-pre-wrap">{cssOutput}</pre>
           </div>
+
+          {/* Commit Button */}
+          <button
+            onClick={commitStyles}
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+          >
+            {committed ? (
+              <span className="flex items-center justify-center gap-2">
+                <Check className="w-4 h-4" /> Styles Committed
+              </span>
+            ) : (
+              'Commit & Apply to All Headings'
+            )}
+          </button>
         </div>
 
         {/* Controls */}
         <div className="space-y-4">
           {/* Typography Settings */}
-          <div className="bg-surface rounded-lg shadow-e1 p-4 space-y-4">
+          <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Typography</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider 
@@ -223,7 +249,7 @@ export function TypographySandbox() {
           <div className="space-y-3">
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Text Shadow Layers</h3>
             {currentLayers.map((layer, i) => (
-              <div key={i} className="bg-surface rounded-lg shadow-e1 p-4 space-y-4">
+              <div key={i} className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-ink font-medium">
                   {i === 0 ? 'Highlight (Light)' : 'Shadow (Dark)'}
                 </span>
