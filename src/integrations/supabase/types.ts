@@ -639,6 +639,7 @@ export type Database = {
       }
       groups: {
         Row: {
+          archived_at: string | null
           category: string | null
           color: string | null
           created_at: string | null
@@ -652,9 +653,11 @@ export type Database = {
           name: string
           org_id: string
           parent_group_id: string | null
+          updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
@@ -668,9 +671,11 @@ export type Database = {
           name: string
           org_id: string
           parent_group_id?: string | null
+          updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
@@ -684,6 +689,7 @@ export type Database = {
           name?: string
           org_id?: string
           parent_group_id?: string | null
+          updated_at?: string | null
           updated_by?: string | null
         }
         Relationships: [
