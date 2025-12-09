@@ -565,6 +565,91 @@ export type Database = {
           },
         ]
       }
+      group_members: {
+        Row: {
+          created_at: string | null
+          group_id: string
+          id: string
+          org_id: string
+          property_id: string | null
+          space_id: string | null
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_id: string
+          id?: string
+          org_id: string
+          property_id?: string | null
+          space_id?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          org_id?: string
+          property_id?: string | null
+          space_id?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          icon: string | null
+          id: string
+          image_url: string | null
+          name: string
+          org_id: string
+          parent_group_id: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          org_id: string
+          parent_group_id?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          org_id?: string
+          parent_group_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_parent_group_id_fkey"
+            columns: ["parent_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           author_name: string
@@ -1077,6 +1162,45 @@ export type Database = {
           },
           {
             foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_groups: {
+        Row: {
+          created_at: string | null
+          group_id: string
+          id: string
+          org_id: string
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          group_id: string
+          id?: string
+          org_id: string
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          org_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
