@@ -648,6 +648,7 @@ export type Database = {
           org_id: string
           property_id: string | null
           space_id: string | null
+          team_id: string | null
           updated_at: string | null
           updated_by: string | null
           user_id: string | null
@@ -663,6 +664,7 @@ export type Database = {
           org_id: string
           property_id?: string | null
           space_id?: string | null
+          team_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
           user_id?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           org_id?: string
           property_id?: string | null
           space_id?: string | null
+          team_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
           user_id?: string | null
@@ -695,6 +698,27 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
