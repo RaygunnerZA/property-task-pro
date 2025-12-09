@@ -1271,6 +1271,7 @@ export type Database = {
         Row: {
           action_type: string | null
           created_at: string | null
+          extended_metadata: Json | null
           id: string
           image_version_id: string | null
           metadata: Json | null
@@ -1281,6 +1282,7 @@ export type Database = {
         Insert: {
           action_type?: string | null
           created_at?: string | null
+          extended_metadata?: Json | null
           id?: string
           image_version_id?: string | null
           metadata?: Json | null
@@ -1291,6 +1293,7 @@ export type Database = {
         Update: {
           action_type?: string | null
           created_at?: string | null
+          extended_metadata?: Json | null
           id?: string
           image_version_id?: string | null
           metadata?: Json | null
@@ -1324,6 +1327,8 @@ export type Database = {
       }
       task_image_versions: {
         Row: {
+          ai_metadata: Json | null
+          annotation_json: Json | null
           annotation_summary: string | null
           created_at: string | null
           created_by: string | null
@@ -1335,6 +1340,8 @@ export type Database = {
           version_number: number | null
         }
         Insert: {
+          ai_metadata?: Json | null
+          annotation_json?: Json | null
           annotation_summary?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1346,6 +1353,8 @@ export type Database = {
           version_number?: number | null
         }
         Update: {
+          ai_metadata?: Json | null
+          annotation_json?: Json | null
           annotation_summary?: string | null
           created_at?: string | null
           created_by?: string | null
