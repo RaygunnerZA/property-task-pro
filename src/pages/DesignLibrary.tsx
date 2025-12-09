@@ -12,6 +12,7 @@ import { NeumorphismSandbox } from '@/components/design-system/NeumorphismSandbo
 import { ButtonSandbox } from '@/components/design-system/ButtonSandbox';
 import { CalendarSandbox } from '@/components/design-system/CalendarSandbox';
 import { TypographySandbox } from '@/components/design-system/TypographySandbox';
+import { CardSandbox } from '@/components/design-system/CardSandbox';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
 import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -100,6 +101,8 @@ export default function DesignLibrary() {
           <TypographySandbox />
           <div className="h-px bg-concrete" />
           <CalendarSandbox />
+          <div className="h-px bg-concrete" />
+          <CardSandbox />
         </section>
         
         <div className="h-px bg-concrete" />
