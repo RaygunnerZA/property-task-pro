@@ -51,11 +51,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "checklist_template_items_template_fk"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates_with_items"
+            referencedColumns: ["template_id"]
+          },
+          {
             foreignKeyName: "checklist_template_items_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "checklist_templates"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates_with_items"
+            referencedColumns: ["template_id"]
           },
         ]
       }
@@ -1157,6 +1171,13 @@ export type Database = {
             referencedRelation: "checklist_templates"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "subtasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates_with_items"
+            referencedColumns: ["template_id"]
+          },
         ]
       }
       task_attachments: {
@@ -1658,7 +1679,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      checklist_templates_with_items: {
+        Row: {
+          is_yes_no: boolean | null
+          item_id: string | null
+          item_title: string | null
+          order_index: number | null
+          org_id: string | null
+          template_id: string | null
+          template_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access_task: { Args: { task_id: string }; Returns: boolean }
