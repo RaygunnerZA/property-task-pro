@@ -648,6 +648,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_archived: boolean | null
+          metadata: Json | null
           name: string
           org_id: string
           parent_group_id: string | null
@@ -663,6 +664,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_archived?: boolean | null
+          metadata?: Json | null
           name: string
           org_id: string
           parent_group_id?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_archived?: boolean | null
+          metadata?: Json | null
           name?: string
           org_id?: string
           parent_group_id?: string | null
@@ -1256,27 +1259,36 @@ export type Database = {
       task_groups: {
         Row: {
           created_at: string | null
+          created_by: string | null
           group_id: string
           id: string
           is_deleted: boolean | null
           org_id: string
           task_id: string
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           group_id: string
           id?: string
           is_deleted?: boolean | null
           org_id: string
           task_id: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           group_id?: string
           id?: string
           is_deleted?: boolean | null
           org_id?: string
           task_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
