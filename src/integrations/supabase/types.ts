@@ -812,6 +812,105 @@ export type Database = {
           },
         ]
       }
+      escalation_events: {
+        Row: {
+          created_at: string | null
+          event: Json
+          id: string
+          org_id: string
+          rule_id: string | null
+          signal_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event: Json
+          id?: string
+          org_id: string
+          rule_id?: string | null
+          signal_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event?: Json
+          id?: string
+          org_id?: string
+          rule_id?: string | null
+          signal_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalation_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "escalation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_events_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      escalation_rules: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string | null
+          enabled: boolean | null
+          id: string
+          name: string
+          org_id: string
+          trigger_type: string
+        }
+        Insert: {
+          actions: Json
+          conditions: Json
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          name: string
+          org_id: string
+          trigger_type: string
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string | null
+          enabled?: boolean | null
+          id?: string
+          name?: string
+          org_id?: string
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           archived_at: string | null
@@ -1064,6 +1163,36 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          created_at: string | null
+          destination: string
+          enabled: boolean | null
+          id: string
+          org_id: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          destination: string
+          enabled?: boolean | null
+          id?: string
+          org_id: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          destination?: string
+          enabled?: boolean | null
+          id?: string
+          org_id?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       org_compliance_summary: {
         Row: {
           compliant: number | null
@@ -1275,6 +1404,7 @@ export type Database = {
       }
       signals: {
         Row: {
+          ai_recommendation: Json | null
           body: string | null
           created_at: string | null
           due_at: string | null
@@ -1282,6 +1412,10 @@ export type Database = {
           metadata: Json | null
           org_id: string
           property_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          scope: string | null
+          severity: string | null
           snooze_until: string | null
           source: string
           status: string
@@ -1291,6 +1425,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          ai_recommendation?: Json | null
           body?: string | null
           created_at?: string | null
           due_at?: string | null
@@ -1298,6 +1433,10 @@ export type Database = {
           metadata?: Json | null
           org_id: string
           property_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope?: string | null
+          severity?: string | null
           snooze_until?: string | null
           source?: string
           status?: string
@@ -1307,6 +1446,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          ai_recommendation?: Json | null
           body?: string | null
           created_at?: string | null
           due_at?: string | null
@@ -1314,6 +1454,10 @@ export type Database = {
           metadata?: Json | null
           org_id?: string
           property_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scope?: string | null
+          severity?: string | null
           snooze_until?: string | null
           source?: string
           status?: string
@@ -2108,6 +2252,49 @@ export type Database = {
           },
         ]
       }
+      task_threads: {
+        Row: {
+          created_at: string | null
+          id: string
+          org_id: string
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          org_id: string
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          org_id?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_threads_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_threads_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_threads_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: true
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           annotation_required: boolean | null
@@ -2265,6 +2452,115 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_message_attachments: {
+        Row: {
+          ai_caption: string | null
+          file_type: string | null
+          file_url: string | null
+          id: string
+          message_id: string
+          metadata: Json | null
+          org_id: string
+          storage_path: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          ai_caption?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          message_id: string
+          metadata?: Json | null
+          org_id: string
+          storage_path: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          ai_caption?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          message_id?: string
+          metadata?: Json | null
+          org_id?: string
+          storage_path?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "thread_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      thread_messages: {
+        Row: {
+          ai_summary: Json | null
+          body: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          org_id: string
+          sender_id: string | null
+          task_id: string
+          thread_id: string
+        }
+        Insert: {
+          ai_summary?: Json | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          sender_id?: string | null
+          task_id: string
+          thread_id: string
+        }
+        Update: {
+          ai_summary?: Json | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          sender_id?: string | null
+          task_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "thread_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "task_threads"
             referencedColumns: ["id"]
           },
         ]
@@ -2482,6 +2778,7 @@ export type Database = {
       }
       process_all_recurrences: { Args: never; Returns: undefined }
       process_compliance_schedules: { Args: never; Returns: undefined }
+      process_escalations: { Args: never; Returns: undefined }
       purge_completed_tasks: {
         Args: { p_days: number; p_org: string }
         Returns: number
@@ -2519,6 +2816,10 @@ export type Database = {
       }
       update_org_compliance_summary: {
         Args: { org: string }
+        Returns: undefined
+      }
+      update_thread_ai_summary: {
+        Args: { p_summary: Json; p_thread_id: string }
         Returns: undefined
       }
       validate_task_payload: {
