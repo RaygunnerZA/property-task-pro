@@ -641,6 +641,7 @@ export type Database = {
         Row: {
           accent_color: string | null
           archived_at: string | null
+          archived_by: string | null
           category: string | null
           color: string | null
           created_at: string | null
@@ -663,6 +664,7 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           archived_at?: string | null
+          archived_by?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
@@ -685,6 +687,7 @@ export type Database = {
         Update: {
           accent_color?: string | null
           archived_at?: string | null
+          archived_by?: string | null
           category?: string | null
           color?: string | null
           created_at?: string | null
