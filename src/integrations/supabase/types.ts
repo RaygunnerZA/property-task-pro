@@ -573,7 +573,6 @@ export type Database = {
           org_id: string
           property_id: string | null
           space_id: string | null
-          team_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -583,7 +582,6 @@ export type Database = {
           org_id: string
           property_id?: string | null
           space_id?: string | null
-          team_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -593,7 +591,6 @@ export type Database = {
           org_id?: string
           property_id?: string | null
           space_id?: string | null
-          team_id?: string | null
           user_id?: string | null
         }
         Relationships: [
