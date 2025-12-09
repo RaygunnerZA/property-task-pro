@@ -80,20 +80,24 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
     try {
       let imageUrl: string | null = null;
 
+      // Upload image to task-images bucket under groups/ folder
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${orgId}/${crypto.randomUUID()}.${fileExt}`;
+        const fileName = `groups/${orgId}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
-          .from("group-images")
-          .upload(fileName, imageFile);
+          .from("task-images")
+          .upload(fileName, imageFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
-          .from("group-images")
+          .from("task-images")
           .getPublicUrl(fileName);
         imageUrl = urlData.publicUrl;
       }
+
+      // Refresh session to ensure JWT has latest org_id claim
+      await supabase.auth.refreshSession();
 
       const { error } = await supabase
         .from("groups")
@@ -111,6 +115,7 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
       setShowCreateModal(false);
       refresh();
     } catch (err: any) {
+      console.error("Group creation error:", err);
       toast({ 
         title: "Error creating group", 
         description: err.message,
