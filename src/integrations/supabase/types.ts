@@ -1232,15 +1232,18 @@ export type Database = {
       }
       tasks: {
         Row: {
+          annotation_required: boolean | null
           assigned_team_ids: string[]
           assigned_user_id: string | null
           assigned_vendor_name: string | null
           completed_at: string | null
+          compliance_level: string | null
           created_at: string | null
           description: string | null
           due_at: string | null
           id: string
           image_url: string | null
+          is_compliance: boolean | null
           metadata: Json
           org_id: string | null
           priority: string | null
@@ -1253,15 +1256,18 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          annotation_required?: boolean | null
           assigned_team_ids?: string[]
           assigned_user_id?: string | null
           assigned_vendor_name?: string | null
           completed_at?: string | null
+          compliance_level?: string | null
           created_at?: string | null
           description?: string | null
           due_at?: string | null
           id?: string
           image_url?: string | null
+          is_compliance?: boolean | null
           metadata?: Json
           org_id?: string | null
           priority?: string | null
@@ -1274,15 +1280,18 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          annotation_required?: boolean | null
           assigned_team_ids?: string[]
           assigned_user_id?: string | null
           assigned_vendor_name?: string | null
           completed_at?: string | null
+          compliance_level?: string | null
           created_at?: string | null
           description?: string | null
           due_at?: string | null
           id?: string
           image_url?: string | null
+          is_compliance?: boolean | null
           metadata?: Json
           org_id?: string | null
           priority?: string | null
