@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          org_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_extraction_history: {
         Row: {
           extracted_at: string | null
@@ -56,6 +97,183 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_extractions: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          extracted: Json | null
+          id: string
+          model_id: string | null
+          org_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          extracted?: Json | null
+          id?: string
+          model_id?: string | null
+          org_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          extracted?: Json | null
+          id?: string
+          model_id?: string | null
+          org_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_extractions_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extractions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extractions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extractions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extractions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_models: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          provider: string | null
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          provider?: string | null
+          version: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          provider?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
+      ai_prompts: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          model_id: string | null
+          org_id: string | null
+          prompt: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          model_id?: string | null
+          org_id?: string | null
+          prompt: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          model_id?: string | null
+          org_id?: string | null
+          prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompts_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "ai_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_prompts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_responses: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          org_id: string | null
+          prompt_id: string | null
+          response: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          org_id?: string | null
+          prompt_id?: string | null
+          response?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          org_id?: string | null
+          prompt_id?: string | null
+          response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_responses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_responses_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "ai_prompts"
             referencedColumns: ["id"]
           },
         ]
@@ -195,7 +413,9 @@ export type Database = {
         Row: {
           assigned_at: string | null
           id: string
+          last_applied_at: string | null
           last_triggered_at: string | null
+          next_due_at: string | null
           org_id: string
           property_id: string
           recurrence_type: string | null
@@ -205,7 +425,9 @@ export type Database = {
         Insert: {
           assigned_at?: string | null
           id?: string
+          last_applied_at?: string | null
           last_triggered_at?: string | null
+          next_due_at?: string | null
           org_id: string
           property_id: string
           recurrence_type?: string | null
@@ -215,7 +437,9 @@ export type Database = {
         Update: {
           assigned_at?: string | null
           id?: string
+          last_applied_at?: string | null
           last_triggered_at?: string | null
+          next_due_at?: string | null
           org_id?: string
           property_id?: string
           recurrence_type?: string | null
@@ -1099,6 +1323,41 @@ export type Database = {
           },
         ]
       }
+      labels: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          org_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          org_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          org_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labels_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           author_name: string
@@ -1838,6 +2097,82 @@ export type Database = {
           },
         ]
       }
+      task_compliance_events: {
+        Row: {
+          clause_id: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          org_id: string
+          rule_id: string | null
+          status: string | null
+          task_id: string
+        }
+        Insert: {
+          clause_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          rule_id?: string | null
+          status?: string | null
+          task_id: string
+        }
+        Update: {
+          clause_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          rule_id?: string | null
+          status?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_compliance_events_clause_id_fkey"
+            columns: ["clause_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_clauses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_compliance_events_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_compliance_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_groups: {
         Row: {
           archived_at: string | null
@@ -2135,6 +2470,60 @@ export type Database = {
           },
         ]
       }
+      task_labels: {
+        Row: {
+          label_id: string
+          org_id: string
+          task_id: string
+        }
+        Insert: {
+          label_id: string
+          org_id: string
+          task_id: string
+        }
+        Update: {
+          label_id?: string
+          org_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_labels_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_labels_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_labels_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_labels_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_messages: {
         Row: {
           author_name: string | null
@@ -2302,7 +2691,13 @@ export type Database = {
           assigned_user_id: string | null
           assigned_vendor_name: string | null
           completed_at: string | null
+          compliance_due_at: string | null
+          compliance_event_id: string | null
           compliance_level: string | null
+          compliance_metadata: Json | null
+          compliance_rule_id: string | null
+          compliance_source_id: string | null
+          compliance_status: string | null
           created_at: string | null
           description: string | null
           due_at: string | null
@@ -2328,7 +2723,13 @@ export type Database = {
           assigned_user_id?: string | null
           assigned_vendor_name?: string | null
           completed_at?: string | null
+          compliance_due_at?: string | null
+          compliance_event_id?: string | null
           compliance_level?: string | null
+          compliance_metadata?: Json | null
+          compliance_rule_id?: string | null
+          compliance_source_id?: string | null
+          compliance_status?: string | null
           created_at?: string | null
           description?: string | null
           due_at?: string | null
@@ -2354,7 +2755,13 @@ export type Database = {
           assigned_user_id?: string | null
           assigned_vendor_name?: string | null
           completed_at?: string | null
+          compliance_due_at?: string | null
+          compliance_event_id?: string | null
           compliance_level?: string | null
+          compliance_metadata?: Json | null
+          compliance_rule_id?: string | null
+          compliance_source_id?: string | null
+          compliance_status?: string | null
           created_at?: string | null
           description?: string | null
           due_at?: string | null
@@ -2375,6 +2782,27 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "tasks_compliance_event_id_fkey"
+            columns: ["compliance_event_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_compliance_rule_id_fkey"
+            columns: ["compliance_rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_compliance_source_id_fkey"
+            columns: ["compliance_source_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_sources"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tasks_organisation_id_fkey"
             columns: ["org_id"]
