@@ -67,10 +67,25 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
       return;
     }
     
-    if (!orgId) {
+    // Refresh session to ensure JWT has latest org_id claim
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError) {
       toast({ 
-        title: "Not authenticated", 
-        description: "Please log in to create groups.",
+        title: "Session error", 
+        description: "Please log out and log back in.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Get org_id from refreshed JWT claims
+    const jwtOrgId = refreshData.session?.user?.app_metadata?.org_id;
+    
+    if (!jwtOrgId) {
+      toast({ 
+        title: "Organization not found", 
+        description: "Your account is not linked to an organization. Please complete onboarding.",
         variant: "destructive" 
       });
       return;
@@ -83,7 +98,7 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
       // Upload image to task-images bucket under groups/ folder
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `groups/${orgId}/${crypto.randomUUID()}.${fileExt}`;
+        const fileName = `groups/${jwtOrgId}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from("task-images")
           .upload(fileName, imageFile, { upsert: true });
@@ -96,13 +111,10 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
         imageUrl = urlData.publicUrl;
       }
 
-      // Refresh session to ensure JWT has latest org_id claim
-      await supabase.auth.refreshSession();
-
       const { error } = await supabase
         .from("groups")
         .insert({
-          org_id: orgId,
+          org_id: jwtOrgId,
           name: newGroupName.trim(),
           image_url: imageUrl,
         });
