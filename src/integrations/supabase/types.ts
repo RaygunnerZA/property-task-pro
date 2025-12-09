@@ -588,7 +588,10 @@ export type Database = {
       }
       group_members: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
+          created_by: string | null
           group_id: string
           id: string
           is_deleted: boolean | null
@@ -596,10 +599,14 @@ export type Database = {
           property_id: string | null
           space_id: string | null
           updated_at: string | null
+          updated_by: string | null
           user_id: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           group_id: string
           id?: string
           is_deleted?: boolean | null
@@ -607,10 +614,14 @@ export type Database = {
           property_id?: string | null
           space_id?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           user_id?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
+          created_by?: string | null
           group_id?: string
           id?: string
           is_deleted?: boolean | null
@@ -618,6 +629,7 @@ export type Database = {
           property_id?: string | null
           space_id?: string | null
           updated_at?: string | null
+          updated_by?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1290,6 +1302,7 @@ export type Database = {
           created_by: string | null
           group_id: string
           id: string
+          is_archived: boolean | null
           is_deleted: boolean | null
           org_id: string
           task_id: string
@@ -1301,6 +1314,7 @@ export type Database = {
           created_by?: string | null
           group_id: string
           id?: string
+          is_archived?: boolean | null
           is_deleted?: boolean | null
           org_id: string
           task_id: string
@@ -1312,6 +1326,7 @@ export type Database = {
           created_by?: string | null
           group_id?: string
           id?: string
+          is_archived?: boolean | null
           is_deleted?: boolean | null
           org_id?: string
           task_id?: string
