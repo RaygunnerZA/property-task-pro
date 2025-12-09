@@ -181,15 +181,7 @@ export function CreateTaskModal({
         <ImageUploadSection images={images} onImagesChange={setImages} />
 
         {/* Title */}
-        <div className="space-y-2">
-          <Label htmlFor="title" className="text-sm font-medium">Title *</Label>
-          <div className="relative">
-            
-            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors" title="AI suggestions">
-              <Sparkles className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+        
 
         {/* Description */}
         <div className="space-y-2">
