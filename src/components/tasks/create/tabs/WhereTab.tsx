@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useProperties } from "@/hooks/useProperties";
 import { useSpaces } from "@/hooks/useSpaces";
+import { useDataContext } from "@/contexts/DataContext";
 import { cn } from "@/lib/utils";
 
 interface WhereTabProps {
@@ -19,8 +20,9 @@ export function WhereTab({
   onPropertyChange, 
   onSpacesChange 
 }: WhereTabProps) {
-  const { properties } = useProperties();
-  const { spaces } = useSpaces(propertyId || undefined);
+  const { orgId } = useDataContext();
+  const { properties, loading: propertiesLoading } = useProperties(orgId || undefined);
+  const { spaces, loading: spacesLoading } = useSpaces(propertyId || undefined);
 
   const handlePropertyChange = (newPropertyId: string) => {
     onPropertyChange(newPropertyId);
@@ -43,22 +45,28 @@ export function WhereTab({
           <Building2 className="h-4 w-4 text-muted-foreground" />
           Property
         </Label>
-        <Select value={propertyId} onValueChange={handlePropertyChange}>
+        <Select value={propertyId} onValueChange={handlePropertyChange} disabled={propertiesLoading}>
           <SelectTrigger className="shadow-engraved">
-            <SelectValue placeholder="Select a property" />
+            <SelectValue placeholder={propertiesLoading ? "Loading properties..." : properties.length === 0 ? "No properties found" : "Select a property"} />
           </SelectTrigger>
           <SelectContent>
-            {properties.map(property => (
-              <SelectItem key={property.id} value={property.id}>
-                <div className="flex items-center gap-2">
-                  <div 
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: property.icon_color_hex || '#8EC9CE' }}
-                  />
-                  {property.nickname || property.address}
-                </div>
-              </SelectItem>
-            ))}
+            {properties.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                No properties in your organisation. Add a property first.
+              </div>
+            ) : (
+              properties.map(property => (
+                <SelectItem key={property.id} value={property.id}>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: property.icon_color_hex || '#8EC9CE' }}
+                    />
+                    {property.nickname || property.address}
+                  </div>
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
