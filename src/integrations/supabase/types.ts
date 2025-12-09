@@ -1241,6 +1241,7 @@ export type Database = {
           due_at: string | null
           id: string
           image_url: string | null
+          metadata: Json
           org_id: string | null
           priority: string | null
           property_id: string | null
@@ -1260,6 +1261,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           image_url?: string | null
+          metadata?: Json
           org_id?: string | null
           priority?: string | null
           property_id?: string | null
@@ -1279,6 +1281,7 @@ export type Database = {
           due_at?: string | null
           id?: string
           image_url?: string | null
+          metadata?: Json
           org_id?: string | null
           priority?: string | null
           property_id?: string | null
