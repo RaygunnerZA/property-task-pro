@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Folder, Plus, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { Folder, Plus, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,25 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const toggleGroup = (groupId: string) => {
     if (selectedGroupIds.includes(groupId)) {
@@ -59,17 +78,36 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
     
     setCreating(true);
     try {
+      let imageUrl: string | null = null;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${orgId}/${crypto.randomUUID()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("group-images")
+          .upload(fileName, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("group-images")
+          .getPublicUrl(fileName);
+        imageUrl = urlData.publicUrl;
+      }
+
       const { error } = await supabase
         .from("groups")
         .insert({
           org_id: orgId,
           name: newGroupName.trim(),
+          image_url: imageUrl,
         });
 
       if (error) throw error;
 
       toast({ title: "Group created" });
       setNewGroupName("");
+      clearImage();
       setShowCreateModal(false);
       refresh();
     } catch (err: any) {
@@ -135,15 +173,49 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
           <DialogHeader>
             <DialogTitle>Create Group</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Label htmlFor="groupName">Group Name</Label>
-            <Input
-              id="groupName"
-              placeholder="e.g., Fire Safety, Monthly Inspections"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              className="shadow-engraved"
-            />
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="groupName">Group Name</Label>
+              <Input
+                id="groupName"
+                placeholder="e.g., Fire Safety, Monthly Inspections"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="shadow-engraved mt-1.5"
+              />
+            </div>
+
+            <div>
+              <Label>Thumbnail Image</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              {imagePreview ? (
+                <div className="relative mt-1.5 w-full h-32 rounded-[5px] overflow-hidden shadow-e1">
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-1 right-1 p-1 bg-background/80 rounded-full"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-1.5 w-full h-24 rounded-[5px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 transition-colors"
+                >
+                  <ImagePlus className="h-6 w-6" />
+                  <span className="text-xs">Add image</span>
+                </button>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button
