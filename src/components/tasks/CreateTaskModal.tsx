@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, Calendar, ImagePlus, Sparkles, ChevronDown, ChevronUp, Repeat } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  X, Plus, Sparkles, ChevronDown, ChevronUp, 
+  User, Calendar, MapPin, AlertTriangle,
+  ListTodo, Shield
+} from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent
+} from "@/components/ui/dialog";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,40 +17,52 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useDataContext } from "@/contexts/DataContext";
-import { useProperties } from "@/hooks/useProperties";
-import { useSpaces } from "@/hooks/useSpaces";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { createTask } from "@/services/tasks/taskMutations";
-import type { CreateTaskPayload, CreateSubtaskPayload, TaskPriority } from "@/types/database";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+
+// Tab Components
+import { WhoTab } from "./create/tabs/WhoTab";
+import { WhenTab } from "./create/tabs/WhenTab";
+import { WhereTab } from "./create/tabs/WhereTab";
+import { PriorityTab } from "./create/tabs/PriorityTab";
+
+// Section Components
+import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
+import { ImageUploadSection } from "./create/ImageUploadSection";
+import { GroupsSection } from "./create/GroupsSection";
+
+import type { 
+  CreateTaskPayload, 
+  TaskPriority, 
+  RepeatRule,
+  CreateTaskImagePayload 
+} from "@/types/database";
 
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
-}
-
-interface SubtaskInput {
-  id: string;
-  title: string;
-  is_yes_no: boolean;
-  requires_signature: boolean;
+  defaultDueDate?: string;
 }
 
 export function CreateTaskModal({ 
   open, 
   onOpenChange, 
   onTaskCreated,
-  defaultPropertyId 
+  defaultPropertyId,
+  defaultDueDate
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { orgId } = useDataContext();
-  const { properties } = useProperties();
   const { templates } = useChecklistTemplates();
+  const isMobile = useIsMobile();
   
   // Form state
   const [title, setTitle] = useState("");
@@ -50,36 +70,43 @@ export function CreateTaskModal({
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<TaskPriority>("normal");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState(defaultDueDate || "");
+  const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
+  const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
+  const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
   const [isCompliance, setIsCompliance] = useState(false);
   const [complianceLevel, setComplianceLevel] = useState("");
   const [annotationRequired, setAnnotationRequired] = useState(false);
   const [templateId, setTemplateId] = useState("");
   const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [images, setImages] = useState<CreateTaskImagePayload[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Get spaces for selected property
-  const { spaces } = useSpaces(propertyId || undefined);
+  const [activeTab, setActiveTab] = useState("where");
 
-  const handleAddSubtask = () => {
-    setSubtasks([
-      ...subtasks,
-      { 
-        id: crypto.randomUUID(), 
-        title: "", 
-        is_yes_no: false, 
-        requires_signature: false 
-      }
-    ]);
-  };
+  // AI Suggestion chips (mock for now)
+  const [aiSuggestions] = useState<string[]>([]);
 
-  const handleRemoveSubtask = (id: string) => {
-    setSubtasks(subtasks.filter(s => s.id !== id));
-  };
-
-  const handleUpdateSubtask = (id: string, updates: Partial<SubtaskInput>) => {
-    setSubtasks(subtasks.map(s => s.id === id ? { ...s, ...updates } : s));
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setPropertyId(defaultPropertyId || "");
+    setSelectedSpaceIds([]);
+    setPriority("normal");
+    setDueDate(defaultDueDate || "");
+    setRepeatRule(undefined);
+    setAssignedUserId(undefined);
+    setAssignedTeamIds([]);
+    setIsCompliance(false);
+    setComplianceLevel("");
+    setAnnotationRequired(false);
+    setTemplateId("");
+    setSubtasks([]);
+    setSelectedGroupIds([]);
+    setImages([]);
+    setShowAdvanced(false);
+    setActiveTab("where");
   };
 
   const handleSubmit = async () => {
@@ -111,9 +138,15 @@ export function CreateTaskModal({
         space_ids: selectedSpaceIds.length > 0 ? selectedSpaceIds : undefined,
         priority,
         due_at: dueDate ? new Date(dueDate).toISOString() : undefined,
+        assigned_user_id: assignedUserId,
+        assigned_team_ids: assignedTeamIds.length > 0 ? assignedTeamIds : undefined,
         is_compliance: isCompliance,
         compliance_level: isCompliance ? complianceLevel : undefined,
         annotation_required: annotationRequired,
+        metadata: {
+          repeat: repeatRule,
+          ai: aiSuggestions.length > 0 ? { chips: aiSuggestions } : undefined,
+        },
         template_id: templateId || undefined,
         subtasks: subtasks.filter(s => s.title.trim()).map((s, idx) => ({
           title: s.title.trim(),
@@ -121,6 +154,8 @@ export function CreateTaskModal({
           requires_signature: s.requires_signature,
           order_index: idx,
         })),
+        groups: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
+        images: images.length > 0 ? images : undefined,
       };
 
       const taskId = await createTask(orgId, propertyId || null, payload);
@@ -130,20 +165,7 @@ export function CreateTaskModal({
         description: "Your task has been added successfully." 
       });
 
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setPropertyId(defaultPropertyId || "");
-      setSelectedSpaceIds([]);
-      setPriority("normal");
-      setDueDate("");
-      setIsCompliance(false);
-      setComplianceLevel("");
-      setAnnotationRequired(false);
-      setTemplateId("");
-      setSubtasks([]);
-      setShowAdvanced(false);
-
+      resetForm();
       onOpenChange(false);
       onTaskCreated?.(taskId);
     } catch (error: any) {
@@ -157,269 +179,275 @@ export function CreateTaskModal({
     }
   };
 
-  const toggleSpaceSelection = (spaceId: string) => {
-    setSelectedSpaceIds(prev => 
-      prev.includes(spaceId) 
-        ? prev.filter(id => id !== spaceId)
-        : [...prev, spaceId]
-    );
-  };
+  const content = (
+    <div className="flex flex-col h-full max-h-[85vh]">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Plus className="h-5 w-5 text-primary" />
+          Create Task
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onOpenChange(false)}
+          className="h-8 w-8"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Create Task
-          </DialogTitle>
-        </DialogHeader>
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Image Upload */}
+        <ImageUploadSection 
+          images={images} 
+          onImagesChange={setImages} 
+        />
 
-        <div className="space-y-5 py-4">
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <div className="relative">
-              <Input
-                id="title"
-                placeholder="What needs to be done?"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="pr-10"
-              />
-              <button 
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80"
-                title="AI suggestions"
-              >
-                <Sparkles className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Add details about this task..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+        {/* Title */}
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-sm font-medium">Title *</Label>
+          <div className="relative">
+            <Input
+              id="title"
+              placeholder="What needs to be done?"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="pr-10 shadow-engraved text-base"
             />
+            <button 
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors"
+              title="AI suggestions"
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
           </div>
+        </div>
 
-          {/* Property */}
+        {/* Description */}
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium">Description</Label>
+          <Textarea
+            id="description"
+            placeholder="Add details about this task..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="shadow-engraved resize-none"
+          />
+        </div>
+
+        {/* AI Suggestion Chips */}
+        {aiSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {aiSuggestions.map((chip, idx) => (
+              <Badge
+                key={idx}
+                variant="outline"
+                className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                {chip}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Metadata Tabs */}
+        <div className="rounded-xl bg-card shadow-e2 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full grid grid-cols-4 h-11 bg-muted/50 p-1 rounded-none">
+              <TabsTrigger value="where" className="gap-1 text-xs data-[state=active]:shadow-e1">
+                <MapPin className="h-3 w-3" />
+                <span className="hidden sm:inline">Where</span>
+              </TabsTrigger>
+              <TabsTrigger value="when" className="gap-1 text-xs data-[state=active]:shadow-e1">
+                <Calendar className="h-3 w-3" />
+                <span className="hidden sm:inline">When</span>
+              </TabsTrigger>
+              <TabsTrigger value="who" className="gap-1 text-xs data-[state=active]:shadow-e1">
+                <User className="h-3 w-3" />
+                <span className="hidden sm:inline">Who</span>
+              </TabsTrigger>
+              <TabsTrigger value="priority" className="gap-1 text-xs data-[state=active]:shadow-e1">
+                <AlertTriangle className="h-3 w-3" />
+                <span className="hidden sm:inline">Priority</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="p-4">
+              <TabsContent value="where" className="mt-0">
+                <WhereTab
+                  propertyId={propertyId}
+                  spaceIds={selectedSpaceIds}
+                  onPropertyChange={setPropertyId}
+                  onSpacesChange={setSelectedSpaceIds}
+                />
+              </TabsContent>
+              <TabsContent value="when" className="mt-0">
+                <WhenTab
+                  dueDate={dueDate}
+                  repeatRule={repeatRule}
+                  onDueDateChange={setDueDate}
+                  onRepeatRuleChange={setRepeatRule}
+                />
+              </TabsContent>
+              <TabsContent value="who" className="mt-0">
+                <WhoTab
+                  assignedUserId={assignedUserId}
+                  assignedTeamIds={assignedTeamIds}
+                  onUserChange={setAssignedUserId}
+                  onTeamsChange={setAssignedTeamIds}
+                />
+              </TabsContent>
+              <TabsContent value="priority" className="mt-0">
+                <PriorityTab
+                  priority={priority}
+                  onPriorityChange={setPriority}
+                />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+
+        {/* Subtasks */}
+        <div className="rounded-xl bg-card shadow-e2 p-4">
+          <SubtasksSection 
+            subtasks={subtasks} 
+            onSubtasksChange={setSubtasks} 
+          />
+        </div>
+
+        {/* Groups */}
+        <div className="rounded-xl bg-card shadow-e2 p-4">
+          <GroupsSection
+            selectedGroupIds={selectedGroupIds}
+            onGroupsChange={setSelectedGroupIds}
+          />
+        </div>
+
+        {/* Checklist Template */}
+        {templates.length > 0 && (
           <div className="space-y-2">
-            <Label>Property</Label>
-            <Select value={propertyId} onValueChange={(val) => {
-              setPropertyId(val);
-              setSelectedSpaceIds([]); // Reset spaces when property changes
-            }}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a property" />
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <ListTodo className="h-4 w-4 text-muted-foreground" />
+              Apply Template
+            </Label>
+            <Select value={templateId} onValueChange={setTemplateId}>
+              <SelectTrigger className="shadow-engraved">
+                <SelectValue placeholder="Choose a checklist template" />
               </SelectTrigger>
               <SelectContent>
-                {properties.map(property => (
-                  <SelectItem key={property.id} value={property.id}>
-                    {property.nickname || property.address}
+                <SelectItem value="">None</SelectItem>
+                {templates.map(template => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.icon && <span className="mr-2">{template.icon}</span>}
+                    {template.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+        )}
 
-          {/* Spaces (if property selected) */}
-          {propertyId && spaces.length > 0 && (
-            <div className="space-y-2">
-              <Label>Spaces</Label>
-              <div className="flex flex-wrap gap-2">
-                {spaces.map(space => (
-                  <Badge
-                    key={space.id}
-                    variant={selectedSpaceIds.includes(space.id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSpaceSelection(space.id)}
-                  >
-                    {space.name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Advanced Options Toggle */}
+        <button
+          type="button"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Shield className="h-4 w-4" />
+          Compliance & Advanced
+        </button>
 
-          {/* Priority & Due Date */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select value={priority} onValueChange={(val) => setPriority(val as TaskPriority)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="dueDate">Due Date</Label>
-              <div className="relative">
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="pl-9"
-                />
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Checklist Template */}
-          {templates.length > 0 && (
-            <div className="space-y-2">
-              <Label>Checklist Template</Label>
-              <Select value={templateId} onValueChange={setTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Apply a template (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {templates.map(template => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Subtasks */}
-          <div className="space-y-2">
+        {/* Advanced Options */}
+        {showAdvanced && (
+          <div className="space-y-4 p-4 rounded-xl bg-muted/50 shadow-engraved">
+            {/* Compliance Toggle */}
             <div className="flex items-center justify-between">
-              <Label>Subtasks</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleAddSubtask}
-                className="h-7 px-2 text-xs"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add
-              </Button>
+              <div>
+                <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>
+                <p className="text-xs text-muted-foreground">Mark as regulatory requirement</p>
+              </div>
+              <Switch
+                id="compliance"
+                checked={isCompliance}
+                onCheckedChange={setIsCompliance}
+              />
             </div>
-            
-            {subtasks.length > 0 && (
+
+            {isCompliance && (
               <div className="space-y-2">
-                {subtasks.map((subtask, idx) => (
-                  <div key={subtask.id} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground font-mono w-4">
-                      {idx + 1}.
-                    </span>
-                    <Input
-                      placeholder="Subtask title"
-                      value={subtask.title}
-                      onChange={(e) => handleUpdateSubtask(subtask.id, { title: e.target.value })}
-                      className="flex-1 h-8 text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveSubtask(subtask.id)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
+                <Label className="text-xs">Compliance Level</Label>
+                <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
-          </div>
 
-          {/* Advanced Options Toggle */}
-          <button
-            type="button"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-          >
-            {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            Advanced Options
-          </button>
-
-          {/* Advanced Options */}
-          {showAdvanced && (
-            <div className="space-y-4 pt-2 border-t">
-              {/* Compliance Toggle */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="compliance">Compliance Task</Label>
-                  <p className="text-xs text-muted-foreground">Mark as regulatory/compliance requirement</p>
-                </div>
-                <Switch
-                  id="compliance"
-                  checked={isCompliance}
-                  onCheckedChange={setIsCompliance}
-                />
+            {/* Annotation Required */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="annotation" className="text-sm">Requires Photo Annotation</Label>
+                <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
               </div>
-
-              {isCompliance && (
-                <div className="space-y-2">
-                  <Label>Compliance Level</Label>
-                  <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Annotation Required */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="annotation">Requires Photo Annotation</Label>
-                  <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
-                </div>
-                <Switch
-                  id="annotation"
-                  checked={annotationRequired}
-                  onCheckedChange={setAnnotationRequired}
-                />
-              </div>
+              <Switch
+                id="annotation"
+                checked={annotationRequired}
+                onCheckedChange={setAnnotationRequired}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Button 
-            variant="outline" 
-            className="flex-1"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button 
-            className="flex-1"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Create Task"}
-          </Button>
-        </div>
+      {/* Footer */}
+      <div className="flex gap-3 p-4 border-t border-border bg-card/80 backdrop-blur">
+        <Button 
+          variant="outline" 
+          className="flex-1 shadow-e1"
+          onClick={() => onOpenChange(false)}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button 
+          className="flex-1 shadow-primary-btn"
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Creating..." : "Create Task"}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Mobile: Bottom sheet drawer, Desktop: Center dialog
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="max-h-[95vh]">
+          {content}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+        {content}
       </DialogContent>
     </Dialog>
   );

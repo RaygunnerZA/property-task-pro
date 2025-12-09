@@ -15,13 +15,15 @@ import { SegmentedControl } from '@/components/filla/SegmentedControl';
 import { colors, shadows } from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
 import { useMessages } from '@/hooks/useMessages';
+import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { 
   CheckSquare, 
   Inbox, 
   AlertTriangle, 
   Clock, 
   ChevronRight,
-  Building2 
+  Building2,
+  Plus 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +33,9 @@ const ManagerDashboard = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [activeTab, setActiveTab] = useState<TabId>('tasks');
+  const [showCreateTask, setShowCreateTask] = useState(false);
   
-  const { tasks } = useTasks();
+  const { tasks, refresh: refreshTasks } = useTasks();
   const { messages } = useMessages();
 
   // Convert tasks to calendar events
@@ -330,14 +333,14 @@ const ManagerDashboard = () => {
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => navigate('/add-task')}
+            onClick={() => setShowCreateTask(true)}
             className="p-4 rounded-xl text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
             style={{ 
               backgroundColor: colors.primary,
               boxShadow: shadows.outset 
             }}
           >
-            <CheckSquare className="h-5 w-5 mx-auto mb-1 text-white" />
+            <Plus className="h-5 w-5 mx-auto mb-1 text-white" />
             <span className="text-sm font-semibold text-white">Add Task</span>
           </button>
           <button
@@ -355,6 +358,17 @@ const ManagerDashboard = () => {
       </div>
 
       <BottomNav />
+      
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        defaultDueDate={selectedDate.toISOString().slice(0, 10)}
+        onTaskCreated={() => {
+          refreshTasks();
+          setShowCreateTask(false);
+        }}
+      />
     </div>
   );
 };
