@@ -1,162 +1,114 @@
-import { useState } from "react";
-import { Plus, MoreVertical, GripVertical, FileSignature } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useRef, useEffect } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { SubtaskList, SubtaskData } from "../subtasks";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
 
-export interface SubtaskInput {
-  id: string;
-  title: string;
-  is_yes_no: boolean;
-  requires_signature: boolean;
-}
+// Re-export for backwards compatibility
+export type SubtaskInput = SubtaskData;
 
 interface SubtasksSectionProps {
   subtasks: SubtaskInput[];
   onSubtasksChange: (subtasks: SubtaskInput[]) => void;
+  description?: string;
+  onDescriptionChange?: (description: string) => void;
 }
 
-export function SubtasksSection({ subtasks, onSubtasksChange }: SubtasksSectionProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+export function SubtasksSection({ 
+  subtasks, 
+  onSubtasksChange,
+  description = "",
+  onDescriptionChange,
+}: SubtasksSectionProps) {
+  const [isAddingFirst, setIsAddingFirst] = useState(false);
+  const firstInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAdd = () => {
-    const newSubtask: SubtaskInput = {
-      id: crypto.randomUUID(),
-      title: "",
-      is_yes_no: false,
-      requires_signature: false,
-    };
-    onSubtasksChange([...subtasks, newSubtask]);
-    setExpandedId(newSubtask.id);
+  const handleAddFirstSubtask = () => {
+    if (subtasks.length === 0) {
+      const newSubtask: SubtaskInput = {
+        id: crypto.randomUUID(),
+        title: "",
+        is_yes_no: false,
+        requires_signature: false,
+      };
+      onSubtasksChange([newSubtask]);
+      setIsAddingFirst(true);
+    }
   };
 
-  const handleRemove = (id: string) => {
-    onSubtasksChange(subtasks.filter(s => s.id !== id));
-    if (expandedId === id) setExpandedId(null);
+  const handleReorder = (ids: string[]) => {
+    // This callback can be used to update order_index in the database
+    console.log("Reordered subtasks:", ids);
   };
 
-  const handleUpdate = (id: string, updates: Partial<SubtaskInput>) => {
-    onSubtasksChange(subtasks.map(s => s.id === id ? { ...s, ...updates } : s));
-  };
-
-  const toggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
+  // If no subtasks, show the "add subtask" placeholder row
+  const showPlaceholder = subtasks.length === 0;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-sm font-medium">Subtasks / Checklist</Label>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={handleAdd}
-          className="h-7 px-2 text-xs gap-1"
-        >
-          <Plus className="h-3 w-3" />
-          Add Item
-        </Button>
+    <div className="shadow-engraved rounded-2xl bg-card/60 overflow-hidden">
+      {/* Description Area */}
+      <div className="px-5 pt-5 pb-3">
+        <Textarea
+          placeholder="What needs doing?"
+          value={description}
+          onChange={(e) => onDescriptionChange?.(e.target.value)}
+          className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-2xl font-light text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]"
+          rows={2}
+        />
       </div>
 
-      <div className="shadow-engraved rounded-lg p-3 bg-muted/20">
-        {subtasks.length > 0 ? (
-          <div className="space-y-2">
-            {subtasks.map((subtask, idx) => (
-              <div 
-                key={subtask.id} 
-                className={cn(
-                  "rounded-lg border transition-all",
-                  expandedId === subtask.id 
-                    ? "bg-card shadow-e2 border-primary/30" 
-                    : "bg-background/50 border-transparent"
-                )}
-              >
-                {/* Main Row */}
-                <div className="flex items-center gap-2 p-2">
-                  <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
-                  <span className="font-mono text-xs text-muted-foreground w-5">
-                    {idx + 1}.
-                  </span>
-                  <Input
-                    placeholder="Subtask title..."
-                    value={subtask.title}
-                    onChange={(e) => handleUpdate(subtask.id, { title: e.target.value })}
-                    className="flex-1 h-8 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0"
-                  />
-                  <div className="flex items-center gap-1">
-                    {subtask.is_yes_no && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">Y/N</span>
-                    )}
-                    {subtask.requires_signature && (
-                      <FileSignature className="h-3 w-3 text-accent" />
-                    )}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                      >
-                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => toggleExpand(subtask.id)}>
-                        {expandedId === subtask.id ? "Collapse" : "Edit Options"}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleRemove(subtask.id)}
-                        className="text-destructive"
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+      {/* Divider */}
+      <div className="h-px bg-border/30 mx-4" />
 
-                {/* Expanded Options */}
-                {expandedId === subtask.id && (
-                  <div className="px-4 pb-3 pt-1 border-t border-border/50 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-xs">Yes/No Question</Label>
-                        <p className="text-xs text-muted-foreground">Requires explicit yes or no answer</p>
-                      </div>
-                      <Switch
-                        checked={subtask.is_yes_no}
-                        onCheckedChange={(checked) => handleUpdate(subtask.id, { is_yes_no: checked })}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-xs">Requires Signature</Label>
-                        <p className="text-xs text-muted-foreground">Must be signed on completion</p>
-                      </div>
-                      <Switch
-                        checked={subtask.requires_signature}
-                        onCheckedChange={(checked) => handleUpdate(subtask.id, { requires_signature: checked })}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* Subtasks Area */}
+      <div className="px-4 py-3">
+        {showPlaceholder ? (
+          /* Empty State - Add Subtask Placeholder */
+          <div 
+            className="flex items-center gap-3 py-2 cursor-pointer group"
+            onClick={handleAddFirstSubtask}
+          >
+            <div className="w-6 h-6 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
+            <span className="flex-1 text-muted-foreground/50 text-base">
+              add subtask
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-card border shadow-e2">
+                <DropdownMenuItem onClick={handleAddFirstSubtask}>
+                  Add Subtask
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  Import from Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ) : (
-          <div className="text-center py-4 text-xs text-muted-foreground">
-            No subtasks yet. Add items to create a checklist.
-          </div>
+          /* Subtask List with DnD */
+          <SubtaskList
+            subtasks={subtasks}
+            isCreator={true}
+            onSubtasksChange={onSubtasksChange}
+            onReorder={handleReorder}
+          />
         )}
       </div>
     </div>
