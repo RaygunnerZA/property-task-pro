@@ -69,7 +69,7 @@ export function CreateTaskModal({
   const [description, setDescription] = useState("");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
-  const [priority, setPriority] = useState<TaskPriority>("normal");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState(defaultDueDate || "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
@@ -93,7 +93,7 @@ export function CreateTaskModal({
     setDescription("");
     setPropertyId(defaultPropertyId || "");
     setSelectedSpaceIds([]);
-    setPriority("normal");
+    setPriority("medium");
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
     setAssignedUserId(undefined);

@@ -8,7 +8,7 @@ import type { Tables } from "@/integrations/supabase/types";
 // ===== TASK TYPES =====
 export type TaskRow = Tables<"tasks">;
 export type TaskStatus = "open" | "in_progress" | "completed" | "archived";
-export type TaskPriority = "low" | "normal" | "urgent";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
 export interface TaskMetadata {
   repeat?: RepeatRule;
