@@ -179,32 +179,19 @@ export function CreateTaskModal({
         <ImageUploadSection images={images} onImagesChange={setImages} />
 
         {/* Combined Description + Subtasks Panel */}
-        <SubtasksSection 
-          subtasks={subtasks} 
-          onSubtasksChange={setSubtasks}
-          description={description}
-          onDescriptionChange={setDescription}
-        />
+        <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
         {/* AI Suggestion Chips */}
-        {aiSuggestions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {aiSuggestions.map((chip, idx) => (
-              <Badge 
-                key={idx} 
-                variant="outline" 
-                className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
-              >
+        {aiSuggestions.length > 0 && <div className="flex flex-wrap gap-2">
+            {aiSuggestions.map((chip, idx) => <Badge key={idx} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
                 <Sparkles className="h-3 w-3 mr-1" />
                 {chip}
-              </Badge>
-            ))}
-          </div>
-        )}
+              </Badge>)}
+          </div>}
 
         {/* Metadata Tabs */}
-        <div className="rounded-xl bg-card shadow-e2 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="rounded-xl shadow-e2 overflow-hidden bg-[#298ba1]/30">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-black/0">
             <TabsList className="w-full grid grid-cols-4 h-11 bg-muted/50 p-1 rounded-none">
               <TabsTrigger value="where" className="gap-1 text-xs data-[state=active]:shadow-e1">
                 <MapPin className="h-3 w-3" />
@@ -224,7 +211,7 @@ export function CreateTaskModal({
               </TabsTrigger>
             </TabsList>
 
-            <div className="p-4">
+            <div className="p-4 bg-secondary">
               <TabsContent value="where" className="mt-0">
                 <WhereTab propertyId={propertyId} spaceIds={selectedSpaceIds} onPropertyChange={setPropertyId} onSpacesChange={setSelectedSpaceIds} />
               </TabsContent>
@@ -242,7 +229,7 @@ export function CreateTaskModal({
         </div>
 
         {/* Groups */}
-        <div className="rounded-xl bg-card shadow-e2 p-4">
+        <div className="rounded-xl shadow-e2 p-4 bg-secondary">
           <GroupsSection selectedGroupIds={selectedGroupIds} onGroupsChange={setSelectedGroupIds} />
         </div>
 
