@@ -15,7 +15,7 @@ export async function createTask(
   const dbPayload: Json = {
     title: payload.title,
     description: payload.description || null,
-    priority: payload.priority || "normal",
+    priority: payload.priority || "medium",
     due_at: payload.due_at || null,
     assigned_user_id: payload.assigned_user_id || null,
     assigned_team_ids: payload.assigned_team_ids || [],

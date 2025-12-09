@@ -39,7 +39,23 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
   };
 
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim() || !orgId) return;
+    if (!newGroupName.trim()) {
+      toast({ 
+        title: "Name required", 
+        description: "Please enter a group name.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    if (!orgId) {
+      toast({ 
+        title: "Not authenticated", 
+        description: "Please log in to create groups.",
+        variant: "destructive" 
+      });
+      return;
+    }
     
     setCreating(true);
     try {
