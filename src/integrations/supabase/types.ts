@@ -552,6 +552,13 @@ export type Database = {
             foreignKeyName: "contractor_task_access_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_task_access_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -608,6 +615,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
           {
@@ -1117,6 +1131,13 @@ export type Database = {
             foreignKeyName: "signals_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signals_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -1285,6 +1306,13 @@ export type Database = {
             foreignKeyName: "subtasks_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -1348,6 +1376,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
           {
@@ -1421,7 +1456,21 @@ export type Database = {
             foreignKeyName: "task_groups_task_fk"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_fk"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
           {
@@ -1609,6 +1658,13 @@ export type Database = {
             foreignKeyName: "task_images_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_images_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
@@ -1657,6 +1713,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_messages_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
             referencedColumns: ["id"]
           },
           {
@@ -1836,6 +1899,32 @@ export type Database = {
         }
         Relationships: []
       }
+      task_repeat_rules: {
+        Row: {
+          id: string | null
+          org_id: string | null
+          repeat_rule: Json | null
+        }
+        Insert: {
+          id?: string | null
+          org_id?: string | null
+          repeat_rule?: never
+        }
+        Update: {
+          id?: string | null
+          org_id?: string | null
+          repeat_rule?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_organisation_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_task: { Args: { task_id: string }; Returns: boolean }
@@ -1846,6 +1935,18 @@ export type Database = {
       generate_unique_slug: { Args: { base: string }; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      task_ai_confidence: { Args: { task_id: string }; Returns: number }
+      task_get_ai_metadata: { Args: { task_id: string }; Returns: Json }
+      task_get_repeat_rule: { Args: { task_id: string }; Returns: Json }
+      task_next_due_date: { Args: { task_id: string }; Returns: string }
+      task_set_ai_metadata: {
+        Args: { ai: Json; task_id: string }
+        Returns: undefined
+      }
+      task_set_repeat_rule: {
+        Args: { rule: Json; task_id: string }
+        Returns: undefined
+      }
       update_org_compliance_summary: {
         Args: { org: string }
         Returns: undefined
