@@ -2042,6 +2042,10 @@ export type Database = {
         Args: { task: string; template: string }
         Returns: undefined
       }
+      archive_task: {
+        Args: { p_org: string; p_task_id: string }
+        Returns: undefined
+      }
       can_access_task: { Args: { task_id: string }; Returns: boolean }
       create_compliance_task: {
         Args: {
@@ -2086,6 +2090,10 @@ export type Database = {
       current_contractor_token: { Args: never; Returns: string }
       current_org_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
+      delete_task_full: {
+        Args: { p_org: string; p_task_id: string }
+        Returns: undefined
+      }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
       lock_checklist_template: {
@@ -2093,6 +2101,14 @@ export type Database = {
         Returns: undefined
       }
       process_compliance_schedules: { Args: never; Returns: undefined }
+      purge_completed_tasks: {
+        Args: { p_days: number; p_org: string }
+        Returns: number
+      }
+      restore_task: {
+        Args: { p_org: string; p_task_id: string }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       subtask_sign: {
