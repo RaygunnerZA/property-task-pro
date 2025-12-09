@@ -14,6 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_extraction_history: {
+        Row: {
+          extracted_at: string | null
+          id: string
+          org_id: string
+          payload: Json
+          task_id: string | null
+        }
+        Insert: {
+          extracted_at?: string | null
+          id?: string
+          org_id: string
+          payload: Json
+          task_id?: string | null
+        }
+        Update: {
+          extracted_at?: string | null
+          id?: string
+          org_id?: string
+          payload?: Json
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_extraction_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extraction_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_extraction_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_template_items: {
         Row: {
           archived_at: string | null
@@ -1524,6 +1570,61 @@ export type Database = {
           },
         ]
       }
+      task_activity: {
+        Row: {
+          activity_type: string
+          body: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          metadata: Json | null
+          org_id: string
+          task_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          body?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id: string
+          task_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          body?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          org_id?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_activity_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activity_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_activity_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_attachments: {
         Row: {
           created_at: string | null
@@ -1958,6 +2059,55 @@ export type Database = {
           },
         ]
       }
+      task_recurrence: {
+        Row: {
+          created_at: string | null
+          id: string
+          next_run: string
+          org_id: string
+          rule: Json
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          next_run: string
+          org_id: string
+          rule: Json
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          next_run?: string
+          org_id?: string
+          rule?: Json
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_recurrence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_recurrence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_recurrence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           annotation_required: boolean | null
@@ -2319,6 +2469,10 @@ export type Database = {
         Args: { p_org: string; p_task_id: string }
         Returns: undefined
       }
+      generate_recurring_task_instance: {
+        Args: { p_recur: string }
+        Returns: undefined
+      }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
       get_compliance_summary: { Args: { p_org: string }; Returns: Json }
@@ -2326,6 +2480,7 @@ export type Database = {
         Args: { p_org: string; p_template: string }
         Returns: undefined
       }
+      process_all_recurrences: { Args: never; Returns: undefined }
       process_compliance_schedules: { Args: never; Returns: undefined }
       purge_completed_tasks: {
         Args: { p_days: number; p_org: string }
@@ -2333,6 +2488,10 @@ export type Database = {
       }
       restore_task: {
         Args: { p_org: string; p_task_id: string }
+        Returns: undefined
+      }
+      save_ai_extraction: {
+        Args: { p_data: Json; p_task: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
