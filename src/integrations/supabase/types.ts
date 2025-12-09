@@ -100,6 +100,7 @@ export type Database = {
           description: string | null
           id: string
           is_archived: boolean | null
+          is_yes_no: boolean | null
           name: string
           org_id: string
           updated_at: string | null
@@ -113,6 +114,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_archived?: boolean | null
+          is_yes_no?: boolean | null
           name: string
           org_id: string
           updated_at?: string | null
@@ -126,6 +128,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_archived?: boolean | null
+          is_yes_no?: boolean | null
           name?: string
           org_id?: string
           updated_at?: string | null
@@ -1927,6 +1930,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_template_to_task: {
+        Args: { task: string; template: string }
+        Returns: undefined
+      }
       can_access_task: { Args: { task_id: string }; Returns: boolean }
       current_contractor_token: { Args: never; Returns: string }
       current_org_id: { Args: never; Returns: string }
@@ -1935,6 +1942,11 @@ export type Database = {
       generate_unique_slug: { Args: { base: string }; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      subtask_sign: {
+        Args: { subtask: string; user_id: string }
+        Returns: undefined
+      }
+      subtask_unsign: { Args: { subtask: string }; Returns: undefined }
       task_ai_confidence: { Args: { task_id: string }; Returns: number }
       task_get_ai_metadata: { Args: { task_id: string }; Returns: Json }
       task_get_repeat_rule: { Args: { task_id: string }; Returns: Json }
