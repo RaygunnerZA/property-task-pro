@@ -44,6 +44,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "checklist_template_items_template_fk"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "checklist_template_items_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -595,6 +602,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "group_members_group_fk"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "group_members_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
@@ -638,6 +652,13 @@ export type Database = {
           parent_group_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "groups_parent_fk"
+            columns: ["parent_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "groups_parent_group_id_fkey"
             columns: ["parent_group_id"]
@@ -1043,6 +1064,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "spaces_parent_fk"
+            columns: ["parent_space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "spaces_parent_space_id_fkey"
             columns: ["parent_space_id"]
             isOneToOne: false
@@ -1210,10 +1238,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "task_groups_group_fk"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "task_groups_group_id_fkey"
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_groups_task_fk"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {
