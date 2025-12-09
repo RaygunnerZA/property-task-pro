@@ -32,14 +32,18 @@ export const colors = {
 
 // === NEUMORPHIC SHADOW PRESETS ===
 export const neuShadows = {
-  // Cards
-  floatingCard: '1px 10px 12px -4px rgba(0, 0, 0, 0.19), -5px -4px 8px -3px rgba(255, 255, 255, 0), inset -1px -1px 1px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 2px 0px rgba(255, 255, 255, 1)',
-  flatCard: '2px 6px 5px -3px rgba(0, 0, 0, 0.07), -2px -2px 8px -3px rgba(255, 255, 255, 0.19), inset 0px -2px 2px 0px rgba(0, 0, 0, 0.1), inset 1px 2px 2px 0px rgba(255, 255, 255, 1)',
+  // Cards - Flat card with texture overlay
+  flatCard: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)',
+  
+  // Sections - Flat section style
+  flatSection: '-1px -1px 1px 0px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.53)',
+  
+  // Engraved/pressed
   flatPressed: '3px 4px 3px -3px rgba(255, 255, 255, 1), -2px -2px 5px -3px rgba(0, 0, 0, 0.05), inset -3px -3px 2px 0px rgba(0, 0, 0, 0.01), inset 1px 2px 2px 0px rgba(0, 0, 0, 0.08)',
   
-  // Buttons
-  buttonOut: '3px 5px 7px 2px rgba(0, 0, 0, 0.06), -4px -5px 11px 4px rgba(255, 255, 255, 0.52), inset 2px 2px 0px 0px rgba(255, 255, 255, 0), inset -2px -3px 4px 0px rgba(0, 0, 0, 0.06)',
-  buttonPressed: '0px 0px 7px 2px rgba(0, 0, 0, 0.01), inset -3px -9px 17px 0px rgba(255, 255, 255, 0.49), inset 1px 13px 19px 0px rgba(0, 0, 0, 0.09)',
+  // Primary Buttons
+  buttonOut: '3px 5px 5px 2px rgba(0, 0, 0, 0.13), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 1px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.27)',
+  buttonPressed: '0px 0px 7px 2px rgba(0, 0, 0, 0), inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)',
 } as const;
 
 // === TYPOGRAPHY ===
@@ -73,32 +77,34 @@ export const spacing = {
 
 // === BORDER RADIUS ===
 export const radii = {
-  sharp: '8px',      // Core radius for cards
-  md: '12px',        // Modals
-  lg: '14px',        // Buttons
+  sharp: '5px',      // Core radius for buttons, chips, panels, calendar
+  card: '8px',       // Card radius
+  md: '8px',         // Modals, cards
+  lg: '5px',         // Buttons
   pill: '9999px',    // Fully rounded
 } as const;
 
 // === SHADOWS ===
 // Neomorphic/Paper depth system
 export const shadows = {
-  // E1 - Subtle elevation (chips, raised elements) - Now uses flatCard
+  // E1 - Flat card with texture
   e1: neuShadows.flatCard,
   
-  // E2 - Standard card elevation - Now uses floatingCard
-  e2: neuShadows.floatingCard,
+  // E2 - Flat section style
+  e2: neuShadows.flatSection,
   
   // E3 - Floating modals/popovers
   e3: '0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
   
-  // Engraved - Inset/debossed inputs (now uses flatPressed)
+  // Engraved - Inset/debossed inputs
   engraved: neuShadows.flatPressed,
   
-  // Paper Edge - White inner highlight (for tactile effect)
+  // Paper Edge - White inner highlight
   paperEdge: 'inset 0 1px 0 rgba(255,255,255,0.8)',
   
   // Button Shadows
   primaryBtn: neuShadows.buttonOut,
+  btnPressed: neuShadows.buttonPressed,
   fab: '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
 } as const;
 
