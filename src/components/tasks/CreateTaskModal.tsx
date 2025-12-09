@@ -186,7 +186,7 @@ export function CreateTaskModal({
         {/* Description */}
         <div className="space-y-2">
           <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-          <Textarea id="description" placeholder="Add details about this task..." value={description} onChange={e => setDescription(e.target.value)} rows={2} className="shadow-engraved resize-none" />
+          <Sparkles className="h-4 w-4" /><Textarea id="description" placeholder="Add details about this task..." value={description} onChange={e => setDescription(e.target.value)} rows={2} className="shadow-engraved resize-none" />
         </div>
 
         {/* AI Suggestion Chips */}
