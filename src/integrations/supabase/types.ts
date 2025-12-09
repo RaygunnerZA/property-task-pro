@@ -25,6 +25,7 @@ export type Database = {
           is_yes_no: boolean | null
           order_index: number | null
           org_id: string
+          requires_signature: boolean | null
           template_id: string
           title: string
           updated_at: string | null
@@ -40,6 +41,7 @@ export type Database = {
           is_yes_no?: boolean | null
           order_index?: number | null
           org_id: string
+          requires_signature?: boolean | null
           template_id: string
           title: string
           updated_at?: string | null
@@ -55,6 +57,7 @@ export type Database = {
           is_yes_no?: boolean | null
           order_index?: number | null
           org_id?: string
+          requires_signature?: boolean | null
           template_id?: string
           title?: string
           updated_at?: string | null
@@ -98,8 +101,10 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           description: string | null
+          icon: string | null
           id: string
           is_archived: boolean | null
+          is_locked: boolean | null
           is_yes_no: boolean | null
           name: string
           org_id: string
@@ -112,8 +117,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
           is_archived?: boolean | null
+          is_locked?: boolean | null
           is_yes_no?: boolean | null
           name: string
           org_id: string
@@ -126,8 +133,10 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           description?: string | null
+          icon?: string | null
           id?: string
           is_archived?: boolean | null
+          is_locked?: boolean | null
           is_yes_no?: boolean | null
           name?: string
           org_id?: string
@@ -2025,6 +2034,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_checklist_template: {
+        Args: { p_org: string; p_task: string; p_template: string }
+        Returns: undefined
+      }
       apply_template_to_task: {
         Args: { task: string; template: string }
         Returns: undefined
@@ -2041,11 +2054,19 @@ export type Database = {
         }
         Returns: string
       }
+      create_template_from_task: {
+        Args: { p_name: string; p_org: string; p_task: string }
+        Returns: string
+      }
       current_contractor_token: { Args: never; Returns: string }
       current_org_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
+      lock_checklist_template: {
+        Args: { p_org: string; p_template: string }
+        Returns: undefined
+      }
       process_compliance_schedules: { Args: never; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
@@ -2064,6 +2085,10 @@ export type Database = {
       }
       task_set_repeat_rule: {
         Args: { rule: Json; task_id: string }
+        Returns: undefined
+      }
+      unlock_checklist_template: {
+        Args: { p_org: string; p_template: string }
         Returns: undefined
       }
       update_org_compliance_summary: {
