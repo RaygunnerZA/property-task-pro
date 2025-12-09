@@ -591,27 +591,33 @@ export type Database = {
           created_at: string | null
           group_id: string
           id: string
+          is_deleted: boolean | null
           org_id: string
           property_id: string | null
           space_id: string | null
+          updated_at: string | null
           user_id: string | null
         }
         Insert: {
           created_at?: string | null
           group_id: string
           id?: string
+          is_deleted?: boolean | null
           org_id: string
           property_id?: string | null
           space_id?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           created_at?: string | null
           group_id?: string
           id?: string
+          is_deleted?: boolean | null
           org_id?: string
           property_id?: string | null
           space_id?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -634,36 +640,48 @@ export type Database = {
       groups: {
         Row: {
           category: string | null
+          color: string | null
           created_at: string | null
           created_by: string | null
+          display_order: number | null
           icon: string | null
           id: string
           image_url: string | null
+          is_archived: boolean | null
           name: string
           org_id: string
           parent_group_id: string | null
+          updated_by: string | null
         }
         Insert: {
           category?: string | null
+          color?: string | null
           created_at?: string | null
           created_by?: string | null
+          display_order?: number | null
           icon?: string | null
           id?: string
           image_url?: string | null
+          is_archived?: boolean | null
           name: string
           org_id: string
           parent_group_id?: string | null
+          updated_by?: string | null
         }
         Update: {
           category?: string | null
+          color?: string | null
           created_at?: string | null
           created_by?: string | null
+          display_order?: number | null
           icon?: string | null
           id?: string
           image_url?: string | null
+          is_archived?: boolean | null
           name?: string
           org_id?: string
           parent_group_id?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -1240,6 +1258,7 @@ export type Database = {
           created_at: string | null
           group_id: string
           id: string
+          is_deleted: boolean | null
           org_id: string
           task_id: string
         }
@@ -1247,6 +1266,7 @@ export type Database = {
           created_at?: string | null
           group_id: string
           id?: string
+          is_deleted?: boolean | null
           org_id: string
           task_id: string
         }
@@ -1254,6 +1274,7 @@ export type Database = {
           created_at?: string | null
           group_id?: string
           id?: string
+          is_deleted?: boolean | null
           org_id?: string
           task_id?: string
         }
