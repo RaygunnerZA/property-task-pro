@@ -140,22 +140,31 @@ export type Database = {
         Row: {
           assigned_at: string | null
           id: string
+          last_triggered_at: string | null
           org_id: string
           property_id: string
+          recurrence_type: string | null
+          recurrence_value: number | null
           rule_version_id: string | null
         }
         Insert: {
           assigned_at?: string | null
           id?: string
+          last_triggered_at?: string | null
           org_id: string
           property_id: string
+          recurrence_type?: string | null
+          recurrence_value?: number | null
           rule_version_id?: string | null
         }
         Update: {
           assigned_at?: string | null
           id?: string
+          last_triggered_at?: string | null
           org_id?: string
           property_id?: string
+          recurrence_type?: string | null
+          recurrence_value?: number | null
           rule_version_id?: string | null
         }
         Relationships: [
@@ -221,6 +230,68 @@ export type Database = {
             columns: ["version_id"]
             isOneToOne: false
             referencedRelation: "compliance_rule_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_events: {
+        Row: {
+          details: Json | null
+          event_type: string
+          id: string
+          occurred_at: string | null
+          org_id: string
+          property_id: string | null
+          rule_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          details?: Json | null
+          event_type: string
+          id?: string
+          occurred_at?: string | null
+          org_id: string
+          property_id?: string | null
+          rule_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          details?: Json | null
+          event_type?: string
+          id?: string
+          occurred_at?: string | null
+          org_id?: string
+          property_id?: string | null
+          rule_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_events_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_events_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -1959,11 +2030,23 @@ export type Database = {
         Returns: undefined
       }
       can_access_task: { Args: { task_id: string }; Returns: boolean }
+      create_compliance_task: {
+        Args: {
+          p_due: string
+          p_level: string
+          p_org: string
+          p_property: string
+          p_rule: string
+          p_title: string
+        }
+        Returns: string
+      }
       current_contractor_token: { Args: never; Returns: string }
       current_org_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       generate_unique_org_slug: { Args: { base: string }; Returns: string }
       generate_unique_slug: { Args: { base: string }; Returns: string }
+      process_compliance_schedules: { Args: never; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       subtask_sign: {
