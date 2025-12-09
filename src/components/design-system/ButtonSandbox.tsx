@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, RotateCcw, Plus, ChevronRight, Save, X } from 'lucide-react';
+import { Copy, Check, RotateCcw, Plus, Save, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ButtonType = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -17,6 +17,27 @@ interface ChipStyle {
   backgroundColor: string;
   textColor: string;
   borderRadius: number;
+}
+
+interface FilterChipStyle {
+  activeBackgroundColor: string;
+  activeTextColor: string;
+  inactiveBackgroundColor: string;
+  inactiveTextColor: string;
+  borderRadius: number;
+  shadow: string;
+}
+
+interface SegmentedControlStyle {
+  trackBackgroundColor: string;
+  trackBorderRadius: number;
+  trackShadow: string;
+  buttonBackgroundColor: string;
+  buttonTextColor: string;
+  buttonBorderRadius: number;
+  buttonShadow: string;
+  activeButtonBackgroundColor: string;
+  activeButtonTextColor: string;
 }
 
 const defaultButtonStyles: Record<ButtonType, ButtonStyle> = {
@@ -66,6 +87,27 @@ const defaultChipStyles: Record<ChipType, ChipStyle> = {
     textColor: '#C2410C',
     borderRadius: 4,
   },
+};
+
+const defaultFilterChipStyle: FilterChipStyle = {
+  activeBackgroundColor: '#8EC9CE',
+  activeTextColor: '#FFFFFF',
+  inactiveBackgroundColor: '#F1EEE8',
+  inactiveTextColor: '#6F6F6F',
+  borderRadius: 50,
+  shadow: '2px 3px 5px -2px rgba(0, 0, 0, 0.08), -2px -2px 5px -2px rgba(255, 255, 255, 0.6), inset 0px -1px 1px 0px rgba(0, 0, 0, 0.05)',
+};
+
+const defaultSegmentedControlStyle: SegmentedControlStyle = {
+  trackBackgroundColor: '#E8E5DF',
+  trackBorderRadius: 10,
+  trackShadow: 'inset 2px 2px 4px rgba(0, 0, 0, 0.1), inset -2px -2px 4px rgba(255, 255, 255, 0.7)',
+  buttonBackgroundColor: 'transparent',
+  buttonTextColor: '#6F6F6F',
+  buttonBorderRadius: 8,
+  buttonShadow: 'none',
+  activeButtonBackgroundColor: '#FFFFFF',
+  activeButtonTextColor: '#1A1A1A',
 };
 
 interface ShadowLayer {
@@ -136,7 +178,7 @@ function Slider({ label, value, min, max, onChange }: {
 }
 
 export function ButtonSandbox() {
-  const [activeTab, setActiveTab] = useState<'buttons' | 'chips'>('buttons');
+  const [activeTab, setActiveTab] = useState<'buttons' | 'chips' | 'segments' | 'filters'>('buttons');
   const [selectedType, setSelectedType] = useState<ButtonType>('primary');
   const [styles, setStyles] = useState<Record<ButtonType, ButtonStyle>>(defaultButtonStyles);
   const [chipStyles, setChipStyles] = useState<Record<ChipType, ChipStyle>>(defaultChipStyles);
@@ -151,6 +193,14 @@ export function ButtonSandbox() {
   const [copied, setCopied] = useState(false);
   const [committed, setCommitted] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
+  
+  // Segmented Control state
+  const [segmentStyle, setSegmentStyle] = useState<SegmentedControlStyle>(defaultSegmentedControlStyle);
+  const [activeSegment, setActiveSegment] = useState('tasks');
+  
+  // Filter Chips state
+  const [filterChipStyle, setFilterChipStyle] = useState<FilterChipStyle>(defaultFilterChipStyle);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set(['all']));
 
   const currentStyle = styles[selectedType];
   const currentChipStyle = chipStyles[selectedChipType];
@@ -168,7 +218,6 @@ export function ButtonSandbox() {
     newLayers[index] = layer;
     setCurrentLayers(newLayers);
     
-    // Update the styles
     const shadowCSS = layersToCSS(newLayers);
     setStyles(prev => ({
       ...prev,
@@ -207,13 +256,29 @@ export function ButtonSandbox() {
     }));
   };
 
+  const toggleFilter = (filter: string) => {
+    setActiveFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filter)) {
+        newSet.delete(filter);
+      } else {
+        newSet.add(filter);
+      }
+      return newSet;
+    });
+  };
+
   const reset = () => {
     if (activeTab === 'buttons') {
       setStyles(defaultButtonStyles);
       setShadowLayers(parseShadow(defaultButtonStyles[selectedType].shadow));
       setPressedLayers(parseShadow(defaultButtonStyles[selectedType].shadowPressed));
-    } else {
+    } else if (activeTab === 'chips') {
       setChipStyles(defaultChipStyles);
+    } else if (activeTab === 'segments') {
+      setSegmentStyle(defaultSegmentedControlStyle);
+    } else if (activeTab === 'filters') {
+      setFilterChipStyle(defaultFilterChipStyle);
     }
   };
 
@@ -221,9 +286,15 @@ export function ButtonSandbox() {
     if (activeTab === 'buttons') {
       localStorage.setItem('filla-committed-button-styles', JSON.stringify(styles));
       window.dispatchEvent(new CustomEvent('filla-button-styles-updated', { detail: styles }));
-    } else {
+    } else if (activeTab === 'chips') {
       localStorage.setItem('filla-committed-chip-styles', JSON.stringify(chipStyles));
       window.dispatchEvent(new CustomEvent('filla-chip-styles-updated', { detail: chipStyles }));
+    } else if (activeTab === 'segments') {
+      localStorage.setItem('filla-committed-segment-styles', JSON.stringify(segmentStyle));
+      window.dispatchEvent(new CustomEvent('filla-segment-styles-updated', { detail: segmentStyle }));
+    } else if (activeTab === 'filters') {
+      localStorage.setItem('filla-committed-filter-chip-styles', JSON.stringify(filterChipStyle));
+      window.dispatchEvent(new CustomEvent('filla-filter-chip-styles-updated', { detail: filterChipStyle }));
     }
     setCommitted(true);
     setTimeout(() => setCommitted(false), 2000);
@@ -249,8 +320,46 @@ color: ${s.textColor};
 border-radius: ${s.borderRadius}px;`;
   }, [chipStyles, selectedChipType]);
 
+  const fullSegmentCSS = useMemo(() => {
+    return `/* Segmented Control Track */
+background-color: ${segmentStyle.trackBackgroundColor};
+border-radius: ${segmentStyle.trackBorderRadius}px;
+box-shadow: ${segmentStyle.trackShadow};
+
+/* Inactive Button */
+background-color: ${segmentStyle.buttonBackgroundColor};
+color: ${segmentStyle.buttonTextColor};
+border-radius: ${segmentStyle.buttonBorderRadius}px;
+
+/* Active Button */
+background-color: ${segmentStyle.activeButtonBackgroundColor};
+color: ${segmentStyle.activeButtonTextColor};
+box-shadow: ${segmentStyle.buttonShadow !== 'none' ? segmentStyle.buttonShadow : '2px 2px 6px rgba(0,0,0,0.1)'};`;
+  }, [segmentStyle]);
+
+  const fullFilterChipCSS = useMemo(() => {
+    return `/* Active Filter Chip */
+background-color: ${filterChipStyle.activeBackgroundColor};
+color: ${filterChipStyle.activeTextColor};
+border-radius: ${filterChipStyle.borderRadius}px;
+box-shadow: ${filterChipStyle.shadow};
+
+/* Inactive Filter Chip */
+background-color: ${filterChipStyle.inactiveBackgroundColor};
+color: ${filterChipStyle.inactiveTextColor};`;
+  }, [filterChipStyle]);
+
+  const getActiveCSS = () => {
+    switch (activeTab) {
+      case 'buttons': return fullButtonCSS;
+      case 'chips': return fullChipCSS;
+      case 'segments': return fullSegmentCSS;
+      case 'filters': return fullFilterChipCSS;
+    }
+  };
+
   const copyCSS = () => {
-    navigator.clipboard.writeText(activeTab === 'buttons' ? fullButtonCSS : fullChipCSS);
+    navigator.clipboard.writeText(getActiveCSS());
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -258,37 +367,31 @@ border-radius: ${s.borderRadius}px;`;
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Button & Chip Sandbox</h2>
-        <p className="text-muted-foreground text-sm">Edit neumorphic button and chip styles with live preview</p>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Button & Component Sandbox</h2>
+        <p className="text-muted-foreground text-sm">Edit neumorphic button, chip, segment, and filter styles with live preview</p>
       </div>
 
       {/* Tab Switch */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('buttons')}
-          className={cn(
-            'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-            activeTab === 'buttons' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
-          )}
-        >
-          Buttons
-        </button>
-        <button
-          onClick={() => setActiveTab('chips')}
-          className={cn(
-            'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-            activeTab === 'chips' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
-          )}
-        >
-          Chips
-        </button>
+      <div className="flex flex-wrap gap-2">
+        {(['buttons', 'chips', 'segments', 'filters'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
+              activeTab === tab ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+            )}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         {/* Preview */}
         <div className="space-y-4">
           <div className="bg-transparent rounded-xl p-4 sm:p-8 border border-dashed border-concrete/50">
-            {activeTab === 'buttons' ? (
+            {activeTab === 'buttons' && (
               <>
                 {/* Button Type Selector */}
                 <div className="flex flex-wrap gap-2 mb-6">
@@ -353,7 +456,9 @@ border-radius: ${s.borderRadius}px;`;
                   </button>
                 </div>
               </>
-            ) : (
+            )}
+            
+            {activeTab === 'chips' && (
               <>
                 {/* Chip Type Selector */}
                 <div className="flex flex-wrap gap-2 mb-6">
@@ -410,6 +515,137 @@ border-radius: ${s.borderRadius}px;`;
                 </div>
               </>
             )}
+
+            {activeTab === 'segments' && (
+              <>
+                <p className="text-center text-muted-foreground text-xs mb-6 font-mono uppercase tracking-wider">
+                  Segmented Control Preview
+                </p>
+                
+                {/* Live Segmented Control Preview */}
+                <div className="flex justify-center">
+                  <div
+                    className="p-1.5 flex items-center relative"
+                    style={{
+                      backgroundColor: segmentStyle.trackBackgroundColor,
+                      borderRadius: segmentStyle.trackBorderRadius,
+                      boxShadow: segmentStyle.trackShadow,
+                    }}
+                  >
+                    {['tasks', 'inbox', 'schedule'].map(seg => {
+                      const isActive = activeSegment === seg;
+                      return (
+                        <button
+                          key={seg}
+                          onClick={() => setActiveSegment(seg)}
+                          className={cn(
+                            'relative z-10 px-4 py-2 text-xs font-bold transition-all duration-200',
+                            'text-center capitalize'
+                          )}
+                          style={{
+                            backgroundColor: isActive ? segmentStyle.activeButtonBackgroundColor : segmentStyle.buttonBackgroundColor,
+                            color: isActive ? segmentStyle.activeButtonTextColor : segmentStyle.buttonTextColor,
+                            borderRadius: segmentStyle.buttonBorderRadius,
+                            boxShadow: isActive ? '2px 2px 6px rgba(0,0,0,0.1), -1px -1px 4px rgba(255,255,255,0.8)' : segmentStyle.buttonShadow,
+                            transform: isActive ? 'scale(1.02)' : 'scale(1)',
+                          }}
+                        >
+                          {seg}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Larger variant preview */}
+                <div className="flex justify-center mt-6">
+                  <div
+                    className="p-2 flex items-center relative w-full max-w-md"
+                    style={{
+                      backgroundColor: segmentStyle.trackBackgroundColor,
+                      borderRadius: segmentStyle.trackBorderRadius,
+                      boxShadow: segmentStyle.trackShadow,
+                    }}
+                  >
+                    {['All', 'Active', 'Completed', 'Overdue'].map(seg => {
+                      const isActive = seg === 'All';
+                      return (
+                        <button
+                          key={seg}
+                          className={cn(
+                            'relative z-10 flex-1 px-3 py-2.5 text-[11px] font-bold transition-all duration-200',
+                            'text-center uppercase tracking-wider'
+                          )}
+                          style={{
+                            backgroundColor: isActive ? segmentStyle.activeButtonBackgroundColor : segmentStyle.buttonBackgroundColor,
+                            color: isActive ? segmentStyle.activeButtonTextColor : segmentStyle.buttonTextColor,
+                            borderRadius: segmentStyle.buttonBorderRadius,
+                            boxShadow: isActive ? '2px 2px 6px rgba(0,0,0,0.1), -1px -1px 4px rgba(255,255,255,0.8)' : segmentStyle.buttonShadow,
+                          }}
+                        >
+                          {seg}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === 'filters' && (
+              <>
+                <p className="text-center text-muted-foreground text-xs mb-6 font-mono uppercase tracking-wider">
+                  Filter Chips Preview (Click to Toggle)
+                </p>
+                
+                {/* Live Filter Chips Preview */}
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {['all', 'urgent', 'today', 'compliance', 'assigned'].map(filter => {
+                    const isActive = activeFilters.has(filter);
+                    return (
+                      <button
+                        key={filter}
+                        onClick={() => toggleFilter(filter)}
+                        className={cn(
+                          'px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-medium transition-all duration-150',
+                          'hover:opacity-90 active:scale-[0.97]'
+                        )}
+                        style={{
+                          backgroundColor: isActive ? filterChipStyle.activeBackgroundColor : filterChipStyle.inactiveBackgroundColor,
+                          color: isActive ? filterChipStyle.activeTextColor : filterChipStyle.inactiveTextColor,
+                          borderRadius: filterChipStyle.borderRadius,
+                          boxShadow: isActive ? filterChipStyle.shadow : 'none',
+                        }}
+                      >
+                        {isActive && <Check className="w-3 h-3 inline-block mr-1.5" />}
+                        {filter}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Compact variant */}
+                <div className="flex flex-wrap gap-1.5 justify-center mt-6">
+                  {['property', 'space', 'team', 'vendor'].map(filter => {
+                    const isActive = filter === 'property';
+                    return (
+                      <span
+                        key={filter}
+                        className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-medium cursor-pointer"
+                        style={{
+                          backgroundColor: isActive ? filterChipStyle.activeBackgroundColor : filterChipStyle.inactiveBackgroundColor,
+                          color: isActive ? filterChipStyle.activeTextColor : filterChipStyle.inactiveTextColor,
+                          borderRadius: filterChipStyle.borderRadius,
+                          boxShadow: isActive ? filterChipStyle.shadow : 'none',
+                        }}
+                      >
+                        {filter}
+                      </span>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {/* CSS Output */}
@@ -426,7 +662,7 @@ border-radius: ${s.borderRadius}px;`;
               </div>
             </div>
             <pre className="text-xs text-primary font-mono overflow-x-auto whitespace-pre-wrap">
-              {activeTab === 'buttons' ? fullButtonCSS : fullChipCSS}
+              {getActiveCSS()}
             </pre>
           </div>
 
@@ -440,14 +676,14 @@ border-radius: ${s.borderRadius}px;`;
                 <Check className="w-4 h-4" /> Styles Committed
               </span>
             ) : (
-              `Commit & Apply All ${activeTab === 'buttons' ? 'Button' : 'Chip'} Styles`
+              `Commit & Apply ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Styles`
             )}
           </button>
         </div>
 
         {/* Controls */}
         <div className="space-y-4">
-          {activeTab === 'buttons' ? (
+          {activeTab === 'buttons' && (
             <>
               {/* State Toggle */}
               <div className="flex gap-2">
@@ -539,7 +775,9 @@ border-radius: ${s.borderRadius}px;`;
                 ))}
               </div>
             </>
-          ) : (
+          )}
+          
+          {activeTab === 'chips' && (
             <>
               {/* Chip Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
@@ -567,6 +805,142 @@ border-radius: ${s.borderRadius}px;`;
                       type="color"
                       value={currentChipStyle.textColor}
                       onChange={(e) => updateChipColor('textColor', e.target.value)}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'segments' && (
+            <>
+              {/* Track Controls */}
+              <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Track Style</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Slider 
+                    label="Track Radius" 
+                    value={segmentStyle.trackBorderRadius} 
+                    min={0} 
+                    max={24} 
+                    onChange={(v) => setSegmentStyle(prev => ({ ...prev, trackBorderRadius: v }))} 
+                  />
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Track Background</span>
+                    <input
+                      type="color"
+                      value={segmentStyle.trackBackgroundColor}
+                      onChange={(e) => setSegmentStyle(prev => ({ ...prev, trackBackgroundColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Button Controls */}
+              <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Button Style</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Slider 
+                    label="Button Radius" 
+                    value={segmentStyle.buttonBorderRadius} 
+                    min={0} 
+                    max={20} 
+                    onChange={(v) => setSegmentStyle(prev => ({ ...prev, buttonBorderRadius: v }))} 
+                  />
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Text</span>
+                    <input
+                      type="color"
+                      value={segmentStyle.buttonTextColor}
+                      onChange={(e) => setSegmentStyle(prev => ({ ...prev, buttonTextColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Button Controls */}
+              <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Button Style</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Background</span>
+                    <input
+                      type="color"
+                      value={segmentStyle.activeButtonBackgroundColor}
+                      onChange={(e) => setSegmentStyle(prev => ({ ...prev, activeButtonBackgroundColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Text</span>
+                    <input
+                      type="color"
+                      value={segmentStyle.activeButtonTextColor}
+                      onChange={(e) => setSegmentStyle(prev => ({ ...prev, activeButtonTextColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'filters' && (
+            <>
+              {/* Active State Controls */}
+              <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Chip Style</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Slider 
+                    label="Border Radius" 
+                    value={filterChipStyle.borderRadius} 
+                    min={0} 
+                    max={50} 
+                    onChange={(v) => setFilterChipStyle(prev => ({ ...prev, borderRadius: v }))} 
+                  />
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Background</span>
+                    <input
+                      type="color"
+                      value={filterChipStyle.activeBackgroundColor}
+                      onChange={(e) => setFilterChipStyle(prev => ({ ...prev, activeBackgroundColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Text</span>
+                    <input
+                      type="color"
+                      value={filterChipStyle.activeTextColor}
+                      onChange={(e) => setFilterChipStyle(prev => ({ ...prev, activeTextColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Inactive State Controls */}
+              <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Chip Style</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Background</span>
+                    <input
+                      type="color"
+                      value={filterChipStyle.inactiveBackgroundColor}
+                      onChange={(e) => setFilterChipStyle(prev => ({ ...prev, inactiveBackgroundColor: e.target.value }))}
+                      className="w-full h-8 rounded cursor-pointer"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Text</span>
+                    <input
+                      type="color"
+                      value={filterChipStyle.inactiveTextColor}
+                      onChange={(e) => setFilterChipStyle(prev => ({ ...prev, inactiveTextColor: e.target.value }))}
                       className="w-full h-8 rounded cursor-pointer"
                     />
                   </div>
