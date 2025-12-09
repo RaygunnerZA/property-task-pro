@@ -7,42 +7,60 @@ const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 interface CalendarConfig {
   titleFontSize: number;
   titleFontFamily: 'sans' | 'mono';
+  titleFontWeight: number;
   titleColor: string;
   weekdayFontSize: number;
   weekdayFontFamily: 'sans' | 'mono';
+  weekdayFontWeight: number;
   weekdayColor: string;
   dateFontSize: number;
   dateFontFamily: 'sans' | 'mono';
+  dateFontWeight: number;
   dateColor: string;
   cellSize: number;
   cellPadding: number;
   cellGap: number;
-  heatLow: string;
-  heatMedium: string;
-  heatHigh: string;
+  heatLowColor: string;
+  heatLowOpacity: number;
+  heatMediumColor: string;
+  heatMediumOpacity: number;
+  heatHighColor: string;
+  heatHighOpacity: number;
   borderRadius: number;
   cardBackground: string;
+  cardBackgroundOpacity: number;
+  backgroundNoiseIntensity: number;
+  heatNoiseIntensity: number;
   isDarkMode: boolean;
 }
 
 const defaultConfig: CalendarConfig = {
   titleFontSize: 18,
   titleFontFamily: 'sans',
+  titleFontWeight: 600,
   titleColor: '#2C2C2C',
   weekdayFontSize: 10,
   weekdayFontFamily: 'mono',
+  weekdayFontWeight: 500,
   weekdayColor: '#666666',
   dateFontSize: 12,
   dateFontFamily: 'mono',
+  dateFontWeight: 500,
   dateColor: '#2C2C2C',
   cellSize: 36,
   cellPadding: 4,
   cellGap: 4,
-  heatLow: '#8EC9CE33',
-  heatMedium: '#8EC9CE66',
-  heatHigh: '#EB683450',
+  heatLowColor: '#8EC9CE',
+  heatLowOpacity: 20,
+  heatMediumColor: '#8EC9CE',
+  heatMediumOpacity: 40,
+  heatHighColor: '#EB6834',
+  heatHighOpacity: 30,
   borderRadius: 50,
   cardBackground: '#F1EEE8',
+  cardBackgroundOpacity: 100,
+  backgroundNoiseIntensity: 0,
+  heatNoiseIntensity: 0,
   isDarkMode: false,
 };
 
@@ -121,11 +139,18 @@ export function CalendarSandbox() {
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
   while (days.length % 7 !== 0) days.push(null);
 
+  const hexToRgba = (hex: string, opacity: number) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+  };
+
   const getHeatColor = (heat?: 'low' | 'medium' | 'high') => {
     switch (heat) {
-      case 'low': return config.heatLow;
-      case 'medium': return config.heatMedium;
-      case 'high': return config.heatHigh;
+      case 'low': return hexToRgba(config.heatLowColor, config.heatLowOpacity);
+      case 'medium': return hexToRgba(config.heatMediumColor, config.heatMediumOpacity);
+      case 'high': return hexToRgba(config.heatHighColor, config.heatHighOpacity);
       default: return 'transparent';
     }
   };
@@ -153,39 +178,52 @@ export function CalendarSandbox() {
 
   const cssOutput = useMemo(() => `/* Calendar Styles */
 .calendar-card {
-  background-color: ${config.cardBackground};
+  background-color: ${hexToRgba(config.cardBackground, config.cardBackgroundOpacity)};
+  ${config.backgroundNoiseIntensity > 0 ? `background-image: url('/textures/white-texture.jpg');
+  background-blend-mode: overlay;
+  background-size: ${100 - config.backgroundNoiseIntensity}%;` : ''}
 }
 
 .calendar-title {
   font-size: ${config.titleFontSize}px;
   font-family: ${config.titleFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif"};
+  font-weight: ${config.titleFontWeight};
   color: ${config.titleColor};
 }
 
 .calendar-weekday {
   font-size: ${config.weekdayFontSize}px;
   font-family: ${config.weekdayFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif"};
+  font-weight: ${config.weekdayFontWeight};
   color: ${config.weekdayColor};
 }
 
 .calendar-date {
   font-size: ${config.dateFontSize}px;
   font-family: ${config.dateFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif"};
+  font-weight: ${config.dateFontWeight};
   color: ${config.dateColor};
   width: ${config.cellSize}px;
   height: ${config.cellSize}px;
   border-radius: ${config.borderRadius}%;
 }
 
-.heat-low { background-color: ${config.heatLow}; }
-.heat-medium { background-color: ${config.heatMedium}; }
-.heat-high { background-color: ${config.heatHigh}; }`, [config]);
+.heat-low { background-color: ${hexToRgba(config.heatLowColor, config.heatLowOpacity)}; }
+.heat-medium { background-color: ${hexToRgba(config.heatMediumColor, config.heatMediumOpacity)}; }
+.heat-high { background-color: ${hexToRgba(config.heatHighColor, config.heatHighOpacity)}; }`, [config]);
 
   const copyCSS = () => {
     navigator.clipboard.writeText(cssOutput);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
+
+  const heatCellStyle = (heat?: 'low' | 'medium' | 'high') => ({
+    backgroundColor: heat ? getHeatColor(heat) : 'transparent',
+    backgroundImage: heat && config.heatNoiseIntensity > 0 ? `url('/textures/white-texture.jpg')` : 'none',
+    backgroundBlendMode: 'overlay' as const,
+    backgroundSize: `${100 - config.heatNoiseIntensity}%`,
+  });
 
   return (
     <section className="space-y-6">
@@ -214,15 +252,20 @@ export function CalendarSandbox() {
 
           <div 
             className="rounded-xl shadow-e2 p-4 inline-block w-full max-w-xs sm:max-w-sm"
-            style={{ backgroundColor: config.cardBackground }}
+            style={{ 
+              backgroundColor: hexToRgba(config.cardBackground, config.cardBackgroundOpacity),
+              backgroundImage: config.backgroundNoiseIntensity > 0 ? `url('/textures/white-texture.jpg')` : 'none',
+              backgroundBlendMode: 'overlay',
+              backgroundSize: `${100 - config.backgroundNoiseIntensity}%`,
+            }}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 
-                className="font-semibold" 
                 style={{
                   fontSize: config.titleFontSize,
                   fontFamily: config.titleFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif",
+                  fontWeight: config.titleFontWeight,
                   color: config.titleColor,
                 }}
               >
@@ -247,6 +290,7 @@ export function CalendarSandbox() {
                   style={{
                     fontSize: config.weekdayFontSize,
                     fontFamily: config.weekdayFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif",
+                    fontWeight: config.weekdayFontWeight,
                     color: config.weekdayColor,
                     width: config.cellSize,
                     padding: `${config.cellPadding}px 0`
@@ -274,8 +318,8 @@ export function CalendarSandbox() {
                       width: config.cellSize,
                       height: config.cellSize,
                       borderRadius: `${config.borderRadius}%`,
-                      backgroundColor: day ? getHeatColor(heat) : 'transparent',
-                      padding: config.cellPadding
+                      padding: config.cellPadding,
+                      ...heatCellStyle(heat),
                     }}
                   >
                     {day && (
@@ -284,6 +328,7 @@ export function CalendarSandbox() {
                         style={{
                           fontSize: config.dateFontSize,
                           fontFamily: config.dateFontFamily === 'mono' ? "'JetBrains Mono', monospace" : "'Inter Tight', sans-serif",
+                          fontWeight: isToday ? 700 : config.dateFontWeight,
                           color: isToday ? '#EB6834' : config.dateColor,
                         }}
                       >
@@ -299,15 +344,15 @@ export function CalendarSandbox() {
           {/* Heat Legend */}
           <div className="flex gap-4 text-sm">
             <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: config.heatLow }} />
+              <div className="w-4 h-4 rounded-full" style={heatCellStyle('low')} />
               <span className="text-xs text-ink/70">Low</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: config.heatMedium }} />
+              <div className="w-4 h-4 rounded-full" style={heatCellStyle('medium')} />
               <span className="text-xs text-ink/70">Medium</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: config.heatHigh }} />
+              <div className="w-4 h-4 rounded-full" style={heatCellStyle('high')} />
               <span className="text-xs text-ink/70">High</span>
             </div>
           </div>
@@ -344,19 +389,23 @@ export function CalendarSandbox() {
         </div>
 
         {/* Controls */}
-        <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
           {/* Card Background */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Card</h3>
-            <div className="space-y-1">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Background</span>
-              <input
-                type="color"
-                value={config.cardBackground}
-                onChange={(e) => update('cardBackground', e.target.value)}
-                className="w-full h-8 rounded cursor-pointer"
-              />
+            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Card Background</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <input
+                  type="color"
+                  value={config.cardBackground}
+                  onChange={(e) => update('cardBackground', e.target.value)}
+                  className="w-full h-8 rounded cursor-pointer"
+                />
+              </div>
+              <Slider label="Opacity" value={config.cardBackgroundOpacity} min={0} max={100} onChange={v => update('cardBackgroundOpacity', v)} />
             </div>
+            <Slider label="Noise Texture" value={config.backgroundNoiseIntensity} min={0} max={80} onChange={v => update('backgroundNoiseIntensity', v)} />
           </div>
 
           {/* Title */}
@@ -364,6 +413,7 @@ export function CalendarSandbox() {
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Title</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.titleFontSize} min={12} max={28} onChange={v => update('titleFontSize', v)} />
+              <Slider label="Font Weight" value={config.titleFontWeight} min={300} max={800} step={100} onChange={v => update('titleFontWeight', v)} />
               <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
@@ -375,7 +425,7 @@ export function CalendarSandbox() {
                   <option value="mono">JetBrains Mono</option>
                 </select>
               </div>
-              <div className="space-y-1 col-span-2">
+              <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
@@ -392,6 +442,7 @@ export function CalendarSandbox() {
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Weekdays</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.weekdayFontSize} min={8} max={16} onChange={v => update('weekdayFontSize', v)} />
+              <Slider label="Font Weight" value={config.weekdayFontWeight} min={300} max={800} step={100} onChange={v => update('weekdayFontWeight', v)} />
               <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
@@ -403,7 +454,7 @@ export function CalendarSandbox() {
                   <option value="mono">JetBrains Mono</option>
                 </select>
               </div>
-              <div className="space-y-1 col-span-2">
+              <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
@@ -420,6 +471,7 @@ export function CalendarSandbox() {
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Dates</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.dateFontSize} min={10} max={18} onChange={v => update('dateFontSize', v)} />
+              <Slider label="Font Weight" value={config.dateFontWeight} min={300} max={800} step={100} onChange={v => update('dateFontWeight', v)} />
               <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
@@ -431,7 +483,7 @@ export function CalendarSandbox() {
                   <option value="mono">JetBrains Mono</option>
                 </select>
               </div>
-              <div className="space-y-1 col-span-2">
+              <div className="space-y-1">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
@@ -457,33 +509,43 @@ export function CalendarSandbox() {
           {/* Heat Colors */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
             <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Heat Colors</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1">
+            <Slider label="Heat Noise Texture" value={config.heatNoiseIntensity} min={0} max={80} onChange={v => update('heatNoiseIntensity', v)} />
+            <div className="space-y-3">
+              <div className="space-y-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Low</span>
-                <input 
-                  type="color" 
-                  value={config.heatLow.slice(0, 7)} 
-                  onChange={e => update('heatLow', e.target.value + '33')} 
-                  className="w-full h-8 rounded cursor-pointer" 
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="color" 
+                    value={config.heatLowColor} 
+                    onChange={e => update('heatLowColor', e.target.value)} 
+                    className="w-full h-8 rounded cursor-pointer" 
+                  />
+                  <Slider label="Opacity" value={config.heatLowOpacity} min={0} max={100} onChange={v => update('heatLowOpacity', v)} />
+                </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Medium</span>
-                <input 
-                  type="color" 
-                  value={config.heatMedium.slice(0, 7)} 
-                  onChange={e => update('heatMedium', e.target.value + '66')} 
-                  className="w-full h-8 rounded cursor-pointer" 
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="color" 
+                    value={config.heatMediumColor} 
+                    onChange={e => update('heatMediumColor', e.target.value)} 
+                    className="w-full h-8 rounded cursor-pointer" 
+                  />
+                  <Slider label="Opacity" value={config.heatMediumOpacity} min={0} max={100} onChange={v => update('heatMediumOpacity', v)} />
+                </div>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">High</span>
-                <input 
-                  type="color" 
-                  value={config.heatHigh.slice(0, 7)} 
-                  onChange={e => update('heatHigh', e.target.value + '50')} 
-                  className="w-full h-8 rounded cursor-pointer" 
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <input 
+                    type="color" 
+                    value={config.heatHighColor} 
+                    onChange={e => update('heatHighColor', e.target.value)} 
+                    className="w-full h-8 rounded cursor-pointer" 
+                  />
+                  <Slider label="Opacity" value={config.heatHighOpacity} min={0} max={100} onChange={v => update('heatHighOpacity', v)} />
+                </div>
               </div>
             </div>
           </div>
