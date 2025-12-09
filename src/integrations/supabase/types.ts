@@ -1518,6 +1518,8 @@ export type Database = {
           is_compliance: boolean | null
           metadata: Json
           org_id: string | null
+          owner_team_id: string | null
+          owner_user_id: string | null
           priority: string | null
           property_id: string | null
           source: string | null
@@ -1542,6 +1544,8 @@ export type Database = {
           is_compliance?: boolean | null
           metadata?: Json
           org_id?: string | null
+          owner_team_id?: string | null
+          owner_user_id?: string | null
           priority?: string | null
           property_id?: string | null
           source?: string | null
@@ -1566,6 +1570,8 @@ export type Database = {
           is_compliance?: boolean | null
           metadata?: Json
           org_id?: string | null
+          owner_team_id?: string | null
+          owner_user_id?: string | null
           priority?: string | null
           property_id?: string | null
           source?: string | null
@@ -1581,6 +1587,13 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_owner_team_id_fkey"
+            columns: ["owner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
