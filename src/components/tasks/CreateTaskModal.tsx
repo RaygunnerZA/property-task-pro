@@ -181,12 +181,20 @@ export function CreateTaskModal({
         <ImageUploadSection images={images} onImagesChange={setImages} />
 
         {/* Title */}
-        
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-sm font-medium">Title *</Label>
+          <div className="relative">
+            
+            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:text-primary/80 transition-colors" title="AI suggestions">
+              <Sparkles className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
 
         {/* Description */}
         <div className="space-y-2">
           <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-          <Sparkles className="h-4 w-4" /><Textarea id="description" placeholder="Add details about this task..." value={description} onChange={e => setDescription(e.target.value)} rows={2} className="shadow-engraved resize-none" />
+          <Textarea id="description" placeholder="Add details about this task..." value={description} onChange={e => setDescription(e.target.value)} rows={2} className="shadow-engraved resize-none" />
         </div>
 
         {/* AI Suggestion Chips */}
