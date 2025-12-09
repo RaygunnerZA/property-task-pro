@@ -191,16 +191,13 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
             <DialogTitle>Create Group</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="groupName">Group Name</Label>
-              <Input
-                id="groupName"
-                placeholder="e.g., Fire Safety, Monthly Inspections"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
-                className="shadow-engraved mt-1.5"
-              />
-            </div>
+            <Input
+              id="groupName"
+              placeholder="Group name"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              className="shadow-engraved"
+            />
 
             <div>
               <Label>Thumbnail Image</Label>
