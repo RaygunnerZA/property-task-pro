@@ -75,28 +75,43 @@ export type Database = {
       }
       checklist_templates: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           id: string
+          is_archived: boolean | null
           name: string
           org_id: string
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
+          is_archived?: boolean | null
           name: string
           org_id: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
+          is_archived?: boolean | null
           name?: string
           org_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -1298,6 +1313,8 @@ export type Database = {
       }
       task_groups: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string | null
           created_by: string | null
           group_id: string
@@ -1310,6 +1327,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           created_by?: string | null
           group_id: string
@@ -1322,6 +1341,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string | null
           created_by?: string | null
           group_id?: string
