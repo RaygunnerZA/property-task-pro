@@ -2054,6 +2054,31 @@ export type Database = {
         }
         Returns: string
       }
+      create_task_full: {
+        Args: {
+          p_assigned_teams: string[]
+          p_assigned_user: string
+          p_compliance_level: string
+          p_description: string
+          p_due_at: string
+          p_groups: string[]
+          p_images: Json
+          p_is_compliance: boolean
+          p_metadata: Json
+          p_org: string
+          p_priority: string
+          p_property: string
+          p_space_ids: string[]
+          p_subtasks: Json
+          p_template: string
+          p_title: string
+        }
+        Returns: string
+      }
+      create_task_safe: {
+        Args: { p_org: string; p_payload: Json; p_property: string }
+        Returns: string
+      }
       create_template_from_task: {
         Args: { p_name: string; p_org: string; p_task: string }
         Returns: string
@@ -2093,6 +2118,10 @@ export type Database = {
       }
       update_org_compliance_summary: {
         Args: { org: string }
+        Returns: undefined
+      }
+      validate_task_payload: {
+        Args: { p_priority: string; p_space_ids: string[]; p_title: string }
         Returns: undefined
       }
     }
