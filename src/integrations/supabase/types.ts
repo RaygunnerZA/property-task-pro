@@ -1246,6 +1246,7 @@ export type Database = {
           priority: string | null
           property_id: string | null
           source: string | null
+          space_ids: string[] | null
           status: string | null
           title: string
           type: string | null
@@ -1266,6 +1267,7 @@ export type Database = {
           priority?: string | null
           property_id?: string | null
           source?: string | null
+          space_ids?: string[] | null
           status?: string | null
           title: string
           type?: string | null
@@ -1286,6 +1288,7 @@ export type Database = {
           priority?: string | null
           property_id?: string | null
           source?: string | null
+          space_ids?: string[] | null
           status?: string | null
           title?: string
           type?: string | null
