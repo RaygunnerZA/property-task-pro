@@ -55,11 +55,7 @@ function TasksTab() {
         {mockTasks.map(task => (
           <div
             key={task.id}
-            className="p-4 flex items-center gap-4 rounded-[5px] shadow-e1 hover:translate-y-[-2px] transition-transform cursor-pointer"
-            style={{ 
-              backgroundColor: 'rgba(241, 238, 232, 0.49)',
-              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
-            }}
+            className="card-flat p-4 flex items-center gap-4 rounded-[5px] hover:translate-y-[-2px] transition-transform cursor-pointer"
           >
             <div className={cn('w-1 h-12 rounded-full', task.priority === 'high' ? 'bg-accent' : 'bg-primary')} />
             <div className="flex-1">
@@ -101,11 +97,7 @@ function InboxTab() {
       {mockInbox.map(item => (
         <div
           key={item.id}
-          className="p-4 flex items-start gap-3 rounded-[5px] shadow-e1 hover:translate-y-[-2px] transition-transform cursor-pointer"
-          style={{ 
-            backgroundColor: 'rgba(241, 238, 232, 0.49)',
-            boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
-          }}
+          className="card-flat p-4 flex items-start gap-3 rounded-[5px] hover:translate-y-[-2px] transition-transform cursor-pointer"
         >
           <div className="w-10 h-10 rounded-full bg-concrete/50 flex items-center justify-center flex-shrink-0">
             {getIcon(item.type)}
@@ -129,11 +121,7 @@ function RemindersTab() {
       {mockReminders.map(reminder => (
         <div
           key={reminder.id}
-          className="p-4 flex items-center gap-4 rounded-[5px] shadow-e1 hover:translate-y-[-2px] transition-transform cursor-pointer"
-          style={{ 
-            backgroundColor: 'rgba(241, 238, 232, 0.49)',
-            boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
-          }}
+          className="card-flat p-4 flex items-center gap-4 rounded-[5px] hover:translate-y-[-2px] transition-transform cursor-pointer"
         >
           <div className={cn(
             'w-10 h-10 rounded-[5px] flex items-center justify-center',

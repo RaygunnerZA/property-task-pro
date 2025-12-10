@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar, MapPin, User, Clock, AlertTriangle, CheckCircle2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 function TaskCard() {
-  return <div className="bg-card rounded-lg shadow-e1 p-4 space-y-3 hover:shadow-e2 transition-shadow">
+  return <div className="card-flat p-4 space-y-3 hover:shadow-e2 transition-shadow">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
@@ -34,7 +34,7 @@ function TaskCard() {
     </div>;
 }
 function ComplianceCard() {
-  return <div className="bg-card rounded-lg shadow-e1 p-4 space-y-3 border-l-4 border-primary">
+  return <div className="card-flat p-4 space-y-3 border-l-4 border-primary">
       <div className="flex items-center gap-2">
         <CheckCircle2 className="w-5 h-5 text-primary" />
         <h4 className="font-semibold text-ink">Gas Safety Certificate</h4>
@@ -59,7 +59,7 @@ function ComplianceCard() {
     </div>;
 }
 function ScheduleCard() {
-  return <div className="bg-card rounded-lg shadow-e1 p-4 flex gap-4">
+  return <div className="card-flat p-4 flex gap-4">
       <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
         <span className="font-mono text-[10px] uppercase tracking-wider text-primary">Dec</span>
         <span className="font-mono text-xl font-bold text-primary">08</span>
@@ -75,7 +75,7 @@ function ScheduleCard() {
     </div>;
 }
 function PropertyCard() {
-  return <div className="bg-card rounded-lg shadow-e1 overflow-hidden hover:shadow-e2 transition-shadow">
+  return <div className="card-flat overflow-hidden hover:shadow-e2 transition-shadow">
       <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
         <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
           <span className="font-display text-xl font-bold text-primary">OH</span>
