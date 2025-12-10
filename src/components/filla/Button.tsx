@@ -28,14 +28,14 @@ export const Button: React.FC<ButtonProps> = ({
   className = '', 
   ...props 
 }) => {
-  const base = `inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-150 rounded-button disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]`;
+  const base = `inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-150 rounded-[5px] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]`;
   
   const variants = {
-    primary: 'bg-primary text-primary-foreground shadow-primary-btn hover:brightness-105',
-    secondary: 'bg-card text-ink shadow-e1 border border-concrete hover:bg-white hover:shadow-e2',
-    ghost: 'bg-transparent text-ink/60 hover:bg-black/5 hover:text-ink shadow-none',
+    primary: 'bg-primary text-primary-foreground shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed',
+    secondary: 'neo-surface-light bg-card/50 text-ink hover:bg-card/80',
+    ghost: 'neo-surface bg-transparent text-ink/60 hover:text-ink',
     danger: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shadow-sm',
-    signal: 'bg-signal text-ink shadow-e2 border border-white/40 hover:brightness-105',
+    signal: 'neo-surface-light bg-signal/50 text-ink hover:bg-signal/70',
     fab: 'bg-accent text-white shadow-fab hover:brightness-110 border border-white/20 z-20',
   };
 
