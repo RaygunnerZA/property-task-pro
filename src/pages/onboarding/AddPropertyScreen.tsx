@@ -43,23 +43,19 @@ export default function AddPropertyScreen() {
 
     setLoading(true);
     try {
-      // Get current user and their organisation
-      const { data: { session } } = await supabase.auth.getSession();
+      // Refresh session to ensure JWT has latest org_id claim
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (!session?.user) {
+      if (refreshError || !refreshData.session?.user) {
         toast.error("Please sign in to continue");
         navigate("/login");
         return;
       }
 
-      // Get user's org_id from organisation_members
-      const { data: memberData } = await supabase
-        .from('organisation_members')
-        .select('org_id')
-        .eq('user_id', session.user.id)
-        .single();
+      // Get org_id from refreshed JWT claims (app_metadata)
+      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
 
-      if (!memberData?.org_id) {
+      if (!jwtOrgId) {
         toast.error("Organisation not found. Please create one first.");
         navigate("/onboarding/create-organisation");
         return;
@@ -68,7 +64,7 @@ export default function AddPropertyScreen() {
       const { error } = await supabase
         .from('properties')
         .insert({
-          org_id: memberData.org_id,
+          org_id: jwtOrgId,
           address: propertyAddress,
           nickname: propertyNickname || null,
           units: propertyUnits,
