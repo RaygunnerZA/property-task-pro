@@ -23,12 +23,14 @@ export function AppLayout({
           </header>
 
           {/* Main content with paper background and noise texture */}
-          <main className="flex-1 overflow-auto relative bg-background\n    bg-repeat bg-[length:200px_200px] bg-center">
-            {/* Paper noise texture overlay */}
-            <div className="absolute inset-0 pointer-events-none opacity-40" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'repeat'
-          }} />
+          <main 
+            className="flex-1 overflow-auto relative bg-background"
+            style={{
+              backgroundImage: `url("/textures/white-texture2.jpg")`,
+              backgroundRepeat: 'repeat',
+              backgroundSize: '50%'
+            }}
+          >
             {/* Content */}
             <div className="relative z-10">
               {children}
