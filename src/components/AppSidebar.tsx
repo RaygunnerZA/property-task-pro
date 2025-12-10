@@ -114,8 +114,8 @@ export function AppSidebar() {
       <SidebarMenuButton asChild className="group relative">
         <NavLink 
           to={item.url} 
-          className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] bg-sidebar-accent/60 text-sidebar-muted hover:text-sidebar-foreground transition-colors" 
-          activeClassName="text-sidebar-foreground"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
+          activeClassName="text-sidebar-foreground shadow-engraved"
         >
           <item.icon className="h-5 w-5 flex-shrink-0" />
           {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -171,8 +171,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild className="group relative pl-8">
                     <NavLink 
                       to="/manage/spaces" 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] bg-sidebar-accent/60 text-sidebar-muted hover:text-sidebar-foreground transition-colors" 
-                      activeClassName="text-sidebar-foreground"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
+                      activeClassName="text-sidebar-foreground shadow-engraved"
                     >
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
@@ -208,8 +208,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] bg-sidebar-accent/60 text-sidebar-muted hover:text-sidebar-foreground transition-colors" 
-                      activeClassName="text-sidebar-foreground"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
+                      activeClassName="text-sidebar-foreground shadow-engraved"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -233,8 +233,8 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] bg-sidebar-accent/60 text-sidebar-muted hover:text-sidebar-foreground transition-colors" 
-                      activeClassName="text-sidebar-foreground"
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
+                      activeClassName="text-sidebar-foreground shadow-engraved"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -248,7 +248,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild>
                   <button 
                     onClick={handleSignOut} 
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] bg-sidebar-accent/60 text-sidebar-muted hover:text-sidebar-foreground transition-colors w-full"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all w-full"
                   >
                     <LogOut className="h-5 w-5 flex-shrink-0" />
                     {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}
