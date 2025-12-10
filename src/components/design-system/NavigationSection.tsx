@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   LayoutDashboard, CheckSquare, Calendar, Building2, Grid3X3, 
   FolderOpen, ShieldCheck, Zap, LineChart, Bell, Settings, 
-  LogOut, Plus, Camera, Menu, Home, Inbox
+  LogOut, Plus, Camera, Menu, Home, Inbox, Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -36,20 +36,20 @@ function DesktopSidebar() {
   const [activeItem, setActiveItem] = useState('Dashboard');
 
   return (
-    <div className="w-64 bg-[#3F3B4A] rounded-xl p-4 text-white/90">
+    <div className="w-64 bg-sidebar-background rounded-[5px] p-4 text-sidebar-foreground">
       {/* Logo */}
       <div className="flex items-center gap-3 px-3 py-4 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+        <div className="w-8 h-8 rounded-[5px] bg-primary flex items-center justify-center">
           <span className="font-display font-bold text-white">F</span>
         </div>
         <span className="font-display font-semibold text-lg">Filla</span>
       </div>
 
-      {/* Nav Items */}
+      {/* Nav Items - No neumorphic effect, just gentle hover/active */}
       <nav className="space-y-1">
         {navItems.map((item, i) => {
           if ('divider' in item) {
-            return <div key={i} className="h-px bg-white/10 my-3" />;
+            return <div key={i} className="h-px bg-sidebar-border my-3" />;
           }
           const Icon = item.icon;
           const isActive = activeItem === item.label;
@@ -62,8 +62,10 @@ function DesktopSidebar() {
               onMouseEnter={() => setHoveredItem(item.label)}
               onMouseLeave={() => setHoveredItem(null)}
               className={cn(
-                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all',
-                isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'
+                'w-full flex items-center justify-between px-3 py-2.5 rounded-[5px] transition-colors',
+                isActive 
+                  ? 'bg-sidebar-accent text-sidebar-foreground' 
+                  : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
               )}
             >
               <div className="flex items-center gap-3">
@@ -84,14 +86,14 @@ function DesktopSidebar() {
       </nav>
 
       {/* Org Switcher */}
-      <div className="mt-6 pt-4 border-t border-white/10">
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
+      <div className="mt-6 pt-4 border-t border-sidebar-border">
+        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-[5px] hover:bg-sidebar-accent/50 transition-colors">
           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center">
             <span className="text-xs font-medium">AC</span>
           </div>
           <div className="flex-1 text-left">
-            <p className="text-sm font-medium text-white">Acme Properties</p>
-            <p className="text-xs text-white/50">12 properties</p>
+            <p className="text-sm font-medium">Acme Properties</p>
+            <p className="text-xs text-sidebar-muted">12 properties</p>
           </div>
         </button>
       </div>
@@ -139,14 +141,38 @@ function FABDemo() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="relative h-32 flex items-end justify-center pb-4">
-      {/* Expanded buttons */}
+    <div className="relative h-48 flex items-end justify-center pb-4">
+      {/* Expanded buttons - Fanned out with card-flat style */}
       {expanded && (
-        <div className="absolute bottom-20 flex flex-col gap-3 items-center animate-fade-in">
-          <button className="w-12 h-12 rounded-full bg-surface shadow-e2 flex items-center justify-center text-primary hover:shadow-e3 transition-shadow">
+        <div className="absolute bottom-20 flex flex-col items-center animate-fade-in">
+          {/* Mic button - top, offset left */}
+          <button 
+            className="absolute -top-24 -left-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+          >
+            <Mic className="w-5 h-5" />
+          </button>
+          {/* Camera button - middle, offset right */}
+          <button 
+            className="absolute -top-16 left-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+          >
             <Camera className="w-5 h-5" />
           </button>
-          <button className="w-12 h-12 rounded-full bg-surface shadow-e2 flex items-center justify-center text-primary hover:shadow-e3 transition-shadow">
+          {/* Task button - bottom center */}
+          <button 
+            className="absolute -top-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+          >
             <CheckSquare className="w-5 h-5" />
           </button>
         </div>
@@ -157,7 +183,7 @@ function FABDemo() {
         onClick={() => setExpanded(!expanded)}
         className={cn(
           'w-14 h-14 rounded-full flex items-center justify-center transition-all',
-          'shadow-[0_8px_24px_rgba(235,104,52,0.4),0_4px_8px_rgba(235,104,52,0.3)]',
+          'shadow-fab',
           expanded ? 'bg-ink rotate-45' : 'bg-accent'
         )}
       >
@@ -190,8 +216,8 @@ export function NavigationSection() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand)</h3>
-            <div className="bg-concrete/30 rounded-xl">
+            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
+            <div className="bg-concrete/30 rounded-[5px]">
               <FABDemo />
             </div>
           </div>

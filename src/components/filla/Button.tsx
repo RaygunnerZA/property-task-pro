@@ -32,10 +32,10 @@ export const Button: React.FC<ButtonProps> = ({
   
   const variants = {
     primary: 'bg-primary text-primary-foreground shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed',
-    secondary: 'neo-surface-light bg-card/50 text-ink hover:bg-card/80',
-    ghost: 'neo-surface bg-transparent text-ink/60 hover:text-ink',
-    danger: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shadow-sm',
-    signal: 'neo-surface-light bg-signal/50 text-ink hover:bg-signal/70',
+    secondary: 'bg-card text-ink shadow-e1 hover:translate-y-[-1px] hover:shadow-e2 active:translate-y-0',
+    ghost: 'bg-transparent text-ink/60 hover:text-ink hover:bg-concrete/30',
+    danger: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shadow-e1',
+    signal: 'bg-signal/50 text-ink shadow-e1 hover:bg-signal/70',
     fab: 'bg-accent text-white shadow-fab hover:brightness-110 border border-white/20 z-20',
   };
 
