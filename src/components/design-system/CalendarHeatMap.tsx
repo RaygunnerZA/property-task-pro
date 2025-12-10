@@ -43,7 +43,7 @@ export function CalendarHeatMap() {
   };
   return <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Calendar Heat Map</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Calendar Heat Map</h2>
         <p className="text-muted-foreground text-sm">Heat circles indicate busyness level</p>
       </div>
 

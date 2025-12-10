@@ -126,7 +126,7 @@ function BriefingCard() {
 export function CardsSection() {
   return <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Cards & Panels</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Cards &amp; Panels</h2>
         <p className="text-muted-foreground text-sm">Neumorphic E1 depth cards for various content types</p>
       </div>
 
