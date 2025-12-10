@@ -325,8 +325,16 @@
   .bg-card-flat {
     background-color: hsl(40 10% 90%);
     background-image: url('/textures/white-texture.jpg');
+  }
+
+  /* Unified card-flat class - single source of truth */
+  .card-flat {
+    background-color: rgba(241, 238, 232, 0.49);
+    background-image: url('/textures/white-texture.jpg');
     background-blend-mode: overlay;
     background-size: 75%;
+    border-radius: 8px;
+    box-shadow: 1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4);
   }
   
   .bg-section-flat {
