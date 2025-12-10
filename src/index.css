@@ -14,7 +14,7 @@
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
 
     /* Surface Colors */
-    --card: 0 0% 100%;              /* Pure white surface */
+    --card: 40 10% 90%;              /* Light warm gray surface */
     --card-foreground: 248 15% 18%; /* Ink text */
 
     --popover: 0 0% 100%;
@@ -323,7 +323,7 @@
   
   /* Card backgrounds with texture */
   .bg-card-flat {
-    background-color: rgba(241, 238, 232, 0.49);
+    background-color: hsl(40 10% 90%);
     background-image: url('/textures/white-texture.jpg');
     background-blend-mode: overlay;
     background-size: 75%;
