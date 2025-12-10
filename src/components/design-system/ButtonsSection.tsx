@@ -23,7 +23,7 @@ export function ButtonsSection() {
           </div>
         </div>
 
-        {/* Secondary Buttons */}
+        {/* Secondary Buttons - Clean, simple style */}
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Secondary</h3>
           <div className="flex flex-wrap gap-3">
