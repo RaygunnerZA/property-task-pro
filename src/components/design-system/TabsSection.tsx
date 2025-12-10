@@ -148,7 +148,7 @@ export function TabsSection() {
   const [activeTab, setActiveTab] = useState('tasks');
   return <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Tabs Component</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Tabs Component</h2>
         <p className="text-muted-foreground text-sm">Tasks, Inbox, and Reminders with horizontal filter chips</p>
       </div>
 

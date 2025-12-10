@@ -157,7 +157,7 @@ export function UnifiedTokenSandbox() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Design Token Editor</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Design Token Editor</h2>
         <p className="text-muted-foreground text-sm">
           Edit tokens live. Changes apply globally. Click "Commit" to save.
         </p>

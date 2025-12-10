@@ -345,6 +345,15 @@
     text-shadow: 2px 2px 3px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.15);
   }
   
+  /* Global Heading Styles - Single source of truth */
+  .heading-xl {
+    text-shadow: var(--heading-xl-shadow, 2px 2px 3px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.15));
+  }
+  
+  .heading-l {
+    text-shadow: var(--heading-l-shadow, 1px 1px 2px rgba(255, 255, 255, 0.8), -1px -1px 1px rgba(0, 0, 0, 0.1));
+  }
+  
   /* Scrollbar hide utility */
   .no-scrollbar::-webkit-scrollbar {
     display: none;

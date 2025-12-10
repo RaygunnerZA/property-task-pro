@@ -69,7 +69,7 @@ export function NeumorphicStylesDisplay({
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Neumorphic Styles</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Neumorphic Styles</h2>
         <p className="text-muted-foreground text-sm">Preset shadow effects for the Filla design system</p>
       </div>
 

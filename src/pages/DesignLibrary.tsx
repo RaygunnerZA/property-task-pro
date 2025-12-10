@@ -10,10 +10,12 @@ import { NavigationSection } from '@/components/design-system/NavigationSection'
 import { TabsSection } from '@/components/design-system/TabsSection';
 import { UnifiedTokenSandbox } from '@/components/design-system/UnifiedTokenSandbox';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
-import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor } from 'lucide-react';
+import { ComponentRegistry } from '@/components/design-system/ComponentRegistry';
+import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const sections = [
+  { id: 'registry', label: 'All Components', icon: Package },
   { id: 'colors', label: 'Colours', icon: Palette },
   { id: 'typography', label: 'Typography', icon: Type },
   { id: 'buttons', label: 'Buttons', icon: MousePointer },
@@ -70,8 +72,9 @@ export default function DesignLibrary() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-12 sm:space-y-16">
-        <section id="colors"><ColorPalette /></section>
+        <section id="registry"><ComponentRegistry /></section>
         <div className="h-px bg-concrete" />
+        <section id="colors"><ColorPalette /></section>
         <section id="neumorphic-styles"><NeumorphicStylesDisplay /></section>
         <div className="h-px bg-concrete" />
         <section id="typography"><TypographySection /></section>

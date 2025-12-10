@@ -1,17 +1,20 @@
 import React from 'react';
+import { useDesignTokens } from '@/hooks/useDesignTokens';
 
 const typographyExamples = [
   {
     name: 'Heading XL',
     font: 'Inter Tight',
-    className: 'font-display text-4xl font-bold tracking-tight',
+    className: 'font-display text-4xl font-bold tracking-tight heading-xl',
     sample: 'The quick brown fox',
+    hasXLShadow: true,
   },
   {
     name: 'Heading L',
     font: 'Inter Tight',
-    className: 'font-display text-2xl font-semibold tracking-tight',
+    className: 'font-display text-2xl font-semibold tracking-tight heading-l',
     sample: 'The quick brown fox jumps',
+    hasLShadow: true,
   },
   {
     name: 'Heading M',
@@ -52,10 +55,12 @@ const typographyExamples = [
 ];
 
 export function TypographySection() {
+  const { tokens } = useDesignTokens();
+  
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Typography</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Typography</h2>
         <p className="text-muted-foreground text-sm">Inter Tight for headings, Inter for body, JetBrains Mono for metadata</p>
       </div>
 
@@ -63,13 +68,16 @@ export function TypographySection() {
         {typographyExamples.map((item) => (
           <div
             key={item.name}
-            className="p-4 rounded-lg bg-surface shadow-e1 space-y-2"
+            className="p-4 rounded-[8px] bg-surface shadow-e1 space-y-2"
           >
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded-[5px]">
                 {item.name}
               </span>
               <span className="text-xs text-muted-foreground">{item.font}</span>
+              {(item.hasXLShadow || item.hasLShadow) && (
+                <span className="text-xs text-primary font-mono">+ shadow</span>
+              )}
             </div>
             <p className={`text-ink ${item.className}`}>{item.sample}</p>
           </div>

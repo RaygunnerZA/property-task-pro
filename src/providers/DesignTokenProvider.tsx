@@ -208,7 +208,7 @@ export const defaultTokens: DesignTokens = {
       activeText: '#FFFFFF',
       inactiveBackground: '#F1EEE8',
       inactiveText: '#6F6F6F',
-      radius: 50,
+      radius: 5,
       shadow: '2px 3px 5px -2px rgba(0, 0, 0, 0.08), -2px -2px 5px -2px rgba(255, 255, 255, 0.6), inset 0px -1px 1px 0px rgba(0, 0, 0, 0.05)',
     },
   },

@@ -66,7 +66,7 @@ export function ChipsSection() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Chips</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Chips</h2>
         <p className="text-muted-foreground text-sm">JetBrains Mono ALL CAPS for filter and tag chips</p>
       </div>
 

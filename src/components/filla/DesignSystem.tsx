@@ -66,9 +66,9 @@ export const typography = {
     mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
   },
   
-  // Type scale
-  headingXL: 'text-4xl font-bold tracking-tight leading-tight',
-  headingL: 'text-2xl font-semibold tracking-tight leading-tight',
+  // Type scale - with shadow classes for XL and L
+  headingXL: 'text-4xl font-bold tracking-tight leading-tight heading-xl',
+  headingL: 'text-2xl font-semibold tracking-tight leading-tight heading-l',
   headingM: 'text-lg font-semibold tracking-tight leading-snug',
   headingS: 'text-base font-semibold tracking-tight leading-snug',
   

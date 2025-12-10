@@ -171,7 +171,7 @@ export function NavigationSection() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Navigation</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Navigation</h2>
         <p className="text-muted-foreground text-sm">Desktop drawer, mobile bottom nav, and FAB patterns</p>
       </div>
 

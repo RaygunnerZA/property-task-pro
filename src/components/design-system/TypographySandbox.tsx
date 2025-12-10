@@ -138,7 +138,7 @@ export function TypographySandbox() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Typography Sandbox</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Typography Sandbox</h2>
         <p className="text-muted-foreground text-sm">Add neumorphic text effects to headings</p>
       </div>
 

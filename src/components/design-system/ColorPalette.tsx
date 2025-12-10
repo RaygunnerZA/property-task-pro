@@ -29,7 +29,7 @@ export function ColorPalette() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Colour Palette</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Colour Palette</h2>
         <p className="text-muted-foreground text-sm">Core tokens for the Filla visual language</p>
       </div>
 

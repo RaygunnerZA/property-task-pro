@@ -6,7 +6,7 @@ export function ButtonsSection() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Buttons</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Buttons</h2>
         <p className="text-muted-foreground text-sm">Neumorphic buttons with E1/E2/E3 elevation layers</p>
       </div>
 
