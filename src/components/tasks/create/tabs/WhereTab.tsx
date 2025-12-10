@@ -4,7 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useProperties } from "@/hooks/useProperties";
 import { useSpaces } from "@/hooks/useSpaces";
-import { useDataContext } from "@/contexts/DataContext";
 import { cn } from "@/lib/utils";
 
 interface WhereTabProps {
@@ -20,8 +19,7 @@ export function WhereTab({
   onPropertyChange, 
   onSpacesChange 
 }: WhereTabProps) {
-  const { orgId } = useDataContext();
-  const { properties, loading: propertiesLoading } = useProperties(orgId || undefined);
+  const { properties, loading: propertiesLoading } = useProperties();
   const { spaces, loading: spacesLoading } = useSpaces(propertyId || undefined);
 
   const handlePropertyChange = (newPropertyId: string) => {

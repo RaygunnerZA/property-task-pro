@@ -29,6 +29,9 @@ export function WhenTab({
   onRepeatRuleChange 
 }: WhenTabProps) {
   const [enableRepeat, setEnableRepeat] = useState(!!repeatRule);
+  
+  // Extract time from dueDate if it includes time
+  const dueTime = dueDate.includes('T') ? dueDate.split('T')[1]?.slice(0, 5) : '';
 
   const setQuickDate = (days: number) => {
     const date = new Date();
@@ -77,19 +80,40 @@ export function WhenTab({
         </div>
       </div>
 
-      {/* Due Date Picker */}
-      <div className="space-y-2">
-        <Label htmlFor="dueDate" className="flex items-center gap-2 text-sm font-medium">
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-          Due Date
-        </Label>
-        <Input
-          id="dueDate"
-          type="date"
-          value={dueDate}
-          onChange={(e) => onDueDateChange(e.target.value)}
-          className="shadow-engraved"
-        />
+      {/* Due Date and Time Picker */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="dueDate" className="flex items-center gap-2 text-sm font-medium">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            Due Date
+          </Label>
+          <Input
+            id="dueDate"
+            type="date"
+            value={dueDate.split('T')[0] || dueDate}
+            onChange={(e) => {
+              const time = dueTime || '09:00';
+              onDueDateChange(`${e.target.value}T${time}`);
+            }}
+            className="shadow-engraved"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="dueTime" className="flex items-center gap-2 text-sm font-medium">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            Time
+          </Label>
+          <Input
+            id="dueTime"
+            type="time"
+            value={dueTime}
+            onChange={(e) => {
+              const date = dueDate.split('T')[0] || new Date().toISOString().split('T')[0];
+              onDueDateChange(`${date}T${e.target.value}`);
+            }}
+            className="shadow-engraved"
+          />
+        </div>
       </div>
 
       {/* Repeat Settings */}
@@ -102,6 +126,7 @@ export function WhenTab({
           <Switch
             checked={enableRepeat}
             onCheckedChange={handleRepeatToggle}
+            className="data-[state=checked]:bg-primary [&>span]:shadow-[0_2px_4px_rgba(0,0,0,0.3)] [&>span]:border [&>span]:border-white/20"
           />
         </div>
 

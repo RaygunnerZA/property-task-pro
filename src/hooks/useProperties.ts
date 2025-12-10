@@ -1,34 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
+import { useDataContext } from "@/contexts/DataContext";
 import type { Tables } from "../integrations/supabase/types";
 
 type PropertyRow = Tables<"properties">;
 
-export function useProperties(orgId?: string) {
+export function useProperties() {
   const supabase = useSupabase();
+  const { orgId } = useDataContext();
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchProperties() {
+  const fetchProperties = useCallback(async () => {
+    if (!orgId) {
+      setProperties([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    let query = supabase.from("properties").select("*");
-
-    if (orgId) query = query.eq("org_id", orgId);
-
-    const { data, error: err } = await query;
+    const { data, error: err } = await supabase
+      .from("properties")
+      .select("*")
+      .eq("org_id", orgId);
 
     if (err) setError(err.message);
     else setProperties(data ?? []);
 
     setLoading(false);
-  }
+  }, [supabase, orgId]);
 
   useEffect(() => {
     fetchProperties();
-  }, [orgId]);
+  }, [fetchProperties]);
 
   return { properties, loading, error, refresh: fetchProperties };
 }

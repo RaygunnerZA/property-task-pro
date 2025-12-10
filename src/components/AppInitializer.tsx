@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useDataContext } from "@/contexts/DataContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, orgId, loading } = useDataContext();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -14,6 +16,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const onboardingRoutes = [
       "/onboarding/create-organisation",
       "/onboarding/add-property",
+      "/onboarding/add-space",
       "/onboarding/invite-team",
       "/onboarding/preferences",
       "/onboarding/complete",
@@ -38,12 +41,41 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Authenticated with org - redirect from public/onboarding routes
-    if (isPublicRoute || isOnboardingRoute) {
-      navigate("/work/tasks", { replace: true });
+    // Authenticated with org - check if onboarding is complete (has at least one property)
+    if (!isOnboardingRoute && !checkingOnboarding) {
+      setCheckingOnboarding(true);
+      
+      const checkProperties = async () => {
+        try {
+          const { data } = await supabase
+            .from('properties')
+            .select('id')
+            .eq('org_id', orgId)
+            .limit(1);
+          
+          setCheckingOnboarding(false);
+          
+          // No properties = onboarding incomplete
+          if (!data || data.length === 0) {
+            navigate("/onboarding/add-property", { replace: true });
+          } else if (isPublicRoute || location.pathname === "/onboarding/create-organisation") {
+            // Has properties = onboarding complete, redirect from public routes
+            navigate("/work/tasks", { replace: true });
+          }
+        } catch {
+          setCheckingOnboarding(false);
+        }
+      };
+      
+      checkProperties();
       return;
     }
-  }, [isAuthenticated, orgId, loading, location.pathname, navigate]);
+
+    // If on public route with completed onboarding, redirect to app
+    if (isPublicRoute) {
+      navigate("/work/tasks", { replace: true });
+    }
+  }, [isAuthenticated, orgId, loading, location.pathname, navigate, checkingOnboarding]);
 
   return <>{children}</>;
 }
