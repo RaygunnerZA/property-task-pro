@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 export interface SurfaceProps {
   children?: React.ReactNode;
-  variant?: 'floating' | 'neomorphic' | 'engraved' | 'timeline';
+  variant?: 'floating' | 'neomorphic' | 'engraved' | 'timeline' | 'neo-interactive';
   className?: string;
   onClick?: () => void;
   interactive?: boolean;
@@ -17,6 +17,7 @@ export interface SurfaceProps {
  * - neomorphic: E2 elevation for standard cards (default)
  * - engraved: E-1 for inputs and wells (inset)
  * - timeline: Special style for timeline items
+ * - neo-interactive: Uses neo-surface class with animated hover
  */
 export const Surface: React.FC<SurfaceProps> = ({ 
   children, 
@@ -28,16 +29,19 @@ export const Surface: React.FC<SurfaceProps> = ({
   
   const variants = {
     // E3 Floating: Modals, Popovers. High depth.
-    floating: 'bg-card rounded-xl shadow-e3 shadow-paper-edge',
+    floating: 'bg-card rounded-[5px] shadow-e3 shadow-paper-edge',
     
     // E2 Raised Card: Default. Warm grain + white highlight.
-    neomorphic: 'bg-card rounded-sharp shadow-e2 shadow-paper-edge',
+    neomorphic: 'bg-card rounded-[5px] shadow-e2 shadow-paper-edge',
     
     // E-1 Engraved: Inputs, Wells.
-    engraved: 'bg-transparent rounded-sharp shadow-engraved border border-concrete',
+    engraved: 'bg-transparent rounded-[5px] shadow-engraved border border-concrete',
     
     // Timeline: Special variant
-    timeline: 'bg-background rounded-sharp shadow-e2 border border-white/60',
+    timeline: 'bg-background rounded-[5px] shadow-e2 border border-white/60',
+    
+    // Neo-interactive: Uses neo-surface with animated hover
+    'neo-interactive': 'neo-surface',
   };
 
   const interactiveStyles = interactive || onClick 
@@ -50,7 +54,7 @@ export const Surface: React.FC<SurfaceProps> = ({
       className={cn(
         variants[variant],
         'relative overflow-hidden',
-        interactiveStyles,
+        variant !== 'neo-interactive' && interactiveStyles,
         className
       )}
     >

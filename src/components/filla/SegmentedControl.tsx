@@ -24,7 +24,7 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
 }) => {
   return (
     <div className={cn(
-      'bg-transparent p-1.5 rounded-lg flex items-center relative',
+      'bg-transparent p-1.5 rounded-[5px] flex items-center relative',
       'shadow-engraved border border-concrete',
       className
     )}>
@@ -35,11 +35,11 @@ export const SegmentedControl: React.FC<SegmentedControlProps> = ({
             key={opt.id}
             onClick={() => onChange(opt.id)}
             className={cn(
-              'relative z-10 flex-1 px-4 py-2 text-xs font-bold transition-all duration-200',
-              'rounded-[10px] text-center',
+              'relative z-10 flex-1 px-4 py-2 text-xs font-bold transition-all duration-150',
+              'rounded-[5px] text-center',
               isActive 
-                ? 'text-ink bg-card shadow-e1 scale-[1.02]'
-                : 'text-muted-foreground hover:text-ink'
+                ? 'neo-surface-active text-ink bg-transparent'
+                : 'neo-surface text-muted-foreground hover:text-ink bg-transparent'
             )}
           >
             {opt.label}

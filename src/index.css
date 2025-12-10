@@ -206,6 +206,121 @@
     box-shadow: 0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3);
   }
   
+  /* ========================================
+     NEO-SURFACE - Animated Neomorphic Hover
+     ======================================== */
+  
+  /* Base neo-surface: transparent fill with shadow top-left, highlight bottom-right */
+  .neo-surface {
+    position: relative;
+    background: transparent;
+    border-radius: 5px;
+    box-shadow: 
+      /* Top-left shadow (depth) */
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.25),
+      /* Bottom-right highlight (light) */
+      3px 3px 6px 0px rgba(255, 255, 255, 0.15),
+      /* Inner top-left shadow */
+      inset -1px -1px 2px 0px rgba(0, 0, 0, 0.15),
+      /* Inner bottom-right highlight */
+      inset 1px 1px 2px 0px rgba(255, 255, 255, 0.08);
+    transition: box-shadow 150ms ease-in, transform 150ms ease-in;
+  }
+  
+  .neo-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 50%, rgba(0, 0, 0, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 150ms ease-in;
+    pointer-events: none;
+  }
+  
+  .neo-surface:hover {
+    box-shadow: 
+      /* Deeper top-left shadow */
+      -4px -4px 8px 0px rgba(0, 0, 0, 0.35),
+      /* Brighter bottom-right highlight */
+      4px 4px 8px 0px rgba(255, 255, 255, 0.2),
+      /* Inner top-left shadow */
+      inset -2px -2px 3px 0px rgba(0, 0, 0, 0.2),
+      /* Inner bottom-right highlight */
+      inset 2px 2px 3px 0px rgba(255, 255, 255, 0.12);
+    transition: box-shadow 180ms ease-out, transform 180ms ease-out;
+  }
+  
+  .neo-surface:hover::before {
+    opacity: 1;
+    transition: opacity 180ms ease-out;
+  }
+  
+  .neo-surface:focus-visible {
+    outline: none;
+    box-shadow: 
+      -4px -4px 8px 0px rgba(0, 0, 0, 0.35),
+      4px 4px 8px 0px rgba(255, 255, 255, 0.2),
+      inset -2px -2px 3px 0px rgba(0, 0, 0, 0.2),
+      inset 2px 2px 3px 0px rgba(255, 255, 255, 0.12),
+      0 0 0 2px hsl(var(--sidebar-primary));
+  }
+  
+  /* Neo-surface active/pressed state */
+  .neo-surface-active,
+  .neo-surface:active {
+    box-shadow: 
+      /* Inverted: highlight top-left, shadow bottom-right (pressed in) */
+      -2px -2px 4px 0px rgba(255, 255, 255, 0.1),
+      2px 2px 4px 0px rgba(0, 0, 0, 0.3),
+      inset -3px -3px 5px 0px rgba(255, 255, 255, 0.08),
+      inset 3px 3px 5px 0px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 100ms ease-out;
+  }
+  
+  .neo-surface-active::before,
+  .neo-surface:active::before {
+    opacity: 0;
+  }
+  
+  /* Light mode variant */
+  .neo-surface-light {
+    position: relative;
+    background: transparent;
+    border-radius: 5px;
+    box-shadow: 
+      -2px -2px 4px 0px rgba(0, 0, 0, 0.08),
+      2px 2px 4px 0px rgba(255, 255, 255, 0.9),
+      inset -1px -1px 2px 0px rgba(0, 0, 0, 0.05),
+      inset 1px 1px 2px 0px rgba(255, 255, 255, 0.6);
+    transition: box-shadow 150ms ease-in;
+  }
+  
+  .neo-surface-light::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%);
+    opacity: 0;
+    transition: opacity 150ms ease-in;
+    pointer-events: none;
+  }
+  
+  .neo-surface-light:hover {
+    box-shadow: 
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.12),
+      3px 3px 6px 0px rgba(255, 255, 255, 1),
+      inset -2px -2px 3px 0px rgba(0, 0, 0, 0.08),
+      inset 2px 2px 3px 0px rgba(255, 255, 255, 0.8);
+    transition: box-shadow 180ms ease-out;
+  }
+  
+  .neo-surface-light:hover::before {
+    opacity: 1;
+    transition: opacity 180ms ease-out;
+  }
+  
   /* Card backgrounds with texture */
   .bg-card-flat {
     background-color: rgba(241, 238, 232, 0.49);

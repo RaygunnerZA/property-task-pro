@@ -107,12 +107,12 @@ export function AppSidebar() {
   };
   const renderNavItem = (item: typeof mainNavItems[0], showAdd = false) => <SidebarMenuItem key={item.title} onMouseEnter={() => setHoveredItem(item.title)} onMouseLeave={() => setHoveredItem(null)}>
       <SidebarMenuButton asChild className="group relative">
-          <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
+          <NavLink to={item.url} className="neo-surface flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground" activeClassName="neo-surface-active text-sidebar-foreground font-medium">
           <item.icon className="h-5 w-5 flex-shrink-0" />
           {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
           
           {/* Plus button - only show on hover */}
-          {open && showAdd && item.hasAdd && <button onClick={e => handleAddClick(e, item.addAction!)} className={cn("absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === item.title ? "opacity-100" : "opacity-0")}>
+          {open && showAdd && item.hasAdd && <button onClick={e => handleAddClick(e, item.addAction!)} className={cn("absolute right-2 p-1 rounded-[5px] bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === item.title ? "opacity-100" : "opacity-0")}>
               <Plus className="h-4 w-4" />
             </button>}
         </NavLink>
@@ -142,11 +142,11 @@ export function AppSidebar() {
               {/* Spaces - only visible when property is selected */}
               {hasPropertyContext && <SidebarMenuItem onMouseEnter={() => setHoveredItem('Spaces')} onMouseLeave={() => setHoveredItem(null)}>
                   <SidebarMenuButton asChild className="group relative pl-8">
-                    <NavLink to="/manage/spaces" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
+                    <NavLink to="/manage/spaces" className="neo-surface flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground" activeClassName="neo-surface-active text-sidebar-foreground font-medium">
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
                       
-                      {open && <button onClick={e => handleAddClick(e, 'space')} className={cn("absolute right-2 p-1 rounded-md bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0")}>
+                      {open && <button onClick={e => handleAddClick(e, 'space')} className={cn("absolute right-2 p-1 rounded-[5px] bg-sidebar-accent/50 hover:bg-primary/20 text-sidebar-foreground/50 hover:text-primary transition-all duration-200", hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0")}>
                           <Plus className="h-4 w-4" />
                         </button>}
                     </NavLink>
@@ -165,7 +165,7 @@ export function AppSidebar() {
             <SidebarMenu className="space-y-1">
               {intelligenceItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
+                    <NavLink to={item.url} className="neo-surface flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground" activeClassName="neo-surface-active text-sidebar-foreground font-medium">
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
                     </NavLink>
@@ -184,7 +184,7 @@ export function AppSidebar() {
             <SidebarMenu className="space-y-1">
               {otherItems.map(item => <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200" activeClassName="shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.5)] text-sidebar-foreground font-medium">
+                    <NavLink to={item.url} className="neo-surface flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground" activeClassName="neo-surface-active text-sidebar-foreground font-medium">
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
                     </NavLink>
@@ -194,7 +194,7 @@ export function AppSidebar() {
               {/* Sign Out */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
-                  <button onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground/70 hover:shadow-[inset_1px_1px_3px_rgba(0,0,0,0.06),inset_-1px_-1px_2px_rgba(255,255,255,0.4)] hover:text-sidebar-foreground transition-all duration-200 w-full">
+                  <button onClick={handleSignOut} className="neo-surface flex items-center gap-3 px-3 py-2.5 text-sidebar-foreground/70 hover:text-sidebar-foreground w-full">
                     <LogOut className="h-5 w-5 flex-shrink-0" />
                     {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}
                   </button>
