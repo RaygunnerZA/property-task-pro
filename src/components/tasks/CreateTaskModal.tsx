@@ -175,6 +175,20 @@ export function CreateTaskModal({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Task Title */}
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-sm font-medium">Task Title *</Label>
+          <input
+            id="title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What needs to be done?"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono"
+            autoFocus
+          />
+        </div>
+
         {/* Image Upload */}
         <ImageUploadSection images={images} onImagesChange={setImages} />
 
