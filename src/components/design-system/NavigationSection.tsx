@@ -31,79 +31,7 @@ const mobileNavItems = [
   { icon: Menu, label: 'More' },
 ];
 
-function DesktopSidebar() {
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [activeItem, setActiveItem] = useState('Dashboard');
-
-  return (
-    <div className="w-64 bg-sidebar-background rounded-[5px] p-4 text-sidebar-foreground">
-      {/* Logo */}
-      <div className="flex items-center justify-center py-6 mb-6">
-        <img src={fillaLogo} alt="Filla" className="h-20" />
-      </div>
-
-      {/* Nav Items - All items have subtle background, no neumorphic effects */}
-      <nav className="space-y-1">
-        {navItems.map((item, i) => {
-          if ('section' in item) {
-            return (
-              <div key={i} className="pt-6 pb-2">
-                <span className="px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-sidebar-muted">
-                  {item.section}
-                </span>
-              </div>
-            );
-          }
-          const Icon = item.icon;
-          const isActive = activeItem === item.label;
-          const isHovered = hoveredItem === item.label;
-
-          return (
-            <button
-              key={item.label}
-              onClick={() => setActiveItem(item.label)}
-              onMouseEnter={() => setHoveredItem(item.label)}
-              onMouseLeave={() => setHoveredItem(null)}
-              className={cn(
-                'w-full flex items-center justify-between px-3 py-2.5 rounded-[5px] transition-colors',
-                'bg-sidebar-accent/60',
-                isActive 
-                  ? 'text-sidebar-foreground' 
-                  : 'text-sidebar-muted hover:text-sidebar-foreground'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-              {item.hasAdd && (
-                <Plus 
-                  className={cn(
-                    'w-4 h-4 transition-opacity',
-                    isHovered ? 'opacity-70' : 'opacity-0'
-                  )} 
-                />
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Org Switcher */}
-      <div className="mt-6 pt-4 border-t border-sidebar-border">
-        <button className="w-full flex items-center gap-3 px-3 py-2 rounded-[5px] hover:bg-sidebar-accent/50 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center">
-            <span className="text-xs font-medium">AC</span>
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-medium">Acme Properties</p>
-            <p className="text-xs text-sidebar-muted">12 properties</p>
-          </div>
-        </button>
-      </div>
-    </div>
-  );
-}
+// DesktopSidebar removed - use AppSidebar component directly
 
 function MobileNav() {
   const [activeItem, setActiveItem] = useState('Home');
@@ -202,28 +130,21 @@ export function NavigationSection() {
     <section className="space-y-6">
       <div className="space-y-2">
         <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Navigation</h2>
-        <p className="text-muted-foreground text-sm">Desktop drawer, mobile bottom nav, and FAB patterns</p>
+        <p className="text-muted-foreground text-sm">Mobile bottom nav and FAB patterns (desktop sidebar is live on left)</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Desktop Sidebar */}
+        {/* Mobile Nav */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Desktop Sidebar (hover for + icons)</h3>
-          <DesktopSidebar />
+          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Mobile Bottom Nav</h3>
+          <MobileNav />
         </div>
 
-        {/* Mobile Nav + FAB */}
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Mobile Bottom Nav</h3>
-            <MobileNav />
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
-            <div className="bg-concrete/30 rounded-[5px]">
-              <FABDemo />
-            </div>
+        {/* FAB */}
+        <div className="space-y-3">
+          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
+          <div className="bg-concrete/30 rounded-[5px]">
+            <FABDemo />
           </div>
         </div>
       </div>
