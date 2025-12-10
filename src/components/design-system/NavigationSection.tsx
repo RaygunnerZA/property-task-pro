@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { 
-  LayoutDashboard, CheckSquare, Calendar, Building2, Grid3X3, 
+  LayoutDashboard, CheckSquare, Calendar, Building2, 
   FolderOpen, ShieldCheck, Zap, LineChart, Bell, Settings, 
   LogOut, Plus, Camera, Menu, Home, Inbox, Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import fillaLogo from '@/assets/filla-logo-teal.svg';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', hasAdd: false },
   { icon: CheckSquare, label: 'Tasks', hasAdd: true },
   { icon: Calendar, label: 'Schedule', hasAdd: true },
   { icon: Building2, label: 'Properties', hasAdd: true },
-  { icon: Grid3X3, label: 'Spaces', hasAdd: true },
   { icon: FolderOpen, label: 'Assets', hasAdd: true },
   { icon: ShieldCheck, label: 'Compliance', hasAdd: true },
-  { divider: true },
+  { section: 'INTELLIGENCE' },
   { icon: Zap, label: 'Automations', hasAdd: false },
   { icon: LineChart, label: 'Insights', hasAdd: false },
-  { divider: true },
+  { section: 'OTHER' },
   { icon: Bell, label: 'Notifications', hasAdd: false },
   { icon: Settings, label: 'Settings', hasAdd: false },
   { icon: LogOut, label: 'Sign Out', hasAdd: false },
@@ -38,18 +38,21 @@ function DesktopSidebar() {
   return (
     <div className="w-64 bg-sidebar-background rounded-[5px] p-4 text-sidebar-foreground">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-3 py-4 mb-4">
-        <div className="w-8 h-8 rounded-[5px] bg-primary flex items-center justify-center">
-          <span className="font-display font-bold text-white">F</span>
-        </div>
-        <span className="font-display font-semibold text-lg">Filla</span>
+      <div className="flex items-center justify-center py-6 mb-6">
+        <img src={fillaLogo} alt="Filla" className="h-20" />
       </div>
 
-      {/* Nav Items - No neumorphic effect, just gentle hover/active */}
+      {/* Nav Items - All items have subtle background, no neumorphic effects */}
       <nav className="space-y-1">
         {navItems.map((item, i) => {
-          if ('divider' in item) {
-            return <div key={i} className="h-px bg-sidebar-border my-3" />;
+          if ('section' in item) {
+            return (
+              <div key={i} className="pt-6 pb-2">
+                <span className="px-3 font-mono text-[10px] uppercase tracking-[0.2em] text-sidebar-muted">
+                  {item.section}
+                </span>
+              </div>
+            );
           }
           const Icon = item.icon;
           const isActive = activeItem === item.label;
@@ -63,9 +66,10 @@ function DesktopSidebar() {
               onMouseLeave={() => setHoveredItem(null)}
               className={cn(
                 'w-full flex items-center justify-between px-3 py-2.5 rounded-[5px] transition-colors',
+                'bg-sidebar-accent/60',
                 isActive 
-                  ? 'bg-sidebar-accent text-sidebar-foreground' 
-                  : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                  ? 'text-sidebar-foreground' 
+                  : 'text-sidebar-muted hover:text-sidebar-foreground'
               )}
             >
               <div className="flex items-center gap-3">
