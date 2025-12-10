@@ -8,11 +8,7 @@ import { CalendarHeatMap } from '@/components/design-system/CalendarHeatMap';
 import { CardsSection } from '@/components/design-system/CardsSection';
 import { NavigationSection } from '@/components/design-system/NavigationSection';
 import { TabsSection } from '@/components/design-system/TabsSection';
-import { NeumorphismSandbox } from '@/components/design-system/NeumorphismSandbox';
-import { ButtonSandbox } from '@/components/design-system/ButtonSandbox';
-import { CalendarSandbox } from '@/components/design-system/CalendarSandbox';
-import { TypographySandbox } from '@/components/design-system/TypographySandbox';
-import { CardSandbox } from '@/components/design-system/CardSandbox';
+import { UnifiedTokenSandbox } from '@/components/design-system/UnifiedTokenSandbox';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
 import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -94,15 +90,7 @@ export default function DesignLibrary() {
         <div className="h-px bg-concrete" />
         
         <section id="sandbox" className="space-y-12 sm:space-y-16">
-          <NeumorphismSandbox />
-          <div className="h-px bg-concrete" />
-          <ButtonSandbox />
-          <div className="h-px bg-concrete" />
-          <TypographySandbox />
-          <div className="h-px bg-concrete" />
-          <CalendarSandbox />
-          <div className="h-px bg-concrete" />
-          <CardSandbox />
+          <UnifiedTokenSandbox />
         </section>
         
         <div className="h-px bg-concrete" />

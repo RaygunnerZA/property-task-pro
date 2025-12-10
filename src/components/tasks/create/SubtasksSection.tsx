@@ -13,6 +13,7 @@ interface SubtasksSectionProps {
   onSubtasksChange: (subtasks: SubtaskInput[]) => void;
   description?: string;
   onDescriptionChange?: (description: string) => void;
+  className?: string;
 }
 export function SubtasksSection({
   subtasks,
