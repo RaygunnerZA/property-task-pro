@@ -1,4 +1,5 @@
 import { mapTask } from "../utils/mapTask";
+import { cn } from "@/lib/utils";
 
 export default function TaskCard({ 
   task, 
@@ -10,33 +11,56 @@ export default function TaskCard({
   onClick?: () => void;
 }) {
   const t = mapTask(task);
-  const hasImage = task?.image_url;
+  // Support both image_url and primary_image_url from useTasks hook
+  const imageUrl = task?.primary_image_url || task?.image_url;
 
   return (
     <div 
-      className="rounded-[16px] bg-white/60 backdrop-blur-md shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)] cursor-pointer hover:scale-[1.01] transition-transform overflow-hidden flex"
+      className={cn(
+        "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+        "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
+        "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+        "overflow-hidden flex min-h-[80px]"
+      )}
       onClick={onClick}
     >
       {/* Content */}
-      <div className="flex-1 p-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-[15px] font-semibold line-clamp-1">{t.title}</h3>
-          <span className="text-xs px-2 py-1 rounded-full bg-black/5 whitespace-nowrap ml-2">{t.status}</span>
+      <div className="flex-1 p-4 flex flex-col justify-center">
+        <div className="flex justify-between items-start gap-2">
+          <h3 className="text-[15px] font-semibold text-foreground line-clamp-2 leading-tight">
+            {t.title}
+          </h3>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0",
+            t.status === 'completed' 
+              ? "bg-primary/15 text-primary" 
+              : "bg-muted text-muted-foreground"
+          )}>
+            {t.status || 'pending'}
+          </span>
         </div>
 
-        <div className="mt-2 text-xs text-[#666] flex gap-4 flex-wrap">
-          {property && <span>🏠 {property.name || property.address}</span>}
-          <span>⏰ {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}</span>
+        <div className="mt-2 text-xs text-muted-foreground flex gap-3 flex-wrap">
+          {property && (
+            <span className="flex items-center gap-1">
+              <span>🏠</span>
+              <span className="truncate max-w-[100px]">{property.name || property.address}</span>
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <span>⏰</span>
+            {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}
+          </span>
         </div>
       </div>
 
-      {/* Image Zone - Right side, no padding on top/right/bottom */}
-      {hasImage && (
-        <div className="w-20 sm:w-24 flex-shrink-0">
+      {/* Image Zone - Anchored to right side with no padding on top/right/bottom */}
+      {imageUrl && (
+        <div className="w-24 sm:w-28 flex-shrink-0 relative">
           <img 
-            src={task.image_url} 
+            src={imageUrl} 
             alt={t.title}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         </div>
       )}
