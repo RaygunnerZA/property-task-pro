@@ -1,4 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 interface NeomorphicButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost";
@@ -12,60 +13,44 @@ export function NeomorphicButton({
   disabled,
   ...props
 }: NeomorphicButtonProps) {
-  const baseStyles = "w-full px-6 py-3 rounded-xl font-medium transition-all duration-150 ease-out";
+  const baseStyles = "w-full px-6 py-3 rounded-[5px] font-medium transition-all duration-150 ease-out relative";
 
   const variantStyles = {
-    primary: `
-      bg-accent text-accent-foreground
-      hover:brightness-110 active:brightness-95
-      disabled:opacity-50 disabled:cursor-not-allowed
-    `,
-    secondary: `
-      bg-[#F6F4F2] text-[#1C1C1C]
-      hover:text-accent
-      disabled:opacity-50 disabled:cursor-not-allowed
-    `,
-    ghost: `
-      bg-transparent text-[#6D7480]
-      hover:text-[#1C1C1C]
-      disabled:opacity-50 disabled:cursor-not-allowed
-    `,
+    primary: cn(
+      "bg-primary text-primary-foreground",
+      !disabled && "neo-surface",
+      "disabled:opacity-50 disabled:cursor-not-allowed"
+    ),
+    secondary: cn(
+      "bg-transparent text-foreground",
+      !disabled && "neo-surface-light",
+      "disabled:opacity-50 disabled:cursor-not-allowed"
+    ),
+    ghost: cn(
+      "bg-transparent text-muted-foreground",
+      "hover:text-foreground",
+      "disabled:opacity-50 disabled:cursor-not-allowed"
+    ),
   };
 
   const variantShadows = {
     primary: disabled
-      ? `
-      /* Soft, flattened disabled surface */
-      inset 1px 1px 2px rgba(0,0,0,0.12),
-      inset -1px -1px 2px rgba(255,255,255,0.35)
-    `
-      : `
-      /* Grounded shadow */
-      0 8px 14px rgba(0,0,0,0.28),
-      0 3px 6px rgba(0,0,0,0.16),
-
-      /* Soft highlight top-left */
-      -3px -3px 6px rgba(255,255,255,0.22)
-    `,
+      ? `inset 1px 1px 2px rgba(0,0,0,0.12), inset -1px -1px 2px rgba(255,255,255,0.35)`
+      : `3px 5px 5px 2px rgba(0,0,0,0.13),
+         -3px -3px 5px 0px rgba(255,255,255,0.48),
+         inset 1px 1px 2px 0px rgba(255,255,255,0.5),
+         inset -1px -2px 2px 0px rgba(0,0,0,0.27)`,
 
     secondary: disabled
-      ? `
-      /* Inset disabled state */
-      inset 1px 1px 3px rgba(0,0,0,0.15),
-      inset -1px -1px 3px rgba(255,255,255,0.28)
-    `
-      : `
-      /* Subtle neomorphic card-like treatment */
-      -2px -2px 4px rgba(255,255,255,0.55),
-      2px 2px 4px rgba(0,0,0,0.1)
-    `,
+      ? `inset 1px 1px 3px rgba(0,0,0,0.15), inset -1px -1px 3px rgba(255,255,255,0.28)`
+      : `-2px -2px 4px rgba(255,255,255,0.55), 2px 2px 4px rgba(0,0,0,0.1)`,
 
     ghost: "none",
   };
 
   return (
     <button
-      className={`${baseStyles} ${variantStyles[variant]} ${className}`}
+      className={cn(baseStyles, variantStyles[variant], className)}
       style={{
         boxShadow: variantShadows[variant],
       }}
