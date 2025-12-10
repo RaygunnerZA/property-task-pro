@@ -72,58 +72,54 @@ function MobileNav() {
 function FABDemo() {
   const [expanded, setExpanded] = useState(false);
 
-  // Fan positions: angle from center, distance from center
-  const fabButtons = [
-    { icon: Mic, angle: -135, label: 'Voice' },      // top-left
-    { icon: Camera, angle: -45, label: 'Camera' },   // top-right  
-    { icon: CheckSquare, angle: -90, label: 'Task' }, // left
-  ];
-
-  const getPosition = (angle: number, distance: number) => {
-    const rad = (angle * Math.PI) / 180;
-    return {
-      x: Math.cos(rad) * distance,
-      y: Math.sin(rad) * distance,
-    };
-  };
-
   return (
-    <div className="relative h-56 flex items-center justify-center">
-      {/* Expanded buttons - animate from center */}
-      {fabButtons.map((btn, i) => {
-        const Icon = btn.icon;
-        const pos = expanded ? getPosition(btn.angle, 70) : { x: 0, y: 0 };
-        
-        return (
-          <button
-            key={btn.label}
-            className={cn(
-              'absolute w-14 h-14 rounded-full bg-surface shadow-e2 flex items-center justify-center text-ink transition-all duration-300 ease-out hover:scale-110',
-              expanded ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'
-            )}
-            style={{
-              transform: `translate(${pos.x}px, ${pos.y}px)`,
-              transitionDelay: expanded ? `${i * 50}ms` : '0ms',
+    <div className="relative h-48 flex items-end justify-center pb-4">
+      {/* Expanded buttons - Fanned out with card-flat style */}
+      {expanded && (
+        <div className="absolute bottom-20 flex flex-col items-center animate-fade-in">
+          {/* Mic button - top, offset left */}
+          <button 
+            className="absolute -top-24 -left-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
             }}
           >
-            <Icon className="w-5 h-5" />
+            <Mic className="w-5 h-5" />
           </button>
-        );
-      })}
+          {/* Camera button - middle, offset right */}
+          <button 
+            className="absolute -top-16 left-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+          >
+            <Camera className="w-5 h-5" />
+          </button>
+          {/* Task button - bottom center */}
+          <button 
+            className="absolute -top-8 w-12 h-12 rounded-full bg-card-flat shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform"
+            style={{ 
+              backgroundColor: 'rgba(241, 238, 232, 0.8)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+          >
+            <CheckSquare className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Main FAB */}
       <button
         onClick={() => setExpanded(!expanded)}
         className={cn(
-          'relative z-10 w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300',
+          'w-14 h-14 rounded-full flex items-center justify-center transition-all',
           'shadow-fab',
-          expanded ? 'bg-ink' : 'bg-ink'
+          expanded ? 'bg-ink rotate-45' : 'bg-accent'
         )}
       >
-        <Plus className={cn(
-          'w-7 h-7 text-white transition-transform duration-300',
-          expanded && 'rotate-45'
-        )} />
+        <Plus className="w-6 h-6 text-white transition-transform" />
       </button>
     </div>
   );
