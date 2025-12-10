@@ -19,7 +19,7 @@ function Chip({ label, selected, onSelect, onRemove, removable }: ChipProps) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px]',
         'font-mono text-[11px] uppercase tracking-wider font-medium',
         'transition-all duration-200',
         selected
@@ -105,16 +105,16 @@ export function ChipsSection() {
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status Chips</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-green-800">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-green-800">
               Compliant
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-amber-800">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-amber-800">
               Pending
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-red-800">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-red-800">
               Overdue
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-wider font-medium bg-primary/20 text-primary-deep">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-primary/20 text-primary-deep">
               In Progress
             </span>
           </div>
@@ -124,13 +124,13 @@ export function ChipsSection() {
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Priority Chips</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60">
               Low
             </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
               Normal
             </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
               High
             </span>
           </div>
