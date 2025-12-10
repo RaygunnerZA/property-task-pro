@@ -1,21 +1,28 @@
 /**
  * MANAGER DASHBOARD
- * - Two-column layout: Calendar (left) | Tabs with TaskCards (right)
+ * - Two-column layout: Calendar (left) | DashboardTabs (right)
  * - Quick stats overview
- * - Filla neomorphic paper aesthetic
+ * - Uses standardized filla components
  */
 
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ContextHeader } from '@/components/ContextHeader';
 import { BottomNav } from '@/components/BottomNav';
-import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
-import { SegmentedControl } from '@/components/filla/SegmentedControl';
-import { colors, shadows } from '@/components/filla';
+import { 
+  MiniCalendar, 
+  DashboardTabs,
+  type CalendarEvent,
+  type TaskCardProps,
+  type InboxItem,
+  type ReminderItem,
+  colors, 
+  shadows 
+} from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
 import { useMessages } from '@/hooks/useMessages';
+import { useReminders } from '@/hooks/useReminders';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import TaskCard from '@/components/TaskCard';
 import { 
   CheckSquare, 
   Inbox, 
@@ -24,18 +31,15 @@ import {
   Building2,
   Plus 
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-type TabId = 'tasks' | 'inbox';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [activeTab, setActiveTab] = useState<TabId>('tasks');
   const [showCreateTask, setShowCreateTask] = useState(false);
   
   const { tasks, refresh: refreshTasks } = useTasks();
   const { messages } = useMessages();
+  const { reminders } = useReminders();
 
   // Convert tasks to calendar events
   const calendarEvents: CalendarEvent[] = useMemo(() => {
@@ -73,13 +77,50 @@ const ManagerDashboard = () => {
     { label: 'Inbox', value: messages.length, icon: Inbox, color: colors.accent },
   ];
 
-  const tabOptions = [
-    { id: 'tasks', label: 'Tasks' },
-    { id: 'inbox', label: 'Inbox' },
-  ];
+  // Transform tasks to TaskCardProps format
+  const taskCards: TaskCardProps[] = useMemo(() => {
+    return selectedDateTasks.slice(0, 5).map((task) => ({
+      title: task.title,
+      description: task.description || undefined,
+      priority: task.priority as 'low' | 'medium' | 'high' | 'urgent',
+      dueDate: task.due_at 
+        ? new Date(task.due_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        : undefined,
+      imageUrl: task.primary_image_url || undefined,
+      showAlert: task.priority === 'urgent' || task.priority === 'high',
+    }));
+  }, [selectedDateTasks]);
 
-  const handleTaskPress = (taskId: string) => {
-    navigate(`/task/${taskId}`);
+  // Transform messages to InboxItem format
+  const inboxItems: InboxItem[] = useMemo(() => {
+    return messages.slice(0, 5).map((msg) => ({
+      id: msg.id,
+      type: (msg.source === 'whatsapp' ? 'whatsapp' : msg.source === 'email' ? 'email' : 'comment') as InboxItem['type'],
+      from: msg.author_name || 'Unknown',
+      message: msg.body,
+      time: new Date(msg.created_at || '').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    }));
+  }, [messages]);
+
+  // Transform reminders to ReminderItem format
+  const reminderItems: ReminderItem[] = useMemo(() => {
+    return reminders.slice(0, 5).map((r) => {
+      const daysUntil = r.due_at 
+        ? Math.ceil((new Date(r.due_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+      return {
+        id: r.id,
+        title: r.title,
+        property: 'All properties',
+        due: daysUntil !== null ? (daysUntil > 0 ? `In ${daysUntil} days` : 'Overdue') : 'No date',
+        type: (r.type === 'compliance' ? 'compliance' : 'schedule') as ReminderItem['type'],
+      };
+    });
+  }, [reminders]);
+
+  const handleTaskClick = (index: number) => {
+    const task = selectedDateTasks[index];
+    if (task) navigate(`/task/${task.id}`);
   };
 
   return (
@@ -121,7 +162,7 @@ const ManagerDashboard = () => {
           ))}
         </div>
 
-        {/* Two-Column Layout: Calendar (left) | Tabs (right) */}
+        {/* Two-Column Layout: Calendar (left) | DashboardTabs (right) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Left Column: Calendar */}
           <div>
@@ -133,155 +174,15 @@ const ManagerDashboard = () => {
             />
           </div>
 
-          {/* Right Column: Tabs with TaskCards */}
-          <div className="space-y-4">
-            {/* Tab Control */}
-            <div className="flex justify-center lg:justify-start">
-              <SegmentedControl
-                options={tabOptions}
-                selectedId={activeTab}
-                onChange={(id) => setActiveTab(id as TabId)}
-              />
-            </div>
-
-            {/* Tab Content */}
-            <div 
-              className="rounded-xl p-4"
-              style={{ 
-                backgroundColor: colors.surface,
-                boxShadow: shadows.outset 
-              }}
-            >
-              {activeTab === 'tasks' && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 
-                      className="text-sm font-semibold"
-                      style={{ color: colors.ink }}
-                    >
-                      {selectedISO === todayISO ? "Today's Tasks" : `Tasks for ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
-                    </h3>
-                    <span 
-                      className="text-xs font-mono px-2 py-0.5 rounded-full"
-                      style={{ 
-                        backgroundColor: colors.background,
-                        color: colors.textMuted 
-                      }}
-                    >
-                      {selectedDateTasks.length}
-                    </span>
-                  </div>
-
-                  {selectedDateTasks.length === 0 ? (
-                    <p 
-                      className="text-sm text-center py-6"
-                      style={{ color: colors.textLight }}
-                    >
-                      No tasks for this day
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {selectedDateTasks.slice(0, 5).map((task) => (
-                        <TaskCard
-                          key={task.id}
-                          task={task}
-                          property={null}
-                          onClick={() => handleTaskPress(task.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedDateTasks.length > 5 && (
-                    <button
-                      onClick={() => navigate('/work/tasks')}
-                      className="w-full text-center text-sm font-medium py-2"
-                      style={{ color: colors.primary }}
-                    >
-                      View all {selectedDateTasks.length} tasks →
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'inbox' && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 
-                      className="text-sm font-semibold"
-                      style={{ color: colors.ink }}
-                    >
-                      Recent Messages
-                    </h3>
-                    <span 
-                      className="text-xs font-mono px-2 py-0.5 rounded-full"
-                      style={{ 
-                        backgroundColor: colors.background,
-                        color: colors.textMuted 
-                      }}
-                    >
-                      {messages.length}
-                    </span>
-                  </div>
-
-                  {messages.length === 0 ? (
-                    <p 
-                      className="text-sm text-center py-6"
-                      style={{ color: colors.textLight }}
-                    >
-                      No messages yet
-                    </p>
-                  ) : (
-                    messages.slice(0, 5).map((msg) => (
-                      <div
-                        key={msg.id}
-                        className="p-3 rounded-lg"
-                        style={{ 
-                          backgroundColor: colors.background,
-                          boxShadow: shadows.inset 
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div 
-                            className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
-                            style={{ 
-                              backgroundColor: colors.primary,
-                              color: '#fff' 
-                            }}
-                          >
-                            {msg.author_name?.slice(0, 2).toUpperCase() || 'U'}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p 
-                              className="text-sm font-medium"
-                              style={{ color: colors.ink }}
-                            >
-                              {msg.author_name || 'Unknown'}
-                            </p>
-                            <p 
-                              className="text-xs truncate mt-0.5"
-                              style={{ color: colors.textMuted }}
-                            >
-                              {msg.body}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-
-                  {messages.length > 5 && (
-                    <button
-                      onClick={() => navigate('/work/inbox')}
-                      className="w-full text-center text-sm font-medium py-2"
-                      style={{ color: colors.primary }}
-                    >
-                      View all messages →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+          {/* Right Column: Standardized DashboardTabs */}
+          <div>
+            <DashboardTabs
+              tasks={taskCards}
+              inbox={inboxItems}
+              reminders={reminderItems}
+              onTaskClick={handleTaskClick}
+              showReminders={true}
+            />
           </div>
         </div>
 
