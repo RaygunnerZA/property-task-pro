@@ -25,33 +25,30 @@ export default function AddSpaceScreen() {
 
   const fetchLatestProperty = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Refresh session to ensure JWT has latest org_id claim
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (!session?.user) {
+      if (refreshError || !refreshData.session?.user) {
         navigate("/login");
         return;
       }
 
-      // Get user's org_id
-      const { data: memberData } = await supabase
-        .from('organisation_members')
-        .select('org_id')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
+      // Get org_id from refreshed JWT claims (app_metadata)
+      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
 
-      if (!memberData?.org_id) {
+      if (!jwtOrgId) {
         toast.error("Organisation not found");
         navigate("/onboarding/create-organisation");
         return;
       }
 
-      setOrgId(memberData.org_id);
+      setOrgId(jwtOrgId);
 
       // Get the latest property for this org
       const { data: properties } = await supabase
         .from('properties')
         .select('id')
-        .eq('org_id', memberData.org_id)
+        .eq('org_id', jwtOrgId)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -101,7 +98,7 @@ export default function AddSpaceScreen() {
   };
 
   const handleSave = async () => {
-    if (!propertyId || !orgId) {
+    if (!propertyId) {
       toast.error("Property not found");
       return;
     }
@@ -113,10 +110,27 @@ export default function AddSpaceScreen() {
 
     setLoading(true);
     try {
-      // Insert all spaces
+      // Refresh session to ensure JWT has latest org_id claim
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError || !refreshData.session?.user) {
+        toast.error("Session expired. Please log in again.");
+        navigate("/login");
+        return;
+      }
+
+      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
+      
+      if (!jwtOrgId) {
+        toast.error("Organisation not found");
+        navigate("/onboarding/create-organisation");
+        return;
+      }
+
+      // Insert all spaces with JWT org_id
       const spacesToInsert = spaces.map(name => ({
         name,
-        org_id: orgId,
+        org_id: jwtOrgId,
         property_id: propertyId
       }));
 
