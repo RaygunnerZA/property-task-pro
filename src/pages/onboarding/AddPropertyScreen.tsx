@@ -105,7 +105,7 @@ export default function AddPropertyScreen() {
 
         <div className="space-y-4">
           <NeomorphicInput
-            label="Nickname (Optional)"
+            label="Property name"
             placeholder="The Grand Hotel"
             value={propertyNickname}
             onChange={(e) => setPropertyNickname(e.target.value)}
