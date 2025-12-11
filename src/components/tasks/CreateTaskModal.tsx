@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Plus, Sparkles, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield } from "lucide-react";
+import { useAITaskExtraction } from "@/hooks/useAITaskExtraction";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
@@ -74,8 +75,30 @@ export function CreateTaskModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("where");
 
-  // AI Suggestion chips (mock for now)
-  const [aiSuggestions] = useState<string[]>([]);
+  // AI Title extraction
+  const [aiTitleGenerated, setAiTitleGenerated] = useState("");
+  const [userEditedTitle, setUserEditedTitle] = useState(false);
+  const [showTitleField, setShowTitleField] = useState(false);
+  
+  // Call AI extraction hook
+  const { aiTitle, aiSuggestions, loading: aiLoading } = useAITaskExtraction(description);
+
+  // Auto-update title from AI when user hasn't manually edited
+  useEffect(() => {
+    if (aiTitle && !userEditedTitle) {
+      setAiTitleGenerated(aiTitle);
+      setTitle(aiTitle);
+      setShowTitleField(true);
+    }
+  }, [aiTitle, userEditedTitle]);
+
+  // Hide title field when description is empty
+  useEffect(() => {
+    if (!description.trim()) {
+      setShowTitleField(false);
+      setUserEditedTitle(false);
+    }
+  }, [description]);
   const resetForm = () => {
     setTitle("");
     setDescription("");
@@ -97,14 +120,21 @@ export function CreateTaskModal({
     setActiveTab("where");
   };
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    // Auto-generate title if empty
+    let finalTitle = title.trim();
+    if (!finalTitle) {
+      finalTitle = aiTitleGenerated || description.slice(0, 50).trim();
+    }
+    
+    if (!finalTitle) {
       toast({
-        title: "Title required",
-        description: "Please enter a task title.",
+        title: "Description required",
+        description: "Please describe the task.",
         variant: "destructive"
       });
       return;
     }
+    
     if (!orgId) {
       toast({
         title: "Not authenticated",
@@ -116,7 +146,7 @@ export function CreateTaskModal({
     setIsSubmitting(true);
     try {
       const payload: CreateTaskPayload = {
-        title: title.trim(),
+        title: finalTitle,
         description: description.trim() || undefined,
         property_id: propertyId || undefined,
         space_ids: selectedSpaceIds.length > 0 ? selectedSpaceIds : undefined,
@@ -129,8 +159,13 @@ export function CreateTaskModal({
         annotation_required: annotationRequired,
         metadata: {
           repeat: repeatRule,
-          ai: aiSuggestions.length > 0 ? {
-            chips: aiSuggestions
+          ai: aiSuggestions ? {
+            chips: [
+              ...(aiSuggestions.spaces || []),
+              ...(aiSuggestions.people || []),
+              ...(aiSuggestions.groups || []),
+              aiSuggestions.priority
+            ].filter(Boolean) as string[]
           } : undefined
         },
         template_id: templateId || undefined,
@@ -175,18 +210,32 @@ export function CreateTaskModal({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {/* Task Title */}
-        <div className="space-y-2">
-          <Label htmlFor="title" className="text-sm font-medium">Task Title *</Label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="What needs to be done?"
-            className="w-full px-3 py-2 rounded-lg border border-border bg-background shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono"
-            autoFocus
-          />
+        {/* AI-Generated Title (appears after AI responds) */}
+        <div className={cn(
+          "transition-all duration-300 ease-out",
+          showTitleField ? "opacity-100 max-h-24" : "opacity-0 max-h-0 overflow-hidden"
+        )}>
+          {showTitleField && (
+            <div className="space-y-2 mb-4">
+              <label className="text-sm text-muted-foreground flex items-center gap-2">
+                <Sparkles className="h-3 w-3 text-primary" />
+                AI Title
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setUserEditedTitle(true);
+                  setTitle(e.target.value);
+                  if (e.target.value.trim() === "") {
+                    setUserEditedTitle(false);
+                  }
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-card shadow-e1 focus:shadow-e2 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
+                placeholder="Generated title…"
+              />
+            </div>
+          )}
         </div>
 
         {/* Image Upload */}
@@ -196,12 +245,28 @@ export function CreateTaskModal({
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
         {/* AI Suggestion Chips */}
-        {aiSuggestions.length > 0 && <div className="flex flex-wrap gap-2">
-            {aiSuggestions.map((chip, idx) => <Badge key={idx} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
-                <Sparkles className="h-3 w-3 mr-1" />
-                {chip}
-              </Badge>)}
-          </div>}
+        {aiSuggestions && (aiSuggestions.spaces.length > 0 || aiSuggestions.people.length > 0 || aiSuggestions.groups.length > 0) && (
+          <div className="flex flex-wrap gap-2">
+            {aiSuggestions.spaces.map((space, idx) => (
+              <Badge key={`space-${idx}`} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
+                <MapPin className="h-3 w-3 mr-1" />
+                {space}
+              </Badge>
+            ))}
+            {aiSuggestions.people.map((person, idx) => (
+              <Badge key={`person-${idx}`} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
+                <User className="h-3 w-3 mr-1" />
+                {person}
+              </Badge>
+            ))}
+            {aiSuggestions.priority && (
+              <Badge variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                {aiSuggestions.priority}
+              </Badge>
+            )}
+          </div>
+        )}
 
         {/* Metadata Tabs */}
         <div className="rounded-xl shadow-e2 overflow-hidden bg-[#298ba1]/30">
