@@ -77,19 +77,19 @@ const ManagerDashboard = () => {
     { label: 'Inbox', value: messages.length, icon: Inbox, color: colors.accent },
   ];
 
-  // Transform tasks to TaskCardProps format
+  // Transform tasks to TaskCardProps format - show all active tasks, not just selected date
   const taskCards: TaskCardProps[] = useMemo(() => {
-    return selectedDateTasks.slice(0, 5).map((task) => ({
+    return activeTasks.slice(0, 10).map((task) => ({
       title: task.title,
       description: task.description || undefined,
-      priority: task.priority as 'low' | 'medium' | 'high' | 'urgent',
+      priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
       dueDate: task.due_at 
         ? new Date(task.due_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         : undefined,
       imageUrl: task.primary_image_url || undefined,
       showAlert: task.priority === 'urgent' || task.priority === 'high',
     }));
-  }, [selectedDateTasks]);
+  }, [activeTasks]);
 
   // Transform messages to InboxItem format
   const inboxItems: InboxItem[] = useMemo(() => {
@@ -119,7 +119,7 @@ const ManagerDashboard = () => {
   }, [reminders]);
 
   const handleTaskClick = (index: number) => {
-    const task = selectedDateTasks[index];
+    const task = activeTasks[index];
     if (task) navigate(`/task/${task.id}`);
   };
 
