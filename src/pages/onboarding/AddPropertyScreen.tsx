@@ -28,14 +28,8 @@ export default function AddPropertyScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!propertyAddress.trim()) {
-      newErrors.address = "Address is required";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Address is now optional, no validation needed
+    return true;
   };
 
   const handleSave = async () => {
@@ -118,50 +112,11 @@ export default function AddPropertyScreen() {
           />
 
           <NeomorphicInput
-            label="Address"
+            label="Address (Optional)"
             placeholder="123 Main St, City"
             value={propertyAddress}
             onChange={(e) => setPropertyAddress(e.target.value)}
-            error={errors.address}
           />
-
-          <div>
-            <label className="block text-sm font-medium text-[#6D7480] mb-2">
-              Number of Units
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setPropertyUnits(Math.max(1, propertyUnits - 1))}
-                className="w-12 h-12 rounded-xl text-[#6D7480] hover:text-[#1C1C1C] transition-colors"
-                style={{
-                  boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
-                }}
-              >
-                −
-              </button>
-              
-              <div 
-                className="flex-1 text-center py-3 rounded-xl text-lg font-medium text-[#1C1C1C]"
-                style={{
-                  boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
-                }}
-              >
-                {propertyUnits}
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => setPropertyUnits(propertyUnits + 1)}
-                className="w-12 h-12 rounded-xl text-[#6D7480] hover:text-[#1C1C1C] transition-colors"
-                style={{
-                  boxShadow: "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
-                }}
-              >
-                +
-              </button>
-            </div>
-          </div>
 
           <div className="text-center pt-4">
             <p className="text-sm text-[#6D7480]">
