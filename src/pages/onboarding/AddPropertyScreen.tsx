@@ -133,20 +133,13 @@ export default function AddPropertyScreen() {
             </p>
           </div>
 
-          <div className="pt-4 space-y-3">
+          <div className="pt-4">
             <NeomorphicButton
               variant="primary"
               onClick={handleSave}
               disabled={loading}
             >
               {loading ? "Saving..." : "Save Property"}
-            </NeomorphicButton>
-
-            <NeomorphicButton
-              variant="ghost"
-              onClick={handleSkip}
-            >
-              Skip for now
             </NeomorphicButton>
           </div>
         </div>
