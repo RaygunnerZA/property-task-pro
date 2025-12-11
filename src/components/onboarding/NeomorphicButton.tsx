@@ -17,7 +17,7 @@ export function NeomorphicButton({
 
   const variantStyles = {
     primary: cn(
-      "bg-primary text-primary-foreground",
+      "text-white",
       !disabled && "neo-surface",
       "disabled:opacity-50 disabled:cursor-not-allowed"
     ),
@@ -53,6 +53,7 @@ export function NeomorphicButton({
       className={cn(baseStyles, variantStyles[variant], className)}
       style={{
         boxShadow: variantShadows[variant],
+        backgroundColor: variant === "primary" ? "#FF6B6B" : undefined,
       }}
       disabled={disabled}
       {...props}
