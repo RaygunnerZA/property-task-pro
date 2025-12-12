@@ -48,17 +48,14 @@ export function useAITaskExtraction(description: string) {
       setError(null);
 
       try {
-        const res = await fetch(
-          "https://tuyflmyojrmvlbptnpcg.supabase.co/functions/v1/ai-extract",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({ description })
-          }
-        );
+        const res = await fetch("https://tuyflmyojrmvlbptnpcg.supabase.co/functions/v1/ai-extract", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ description: debounced }), // ✅ FIXED
+        });
 
         const data: ExtractResponse = await res.json();
 
