@@ -48,19 +48,19 @@ export function useAITaskExtraction(description: string) {
       setError(null);
 
       try {
-        const response = await fetch(
+        const res = await fetch(
           "https://tuyflmyojrmvlbptnpcg.supabase.co/functions/v1/ai-extract",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eWZsbXlvanJtdmxicHRucGNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4MDQzODgsImV4cCI6MjA3OTM4MDM4OH0.d7GXscABiRLiG-Gu89Cd8RRqfg7tVoJZ1quZ1ZfSixE`
+              "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
-            body: JSON.stringify({ description: debounced }),
+            body: JSON.stringify({ description })
           }
         );
 
-        const data: ExtractResponse = await response.json();
+        const data: ExtractResponse = await res.json();
 
         if (data.ok) {
           setAiSuggestions(data.combined);
