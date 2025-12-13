@@ -52,7 +52,7 @@ export function useAITaskExtraction(description: string) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            // REMOVE authorization entirely
           },
           body: JSON.stringify({ description: debounced }), // ✅ FIXED
         });
