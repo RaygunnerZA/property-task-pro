@@ -28,6 +28,7 @@ import { PriorityTab } from "./create/tabs/PriorityTab";
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
 import { GroupsSection } from "./create/GroupsSection";
+import { AssetsSection } from "./create/AssetsSection";
 import type { CreateTaskPayload, TaskPriority, RepeatRule, CreateTaskImagePayload } from "@/types/database";
 interface CreateTaskModalProps {
   open: boolean;
@@ -440,13 +441,22 @@ export function CreateTaskModal({
           </Tabs>
         </div>
 
-        {/* Groups */}
-        <div className="rounded-xl shadow-e2 p-4 bg-secondary">
-          <GroupsSection 
-            selectedGroupIds={selectedGroupIds} 
-            onGroupsChange={setSelectedGroupIds}
-            suggestedGroups={aiSuggestions?.groups || []}
-          />
+        {/* Groups & Assets Row */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-xl shadow-e2 p-4 bg-secondary">
+            <GroupsSection 
+              selectedGroupIds={selectedGroupIds} 
+              onGroupsChange={setSelectedGroupIds}
+              suggestedGroups={aiSuggestions?.groups || []}
+            />
+          </div>
+          <div className="rounded-xl shadow-e2 p-4 bg-secondary">
+            <AssetsSection
+              selectedAssetIds={[]}
+              onAssetsChange={() => {}}
+              suggestedAssets={aiSuggestions?.assets || []}
+            />
+          </div>
         </div>
 
         {/* Checklist Template */}

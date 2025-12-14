@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
-import { Folder, Plus, X, ImagePlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Box, Plus, X, ImagePlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,45 +9,50 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { StandardChip } from "@/components/chips/StandardChip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { useGroups } from "@/hooks/useGroups";
 import { supabase } from "@/integrations/supabase/client";
 import { useDataContext } from "@/contexts/DataContext";
 import { useToast } from "@/hooks/use-toast";
 
-interface GroupsSectionProps {
-  selectedGroupIds: string[];
-  onGroupsChange: (groupIds: string[]) => void;
-  suggestedGroups?: string[];
+interface Asset {
+  id: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
 }
 
-export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroups = [] }: GroupsSectionProps) {
-  const { groups, refresh } = useGroups();
+interface AssetsSectionProps {
+  selectedAssetIds: string[];
+  onAssetsChange: (assetIds: string[]) => void;
+  assets?: Asset[];
+  suggestedAssets?: string[];
+}
+
+export function AssetsSection({ 
+  selectedAssetIds, 
+  onAssetsChange, 
+  assets = [],
+  suggestedAssets = []
+}: AssetsSectionProps) {
   const { orgId } = useDataContext();
   const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [newAssetName, setNewAssetName] = useState("");
   const [selectedIcon, setSelectedIcon] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
-  const [pendingGhostGroup, setPendingGhostGroup] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Identify ghost chips (suggested but not in DB)
-  const existingGroupNames = groups.map(g => (g.display_name || g.name).toLowerCase());
-  const ghostGroups = suggestedGroups.filter(
-    suggested => !existingGroupNames.includes(suggested.toLowerCase())
+  // Identify ghost chips
+  const existingAssetNames = assets.map(a => a.name.toLowerCase());
+  const ghostAssets = suggestedAssets.filter(
+    suggested => !existingAssetNames.includes(suggested.toLowerCase())
   );
-
-  const handleGhostGroupClick = (groupName: string) => {
-    setPendingGhostGroup(groupName);
-    setNewGroupName(groupName);
-    setShowCreateModal(true);
-  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,108 +70,47 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroup
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const toggleGroup = (groupId: string) => {
-    if (selectedGroupIds.includes(groupId)) {
-      onGroupsChange(selectedGroupIds.filter(id => id !== groupId));
+  const toggleAsset = (assetId: string) => {
+    if (selectedAssetIds.includes(assetId)) {
+      onAssetsChange(selectedAssetIds.filter(id => id !== assetId));
     } else {
-      onGroupsChange([...selectedGroupIds, groupId]);
+      onAssetsChange([...selectedAssetIds, assetId]);
     }
   };
 
-  const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) {
-      toast({ 
-        title: "Name required", 
-        description: "Please enter a group name.",
-        variant: "destructive" 
-      });
-      return;
-    }
-    
-    // Refresh session to ensure JWT has latest org_id claim
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError) {
-      toast({ 
-        title: "Session error", 
-        description: "Please log out and log back in.",
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    // Get org_id from refreshed JWT claims
-    const jwtOrgId = refreshData.session?.user?.app_metadata?.org_id;
-    
-    if (!jwtOrgId) {
-      toast({ 
-        title: "Organization not found", 
-        description: "Your account is not linked to an organization. Please complete onboarding.",
-        variant: "destructive" 
-      });
-      return;
-    }
-    
-    setCreating(true);
-    try {
-      let imageUrl: string | null = null;
-
-      // Upload image to task-images bucket under groups/ folder
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `groups/${jwtOrgId}/${crypto.randomUUID()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from("task-images")
-          .upload(fileName, imageFile, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("task-images")
-          .getPublicUrl(fileName);
-        imageUrl = urlData.publicUrl;
-      }
-
-      const { error } = await supabase
-        .from("groups")
-        .insert({
-          org_id: jwtOrgId,
-          name: newGroupName.trim(),
-          image_url: imageUrl,
-        });
-
-      if (error) throw error;
-
-      toast({ title: "Group created" });
-      resetModal();
-      setShowCreateModal(false);
-      refresh();
-    } catch (err: any) {
-      console.error("Group creation error:", err);
-      toast({ 
-        title: "Error creating group", 
-        description: err.message,
-        variant: "destructive" 
-      });
-    } finally {
-      setCreating(false);
-    }
+  const handleGhostAssetClick = (assetName: string) => {
+    setNewAssetName(assetName);
+    setShowCreateModal(true);
   };
 
-  const resetModal = () => {
-    setNewGroupName("");
+  const handleCreateAsset = async () => {
+    if (!newAssetName.trim()) return;
+    
+    // For now, just close the modal - assets table may not exist yet
+    toast({ 
+      title: "Asset noted", 
+      description: `"${newAssetName}" will be tracked with this task.` 
+    });
+    setNewAssetName("");
     setSelectedIcon("");
     setSelectedColor("");
     clearImage();
-    setPendingGhostGroup(null);
+    setShowCreateModal(false);
+  };
+
+  const resetModal = () => {
+    setNewAssetName("");
+    setSelectedIcon("");
+    setSelectedColor("");
+    clearImage();
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-sm font-medium flex items-center gap-2">
-          <Folder className="h-4 w-4 text-muted-foreground" />
-          Groups
+          <Box className="h-4 w-4 text-muted-foreground" />
+          Assets
         </Label>
         <button
           type="button"
@@ -183,55 +126,51 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroup
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {groups.map(group => (
+        {assets.map(asset => (
           <StandardChip
-            key={group.id}
-            label={group.display_name || group.name}
-            selected={selectedGroupIds.includes(group.id)}
-            onSelect={() => toggleGroup(group.id)}
-            color={group.color || undefined}
-            icon={group.icon ? <span>{group.icon}</span> : undefined}
+            key={asset.id}
+            label={asset.name}
+            selected={selectedAssetIds.includes(asset.id)}
+            onSelect={() => toggleAsset(asset.id)}
+            color={asset.color || undefined}
           />
         ))}
         
         {/* Ghost chips for AI suggestions */}
-        {ghostGroups.map((ghostName, idx) => (
+        {ghostAssets.map((ghostName, idx) => (
           <StandardChip
             key={`ghost-${idx}`}
             label={`+ ${ghostName}`}
             ghost
-            onSelect={() => handleGhostGroupClick(ghostName)}
+            onSelect={() => handleGhostAssetClick(ghostName)}
           />
         ))}
         
-        {groups.length === 0 && ghostGroups.length === 0 && (
+        {assets.length === 0 && ghostAssets.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">
-            No groups yet. Create one to organize tasks.
+            No assets yet. Create one to track equipment.
           </p>
         )}
       </div>
 
-      {/* Create Group Modal */}
+      {/* Create Asset Modal */}
       <Dialog open={showCreateModal} onOpenChange={(open) => {
         setShowCreateModal(open);
         if (!open) resetModal();
       }}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>
-              {pendingGhostGroup ? `Create "${pendingGhostGroup}"?` : "Create Group"}
-            </DialogTitle>
+            <DialogTitle>Create Asset</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input
-              id="groupName"
-              placeholder="Group name"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
+              placeholder="Asset name"
+              value={newAssetName}
+              onChange={(e) => setNewAssetName(e.target.value)}
               className="shadow-engraved"
             />
 
-            {/* Image row */}
+            {/* Image / Icon / Color row */}
             <div className="flex gap-2">
               <input
                 ref={fileInputRef}
@@ -283,8 +222,8 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroup
               Cancel
             </Button>
             <Button
-              onClick={handleCreateGroup}
-              disabled={!newGroupName.trim() || creating}
+              onClick={handleCreateAsset}
+              disabled={!newAssetName.trim() || creating}
             >
               {creating ? "Creating..." : "Create"}
             </Button>

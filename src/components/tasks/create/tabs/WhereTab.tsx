@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Building2, MapPin, Plus, Search, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { Building2, MapPin, Plus, Search, X, ImagePlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,12 +10,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { StandardChip } from "@/components/chips/StandardChip";
+import { IconPicker } from "@/components/ui/IconPicker";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useProperties } from "@/hooks/useProperties";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 interface WhereTabProps {
   propertyId: string;
@@ -45,6 +46,31 @@ export function WhereTab({
   const [newSpaceName, setNewSpaceName] = useState("");
   const [creating, setCreating] = useState(false);
   const [pendingGhostSpace, setPendingGhostSpace] = useState<string | null>(null);
+  
+  // Icon/color state for create modals
+  const [propertyIcon, setPropertyIcon] = useState<string>("");
+  const [propertyColor, setPropertyColor] = useState<string>("");
+  const [spaceIcon, setSpaceIcon] = useState<string>("");
+  const [spaceColor, setSpaceColor] = useState<string>("");
+  const [propertyImageFile, setPropertyImageFile] = useState<File | null>(null);
+  const [propertyImagePreview, setPropertyImagePreview] = useState<string | null>(null);
+  const propertyFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePropertyImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPropertyImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setPropertyImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const clearPropertyImage = () => {
+    setPropertyImageFile(null);
+    setPropertyImagePreview(null);
+    if (propertyFileInputRef.current) propertyFileInputRef.current.value = "";
+  };
 
   // Filter properties and spaces by search
   const filteredProperties = properties.filter(p => 
@@ -156,6 +182,20 @@ export function WhereTab({
     }
   };
 
+  const resetPropertyModal = () => {
+    setNewPropertyName("");
+    setPropertyIcon("");
+    setPropertyColor("");
+    clearPropertyImage();
+  };
+
+  const resetSpaceModal = () => {
+    setNewSpaceName("");
+    setSpaceIcon("");
+    setSpaceColor("");
+    setPendingGhostSpace(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* Search */}
@@ -179,8 +219,11 @@ export function WhereTab({
           </Label>
           <button
             type="button"
-            onClick={() => setShowCreateProperty(true)}
-            className="h-6 px-2 text-xs gap-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+            onClick={() => {
+              resetPropertyModal();
+              setShowCreateProperty(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <Plus className="h-3 w-3" />
             New
@@ -192,21 +235,13 @@ export function WhereTab({
         ) : filteredProperties.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {filteredProperties.map(property => (
-              <Badge
+              <StandardChip
                 key={property.id}
-                variant={propertyId === property.id ? "default" : "outline"}
-                className={cn(
-                  "cursor-pointer font-mono text-xs uppercase transition-all rounded-[5px]",
-                  propertyId === property.id && "bg-primary text-primary-foreground"
-                )}
-                onClick={() => handlePropertySelect(property.id)}
-              >
-                <div 
-                  className="w-2 h-2 rounded-full mr-1"
-                  style={{ backgroundColor: property.icon_color_hex || '#8EC9CE' }}
-                />
-                {property.nickname || property.address}
-              </Badge>
+                label={property.nickname || property.address}
+                selected={propertyId === property.id}
+                onSelect={() => handlePropertySelect(property.id)}
+                color={property.icon_color_hex || undefined}
+              />
             ))}
           </div>
         ) : (
@@ -226,11 +261,11 @@ export function WhereTab({
           <button
             type="button"
             onClick={() => {
-              setNewSpaceName("");
+              resetSpaceModal();
               setShowCreateSpace(true);
             }}
             disabled={!propertyId}
-            className="h-6 px-2 text-xs gap-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             New
@@ -247,31 +282,23 @@ export function WhereTab({
           <div className="flex flex-wrap gap-2">
             {/* Existing spaces */}
             {filteredSpaces.map(space => (
-              <Badge
+              <StandardChip
                 key={space.id}
-                variant={spaceIds.includes(space.id) ? "default" : "outline"}
-                className={cn(
-                  "cursor-pointer font-mono text-xs uppercase transition-all rounded-[5px]",
-                  spaceIds.includes(space.id) && "bg-primary text-primary-foreground"
-                )}
-                onClick={() => toggleSpace(space.id)}
-              >
-                {space.icon && <span className="mr-1">{space.icon}</span>}
-                {space.name}
-              </Badge>
+                label={space.name}
+                selected={spaceIds.includes(space.id)}
+                onSelect={() => toggleSpace(space.id)}
+                icon={space.icon ? <span>{space.icon}</span> : undefined}
+              />
             ))}
             
             {/* Ghost chips for AI suggestions not in DB */}
             {ghostSpaces.map((ghostName, idx) => (
-              <Badge
+              <StandardChip
                 key={`ghost-${idx}`}
-                variant="outline"
-                className="cursor-pointer font-mono text-xs uppercase transition-all text-muted-foreground/50 hover:text-muted-foreground border-dashed rounded-[5px]"
-                onClick={() => handleGhostSpaceClick(ghostName)}
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                {ghostName}
-              </Badge>
+                label={`+ ${ghostName}`}
+                ghost
+                onSelect={() => handleGhostSpaceClick(ghostName)}
+              />
             ))}
             
             {filteredSpaces.length === 0 && ghostSpaces.length === 0 && (
@@ -285,17 +312,60 @@ export function WhereTab({
 
       {/* Create Property Modal */}
       <Dialog open={showCreateProperty} onOpenChange={setShowCreateProperty}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Property</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <Input
               placeholder="Property name or address"
               value={newPropertyName}
               onChange={(e) => setNewPropertyName(e.target.value)}
               className="shadow-engraved"
             />
+
+            {/* Image row */}
+            <div className="flex gap-2">
+              <input
+                ref={propertyFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePropertyImageSelect}
+                className="hidden"
+              />
+              
+              {propertyImagePreview ? (
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                  <img src={propertyImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={clearPropertyImage}
+                    className="absolute top-0.5 right-0.5 p-0.5 bg-background/80 rounded-full"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => propertyFileInputRef.current?.click()}
+                  className="w-16 h-16 rounded-[5px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  <span className="text-[10px]">Image</span>
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
+              <IconPicker value={propertyIcon} onChange={setPropertyIcon} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Color</Label>
+              <ColorPicker value={propertyColor} onChange={setPropertyColor} />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -318,15 +388,15 @@ export function WhereTab({
       {/* Create Space Modal */}
       <Dialog open={showCreateSpace} onOpenChange={(open) => {
         setShowCreateSpace(open);
-        if (!open) setPendingGhostSpace(null);
+        if (!open) resetSpaceModal();
       }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {pendingGhostSpace ? `Create "${pendingGhostSpace}"?` : "Create Space"}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <Input
               placeholder="Space name"
               value={newSpaceName}
@@ -334,17 +404,27 @@ export function WhereTab({
               className="shadow-engraved"
             />
             {pendingGhostSpace && (
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground">
                 This space doesn't exist yet. Create it now?
               </p>
             )}
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
+              <IconPicker value={spaceIcon} onChange={setSpaceIcon} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Color</Label>
+              <ColorPicker value={spaceColor} onChange={setSpaceColor} />
+            </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => {
                 setShowCreateSpace(false);
-                setPendingGhostSpace(null);
+                resetSpaceModal();
               }}
               disabled={creating}
             >

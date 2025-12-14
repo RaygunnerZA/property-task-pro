@@ -10,13 +10,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { GroupableChip } from "@/components/chips/GroupableChip";
+import { StandardChip } from "@/components/chips/StandardChip";
+import { IconPicker } from "@/components/ui/IconPicker";
+import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useTeams } from "@/hooks/useTeams";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 interface WhoTabProps {
   assignedUserId?: string;
@@ -58,6 +59,8 @@ export function WhoTab({
   const [newTeamName, setNewTeamName] = useState("");
   const [teamImageFile, setTeamImageFile] = useState<File | null>(null);
   const [teamImagePreview, setTeamImagePreview] = useState<string | null>(null);
+  const [teamIcon, setTeamIcon] = useState<string>("");
+  const [teamColor, setTeamColor] = useState<string>("");
   const [creating, setCreating] = useState(false);
   const [pendingGhostPerson, setPendingGhostPerson] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,9 +204,8 @@ export function WhoTab({
         </Label>
         <div className="flex flex-wrap gap-2 items-center min-h-[32px]">
           {assignedUserId && (
-            <GroupableChip
+            <StandardChip
               label={allPeople.find(p => p.user_id === assignedUserId)?.display_name || "Unknown"}
-              variant="person"
               selected
               onSelect={() => handleSelectPerson(null)}
               onRemove={() => handleSelectPerson(null)}
@@ -212,10 +214,9 @@ export function WhoTab({
           {assignedTeamIds.map(teamId => {
             const team = allTeams.find(t => t.id === teamId);
             return team ? (
-              <GroupableChip
+              <StandardChip
                 key={teamId}
                 label={team.name}
-                variant="team"
                 selected
                 onSelect={() => toggleTeam(teamId)}
                 onRemove={() => toggleTeam(teamId)}
@@ -247,27 +248,24 @@ export function WhoTab({
             <User className="h-3.5 w-3.5" />
             People
           </Label>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => {
               setNewPersonName("");
               setShowCreatePerson(true);
             }}
-            className="h-6 px-2 text-xs gap-1"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <Plus className="h-3 w-3" />
             New
-          </Button>
+          </button>
         </div>
         
         <div className="flex flex-wrap gap-2">
           {filteredPeople.map((person) => (
-            <GroupableChip
+            <StandardChip
               key={person.id}
               label={person.display_name}
-              variant="person"
               selected={assignedUserId === person.user_id}
               onSelect={() =>
                 handleSelectPerson(
@@ -279,10 +277,10 @@ export function WhoTab({
           
           {/* Ghost chips for AI suggestions */}
           {ghostPeople.map((ghostName, idx) => (
-            <GroupableChip
+            <StandardChip
               key={`ghost-${idx}`}
               label={`+ ${ghostName}`}
-              variant="ghost"
+              ghost
               onSelect={() => handleGhostPersonClick(ghostName)}
             />
           ))}
@@ -302,24 +300,27 @@ export function WhoTab({
             <Users className="h-3.5 w-3.5" />
             Teams
           </Label>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowCreateTeam(true)}
-            className="h-6 px-2 text-xs gap-1"
+            onClick={() => {
+              setNewTeamName("");
+              setTeamIcon("");
+              setTeamColor("");
+              clearImage();
+              setShowCreateTeam(true);
+            }}
+            className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <Plus className="h-3 w-3" />
             New
-          </Button>
+          </button>
         </div>
         
         <div className="flex flex-wrap gap-2">
           {filteredTeams.map((team) => (
-            <GroupableChip
+            <StandardChip
               key={team.id}
               label={team.name}
-              variant="team"
               selected={assignedTeamIds.includes(team.id)}
               onSelect={() => toggleTeam(team.id)}
             />
@@ -382,7 +383,7 @@ export function WhoTab({
 
       {/* Create Team Modal */}
       <Dialog open={showCreateTeam} onOpenChange={setShowCreateTeam}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Team</DialogTitle>
           </DialogHeader>
@@ -397,8 +398,8 @@ export function WhoTab({
               />
             </div>
             
-            <div className="space-y-2">
-              <Label>Team Image</Label>
+            {/* Image / Icon / Color row */}
+            <div className="flex gap-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -406,27 +407,38 @@ export function WhoTab({
                 onChange={handleImageSelect}
                 className="hidden"
               />
+              
               {teamImagePreview ? (
-                <div className="relative w-full h-24 rounded-[5px] overflow-hidden shadow-e1">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
                   <img src={teamImagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={clearImage}
-                    className="absolute top-1 right-1 p-1 bg-background/80 rounded-full"
+                    className="absolute top-0.5 right-0.5 p-0.5 bg-background/80 rounded-full"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               ) : (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-20 rounded-[5px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary/50 transition-colors"
+                  className="w-16 h-16 rounded-[5px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
-                  <ImagePlus className="h-5 w-5" />
-                  <span className="text-xs">Add image</span>
+                  <ImagePlus className="h-4 w-4" />
+                  <span className="text-[10px]">Image</span>
                 </button>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
+              <IconPicker value={teamIcon} onChange={setTeamIcon} />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Choose Color</Label>
+              <ColorPicker value={teamColor} onChange={setTeamColor} />
             </div>
           </div>
           <DialogFooter>
