@@ -382,13 +382,25 @@ export function CreateTaskModal({
 
             <div className="p-4 bg-secondary">
               <TabsContent value="where" className="mt-0">
-                <WhereTab propertyId={propertyId} spaceIds={selectedSpaceIds} onPropertyChange={setPropertyId} onSpacesChange={setSelectedSpaceIds} />
+                <WhereTab 
+                  propertyId={propertyId} 
+                  spaceIds={selectedSpaceIds} 
+                  onPropertyChange={setPropertyId} 
+                  onSpacesChange={setSelectedSpaceIds}
+                  suggestedSpaces={aiSuggestions?.spaces || []}
+                />
               </TabsContent>
               <TabsContent value="when" className="mt-0">
                 <WhenTab dueDate={dueDate} repeatRule={repeatRule} onDueDateChange={setDueDate} onRepeatRuleChange={setRepeatRule} />
               </TabsContent>
               <TabsContent value="who" className="mt-0">
-                <WhoTab assignedUserId={assignedUserId} assignedTeamIds={assignedTeamIds} onUserChange={setAssignedUserId} onTeamsChange={setAssignedTeamIds} />
+                <WhoTab 
+                  assignedUserId={assignedUserId} 
+                  assignedTeamIds={assignedTeamIds} 
+                  onUserChange={setAssignedUserId} 
+                  onTeamsChange={setAssignedTeamIds}
+                  suggestedPeople={aiSuggestions?.people || []}
+                />
               </TabsContent>
               <TabsContent value="priority" className="mt-0">
                 <PriorityTab priority={priority} onPriorityChange={setPriority} />
@@ -399,7 +411,11 @@ export function CreateTaskModal({
 
         {/* Groups */}
         <div className="rounded-xl shadow-e2 p-4 bg-secondary">
-          <GroupsSection selectedGroupIds={selectedGroupIds} onGroupsChange={setSelectedGroupIds} />
+          <GroupsSection 
+            selectedGroupIds={selectedGroupIds} 
+            onGroupsChange={setSelectedGroupIds}
+            suggestedGroups={aiSuggestions?.groups || []}
+          />
         </div>
 
         {/* Checklist Template */}
