@@ -16,8 +16,6 @@ import {
   type TaskCardProps,
   type InboxItem,
   type ReminderItem,
-  colors, 
-  shadows 
 } from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
 import { useMessages } from '@/hooks/useMessages';
@@ -68,13 +66,12 @@ const ManagerDashboard = () => {
   const activeTasks = tasks.filter(t => t.status !== 'completed');
   const overdueTasks = activeTasks.filter(t => t.due_at && t.due_at.slice(0, 10) < todayISO);
   const todayTasks = activeTasks.filter(t => t.due_at?.slice(0, 10) === todayISO);
-  const selectedDateTasks = activeTasks.filter(t => t.due_at?.slice(0, 10) === selectedISO);
 
   const stats = [
-    { label: 'Active', value: activeTasks.length, icon: CheckSquare, color: colors.primary },
-    { label: 'Today', value: todayTasks.length, icon: Clock, color: colors.signal },
-    { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, color: colors.danger },
-    { label: 'Inbox', value: messages.length, icon: Inbox, color: colors.accent },
+    { label: 'Active', value: activeTasks.length, icon: CheckSquare, colorClass: 'text-primary' },
+    { label: 'Today', value: todayTasks.length, icon: Clock, colorClass: 'text-signal-foreground' },
+    { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, colorClass: 'text-destructive' },
+    { label: 'Inbox', value: messages.length, icon: Inbox, colorClass: 'text-accent' },
   ];
 
   // Transform tasks to TaskCardProps format - show all active tasks, not just selected date
@@ -124,7 +121,7 @@ const ManagerDashboard = () => {
   };
 
   return (
-    <div className="pb-20 md:pb-6">
+    <div className="pb-20 md:pb-6 bg-background">
       <ContextHeader 
         title="Dashboard" 
         subtitle="Manager overview"
@@ -136,26 +133,13 @@ const ManagerDashboard = () => {
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="p-3 rounded-xl text-center"
-              style={{ 
-                backgroundColor: colors.surface,
-                boxShadow: shadows.outset 
-              }}
+              className="p-3 rounded-xl text-center bg-card shadow-e1"
             >
-              <stat.icon 
-                className="h-4 w-4 mx-auto mb-1" 
-                style={{ color: stat.color }} 
-              />
-              <div 
-                className="text-xl font-bold font-mono"
-                style={{ color: colors.ink }}
-              >
+              <stat.icon className={`h-4 w-4 mx-auto mb-1 ${stat.colorClass}`} />
+              <div className="text-xl font-bold font-mono text-foreground">
                 {stat.value}
               </div>
-              <div 
-                className="text-[10px] font-semibold uppercase tracking-wide"
-                style={{ color: colors.textMuted }}
-              >
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {stat.label}
               </div>
             </div>
@@ -190,47 +174,31 @@ const ManagerDashboard = () => {
         <div className="grid grid-cols-2 gap-3 max-w-md mx-auto lg:max-w-none lg:grid-cols-4">
           <button
             onClick={() => setShowCreateTask(true)}
-            className="p-4 rounded-xl text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ 
-              backgroundColor: colors.primary,
-              boxShadow: shadows.outset 
-            }}
+            className="p-4 rounded-xl text-center bg-primary shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Plus className="h-5 w-5 mx-auto mb-1 text-white" />
-            <span className="text-sm font-semibold text-white">Add Task</span>
+            <Plus className="h-5 w-5 mx-auto mb-1 text-primary-foreground" />
+            <span className="text-sm font-semibold text-primary-foreground">Add Task</span>
           </button>
           <button
             onClick={() => navigate('/manage/properties')}
-            className="p-4 rounded-xl text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ 
-              backgroundColor: colors.surface,
-              boxShadow: shadows.outset 
-            }}
+            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Building2 className="h-5 w-5 mx-auto mb-1" style={{ color: colors.accent }} />
-            <span className="text-sm font-semibold" style={{ color: colors.ink }}>Properties</span>
+            <Building2 className="h-5 w-5 mx-auto mb-1 text-accent" />
+            <span className="text-sm font-semibold text-foreground">Properties</span>
           </button>
           <button
             onClick={() => navigate('/work/tasks')}
-            className="p-4 rounded-xl text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ 
-              backgroundColor: colors.surface,
-              boxShadow: shadows.outset 
-            }}
+            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <CheckSquare className="h-5 w-5 mx-auto mb-1" style={{ color: colors.primary }} />
-            <span className="text-sm font-semibold" style={{ color: colors.ink }}>All Tasks</span>
+            <CheckSquare className="h-5 w-5 mx-auto mb-1 text-primary" />
+            <span className="text-sm font-semibold text-foreground">All Tasks</span>
           </button>
           <button
             onClick={() => navigate('/work/inbox')}
-            className="p-4 rounded-xl text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ 
-              backgroundColor: colors.surface,
-              boxShadow: shadows.outset 
-            }}
+            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
-            <Inbox className="h-5 w-5 mx-auto mb-1" style={{ color: colors.signal }} />
-            <span className="text-sm font-semibold" style={{ color: colors.ink }}>Inbox</span>
+            <Inbox className="h-5 w-5 mx-auto mb-1 text-signal-foreground" />
+            <span className="text-sm font-semibold text-foreground">Inbox</span>
           </button>
         </div>
       </div>

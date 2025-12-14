@@ -1,6 +1,5 @@
 import { BottomNav } from '@/components/BottomNav';
 import { ContextHeader } from '@/components/ContextHeader';
-import { colors, shadows } from '@/components/filla';
 import { User, Settings, Bell, Shield, Palette, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,10 +42,7 @@ const Account = () => {
   ];
 
   return (
-    <div 
-      className="min-h-screen pb-20"
-      style={{ backgroundColor: colors.background }}
-    >
+    <div className="min-h-screen pb-20 bg-background">
       <ContextHeader 
         title="Account" 
         subtitle="Manage your settings" 
@@ -55,34 +51,16 @@ const Account = () => {
 
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Profile Card */}
-        <div 
-          className="rounded-lg p-6"
-          style={{
-            backgroundColor: colors.surface,
-            boxShadow: shadows.outset
-          }}
-        >
+        <div className="rounded-lg p-6 bg-card shadow-e1">
           <div className="flex items-center gap-4">
-            <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center"
-              style={{
-                backgroundColor: colors.background,
-                boxShadow: shadows.inset
-              }}
-            >
-              <User className="h-8 w-8" style={{ color: colors.primary }} />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center bg-background shadow-engraved">
+              <User className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h2 
-                className="text-2xl font-semibold tracking-tight"
-                style={{ color: colors.ink }}
-              >
+              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                 John Doe
               </h2>
-              <p 
-                className="text-xs mt-0.5"
-                style={{ color: colors.textLight }}
-              >
+              <p className="text-xs mt-0.5 text-muted-foreground">
                 john.doe@example.com
               </p>
             </div>
@@ -92,36 +70,21 @@ const Account = () => {
         {/* Menu Sections */}
         {menuSections.map((section) => (
           <div key={section.title} className="space-y-2">
-            <h3 
-              className="text-xs font-bold uppercase tracking-wide px-1"
-              style={{ color: colors.textMuted }}
-            >
+            <h3 className="text-xs font-bold uppercase tracking-wide px-1 text-muted-foreground">
               {section.title}
             </h3>
-            <div 
-              className="rounded-lg overflow-hidden"
-              style={{
-                backgroundColor: colors.surface,
-                boxShadow: shadows.outset
-              }}
-            >
+            <div className="rounded-lg overflow-hidden bg-card shadow-e1">
               {section.items.map((item, index) => (
                 <button
                   key={item.label}
                   onClick={() => navigate(item.path)}
-                  className="w-full flex items-center gap-3 p-4 transition-all duration-200 hover:brightness-95 active:scale-[0.99]"
-                  style={{
-                    borderBottom: index !== section.items.length - 1 ? `1px solid ${colors.concrete}` : 'none'
-                  }}
+                  className="w-full flex items-center gap-3 p-4 transition-all duration-200 hover:brightness-95 active:scale-[0.99] border-b border-border last:border-b-0"
                 >
-                  <item.icon className="h-5 w-5" style={{ color: colors.textMuted }} />
-                  <span 
-                    className="flex-1 text-left text-sm font-medium"
-                    style={{ color: colors.ink }}
-                  >
+                  <item.icon className="h-5 w-5 text-muted-foreground" />
+                  <span className="flex-1 text-left text-sm font-medium text-foreground">
                     {item.label}
                   </span>
-                  <ChevronRight className="h-4 w-4" style={{ color: colors.textLight }} />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </button>
               ))}
             </div>
@@ -129,22 +92,13 @@ const Account = () => {
         ))}
 
         {/* Logout */}
-        <div 
-          className="rounded-lg overflow-hidden"
-          style={{
-            backgroundColor: colors.surface,
-            boxShadow: shadows.outset
-          }}
-        >
+        <div className="rounded-lg overflow-hidden bg-card shadow-e1">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 p-4 transition-all duration-200 hover:brightness-95 active:scale-[0.99]"
           >
-            <LogOut className="h-5 w-5" style={{ color: colors.danger }} />
-            <span 
-              className="flex-1 text-left text-sm font-medium"
-              style={{ color: colors.danger }}
-            >
+            <LogOut className="h-5 w-5 text-destructive" />
+            <span className="flex-1 text-left text-sm font-medium text-destructive">
               Log Out
             </span>
           </button>

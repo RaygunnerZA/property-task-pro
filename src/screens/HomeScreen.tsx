@@ -1,4 +1,4 @@
-import { SectionTitle } from "../design-system/DesignSystem";
+import { SectionTitle } from "@/components/filla/SectionTitle";
 import PageSection from "../components/PageSection";
 
 export default function HomeScreen() {
