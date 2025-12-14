@@ -26,13 +26,5 @@ export type { TaskCardProps } from './TaskCard';
 export { DashboardTabs } from './DashboardTabs';
 export type { DashboardTabsProps, InboxItem, ReminderItem } from './DashboardTabs';
 
-// Design system exports (includes some duplicates but with additional features)
-export { 
-  colors, 
-  shadows, 
-  typography, 
-  spacing, 
-  radii, 
-  motion,
-  DesignSystemPreview 
-} from './DesignSystem';
+// Design tokens - single source of truth
+export { colors, neuShadows, typography, spacing, radii, shadows } from './tokens';

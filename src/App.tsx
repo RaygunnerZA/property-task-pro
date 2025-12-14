@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
-import { DesignTokenProvider } from "@/providers/DesignTokenProvider";
 import { DataProvider } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -75,8 +74,7 @@ const queryClient = new QueryClient();
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <DesignTokenProvider>
-        <TooltipProvider>
+      <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -165,7 +163,6 @@ const App = () => {
             </SystemStatusProvider>
           </BrowserRouter>
         </TooltipProvider>
-      </DesignTokenProvider>
     </QueryClientProvider>
   );
 };

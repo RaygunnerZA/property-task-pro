@@ -1,6 +1,7 @@
 /**
- * Filla Design System v3.4 - "Dimensional Paper Edition"
+ * Filla Design System v4.0 - "Dimensional Paper Edition"
  * Token-based design system for tactile, neomorphic UI
+ * SINGLE SOURCE OF TRUTH - use Tailwind classes instead where possible
  */
 
 // === COLOR PALETTE (HSL) ===
@@ -15,19 +16,21 @@ export const colors = {
   accentLight: '16 100% 95%',   // Light coral bg
   
   // Neutrals - Warm Paper Tones
-  background: '40 20% 94%',     // #F1EEE8 - Warm beige
-  surface: '0 0% 100%',         // #FFFFFF - Pure white
-  concrete: '40 12% 88%',       // #E3DFD7 - Border gray
+  background: 'hsl(40, 20%, 94%)',     // #F1EEE8 - Warm beige
+  surface: 'hsl(0, 0%, 100%)',         // #FFFFFF - Pure white
+  surfaceRaised: 'hsl(40, 15%, 96%)',  // Slightly raised surface
+  concrete: 'hsl(40, 12%, 88%)',       // #E3DFD7 - Border gray
   
   // Typography
-  ink: '248 15% 18%',           // #2A293E - Dark purple-gray
-  textMuted: '40 2% 55%',       // #8C8C85 - Muted gray
+  ink: 'hsl(248, 15%, 18%)',           // #2A293E - Dark purple-gray
+  textMuted: 'hsl(40, 2%, 55%)',       // #8C8C85 - Muted gray
+  textLight: 'hsl(40, 5%, 70%)',       // Light gray for captions
   
   // Status Colors
-  danger: '0 84% 60%',          // #EF4444 - Red
-  warning: '43 100% 85%',       // #FFE9B2 - Yellow
-  success: '145 62% 85%',       // #C1F1D6 - Green
-  signal: '30 100% 91%',        // #FFE4D0 - Warm signal orange
+  danger: 'hsl(0, 84%, 60%)',          // #EF4444 - Red
+  warning: 'hsl(43, 100%, 85%)',       // #FFE9B2 - Yellow
+  success: 'hsl(145, 62%, 85%)',       // #C1F1D6 - Green
+  signal: 'hsl(30, 100%, 91%)',        // #FFE4D0 - Warm signal orange
 } as const;
 
 // === NEUMORPHIC SHADOW PRESETS ===
@@ -106,6 +109,12 @@ export const shadows = {
   primaryBtn: neuShadows.buttonOut,
   btnPressed: neuShadows.buttonPressed,
   fab: '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
+  
+  // Legacy compatibility
+  outset: '0px 2px 6px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.04)',
+  inset: 'inset 2px 2px 6px rgba(0,0,0,0.08), inset -2px -2px 6px rgba(255,255,255,0.7)',
+  card: '0px 4px 12px rgba(0,0,0,0.06), 0px 2px 4px rgba(0,0,0,0.04)',
+  floating: '0px 12px 32px rgba(0,0,0,0.12), 0px 4px 12px rgba(0,0,0,0.08)',
 } as const;
 
 // === TRANSITIONS ===
