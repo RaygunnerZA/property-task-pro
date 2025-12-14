@@ -1,192 +1,258 @@
-// ai-extract — Rule-based Task Extraction Engine
-// Returns structured task metadata for Filla Create Task modal.
+// ai-extract — Semantic Task Extraction Engine with Provider Switch & Ghost-Chip Resolution
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const AI_PROVIDER = (Deno.env.get("AI_PROVIDER") || "LOVABLE").toUpperCase();
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ ok: false, error: "POST only" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ----------------------------------------------------
+// Request Handling
+// ----------------------------------------------------
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS")
+    return new Response(null, { headers: corsHeaders });
+
+  if (req.method !== "POST")
+    return jsonErr("POST only", 405);
 
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonErr("Invalid JSON", 400);
   }
 
-  const description = (body.description || "").toString().trim();
+  const description = (body.description || "").trim();
+  const orgId = body.org_id;
 
-  if (!description) {
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        combined: {
-          title: "",
-          spaces: [],
-          people: [],
-          assets: [],
-          priority: "NORMAL",
-          date: "",
-          groups: [],
-          yes_no: false,
-          signature: false,
-        },
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  if (!orgId) return jsonErr("Missing org_id", 400);
+  if (!description) return jsonOK(emptyResult());
+
+  // 1. Semantic AI Extraction
+  let ai;
+  try {
+    ai = await withTimeout(callAI(description), 9000); // 9s timeout
+  } catch {
+    ai = ruleBased(description);
   }
 
-  const lower = description.toLowerCase();
+  // 2. Resolve entities using database
+  const combined = await resolveEntities(ai, orgId);
 
-  // Generate a simplified title (not repeating full description)
-  function extractTitle(text: string): string {
-    // First try to extract action phrase
-    const actionWords = ["fix", "repair", "check", "inspect", "replace", "install", "clean", "paint", "move", "update"];
-    const words = text.split(/\s+/);
-    
-    // Find first action word and build title from there
-    for (let i = 0; i < words.length && i < 3; i++) {
-      if (actionWords.some(a => words[i].toLowerCase().startsWith(a))) {
-        const titleWords = words.slice(i, Math.min(i + 6, words.length));
-        return titleWords.join(" ").replace(/[.,!?]+$/, "");
-      }
-    }
-    
-    // Fallback: use first 60 chars
-    if (text.length <= 60) return text.trim();
-    const cut = text.slice(0, 60);
-    const lastSpace = cut.lastIndexOf(" ");
-    return cut.slice(0, lastSpace > 20 ? lastSpace : 60).trim();
-  }
-
-  // Space detection
-  const spaceKeywords = [
-    "kitchen",
-    "bathroom",
-    "bedroom",
-    "hall",
-    "hallway",
-    "garage",
-    "shed",
-    "lounge",
-    "living room",
-    "boiler room",
-    "attic",
-    "basement",
-    "office",
-    "garden",
-    "utility room",
-    "dining room",
-  ];
-  const detectedSpaces = spaceKeywords.filter((s) => lower.includes(s));
-
-  // People detection
-  const peopleKeywords = ["brian", "mark", "leon", "barbara", "justin", "john", "jane", "sarah", "mike", "david"];
-  const detectedPeople = peopleKeywords.filter((p) => lower.includes(p));
-
-  // Asset detection
-  const assetKeywords = [
-    "tap",
-    "sink",
-    "boiler",
-    "radiator",
-    "window",
-    "door",
-    "pipe",
-    "pump",
-    "nuts",
-    "equipment",
-    "toilet",
-    "shower",
-    "heater",
-    "washing machine",
-    "dishwasher",
-    "fridge",
-    "oven",
-    "light",
-    "switch",
-    "socket",
-    "outlet",
-  ];
-  const detectedAssets = assetKeywords.filter((a) => lower.includes(a));
-
-  // Priority detection
-  let priority = "NORMAL";
-  const urgentWords = ["urgent", "asap", "immediately", "leak", "leaking", "broken", "danger", "dangerous", "emergency", "flood", "flooding", "fire"];
-  if (urgentWords.some((w) => lower.includes(w))) {
-    priority = "HIGH";
-  }
-
-  // Date detection - including weekdays
-  let date = "";
-  const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-  
-  if (lower.includes("tomorrow")) date = "tomorrow";
-  else if (lower.includes("today")) date = "today";
-  else if (lower.includes("next week")) date = "next_week";
-  else {
-    // Check for weekday mentions (e.g., "on friday", "by monday")
-    for (const day of weekdays) {
-      if (lower.includes(day) || lower.includes(`next ${day}`)) {
-        date = day;
-        break;
-      }
-    }
-  }
-
-  // Yes/No requirement detection
-  const yes_no =
-    lower.includes("check if") ||
-    lower.includes("confirm if") ||
-    lower.includes("yes or no") ||
-    lower.includes("is it");
-
-  // Signature/Compliance detection
-  const signature =
-    lower.includes("inspect") ||
-    lower.includes("safety") ||
-    lower.includes("compliance") ||
-    lower.includes("certificate") ||
-    lower.includes("sign off");
-
-  // Build response
-  const combined = {
-    title: extractTitle(description),
-    spaces: detectedSpaces.map((s) => s.charAt(0).toUpperCase() + s.slice(1)),
-    people: detectedPeople.map((p) => p.charAt(0).toUpperCase() + p.slice(1)),
-    assets: detectedAssets.map((a) => a.charAt(0).toUpperCase() + a.slice(1)),
-    priority,
-    date,
-    groups: [],
-    yes_no,
-    signature,
-  };
-
-  console.log("AI Extract processed:", {
-    descriptionPreview: description.slice(0, 50),
-    combined,
-  });
-
-  return new Response(JSON.stringify({ ok: true, combined }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  return jsonOK(combined);
 });
+
+// ----------------------------------------------------
+// AI Provider Switch
+// ----------------------------------------------------
+
+async function callAI(description: string) {
+  const prompt = buildPrompt(description);
+
+  switch (AI_PROVIDER) {
+    case "LOVABLE":
+      return callLovable(prompt);
+    case "OPENAI":
+      return callOpenAI(prompt);
+    case "GEMINI":
+      return callGemini(prompt);
+    default:
+      throw new Error("Unknown AI_PROVIDER");
+  }
+}
+
+async function callLovable(prompt: string) {
+  const res = await fetch(
+    "https://ai.gateway.lovable.dev/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.0-flash",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    }
+  );
+
+  const json = await res.json();
+  return JSON.parse(json.choices[0].message.content);
+}
+
+async function callOpenAI(prompt: string) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  const json = await res.json();
+  return JSON.parse(json.choices[0].message.content);
+}
+
+async function callGemini(prompt: string) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+    }),
+  });
+
+  const json = await res.json();
+  return JSON.parse(json.candidates[0].content.parts[0].text);
+}
+
+// ----------------------------------------------------
+// Prompt
+// ----------------------------------------------------
+
+function buildPrompt(description: string) {
+  return `
+Extract structured task metadata. Understand context:
+
+- "fix toilet" → Bathroom
+- dirt → Housekeeping
+- leak → urgent
+- Tuesday → date
+
+Return ONLY JSON:
+
+{
+  "title": "",
+  "spaces": [],
+  "people": [],
+  "teams": [],
+  "groups": [],
+  "assets": [],
+  "priority": "low|medium|high|urgent",
+  "date": "",
+  "yes_no": false,
+  "signature": false
+}
+
+DESCRIPTION:
+${description}
+`;
+}
+
+// ----------------------------------------------------
+// Entity Resolution
+// ----------------------------------------------------
+
+async function resolveEntities(ai: any, orgId: string) {
+  const [spacesRes, teamsRes, groupsRes] = await Promise.all([
+    supabase.from("spaces").select("id,name").eq("org_id", orgId),
+    supabase.from("teams").select("id,name").eq("org_id", orgId),
+    supabase.from("groups").select("id,name").eq("org_id", orgId),
+  ]);
+
+  return {
+    title: ai.title,
+    priority: ai.priority,
+    date: ai.date,
+    yes_no: ai.yes_no,
+    signature: ai.signature,
+    assets: ai.assets || [],
+
+    spaces: match(ai.spaces, spacesRes.data || []),
+    people: ai.people?.map((n: string) => ({ name: n, exists: false })) || [],
+    teams: match(ai.teams, teamsRes.data || []),
+    groups: match(ai.groups, groupsRes.data || []),
+  };
+}
+
+function match(list: string[] = [], existing: any[] = []) {
+  return list.map((name) => {
+    const found = existing.find(
+      (e) => e.name.toLowerCase() === name.toLowerCase()
+    );
+    return found
+      ? { name, exists: true, id: found.id }
+      : { name, exists: false };
+  });
+}
+
+// ----------------------------------------------------
+// Rule-Based Fallback
+// ----------------------------------------------------
+
+function ruleBased(text: string) {
+  const lower = text.toLowerCase();
+  let priority = lower.includes("leak") ? "urgent" : "medium";
+
+  return {
+    title: text.slice(0, 50),
+    spaces: [],
+    people: [],
+    teams: [],
+    groups: [],
+    assets: [],
+    priority,
+    date: "",
+    yes_no: false,
+    signature: false,
+  };
+}
+
+function emptyResult() {
+  return {
+    title: "",
+    spaces: [],
+    people: [],
+    teams: [],
+    groups: [],
+    assets: [],
+    priority: "medium",
+    date: "",
+    yes_no: false,
+    signature: false,
+  };
+}
+
+// ----------------------------------------------------
+// Helpers
+// ----------------------------------------------------
+
+const jsonOK = (data: any) =>
+  new Response(JSON.stringify({ ok: true, combined: data }), {
+    headers: corsHeaders,
+  });
+
+const jsonErr = (msg: string, status = 400) =>
+  new Response(JSON.stringify({ ok: false, error: msg }), {
+    status,
+    headers: corsHeaders,
+  });
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error("Timeout")), ms);
+    promise.then((v) => {
+      clearTimeout(t);
+      resolve(v);
+    }).catch(reject);
+  });
+}

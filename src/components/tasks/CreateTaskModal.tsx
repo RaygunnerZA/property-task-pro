@@ -322,7 +322,7 @@ export function CreateTaskModal({
                   onClick={() => setActiveTab("where")}
                 >
                   <MapPin className="h-3 w-3 mr-1" />
-                  + {space}
+                  + {space.name}
                 </Badge>
               ))}
               {aiSuggestions.people.map((person, idx) => (
@@ -333,7 +333,7 @@ export function CreateTaskModal({
                   onClick={() => setActiveTab("who")}
                 >
                   <User className="h-3 w-3 mr-1" />
-                  + {person}
+                  + {person.name}
                 </Badge>
               ))}
               {aiSuggestions.assets.map((asset, idx) => (
@@ -419,7 +419,7 @@ export function CreateTaskModal({
                   spaceIds={selectedSpaceIds} 
                   onPropertyChange={handlePropertyChange} 
                   onSpacesChange={setSelectedSpaceIds}
-                  suggestedSpaces={aiSuggestions?.spaces || []}
+                  suggestedSpaces={aiSuggestions?.spaces?.map(s => s.name) || []}
                 />
               </TabsContent>
               <TabsContent value="when" className="mt-0">
@@ -431,7 +431,7 @@ export function CreateTaskModal({
                   assignedTeamIds={assignedTeamIds} 
                   onUserChange={setAssignedUserId} 
                   onTeamsChange={setAssignedTeamIds}
-                  suggestedPeople={aiSuggestions?.people || []}
+                  suggestedPeople={aiSuggestions?.people?.map(p => p.name) || []}
                 />
               </TabsContent>
               <TabsContent value="priority" className="mt-0">
@@ -447,7 +447,7 @@ export function CreateTaskModal({
             <GroupsSection 
               selectedGroupIds={selectedGroupIds} 
               onGroupsChange={setSelectedGroupIds}
-              suggestedGroups={aiSuggestions?.groups || []}
+              suggestedGroups={aiSuggestions?.groups?.map(g => g.name) || []}
             />
           </div>
           <div className="rounded-xl shadow-e2 p-4 bg-secondary">
