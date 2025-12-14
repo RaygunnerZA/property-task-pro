@@ -8,10 +8,9 @@ import { CalendarHeatMap } from '@/components/design-system/CalendarHeatMap';
 import { CardsSection } from '@/components/design-system/CardsSection';
 import { NavigationSection } from '@/components/design-system/NavigationSection';
 import { TabsSection } from '@/components/design-system/TabsSection';
-import { UnifiedTokenSandbox } from '@/components/design-system/UnifiedTokenSandbox';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
 import { ComponentRegistry } from '@/components/design-system/ComponentRegistry';
-import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, SlidersHorizontal, Monitor, Package } from 'lucide-react';
+import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, Monitor, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const sections = [
@@ -24,7 +23,6 @@ const sections = [
   { id: 'cards', label: 'Cards', icon: LayoutGrid },
   { id: 'navigation', label: 'Navigation', icon: Navigation },
   { id: 'tabs', label: 'Tabs', icon: Layers },
-  { id: 'sandbox', label: 'Sandboxes', icon: SlidersHorizontal },
   { id: 'responsive', label: 'Responsive', icon: Monitor }
 ];
 
@@ -44,7 +42,7 @@ export default function DesignLibrary() {
               </div>
               <div>
                 <h1 className="font-display text-lg sm:text-xl font-bold text-ink tracking-tight">Filla Design System</h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">v3.4 Dimensional Paper Edition</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">v4.0 Dimensional Paper Edition</p>
               </div>
             </div>
           </div>
@@ -90,12 +88,6 @@ export default function DesignLibrary() {
         <section id="navigation"><NavigationSection /></section>
         <div className="h-px bg-concrete" />
         <section id="tabs"><TabsSection /></section>
-        <div className="h-px bg-concrete" />
-        
-        <section id="sandbox" className="space-y-12 sm:space-y-16">
-          <UnifiedTokenSandbox />
-        </section>
-        
         <div className="h-px bg-concrete" />
         <section id="responsive"><ResponsiveDemo /></section>
 

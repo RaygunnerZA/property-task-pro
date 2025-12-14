@@ -1,5 +1,4 @@
 import React from 'react';
-import { useDesignTokens } from '@/hooks/useDesignTokens';
 
 const typographyExamples = [
   {
@@ -7,14 +6,12 @@ const typographyExamples = [
     font: 'Inter Tight',
     className: 'font-display text-4xl font-bold tracking-tight heading-xl',
     sample: 'The quick brown fox',
-    hasXLShadow: true,
   },
   {
     name: 'Heading L',
     font: 'Inter Tight',
     className: 'font-display text-2xl font-semibold tracking-tight heading-l',
     sample: 'The quick brown fox jumps',
-    hasLShadow: true,
   },
   {
     name: 'Heading M',
@@ -55,8 +52,6 @@ const typographyExamples = [
 ];
 
 export function TypographySection() {
-  const { tokens } = useDesignTokens();
-  
   return (
     <section className="space-y-6">
       <div className="space-y-2">
@@ -75,9 +70,6 @@ export function TypographySection() {
                 {item.name}
               </span>
               <span className="text-xs text-muted-foreground">{item.font}</span>
-              {(item.hasXLShadow || item.hasLShadow) && (
-                <span className="text-xs text-primary font-mono">+ shadow</span>
-              )}
             </div>
             <p className={`text-ink ${item.className}`}>{item.sample}</p>
           </div>
