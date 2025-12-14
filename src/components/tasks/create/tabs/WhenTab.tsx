@@ -4,9 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { format, parseISO } from "date-fns";
 
 interface WhenTabProps {
   dueDate: string;
@@ -21,6 +21,17 @@ const quickDates = [
   { label: "THIS WEEK", days: 7 },
   { label: "NEXT WEEK", days: 14 },
 ];
+
+// Helper to get weekday name from date string
+function getWeekdayName(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const date = parseISO(dateStr.split("T")[0]);
+    return format(date, "EEEE");
+  } catch {
+    return "";
+  }
+}
 
 export function WhenTab({ 
   dueDate, 
@@ -67,16 +78,28 @@ export function WhenTab({
           Quick Select
         </Label>
         <div className="flex flex-wrap gap-2">
-          {quickDates.map(({ label, days }) => (
-            <Badge
-              key={label}
-              variant="outline"
-              className="cursor-pointer font-mono text-xs uppercase hover:bg-primary hover:text-primary-foreground transition-all"
-              onClick={() => setQuickDate(days)}
-            >
-              {label}
-            </Badge>
-          ))}
+          {quickDates.map(({ label, days }) => {
+            const isActive = dueDate && (() => {
+              const targetDate = new Date();
+              targetDate.setDate(targetDate.getDate() + days);
+              return dueDate.split("T")[0] === targetDate.toISOString().split("T")[0];
+            })();
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setQuickDate(days)}
+                className={cn(
+                  "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase border transition-all",
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -87,16 +110,23 @@ export function WhenTab({
             <Calendar className="h-4 w-4 text-muted-foreground" />
             Due Date
           </Label>
-          <Input
-            id="dueDate"
-            type="date"
-            value={dueDate.split('T')[0] || dueDate}
-            onChange={(e) => {
-              const time = dueTime || '09:00';
-              onDueDateChange(`${e.target.value}T${time}`);
-            }}
-            className="shadow-engraved"
-          />
+          <div className="relative">
+            <Input
+              id="dueDate"
+              type="date"
+              value={dueDate.split('T')[0] || dueDate}
+              onChange={(e) => {
+                const time = dueTime || '09:00';
+                onDueDateChange(`${e.target.value}T${time}`);
+              }}
+              className="shadow-engraved pr-20"
+            />
+            {dueDate && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                {getWeekdayName(dueDate)}
+              </span>
+            )}
+          </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="dueTime" className="flex items-center gap-2 text-sm font-medium">

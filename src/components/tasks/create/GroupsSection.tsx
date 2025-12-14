@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Folder, Plus, X, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -159,28 +158,28 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroup
           <Folder className="h-4 w-4 text-muted-foreground" />
           Groups
         </Label>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="sm"
           onClick={() => setShowCreateModal(true)}
-          className="h-7 px-2 text-xs gap-1"
+          className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <Plus className="h-3 w-3" />
           New
-        </Button>
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-2">
         {groups.map(group => (
-          <Badge
+          <button
             key={group.id}
-            variant={selectedGroupIds.includes(group.id) ? "default" : "outline"}
-            className={cn(
-              "cursor-pointer font-mono text-xs uppercase transition-all gap-1",
-              selectedGroupIds.includes(group.id) && "bg-primary text-primary-foreground"
-            )}
+            type="button"
             onClick={() => toggleGroup(group.id)}
+            className={cn(
+              "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase border transition-all flex items-center gap-1",
+              selectedGroupIds.includes(group.id)
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card border-border text-muted-foreground hover:border-primary hover:text-foreground"
+            )}
             style={group.color ? { 
               backgroundColor: selectedGroupIds.includes(group.id) ? group.color : undefined,
               borderColor: group.color
@@ -188,20 +187,20 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroup
           >
             {group.icon && <span>{group.icon}</span>}
             {group.display_name || group.name}
-          </Badge>
+          </button>
         ))}
         
         {/* Ghost chips for AI suggestions */}
         {ghostGroups.map((ghostName, idx) => (
-          <Badge
+          <button
             key={`ghost-${idx}`}
-            variant="outline"
-            className="cursor-pointer font-mono text-xs uppercase transition-all opacity-60 hover:opacity-100 border-dashed"
+            type="button"
             onClick={() => handleGhostGroupClick(ghostName)}
+            className="px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase border border-dashed border-muted-foreground/40 text-muted-foreground/60 hover:text-foreground hover:border-primary transition-all flex items-center gap-1"
           >
-            <Plus className="h-3 w-3 mr-1" />
+            <Plus className="h-3 w-3" />
             {ghostName}
-          </Badge>
+          </button>
         ))}
         
         {groups.length === 0 && ghostGroups.length === 0 && (
