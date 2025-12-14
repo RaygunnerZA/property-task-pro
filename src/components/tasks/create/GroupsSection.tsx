@@ -20,9 +20,10 @@ import { cn } from "@/lib/utils";
 interface GroupsSectionProps {
   selectedGroupIds: string[];
   onGroupsChange: (groupIds: string[]) => void;
+  suggestedGroups?: string[];
 }
 
-export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectionProps) {
+export function GroupsSection({ selectedGroupIds, onGroupsChange, suggestedGroups = [] }: GroupsSectionProps) {
   const { groups, refresh } = useGroups();
   const { orgId } = useDataContext();
   const { toast } = useToast();
@@ -31,7 +32,20 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
   const [creating, setCreating] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pendingGhostGroup, setPendingGhostGroup] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Identify ghost chips (suggested but not in DB)
+  const existingGroupNames = groups.map(g => (g.display_name || g.name).toLowerCase());
+  const ghostGroups = suggestedGroups.filter(
+    suggested => !existingGroupNames.includes(suggested.toLowerCase())
+  );
+
+  const handleGhostGroupClick = (groupName: string) => {
+    setPendingGhostGroup(groupName);
+    setNewGroupName(groupName);
+    setShowCreateModal(true);
+  };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -157,38 +171,56 @@ export function GroupsSection({ selectedGroupIds, onGroupsChange }: GroupsSectio
         </Button>
       </div>
 
-      {groups.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {groups.map(group => (
-            <Badge
-              key={group.id}
-              variant={selectedGroupIds.includes(group.id) ? "default" : "outline"}
-              className={cn(
-                "cursor-pointer font-mono text-xs uppercase transition-all gap-1",
-                selectedGroupIds.includes(group.id) && "bg-primary text-primary-foreground"
-              )}
-              onClick={() => toggleGroup(group.id)}
-              style={group.color ? { 
-                backgroundColor: selectedGroupIds.includes(group.id) ? group.color : undefined,
-                borderColor: group.color
-              } : undefined}
-            >
-              {group.icon && <span>{group.icon}</span>}
-              {group.display_name || group.name}
-            </Badge>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground text-center py-2">
-          No groups yet. Create one to organize tasks.
-        </p>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {groups.map(group => (
+          <Badge
+            key={group.id}
+            variant={selectedGroupIds.includes(group.id) ? "default" : "outline"}
+            className={cn(
+              "cursor-pointer font-mono text-xs uppercase transition-all gap-1",
+              selectedGroupIds.includes(group.id) && "bg-primary text-primary-foreground"
+            )}
+            onClick={() => toggleGroup(group.id)}
+            style={group.color ? { 
+              backgroundColor: selectedGroupIds.includes(group.id) ? group.color : undefined,
+              borderColor: group.color
+            } : undefined}
+          >
+            {group.icon && <span>{group.icon}</span>}
+            {group.display_name || group.name}
+          </Badge>
+        ))}
+        
+        {/* Ghost chips for AI suggestions */}
+        {ghostGroups.map((ghostName, idx) => (
+          <Badge
+            key={`ghost-${idx}`}
+            variant="outline"
+            className="cursor-pointer font-mono text-xs uppercase transition-all opacity-60 hover:opacity-100 border-dashed"
+            onClick={() => handleGhostGroupClick(ghostName)}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            {ghostName}
+          </Badge>
+        ))}
+        
+        {groups.length === 0 && ghostGroups.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            No groups yet. Create one to organize tasks.
+          </p>
+        )}
+      </div>
 
       {/* Create Group Modal */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+      <Dialog open={showCreateModal} onOpenChange={(open) => {
+        setShowCreateModal(open);
+        if (!open) setPendingGhostGroup(null);
+      }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Create Group</DialogTitle>
+            <DialogTitle>
+              {pendingGhostGroup ? `Create "${pendingGhostGroup}"?` : "Create Group"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input

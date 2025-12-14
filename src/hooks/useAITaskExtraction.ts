@@ -52,9 +52,9 @@ export function useAITaskExtraction(description: string) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // REMOVE authorization entirely
+            // NO Authorization header - function is public
           },
-          body: JSON.stringify({ description: debounced }), // ✅ FIXED
+          body: JSON.stringify({ description: debounced }),
         });
 
         const data: ExtractResponse = await res.json();
@@ -64,8 +64,11 @@ export function useAITaskExtraction(description: string) {
           if (data.combined.title) {
             setAiTitle(data.combined.title);
           }
+        } else {
+          setError("AI extraction failed");
         }
       } catch (err: any) {
+        console.error("AI extraction error:", err);
         setError(err.message);
       } finally {
         setLoading(false);
