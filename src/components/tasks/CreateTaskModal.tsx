@@ -240,13 +240,16 @@ export function CreateTaskModal({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Image Upload Icons */}
+        <ImageUploadSection images={images} onImagesChange={setImages} />
+
         {/* AI-Generated Title (appears after AI responds) */}
         <div className={cn(
           "transition-all duration-300 ease-out",
           showTitleField ? "opacity-100 max-h-24" : "opacity-0 max-h-0 overflow-hidden"
         )}>
           {showTitleField && (
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2">
               <label className="text-sm text-muted-foreground flex items-center gap-2">
                 <Sparkles className="h-3 w-3 text-primary" />
                 AI Title
@@ -267,9 +270,6 @@ export function CreateTaskModal({
             </div>
           )}
         </div>
-
-        {/* Image Upload */}
-        <ImageUploadSection images={images} onImagesChange={setImages} />
 
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
@@ -359,22 +359,22 @@ export function CreateTaskModal({
         )}
 
         {/* Metadata Tabs */}
-        <div className="rounded-xl shadow-e2 overflow-hidden bg-[#298ba1]/30">
+        <div className="rounded-xl overflow-hidden bg-[#298ba1]/30">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-black/0">
             <TabsList className="w-full grid grid-cols-4 h-11 bg-muted/50 p-1 rounded-none">
-              <TabsTrigger value="where" className="gap-1 text-xs data-[state=active]:shadow-e1">
+              <TabsTrigger value="where" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
                 <MapPin className="h-3 w-3" />
                 <span className="hidden sm:inline">Where</span>
               </TabsTrigger>
-              <TabsTrigger value="when" className="gap-1 text-xs data-[state=active]:shadow-e1">
+              <TabsTrigger value="when" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
                 <Calendar className="h-3 w-3" />
                 <span className="hidden sm:inline">When</span>
               </TabsTrigger>
-              <TabsTrigger value="who" className="gap-1 text-xs data-[state=active]:shadow-e1">
+              <TabsTrigger value="who" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
                 <User className="h-3 w-3" />
                 <span className="hidden sm:inline">Who</span>
               </TabsTrigger>
-              <TabsTrigger value="priority" className="gap-1 text-xs data-[state=active]:shadow-e1">
+              <TabsTrigger value="priority" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
                 <AlertTriangle className="h-3 w-3" />
                 <span className="hidden sm:inline">Priority</span>
               </TabsTrigger>
