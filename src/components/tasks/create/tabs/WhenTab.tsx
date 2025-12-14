@@ -73,8 +73,8 @@ export function WhenTab({
     <div className="space-y-4">
       {/* Quick Date Selection */}
       <div className="space-y-2">
-        <Label className="flex items-center gap-2 text-sm font-medium">
-          <Clock className="h-4 w-4 text-muted-foreground" />
+        <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <Clock className="h-3.5 w-3.5" />
           Quick Select
         </Label>
         <div className="flex flex-wrap gap-2">
@@ -106,8 +106,8 @@ export function WhenTab({
       {/* Due Date and Time Picker */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="dueDate" className="flex items-center gap-2 text-sm font-medium">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="dueDate" className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Calendar className="h-3.5 w-3.5" />
             Due Date
           </Label>
           <div className="relative">
@@ -129,8 +129,8 @@ export function WhenTab({
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="dueTime" className="flex items-center gap-2 text-sm font-medium">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <Label htmlFor="dueTime" className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Clock className="h-3.5 w-3.5" />
             Time
           </Label>
           <Input
@@ -149,8 +149,8 @@ export function WhenTab({
       {/* Repeat Settings */}
       <div className="space-y-3 pt-2 border-t border-border">
         <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2 text-sm font-medium">
-            <Repeat className="h-4 w-4 text-muted-foreground" />
+          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Repeat className="h-3.5 w-3.5" />
             Repeat Task
           </Label>
           <Switch
@@ -161,7 +161,7 @@ export function WhenTab({
         </div>
 
         {enableRepeat && (
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted/50 shadow-engraved">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-[5px] bg-muted/50 shadow-engraved">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Frequency</Label>
               <Select 
