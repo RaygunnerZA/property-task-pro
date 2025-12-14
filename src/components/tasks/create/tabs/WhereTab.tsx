@@ -177,16 +177,14 @@ export function WhereTab({
             <Building2 className="h-3.5 w-3.5" />
             Property
           </Label>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => setShowCreateProperty(true)}
-            className="h-6 px-2 text-xs gap-1"
+            className="h-6 px-2 text-xs gap-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <Plus className="h-3 w-3" />
             New
-          </Button>
+          </button>
         </div>
         
         {propertiesLoading ? (
@@ -198,7 +196,7 @@ export function WhereTab({
                 key={property.id}
                 variant={propertyId === property.id ? "default" : "outline"}
                 className={cn(
-                  "cursor-pointer font-mono text-xs uppercase transition-all",
+                  "cursor-pointer font-mono text-xs uppercase transition-all rounded-[5px]",
                   propertyId === property.id && "bg-primary text-primary-foreground"
                 )}
                 onClick={() => handlePropertySelect(property.id)}
@@ -225,20 +223,18 @@ export function WhereTab({
             <MapPin className="h-3.5 w-3.5" />
             Spaces
           </Label>
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
             onClick={() => {
               setNewSpaceName("");
               setShowCreateSpace(true);
             }}
             disabled={!propertyId}
-            className="h-6 px-2 text-xs gap-1"
+            className="h-6 px-2 text-xs gap-1 inline-flex items-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
           >
             <Plus className="h-3 w-3" />
             New
-          </Button>
+          </button>
         </div>
 
         {!propertyId ? (
@@ -255,7 +251,7 @@ export function WhereTab({
                 key={space.id}
                 variant={spaceIds.includes(space.id) ? "default" : "outline"}
                 className={cn(
-                  "cursor-pointer font-mono text-xs uppercase transition-all",
+                  "cursor-pointer font-mono text-xs uppercase transition-all rounded-[5px]",
                   spaceIds.includes(space.id) && "bg-primary text-primary-foreground"
                 )}
                 onClick={() => toggleSpace(space.id)}
@@ -270,7 +266,7 @@ export function WhereTab({
               <Badge
                 key={`ghost-${idx}`}
                 variant="outline"
-                className="cursor-pointer font-mono text-xs uppercase transition-all opacity-60 hover:opacity-100 border-dashed"
+                className="cursor-pointer font-mono text-xs uppercase transition-all text-muted-foreground/50 hover:text-muted-foreground border-dashed rounded-[5px]"
                 onClick={() => handleGhostSpaceClick(ghostName)}
               >
                 <Plus className="h-3 w-3 mr-1" />

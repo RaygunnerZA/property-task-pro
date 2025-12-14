@@ -58,25 +58,22 @@ export function ImageUploadSection({ images, onImagesChange }: ImageUploadSectio
 
   return (
     <div className="space-y-3">
-      <Label className="text-sm font-medium flex items-center gap-2">
-        <ImagePlus className="h-4 w-4 text-muted-foreground" />
-        Images
-      </Label>
-
-      {/* Upload Zone */}
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        className={cn(
-          "relative border-2 border-dashed rounded-xl p-4 text-center transition-all cursor-pointer",
-          dragActive 
-            ? "border-primary bg-primary/5" 
-            : "border-border hover:border-primary/50 hover:bg-muted/30"
-        )}
-        onClick={() => fileInputRef.current?.click()}
-      >
+      {/* Compact Upload Icons */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2 rounded-[5px] bg-muted/50 border border-border hover:bg-muted transition-colors"
+        >
+          <Camera className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="p-2 rounded-[5px] bg-muted/50 border border-border hover:bg-muted transition-colors"
+        >
+          <Upload className="h-4 w-4 text-muted-foreground" />
+        </button>
         <input
           ref={fileInputRef}
           type="file"
@@ -85,19 +82,6 @@ export function ImageUploadSection({ images, onImagesChange }: ImageUploadSectio
           className="hidden"
           onChange={(e) => handleFileSelect(e.target.files)}
         />
-        <div className="flex flex-col items-center gap-2 py-2">
-          <div className="flex gap-2">
-            <div className="p-2 rounded-full bg-muted">
-              <Camera className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="p-2 rounded-full bg-muted">
-              <Upload className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Tap to take photo or upload
-          </p>
-        </div>
       </div>
 
       {/* Image Preview Grid */}

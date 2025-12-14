@@ -70,7 +70,7 @@ export function GroupableChip({
     person: "bg-primary/10 text-primary border-primary/20",
     team: "bg-accent/10 text-accent border-accent/20",
     group: "bg-muted text-muted-foreground border-muted-foreground/20",
-    ghost: "bg-transparent text-muted-foreground border-dashed border-muted-foreground/40",
+    ghost: "bg-transparent text-muted-foreground/50 border-dashed border-muted-foreground/30",
   };
 
   const selectedStyles = selected
@@ -91,12 +91,10 @@ export function GroupableChip({
       className={cn(
         // Base styles
         "inline-flex items-center gap-1.5 px-3 py-1.5",
-        "rounded-lg border",
+        "rounded-[5px] border",
         "font-mono text-xs uppercase tracking-wide",
         "transition-all duration-150 ease-out",
         "cursor-pointer select-none",
-        // Elevation
-        "shadow-e1 hover:shadow-e2",
         // Variant styles
         variantStyles[variant],
         // Selected state
