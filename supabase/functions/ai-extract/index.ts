@@ -135,13 +135,22 @@ Deno.serve(async (req) => {
     priority = "HIGH";
   }
 
-  // Date detection
+  // Date detection - including weekdays
   let date = "";
+  const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  
   if (lower.includes("tomorrow")) date = "tomorrow";
   else if (lower.includes("today")) date = "today";
   else if (lower.includes("next week")) date = "next_week";
-  else if (lower.includes("next friday")) date = "next_friday";
-  else if (lower.includes("next monday")) date = "next_monday";
+  else {
+    // Check for weekday mentions (e.g., "on friday", "by monday")
+    for (const day of weekdays) {
+      if (lower.includes(day) || lower.includes(`next ${day}`)) {
+        date = day;
+        break;
+      }
+    }
+  }
 
   // Yes/No requirement detection
   const yes_no =

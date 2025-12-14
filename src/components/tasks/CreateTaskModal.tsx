@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useDataContext } from "@/contexts/DataContext";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
+import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
 import { createTask } from "@/services/tasks/taskMutations";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -52,6 +53,7 @@ export function CreateTaskModal({
   const {
     templates
   } = useChecklistTemplates();
+  const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
   const isMobile = useIsMobile();
 
   // Form state
@@ -59,6 +61,21 @@ export function CreateTaskModal({
   const [description, setDescription] = useState("");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+
+  // Initialize propertyId from last used when modal opens
+  useEffect(() => {
+    if (open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
+      setPropertyId(lastUsedPropertyId);
+    }
+  }, [open, defaultPropertyId, lastUsedPropertyId]);
+
+  // Update last used when property changes
+  const handlePropertyChange = (newPropertyId: string) => {
+    setPropertyId(newPropertyId);
+    if (newPropertyId) {
+      setLastUsed(newPropertyId);
+    }
+  };
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState(defaultDueDate || "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
@@ -101,9 +118,11 @@ export function CreateTaskModal({
       setPriority("high");
     }
     
-    // Auto-set date suggestions
+    // Auto-set date suggestions including weekdays
     if (aiSuggestions.date) {
       const today = new Date();
+      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      
       if (aiSuggestions.date === "today") {
         setDueDate(today.toISOString().split("T")[0]);
       } else if (aiSuggestions.date === "tomorrow") {
@@ -111,6 +130,14 @@ export function CreateTaskModal({
         setDueDate(today.toISOString().split("T")[0]);
       } else if (aiSuggestions.date === "next_week") {
         today.setDate(today.getDate() + 7);
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (weekdays.includes(aiSuggestions.date.toLowerCase())) {
+        // Calculate next occurrence of the weekday
+        const targetDay = weekdays.indexOf(aiSuggestions.date.toLowerCase());
+        const currentDay = today.getDay();
+        let daysToAdd = targetDay - currentDay;
+        if (daysToAdd <= 0) daysToAdd += 7; // If today or in the past, go to next week
+        today.setDate(today.getDate() + daysToAdd);
         setDueDate(today.toISOString().split("T")[0]);
       }
     }
@@ -233,9 +260,13 @@ export function CreateTaskModal({
           <Plus className="h-5 w-5 text-primary" />
           Create Task
         </h2>
-        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} className="h-8 w-8">
+        <button 
+          type="button"
+          onClick={() => onOpenChange(false)} 
+          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+        >
           <X className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
 
       {/* Scrollable Content */}
@@ -385,7 +416,7 @@ export function CreateTaskModal({
                 <WhereTab 
                   propertyId={propertyId} 
                   spaceIds={selectedSpaceIds} 
-                  onPropertyChange={setPropertyId} 
+                  onPropertyChange={handlePropertyChange} 
                   onSpacesChange={setSelectedSpaceIds}
                   suggestedSpaces={aiSuggestions?.spaces || []}
                 />

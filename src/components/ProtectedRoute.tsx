@@ -1,7 +1,8 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useDataContext } from "@/contexts/DataContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -10,8 +11,37 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
   const { isAuthenticated, orgId, loading } = useDataContext();
+  const [checkingProperties, setCheckingProperties] = useState(false);
+  const [hasProperties, setHasProperties] = useState<boolean | null>(null);
 
-  if (loading) {
+  // Check if user has properties when they have an org
+  useEffect(() => {
+    async function checkProperties() {
+      if (!orgId || loading) return;
+      
+      setCheckingProperties(true);
+      try {
+        const { count, error } = await supabase
+          .from("properties")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", orgId);
+        
+        if (!error) {
+          setHasProperties((count ?? 0) > 0);
+        }
+      } catch (err) {
+        console.error("Error checking properties:", err);
+        // Default to true to avoid false redirects
+        setHasProperties(true);
+      } finally {
+        setCheckingProperties(false);
+      }
+    }
+    
+    checkProperties();
+  }, [orgId, loading]);
+
+  if (loading || checkingProperties) {
     return <ProtectedRouteSkeleton />;
   }
 
@@ -21,6 +51,16 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
 
   if (requireOrg && !orgId) {
     return <Navigate to="/onboarding/create-organisation" replace />;
+  }
+
+  // Only redirect to add property if we've confirmed there are no properties
+  // AND we're not already on an onboarding route
+  if (requireOrg && orgId && hasProperties === false) {
+    // Don't redirect if already on onboarding routes
+    const currentPath = window.location.pathname;
+    if (!currentPath.startsWith("/onboarding")) {
+      return <Navigate to="/onboarding/add-property" replace />;
+    }
   }
 
   return <>{children}</>;
