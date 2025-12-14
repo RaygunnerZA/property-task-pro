@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
 import { useDebounce } from "./useDebounce";
+import { useDataContext } from "@/contexts/DataContext";
+
+interface GhostChip {
+  name: string;
+  exists: boolean;
+  id?: string;
+}
 
 interface ExtractResponse {
   ok: boolean;
   combined: {
     title: string | null;
-    spaces: string[];
-    people: string[];
+    spaces: GhostChip[];
+    people: GhostChip[];
+    teams: GhostChip[];
     assets: string[];
     priority: string | null;
     date: string | null;
-    groups: string[];
+    groups: GhostChip[];
     yes_no: boolean;
     signature: boolean;
   };
@@ -18,18 +26,20 @@ interface ExtractResponse {
 
 export interface AIExtractionResult {
   title: string | null;
-  spaces: string[];
-  people: string[];
+  spaces: GhostChip[];
+  people: GhostChip[];
+  teams: GhostChip[];
   assets: string[];
   priority: string | null;
   date: string | null;
-  groups: string[];
+  groups: GhostChip[];
   yes_no: boolean;
   signature: boolean;
 }
 
 export function useAITaskExtraction(description: string) {
   const debounced = useDebounce(description, 400);
+  const { orgId } = useDataContext();
 
   const [aiTitle, setAiTitle] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<AIExtractionResult | null>(null);
@@ -37,7 +47,7 @@ export function useAITaskExtraction(description: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!debounced.trim()) {
+    if (!debounced.trim() || !orgId) {
       setAiTitle("");
       setAiSuggestions(null);
       return;
@@ -52,9 +62,8 @@ export function useAITaskExtraction(description: string) {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            // NO Authorization header - function is public
           },
-          body: JSON.stringify({ description: debounced }),
+          body: JSON.stringify({ description: debounced, org_id: orgId }),
         });
 
         const data: ExtractResponse = await res.json();
@@ -76,7 +85,7 @@ export function useAITaskExtraction(description: string) {
     }
 
     run();
-  }, [debounced]);
+  }, [debounced, orgId]);
 
   return { aiTitle, aiSuggestions, loading, error };
 }
