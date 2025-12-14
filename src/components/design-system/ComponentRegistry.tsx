@@ -4,9 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { Copy, Check, Save } from 'lucide-react';
+import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDesignTokens } from '@/hooks/useDesignTokens';
+import { shadows, radii } from '@/components/filla/tokens';
 
 interface ComponentDef {
   name: string;
@@ -16,7 +16,7 @@ interface ComponentDef {
   preview: React.ReactNode;
 }
 
-function CopyButton({ css, onSave }: { css: string; onSave?: () => void }) {
+function CopyButton({ css }: { css: string }) {
   const [copied, setCopied] = useState(false);
   
   const handleCopy = () => {
@@ -26,24 +26,13 @@ function CopyButton({ css, onSave }: { css: string; onSave?: () => void }) {
   };
 
   return (
-    <div className="flex gap-1">
-      <button
-        onClick={handleCopy}
-        className="p-1.5 rounded-[5px] bg-surface/80 shadow-e1 hover:shadow-e2 transition-all"
-        title="Copy CSS"
-      >
-        {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
-      {onSave && (
-        <button
-          onClick={onSave}
-          className="p-1.5 rounded-[5px] bg-primary/20 shadow-e1 hover:shadow-e2 transition-all"
-          title="Save to design system"
-        >
-          <Save className="w-3.5 h-3.5 text-primary-deep" />
-        </button>
-      )}
-    </div>
+    <button
+      onClick={handleCopy}
+      className="p-1.5 rounded-[5px] bg-surface/80 shadow-e1 hover:shadow-e2 transition-all"
+      title="Copy CSS"
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+    </button>
   );
 }
 
@@ -81,8 +70,6 @@ function ComponentCard({ component }: { component: ComponentDef }) {
 }
 
 export function ComponentRegistry() {
-  const { tokens } = useDesignTokens();
-  
   const components: ComponentDef[] = [
     // ==================== TYPOGRAPHY ====================
     {
@@ -92,13 +79,9 @@ export function ComponentRegistry() {
       cssValue: `  font-family: 'Inter Tight', sans-serif;
   font-size: 2.25rem;
   font-weight: 700;
-  letter-spacing: -0.025em;
-  text-shadow: ${tokens.typography.headingXLShadow};`,
+  letter-spacing: -0.025em;`,
       preview: (
-        <h1 
-          className="font-display text-4xl font-bold tracking-tight text-ink"
-          style={{ textShadow: tokens.typography.headingXLShadow }}
-        >
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink">
           Heading XL
         </h1>
       ),
@@ -110,13 +93,9 @@ export function ComponentRegistry() {
       cssValue: `  font-family: 'Inter Tight', sans-serif;
   font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: -0.025em;
-  text-shadow: ${tokens.typography.headingLShadow};`,
+  letter-spacing: -0.025em;`,
       preview: (
-        <h2 
-          className="font-display text-2xl font-semibold tracking-tight text-ink"
-          style={{ textShadow: tokens.typography.headingLShadow }}
-        >
+        <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
           Heading L
         </h2>
       ),
@@ -169,20 +148,12 @@ export function ComponentRegistry() {
       name: 'Button Primary',
       category: 'Button',
       cssClass: 'btn-primary',
-      cssValue: `  background: ${tokens.buttons.primary.background};
-  color: ${tokens.buttons.primary.text};
-  border-radius: ${tokens.buttons.primary.radius}px;
-  box-shadow: ${tokens.buttons.primary.shadow};`,
+      cssValue: `  background: hsl(var(--primary));
+  color: white;
+  border-radius: ${radii.sharp};
+  box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button 
-          className="px-4 py-2 font-medium text-sm"
-          style={{
-            background: tokens.buttons.primary.background,
-            color: tokens.buttons.primary.text,
-            borderRadius: `${tokens.buttons.primary.radius}px`,
-            boxShadow: tokens.buttons.primary.shadow,
-          }}
-        >
+        <button className="px-4 py-2 font-medium text-sm bg-primary text-white rounded-[5px] shadow-primary-btn">
           Primary Button
         </button>
       ),
@@ -191,20 +162,12 @@ export function ComponentRegistry() {
       name: 'Button Secondary',
       category: 'Button',
       cssClass: 'btn-secondary',
-      cssValue: `  background: ${tokens.buttons.secondary.background};
-  color: ${tokens.buttons.secondary.text};
-  border-radius: ${tokens.buttons.secondary.radius}px;
-  box-shadow: ${tokens.buttons.secondary.shadow};`,
+      cssValue: `  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  border-radius: ${radii.sharp};
+  box-shadow: ${shadows.e1};`,
       preview: (
-        <button 
-          className="px-4 py-2 font-medium text-sm"
-          style={{
-            background: tokens.buttons.secondary.background,
-            color: tokens.buttons.secondary.text,
-            borderRadius: `${tokens.buttons.secondary.radius}px`,
-            boxShadow: tokens.buttons.secondary.shadow,
-          }}
-        >
+        <button className="px-4 py-2 font-medium text-sm bg-surface text-ink rounded-[5px] shadow-e1">
           Secondary Button
         </button>
       ),
@@ -213,20 +176,12 @@ export function ComponentRegistry() {
       name: 'Button Danger',
       category: 'Button',
       cssClass: 'btn-danger',
-      cssValue: `  background: ${tokens.buttons.danger.background};
-  color: ${tokens.buttons.danger.text};
-  border-radius: ${tokens.buttons.danger.radius}px;
-  box-shadow: ${tokens.buttons.danger.shadow};`,
+      cssValue: `  background: hsl(var(--destructive));
+  color: white;
+  border-radius: ${radii.sharp};
+  box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button 
-          className="px-4 py-2 font-medium text-sm"
-          style={{
-            background: tokens.buttons.danger.background,
-            color: tokens.buttons.danger.text,
-            borderRadius: `${tokens.buttons.danger.radius}px`,
-            boxShadow: tokens.buttons.danger.shadow,
-          }}
-        >
+        <button className="px-4 py-2 font-medium text-sm bg-destructive text-white rounded-[5px] shadow-primary-btn">
           Danger Button
         </button>
       ),
@@ -237,20 +192,12 @@ export function ComponentRegistry() {
       name: 'Filter Chip (Active)',
       category: 'Chip',
       cssClass: 'chip-filter-active',
-      cssValue: `  background: ${tokens.chips.filter.activeBackground};
-  color: ${tokens.chips.filter.activeText};
+      cssValue: `  background: hsl(var(--primary));
+  color: white;
   border-radius: 5px;
-  box-shadow: ${tokens.chips.filter.shadow};`,
+  box-shadow: ${shadows.e1};`,
       preview: (
-        <span 
-          className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium"
-          style={{
-            background: tokens.chips.filter.activeBackground,
-            color: tokens.chips.filter.activeText,
-            borderRadius: '5px',
-            boxShadow: tokens.chips.filter.shadow,
-          }}
-        >
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-primary text-white rounded-[5px] shadow-e1">
           Active
         </span>
       ),
@@ -259,20 +206,12 @@ export function ComponentRegistry() {
       name: 'Filter Chip (Inactive)',
       category: 'Chip',
       cssClass: 'chip-filter-inactive',
-      cssValue: `  background: ${tokens.chips.filter.inactiveBackground};
-  color: ${tokens.chips.filter.inactiveText};
+      cssValue: `  background: hsl(var(--surface));
+  color: hsl(var(--muted-foreground));
   border-radius: 5px;
-  box-shadow: ${tokens.chips.filter.shadow};`,
+  box-shadow: ${shadows.e1};`,
       preview: (
-        <span 
-          className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium"
-          style={{
-            background: tokens.chips.filter.inactiveBackground,
-            color: tokens.chips.filter.inactiveText,
-            borderRadius: '5px',
-            boxShadow: tokens.chips.filter.shadow,
-          }}
-        >
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-[5px] shadow-e1">
           Inactive
         </span>
       ),
@@ -361,48 +300,36 @@ export function ComponentRegistry() {
       name: 'Shadow E1 (Card)',
       category: 'Shadow',
       cssClass: 'shadow-e1',
-      cssValue: `  box-shadow: ${tokens.shadows.e1};`,
+      cssValue: `  box-shadow: ${shadows.e1};`,
       preview: (
-        <div 
-          className="w-24 h-16 rounded-[8px] bg-surface"
-          style={{ boxShadow: tokens.shadows.e1 }}
-        />
+        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e1" />
       ),
     },
     {
       name: 'Shadow E2 (Section)',
       category: 'Shadow',
       cssClass: 'shadow-e2',
-      cssValue: `  box-shadow: ${tokens.shadows.e2};`,
+      cssValue: `  box-shadow: ${shadows.e2};`,
       preview: (
-        <div 
-          className="w-24 h-16 rounded-[8px] bg-surface"
-          style={{ boxShadow: tokens.shadows.e2 }}
-        />
+        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e2" />
       ),
     },
     {
       name: 'Shadow E3 (Modal)',
       category: 'Shadow',
       cssClass: 'shadow-e3',
-      cssValue: `  box-shadow: ${tokens.shadows.e3};`,
+      cssValue: `  box-shadow: ${shadows.e3};`,
       preview: (
-        <div 
-          className="w-24 h-16 rounded-[8px] bg-surface"
-          style={{ boxShadow: tokens.shadows.e3 }}
-        />
+        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e3" />
       ),
     },
     {
       name: 'Shadow Engraved',
       category: 'Shadow',
       cssClass: 'shadow-engraved',
-      cssValue: `  box-shadow: ${tokens.shadows.engraved};`,
+      cssValue: `  box-shadow: ${shadows.engraved};`,
       preview: (
-        <div 
-          className="w-24 h-16 rounded-[8px] bg-surface"
-          style={{ boxShadow: tokens.shadows.engraved }}
-        />
+        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-engraved" />
       ),
     },
     
@@ -412,40 +339,22 @@ export function ComponentRegistry() {
       category: 'Control',
       cssClass: 'segment-control',
       cssValue: `  /* Track */
-  background: ${tokens.segments.trackBackground};
-  border-radius: ${tokens.segments.trackRadius}px;
-  box-shadow: ${tokens.segments.trackShadow};
+  background: hsl(var(--concrete));
+  border-radius: ${radii.sharp};
+  box-shadow: ${shadows.engraved};
   
   /* Active Button */
   .active {
-    background: ${tokens.segments.activeBackground};
-    border-radius: ${tokens.segments.buttonRadius}px;
-    box-shadow: ${tokens.segments.activeShadow};
+    background: hsl(var(--surface));
+    border-radius: ${radii.sharp};
+    box-shadow: ${shadows.e1};
   }`,
       preview: (
-        <div 
-          className="inline-flex p-1"
-          style={{
-            background: tokens.segments.trackBackground,
-            borderRadius: `${tokens.segments.trackRadius}px`,
-            boxShadow: tokens.segments.trackShadow,
-          }}
-        >
-          <span 
-            className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider"
-            style={{
-              background: tokens.segments.activeBackground,
-              color: tokens.segments.activeText,
-              borderRadius: `${tokens.segments.buttonRadius}px`,
-              boxShadow: tokens.segments.activeShadow,
-            }}
-          >
+        <div className="inline-flex p-1 bg-concrete rounded-[5px] shadow-engraved">
+          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider bg-surface text-ink rounded-[5px] shadow-e1">
             Tab 1
           </span>
-          <span 
-            className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider"
-            style={{ color: tokens.segments.buttonText }}
-          >
+          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
             Tab 2
           </span>
         </div>
@@ -462,9 +371,9 @@ export function ComponentRegistry() {
   background-blend-mode: overlay;
   background-size: 75%;
   border-radius: 8px;
-  box-shadow: ${tokens.shadows.e1};`,
+  box-shadow: ${shadows.e1};`,
       preview: (
-        <div className="w-32 h-20 rounded-[8px] bg-card-flat shadow-e1" />
+        <div className="w-32 h-20 rounded-[8px] card-flat shadow-e1" />
       ),
     },
     {
@@ -476,7 +385,7 @@ export function ComponentRegistry() {
   background-blend-mode: overlay;
   background-size: 68%;
   border-radius: 8px;
-  box-shadow: ${tokens.shadows.e2};`,
+  box-shadow: ${shadows.e2};`,
       preview: (
         <div className="w-32 h-20 rounded-[8px] bg-section-flat shadow-e2" />
       ),
@@ -493,25 +402,22 @@ export function ComponentRegistry() {
   return (
     <section className="space-y-8">
       <div className="space-y-2">
-        <h2 
-          className="font-display text-2xl font-semibold text-ink tracking-tight"
-          style={{ textShadow: tokens.typography.headingLShadow }}
-        >
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">
           Component Registry
         </h2>
         <p className="text-muted-foreground text-sm">
-          Single source of truth for all UI components. Copy CSS to use anywhere.
+          All UI components with their CSS definitions. Click to copy.
         </p>
       </div>
       
-      {Object.entries(grouped).map(([category, comps]) => (
+      {Object.entries(grouped).map(([category, items]) => (
         <div key={category} className="space-y-4">
-          <h3 className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground border-b border-concrete pb-2">
+          <h3 className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
             {category}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {comps.map((comp) => (
-              <ComponentCard key={comp.cssClass} component={comp} />
+            {items.map(comp => (
+              <ComponentCard key={comp.name} component={comp} />
             ))}
           </div>
         </div>
