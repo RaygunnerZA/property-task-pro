@@ -92,6 +92,36 @@ export function CreateTaskModal({
     }
   }, [aiTitle, userEditedTitle]);
 
+  // Auto-apply AI suggestions when received
+  useEffect(() => {
+    if (!aiSuggestions) return;
+    
+    // Auto-set priority from AI
+    if (aiSuggestions.priority === "HIGH") {
+      setPriority("high");
+    }
+    
+    // Auto-set date suggestions
+    if (aiSuggestions.date) {
+      const today = new Date();
+      if (aiSuggestions.date === "today") {
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (aiSuggestions.date === "tomorrow") {
+        today.setDate(today.getDate() + 1);
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (aiSuggestions.date === "next_week") {
+        today.setDate(today.getDate() + 7);
+        setDueDate(today.toISOString().split("T")[0]);
+      }
+    }
+    
+    // Auto-enable compliance if signature is suggested
+    if (aiSuggestions.signature && !isCompliance) {
+      setIsCompliance(true);
+      setShowAdvanced(true);
+    }
+  }, [aiSuggestions]);
+
   // Hide title field when description is empty
   useEffect(() => {
     if (!description.trim()) {
@@ -244,27 +274,87 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* AI Suggestion Chips */}
-        {aiSuggestions && (aiSuggestions.spaces.length > 0 || aiSuggestions.people.length > 0 || aiSuggestions.groups.length > 0) && (
-          <div className="flex flex-wrap gap-2">
-            {aiSuggestions.spaces.map((space, idx) => (
-              <Badge key={`space-${idx}`} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
-                <MapPin className="h-3 w-3 mr-1" />
-                {space}
-              </Badge>
-            ))}
-            {aiSuggestions.people.map((person, idx) => (
-              <Badge key={`person-${idx}`} variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
-                <User className="h-3 w-3 mr-1" />
-                {person}
-              </Badge>
-            ))}
-            {aiSuggestions.priority && (
-              <Badge variant="outline" className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                {aiSuggestions.priority}
-              </Badge>
-            )}
+        {/* AI Suggestion Chips - Clickable to apply */}
+        {aiSuggestions && (aiSuggestions.spaces.length > 0 || aiSuggestions.people.length > 0 || aiSuggestions.assets.length > 0 || aiSuggestions.priority) && (
+          <div className="space-y-2">
+            <label className="text-xs text-muted-foreground flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-primary" />
+              AI Suggestions (click to apply)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {aiSuggestions.spaces.map((space, idx) => (
+                <Badge 
+                  key={`space-${idx}`} 
+                  variant="outline" 
+                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  onClick={() => setActiveTab("where")}
+                >
+                  <MapPin className="h-3 w-3 mr-1" />
+                  + {space}
+                </Badge>
+              ))}
+              {aiSuggestions.people.map((person, idx) => (
+                <Badge 
+                  key={`person-${idx}`} 
+                  variant="outline" 
+                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  onClick={() => setActiveTab("who")}
+                >
+                  <User className="h-3 w-3 mr-1" />
+                  + {person}
+                </Badge>
+              ))}
+              {aiSuggestions.assets.map((asset, idx) => (
+                <Badge 
+                  key={`asset-${idx}`} 
+                  variant="secondary" 
+                  className="font-mono text-xs uppercase"
+                >
+                  {asset}
+                </Badge>
+              ))}
+              {aiSuggestions.priority === "HIGH" && (
+                <Badge 
+                  variant="destructive" 
+                  className="font-mono text-xs uppercase cursor-pointer"
+                  onClick={() => {
+                    setPriority("high");
+                    setActiveTab("priority");
+                  }}
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  URGENT
+                </Badge>
+              )}
+              {aiSuggestions.date && (
+                <Badge 
+                  variant="outline" 
+                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  onClick={() => setActiveTab("when")}
+                >
+                  <Calendar className="h-3 w-3 mr-1" />
+                  {aiSuggestions.date.replace("_", " ")}
+                </Badge>
+              )}
+              {aiSuggestions.yes_no && (
+                <Badge variant="secondary" className="font-mono text-xs uppercase">
+                  ✓ Yes/No
+                </Badge>
+              )}
+              {aiSuggestions.signature && (
+                <Badge 
+                  variant="outline" 
+                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all border-amber-500 text-amber-600"
+                  onClick={() => {
+                    setIsCompliance(true);
+                    setShowAdvanced(true);
+                  }}
+                >
+                  <Shield className="h-3 w-3 mr-1" />
+                  Compliance
+                </Badge>
+              )}
+            </div>
           </div>
         )}
 
