@@ -2,8 +2,7 @@ import { useMemo, useState } from 'react';
 import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { ContextHeader } from '@/components/ContextHeader';
-import { colors, shadows } from '@/components/filla';
-import { Badge } from '@/components/filla/DesignSystem';
+import { Badge } from '@/components/filla/Badge';
 import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -39,16 +38,16 @@ const Home = () => {
   const urgentTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
 
   const stats = [
-    { label: 'Active Tasks', value: activeTasks, icon: CheckSquare, iconColor: colors.primary, link: '/work/tasks' },
-    { label: 'This Week', value: tasks.length, icon: Calendar, iconColor: colors.signal, link: '/work/schedule' },
-    { label: 'Properties', value: 4, icon: Building2, iconColor: colors.accent, link: '/manage/properties' },
-    { label: 'Urgent', value: urgentTasks, icon: AlertCircle, iconColor: colors.danger, link: '/work/tasks' },
+    { label: 'Active Tasks', value: activeTasks, icon: CheckSquare, colorClass: 'text-primary', link: '/work/tasks' },
+    { label: 'This Week', value: tasks.length, icon: Calendar, colorClass: 'text-signal-foreground', link: '/work/schedule' },
+    { label: 'Properties', value: 4, icon: Building2, colorClass: 'text-accent', link: '/manage/properties' },
+    { label: 'Urgent', value: urgentTasks, icon: AlertCircle, colorClass: 'text-destructive', link: '/work/tasks' },
   ];
 
   const recentActivity = [
-    { text: 'Task completed: Fire safety inspection', time: '2h ago', color: colors.success },
-    { text: 'New task assigned: HVAC maintenance', time: '5h ago', color: colors.signal },
-    { text: 'Property updated: 123 Main St', time: '1d ago', color: colors.accent },
+    { text: 'Task completed: Fire safety inspection', time: '2h ago', colorClass: 'bg-success' },
+    { text: 'New task assigned: HVAC maintenance', time: '5h ago', colorClass: 'bg-signal' },
+    { text: 'Property updated: 123 Main St', time: '1d ago', colorClass: 'bg-accent' },
   ];
 
   const upcomingReminders = [
@@ -57,10 +56,7 @@ const Home = () => {
   ];
 
   return (
-    <div 
-      className="min-h-screen pb-20"
-      style={{ backgroundColor: colors.background }}
-    >
+    <div className="min-h-screen pb-20 bg-background">
       <ContextHeader 
         title="Home" 
         subtitle="Your workspace overview" 
@@ -82,27 +78,17 @@ const Home = () => {
             <button
               key={stat.label}
               onClick={() => navigate(stat.link)}
-              className="p-4 rounded-lg text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ 
-                backgroundColor: colors.surface,
-                boxShadow: shadows.outset 
-              }}
+              className="p-4 rounded-lg text-left bg-card shadow-e1 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="flex items-start justify-between mb-3">
-                <div 
-                  className="p-2 rounded-lg"
-                  style={{ 
-                    backgroundColor: colors.background,
-                    boxShadow: shadows.inset 
-                  }}
-                >
-                  <stat.icon className="h-5 w-5" style={{ color: stat.iconColor }} />
+                <div className="p-2 rounded-lg bg-background shadow-engraved">
+                  <stat.icon className={`h-5 w-5 ${stat.colorClass}`} />
                 </div>
               </div>
-              <div className="text-3xl font-bold tracking-tight mb-1" style={{ color: colors.ink }}>
+              <div className="text-3xl font-bold tracking-tight mb-1 text-foreground">
                 {stat.value}
               </div>
-              <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: colors.textMuted }}>
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {stat.label}
               </div>
             </button>
@@ -112,36 +98,21 @@ const Home = () => {
         {/* Recent Activity */}
         <div>
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-semibold tracking-tight" style={{ color: colors.ink }}>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Recent Activity
             </h2>
           </div>
-          <div 
-            className="rounded-lg p-4"
-            style={{ 
-              backgroundColor: colors.surface,
-              boxShadow: shadows.outset 
-            }}
-          >
+          <div className="rounded-lg p-4 bg-card shadow-e1">
             <div className="space-y-4">
               {recentActivity.map((item, idx) => (
                 <div key={idx} className="flex items-start gap-3">
-                  <div 
-                    className="w-2 h-2 rounded-full mt-2 shrink-0"
-                    style={{ backgroundColor: item.color }}
-                  />
+                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${item.colorClass}`} />
                   <div className="flex-1 min-w-0">
-                    <p 
-                      className="text-sm leading-relaxed"
-                      style={{ color: colors.ink }}
-                    >
+                    <p className="text-sm leading-relaxed text-foreground">
                       {item.text}
                     </p>
                   </div>
-                  <span 
-                    className="text-xs shrink-0"
-                    style={{ color: colors.textLight }}
-                  >
+                  <span className="text-xs shrink-0 text-muted-foreground">
                     {item.time}
                   </span>
                 </div>
@@ -153,7 +124,7 @@ const Home = () => {
         {/* Upcoming Reminders */}
         <div>
           <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-semibold tracking-tight" style={{ color: colors.ink }}>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Upcoming
             </h2>
             <Badge variant="primary">{upcomingReminders.length}</Badge>
@@ -162,44 +133,22 @@ const Home = () => {
             {upcomingReminders.map((reminder, idx) => (
               <div
                 key={idx}
-                className="rounded-lg p-4"
-                style={{ 
-                  backgroundColor: colors.surface,
-                  boxShadow: shadows.outset 
-                }}
+                className="rounded-lg p-4 bg-card shadow-e1"
               >
                 <div className="flex items-start gap-3">
-                  <div 
-                    className="p-2 rounded-lg shrink-0"
-                    style={{ 
-                      backgroundColor: colors.background,
-                      boxShadow: shadows.inset 
-                    }}
-                  >
-                    <Clock className="h-4 w-4" style={{ color: colors.primary }} />
+                  <div className="p-2 rounded-lg shrink-0 bg-background shadow-engraved">
+                    <Clock className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p 
-                      className="text-sm font-semibold mb-0.5"
-                      style={{ color: colors.ink }}
-                    >
+                    <p className="text-sm font-semibold mb-0.5 text-foreground">
                       {reminder.title}
                     </p>
-                    <p 
-                      className="text-xs mb-1"
-                      style={{ color: colors.textMuted }}
-                    >
+                    <p className="text-xs mb-1 text-muted-foreground">
                       {reminder.property}
                     </p>
                     <div className="flex items-center gap-1">
-                      <div 
-                        className="w-1 h-1 rounded-full"
-                        style={{ backgroundColor: colors.signal }}
-                      />
-                      <span 
-                        className="text-xs font-medium"
-                        style={{ color: colors.textLight }}
-                      >
+                      <div className="w-1 h-1 rounded-full bg-signal" />
+                      <span className="text-xs font-medium text-muted-foreground">
                         {reminder.time}
                       </span>
                     </div>

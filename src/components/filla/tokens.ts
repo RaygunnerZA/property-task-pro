@@ -1,6 +1,7 @@
 /**
- * Filla Design System v3.4 - "Dimensional Paper Edition"
+ * Filla Design System v4.0 - "Dimensional Paper Edition"
  * Token-based design system for tactile, neomorphic UI
+ * SINGLE SOURCE OF TRUTH - use Tailwind classes instead where possible
  */
 
 // === COLOR PALETTE (HSL) ===
@@ -15,31 +16,37 @@ export const colors = {
   accentLight: '16 100% 95%',   // Light coral bg
   
   // Neutrals - Warm Paper Tones
-  background: '40 20% 94%',     // #F1EEE8 - Warm beige
-  surface: '0 0% 100%',         // #FFFFFF - Pure white
-  concrete: '40 12% 88%',       // #E3DFD7 - Border gray
+  background: 'hsl(40, 20%, 94%)',     // #F1EEE8 - Warm beige
+  surface: 'hsl(0, 0%, 100%)',         // #FFFFFF - Pure white
+  surfaceRaised: 'hsl(40, 15%, 96%)',  // Slightly raised surface
+  concrete: 'hsl(40, 12%, 88%)',       // #E3DFD7 - Border gray
   
   // Typography
-  ink: '248 15% 18%',           // #2A293E - Dark purple-gray
-  textMuted: '40 2% 55%',       // #8C8C85 - Muted gray
+  ink: 'hsl(248, 15%, 18%)',           // #2A293E - Dark purple-gray
+  textMuted: 'hsl(40, 2%, 55%)',       // #8C8C85 - Muted gray
+  textLight: 'hsl(40, 5%, 70%)',       // Light gray for captions
   
   // Status Colors
-  danger: '0 84% 60%',          // #EF4444 - Red
-  warning: '43 100% 85%',       // #FFE9B2 - Yellow
-  success: '145 62% 85%',       // #C1F1D6 - Green
-  signal: '30 100% 91%',        // #FFE4D0 - Warm signal orange
+  danger: 'hsl(0, 84%, 60%)',          // #EF4444 - Red
+  warning: 'hsl(43, 100%, 85%)',       // #FFE9B2 - Yellow
+  success: 'hsl(145, 62%, 85%)',       // #C1F1D6 - Green
+  signal: 'hsl(30, 100%, 91%)',        // #FFE4D0 - Warm signal orange
 } as const;
 
 // === NEUMORPHIC SHADOW PRESETS ===
 export const neuShadows = {
-  // Cards
-  floatingCard: '1px 10px 12px -4px rgba(0, 0, 0, 0.19), -5px -4px 8px -3px rgba(255, 255, 255, 0), inset -1px -1px 1px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 2px 0px rgba(255, 255, 255, 1)',
-  flatCard: '2px 6px 5px -3px rgba(0, 0, 0, 0.07), -2px -2px 8px -3px rgba(255, 255, 255, 0.19), inset 0px -2px 2px 0px rgba(0, 0, 0, 0.1), inset 1px 2px 2px 0px rgba(255, 255, 255, 1)',
+  // Cards - Flat card with texture overlay
+  flatCard: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)',
+  
+  // Sections - Flat section style
+  flatSection: '-1px -1px 1px 0px rgba(0, 0, 0, 0.1), inset -1px -1px 1px rgba(255, 255, 255, 0.53)',
+  
+  // Engraved/pressed
   flatPressed: '3px 4px 3px -3px rgba(255, 255, 255, 1), -2px -2px 5px -3px rgba(0, 0, 0, 0.05), inset -3px -3px 2px 0px rgba(0, 0, 0, 0.01), inset 1px 2px 2px 0px rgba(0, 0, 0, 0.08)',
   
-  // Buttons
-  buttonOut: '3px 5px 7px 2px rgba(0, 0, 0, 0.06), -4px -5px 11px 4px rgba(255, 255, 255, 0.52), inset 2px 2px 0px 0px rgba(255, 255, 255, 0), inset -2px -3px 4px 0px rgba(0, 0, 0, 0.06)',
-  buttonPressed: '0px 0px 7px 2px rgba(0, 0, 0, 0.01), inset -3px -9px 17px 0px rgba(255, 255, 255, 0.49), inset 1px 13px 19px 0px rgba(0, 0, 0, 0.09)',
+  // Primary Buttons
+  buttonOut: '3px 5px 5px 2px rgba(0, 0, 0, 0.13), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 1px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.27)',
+  buttonPressed: '0px 0px 7px 2px rgba(0, 0, 0, 0), inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)',
 } as const;
 
 // === TYPOGRAPHY ===
@@ -73,33 +80,41 @@ export const spacing = {
 
 // === BORDER RADIUS ===
 export const radii = {
-  sharp: '8px',      // Core radius for cards
-  md: '12px',        // Modals
-  lg: '14px',        // Buttons
+  sharp: '5px',      // Core radius for buttons, chips, panels, calendar
+  card: '8px',       // Card radius
+  md: '8px',         // Modals, cards
+  lg: '5px',         // Buttons
   pill: '9999px',    // Fully rounded
 } as const;
 
 // === SHADOWS ===
 // Neomorphic/Paper depth system
 export const shadows = {
-  // E1 - Subtle elevation (chips, raised elements) - Now uses flatCard
+  // E1 - Flat card with texture
   e1: neuShadows.flatCard,
   
-  // E2 - Standard card elevation - Now uses floatingCard
-  e2: neuShadows.floatingCard,
+  // E2 - Flat section style
+  e2: neuShadows.flatSection,
   
   // E3 - Floating modals/popovers
   e3: '0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
   
-  // Engraved - Inset/debossed inputs (now uses flatPressed)
+  // Engraved - Inset/debossed inputs
   engraved: neuShadows.flatPressed,
   
-  // Paper Edge - White inner highlight (for tactile effect)
+  // Paper Edge - White inner highlight
   paperEdge: 'inset 0 1px 0 rgba(255,255,255,0.8)',
   
   // Button Shadows
   primaryBtn: neuShadows.buttonOut,
+  btnPressed: neuShadows.buttonPressed,
   fab: '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
+  
+  // Legacy compatibility
+  outset: '0px 2px 6px rgba(0,0,0,0.08), 0px 1px 2px rgba(0,0,0,0.04)',
+  inset: 'inset 2px 2px 6px rgba(0,0,0,0.08), inset -2px -2px 6px rgba(255,255,255,0.7)',
+  card: '0px 4px 12px rgba(0,0,0,0.06), 0px 2px 4px rgba(0,0,0,0.04)',
+  floating: '0px 12px 32px rgba(0,0,0,0.12), 0px 4px 12px rgba(0,0,0,0.08)',
 } as const;
 
 // === TRANSITIONS ===

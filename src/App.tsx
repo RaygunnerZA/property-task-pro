@@ -75,13 +75,13 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <SystemStatusProvider>
-          <StatusBanner />
-          <DataProvider>
-            <AppInitializer>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <SystemStatusProvider>
+              <StatusBanner />
+              <DataProvider>
+                <AppInitializer>
               <Routes>
                 {/* Onboarding routes (no layout) */}
                 <Route path="/welcome" element={<WelcomeScreen />} />
@@ -158,11 +158,11 @@ const App = () => {
                   </ProtectedRoute>
                 } />
               </Routes>
-            </AppInitializer>
-          </DataProvider>
-        </SystemStatusProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+                </AppInitializer>
+              </DataProvider>
+            </SystemStatusProvider>
+          </BrowserRouter>
+        </TooltipProvider>
     </QueryClientProvider>
   );
 };

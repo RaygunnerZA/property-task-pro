@@ -6,7 +6,7 @@ export function ButtonsSection() {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight">Buttons</h2>
+        <h2 className="font-display text-2xl font-semibold text-ink tracking-tight heading-l">Buttons</h2>
         <p className="text-muted-foreground text-sm">Neumorphic buttons with E1/E2/E3 elevation layers</p>
       </div>
 
@@ -23,7 +23,7 @@ export function ButtonsSection() {
           </div>
         </div>
 
-        {/* Secondary Buttons */}
+        {/* Secondary Buttons - Clean, simple style */}
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Secondary</h3>
           <div className="flex flex-wrap gap-3">

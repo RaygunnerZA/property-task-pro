@@ -20,13 +20,11 @@ export { MiniCalendar } from './MiniCalendar';
 export { MiniCalendarDayTile } from './MiniCalendarDayTile';
 export type { CalendarEvent, TaskEvent, ComplianceEvent, DayData } from './MiniCalendar';
 
-// Design system exports (includes some duplicates but with additional features)
-export { 
-  colors, 
-  shadows, 
-  typography, 
-  spacing, 
-  radii, 
-  motion,
-  DesignSystemPreview 
-} from './DesignSystem';
+// Cards & Tabs
+export { TaskCard } from './TaskCard';
+export type { TaskCardProps } from './TaskCard';
+export { DashboardTabs } from './DashboardTabs';
+export type { DashboardTabsProps, InboxItem, ReminderItem } from './DashboardTabs';
+
+// Design tokens - single source of truth
+export { colors, neuShadows, typography, spacing, radii, shadows } from './tokens';

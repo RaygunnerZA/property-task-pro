@@ -1,5 +1,5 @@
 import React from 'react';
-import { colors, shadows } from './DesignSystem';
+import { colors, shadows } from './tokens';
 import { cn } from '@/lib/utils';
 
 export interface SegmentOption {

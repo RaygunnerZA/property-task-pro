@@ -34,15 +34,16 @@ export const Heading: React.FC<HeadingProps> = ({
   variant = 'l', 
   as, 
   className = '', 
+  style,
   ...props 
 }) => {
   const Component = as || (variant === 'xl' ? 'h1' : variant === 'l' ? 'h2' : 'h3');
   
   const styles = {
-    xl: 'text-4xl font-bold tracking-tight leading-tight text-primary-deep',
-    l: 'text-2xl font-semibold tracking-tight leading-tight text-primary-deep',
+    xl: 'text-4xl font-bold tracking-tight leading-tight text-primary-deep heading-xl',
+    l: 'text-2xl font-semibold tracking-tight leading-tight text-primary-deep heading-l',
     m: 'text-lg font-semibold tracking-tight leading-snug text-ink',
   };
   
-  return <Component className={cn(styles[variant], className)} {...props} />;
+  return <Component className={cn(styles[variant], className)} style={style} {...props} />;
 };

@@ -107,21 +107,41 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   }, []);
 
-  // Main refresh function
+  // Main refresh function - uses refreshSession to ensure fresh JWT with org_id claim
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession();
+      // Use refreshSession instead of getSession to get fresh JWT with updated claims
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
-      if (sessionError) {
-        setError(sessionError.message);
-        setSession(null);
-        setOrganisation(null);
+      if (refreshError) {
+        // If refresh fails, try getSession as fallback (might be a new session)
+        const { data: { session: fallbackSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          setError(sessionError.message);
+          setSession(null);
+          setOrganisation(null);
+          return;
+        }
+        
+        setSession(fallbackSession);
+        
+        const newOrgId = fallbackSession?.user?.app_metadata?.org_id || 
+                         fallbackSession?.user?.user_metadata?.org_id;
+        
+        if (newOrgId) {
+          const org = await fetchOrganisation(newOrgId);
+          setOrganisation(org);
+        } else {
+          setOrganisation(null);
+        }
         return;
       }
       
+      const newSession = refreshData.session;
       setSession(newSession);
       
       // If we have an org_id in claims, fetch the organisation
@@ -145,10 +165,17 @@ export function DataProvider({ children }: DataProviderProps) {
     setError(null);
   }, []);
 
-  // Initialize on mount
+  // Initialize on mount - try to get a fresh session
   useEffect(() => {
-    // Get initial session first
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    // Try refreshSession first to get fresh JWT with org_id claim
+    supabase.auth.refreshSession().then(({ data: refreshData, error }) => {
+      if (error || !refreshData.session) {
+        // Fall back to getSession for new sessions without refresh token
+        return supabase.auth.getSession();
+      }
+      return { data: { session: refreshData.session }, error: null };
+    }).then((result) => {
+      const initialSession = result?.data?.session ?? null;
       setSession(initialSession);
       
       const initialOrgId = initialSession?.user?.app_metadata?.org_id || 

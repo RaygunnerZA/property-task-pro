@@ -86,14 +86,19 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
           .limit(1);
 
         if (error) {
-          setSupabaseHealthy(false);
-          setLastError("Unable to reach database");
+          // Permission errors (401/403) are auth issues, not connection issues
+          const isAuthError = error.code === "42501" || error.message?.includes("permission denied");
+          if (isAuthError) {
+            // User not logged in - this is expected, not a connection problem
+            setSupabaseHealthy(true);
+            setLastError(null);
+          } else {
+            setSupabaseHealthy(false);
+            setLastError("Unable to reach database");
+          }
         } else {
           setSupabaseHealthy(true);
-          // Clear error on successful connection
-          if (lastError === "Unable to reach database") {
-            setLastError(null);
-          }
+          setLastError(null);
         }
       } catch (err: any) {
         setSupabaseHealthy(false);
@@ -112,7 +117,7 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
         clearInterval(heartbeatRef.current);
       }
     };
-  }, [isOnline, lastError]);
+  }, [isOnline]);
 
   const value: SystemStatusContextValue = {
     status,
