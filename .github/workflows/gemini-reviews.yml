@@ -3,7 +3,7 @@ name: Gemini Architectural Review
 on:
   pull_request:
     branches:
-      - main
+      - main 
       - newline
       - lovable
     types: [opened, synchronize, reopened]
@@ -23,7 +23,6 @@ jobs:
           git diff --name-only origin/${{ github.base_ref }} > changed_files.txt
 
       - name: Run Gemini analysis
-        if: ${{ secrets.GEMINI_API_KEY != '' }}
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
