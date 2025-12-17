@@ -5,6 +5,11 @@ permissions:
   issues: write
   pull-requests: write
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 on:
   pull_request:
     branches:
