@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
-  console.error("Missing GEMINI_API_KEY");
+  console.error("Missing GEMINI_API_KEY"); 
   process.exit(1);
 }
 
