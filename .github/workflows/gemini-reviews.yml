@@ -1,5 +1,5 @@
 name: Gemini Architectural Review
-
+ 
 permissions:
   contents: read
   issues: write
