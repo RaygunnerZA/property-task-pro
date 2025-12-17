@@ -7,9 +7,9 @@ if (!API_KEY) {
 }
 
 // Use the public Gemini Generative Language API format
-const MODEL = "gemini-1.5-pro";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
+const MODEL = "gemini-2.5-flash";
+const GEMINI_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const changedFilesPath = "changed_files.txt";
 const outputPath = "gemini_report.md";
 
