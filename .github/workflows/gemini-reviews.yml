@@ -1,5 +1,10 @@
 name: Gemini Architectural Review
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 on:
   pull_request:
     branches:
@@ -20,13 +25,13 @@ jobs:
 
       - name: Get changed files
         run: |
-          git diff --name-only origin/${{ github.base_ref }} > changed_files.txt
+          git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.sha }} > changed_files.txt
 
       - name: Run Gemini analysis
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          node .github/scripts/gemini-review3.js
+          node .github/scripts/gemini-reviews.js
 
       - name: Post results to PR
         uses: peter-evans/create-or-update-comment@v4
