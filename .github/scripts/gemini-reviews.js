@@ -1,15 +1,15 @@
 import fs from "fs";
-import path from "path";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
-  console.error("Missing GEMINI_API_KEY"); 
+  console.error("Missing GEMINI_API_KEY");
   process.exit(1);
 }
 
+// Use the public Gemini Generative Language API format
 const MODEL = "gemini-2.5-flash";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
+const GEMINI_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
 const changedFilesPath = "changed_files.txt";
 const outputPath = "gemini_report.md";
 
@@ -21,20 +21,18 @@ if (!fs.existsSync(changedFilesPath)) {
 const files = fs
   .readFileSync(changedFilesPath, "utf-8")
   .split("\n")
+  .map(s => s.trim())
   .filter(Boolean)
   .filter(f => fs.existsSync(f))
-  .slice(0, 25); // hard safety limit
+  .slice(0, 25);
 
 let context = "";
-
 for (const file of files) {
   const content = fs.readFileSync(file, "utf-8").slice(0, 6000);
   context += `\n\nFILE: ${file}\n---\n${content}`;
 }
 
-const prompt = `
-You are an architectural review agent for the Filla platform.
-
+const prompt = `You are an architectural review agent for the Filla platform.
 Rules:
 - Do NOT invent files, flows, or components
 - Identify schema violations, RLS risks, architectural drift, or UX inconsistencies
@@ -55,31 +53,26 @@ async function run() {
   const response = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    // IMPORTANT: no "model" field in the body
     body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }]
-        }
-      ]
-    })
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1200 }
+    }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    fs.writeFileSync(
-      outputPath,
-      `Gemini request failed:\n\n${text}`
-    );
+    console.error("Gemini API error:");
+    console.error(text);
+    fs.writeFileSync(outputPath, `Gemini request failed:\n\n${text}`);
     process.exit(1);
   }
 
   const data = await response.json();
-  const text =
+  const out =
     data.candidates?.[0]?.content?.parts?.[0]?.text ??
     "No response from Gemini.";
-
-  fs.writeFileSync(outputPath, text);
+  fs.writeFileSync(outputPath, out);
 }
 
 run();
