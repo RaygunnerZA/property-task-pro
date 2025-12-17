@@ -7,7 +7,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const MODEL = "models/gemini-1.5-pro";
+const MODEL = "models/Gemini-2.0-Flash";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1/${MODEL}:generateContent?key=${API_KEY}`;
 
 const changedFilesPath = "changed_files.txt";
