@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import fetch from "node-fetch";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
@@ -52,7 +51,7 @@ Return:
 4. Overall assessment
 `;
 
-async function run() {
+async function run() { 
   const response = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
