@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import fetch from "node-fetch";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
