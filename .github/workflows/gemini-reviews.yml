@@ -26,7 +26,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          node .github/scripts/gemini-review.js
+          node .github/scripts/gemini-review3.js
 
       - name: Post results to PR
         uses: peter-evans/create-or-update-comment@v4
