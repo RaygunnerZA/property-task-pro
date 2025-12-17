@@ -2,7 +2,10 @@ name: Gemini Architectural Review
 
 on:
   pull_request:
+    branches:
+      - lovable
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 jobs:
   gemini-review:
@@ -14,17 +17,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
+      - name: Get changed files
+        run: |
+          git diff --name-only origin/${{ github.base_ref }} > changed_files.txt
+
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-
-      - name: Get changed files
-        id: diff
-        run: |
-          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
-          git diff --name-only origin/${{ github.base_ref }} >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          node-version: 20
 
       - name: Run Gemini analysis
         env:
