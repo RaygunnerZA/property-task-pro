@@ -66,13 +66,12 @@ async function run() {
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    fs.writeFileSync(
-      outputPath,
-      `Gemini request failed:\n\n${text}`
-    );
-    process.exit(1);
-  }
+  const text = await response.text();
+  console.error("Gemini API error:");
+  console.error(text);
+  fs.writeFileSync(outputPath, `Gemini request failed:\n\n${text}`);
+  process.exit(1);
+}
 
   const data = await response.json();
   const text =
