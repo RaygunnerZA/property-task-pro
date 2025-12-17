@@ -25,7 +25,7 @@ jobs:
 
       - name: Get changed files
         run: |
-          git diff --name-only origin/${{ github.base_ref }} > changed_files.txt
+          git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.sha }} > changed_files.txt
 
       - name: Run Gemini analysis
         env:
