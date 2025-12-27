@@ -7,6 +7,9 @@ export interface OrgMember {
   user_id: string;
   role: string;
   display_name: string;
+  email: string | null;
+  nickname: string | null;
+  avatar_url: string | null;
 }
 
 export function useOrgMembers() {
@@ -26,26 +29,71 @@ export function useOrgMembers() {
     setLoading(true);
     setError(null);
 
-    const { data, error: err } = await supabase
-      .from("organisation_members")
-      .select("id, user_id, role")
-      .eq("org_id", orgId);
+    try {
+      // Fetch memberships
+      const { data: memberships, error: err } = await supabase
+        .from("organisation_members")
+        .select("id, user_id, role")
+        .eq("org_id", orgId);
 
-    if (err) {
-      setError(err.message);
-      setMembers([]);
-    } else {
-      // Map to OrgMember with display_name fallback
-      const mapped: OrgMember[] = (data ?? []).map((m) => ({
-        id: m.id,
-        user_id: m.user_id,
-        role: m.role,
-        display_name: `User ${m.user_id.slice(0, 8)}`, // Fallback display name
-      }));
+      if (err) {
+        setError(err.message);
+        setMembers([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!memberships || memberships.length === 0) {
+        setMembers([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user data via RPC function
+      const userIds = memberships.map(m => m.user_id);
+      const { data: userData, error: userError } = await supabase.rpc(
+        'get_users_info',
+        { user_ids: userIds }
+      );
+
+      if (userError) {
+        console.error("Error fetching user info:", userError);
+        // Fallback to basic info if RPC fails
+        const mapped: OrgMember[] = memberships.map((m) => ({
+          id: m.id,
+          user_id: m.user_id,
+          role: m.role,
+          display_name: `User ${m.user_id.slice(0, 8)}`,
+          email: null,
+          nickname: null,
+          avatar_url: null,
+        }));
+        setMembers(mapped);
+        setLoading(false);
+        return;
+      }
+
+      // Map members with user data
+      const mapped: OrgMember[] = memberships.map((m) => {
+        const user = userData?.find((u: any) => u.id === m.user_id);
+        return {
+          id: m.id,
+          user_id: m.user_id,
+          role: m.role,
+          display_name: user?.nickname || user?.email || `User ${m.user_id.slice(0, 8)}`,
+          email: user?.email || null,
+          nickname: user?.nickname || null,
+          avatar_url: user?.avatar_url || null,
+        };
+      });
+
       setMembers(mapped);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch members");
+      setMembers([]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   useEffect(() => {

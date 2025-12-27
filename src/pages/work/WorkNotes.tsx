@@ -1,18 +1,19 @@
-import { Surface, Heading, Text } from '@/components/filla';
 import { FileText } from 'lucide-react';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { EmptyState } from '@/components/design-system/EmptyState';
 
 export default function WorkNotes() {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Heading variant="l" className="mb-6">Notes</Heading>
-      
-      <Surface variant="neomorphic" className="p-12 text-center">
-        <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-40" />
-        <Heading variant="m" className="mb-2">Notes coming soon</Heading>
-        <Text variant="muted">
-          Create and organize notes for your properties and tasks
-        </Text>
-      </Surface>
-    </div>
+    <StandardPage
+      title="Notes"
+      icon={<FileText className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      <EmptyState
+        icon={FileText}
+        title="Notes coming soon"
+        description="Create and organize notes for your properties and tasks"
+      />
+    </StandardPage>
   );
 }

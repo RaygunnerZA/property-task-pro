@@ -56,10 +56,10 @@ export function ProgressDots({
               h-2 rounded-full transition-all duration-300 ease-out
               ${isClickable ? 'cursor-pointer hover:scale-110' : 'cursor-default'}
               ${isCurrent
-                ? "w-8 bg-[#FF6B6B]"
+                ? "w-8 bg-accent"
                 : isCompleted
-                ? "w-2 bg-[#FF6B6B]/50"
-                : "w-2 bg-[#6D7480]/20"
+                ? "w-2 bg-accent/50"
+                : "w-2 bg-muted/20"
               }
             `}
             style={{

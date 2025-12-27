@@ -1,10 +1,9 @@
-import { BottomNav } from '@/components/BottomNav';
-import { ContextHeader } from '@/components/ContextHeader';
 import { User, Settings, Bell, Shield, Palette, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { StandardPage } from '@/components/design-system/StandardPage';
 
 const Account = () => {
   const navigate = useNavigate();
@@ -77,14 +76,13 @@ const Account = () => {
   ];
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      <ContextHeader 
-        title="Account" 
-        subtitle="Manage your settings" 
-        showSearch={false}
-      />
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+    <StandardPage
+      title="Account"
+      subtitle="Manage your settings"
+      icon={<User className="h-6 w-6" />}
+      maxWidth="md"
+    >
+      <div className="space-y-6">
         {/* Profile Card */}
         <div className="rounded-lg p-6 bg-card shadow-e1">
           <div className="flex items-center gap-4">
@@ -142,9 +140,7 @@ const Account = () => {
           </button>
         </div>
       </div>
-
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

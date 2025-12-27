@@ -1,8 +1,7 @@
-import { BottomNav } from '@/components/BottomNav';
-import { ContextHeader } from '@/components/ContextHeader';
-import { Surface, Heading, Text } from '@/components/filla';
 import { Palette, Code, Database, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { Card } from '@/components/ui/card';
 
 const AccountDeveloper = () => {
   const navigate = useNavigate();
@@ -35,41 +34,37 @@ const AccountDeveloper = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-paper pb-20">
-      <ContextHeader 
-        title="Developer Tools" 
-        subtitle="Advanced settings and tools"
-        backTo="/account"
-      />
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-3">
+    <StandardPageWithBack
+      title="Developer Tools"
+      subtitle="Advanced settings and tools"
+      backTo="/account"
+      icon={<Code className="h-6 w-6" />}
+      maxWidth="md"
+    >
+      <div className="space-y-3">
         {tools.map((tool) => (
-          <Surface
+          <Card
             key={tool.title}
-            variant="neomorphic"
-            interactive
+            className="p-4 shadow-e1 cursor-pointer hover:scale-[1.01] transition-all"
             onClick={() => navigate(tool.path)}
-            className="p-4"
           >
             <div className="flex items-start gap-3">
               <div className="p-2.5 rounded-lg bg-primary/10">
                 <tool.icon className="h-5 w-5 text-primary" />
               </div>
-            <div className="flex-1 min-w-0">
-              <Heading variant="m" className="mb-1">
-                {tool.title}
-              </Heading>
-                <Text variant="caption" className="text-muted-foreground">
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold mb-1 text-foreground">
+                  {tool.title}
+                </h3>
+                <p className="text-sm text-muted-foreground">
                   {tool.description}
-                </Text>
+                </p>
               </div>
             </div>
-          </Surface>
+          </Card>
         ))}
       </div>
-
-      <BottomNav />
-    </div>
+    </StandardPageWithBack>
   );
 };
 

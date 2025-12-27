@@ -1,7 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ContextHeader } from "@/components/ContextHeader";
-import { BottomNav } from "@/components/BottomNav";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { getScheduleRange, ScheduleViewMode } from "@/utils/scheduleRange";
@@ -9,7 +7,11 @@ import { MiniCalendar, type CalendarEvent } from "@/components/filla/MiniCalenda
 import { WeekStripCalendar } from "@/components/schedule/WeekStripCalendar";
 import { DayScheduleDrawer } from "@/components/schedule/DayScheduleDrawer";
 import { ScheduleItemBase } from "@/types/schedule";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Calendar } from "lucide-react";
+import { StandardPage } from "@/components/design-system/StandardPage";
+import { LoadingState } from "@/components/design-system/LoadingState";
+import { ErrorState } from "@/components/design-system/ErrorState";
+import { Button } from "@/components/ui/button";
 
 /**
  * SCHEDULE SCREEN
@@ -144,24 +146,23 @@ const Schedule = () => {
   }, [viewMode, selectedDate]);
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* HEADER */}
-      <ContextHeader
-        title="Schedule"
-        action={
-          <div className="flex items-center gap-2">
-            <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <Search className="h-5 w-5" />
-            </button>
-            <button className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <SlidersHorizontal className="h-5 w-5" />
-            </button>
-          </div>
-        }
-      />
-
+    <StandardPage
+      title="Schedule"
+      icon={<Calendar className="h-6 w-6" />}
+      action={
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm">
+            <Search className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="sm">
+            <SlidersHorizontal className="h-5 w-5" />
+          </Button>
+        </div>
+      }
+      maxWidth="md"
+    >
       {/* VIEW MODE SEGMENT CONTROL */}
-      <div className="px-4 pt-4 pb-2 flex justify-center">
+      <div className="mb-4 flex justify-center">
         <SegmentedControl
           options={segmentOptions}
           selectedId={viewMode}
@@ -169,24 +170,12 @@ const Schedule = () => {
         />
       </div>
 
-      {/* SCROLL CONTAINER */}
-      <div className="max-w-md mx-auto px-4 pb-4">
-        {/* LOADING STATE */}
-        {loading && (
-          <div className="py-12 text-center">
-            <div className="text-sm text-muted-foreground">Loading...</div>
-          </div>
-        )}
-
-        {/* ERROR STATE */}
-        {error && (
-          <div className="py-12 text-center">
-            <div className="text-sm text-destructive">{error}</div>
-          </div>
-        )}
-
-        {/* CONTENT */}
-        {!loading && !error && (
+      {/* CONTENT */}
+      {loading ? (
+        <LoadingState message="Loading schedule..." />
+      ) : error ? (
+        <ErrorState message={error} />
+      ) : (
           <>
             {/* MONTH VIEW - New MiniCalendar */}
             {viewMode === "month" && (
@@ -235,10 +224,7 @@ const Schedule = () => {
             )}
           </>
         )}
-      </div>
-
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

@@ -13,10 +13,10 @@ export function OnboardingBreadcrumbs({ items }: OnboardingBreadcrumbsProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 text-sm text-[#6D7480] mb-4">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
       {items.map((item, index) => (
         <div key={index} className="flex items-center gap-2">
-          <span className={item.active ? "text-[#1C1C1C] font-medium" : ""}>
+          <span className={item.active ? "text-foreground font-medium" : ""}>
             {item.label}
           </span>
           {index < items.length - 1 && (

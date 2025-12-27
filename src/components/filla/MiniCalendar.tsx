@@ -84,7 +84,7 @@ const NavButton: React.FC<{
     onClick={onClick}
     className={cn(
       "w-10 h-10 rounded-[12px] flex items-center justify-center",
-      "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+      "bg-surface-gradient",
       "shadow-e2 hover:shadow-e1 active:shadow-engraved",
       "transition-all duration-150",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"

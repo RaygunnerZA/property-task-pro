@@ -76,6 +76,18 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Surface gradient colors (from compliance dashboard)
+        "surface-gradient": {
+          from: "hsl(40, 15%, 95%)",  // #F4F3F0
+          via: "hsl(40, 12%, 93%)",   // #F2F1ED
+          to: "hsl(40, 10%, 91%)",    // #EFEDE9
+        },
+        // Input background color
+        "input-bg": "hsl(40, 10%, 96%)", // #F6F4F2
+      },
+      backgroundImage: {
+        "surface-gradient": "linear-gradient(to bottom right, hsl(40, 15%, 95%), hsl(40, 12%, 93%), hsl(40, 10%, 91%))",
+        "surface-gradient-horizontal": "linear-gradient(to right, hsl(40, 15%, 95%), hsl(40, 12%, 93%), hsl(40, 10%, 91%))",
       },
       borderRadius: {
         lg: "var(--radius)",

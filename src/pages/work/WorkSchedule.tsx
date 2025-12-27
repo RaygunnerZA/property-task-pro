@@ -1,8 +1,11 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Surface, Heading, Text } from '@/components/filla';
 import TaskCard from '@/components/TaskCard';
 import { useTasks } from '@/hooks/useTasks';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { Calendar } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 
 type TimeGroup = 'overdue' | 'today' | 'tomorrow' | 'next_7_days' | 'later';
 
@@ -75,7 +78,7 @@ export default function WorkSchedule() {
 
   const getGroupColor = (group: TimeGroup): string => {
     switch (group) {
-      case 'overdue': return 'text-red-600';
+      case 'overdue': return 'text-destructive';
       case 'today': return 'text-primary';
       default: return 'text-foreground';
     }
@@ -86,9 +89,9 @@ export default function WorkSchedule() {
 
     return (
       <div key={group} className="mb-8">
-        <Heading variant="m" className={`mb-3 ${getGroupColor(group)}`}>
+        <h2 className={`text-lg font-semibold mb-3 ${getGroupColor(group)}`}>
           {getGroupLabel(group)} ({tasks.length})
-        </Heading>
+        </h2>
         <div className="space-y-3">
           {tasks.map((task) => (
             <TaskCard
@@ -104,18 +107,14 @@ export default function WorkSchedule() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto pb-24">
-      <div className="mb-6">
-        <Heading variant="l" className="mb-2">Schedule</Heading>
-        <Text variant="muted">
-          Tasks organized by due date
-        </Text>
-      </div>
-
+    <StandardPage
+      title="Schedule"
+      subtitle="Tasks organized by due date"
+      icon={<Calendar className="h-6 w-6" />}
+      maxWidth="lg"
+    >
       {loading ? (
-        <Surface variant="neomorphic" className="p-8 text-center">
-          <p className="text-muted-foreground">Loading schedule...</p>
-        </Surface>
+        <LoadingState message="Loading schedule..." />
       ) : (
         <>
           {renderGroup('overdue', groupedTasks.overdue)}
@@ -125,12 +124,14 @@ export default function WorkSchedule() {
           {renderGroup('later', groupedTasks.later)}
 
           {tasks && tasks.length === 0 && (
-            <Surface variant="neomorphic" className="p-8 text-center">
-              <p className="text-muted-foreground">No tasks scheduled</p>
-            </Surface>
+            <EmptyState
+              icon={Calendar}
+              title="No tasks scheduled"
+              description="Create tasks to see them organized by due date"
+            />
           )}
         </>
       )}
-    </div>
+    </StandardPage>
   );
 }

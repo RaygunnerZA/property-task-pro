@@ -136,7 +136,7 @@ export function ChatThread({ taskId }: ChatThreadProps) {
   return (
     <div
       className={cn(
-        "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+        "rounded-xl bg-surface-gradient",
         "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
         "flex flex-col h-[400px]"
       )}
@@ -158,8 +158,8 @@ export function ChatThread({ taskId }: ChatThreadProps) {
               className={cn(
                 "rounded-lg p-3 max-w-[80%]",
                 message.author_user_id === user?.id
-                  ? "bg-[#8EC9CE] text-white ml-auto"
-                  : "bg-[#F6F4F2] text-foreground"
+                  ? "bg-primary text-primary-foreground ml-auto"
+                  : "bg-input text-foreground"
               )}
             >
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -195,9 +195,8 @@ export function ChatThread({ taskId }: ChatThreadProps) {
             onKeyDown={handleKeyDown}
             placeholder="Type your message... (Press Enter to send)"
             className={cn(
-              "flex-1 rounded-xl bg-[#F6F4F2] resize-none",
-              "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-              "border-0 focus:ring-2 focus:ring-[#0EA5E9]/30"
+              "flex-1 rounded-xl bg-input resize-none input-neomorphic",
+              "border-0 focus:ring-2 focus:ring-primary/30"
             )}
             rows={2}
             disabled={isSending}
@@ -206,9 +205,8 @@ export function ChatThread({ taskId }: ChatThreadProps) {
             onClick={handleSend}
             disabled={!messageText.trim() || isSending}
             className={cn(
-              "rounded-xl text-white self-end",
-              "shadow-[3px_5px_5px_2px_rgba(0,0,0,0.13),-3px_-3px_5px_0px_rgba(255,255,255,0.48),inset_1px_1px_2px_0px_rgba(255,255,255,0.5),inset_-1px_-2px_2px_0px_rgba(0,0,0,0.27)]",
-              "bg-[#FF6B6B] border-0"
+              "rounded-xl text-white self-end btn-accent-vibrant",
+              "border-0"
             )}
           >
             {isSending ? (

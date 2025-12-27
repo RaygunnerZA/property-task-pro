@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, CheckSquare, Package } from 'lucide-react';
+import { LayoutDashboard, Building2, CheckSquare, Package, Calendar, Shield } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,8 @@ export const BottomNav = () => {
     { to: '/properties', icon: Building2, label: 'Properties' },
     { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
     { to: '/assets', icon: Package, label: 'Assets' },
+    { to: '/calendar', icon: Calendar, label: 'Calendar' },
+    { to: '/compliance', icon: Shield, label: 'Compliance' },
   ];
 
   const isActiveRoute = (path: string) => {
@@ -38,13 +40,13 @@ export const BottomNav = () => {
                 <Icon 
                   className={cn(
                     "h-5 w-5 transition-colors",
-                    isActive ? "text-[#8EC9CE]" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-muted-foreground"
                   )} 
                 />
                 <span 
                   className={cn(
                     "text-[10px] font-semibold tracking-tight transition-colors",
-                    isActive ? "text-[#8EC9CE]" : "text-muted-foreground"
+                    isActive ? "text-primary" : "text-muted-foreground"
                   )}
                 >
                   {label}

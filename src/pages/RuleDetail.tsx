@@ -1,9 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { Surface, Heading, Text, Button } from '@/components/filla';
 import { useRule } from '@/hooks/useRule';
 import { useRuleVersions } from '@/hooks/useRuleVersions';
 import RuleDetailHeader from '@/components/compliance/RuleDetailHeader';
 import VersionList from '@/components/compliance/VersionList';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { Card } from '@/components/ui/card';
+import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
+import { FileText, History, Building2 } from 'lucide-react';
 
 export default function RuleDetail() {
   const { ruleId } = useParams<{ ruleId: string }>();
@@ -13,45 +18,66 @@ export default function RuleDetail() {
 
   if (loadingRule || loadingVersions) {
     return (
-      <div className="min-h-screen bg-paper p-6">
-        <Text variant="muted">Loading…</Text>
-      </div>
+      <StandardPageWithBack
+        title="Rule Detail"
+        backTo="/compliance"
+        icon={<FileText className="h-6 w-6" />}
+        maxWidth="lg"
+      >
+        <LoadingState message="Loading rule..." />
+      </StandardPageWithBack>
     );
   }
 
   if (!rule) {
     return (
-      <div className="min-h-screen bg-paper p-6">
-        <Text variant="muted">Rule not found.</Text>
-      </div>
+      <StandardPageWithBack
+        title="Rule Detail"
+        backTo="/compliance"
+        icon={<FileText className="h-6 w-6" />}
+        maxWidth="lg"
+      >
+        <EmptyState
+          icon={FileText}
+          title="Rule not found"
+          description="The rule you're looking for doesn't exist"
+        />
+      </StandardPageWithBack>
     );
   }
 
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <StandardPageWithBack
+      title="Rule Detail"
+      backTo="/compliance"
+      icon={<FileText className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      <div className="space-y-6">
         <RuleDetailHeader rule={rule} />
         
-        <Surface variant="neomorphic" className="p-6">
-          <Heading variant="m" className="mb-4">Version History</Heading>
+        <Card className="p-6 shadow-e1">
+          <h3 className="text-lg font-semibold mb-4">Version History</h3>
           <VersionList versions={versions ?? []} ruleId={ruleId || ''} />
-        </Surface>
+        </Card>
 
         <div className="flex gap-3">
-          <Button 
+          <NeomorphicButton 
             variant="secondary" 
             onClick={() => navigate(`/compliance/rules/${ruleId}/versions`)}
           >
+            <History className="h-4 w-4 mr-2" />
             View All Versions
-          </Button>
-          <Button 
+          </NeomorphicButton>
+          <NeomorphicButton 
             variant="secondary" 
             onClick={() => navigate(`/compliance/rules/${ruleId}/properties`)}
           >
+            <Building2 className="h-4 w-4 mr-2" />
             View Properties
-          </Button>
+          </NeomorphicButton>
         </div>
       </div>
-    </div>
+    </StandardPageWithBack>
   );
 }

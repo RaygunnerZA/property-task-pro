@@ -59,6 +59,12 @@
     --concrete: 40 12% 88%;          /* Border gray */
     --ink: 248 15% 18%;              /* Text color */
 
+    /* Surface Gradient Tokens */
+    --surface-gradient-from: 40 15% 95%;
+    --surface-gradient-via: 40 12% 93%;
+    --surface-gradient-to: 40 10% 91%;
+    --input-bg: 40 10% 96%;
+
     --radius: 0.75rem;
 
     /* Sidebar - Deep Ink #2A293E = 248 15% 20% */
@@ -223,6 +229,68 @@
   
   .shadow-fab {
     box-shadow: 0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3);
+  }
+  
+  /* ========================================
+     SURFACE GRADIENTS & INPUT STYLES
+     ======================================== */
+  
+  /* Surface Gradient Background */
+  .bg-surface-gradient {
+    background: linear-gradient(to bottom right, 
+      hsl(var(--surface-gradient-from)), 
+      hsl(var(--surface-gradient-via)), 
+      hsl(var(--surface-gradient-to))
+    );
+  }
+  
+  /* Input Background */
+  .bg-input {
+    background-color: hsl(var(--input-bg));
+  }
+  
+  /* Neomorphic Input Style */
+  .input-neomorphic {
+    @apply bg-input rounded-xl shadow-engraved border-0;
+    @apply focus:ring-2 focus:ring-primary/30;
+  }
+  
+  /* Neomorphic Button Style (from compliance dashboard) */
+  .btn-neomorphic {
+    @apply rounded-xl bg-surface-gradient;
+    @apply shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)];
+    @apply hover:scale-[1.01] active:scale-[0.99] transition-all duration-150;
+    @apply text-foreground border-0;
+  }
+  
+  /* Vibrant Accent Button (from compliance dashboard) */
+  .btn-accent-vibrant {
+    @apply rounded-xl text-white border-0;
+    @apply shadow-[3px_5px_5px_2px_rgba(0,0,0,0.13),-3px_-3px_5px_0px_rgba(255,255,255,0.48),inset_1px_1px_2px_0px_rgba(255,255,255,0.5),inset_-1px_-2px_2px_0px_rgba(0,0,0,0.27)];
+    @apply bg-accent hover:bg-accent/90;
+  }
+  
+  /* Page Header Style */
+  .page-header {
+    @apply sticky top-0 z-40 bg-surface-gradient shadow-paper-edge;
+  }
+  
+  /* Icon with Primary Color (from compliance dashboard) */
+  .icon-primary {
+    @apply text-primary;
+  }
+  
+  /* Vibrant Status Colors for Badges (from compliance dashboard) */
+  .badge-danger {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
+  }
+  
+  .badge-warning {
+    @apply bg-warning/20 text-warning-foreground border-warning/30;
+  }
+  
+  .badge-success {
+    @apply bg-success/20 text-success-foreground border-success/30;
   }
   
   /* ========================================

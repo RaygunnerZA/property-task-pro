@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
-import { ContextHeader } from '@/components/ContextHeader';
-import { SegmentControl, SegmentOption, colors } from '@/components/filla';
+import { SegmentControl, SegmentOption } from '@/components/filla';
 import WorkTasks from '@/components/work/WorkTasks';
 import WorkMessages from '@/components/work/WorkMessages';
 import WorkReminders from '@/components/work/WorkReminders';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { Briefcase } from 'lucide-react';
 
 const Work = () => {
   const [activeTab, setActiveTab] = useState('tasks');
@@ -17,16 +17,13 @@ const Work = () => {
   ];
 
   return (
-    <div 
-      className="min-h-screen pb-20"
-      style={{ backgroundColor: colors.background }}
+    <StandardPage
+      title="Work"
+      subtitle="Manage your workflow"
+      icon={<Briefcase className="h-6 w-6" />}
+      maxWidth="md"
     >
-      <ContextHeader 
-        title="Work" 
-        subtitle="Manage your workflow" 
-      />
-
-      <div className="max-w-md mx-auto px-4 py-4 space-y-4">
+      <div className="space-y-4">
         <SegmentControl 
           options={tabs}
           selectedId={activeTab}
@@ -39,10 +36,8 @@ const Work = () => {
           {activeTab === 'reminders' && <WorkReminders />}
         </div>
       </div>
-
       <FloatingAddButton />
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

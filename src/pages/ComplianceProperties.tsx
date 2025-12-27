@@ -1,17 +1,18 @@
-import { Surface, Heading } from '@/components/filla';
 import { PropertyComplianceList } from '@/components/compliance/PropertyComplianceList';
 import { useRulesCompliance } from '@/hooks/useRulesCompliance';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { Building2 } from 'lucide-react';
 
 export default function ComplianceProperties() {
   const { rules, loading } = useRulesCompliance();
 
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-6xl mx-auto">
-        <Heading variant="xl" className="mb-6">Organization Compliance</Heading>
-        
-        <PropertyComplianceList rules={rules} loading={loading} />
-      </div>
-    </div>
+    <StandardPage
+      title="Organization Compliance"
+      icon={<Building2 className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      <PropertyComplianceList rules={rules} loading={loading} />
+    </StandardPage>
   );
 }

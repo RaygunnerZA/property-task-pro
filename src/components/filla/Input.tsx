@@ -9,9 +9,10 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
         ref={ref}
         {...props}
         className={cn(
-          'w-full bg-[#F2F2EE] border-none rounded-sharp px-4 py-3 text-ink',
+          'w-full bg-input border-none rounded-sharp px-4 py-3 text-foreground',
           'placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20',
           'font-mono text-sm transition-all shadow-engraved border border-white/50',
+          'input-neomorphic',
           props.className
         )}
       />
@@ -29,9 +30,10 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
         ref={ref}
         {...props}
         className={cn(
-          'w-full bg-[#F2F2EE] border-none rounded-sharp px-4 py-3 text-ink',
+          'w-full bg-input border-none rounded-sharp px-4 py-3 text-foreground',
           'placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20',
           'font-sans text-sm transition-all shadow-engraved border border-white/50 resize-none',
+          'input-neomorphic',
           props.className
         )}
       />

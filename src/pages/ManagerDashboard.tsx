@@ -1,23 +1,25 @@
 import { useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ContextHeader } from '@/components/ContextHeader';
-import { BottomNav } from '@/components/BottomNav';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
 import { useTasks } from '@/hooks/use-tasks';
 import { useActiveOrg } from '@/hooks/useActiveOrg';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
   Building2, 
   CheckSquare, 
   AlertTriangle, 
   Shield,
   Clock,
-  Loader2,
+  LayoutDashboard,
   Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
@@ -60,61 +62,39 @@ const ManagerDashboard = () => {
 
   if (orgLoading || metricsLoading || tasksLoading) {
     return (
-      <div className="pb-20 md:pb-6 bg-background min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <StandardPage
+        title="Welcome to Filla"
+        subtitle="Your workspace overview"
+        icon={<LayoutDashboard className="h-6 w-6" />}
+        maxWidth="xl"
+      >
+        <LoadingState message="Loading dashboard..." />
+      </StandardPage>
     );
   }
 
   return (
-    <div className="pb-20 md:pb-6 bg-background">
-      <ContextHeader 
-        title="Welcome to Filla" 
-        subtitle="Your workspace overview"
-      />
-
-      <div className="max-w-6xl mx-auto px-4 py-4 space-y-6">
+    <StandardPage
+      title="Welcome to Filla"
+      subtitle="Your workspace overview"
+      icon={<LayoutDashboard className="h-6 w-6" />}
+      maxWidth="xl"
+    >
+      <div className="space-y-6">
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3">
-          <Link
-            to="/properties"
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg",
-              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
-              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
-              "text-foreground font-medium"
-            )}
-          >
-            <Plus className="h-4 w-4" />
+          <NeomorphicButton size="sm" onClick={() => navigate("/properties")}>
+            <Plus className="h-4 w-4 mr-2" />
             Add Property
-          </Link>
-          <Link
-            to="/assets"
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg",
-              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
-              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
-              "text-foreground font-medium"
-            )}
-          >
-            <Plus className="h-4 w-4" />
+          </NeomorphicButton>
+          <NeomorphicButton size="sm" onClick={() => navigate("/assets")}>
+            <Plus className="h-4 w-4 mr-2" />
             Add Asset
-          </Link>
-          <Link
-            to="/tasks"
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg",
-              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
-              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
-              "text-foreground font-medium"
-            )}
-          >
-            <Plus className="h-4 w-4" />
+          </NeomorphicButton>
+          <NeomorphicButton size="sm" onClick={() => navigate("/tasks")}>
+            <Plus className="h-4 w-4 mr-2" />
             Create Task
-          </Link>
+          </NeomorphicButton>
         </div>
 
         {/* Stats Grid */}
@@ -148,7 +128,7 @@ const ManagerDashboard = () => {
         {/* Recent Activity */}
         <Card
           className={cn(
-            "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+            "rounded-xl bg-surface-gradient",
             "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
             "border-0"
           )}
@@ -169,7 +149,7 @@ const ManagerDashboard = () => {
                     onClick={() => navigate(`/task/${task.id}`)}
                     className={cn(
                       "p-3 rounded-lg cursor-pointer transition-all",
-                      "bg-[#F6F4F2]",
+                      "bg-input",
                       "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
                       "hover:scale-[1.01] active:scale-[0.99]"
                     )}
@@ -187,18 +167,18 @@ const ManagerDashboard = () => {
                         </div>
                       </div>
                       <div className="flex-shrink-0">
-                        <span
-                          className={cn(
-                            "text-xs px-2 py-1 rounded-full font-medium",
+                        <Badge
+                          variant={
                             task.status === "completed"
-                              ? "bg-green-500/10 text-green-700"
+                              ? "success"
                               : task.status === "in_progress"
-                              ? "bg-blue-500/10 text-blue-700"
-                              : "bg-muted text-muted-foreground"
-                          )}
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="text-xs"
                         >
                           {task.status || "open"}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -208,9 +188,7 @@ const ManagerDashboard = () => {
           </CardContent>
         </Card>
       </div>
-
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

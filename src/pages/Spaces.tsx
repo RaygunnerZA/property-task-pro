@@ -1,9 +1,8 @@
-import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
-import { ContextHeader } from '@/components/ContextHeader';
 import { mockProperties, mockTasks } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
 import { Building2, MapPin, CheckCircle2 } from 'lucide-react';
+import { StandardPage } from '@/components/design-system/StandardPage';
 
 const Spaces = () => {
   const navigate = useNavigate();
@@ -13,13 +12,13 @@ const Spaces = () => {
   };
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      <ContextHeader 
-        title="Spaces" 
-        subtitle={`${mockProperties.length} properties`}
-      />
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-3">
+    <StandardPage
+      title="Spaces"
+      subtitle={`${mockProperties.length} properties`}
+      icon={<Building2 className="h-6 w-6" />}
+      maxWidth="md"
+    >
+      <div className="space-y-3">
         {mockProperties.map(property => {
           const activeTasks = getTaskCount(property.id);
           
@@ -61,10 +60,8 @@ const Spaces = () => {
           );
         })}
       </div>
-
       <FloatingAddButton />
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

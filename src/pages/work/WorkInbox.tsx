@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Surface, Heading, Text, Button } from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
 import { useMessages } from '@/hooks/useMessages';
-import { MessageSquare, Paperclip, Sparkles, AlertCircle, Clock } from 'lucide-react';
+import { MessageSquare, Paperclip, Sparkles, AlertCircle, Clock, Inbox } from 'lucide-react';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
+import { cn } from '@/lib/utils';
 
 type InboxItemType = 'message' | 'attachment' | 'ai_suggestion' | 'overdue' | 'task_event';
 
@@ -83,58 +89,55 @@ export default function WorkInbox() {
   const loading = tasksLoading || messagesLoading;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto pb-24">
+    <StandardPage
+      title="Inbox"
+      subtitle="Triage activity and unprocessed items"
+      icon={<Inbox className="h-6 w-6" />}
+      maxWidth="lg"
+    >
       <div className="mb-6">
-        <Heading variant="l" className="mb-4">Inbox</Heading>
-        <Text variant="muted" className="mb-4">
-          Triage activity and unprocessed items
-        </Text>
-
         <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={filter === 'all' ? 'primary' : 'secondary'}
+          <NeomorphicButton
             size="sm"
             onClick={() => setFilter('all')}
+            className={cn(filter === 'all' && 'bg-primary text-primary-foreground')}
           >
             All
-          </Button>
-          <Button
-            variant={filter === 'message' ? 'primary' : 'secondary'}
+          </NeomorphicButton>
+          <NeomorphicButton
             size="sm"
             onClick={() => setFilter('message')}
+            className={cn(filter === 'message' && 'bg-primary text-primary-foreground')}
           >
             Messages
-          </Button>
-          <Button
-            variant={filter === 'overdue' ? 'primary' : 'secondary'}
+          </NeomorphicButton>
+          <NeomorphicButton
             size="sm"
             onClick={() => setFilter('overdue')}
+            className={cn(filter === 'overdue' && 'bg-primary text-primary-foreground')}
           >
             Overdue
-          </Button>
-          <Button
-            variant={filter === 'ai_suggestion' ? 'primary' : 'secondary'}
+          </NeomorphicButton>
+          <NeomorphicButton
             size="sm"
             onClick={() => setFilter('ai_suggestion')}
+            className={cn(filter === 'ai_suggestion' && 'bg-primary text-primary-foreground')}
           >
             AI
-          </Button>
+          </NeomorphicButton>
         </div>
       </div>
 
       {loading ? (
-        <Surface variant="neomorphic" className="p-8 text-center">
-          <p className="text-muted-foreground">Loading inbox...</p>
-        </Surface>
+        <LoadingState message="Loading inbox..." />
       ) : filteredItems.length > 0 ? (
         <div className="space-y-3">
           {filteredItems.map((item) => {
             const Icon = getIcon(item.type);
             return (
-              <Surface
+              <Card
                 key={item.id}
-                variant="neomorphic"
-                className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                className="p-4 hover:shadow-md transition-shadow cursor-pointer shadow-e1"
                 onClick={() => handleItemClick(item)}
               >
                 <div className="flex items-start gap-3">
@@ -143,32 +146,34 @@ export default function WorkInbox() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <Text variant="body" className="font-medium">
+                      <p className="text-base font-medium text-foreground">
                         {item.title}
-                      </Text>
-                      <Text variant="caption" className="text-muted-foreground whitespace-nowrap">
+                      </p>
+                      <p className="text-xs text-muted-foreground whitespace-nowrap">
                         {item.timestamp.toLocaleDateString()}
-                      </Text>
+                      </p>
                     </div>
-                    <Text variant="caption" className="text-muted-foreground line-clamp-2">
+                    <p className="text-xs text-muted-foreground line-clamp-2">
                       {item.description}
-                    </Text>
+                    </p>
                     {item.propertyName && (
-                      <Text variant="caption" className="text-muted-foreground mt-1">
+                      <Badge variant="outline" className="mt-2">
                         {item.propertyName}
-                      </Text>
+                      </Badge>
                     )}
                   </div>
                 </div>
-              </Surface>
+              </Card>
             );
           })}
         </div>
       ) : (
-        <Surface variant="neomorphic" className="p-8 text-center">
-          <p className="text-muted-foreground">No inbox items</p>
-        </Surface>
+        <EmptyState
+          icon={Inbox}
+          title="No inbox items"
+          description="Your inbox is empty"
+        />
       )}
-    </div>
+    </StandardPage>
   );
 }

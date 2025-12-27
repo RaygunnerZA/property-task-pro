@@ -1,10 +1,10 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Surface, Button } from '@/components/filla';
 import { BatchRewriteHeader } from '@/components/reviewer/BatchRewriteHeader';
 import { BatchRewriteList } from '@/components/reviewer/BatchRewriteList';
 import { useBatchRewrite } from '@/hooks/useBatchRewrite';
-import { ArrowLeft } from 'lucide-react';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { FileEdit } from 'lucide-react';
 
 export default function BatchRewrite() {
   const { reviewId } = useParams<{ reviewId: string }>();
@@ -22,18 +22,13 @@ export default function BatchRewrite() {
   } = useBatchRewrite(reviewId || '');
 
   return (
-    <div className="min-h-screen bg-background p-6 pb-24">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-        </div>
-
+    <StandardPageWithBack
+      title="Batch Rewrite"
+      backTo={`/compliance/reviews/${reviewId}`}
+      icon={<FileEdit className="h-6 w-6" />}
+      maxWidth="xl"
+    >
+      <div className="space-y-6">
         <BatchRewriteHeader
           reviewId={reviewId || ''}
           totalClauses={clauses.length}

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { useCompliance } from "@/hooks/use-compliance";
 import { DocumentUploadDialog } from "@/components/compliance/DocumentUploadDialog";
@@ -9,10 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Shield, AlertTriangle, CheckCircle2, FileText, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, differenceInDays, isPast, parseISO } from "date-fns";
+import { PageHeader } from "@/components/design-system/PageHeader";
 
 const Compliance = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { documents, loading, error, refresh } = useCompliance();
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+
+  // Check for ?add=true in URL to open dialog
+  useEffect(() => {
+    if (searchParams.get('add') === 'true') {
+      setShowUploadDialog(true);
+      // Remove the query param from URL
+      navigate('/record/compliance', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Calculate expiry status for each document
   const documentsWithStatus = useMemo(() => {
@@ -43,21 +55,21 @@ const Compliance = () => {
     switch (status) {
       case "expired":
         return (
-          <Badge className="bg-red-500/10 text-red-700 border-red-500/20">
+          <Badge variant="danger" size="standard">
             <AlertTriangle className="h-3 w-3 mr-1" />
             Expired {days !== null && `(${days} days ago)`}
           </Badge>
         );
       case "expiring":
         return (
-          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20">
+          <Badge variant="warning" size="standard">
             <AlertTriangle className="h-3 w-3 mr-1" />
             Expiring in {days} days
           </Badge>
         );
       case "valid":
         return (
-          <Badge className="bg-green-500/10 text-green-700 border-green-500/20">
+          <Badge variant="success" size="standard">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Valid
           </Badge>
@@ -70,17 +82,11 @@ const Compliance = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-20">
-        <header
-          className={cn(
-            "sticky top-0 z-40",
-            "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-            "shadow-[inset_0_-1px_2px_rgba(0,0,0,0.05)]"
-          )}
-        >
+        <PageHeader>
           <div className="max-w-7xl mx-auto px-4 py-4">
             <h1 className="text-2xl font-semibold text-foreground">Compliance</h1>
           </div>
-        </header>
+        </PageHeader>
         <div className="max-w-7xl mx-auto px-4 py-6">
           <p className="text-muted-foreground">Loading...</p>
         </div>
@@ -92,17 +98,11 @@ const Compliance = () => {
   if (error) {
     return (
       <div className="min-h-screen bg-background pb-20">
-        <header
-          className={cn(
-            "sticky top-0 z-40",
-            "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-            "shadow-[inset_0_-1px_2px_rgba(0,0,0,0.05)]"
-          )}
-        >
+        <PageHeader>
           <div className="max-w-7xl mx-auto px-4 py-4">
             <h1 className="text-2xl font-semibold text-foreground">Compliance</h1>
           </div>
-        </header>
+        </PageHeader>
         <div className="max-w-7xl mx-auto px-4 py-6">
           <p className="text-destructive">Error: {error}</p>
         </div>
@@ -113,16 +113,10 @@ const Compliance = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header
-        className={cn(
-          "sticky top-0 z-40",
-          "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-          "shadow-[inset_0_-1px_2px_rgba(0,0,0,0.05)]"
-        )}
-      >
+      <PageHeader>
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-[#8EC9CE]" />
+            <Shield className="h-6 w-6 icon-primary" />
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Compliance</h1>
               <p className="text-sm text-muted-foreground">
@@ -130,9 +124,16 @@ const Compliance = () => {
               </p>
             </div>
           </div>
-          <DocumentUploadDialog onDocumentCreated={refresh} />
+          <DocumentUploadDialog 
+            open={showUploadDialog}
+            onOpenChange={setShowUploadDialog}
+            onDocumentCreated={() => {
+              refresh();
+              setShowUploadDialog(false);
+            }} 
+          />
         </div>
-      </header>
+      </PageHeader>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {documents.length === 0 ? (
@@ -142,7 +143,14 @@ const Compliance = () => {
             <p className="text-muted-foreground text-sm mb-4">
               Upload your first compliance document to get started
             </p>
-            <DocumentUploadDialog onDocumentCreated={refresh} />
+            <DocumentUploadDialog 
+              open={showUploadDialog}
+              onOpenChange={setShowUploadDialog}
+              onDocumentCreated={() => {
+                refresh();
+                setShowUploadDialog(false);
+              }} 
+            />
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -151,8 +159,8 @@ const Compliance = () => {
                 key={doc.id}
                 className={cn(
                   "hover:shadow-md transition-shadow cursor-pointer",
-                  doc.expiryStatus === "expired" && "border-red-500/20",
-                  doc.expiryStatus === "expiring" && "border-amber-500/20"
+                  doc.expiryStatus === "expired" && "border-destructive/20",
+                  doc.expiryStatus === "expiring" && "border-warning/20"
                 )}
               >
                 <CardHeader>

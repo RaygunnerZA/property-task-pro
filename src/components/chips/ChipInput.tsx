@@ -503,7 +503,7 @@ export function ChipInput({
                 {aiChips.length > 0 && (
                   <div className="p-2 border-b border-border/30">
                     <div className="flex items-center gap-1.5 mb-2 px-1">
-                      <Sparkles className="h-3 w-3 text-[#8EC9CE]" />
+                      <Sparkles className="h-3 w-3 text-primary" />
                       <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                         AI Suggestions
                       </span>

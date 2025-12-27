@@ -32,6 +32,11 @@ const mainNavItems = [{
   hasAdd: true,
   addAction: 'asset'
 }, {
+  title: 'Calendar',
+  url: '/calendar',
+  icon: Calendar,
+  hasAdd: false
+}, {
   title: 'Schedule',
   url: '/work/schedule',
   icon: Calendar,
@@ -39,7 +44,7 @@ const mainNavItems = [{
   addAction: 'event'
 }, {
   title: 'Compliance',
-  url: '/record/compliance',
+  url: '/compliance',
   icon: Shield,
   hasAdd: true,
   addAction: 'compliance'
@@ -82,20 +87,22 @@ export function AppSidebar() {
     e.stopPropagation();
     switch (action) {
       case 'task':
-        // Task creation is handled by CreateTaskModal in Tasks page
-        navigate('/tasks');
+        // Navigate to tasks page with add param to open modal
+        navigate('/tasks?add=true');
         break;
       case 'event':
         navigate('/work/schedule?add=true');
         break;
       case 'property':
-        navigate('/onboarding/add-property');
+        // Navigate to properties page with add param to open dialog
+        navigate('/properties?add=true');
         break;
       case 'asset':
-        navigate('/assets');
+        // Navigate to assets page with add param to open dialog
+        navigate('/assets?add=true');
         break;
       case 'compliance':
-        navigate('/record/compliance?add=true');
+        navigate('/compliance?add=true');
         break;
       case 'space':
         navigate('/manage/spaces?add=true');
@@ -118,7 +125,7 @@ export function AppSidebar() {
         <NavLink 
           to={item.url} 
           className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-          activeClassName="text-[#8EC9CE]"
+          activeClassName="text-primary"
           pendingClassName="opacity-50"
         >
           <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -176,7 +183,7 @@ export function AppSidebar() {
                     <NavLink 
                       to="/manage/spaces" 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-[#8EC9CE]"
+                      activeClassName="text-primary"
                       pendingClassName="opacity-50"
                     >
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
@@ -214,7 +221,7 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-[#8EC9CE]"
+                      activeClassName="text-primary"
                       pendingClassName="opacity-50"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -240,7 +247,7 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-[#8EC9CE]"
+                      activeClassName="text-primary"
                       pendingClassName="opacity-50"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />

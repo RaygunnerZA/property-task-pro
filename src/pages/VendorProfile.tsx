@@ -1,23 +1,24 @@
 import React from 'react';
-import { SectionHeader } from '@/components/filla';
 import { VendorInfoPanel } from '@/components/vendor/VendorInfoPanel';
 import { useVendor } from '@/hooks/vendor/useVendor';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { User } from 'lucide-react';
 
 export default function VendorProfile() {
   const { vendor, isLoading } = useVendor();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-paper p-4 flex items-center justify-center">
-        <div className="text-muted-foreground">Loading profile...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-paper p-4 pb-24 space-y-6">
-      <SectionHeader title="Vendor Profile" />
-      <VendorInfoPanel vendor={vendor} />
-    </div>
+    <StandardPage
+      title="Vendor Profile"
+      icon={<User className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      {isLoading ? (
+        <LoadingState message="Loading profile..." />
+      ) : (
+        <VendorInfoPanel vendor={vendor} />
+      )}
+    </StandardPage>
   );
 }

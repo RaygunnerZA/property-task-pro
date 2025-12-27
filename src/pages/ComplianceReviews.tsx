@@ -1,32 +1,36 @@
-import { Surface, Heading, Text } from '@/components/filla';
 import { usePendingReviews } from '@/hooks/usePendingReviews';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { Card } from '@/components/ui/card';
+import { FileCheck } from 'lucide-react';
 
 export default function ComplianceReviews() {
   const { reviews, loading } = usePendingReviews();
 
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-6xl mx-auto">
-        <Heading variant="xl" className="mb-6">Pending Reviews</Heading>
-        
-        {loading ? (
-          <Text variant="muted">Loading reviews...</Text>
-        ) : (
-          <div className="grid gap-4">
-            {reviews.length === 0 ? (
-              <Surface variant="neomorphic" className="p-8 text-center">
-                <Text variant="muted">No pending reviews</Text>
-              </Surface>
-            ) : (
-              reviews.map((review: any) => (
-                <Surface key={review.id} variant="neomorphic" className="p-6">
-                  <Text>{review.id}</Text>
-                </Surface>
-              ))
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+    <StandardPage
+      title="Pending Reviews"
+      icon={<FileCheck className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      {loading ? (
+        <LoadingState message="Loading reviews..." />
+      ) : reviews.length === 0 ? (
+        <EmptyState
+          icon={FileCheck}
+          title="No pending reviews"
+          description="All reviews are up to date"
+        />
+      ) : (
+        <div className="grid gap-4">
+          {reviews.map((review: any) => (
+            <Card key={review.id} className="p-6 shadow-e1">
+              <p className="text-foreground">{review.id}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+    </StandardPage>
   );
 }

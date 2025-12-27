@@ -186,11 +186,11 @@ export const MiniCalendarDayTile: React.FC<MiniCalendarDayTileProps> = ({
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         
         // Paper texture background (simulated with gradient)
-        !isOutOfMonth && "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+        !isOutOfMonth && "bg-surface-gradient",
         
         // Selected state - neomorphic pressed effect
         isSelected && [
-          "bg-[#F8F7F4]",
+          "bg-input",
           "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.9),0_2px_6px_rgba(0,0,0,0.06)]",
         ],
         

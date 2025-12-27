@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
-import { BottomNav } from '@/components/BottomNav';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
-import { ContextHeader } from '@/components/ContextHeader';
-import { Badge } from '@/components/filla/Badge';
+import { Badge } from '@/components/ui/badge';
 import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
-import { CheckSquare, Calendar, Building2, AlertCircle, Clock } from 'lucide-react';
+import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTasks } from '@/hooks/useTasks';
+import { StandardPage } from '@/components/design-system/StandardPage';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -56,14 +55,12 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen pb-20 bg-background">
-      <ContextHeader 
-        title="Home" 
-        subtitle="Your workspace overview" 
-        showSearch={false}
-      />
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+    <StandardPage
+      title="Home"
+      subtitle="Your workspace overview"
+      icon={<HomeIcon className="h-6 w-6" />}
+      maxWidth="md"
+    >
         {/* Mini Calendar */}
         <MiniCalendar
           selectedDate={selectedDate}
@@ -158,11 +155,8 @@ const Home = () => {
             ))}
           </div>
         </div>
-      </div>
-
       <FloatingAddButton />
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 };
 

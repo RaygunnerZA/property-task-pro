@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heading, SectionHeader } from '@/components/filla';
-import { BottomNav } from '@/components/BottomNav';
 import { ComplianceTaskCard } from '@/components/tasks/ComplianceTaskCard';
 import { TaskListSectionHeader } from '@/components/tasks/TaskListSectionHeader';
 import { useComplianceTasks } from '@/hooks/useComplianceTasks';
 import { SegmentedControl } from '@/components/filla/SegmentedControl';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { Shield, CheckSquare } from 'lucide-react';
 
 export default function ComplianceTasks() {
   const navigate = useNavigate();
@@ -23,28 +25,27 @@ export default function ComplianceTasks() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <Heading variant="xl" className="mb-6">Compliance Tasks</Heading>
+    <StandardPage
+      title="Compliance Tasks"
+      icon={<Shield className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      <div className="mb-6">
+        <SegmentedControl
+          selectedId={filter}
+          onChange={(id) => setFilter(id as typeof filter)}
+          options={[
+            { id: 'all', label: 'All' },
+            { id: 'pending', label: 'Pending' },
+            { id: 'in-progress', label: 'In Progress' },
+            { id: 'completed', label: 'Completed' }
+          ]}
+        />
+      </div>
 
-        <div className="mb-6">
-          <SegmentedControl
-            selectedId={filter}
-            onChange={(id) => setFilter(id as typeof filter)}
-            options={[
-              { id: 'all', label: 'All' },
-              { id: 'pending', label: 'Pending' },
-              { id: 'in-progress', label: 'In Progress' },
-              { id: 'completed', label: 'Completed' }
-            ]}
-          />
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading tasks...</p>
-          </div>
-        ) : (
+      {loading ? (
+        <LoadingState message="Loading tasks..." />
+      ) : (
           <div className="space-y-8">
             {groupedTasks.overdue.length > 0 && (
               <div>
@@ -92,15 +93,14 @@ export default function ComplianceTasks() {
             )}
 
             {filteredTasks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No tasks found</p>
-              </div>
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks found"
+                description="No compliance tasks match your filter"
+              />
             )}
           </div>
         )}
-      </div>
-
-      <BottomNav />
-    </div>
+    </StandardPage>
   );
 }

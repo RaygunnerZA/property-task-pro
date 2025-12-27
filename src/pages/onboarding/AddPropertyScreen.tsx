@@ -330,7 +330,7 @@ export default function AddPropertyScreen() {
 
         {/* Icon Selection */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-[#6D7480] mb-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">
             Choose an icon
           </label>
           <div className="flex justify-center gap-3">
@@ -342,7 +342,7 @@ export default function AddPropertyScreen() {
                 className={`p-3 rounded-xl transition-all duration-200 ${
                   propertyIcon === name 
                     ? "bg-white shadow-lg scale-110" 
-                    : "bg-[#E8E4DE] hover:bg-white"
+                    : "bg-input hover:bg-card"
                 }`}
                 style={{
                   boxShadow: propertyIcon === name 
@@ -352,7 +352,8 @@ export default function AddPropertyScreen() {
               >
                 <Icon 
                   className="w-5 h-5" 
-                  style={{ color: propertyIcon === name ? propertyIconColor : "#6D7480" }}
+                  className={propertyIcon === name ? undefined : "text-muted-foreground"}
+                  style={propertyIcon === name ? { color: propertyIconColor } : undefined}
                 />
               </button>
             ))}
@@ -361,7 +362,7 @@ export default function AddPropertyScreen() {
 
         {/* Color Selection */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-[#6D7480] mb-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">
             Choose a color
           </label>
           <div className="flex justify-center gap-3">
@@ -384,7 +385,7 @@ export default function AddPropertyScreen() {
 
         {/* Image Upload */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-[#6D7480] mb-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">
             Property photo (optional)
           </label>
           <input

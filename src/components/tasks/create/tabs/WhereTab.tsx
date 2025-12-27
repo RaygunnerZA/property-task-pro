@@ -15,7 +15,7 @@ import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useProperties } from "@/hooks/useProperties";
 import { useSpaces } from "@/hooks/useSpaces";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,7 +34,7 @@ export function WhereTab({
   onSpacesChange,
   suggestedSpaces = []
 }: WhereTabProps) {
-  const { orgId } = useDataContext();
+  const { orgId } = useActiveOrg();
   const { toast } = useToast();
   const { properties, loading: propertiesLoading, refresh: refreshProperties } = useProperties();
   const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces(propertyId || undefined);

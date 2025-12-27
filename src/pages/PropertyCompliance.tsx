@@ -1,24 +1,28 @@
 import { useParams } from 'react-router-dom';
-import { Surface, Heading, Text } from '@/components/filla';
 import { usePropertyCompliance } from '@/hooks/usePropertyCompliance';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { Card } from '@/components/ui/card';
+import { Shield } from 'lucide-react';
 
 export default function PropertyCompliance() {
   const { id } = useParams<{ id: string }>();
   const { compliance, loading } = usePropertyCompliance(id || '');
 
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-6xl mx-auto">
-        <Heading variant="xl" className="mb-6">Property Compliance</Heading>
-        
-        {loading ? (
-          <Text variant="muted">Loading property compliance...</Text>
-        ) : (
-          <Surface variant="neomorphic" className="p-8">
-            <Text variant="muted">Property ID: {id}</Text>
-          </Surface>
-        )}
-      </div>
-    </div>
+    <StandardPageWithBack
+      title="Property Compliance"
+      backTo={`/properties/${id}`}
+      icon={<Shield className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      {loading ? (
+        <LoadingState message="Loading property compliance..." />
+      ) : (
+        <Card className="p-8 shadow-e1">
+          <p className="text-muted-foreground">Property ID: {id}</p>
+        </Card>
+      )}
+    </StandardPageWithBack>
   );
 }

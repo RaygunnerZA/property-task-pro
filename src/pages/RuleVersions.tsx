@@ -1,28 +1,30 @@
 import { useParams } from 'react-router-dom';
-import { Heading, Text } from '@/components/filla';
 import { useRuleVersions } from '@/hooks/useRuleVersions';
 import RuleVersionCard from '@/components/compliance/RuleVersionCard';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { History } from 'lucide-react';
 
 export default function RuleVersions() {
   const { ruleId } = useParams<{ ruleId: string }>();
   const { data, loading } = useRuleVersions(ruleId || '');
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-paper p-6">
-        <Text variant="muted">Loading…</Text>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-4xl mx-auto space-y-4">
-        <Heading variant="xl" className="mb-6">Version History</Heading>
-        {(data ?? []).map((v: any) => (
-          <RuleVersionCard key={v.id} version={v} ruleId={ruleId || ''} />
-        ))}
-      </div>
-    </div>
+    <StandardPageWithBack
+      title="Version History"
+      backTo={`/compliance/rules/${ruleId}`}
+      icon={<History className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      {loading ? (
+        <LoadingState message="Loading versions..." />
+      ) : (
+        <div className="space-y-4">
+          {(data ?? []).map((v: any) => (
+            <RuleVersionCard key={v.id} version={v} ruleId={ruleId || ''} />
+          ))}
+        </div>
+      )}
+    </StandardPageWithBack>
   );
 }

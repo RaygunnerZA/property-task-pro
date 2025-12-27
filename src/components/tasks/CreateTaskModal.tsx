@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,8 +50,8 @@ export function CreateTaskModal({
   } = useToast();
   const {
     orgId,
-    loading: orgLoading
-  } = useDataContext();
+    isLoading: orgLoading
+  } = useActiveOrg();
   const {
     templates
   } = useChecklistTemplates();
@@ -225,6 +225,7 @@ export function CreateTaskModal({
       // Priority will be normalized by the RPC function
       // Frontend uses: 'low', 'medium', 'high', 'urgent'
       // RPC will map 'medium' to 'normal' automatically
+      const dbPriority = priority;
       
       // Convert dueDate (YYYY-MM-DD) to TIMESTAMPTZ
       let dueDateValue: string | null = null;
@@ -411,7 +412,7 @@ export function CreateTaskModal({
         )}
 
         {/* Metadata Tabs */}
-        <div className="rounded-xl overflow-hidden bg-[#298ba1]/30">
+        <div className="rounded-xl overflow-hidden bg-primary/30">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-black/0">
             <TabsList className="w-full grid grid-cols-4 h-11 bg-muted/50 p-1 rounded-none">
               <TabsTrigger value="where" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">

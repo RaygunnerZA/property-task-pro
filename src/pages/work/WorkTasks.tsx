@@ -2,8 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TaskCard from '@/components/TaskCard';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
-import { Surface, Heading, SegmentControl, SegmentedControlOption } from '@/components/filla';
+import { SegmentControl, SegmentedControlOption } from '@/components/filla';
 import { useTasks } from '@/hooks/useTasks';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { CheckSquare, Plus } from 'lucide-react';
+import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 
 export default function WorkTasks() {
   const [filter, setFilter] = useState<string>('all');
@@ -23,9 +28,13 @@ export default function WorkTasks() {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto pb-24">
+    <StandardPage
+      title="Tasks"
+      subtitle={filteredTasks ? `${filteredTasks.length} ${filteredTasks.length === 1 ? 'task' : 'tasks'}` : undefined}
+      icon={<CheckSquare className="h-6 w-6" />}
+      maxWidth="lg"
+    >
       <div className="mb-6">
-        <Heading variant="l" className="mb-4">Tasks</Heading>
         <SegmentControl 
           options={filterOptions}
           selectedId={filter}
@@ -34,9 +43,7 @@ export default function WorkTasks() {
       </div>
 
       {loading ? (
-        <Surface variant="neomorphic" className="p-8 text-center">
-          <p className="text-muted-foreground">Loading tasks...</p>
-        </Surface>
+        <LoadingState message="Loading tasks..." />
       ) : filteredTasks && filteredTasks.length > 0 ? (
         <div className="space-y-3">
           {filteredTasks.map((task) => (
@@ -49,12 +56,19 @@ export default function WorkTasks() {
           ))}
         </div>
       ) : (
-        <Surface variant="neomorphic" className="p-8 text-center">
-          <p className="text-muted-foreground">No tasks found</p>
-        </Surface>
+        <EmptyState
+          icon={CheckSquare}
+          title="No tasks found"
+          description="Create your first task to get started"
+          action={{
+            label: "Add Task",
+            onClick: () => {},
+            icon: Plus
+          }}
+        />
       )}
 
       <FloatingAddButton />
-    </div>
+    </StandardPage>
   );
 }

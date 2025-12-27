@@ -1,11 +1,13 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Heading, Button } from '@/components/filla';
-import { BottomNav } from '@/components/BottomNav';
 import { PropertyTaskCard } from '@/components/tasks/PropertyTaskCard';
 import { TaskListSectionHeader } from '@/components/tasks/TaskListSectionHeader';
 import { usePropertyTasks } from '@/hooks/usePropertyTasks';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus, CheckSquare } from 'lucide-react';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
+import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 
 export default function PropertyTasks() {
   const { id } = useParams<{ id: string }>();
@@ -19,37 +21,22 @@ export default function PropertyTasks() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/properties')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex-1">
-            <Heading variant="xl">Property Tasks</Heading>
-            {property && (
-              <p className="text-muted-foreground text-sm mt-1">{property.address}</p>
-            )}
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate(`/add-task?propertyId=${id}`)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Task
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading tasks...</p>
-          </div>
-        ) : (
+    <StandardPageWithBack
+      title="Property Tasks"
+      subtitle={property?.address}
+      backTo="/properties"
+      icon={<CheckSquare className="h-6 w-6" />}
+      action={
+        <NeomorphicButton size="sm" onClick={() => navigate(`/add-task?propertyId=${id}`)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Task
+        </NeomorphicButton>
+      }
+      maxWidth="lg"
+    >
+      {loading ? (
+        <LoadingState message="Loading tasks..." />
+      ) : (
           <div className="space-y-8">
             {groupedTasks.pending.length > 0 && (
               <div>
@@ -97,22 +84,19 @@ export default function PropertyTasks() {
             )}
 
             {tasks.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No tasks for this property yet</p>
-                <Button
-                  variant="primary"
-                  onClick={() => navigate(`/add-task?propertyId=${id}`)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create First Task
-                </Button>
-              </div>
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks for this property yet"
+                description="Create your first task to get started"
+                action={{
+                  label: "Create First Task",
+                  onClick: () => navigate(`/add-task?propertyId=${id}`),
+                  icon: Plus
+                }}
+              />
             )}
           </div>
         )}
-      </div>
-
-      <BottomNav />
-    </div>
+    </StandardPageWithBack>
   );
 }

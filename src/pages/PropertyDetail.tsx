@@ -5,9 +5,9 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useAssets } from "@/hooks/use-assets";
 import { AssetCard } from "@/components/assets/AssetCard";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
-import { BottomNav } from "@/components/BottomNav";
-import { MapPin, ArrowLeft, Plus, Trash2, Archive } from "lucide-react";
+import { MapPin, Plus, Trash2, Archive, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +24,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
+import { LoadingState } from "@/components/design-system/LoadingState";
+import { EmptyState } from "@/components/design-system/EmptyState";
+import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -69,49 +73,35 @@ export default function PropertyDetail() {
 
   if (propertyLoading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <header className="sticky top-0 bg-card border-b border-border z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <Skeleton className="h-8 w-48 mb-2" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-        </header>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <Skeleton className="h-64 w-full" />
-        </div>
-        <BottomNav />
-      </div>
+      <StandardPageWithBack
+        title="Property Details"
+        backTo="/properties"
+        icon={<Building2 className="h-6 w-6" />}
+        maxWidth="xl"
+      >
+        <LoadingState message="Loading property..." />
+      </StandardPageWithBack>
     );
   }
 
   if (!property) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <header className="sticky top-0 bg-card border-b border-border z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/properties")}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </header>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <Card className="p-8 text-center">
-            <h3 className="font-semibold text-lg mb-2">Property not found</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              The property you're looking for doesn't exist or you don't have access to it.
-            </p>
-            <Button onClick={() => navigate("/properties")}>
-              Go to Properties
-            </Button>
-          </Card>
-        </div>
-        <BottomNav />
-      </div>
+      <StandardPageWithBack
+        title="Property Details"
+        backTo="/properties"
+        icon={<Building2 className="h-6 w-6" />}
+        maxWidth="xl"
+      >
+        <EmptyState
+          icon={Building2}
+          title="Property not found"
+          description="The property you're looking for doesn't exist or you don't have access to it."
+          action={{
+            label: "Go to Properties",
+            onClick: () => navigate("/properties")
+          }}
+        />
+      </StandardPageWithBack>
     );
   }
 
@@ -159,10 +149,39 @@ export default function PropertyDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <StandardPageWithBack
+      title={displayName}
+      subtitle={property.address}
+      backTo="/properties"
+      icon={<Building2 className="h-6 w-6" />}
+      action={
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowArchiveDialog(true)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Archive className="h-4 w-4 mr-2" />
+            Archive
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
+        </div>
+      }
+      maxWidth="xl"
+      headerClassName={property.thumbnail_url ? "relative" : ""}
+    >
       {/* Image Header */}
       {property.thumbnail_url && (
-        <div className="w-full h-64 bg-muted overflow-hidden">
+        <div className="w-full h-64 bg-muted overflow-hidden -mx-4 -mt-6 mb-6">
           <img
             src={property.thumbnail_url}
             alt={displayName}
@@ -171,51 +190,8 @@ export default function PropertyDetail() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 bg-card border-b border-border z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/properties")}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowArchiveDialog(true)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Archive
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-foreground">{displayName}</h1>
-          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            <span>{property.address}</span>
-          </div>
-        </div>
-      </header>
-
       {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div>
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -301,13 +277,13 @@ export default function PropertyDetail() {
                               </div>
                             )}
                             <div className="flex items-center gap-2 mt-2">
-                              <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                              <Badge variant="outline" className="text-xs">
                                 {task.status}
-                              </span>
+                              </Badge>
                               {task.priority && (
-                                <span className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground">
+                                <Badge variant="outline" className="text-xs">
                                   {task.priority}
-                                </span>
+                                </Badge>
                               )}
                             </div>
                           </div>
@@ -462,9 +438,7 @@ export default function PropertyDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <BottomNav />
-    </div>
+    </StandardPageWithBack>
   );
 }
 

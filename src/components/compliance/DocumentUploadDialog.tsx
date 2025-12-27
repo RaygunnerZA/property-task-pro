@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,7 +12,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
+import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,13 +29,27 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface DocumentUploadDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onDocumentCreated?: () => void;
 }
 
 export function DocumentUploadDialog({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   onDocumentCreated,
 }: DocumentUploadDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = (value: boolean) => {
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(value);
+    } else {
+      setInternalOpen(value);
+    }
+  };
   const [isSaving, setIsSaving] = useState(false);
   const { orgId } = useActiveOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,22 +155,17 @@ export function DocumentUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          className={cn(
-            "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-            "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
-            "hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
-            "text-foreground border-0"
-          )}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Upload Document
-        </Button>
-      </DialogTrigger>
+      {controlledOpen === undefined && (
+        <DialogTrigger asChild>
+          <NeomorphicButton>
+            <Plus className="h-4 w-4 mr-2" />
+            Upload Document
+          </NeomorphicButton>
+        </DialogTrigger>
+      )}
       <DialogContent
         className={cn(
-          "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+          "rounded-xl bg-surface-gradient",
           "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
           "border-0"
         )}
@@ -171,16 +181,11 @@ export function DocumentUploadDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
-            <Input
+            <NeomorphicInput
               id="title"
               placeholder="e.g., Fire Safety Certificate"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={cn(
-                "rounded-xl bg-[#F6F4F2]",
-                "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-                "border-0 focus:ring-2 focus:ring-[#0EA5E9]/30"
-              )}
             />
           </div>
           <div className="space-y-2">
@@ -190,9 +195,7 @@ export function DocumentUploadDialog({
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal rounded-xl bg-[#F6F4F2]",
-                    "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-                    "border-0",
+                    "w-full justify-start text-left font-normal input-neomorphic",
                     !expiryDate && "text-muted-foreground"
                   )}
                 >
@@ -215,11 +218,7 @@ export function DocumentUploadDialog({
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger
                 id="status"
-                className={cn(
-                  "rounded-xl bg-[#F6F4F2]",
-                  "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-                  "border-0"
-                )}
+                className="input-neomorphic"
               >
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -235,16 +234,11 @@ export function DocumentUploadDialog({
           <div className="space-y-2">
             <Label htmlFor="file">File *</Label>
             <div className="flex items-center gap-2">
-              <Input
+              <NeomorphicInput
                 id="file"
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                className={cn(
-                  "rounded-xl bg-[#F6F4F2]",
-                  "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-                  "border-0 focus:ring-2 focus:ring-[#0EA5E9]/30"
-                )}
               />
             </div>
             {fileName && (
@@ -260,22 +254,14 @@ export function DocumentUploadDialog({
             variant="outline"
             onClick={() => setOpen(false)}
             disabled={isSaving}
-            className={cn(
-              "rounded-xl bg-[#F6F4F2]",
-              "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-              "border-0"
-            )}
+            className="input-neomorphic"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={isSaving || !title.trim() || !selectedFile}
-            className={cn(
-              "rounded-xl text-white",
-              "shadow-[3px_5px_5px_2px_rgba(0,0,0,0.13),-3px_-3px_5px_0px_rgba(255,255,255,0.48),inset_1px_1px_2px_0px_rgba(255,255,255,0.5),inset_-1px_-2px_2px_0px_rgba(0,0,0,0.27)]",
-              "bg-[#FF6B6B] border-0"
-            )}
+            className="btn-accent-vibrant"
           >
             {isSaving ? "Uploading..." : "Upload Document"}
           </Button>

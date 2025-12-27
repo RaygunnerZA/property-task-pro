@@ -11,21 +11,21 @@ interface StatCardProps {
 export function StatCard({ label, value, icon: Icon, variant = "default" }: StatCardProps) {
   const variantStyles = {
     default: {
-      bg: "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
-      icon: "text-[#8EC9CE]",
+      bg: "bg-surface-gradient",
+      icon: "text-primary",
       value: "text-foreground",
       shadow: "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
     },
     accent: {
-      bg: "bg-gradient-to-br from-[#EB6834]/10 via-[#EB6834]/5 to-[#EB6834]/10",
-      icon: "text-[#EB6834]",
-      value: "text-[#EB6834]",
+      bg: "bg-gradient-to-br from-accent/10 via-accent/5 to-accent/10",
+      icon: "text-accent",
+      value: "text-accent",
       shadow: "shadow-[3px_5px_8px_rgba(235,104,52,0.2),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
     },
     warning: {
-      bg: "bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-amber-500/10",
-      icon: "text-amber-600",
-      value: "text-amber-600",
+      bg: "bg-gradient-to-br from-warning/10 via-warning/5 to-warning/10",
+      icon: "text-warning-foreground",
+      value: "text-warning-foreground",
       shadow: "shadow-[3px_5px_8px_rgba(245,158,11,0.2),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
     },
   };

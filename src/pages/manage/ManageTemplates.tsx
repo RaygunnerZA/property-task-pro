@@ -1,18 +1,19 @@
-import { Surface, Heading, Text } from '@/components/filla';
 import { FileStack } from 'lucide-react';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { EmptyState } from '@/components/design-system/EmptyState';
 
 export default function ManageTemplates() {
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Heading variant="l" className="mb-6">Templates</Heading>
-      
-      <Surface variant="neomorphic" className="p-12 text-center">
-        <FileStack className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-40" />
-        <Heading variant="m" className="mb-2">Task templates</Heading>
-        <Text variant="muted">
-          Create reusable task templates and checklists
-        </Text>
-      </Surface>
-    </div>
+    <StandardPage
+      title="Templates"
+      icon={<FileStack className="h-6 w-6" />}
+      maxWidth="lg"
+    >
+      <EmptyState
+        icon={FileStack}
+        title="Task templates"
+        description="Create reusable task templates and checklists"
+      />
+    </StandardPage>
   );
 }

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Calendar, MapPin, User, AlertCircle, Clock, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, User, AlertCircle, Clock, CheckSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useDataContext } from '@/contexts/DataContext';
 import { ChatThread } from '@/components/messaging/ChatThread';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { LoadingState } from '@/components/design-system/LoadingState';
+import { EmptyState } from '@/components/design-system/EmptyState';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -99,20 +102,35 @@ const TaskDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <StandardPageWithBack
+        title="Task Details"
+        backTo="/tasks"
+        icon={<CheckSquare className="h-6 w-6" />}
+        maxWidth="md"
+      >
+        <LoadingState message="Loading task..." />
+      </StandardPageWithBack>
     );
   }
 
   if (!task) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Task not found</h2>
-          <Button onClick={() => navigate('/')}>Go back</Button>
-        </div>
-      </div>
+      <StandardPageWithBack
+        title="Task Details"
+        backTo="/tasks"
+        icon={<CheckSquare className="h-6 w-6" />}
+        maxWidth="md"
+      >
+        <EmptyState
+          icon={CheckSquare}
+          title="Task not found"
+          description="The task you're looking for doesn't exist"
+          action={{
+            label: "Go back",
+            onClick: () => navigate('/tasks')
+          }}
+        />
+      </StandardPageWithBack>
     );
   }
 
@@ -125,21 +143,14 @@ const TaskDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-8">
-      <header className="sticky top-0 bg-card border-b border-border z-40">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate('/')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Task Details</h1>
-        </div>
-      </header>
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+    <StandardPageWithBack
+      title={task.title}
+      subtitle={property ? property.nickname || property.address : undefined}
+      backTo="/tasks"
+      icon={<CheckSquare className="h-6 w-6" />}
+      maxWidth="md"
+    >
+      <div className="space-y-6">
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-2xl font-bold leading-tight">{task.title}</h2>
@@ -215,7 +226,7 @@ const TaskDetail = () => {
           </CardHeader>
           <CardContent>
             <Select value={status} onValueChange={(v) => handleStatusChange(v as TaskStatus)}>
-              <SelectTrigger>
+              <SelectTrigger className="input-neomorphic">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -237,7 +248,7 @@ const TaskDetail = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </StandardPageWithBack>
   );
 };
 

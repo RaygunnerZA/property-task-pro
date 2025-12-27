@@ -1,13 +1,10 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { BottomNav } from "@/components/BottomNav";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAssets } from "@/hooks/use-assets";
 import { useProperties } from "@/hooks/useProperties";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { AssetCard } from "@/components/assets/AssetCard";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,12 +23,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Package, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { StandardPage } from "@/components/design-system/StandardPage";
+import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
+import { EmptyState } from "@/components/design-system/EmptyState";
+import { LoadingState } from "@/components/design-system/LoadingState";
+import { ErrorState } from "@/components/design-system/ErrorState";
+import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 
 const Assets = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { assets, loading, error, refresh } = useAssets();
   const { properties } = useProperties();
   const { orgId } = useActiveOrg();
@@ -39,6 +44,15 @@ const Assets = () => {
   const { spaces } = useSpaces(selectedPropertyId || undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check for ?add=true in URL to open dialog
+  useEffect(() => {
+    if (searchParams.get('add') === 'true') {
+      setIsDialogOpen(true);
+      // Remove the query param from URL
+      navigate('/assets', { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   // Form state
   const [name, setName] = useState("");
@@ -118,50 +132,41 @@ const Assets = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <header className="sticky top-0 bg-card border-b border-border z-40">
-          <div className="max-w-md mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-foreground">Assets</h1>
-          </div>
-        </header>
-        <div className="max-w-md mx-auto px-4 py-6">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-        <BottomNav />
-      </div>
+      <StandardPage
+        title="Assets"
+        icon={<Package className="h-6 w-6" />}
+        maxWidth="sm"
+      >
+        <LoadingState message="Loading assets..." />
+      </StandardPage>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background pb-20">
-        <header className="sticky top-0 bg-card border-b border-border z-40">
-          <div className="max-w-md mx-auto px-4 py-4">
-            <h1 className="text-2xl font-bold text-foreground">Assets</h1>
-          </div>
-        </header>
-        <div className="max-w-md mx-auto px-4 py-6">
-          <p className="text-destructive">Error: {error}</p>
-        </div>
-        <BottomNav />
-      </div>
+      <StandardPage
+        title="Assets"
+        icon={<Package className="h-6 w-6" />}
+        maxWidth="sm"
+      >
+        <ErrorState message={error} onRetry={refresh} />
+      </StandardPage>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 bg-card border-b border-border z-40">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Assets</h1>
-            <p className="text-sm text-muted-foreground">{assets.length} assets</p>
-          </div>
+    <StandardPage
+      title="Assets"
+      subtitle={`${assets.length} ${assets.length === 1 ? 'asset' : 'assets'}`}
+      icon={<Package className="h-6 w-6" />}
+      action={
+        <>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-1" />
+              <NeomorphicButton>
+                <Plus className="h-4 w-4 mr-2" />
                 Add
-              </Button>
+              </NeomorphicButton>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -173,7 +178,7 @@ const Assets = () => {
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name *</Label>
-                  <Input
+                  <NeomorphicInput
                     id="name"
                     placeholder="e.g., Main Boiler"
                     value={name}
@@ -184,7 +189,7 @@ const Assets = () => {
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
                   <Select value={type} onValueChange={setType}>
-                    <SelectTrigger id="type">
+                    <SelectTrigger id="type" className="input-neomorphic">
                       <SelectValue placeholder="Select asset type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -198,7 +203,7 @@ const Assets = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="serial">Serial Number</Label>
-                  <Input
+                  <NeomorphicInput
                     id="serial"
                     placeholder="e.g., ABC123456"
                     value={serial}
@@ -208,7 +213,7 @@ const Assets = () => {
                 <div className="space-y-2">
                   <Label htmlFor="property">Property *</Label>
                   <Select value={propertyId} onValueChange={handlePropertyChange}>
-                    <SelectTrigger id="property">
+                    <SelectTrigger id="property" className="input-neomorphic">
                       <SelectValue placeholder="Select a property" />
                     </SelectTrigger>
                     <SelectContent>
@@ -224,7 +229,7 @@ const Assets = () => {
                   <div className="space-y-2">
                     <Label htmlFor="space">Space (Optional)</Label>
                     <Select value={spaceId} onValueChange={setSpaceId}>
-                      <SelectTrigger id="space">
+                      <SelectTrigger id="space" className="input-neomorphic">
                         <SelectValue placeholder="Select a space (optional)" />
                       </SelectTrigger>
                       <SelectContent>
@@ -240,7 +245,7 @@ const Assets = () => {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="condition">Condition Score (0-100)</Label>
-                  <Input
+                  <NeomorphicInput
                     id="condition"
                     type="number"
                     min="0"
@@ -256,50 +261,53 @@ const Assets = () => {
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
                   disabled={isSaving}
+                  className="input-neomorphic"
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={isSaving || !propertyId || !name.trim()}>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving || !propertyId || !name.trim()}
+                  className="btn-accent-vibrant"
+                >
                   {isSaving ? "Saving..." : "Save Asset"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      </header>
-
-      <div className="max-w-md mx-auto px-4 py-6 space-y-4">
+        </>
+      }
+        maxWidth="sm"
+      >
         {assets.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg mb-2">No assets yet</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Add your first asset to get started
-            </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Asset
-            </Button>
-          </Card>
+          <EmptyState
+            icon={Package}
+            title="No assets yet"
+            description="Add your first asset to get started"
+            action={{
+              label: "Add Asset",
+              onClick: () => setIsDialogOpen(true),
+              icon: Plus
+            }}
+          />
         ) : (
-          assets.map((asset) => (
-            <AssetCard
-              key={asset.id}
-              asset={asset}
-              propertyName={propertyMap.get(asset.property_id)}
-              spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
-              onClick={() => {
-                // Navigate to asset detail page when implemented
-                // navigate(`/assets/${asset.id}`);
-              }}
-            />
-          ))
+          <div className="space-y-4">
+            {assets.map((asset) => (
+              <AssetCard
+                key={asset.id}
+                asset={asset}
+                propertyName={propertyMap.get(asset.property_id)}
+                spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
+                onClick={() => {
+                  // Navigate to asset detail page when implemented
+                  // navigate(`/assets/${asset.id}`);
+                }}
+              />
+            ))}
+          </div>
         )}
-      </div>
-
-      <BottomNav />
-    </div>
-  );
+      </StandardPage>
+    );
 };
 
 export default Assets;

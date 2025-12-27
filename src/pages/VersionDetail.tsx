@@ -1,16 +1,19 @@
 import { useParams } from 'react-router-dom';
-import { Heading } from '@/components/filla';
 import VersionDiffView from '@/components/diff/VersionDiffView';
+import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
+import { History } from 'lucide-react';
 
 export default function VersionDetail() {
   const { ruleId, versionId } = useParams<{ ruleId: string; versionId: string }>();
 
   return (
-    <div className="min-h-screen bg-paper p-6">
-      <div className="max-w-6xl mx-auto">
-        <Heading variant="xl" className="mb-6">Version {versionId}</Heading>
-        <VersionDiffView ruleId={ruleId || ''} versionId={versionId || ''} />
-      </div>
-    </div>
+    <StandardPageWithBack
+      title={`Version ${versionId}`}
+      backTo={`/compliance/rules/${ruleId}/versions`}
+      icon={<History className="h-6 w-6" />}
+      maxWidth="xl"
+    >
+      <VersionDiffView ruleId={ruleId || ''} versionId={versionId || ''} />
+    </StandardPageWithBack>
   );
 }

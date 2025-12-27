@@ -58,7 +58,7 @@ export function CalendarGrid({ selectedDate, onDateSelect }: CalendarGridProps) 
   }
 
   return (
-    <div className="rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9] p-4 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]">
+    <div className="rounded-xl bg-surface-gradient p-4 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]">
       <Calendar
         mode="single"
         selected={selectedDate}

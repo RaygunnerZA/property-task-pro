@@ -1,15 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/Input";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/hooks/use-organization";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, User as UserIcon } from "lucide-react";
+import { Loader2, Save, Plus, User as UserIcon, Edit, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function SettingsGeneral() {
   const { organization, loading, error, updateName, refresh } = useOrganization();
@@ -24,6 +32,17 @@ export default function SettingsGeneral() {
   const [userEmail, setUserEmail] = useState("");
   const [userNickname, setUserNickname] = useState("");
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Edit profile modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingNickname, setEditingNickname] = useState("");
+  const [editingEmail, setEditingEmail] = useState("");
+  const [editingAvatarUrl, setEditingAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize name from organization when loaded
   useEffect(() => {
@@ -40,6 +59,7 @@ export default function SettingsGeneral() {
         setUserEmail(user.email || "");
         setUserNickname(user.user_metadata?.nickname || "");
         setUserAvatarUrl(user.user_metadata?.avatar_url || null);
+        setUserId(user.id);
       }
     }
     
@@ -51,6 +71,7 @@ export default function SettingsGeneral() {
         setUserEmail(session.user.email || "");
         setUserNickname(session.user.user_metadata?.nickname || "");
         setUserAvatarUrl(session.user.user_metadata?.avatar_url || null);
+        setUserId(session.user.id);
       }
     });
     
@@ -58,6 +79,128 @@ export default function SettingsGeneral() {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleEditProfile = () => {
+    setEditingNickname(userNickname);
+    setEditingEmail(userEmail);
+    setEditingAvatarUrl(userAvatarUrl);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setEditModalOpen(true);
+  };
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select an image file");
+        return;
+      }
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size must be less than 5MB");
+        return;
+      }
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setEditingAvatarUrl(null);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!userId) {
+      toast.error("User not found");
+      return;
+    }
+
+    setSavingProfile(true);
+    try {
+      let newAvatarUrl = editingAvatarUrl;
+
+      // Upload new avatar if selected
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split(".").pop();
+        const fileName = `avatars/${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        // Delete old avatar if exists
+        if (editingAvatarUrl) {
+          try {
+            const oldFileName = editingAvatarUrl.split('/').pop();
+            if (oldFileName) {
+              await supabase.storage
+                .from("user-avatars")
+                .remove([`avatars/${userId}/${oldFileName}`]);
+            }
+          } catch (err) {
+            console.warn("Failed to delete old avatar:", err);
+          }
+        }
+
+        const { error: uploadError } = await supabase.storage
+          .from("user-avatars")
+          .upload(fileName, avatarFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("user-avatars")
+          .getPublicUrl(fileName);
+        
+        newAvatarUrl = publicUrl;
+      }
+
+      // Update user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          nickname: editingNickname.trim() || null,
+          avatar_url: newAvatarUrl,
+        }
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Note: Email changes typically require re-authentication in Supabase
+      // For now, we'll just update the metadata fields
+      if (editingEmail !== userEmail) {
+        toast.info("Email changes require re-authentication. Please use the account settings to change your email.");
+      }
+
+      toast.success("Profile updated successfully");
+      setEditModalOpen(false);
+      
+      // Refresh user data
+      await supabase.auth.refreshSession();
+      
+      // Update local state
+      setUserNickname(editingNickname.trim() || "");
+      setUserAvatarUrl(newAvatarUrl);
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      toast.error(err.message || "Failed to update profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -153,28 +296,39 @@ export default function SettingsGeneral() {
   // If user doesn't have an organization, show "Add Organisation" flow
   if (!orgId || !organization) {
     return (
-      <div className="space-y-6">
-        {/* User Profile Card - Display Only */}
-        <Card className="shadow-e1">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={userAvatarUrl || undefined} />
-                <AvatarFallback>
-                  <UserIcon className="h-8 w-8" />
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                  {userNickname || "User"}
-                </h2>
-                <p className="text-sm mt-0.5 text-muted-foreground">
-                  {userEmail || "No email"}
-                </p>
+      <>
+        <div className="space-y-6">
+          {/* User Profile Card - With Edit Button */}
+          <Card className="shadow-e1">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={userAvatarUrl || undefined} />
+                    <AvatarFallback>
+                      <UserIcon className="h-8 w-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                      {userNickname || "User"}
+                    </h2>
+                    <p className="text-sm mt-0.5 text-muted-foreground">
+                      {userEmail || "No email"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditProfile}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
         {/* Create Organisation Section */}
         <Card className="shadow-e1">
@@ -223,7 +377,110 @@ export default function SettingsGeneral() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
+
+        {/* Edit Profile Dialog */}
+        <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Profile</DialogTitle>
+              <DialogDescription>
+                Update your profile information and avatar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              {/* Avatar Section */}
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="h-24 w-24">
+                  <AvatarImage src={avatarPreview || editingAvatarUrl || undefined} />
+                  <AvatarFallback>
+                    <UserIcon className="h-12 w-12" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => avatarInputRef.current?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {avatarPreview || editingAvatarUrl ? "Replace" : "Upload"}
+                  </Button>
+                  {(avatarPreview || editingAvatarUrl) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveAvatar}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarSelect}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Nickname */}
+              <div className="grid gap-2">
+                <Label htmlFor="nickname">Nickname</Label>
+                <Input
+                  id="nickname"
+                  placeholder="Your display name"
+                  value={editingNickname}
+                  onChange={(e) => setEditingNickname(e.target.value)}
+                  disabled={savingProfile}
+                />
+              </div>
+
+              {/* Email (read-only with note) */}
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editingEmail}
+                  onChange={(e) => setEditingEmail(e.target.value)}
+                  disabled={true}
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email changes require re-authentication. Contact support to change your email.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setEditModalOpen(false)}
+                disabled={savingProfile}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleSaveProfile} disabled={savingProfile}>
+                {savingProfile ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   }
 
@@ -238,28 +495,39 @@ export default function SettingsGeneral() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* User Profile Card - Display Only */}
-      <Card className="shadow-e1">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={userAvatarUrl || undefined} />
-              <AvatarFallback>
-                <UserIcon className="h-8 w-8" />
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                {userNickname || "User"}
-              </h2>
-              <p className="text-sm mt-0.5 text-muted-foreground">
-                {userEmail || "No email"}
-              </p>
+    <>
+      <div className="space-y-6">
+        {/* User Profile Card - With Edit Button */}
+        <Card className="shadow-e1">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={userAvatarUrl || undefined} />
+                  <AvatarFallback>
+                    <UserIcon className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                    {userNickname || "User"}
+                  </h2>
+                  <p className="text-sm mt-0.5 text-muted-foreground">
+                    {userEmail || "No email"}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditProfile}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {/* Organization Settings Section */}
       <Card className="shadow-e1">
@@ -296,6 +564,109 @@ export default function SettingsGeneral() {
           </Button>
         </CardContent>
       </Card>
-    </div>
+      </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your profile information and avatar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center gap-4">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={avatarPreview || editingAvatarUrl || undefined} />
+                <AvatarFallback>
+                  <UserIcon className="h-12 w-12" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {avatarPreview || editingAvatarUrl ? "Replace" : "Upload"}
+                </Button>
+                {(avatarPreview || editingAvatarUrl) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRemoveAvatar}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarSelect}
+                className="hidden"
+              />
+            </div>
+
+            {/* Nickname */}
+            <div className="grid gap-2">
+              <Label htmlFor="nickname">Nickname</Label>
+              <Input
+                id="nickname"
+                placeholder="Your display name"
+                value={editingNickname}
+                onChange={(e) => setEditingNickname(e.target.value)}
+                disabled={savingProfile}
+              />
+            </div>
+
+            {/* Email (read-only with note) */}
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={editingEmail}
+                onChange={(e) => setEditingEmail(e.target.value)}
+                disabled={true}
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">
+                Email changes require re-authentication. Contact support to change your email.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditModalOpen(false)}
+              disabled={savingProfile}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProfile} disabled={savingProfile}>
+              {savingProfile ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -19,12 +19,12 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const variants = {
     neutral: 'bg-card border-concrete text-muted-foreground shadow-e1',
-    primary: 'bg-primary/10 border-primary/20 text-primary-deep shadow-sm',
-    warning: 'bg-warning/20 border-warning/30 text-yellow-700 shadow-sm',
-    success: 'bg-success/20 border-success/30 text-green-700 shadow-sm',
-    signal: 'bg-signal text-ink border-white/40 shadow-sm',
+    primary: 'bg-primary/10 border-primary/20 text-primary shadow-sm',
+    warning: 'badge-warning shadow-sm',
+    success: 'badge-success shadow-sm',
+    signal: 'bg-signal text-signal-foreground border-white/40 shadow-sm',
     ai: 'bg-accent/10 text-accent border-accent/20 shadow-sm',
-    danger: 'bg-destructive/10 border-destructive/20 text-destructive shadow-sm'
+    danger: 'badge-danger shadow-sm'
   };
   
   const sizes = {

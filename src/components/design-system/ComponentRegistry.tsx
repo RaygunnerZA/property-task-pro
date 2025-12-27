@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+// Note: Design tokens are now in tailwind.config.ts - this file uses tokens.ts for display purposes only
 import { shadows, radii } from '@/components/filla/tokens';
 
 interface ComponentDef {
