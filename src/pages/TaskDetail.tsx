@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useDataContext } from '@/contexts/DataContext';
+import { ChatThread } from '@/components/messaging/ChatThread';
 
 type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -33,7 +34,7 @@ interface TaskData {
   description: string | null;
   status: TaskStatus;
   priority: string;
-  due_at: string | null;
+  due_date: string | null;
   created_at: string;
   property_id: string | null;
   assigned_user_id: string | null;
@@ -65,7 +66,7 @@ const TaskDetail = () => {
 
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
-        .select('id, title, description, status, priority, due_at, created_at, property_id, assigned_user_id')
+        .select('id, title, description, status, priority, due_date, created_at, property_id, assigned_user_id')
         .eq('id', id)
         .eq('org_id', orgId)
         .single();
@@ -177,7 +178,7 @@ const TaskDetail = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Due Date</p>
                 <p className="font-medium">
-                  {task.due_at ? format(new Date(task.due_at), 'EEEE, MMMM d, yyyy') : 'No due date'}
+                  {task.due_date ? format(new Date(task.due_date), 'EEEE, MMMM d, yyyy') : 'No due date'}
                 </p>
               </div>
             </div>
@@ -223,6 +224,16 @@ const TaskDetail = () => {
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>
+          </CardContent>
+        </Card>
+
+        {/* Chat Thread */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Conversation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ChatThread taskId={id!} />
           </CardContent>
         </Card>
       </div>

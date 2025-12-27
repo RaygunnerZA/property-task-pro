@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type SubtaskRow = Tables<"subtasks">;
 
 export function useSubtasks(taskId?: string) {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [subtasks, setSubtasks] = useState<SubtaskRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function fetchSubtasks() {
-    if (!taskId) {
+    if (!taskId || !orgId) {
       setSubtasks([]);
       setLoading(false);
       return;
@@ -25,6 +25,7 @@ export function useSubtasks(taskId?: string) {
       .from("subtasks")
       .select("*")
       .eq("task_id", taskId)
+      .eq("org_id", orgId)
       .eq("is_archived", false)
       .order("order_index", { ascending: true });
 
@@ -35,8 +36,10 @@ export function useSubtasks(taskId?: string) {
   }
 
   useEffect(() => {
-    fetchSubtasks();
-  }, [taskId]);
+    if (!orgLoading) {
+      fetchSubtasks();
+    }
+  }, [taskId, orgId, orgLoading]);
 
   async function createSubtask(title: string, options?: {
     is_yes_no?: boolean;

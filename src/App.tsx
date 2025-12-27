@@ -37,6 +37,7 @@ import ManagePeople from "./pages/manage/ManagePeople";
 import ManageVendors from "./pages/manage/ManageVendors";
 import ManageTemplates from "./pages/manage/ManageTemplates";
 import ManageSettings from "./pages/manage/ManageSettings";
+import Assets from "./pages/Assets";
 
 // RECORD pillar
 import RecordDocuments from "./pages/record/RecordDocuments";
@@ -48,6 +49,7 @@ import RecordLibrary from "./pages/record/RecordLibrary";
 // Legacy pages (kept for deep links)
 import TaskDetail from "./pages/TaskDetail";
 import AddTask from "./pages/AddTask";
+import PropertyDetail from "./pages/PropertyDetail";
 import PropertyCompliance from "./pages/PropertyCompliance";
 import PropertyTasks from "./pages/PropertyTasks";
 import PropertyPhotos from "./pages/PropertyPhotos";
@@ -68,6 +70,18 @@ import VendorTaskDetail from "./pages/VendorTaskDetail";
 import VendorProfile from "./pages/VendorProfile";
 import VendorReporting from "./pages/VendorReporting";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import Dashboard from "./app/page";
+import Properties from "./pages/Properties";
+import Tasks from "./pages/Tasks";
+import Calendar from "./pages/Calendar";
+import Compliance from "./pages/Compliance";
+
+// Settings pages
+import { SettingsLayout } from "./pages/settings/SettingsLayout";
+import SettingsGeneral from "./pages/settings/SettingsGeneral";
+import SettingsTeam from "./pages/settings/SettingsTeam";
+import SettingsBilling from "./pages/settings/SettingsBilling";
+import DebugData from "./pages/DebugData";
 
 const queryClient = new QueryClient();
 
@@ -103,8 +117,15 @@ const App = () => {
                     <AppLayout>
                       <Routes>
                         {/* Dashboard */}
-                        <Route path="/" element={<ManagerDashboard />} />
+                        <Route path="/" element={<Dashboard />} />
                         <Route path="/dashboard" element={<ManagerDashboard />} />
+                        
+                        {/* Main Navigation */}
+                        <Route path="/properties" element={<Properties />} />
+                        <Route path="/tasks" element={<Tasks />} />
+                        <Route path="/assets" element={<Assets />} />
+                        <Route path="/calendar" element={<Calendar />} />
+                        <Route path="/compliance" element={<Compliance />} />
                         
                         {/* WORK pillar */}
                         <Route path="/work/tasks" element={<WorkTasks />} />
@@ -115,10 +136,18 @@ const App = () => {
                         {/* MANAGE pillar */}
                         <Route path="/manage/properties" element={<ManageProperties />} />
                         <Route path="/manage/spaces" element={<ManageSpaces />} />
+                        <Route path="/assets" element={<Assets />} />
                         <Route path="/manage/people" element={<ManagePeople />} />
                         <Route path="/manage/vendors" element={<ManageVendors />} />
                         <Route path="/manage/templates" element={<ManageTemplates />} />
                         <Route path="/manage/settings" element={<ManageSettings />} />
+                        
+                        {/* Settings routes */}
+                        <Route path="/settings" element={<SettingsLayout />}>
+                          <Route index element={<SettingsGeneral />} />
+                          <Route path="team" element={<SettingsTeam />} />
+                          <Route path="billing" element={<SettingsBilling />} />
+                        </Route>
                         
                         {/* RECORD pillar */}
                         <Route path="/record/documents" element={<RecordDocuments />} />
@@ -130,6 +159,7 @@ const App = () => {
                         {/* Legacy/deep-link routes */}
                         <Route path="/task/:id" element={<TaskDetail />} />
                         <Route path="/add-task" element={<AddTask />} />
+                        <Route path="/properties/:id" element={<PropertyDetail />} />
                         <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
                         <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
                         <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
@@ -151,6 +181,9 @@ const App = () => {
                         <Route path="/vendor/reporting" element={<VendorReporting />} />
                         <Route path="/design-library" element={<DesignLibrary />} />
                         
+                        {/* Debug route */}
+                        <Route path="/debug/data" element={<DebugData />} />
+                        
                         {/* 404 */}
                         <Route path="*" element={<NotFound />} />
                       </Routes>
@@ -158,7 +191,7 @@ const App = () => {
                   </ProtectedRoute>
                 } />
               </Routes>
-                </AppInitializer>
+                  </AppInitializer>
               </DataProvider>
             </SystemStatusProvider>
           </BrowserRouter>

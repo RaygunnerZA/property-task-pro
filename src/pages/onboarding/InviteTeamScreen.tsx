@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
 
 export default function InviteTeamScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { teamInvites, addTeamInvite, removeTeamInvite } = useOnboardingStore();
   
   const [email, setEmail] = useState("");
@@ -54,7 +56,7 @@ export default function InviteTeamScreen() {
   return (
     <OnboardingContainer>
       <div className="animate-fade-in">
-        <ProgressDots current={4} total={6} />
+        <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Invite your team"

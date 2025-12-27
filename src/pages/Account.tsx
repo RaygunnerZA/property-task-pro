@@ -3,9 +3,43 @@ import { ContextHeader } from '@/components/ContextHeader';
 import { User, Settings, Bell, Shield, Palette, HelpCircle, LogOut, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const Account = () => {
   const navigate = useNavigate();
+  
+  // User profile state
+  const [userEmail, setUserEmail] = useState("");
+  const [userNickname, setUserNickname] = useState("");
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+  // Load user profile data
+  useEffect(() => {
+    async function loadUserProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email || "");
+        setUserNickname(user.user_metadata?.nickname || "");
+        setUserAvatarUrl(user.user_metadata?.avatar_url || null);
+      }
+    }
+    
+    loadUserProfile();
+    
+    // Listen for auth state changes to update profile display
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setUserEmail(session.user.email || "");
+        setUserNickname(session.user.user_metadata?.nickname || "");
+        setUserAvatarUrl(session.user.user_metadata?.avatar_url || null);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -16,7 +50,7 @@ const Account = () => {
     {
       title: 'Profile',
       items: [
-        { label: 'Personal Information', icon: User, path: '/account/profile' },
+        { label: 'Personal Information', icon: User, path: '/settings' },
         { label: 'Preferences', icon: Settings, path: '/account/preferences' },
         { label: 'Notifications', icon: Bell, path: '/account/notifications' },
       ],
@@ -24,6 +58,7 @@ const Account = () => {
     {
       title: 'Organization',
       items: [
+        { label: 'Organization Settings', icon: Settings, path: '/settings' },
         { label: 'Privacy & Security', icon: Shield, path: '/account/security' },
       ],
     },
@@ -53,15 +88,18 @@ const Account = () => {
         {/* Profile Card */}
         <div className="rounded-lg p-6 bg-card shadow-e1">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center bg-background shadow-engraved">
-              <User className="h-8 w-8 text-primary" />
-            </div>
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={userAvatarUrl || undefined} />
+              <AvatarFallback className="bg-background shadow-engraved">
+                <User className="h-8 w-8 text-primary" />
+              </AvatarFallback>
+            </Avatar>
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                John Doe
+                {userNickname || "User"}
               </h2>
               <p className="text-xs mt-0.5 text-muted-foreground">
-                john.doe@example.com
+                {userEmail || "No email"}
               </p>
             </div>
           </div>

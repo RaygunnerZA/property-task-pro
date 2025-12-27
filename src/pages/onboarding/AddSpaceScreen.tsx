@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
+import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useOrganization } from "@/hooks/use-organization";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { X, Plus, Layers } from "lucide-react";
 
@@ -13,53 +17,114 @@ const DEFAULT_SUGGESTIONS = ["Living Room", "Kitchen", "Bedroom 1", "Bedroom 2",
 
 export default function AddSpaceScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const { organization } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [spaceName, setSpaceName] = useState("");
   const [spaces, setSpaces] = useState<string[]>([]);
   const [propertyId, setPropertyId] = useState<string | null>(null);
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const [propertyName, setPropertyName] = useState<string | null>(null);
+  const [hasExistingSpaces, setHasExistingSpaces] = useState(false);
+  const [hasProperties, setHasProperties] = useState(false);
 
   useEffect(() => {
-    fetchLatestProperty();
-  }, []);
+    if (!orgLoading && orgId) {
+      // Add a small delay to ensure property is committed after creation
+      const timer = setTimeout(() => {
+        fetchLatestProperty();
+        checkExistingSpaces();
+      }, 500);
+      return () => clearTimeout(timer);
+    } else if (!orgLoading && !orgId) {
+      toast.error("Organisation not found");
+      navigate("/onboarding/create-organisation");
+    }
+  }, [orgId, orgLoading]);
+
+  const checkExistingSpaces = async () => {
+    if (!orgId) return;
+    
+    try {
+      const { data: existingSpaces } = await supabase
+        .from('spaces')
+        .select('id')
+        .eq('org_id', orgId)
+        .limit(1);
+      
+      setHasExistingSpaces(existingSpaces && existingSpaces.length > 0);
+    } catch (error) {
+      console.error("Error checking existing spaces:", error);
+    }
+  };
 
   const fetchLatestProperty = async () => {
+    if (!orgId) return;
+    
     try {
-      // Refresh session to ensure JWT has latest org_id claim
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      // Refresh session to ensure JWT is up to date
+      await supabase.auth.refreshSession();
       
-      if (refreshError || !refreshData.session?.user) {
-        navigate("/login");
-        return;
-      }
-
-      // Get org_id from refreshed JWT claims (app_metadata)
-      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
-
-      if (!jwtOrgId) {
-        toast.error("Organisation not found");
-        navigate("/onboarding/create-organisation");
-        return;
-      }
-
-      setOrgId(jwtOrgId);
-
       // Get the latest property for this org
-      const { data: properties } = await supabase
-        .from('properties')
-        .select('id')
-        .eq('org_id', jwtOrgId)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      // Retry a few times in case of timing issues
+      let retries = 3;
+      let properties = null;
+      let propertiesError = null;
+      
+      while (retries > 0) {
+        const result = await supabase
+          .from('properties')
+          .select('id')
+          .eq('org_id', orgId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        properties = result.data;
+        propertiesError = result.error;
+        
+        if (properties && properties.length > 0) {
+          break; // Found property, exit retry loop
+        }
+        
+        if (propertiesError) {
+          console.error("Error fetching properties:", propertiesError);
+          break; // Error occurred, exit retry loop
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 300));
+        retries--;
+      }
+
+      if (propertiesError) {
+        console.error("Error fetching properties after retries:", propertiesError);
+        setHasProperties(false);
+        return;
+      }
 
       if (properties && properties.length > 0) {
-        setPropertyId(properties[0].id);
+        const property = properties[0];
+        setPropertyId(property.id);
+        setHasProperties(true);
+        console.log("Property ID set:", property.id);
+        
+        // Fetch property name/address for breadcrumb
+        const { data: propertyData } = await supabase
+          .from('properties')
+          .select('address')
+          .eq('id', property.id)
+          .single();
+        
+        if (propertyData) {
+          setPropertyName(propertyData.address || "Property");
+        }
       } else {
-        toast.error("No property found. Please add a property first.");
-        navigate("/onboarding/add-property");
+        setHasProperties(false);
+        console.log("No properties found for org:", orgId);
       }
     } catch (error) {
       console.error("Error fetching property:", error);
+      setHasProperties(false);
     }
   };
 
@@ -110,27 +175,10 @@ export default function AddSpaceScreen() {
 
     setLoading(true);
     try {
-      // Refresh session to ensure JWT has latest org_id claim
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError || !refreshData.session?.user) {
-        toast.error("Session expired. Please log in again.");
-        navigate("/login");
-        return;
-      }
-
-      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
-      
-      if (!jwtOrgId) {
-        toast.error("Organisation not found");
-        navigate("/onboarding/create-organisation");
-        return;
-      }
-
-      // Insert all spaces with JWT org_id
+      // Insert all spaces with org_id from useActiveOrg
       const spacesToInsert = spaces.map(name => ({
         name,
-        org_id: jwtOrgId,
+        org_id: orgId,
         property_id: propertyId
       }));
 
@@ -150,6 +198,8 @@ export default function AddSpaceScreen() {
   };
 
   const handleSkip = () => {
+    // Mark navigation to prevent AppInitializer interference
+    (window as any).__lastOnboardingNavigation = Date.now();
     navigate("/onboarding/invite-team");
   };
 
@@ -168,11 +218,23 @@ export default function AddSpaceScreen() {
   return (
     <OnboardingContainer>
       <div className="animate-fade-in">
-        <ProgressDots current={4} total={6} />
+        <ProgressDots current={getCurrentStep(location.pathname)} />
+        
+        {(organization || propertyName) && (
+          <OnboardingBreadcrumbs
+            items={[
+              ...(organization ? [{ label: organization.name }] : []),
+              ...(propertyName ? [{ label: propertyName, active: true }] : [])
+            ]}
+          />
+        )}
         
         <OnboardingHeader
           title="Add spaces"
-          subtitle="Define areas within your property"
+          subtitle={hasExistingSpaces 
+            ? "You already have spaces. Add more or skip to continue."
+            : "Define areas within your property"
+          }
         />
 
         <div className="mb-6 flex justify-center">
@@ -267,7 +329,7 @@ export default function AddSpaceScreen() {
           <NeomorphicButton
             variant="primary"
             onClick={handleSave}
-            disabled={loading || spaces.length === 0}
+            disabled={loading || spaces.length === 0 || !propertyId}
           >
             {loading ? "Saving..." : `Save ${spaces.length} Space${spaces.length !== 1 ? 's' : ''}`}
           </NeomorphicButton>
@@ -276,7 +338,7 @@ export default function AddSpaceScreen() {
             variant="ghost"
             onClick={handleSkip}
           >
-            Skip for now
+            {hasExistingSpaces ? "Continue (you already have spaces)" : "Skip for now"}
           </NeomorphicButton>
         </div>
       </div>

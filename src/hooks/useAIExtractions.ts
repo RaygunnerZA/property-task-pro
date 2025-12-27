@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type AIExtractionRow = Tables<"ai_extractions">;
 
 export function useAIExtractions(taskId?: string) {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [extractions, setExtractions] = useState<AIExtractionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useAIExtractions(taskId?: string) {
     let query = supabase
       .from("ai_extractions")
       .select("*")
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (taskId) {
@@ -39,14 +40,16 @@ export function useAIExtractions(taskId?: string) {
   }
 
   useEffect(() => {
-    fetchExtractions();
-  }, [orgId, taskId]);
+    if (!orgLoading) {
+      fetchExtractions();
+    }
+  }, [orgId, taskId, orgLoading]);
 
   return { extractions, loading, error, refresh: fetchExtractions };
 }
 
 export function useLatestAIExtraction(taskId?: string) {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [extraction, setExtraction] = useState<AIExtractionRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +67,7 @@ export function useLatestAIExtraction(taskId?: string) {
     const { data, error: err } = await supabase
       .from("ai_extractions")
       .select("*")
+      .eq("org_id", orgId)
       .eq("task_id", taskId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -76,8 +80,10 @@ export function useLatestAIExtraction(taskId?: string) {
   }
 
   useEffect(() => {
-    fetchLatest();
-  }, [orgId, taskId]);
+    if (!orgLoading) {
+      fetchLatest();
+    }
+  }, [orgId, taskId, orgLoading]);
 
   return { extraction, loading, error, refresh: fetchLatest };
 }

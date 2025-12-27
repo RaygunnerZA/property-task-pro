@@ -36,10 +36,10 @@ export interface ComplianceMetadata {
   auto_created?: boolean;
 }
 
-// ===== GROUP TYPES =====
-export type GroupRow = Tables<"groups">;
-export type GroupMemberRow = Tables<"group_members">;
-export type TaskGroupRow = Tables<"task_groups">;
+// ===== CATEGORY TYPES =====
+export type CategoryRow = Tables<"categories">;
+export type CategoryMemberRow = Tables<"category_members">;
+export type TaskCategoryRow = Tables<"task_categories">;
 
 // ===== CHECKLIST TYPES =====
 export type ChecklistTemplateRow = Tables<"checklist_templates">;

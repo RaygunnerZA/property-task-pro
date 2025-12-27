@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type ChecklistTemplateRow = Tables<"checklist_templates">;
 type ChecklistTemplateItemRow = Tables<"checklist_template_items">;
@@ -11,7 +11,7 @@ export interface TemplateWithItems extends ChecklistTemplateRow {
 }
 
 export function useChecklistTemplates() {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [templates, setTemplates] = useState<ChecklistTemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +29,7 @@ export function useChecklistTemplates() {
     const { data, error: err } = await supabase
       .from("checklist_templates")
       .select("*")
+      .eq("org_id", orgId)
       .eq("is_archived", false)
       .order("name", { ascending: true });
 
@@ -39,8 +40,10 @@ export function useChecklistTemplates() {
   }
 
   useEffect(() => {
-    fetchTemplates();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchTemplates();
+    }
+  }, [orgId, orgLoading]);
 
   return { templates, loading, error, refresh: fetchTemplates };
 }
@@ -81,7 +84,7 @@ export function useChecklistTemplateItems(templateId?: string) {
 }
 
 export function useTemplateWithItems(templateId?: string) {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [template, setTemplate] = useState<TemplateWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,8 +135,10 @@ export function useTemplateWithItems(templateId?: string) {
   }
 
   useEffect(() => {
-    fetchTemplate();
-  }, [orgId, templateId]);
+    if (!orgLoading) {
+      fetchTemplate();
+    }
+  }, [orgId, templateId, orgLoading]);
 
   return { template, loading, error, refresh: fetchTemplate };
 }

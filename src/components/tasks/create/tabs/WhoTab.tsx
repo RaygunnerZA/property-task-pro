@@ -15,7 +15,7 @@ import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useTeams } from "@/hooks/useTeams";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,9 +47,9 @@ export function WhoTab({
   onTeamsChange,
   suggestedPeople = [],
 }: WhoTabProps) {
-  const { orgId } = useDataContext();
+  const { orgId } = useActiveOrg();
   const { toast } = useToast();
-  const { teams, refresh: refreshTeams } = useTeams(orgId);
+  const { teams, refresh: refreshTeams } = useTeams();
   const { members, refresh: refreshMembers } = useOrgMembers();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -171,7 +171,7 @@ export function WhoTab({
         .insert({
           org_id: orgId,
           name: newTeamName.trim(),
-          image_url: imageUrl,
+          ...(imageUrl && { metadata: { image_url: imageUrl } }),
         })
         .select("id")
         .single();
@@ -203,25 +203,42 @@ export function WhoTab({
           Assigned
         </Label>
         <div className="flex flex-wrap gap-2 items-center min-h-[32px]">
-          {assignedUserId && (
-            <StandardChip
-              label={allPeople.find(p => p.user_id === assignedUserId)?.display_name || "Unknown"}
-              selected
-              onSelect={() => handleSelectPerson(null)}
-              onRemove={() => handleSelectPerson(null)}
-            />
-          )}
-          {assignedTeamIds.map(teamId => {
-            const team = allTeams.find(t => t.id === teamId);
-            return team ? (
+          {assignedUserId && (() => {
+            const person = allPeople.find(p => p.user_id === assignedUserId);
+            const displayName = person?.display_name || `User ${assignedUserId.slice(0, 8)}`;
+            return (
               <StandardChip
-                key={teamId}
+                key={`person-${assignedUserId}`}
+                label={displayName}
+                selected
+                onSelect={() => handleSelectPerson(null)}
+                onRemove={() => handleSelectPerson(null)}
+              />
+            );
+          })()}
+          {assignedTeamIds.length > 0 && assignedTeamIds.map(teamId => {
+            const team = allTeams.find(t => t.id === teamId);
+            if (!team) {
+              // Team might not be loaded yet, show placeholder
+              return (
+                <StandardChip
+                  key={`team-${teamId}`}
+                  label={`Team ${teamId.slice(0, 8)}`}
+                  selected
+                  onSelect={() => toggleTeam(teamId)}
+                  onRemove={() => toggleTeam(teamId)}
+                />
+              );
+            }
+            return (
+              <StandardChip
+                key={`team-${teamId}`}
                 label={team.name}
                 selected
                 onSelect={() => toggleTeam(teamId)}
                 onRemove={() => toggleTeam(teamId)}
               />
-            ) : null;
+            );
           })}
           {!assignedUserId && assignedTeamIds.length === 0 && (
             <span className="text-xs text-muted-foreground">No one assigned</span>
@@ -262,18 +279,23 @@ export function WhoTab({
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {filteredPeople.map((person) => (
-            <StandardChip
-              key={person.id}
-              label={person.display_name}
-              selected={assignedUserId === person.user_id}
-              onSelect={() =>
-                handleSelectPerson(
-                  assignedUserId === person.user_id ? null : person.user_id
-                )
-              }
-            />
-          ))}
+          {filteredPeople.map((person) => {
+            const isSelected = assignedUserId === person.user_id;
+            return (
+              <StandardChip
+                key={person.id}
+                label={person.display_name}
+                selected={isSelected}
+                onSelect={() => {
+                  if (isSelected) {
+                    handleSelectPerson(null);
+                  } else {
+                    handleSelectPerson(person.user_id);
+                  }
+                }}
+              />
+            );
+          })}
           
           {/* Ghost chips for AI suggestions */}
           {ghostPeople.map((ghostName, idx) => (

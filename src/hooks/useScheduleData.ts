@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScheduleItemBase, ScheduleFilters } from "@/types/schedule";
 import { ScheduleViewMode } from "@/utils/scheduleRange";
+import { useActiveOrg } from "./useActiveOrg";
 
 interface UseScheduleDataParams {
   viewMode: ScheduleViewMode;
@@ -22,11 +23,18 @@ export function useScheduleData({
   rangeEnd,
   filters,
 }: UseScheduleDataParams): UseScheduleDataResult {
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [items, setItems] = useState<ScheduleItemBase[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!orgId || orgLoading) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function fetchData() {
@@ -43,7 +51,7 @@ export function useScheduleData({
             id,
             title,
             description,
-            due_at,
+            due_date,
             property_id,
             priority,
             status,
@@ -52,6 +60,7 @@ export function useScheduleData({
               org_id
             )
           `)
+          .eq("org_id", orgId)
           .gte("due_at", rangeStart)
           .lte("due_at", rangeEnd);
 
@@ -74,8 +83,8 @@ export function useScheduleData({
             status: t.status ?? null,
 
             // DATE + TIME normalisation
-            date: t.due_at ? t.due_at.slice(0, 10) : "",
-            time: t.due_at ? t.due_at.slice(11, 16) : null,
+            date: t.due_date ? t.due_date.slice(0, 10) : "",
+            time: t.due_date ? t.due_date.slice(11, 16) : null,
           }));
 
         /* --------------------------------------------
@@ -89,13 +98,14 @@ export function useScheduleData({
             body,
             type,
             status,
-            due_at,
+            due_date,
             property_id,
             properties:properties!inner (
               id,
               org_id
             )
           `)
+          .eq("org_id", orgId)
           .gte("due_at", rangeStart)
           .lte("due_at", rangeEnd);
 
@@ -118,8 +128,8 @@ export function useScheduleData({
             status: s.status ?? null,
 
             // DATE + TIME
-            date: s.due_at ? s.due_at.slice(0, 10) : "",
-            time: s.due_at ? s.due_at.slice(11, 16) : null,
+            date: s.due_date ? s.due_date.slice(0, 10) : "",
+            time: s.due_date ? s.due_date.slice(11, 16) : null,
           }));
 
         /* --------------------------------------------
@@ -151,7 +161,7 @@ export function useScheduleData({
     return () => {
       cancelled = true;
     };
-  }, [viewMode, rangeStart, rangeEnd, filters]);
+  }, [viewMode, rangeStart, rangeEnd, filters, orgId, orgLoading]);
 
   return { items, loading, error };
 }

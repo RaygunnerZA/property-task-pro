@@ -1,220 +1,215 @@
-/**
- * MANAGER DASHBOARD
- * - Two-column layout: Calendar (left) | DashboardTabs (right)
- * - Quick stats overview
- * - Uses standardized filla components
- */
-
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { ContextHeader } from '@/components/ContextHeader';
 import { BottomNav } from '@/components/BottomNav';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
+import { useTasks } from '@/hooks/use-tasks';
+import { useActiveOrg } from '@/hooks/useActiveOrg';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  MiniCalendar, 
-  DashboardTabs,
-  type CalendarEvent,
-  type TaskCardProps,
-  type InboxItem,
-  type ReminderItem,
-} from '@/components/filla';
-import { useTasks } from '@/hooks/useTasks';
-import { useMessages } from '@/hooks/useMessages';
-import { useReminders } from '@/hooks/useReminders';
-import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
-import { 
+  Building2, 
   CheckSquare, 
-  Inbox, 
   AlertTriangle, 
-  Clock, 
-  Building2,
-  Plus 
+  Shield,
+  Clock,
+  Loader2,
+  Plus
 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showCreateTask, setShowCreateTask] = useState(false);
-  
-  const { tasks, refresh: refreshTasks } = useTasks();
-  const { messages } = useMessages();
-  const { reminders } = useReminders();
+  // Safety check: Ensure we have an org
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const { metrics, loading: metricsLoading, error: metricsError } = useDashboardMetrics();
+  const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
 
-  // Convert tasks to calendar events
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    const byDate = new Map<string, typeof tasks>();
-    for (const task of tasks) {
-      if (!task.due_at) continue;
-      const dateStr = task.due_at.slice(0, 10);
-      const existing = byDate.get(dateStr) || [];
-      existing.push(task);
-      byDate.set(dateStr, existing);
-    }
-
-    return Array.from(byDate.entries()).map(([date, dayTasks]) => ({
-      date,
-      tasks: dayTasks.map((t) => ({
-        priority: (t.priority === 'high' || t.priority === 'urgent' ? 'high' : t.priority === 'low' ? 'low' : 'normal') as 'low' | 'normal' | 'high',
-      })),
-      compliance: [],
-    }));
-  }, [tasks]);
-
-  // Stats derived from real data
-  const selectedISO = selectedDate.toISOString().slice(0, 10);
-  const todayISO = new Date().toISOString().slice(0, 10);
-  
-  const activeTasks = tasks.filter(t => t.status !== 'completed');
-  const overdueTasks = activeTasks.filter(t => t.due_at && t.due_at.slice(0, 10) < todayISO);
-  const todayTasks = activeTasks.filter(t => t.due_at?.slice(0, 10) === todayISO);
-
-  const stats = [
-    { label: 'Active', value: activeTasks.length, icon: CheckSquare, colorClass: 'text-primary' },
-    { label: 'Today', value: todayTasks.length, icon: Clock, colorClass: 'text-signal-foreground' },
-    { label: 'Overdue', value: overdueTasks.length, icon: AlertTriangle, colorClass: 'text-destructive' },
-    { label: 'Inbox', value: messages.length, icon: Inbox, colorClass: 'text-accent' },
-  ];
-
-  // Transform tasks to TaskCardProps format - show all active tasks, not just selected date
-  const taskCards: TaskCardProps[] = useMemo(() => {
-    return activeTasks.slice(0, 10).map((task) => ({
-      title: task.title,
-      description: task.description || undefined,
-      priority: (task.priority as 'low' | 'medium' | 'high' | 'urgent') || 'medium',
-      dueDate: task.due_at 
-        ? new Date(task.due_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-        : undefined,
-      imageUrl: task.primary_image_url || undefined,
-      showAlert: task.priority === 'urgent' || task.priority === 'high',
-    }));
-  }, [activeTasks]);
-
-  // Transform messages to InboxItem format
-  const inboxItems: InboxItem[] = useMemo(() => {
-    return messages.slice(0, 5).map((msg) => ({
-      id: msg.id,
-      type: (msg.source === 'whatsapp' ? 'whatsapp' : msg.source === 'email' ? 'email' : 'comment') as InboxItem['type'],
-      from: msg.author_name || 'Unknown',
-      message: msg.body,
-      time: new Date(msg.created_at || '').toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-    }));
-  }, [messages]);
-
-  // Transform reminders to ReminderItem format
-  const reminderItems: ReminderItem[] = useMemo(() => {
-    return reminders.slice(0, 5).map((r) => {
-      const daysUntil = r.due_at 
-        ? Math.ceil((new Date(r.due_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : null;
+  // Safe defaults if data loading fails - show 0 instead of crashing
+  const safeMetrics = useMemo(() => {
+    if (metricsError || !metrics) {
       return {
-        id: r.id,
-        title: r.title,
-        property: 'All properties',
-        due: daysUntil !== null ? (daysUntil > 0 ? `In ${daysUntil} days` : 'Overdue') : 'No date',
-        type: (r.type === 'compliance' ? 'compliance' : 'schedule') as ReminderItem['type'],
+        total_properties: 0,
+        open_tasks: 0,
+        overdue_tasks: 0,
+        expiring_compliance: 0
       };
-    });
-  }, [reminders]);
+    }
+    return metrics;
+  }, [metrics, metricsError]);
 
-  const handleTaskClick = (index: number) => {
-    const task = activeTasks[index];
-    if (task) navigate(`/task/${task.id}`);
-  };
+  const safeTasks = useMemo(() => {
+    if (tasksError || !tasks) {
+      return [];
+    }
+    return tasks;
+  }, [tasks, tasksError]);
+
+  // Get last 5 modified tasks (sorted by updated_at)
+  const recentTasks = useMemo(() => {
+    if (!safeTasks || safeTasks.length === 0) return [];
+    return [...safeTasks]
+      .sort((a, b) => {
+        const aTime = new Date(a.updated_at || a.created_at).getTime();
+        const bTime = new Date(b.updated_at || b.created_at).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, 5);
+  }, [safeTasks]);
+
+  if (orgLoading || metricsLoading || tasksLoading) {
+    return (
+      <div className="pb-20 md:pb-6 bg-background min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-20 md:pb-6 bg-background">
       <ContextHeader 
-        title="Dashboard" 
-        subtitle="Manager overview"
+        title="Welcome to Filla" 
+        subtitle="Your workspace overview"
       />
 
-      <div className="max-w-6xl mx-auto px-4 py-4 space-y-5">
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-4 gap-2">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="p-3 rounded-xl text-center bg-card shadow-e1"
-            >
-              <stat.icon className={`h-4 w-4 mx-auto mb-1 ${stat.colorClass}`} />
-              <div className="text-xl font-bold font-mono text-foreground">
-                {stat.value}
-              </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Two-Column Layout: Calendar (left) | DashboardTabs (right) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Left Column: Calendar */}
-          <div>
-            <MiniCalendar
-              selectedDate={selectedDate}
-              events={calendarEvents}
-              onSelect={(date) => setSelectedDate(date)}
-              showMonthNav={true}
-            />
-          </div>
-
-          {/* Right Column: Standardized DashboardTabs */}
-          <div>
-            <DashboardTabs
-              tasks={taskCards}
-              inbox={inboxItems}
-              reminders={reminderItems}
-              onTaskClick={handleTaskClick}
-              showReminders={true}
-            />
-          </div>
-        </div>
-
+      <div className="max-w-6xl mx-auto px-4 py-4 space-y-6">
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3 max-w-md mx-auto lg:max-w-none lg:grid-cols-4">
-          <button
-            onClick={() => setShowCreateTask(true)}
-            className="p-4 rounded-xl text-center bg-primary shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to="/properties"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg",
+              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
+              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
+              "text-foreground font-medium"
+            )}
           >
-            <Plus className="h-5 w-5 mx-auto mb-1 text-primary-foreground" />
-            <span className="text-sm font-semibold text-primary-foreground">Add Task</span>
-          </button>
-          <button
-            onClick={() => navigate('/manage/properties')}
-            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            <Plus className="h-4 w-4" />
+            Add Property
+          </Link>
+          <Link
+            to="/assets"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg",
+              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
+              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
+              "text-foreground font-medium"
+            )}
           >
-            <Building2 className="h-5 w-5 mx-auto mb-1 text-accent" />
-            <span className="text-sm font-semibold text-foreground">Properties</span>
-          </button>
-          <button
-            onClick={() => navigate('/work/tasks')}
-            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            <Plus className="h-4 w-4" />
+            Add Asset
+          </Link>
+          <Link
+            to="/tasks"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg",
+              "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]",
+              "hover:scale-[1.02] active:scale-[0.98] transition-all duration-200",
+              "text-foreground font-medium"
+            )}
           >
-            <CheckSquare className="h-5 w-5 mx-auto mb-1 text-primary" />
-            <span className="text-sm font-semibold text-foreground">All Tasks</span>
-          </button>
-          <button
-            onClick={() => navigate('/work/inbox')}
-            className="p-4 rounded-xl text-center bg-card shadow-e1 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Inbox className="h-5 w-5 mx-auto mb-1 text-signal-foreground" />
-            <span className="text-sm font-semibold text-foreground">Inbox</span>
-          </button>
+            <Plus className="h-4 w-4" />
+            Create Task
+          </Link>
         </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatCard
+            label="Properties"
+            value={safeMetrics.total_properties}
+            icon={Building2}
+            variant="default"
+          />
+          <StatCard
+            label="Open Tasks"
+            value={safeMetrics.open_tasks}
+            icon={CheckSquare}
+            variant="default"
+          />
+          <StatCard
+            label="Overdue Tasks"
+            value={safeMetrics.overdue_tasks}
+            icon={AlertTriangle}
+            variant={safeMetrics.overdue_tasks > 0 ? "accent" : "default"}
+          />
+          <StatCard
+            label="Expiring Compliance"
+            value={safeMetrics.expiring_compliance}
+            icon={Shield}
+            variant={safeMetrics.expiring_compliance > 0 ? "warning" : "default"}
+          />
+        </div>
+
+        {/* Recent Activity */}
+        <Card
+          className={cn(
+            "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+            "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
+            "border-0"
+          )}
+        >
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentTasks.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No recent activity</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => navigate(`/task/${task.id}`)}
+                    className={cn(
+                      "p-3 rounded-lg cursor-pointer transition-all",
+                      "bg-[#F6F4F2]",
+                      "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
+                      "hover:scale-[1.01] active:scale-[0.99]"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate">
+                          {(task as any).title || "Untitled Task"}
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            Updated {format(new Date(task.updated_at || task.created_at), "MMM d, HH:mm")}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span
+                          className={cn(
+                            "text-xs px-2 py-1 rounded-full font-medium",
+                            task.status === "completed"
+                              ? "bg-green-500/10 text-green-700"
+                              : task.status === "in_progress"
+                              ? "bg-blue-500/10 text-blue-700"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {task.status || "open"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <BottomNav />
-      
-      {/* Create Task Modal */}
-      <CreateTaskModal
-        open={showCreateTask}
-        onOpenChange={setShowCreateTask}
-        defaultDueDate={selectedDate.toISOString().slice(0, 10)}
-        onTaskCreated={() => {
-          refreshTasks();
-          setShowCreateTask(false);
-        }}
-      />
     </div>
   );
 };

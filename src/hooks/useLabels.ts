@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type LabelRow = Tables<"labels">;
 
 export function useLabels() {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [labels, setLabels] = useState<LabelRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useLabels() {
     const { data, error: err } = await supabase
       .from("labels")
       .select("*")
+      .eq("org_id", orgId)
       .order("name", { ascending: true });
 
     if (err) setError(err.message);
@@ -33,8 +34,10 @@ export function useLabels() {
   }
 
   useEffect(() => {
-    fetchLabels();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchLabels();
+    }
+  }, [orgId, orgLoading]);
 
   async function createLabel(name: string, color?: string, icon?: string) {
     if (!orgId) return null;
@@ -102,8 +105,10 @@ export function useTaskLabels(taskId?: string) {
     fetchTaskLabels();
   }, [taskId]);
 
-  async function addLabelToTask(labelId: string, orgId: string) {
+  async function addLabelToTask(labelId: string) {
     if (!taskId) return false;
+
+    if (!orgId) return false;
 
     const { error: err } = await supabase
       .from("task_labels")

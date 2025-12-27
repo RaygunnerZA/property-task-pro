@@ -17,8 +17,8 @@ const Home = () => {
   const calendarEvents: CalendarEvent[] = useMemo(() => {
     const byDate = new Map<string, typeof tasks>();
     for (const task of tasks) {
-      if (!task.due_at) continue;
-      const dateStr = task.due_at.slice(0, 10);
+      if (!task.due_date) continue;
+      const dateStr = task.due_date.slice(0, 10);
       const existing = byDate.get(dateStr) || [];
       existing.push(task);
       byDate.set(dateStr, existing);

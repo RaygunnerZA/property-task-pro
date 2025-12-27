@@ -3,7 +3,7 @@
  * Used by the Create Task modal's intelligent chip suggestion engine
  */
 
-export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'group' | 'compliance' | 'date';
+export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date';
 
 export type PriorityValue = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -17,7 +17,7 @@ export interface SuggestedChip {
   metadata?: Record<string, unknown>;
 }
 
-export interface GhostGroup {
+export interface GhostCategory {
   id: string;
   name: string;
   reason: 'space' | 'assignee' | 'urgency' | 'compliance' | 'historical' | 'repeat';
@@ -35,7 +35,7 @@ export interface ChipSuggestionContext {
 
 export interface ChipSuggestionResult {
   chips: SuggestedChip[];
-  ghostGroups: GhostGroup[];
+  ghostCategories: GhostCategory[];
   suggestedTitle?: string;
   complianceMode: boolean;
 }

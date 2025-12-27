@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
@@ -14,12 +14,34 @@ const authSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+const REMEMBERED_EMAIL_KEY = "filla_remembered_email";
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Load remembered email on mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
+    if (rememberedEmail) {
+      setEmail(rememberedEmail);
+      console.log('[Login] Loaded remembered email from localStorage:', rememberedEmail);
+    }
+  }, []);
+
+  // Save email to localStorage as user types (debounced)
+  useEffect(() => {
+    if (email && email.includes('@')) {
+      const timer = setTimeout(() => {
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
+        console.log('[Login] Saved email to localStorage:', email);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [email]);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -54,38 +76,18 @@ export default function LoginPage() {
       }
 
       if (data.session) {
-        console.log('[Login] Sign in successful, checking org membership...');
+        console.log('[Login] Sign in successful');
+        toast.success("Welcome back!");
         
-        // Check org_id from JWT claims first (faster than DB query)
-        const orgIdFromJwt = data.session.user.app_metadata?.org_id;
+        // Save email to localStorage for next visit
+        localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
         
-        if (orgIdFromJwt) {
-          console.log('[Login] Found org_id in JWT:', orgIdFromJwt);
-          toast.success("Welcome back!");
-          navigate("/", { replace: true });
-        } else {
-          // Fallback: check organisation_members table
-          console.log('[Login] No org_id in JWT, checking DB...');
-          const { data: memberData, error: memberError } = await supabase
-            .from('organisation_members')
-            .select('org_id')
-            .eq('user_id', data.user.id)
-            .maybeSingle();
-
-          if (memberError) {
-            console.error('[Login] Member query error:', memberError);
-          }
-
-          if (memberData?.org_id) {
-            console.log('[Login] Found org in DB:', memberData.org_id);
-            toast.success("Welcome back!");
-            navigate("/", { replace: true });
-          } else {
-            console.log('[Login] No org found, redirecting to onboarding');
-            toast.success("Welcome! Let's set up your account.");
-            navigate("/onboarding/create-organisation", { replace: true });
-          }
-        }
+        // Refresh session to ensure auth state is updated
+        await supabase.auth.refreshSession();
+        
+        // Let AppBootLoader handle all routing decisions
+        // It will check for org, properties, spaces and route accordingly
+        navigate("/", { replace: true });
       }
     } catch (error: any) {
       console.error('[Login] Unexpected error:', error);

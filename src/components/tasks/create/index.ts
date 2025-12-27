@@ -1,4 +1,4 @@
 export { SubtasksSection } from "./SubtasksSection";
 export { ImageUploadSection } from "./ImageUploadSection";
-export { GroupsSection } from "./GroupsSection";
+export { ThemesSection } from "./ThemesSection";
 export * from "./tabs";

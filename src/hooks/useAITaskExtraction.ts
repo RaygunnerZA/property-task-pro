@@ -8,6 +8,13 @@ interface GhostChip {
   id?: string;
 }
 
+interface ThemeSuggestion {
+  name: string;
+  exists: boolean;
+  id?: string;
+  type?: 'category' | 'project' | 'tag' | 'group';
+}
+
 interface ExtractResponse {
   ok: boolean;
   combined: {
@@ -18,7 +25,7 @@ interface ExtractResponse {
     assets: string[];
     priority: string | null;
     date: string | null;
-    groups: GhostChip[];
+    themes: ThemeSuggestion[];
     yes_no: boolean;
     signature: boolean;
   };
@@ -32,7 +39,7 @@ export interface AIExtractionResult {
   assets: string[];
   priority: string | null;
   date: string | null;
-  groups: GhostChip[];
+    themes: ThemeSuggestion[];
   yes_no: boolean;
   signature: boolean;
 }

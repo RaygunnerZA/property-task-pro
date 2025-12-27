@@ -1,22 +1,28 @@
 import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
+import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types";
 
 type TeamRow = Tables<"teams">;
 
-export function useTeams(orgId?: string) {
+export function useTeams() {
   const supabase = useSupabase();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function fetchTeams() {
+    if (!orgId) {
+      setTeams([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    let query = supabase.from("teams").select("*");
-
-    if (orgId) query = query.eq("org_id", orgId);
+    const query = supabase.from("teams").select("*").eq("org_id", orgId);
 
     const { data, error: err } = await query;
 
@@ -27,8 +33,10 @@ export function useTeams(orgId?: string) {
   }
 
   useEffect(() => {
-    fetchTeams();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchTeams();
+    }
+  }, [orgId, orgLoading]);
 
   return { teams, loading, error, refresh: fetchTeams };
 }

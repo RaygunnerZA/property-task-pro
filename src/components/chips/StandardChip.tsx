@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 
 export interface StandardChipProps {
   label: string;
@@ -94,7 +95,7 @@ export function StandardChip({
           onClick={handleRemove}
           className="ml-0.5 text-current opacity-70 hover:opacity-100 transition-opacity"
         >
-          ×
+          <X className="h-3 w-3" />
         </button>
       )}
     </button>

@@ -1,0 +1,24 @@
+# Filla Architecture Index - System V2.1
+
+01_Overview.md              : Vision, Core Pillars, and User Flows.
+02_Identity.md              : AUTHORITATIVE source for Roles, Org Logic, and Identity Modes.
+03_Data_Model.md            : SOLE TRUTH for Schema, Enums, and RLS.
+04_UI_System.md             : Design tokens, Navigation patterns, and Neomorphism rules.
+05_Task_Engine.md           : Logic for tasks, recurrence, and automations.
+06_Compliance.md            : Document ingestion, critic logic, and expiry rules.
+07_AI_Intelligence.md       : The AI Architecture (Extractor, Critic, Signals).
+08_Translation.md           : i18n structure and Tone of Voice.
+09_Dev_Infra.md             : Folder structure, testing, and deployment rules.
+10_Master_Prompts.md        : Meta-prompts for Builders (Lovable/AI).
+11_Notifications.md         : Notification engine, channels, and routing.
+12_Data_Export.md           : Data portability and export logic.
+13_Messaging.md             : Chat, threads, and audio messaging.
+14_Attachments.md           : Internal file handling, storage buckets, and viewers.
+15_External_Ingestion.md    : "Share to Filla", Email forwarding, and Ingestion pipeline.
+16_Asset_System.md          : (Formerly Ch 15) Asset Management & Capture logic.
+17_Analytics.md             : (Formerly Ch 16) Dashboard logic per Identity Mode.
+18_Audio.md                 : (Formerly Ch 17) Audio capture, transcription, and diagnostics.
+19_Platform_Arch.md         : (Formerly Ch 18) Global events, internal APIs, and extensibility.
+20_Billing.md               : (Formerly Ch 19) Subscriptions, entitlements, and gates.
+21_Data_Lifecycle.md        : (Formerly Ch 20) Retention, archiving, and deletion rules.
+Appendix_A.md               : Entity -> Context Map.

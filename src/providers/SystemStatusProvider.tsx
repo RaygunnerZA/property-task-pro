@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode, useState, useEffect, useRef } from "react";
+import { createContext, useContext, ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 type SystemStatus = "healthy" | "degraded" | "offline" | "critical";
@@ -9,6 +9,7 @@ interface SystemStatusContextValue {
   supabaseHealthy: boolean;
   lastError: string | null;
   setError: (msg: string | null) => void;
+  reconnect: () => Promise<void>;
 }
 
 const SystemStatusContext = createContext<SystemStatusContextValue | undefined>(undefined);
@@ -71,41 +72,52 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
     }
   }, [isOnline, supabaseHealthy, lastError]);
 
-  // Heartbeat: ping Supabase every 45 seconds
-  useEffect(() => {
-    async function heartbeat() {
-      if (!isOnline) {
-        setSupabaseHealthy(false);
-        return;
-      }
-
-      try {
-        const { error } = await supabase
-          .from("organisations")
-          .select("id")
-          .limit(1);
-
-        if (error) {
-          // Permission errors (401/403) are auth issues, not connection issues
-          const isAuthError = error.code === "42501" || error.message?.includes("permission denied");
-          if (isAuthError) {
-            // User not logged in - this is expected, not a connection problem
-            setSupabaseHealthy(true);
-            setLastError(null);
-          } else {
-            setSupabaseHealthy(false);
-            setLastError("Unable to reach database");
-          }
-        } else {
-          setSupabaseHealthy(true);
-          setLastError(null);
-        }
-      } catch (err: any) {
-        setSupabaseHealthy(false);
-        setLastError("Connection issue detected");
-      }
+  // Heartbeat function - checks Supabase connection
+  const heartbeat = useCallback(async () => {
+    if (!isOnline) {
+      setSupabaseHealthy(false);
+      return;
     }
 
+    try {
+      // First try to refresh the session
+      await supabase.auth.refreshSession();
+
+      // Then test the connection
+      const { error } = await supabase
+        .from("organisations")
+        .select("id")
+        .limit(1);
+
+      if (error) {
+        // Permission errors (401/403) are auth issues, not connection issues
+        const isAuthError = error.code === "42501" || error.message?.includes("permission denied");
+        if (isAuthError) {
+          // User not logged in - this is expected, not a connection problem
+          setSupabaseHealthy(true);
+          setLastError(null);
+        } else {
+          setSupabaseHealthy(false);
+          setLastError("Unable to reach database");
+        }
+      } else {
+        setSupabaseHealthy(true);
+        setLastError(null);
+      }
+    } catch (err: any) {
+      setSupabaseHealthy(false);
+      setLastError("Connection issue detected");
+    }
+  }, [isOnline]);
+
+  // Manual reconnect function
+  const reconnect = useCallback(async () => {
+    setLastError(null);
+    await heartbeat();
+  }, [heartbeat]);
+
+  // Heartbeat: ping Supabase every 45 seconds
+  useEffect(() => {
     // Run immediately
     heartbeat();
 
@@ -117,7 +129,7 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
         clearInterval(heartbeatRef.current);
       }
     };
-  }, [isOnline]);
+  }, [heartbeat]);
 
   const value: SystemStatusContextValue = {
     status,
@@ -125,6 +137,7 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
     supabaseHealthy,
     lastError,
     setError: setLastError,
+    reconnect,
   };
 
   return (

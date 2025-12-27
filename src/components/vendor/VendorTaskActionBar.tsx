@@ -45,8 +45,9 @@ export const VendorTaskActionBar: React.FC<VendorTaskActionBarProps> = ({
         )}
 
         {status === 'Completed' && (
-          <div className="flex-1 text-center py-3">
-            <span className="text-sm text-success">Task completed ✓</span>
+          <div className="flex-1 text-center py-3 flex items-center justify-center gap-2">
+            <CheckCircle className="h-4 w-4 text-success" />
+            <span className="text-sm text-success">Task completed</span>
           </div>
         )}
       </div>

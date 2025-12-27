@@ -1,12 +1,16 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
+import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useOrganization } from "@/hooks/use-organization";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { 
   Building2, 
@@ -39,7 +43,10 @@ const PROPERTY_COLORS = [
 
 export default function AddPropertyScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { orgId, isLoading: orgLoading, error: orgError } = useActiveOrg();
+  const { organization } = useOrganization();
   const { 
     propertyNickname, 
     propertyAddress, 
@@ -55,6 +62,81 @@ export default function AddPropertyScreen() {
   const [loading, setLoading] = useState(false);
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [hasExistingProperties, setHasExistingProperties] = useState(false);
+
+  useEffect(() => {
+    if (orgId && !orgLoading) {
+      checkExistingProperties();
+    } else if (!orgLoading && !orgId) {
+      // No org found - redirect to create organisation
+      toast.error("Please create an organisation first");
+      navigate("/onboarding/create-organisation", { replace: true });
+    }
+  }, [orgId, orgLoading]);
+
+  const checkExistingProperties = async () => {
+    if (!orgId) return;
+    
+    try {
+      const { data: properties, error: propertiesError } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('org_id', orgId);
+      
+      if (propertiesError) {
+        console.error("Error checking existing properties:", propertiesError);
+        setHasExistingProperties(false);
+        return;
+      }
+      
+      const hasProperties = properties && properties.length > 0;
+      console.log(`[AddPropertyScreen] Found ${properties?.length || 0} properties for org ${orgId}`);
+      setHasExistingProperties(hasProperties);
+    } catch (error) {
+      console.error("Error checking existing properties:", error);
+      setHasExistingProperties(false);
+    }
+  };
+
+  // Show loading state while org is being fetched
+  if (orgLoading) {
+    return (
+      <OnboardingContainer>
+        <div className="animate-fade-in">
+          <ProgressDots current={getCurrentStep(location.pathname)} />
+          <OnboardingHeader
+            title="Loading..."
+            subtitle="Setting up your workspace"
+          />
+        </div>
+      </OnboardingContainer>
+    );
+  }
+
+  // Redirect if org not found
+  if (orgError || !orgId) {
+    return (
+      <OnboardingContainer>
+        <div className="animate-fade-in">
+          <ProgressDots current={getCurrentStep(location.pathname)} />
+          <OnboardingHeader
+            title="Organisation not found"
+            subtitle="Please create an organisation first"
+            showBack
+            onBack={() => navigate("/onboarding/create-organisation")}
+          />
+          <div className="pt-4">
+            <NeomorphicButton
+              variant="primary"
+              onClick={() => navigate("/onboarding/create-organisation")}
+            >
+              Create Organisation
+            </NeomorphicButton>
+          </div>
+        </div>
+      </OnboardingContainer>
+    );
+  }
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,69 +159,145 @@ export default function AddPropertyScreen() {
   };
 
   const handleSave = async () => {
+    if (!propertyNickname.trim()) {
+      toast.error("Property name is required");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Refresh session to ensure JWT has latest org_id claim
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError || !refreshData.session?.user) {
-        toast.error("Please sign in to continue");
-        navigate("/login");
-        return;
-      }
+      // #region agent log
+      const logData1 = {location:'AddPropertyScreen.tsx:161',message:'handleSave entry',data:{orgId,propertyNickname,propertyAddress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+      console.log('[DEBUG]', logData1);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+      // #endregion
 
-      // Get org_id from refreshed JWT claims (app_metadata)
-      const jwtOrgId = refreshData.session.user.app_metadata?.org_id;
-
-      if (!jwtOrgId) {
+      // Double-check orgId is available (shouldn't happen due to guard above, but safety check)
+      if (!orgId) {
+        // #region agent log
+        const logData2 = {location:'AddPropertyScreen.tsx:170',message:'orgId is null',data:{orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+        console.log('[DEBUG]', logData2);
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+        // #endregion
         toast.error("Organisation not found. Please create one first.");
         navigate("/onboarding/create-organisation");
         return;
       }
 
-      let thumbnailUrl: string | null = null;
+      // #region agent log
+      const logData3 = {location:'AddPropertyScreen.tsx:177',message:'Before duplicate check query',data:{orgId,queryOrgId:orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+      console.log('[DEBUG]', logData3);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData3)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+      // #endregion
 
-      // Upload image if selected
-      if (propertyImage) {
-        const fileExt = propertyImage.name.split('.').pop();
-        const fileName = `${jwtOrgId}/${crypto.randomUUID()}.${fileExt}`;
+      // Check for duplicate property name/address within this org
+      const { data: existingProperties, error: checkError } = await supabase
+        .from('properties')
+        .select('id, address, org_id')
+        .eq('org_id', orgId);
+
+      // #region agent log
+      const logData4 = {location:'AddPropertyScreen.tsx:182',message:'After duplicate check query',data:{orgId,checkError:checkError?.message,existingPropertiesCount:existingProperties?.length,existingProperties:existingProperties?.map(p=>({id:p.id,address:p.address,org_id:p.org_id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+      console.log('[DEBUG]', logData4);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData4)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+      // #endregion
+
+      if (checkError) {
+        console.error("Error checking for duplicate properties:", checkError);
+        // #region agent log
+        const logData5 = {location:'AddPropertyScreen.tsx:186',message:'Query error',data:{error:checkError.message,code:checkError.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+        console.log('[DEBUG]', logData5);
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData5)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+        // #endregion
+      } else if (existingProperties) {
+        // Check if any property has the same name or address
+        // Note: Currently properties only have 'address' field, so we check that
+        const propertyNameOrAddress = propertyNickname.trim() || propertyAddress?.trim();
         
-        const { error: uploadError } = await supabase.storage
-          .from('task-images')
-          .upload(`properties/${fileName}`, propertyImage);
+        // #region agent log
+        const logData6 = {location:'AddPropertyScreen.tsx:193',message:'Before duplicate comparison',data:{propertyNameOrAddress,existingProperties:existingProperties.map(p=>({address:p.address,org_id:p.org_id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
+        console.log('[DEBUG]', logData6);
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData6)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+        // #endregion
 
-        if (uploadError) {
-          console.error("Image upload error:", uploadError);
-          toast.error("Failed to upload image, but continuing...");
-        } else {
-          const { data: urlData } = supabase.storage
-            .from('task-images')
-            .getPublicUrl(`properties/${fileName}`);
-          thumbnailUrl = urlData.publicUrl;
+        const duplicate = existingProperties.find(p => {
+          const existingNameOrAddress = p.address?.toLowerCase().trim();
+          const isMatch = existingNameOrAddress === propertyNameOrAddress?.toLowerCase().trim();
+          
+          // #region agent log
+          if (isMatch) {
+            const logData7 = {location:'AddPropertyScreen.tsx:197',message:'Duplicate match found',data:{propertyNameOrAddress,existingAddress:p.address,existingOrgId:p.org_id,currentOrgId:orgId,match:isMatch},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
+            console.log('[DEBUG]', logData7);
+            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData7)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+          }
+          // #endregion
+          
+          return isMatch;
+        });
+        
+        if (duplicate) {
+          // #region agent log
+          const logData8 = {location:'AddPropertyScreen.tsx:207',message:'Duplicate detected',data:{duplicate:{id:duplicate.id,address:duplicate.address,org_id:duplicate.org_id},currentOrgId:orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
+          console.log('[DEBUG]', logData8);
+          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData8)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+          // #endregion
+          toast.error("A property with this name or address already exists in your organisation");
+          setLoading(false);
+          return;
         }
       }
 
-      const { error } = await supabase
-        .from('properties')
-        .insert({
-          org_id: jwtOrgId,
-          address: propertyAddress || "No address provided",
-          nickname: propertyNickname || null,
-          units: propertyUnits,
-          icon_name: propertyIcon,
-          icon_color_hex: propertyIconColor,
-          thumbnail_url: thumbnailUrl
-        });
+      // Use propertyNickname as address if propertyAddress is empty
+      const finalAddress = propertyAddress?.trim() || propertyNickname.trim() || "No address provided";
 
-      if (error) throw error;
+      // #region agent log
+      const logData9 = {location:'AddPropertyScreen.tsx:215',message:'Before RPC call',data:{orgId,finalAddress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'};
+      console.log('[DEBUG]', logData9);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData9)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+      // #endregion
+
+      // Use RPC function to create property (bypasses RLS with SECURITY DEFINER)
+      const { data: newProperty, error } = await supabase.rpc('create_property_v2', {
+        p_org_id: orgId,
+        p_address: finalAddress
+      });
+
+      // #region agent log
+      const logData10 = {location:'AddPropertyScreen.tsx:223',message:'After RPC call',data:{error:error?.message,errorCode:error?.code,newProperty},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'};
+      console.log('[DEBUG]', logData10);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData10)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
+      // #endregion
+
+      if (error) {
+        console.error("Property insert error:", error);
+        console.error("OrgId:", orgId);
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        console.error("UserId:", currentUser?.id);
+        throw error;
+      }
+
+      if (!newProperty) {
+        throw new Error("Property was not created");
+      }
 
       toast.success("Property added!");
+      
+      // Mark that we're navigating from onboarding to prevent AppInitializer interference
+      (window as any).__lastOnboardingNavigation = Date.now();
+      
+      // Navigate to next step
       navigate("/onboarding/add-spaces");
     } catch (error: any) {
+      console.error("Error adding property:", error);
       toast.error(error.message || "Failed to add property");
-    } finally {
       setLoading(false);
     }
+  };
+
+  const handleSkip = () => {
+    // Mark navigation to prevent AppInitializer interference
+    (window as any).__lastOnboardingNavigation = Date.now();
+    navigate("/onboarding/add-spaces");
   };
 
   const SelectedIcon = PROPERTY_ICONS.find(i => i.name === propertyIcon)?.icon || Building2;
@@ -150,8 +308,11 @@ export default function AddPropertyScreen() {
         <ProgressDots current={3} total={6} />
         
         <OnboardingHeader
-          title="Add your first property"
-          subtitle="You can always add more later"
+          title={hasExistingProperties ? "Add another property" : "Add your first property"}
+          subtitle={hasExistingProperties 
+            ? "You already have properties. Add another or skip to continue."
+            : "You can always add more later"
+          }
         />
 
         {/* Icon Preview */}
@@ -293,7 +454,7 @@ export default function AddPropertyScreen() {
             </p>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-3">
             <NeomorphicButton
               variant="primary"
               onClick={handleSave}
@@ -301,6 +462,15 @@ export default function AddPropertyScreen() {
             >
               {loading ? "Saving..." : "Save Property"}
             </NeomorphicButton>
+            
+            {hasExistingProperties && (
+              <NeomorphicButton
+                variant="ghost"
+                onClick={handleSkip}
+              >
+                Continue (you already have properties)
+              </NeomorphicButton>
+            )}
           </div>
         </div>
       </div>

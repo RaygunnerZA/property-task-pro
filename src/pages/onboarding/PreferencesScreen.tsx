@@ -1,12 +1,14 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 
 export default function PreferencesScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { 
     aiEnabled, 
     taskSuggestions, 
@@ -56,7 +58,7 @@ export default function PreferencesScreen() {
   return (
     <OnboardingContainer>
       <div className="animate-fade-in">
-        <ProgressDots current={5} total={6} />
+        <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Set your preferences"

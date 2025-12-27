@@ -7,7 +7,7 @@ export function mapTask(task: Tables<"tasks">) {
     status: task.status ?? "open",
     property_id: task.property_id ?? null,
     description: task.description ?? "",
-    due_at: task.due_at ?? null,
+    due_at: task.due_date ?? null, // Map due_date from DB to due_at for compatibility
     priority: task.priority ?? "medium",
     completed_at: task.completed_at ?? null,
     updated_at: task.updated_at ?? null

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, Sparkles, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield } from "lucide-react";
+import { X, Plus, Sparkles, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
 import { useAITaskExtraction } from "@/hooks/useAITaskExtraction";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDataContext } from "@/contexts/DataContext";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
-import { createTask } from "@/services/tasks/taskMutations";
+import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ import { PriorityTab } from "./create/tabs/PriorityTab";
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
-import { GroupsSection } from "./create/GroupsSection";
+import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import type { CreateTaskPayload, TaskPriority, RepeatRule, CreateTaskImagePayload } from "@/types/database";
 interface CreateTaskModalProps {
@@ -49,7 +49,8 @@ export function CreateTaskModal({
     toast
   } = useToast();
   const {
-    orgId
+    orgId,
+    loading: orgLoading
   } = useDataContext();
   const {
     templates
@@ -87,7 +88,7 @@ export function CreateTaskModal({
   const [annotationRequired, setAnnotationRequired] = useState(false);
   const [templateId, setTemplateId] = useState("");
   const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
   const [images, setImages] = useState<CreateTaskImagePayload[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -172,7 +173,7 @@ export function CreateTaskModal({
     setAnnotationRequired(false);
     setTemplateId("");
     setSubtasks([]);
-    setSelectedGroupIds([]);
+    setSelectedThemeIds([]);
     setImages([]);
     setShowAdvanced(false);
     setActiveTab("where");
@@ -181,14 +182,31 @@ export function CreateTaskModal({
     // Auto-generate title if empty
     let finalTitle = title.trim();
     if (!finalTitle) {
-      finalTitle = aiTitleGenerated || description.slice(0, 50).trim();
+      // Try AI-generated title first, then description
+      if (aiTitleGenerated && aiTitleGenerated.trim()) {
+        finalTitle = aiTitleGenerated.trim();
+      } else if (description && description.trim()) {
+        finalTitle = description.trim().substring(0, 50);
+        if (description.trim().length > 50) {
+          finalTitle += "...";
+        }
+      }
     }
     
-    if (!finalTitle) {
+    if (!finalTitle || !finalTitle.trim()) {
       toast({
         title: "Description required",
-        description: "Please describe the task.",
+        description: "Please enter a task title or description.",
         variant: "destructive"
+      });
+      return;
+    }
+    
+    if (orgLoading) {
+      toast({
+        title: "Loading",
+        description: "Please wait while we verify your account.",
+        variant: "default"
       });
       return;
     }
@@ -201,42 +219,42 @@ export function CreateTaskModal({
       });
       return;
     }
+    
     setIsSubmitting(true);
     try {
-      const payload: CreateTaskPayload = {
-        title: finalTitle,
-        description: description.trim() || undefined,
-        property_id: propertyId || undefined,
-        space_ids: selectedSpaceIds.length > 0 ? selectedSpaceIds : undefined,
-        priority,
-        due_at: dueDate ? new Date(dueDate).toISOString() : undefined,
-        assigned_user_id: assignedUserId,
-        assigned_team_ids: assignedTeamIds.length > 0 ? assignedTeamIds : undefined,
-        is_compliance: isCompliance,
-        compliance_level: isCompliance ? complianceLevel : undefined,
-        annotation_required: annotationRequired,
-        metadata: {
-          repeat: repeatRule,
-          ai: aiSuggestions ? {
-            chips: [
-              ...(aiSuggestions.spaces || []),
-              ...(aiSuggestions.people || []),
-              ...(aiSuggestions.groups || []),
-              aiSuggestions.priority
-            ].filter(Boolean) as string[]
-          } : undefined
-        },
-        template_id: templateId || undefined,
-        subtasks: subtasks.filter(s => s.title.trim()).map((s, idx) => ({
-          title: s.title.trim(),
-          is_yes_no: s.is_yes_no,
-          requires_signature: s.requires_signature,
-          order_index: idx
-        })),
-        groups: selectedGroupIds.length > 0 ? selectedGroupIds : undefined,
-        images: images.length > 0 ? images : undefined
-      };
-      const taskId = await createTask(orgId, propertyId || null, payload);
+      // Priority will be normalized by the RPC function
+      // Frontend uses: 'low', 'medium', 'high', 'urgent'
+      // RPC will map 'medium' to 'normal' automatically
+      
+      // Convert dueDate (YYYY-MM-DD) to TIMESTAMPTZ
+      let dueDateValue: string | null = null;
+      if (dueDate) {
+        // If it's just a date string, convert to full timestamp at start of day
+        const dateObj = new Date(dueDate);
+        dueDateValue = dateObj.toISOString();
+      }
+      
+      // Use the new RPC function
+      const { data: newTask, error: createError } = await supabase.rpc("create_task_v2", {
+        p_org_id: orgId,
+        p_title: finalTitle,
+        p_property_id: propertyId || null,
+        p_priority: dbPriority,
+        p_due_date: dueDateValue,
+        p_description: description.trim() || null,
+      });
+
+      if (createError) {
+        console.error("Task creation error:", createError);
+        throw createError;
+      }
+
+      if (!newTask) {
+        throw new Error("Failed to create task: no data returned");
+      }
+
+      const taskId = (newTask as any).id;
+      
       toast({
         title: "Task created",
         description: "Your task has been added successfully."
@@ -245,6 +263,7 @@ export function CreateTaskModal({
       onOpenChange(false);
       onTaskCreated?.(taskId);
     } catch (error: any) {
+      console.error("Create task failed:", error);
       toast({
         title: "Error creating task",
         description: error.message || "Something went wrong.",
@@ -369,8 +388,9 @@ export function CreateTaskModal({
                 </Badge>
               )}
               {aiSuggestions.yes_no && (
-                <Badge variant="secondary" className="font-mono text-xs uppercase">
-                  ✓ Yes/No
+                <Badge variant="secondary" className="font-mono text-xs uppercase flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  Yes/No
                 </Badge>
               )}
               {aiSuggestions.signature && (
@@ -441,13 +461,13 @@ export function CreateTaskModal({
           </Tabs>
         </div>
 
-        {/* Groups & Assets Row */}
+        {/* Themes & Assets Row */}
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-xl shadow-e2 p-4 bg-secondary">
-            <GroupsSection 
-              selectedGroupIds={selectedGroupIds} 
-              onGroupsChange={setSelectedGroupIds}
-              suggestedGroups={aiSuggestions?.groups?.map(g => g.name) || []}
+            <ThemesSection 
+              selectedThemeIds={selectedThemeIds} 
+              onThemesChange={setSelectedThemeIds}
+              suggestedThemes={aiSuggestions?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
             />
           </div>
           <div className="rounded-xl shadow-e2 p-4 bg-secondary">
@@ -465,12 +485,12 @@ export function CreateTaskModal({
               <ListTodo className="h-4 w-4 text-muted-foreground" />
               Apply Template
             </Label>
-            <Select value={templateId} onValueChange={setTemplateId}>
+            <Select value={templateId || undefined} onValueChange={(val) => setTemplateId(val === "none" ? "" : val)}>
               <SelectTrigger className="shadow-engraved">
                 <SelectValue placeholder="Choose a checklist template" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {templates.map(template => <SelectItem key={template.id} value={template.id}>
                     {template.icon && <span className="mr-2">{template.icon}</span>}
                     {template.name}

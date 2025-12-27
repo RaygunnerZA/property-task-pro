@@ -1,5 +1,6 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
+import { Home, Clock } from "lucide-react";
 
 export default function TaskCard({ 
   task, 
@@ -17,7 +18,7 @@ export default function TaskCard({
   return (
     <div 
       className={cn(
-        "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+        "rounded-[8px] bg-[rgba(232,230,227,0.5)]",
         "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex min-h-[80px]"
@@ -43,12 +44,12 @@ export default function TaskCard({
         <div className="mt-2 text-xs text-muted-foreground flex gap-3 flex-wrap">
           {property && (
             <span className="flex items-center gap-1">
-              <span>🏠</span>
+              <Home className="h-3 w-3" />
               <span className="truncate max-w-[100px]">{property.name || property.address}</span>
             </span>
           )}
           <span className="flex items-center gap-1">
-            <span>⏰</span>
+            <Clock className="h-3 w-3" />
             {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}
           </span>
         </div>

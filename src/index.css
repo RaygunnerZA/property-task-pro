@@ -132,27 +132,46 @@
     @apply border-border;
   }
 
+  /* Paper texture pattern - custom noise filter (exact as provided) */
+  :root {
+    --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.58' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.52'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.52'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.52'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.19'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.47' intercept='-0.23'/%3E%3CfeFuncG type='linear' slope='1.47' intercept='-0.23'/%3E%3CfeFuncB type='linear' slope='1.47' intercept='-0.23'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)'%3E%3C/rect%3E%3C/svg%3E");
+    --paper-gradient: linear-gradient(135deg, rgba(244,243,240,0.98) 0%, rgba(240,239,233,0.98) 50%, rgba(238,237,231,0.98) 100%);
+  }
+
   body {
     @apply text-foreground;
     font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
-    background: url('/textures/white-texture.jpg') repeat;
-    background-size: 50%;
+    background-image: var(--paper-texture);
+    background-size: 100%;
+    background-color: hsl(var(--background));
   }
   
   /* Paper background for all main content areas */
   .bg-background,
   main,
-  [role="main"] {
-    background: url('/textures/white-texture.jpg') repeat !important;
-    background-size: 50% !important;
+  [role="main"],
+  div[class*="bg-background"],
+  div[class*="bg-white"],
+  div[class*="bg-card"] {
+    background-image: var(--paper-texture) !important;
+    background-size: 100% !important;
   }
   
   /* Modal paper texture */
   [role="dialog"],
   .dialog-content,
   [data-radix-popper-content-wrapper] > div {
-    background: url('/textures/white-texture.jpg') repeat !important;
-    background-size: 50% !important;
+    background-image: var(--paper-texture) !important;
+    background-size: 100% !important;
+  }
+
+  /* Apply to specific background color classes */
+  .bg-\[#F2F2EE\],
+  .bg-\[#F4F3F0\],
+  .bg-\[#F0EFE9\],
+  .bg-\[#EEEDE7\] {
+    background-image: var(--paper-texture) !important;
+    background-size: 100% !important;
   }
   
   /* Font families */
@@ -283,6 +302,27 @@
     opacity: 0;
   }
   
+  /* Override neo-surface box-shadow when shadow-none is present */
+  .neo-surface.shadow-none,
+  .shadow-none.neo-surface {
+    box-shadow: none !important;
+  }
+  
+  .neo-surface.shadow-none:hover,
+  .shadow-none.neo-surface:hover {
+    box-shadow: none !important;
+  }
+  
+  .neo-surface.shadow-none:active,
+  .shadow-none.neo-surface:active {
+    box-shadow: none !important;
+  }
+  
+  .neo-surface.shadow-none:focus-visible,
+  .shadow-none.neo-surface:focus-visible {
+    box-shadow: 0 0 0 2px hsl(var(--sidebar-primary)) !important;
+  }
+  
   /* Light mode variant */
   .neo-surface-light {
     position: relative;
@@ -321,27 +361,31 @@
     transition: opacity 180ms ease-out;
   }
   
-  /* Card backgrounds with texture */
+  /* Paper texture utility class - can be applied to any element */
+  .bg-paper-texture {
+    background-image: var(--paper-texture);
+    background-size: 100%;
+  }
+
+  /* Card backgrounds with texture - updated to use inline SVG */
   .bg-card-flat {
     background-color: hsl(40 10% 90%);
-    background-image: url('/textures/white-texture.jpg');
+    background-image: var(--paper-texture);
   }
 
   /* Unified card-flat class - single source of truth */
   .card-flat {
     background-color: rgba(241, 238, 232, 0.49);
-    background-image: url('/textures/white-texture.jpg');
-    background-blend-mode: overlay;
-    background-size: 75%;
+    background-image: var(--paper-texture);
+    background-size: 100%;
     border-radius: 8px;
     box-shadow: 1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4);
   }
   
   .bg-section-flat {
     background-color: rgba(182, 184, 164, 0.74);
-    background-image: url('/textures/white-texture.jpg');
-    background-blend-mode: overlay;
-    background-size: 68%;
+    background-image: var(--paper-texture);
+    background-size: 100%;
   }
   
   /* Neumorphic Text Shadows for headings */

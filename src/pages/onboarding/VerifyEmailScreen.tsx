@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { Mail, RefreshCw } from "lucide-react";
 
 export default function VerifyEmailScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { email } = useOnboardingStore();
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
@@ -59,7 +61,7 @@ export default function VerifyEmailScreen() {
   return (
     <OnboardingContainer>
       <div className="animate-fade-in">
-        <ProgressDots current={1} total={6} />
+        <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Check your email"

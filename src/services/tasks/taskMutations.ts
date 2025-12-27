@@ -26,7 +26,7 @@ export async function createTask(
     metadata: payload.metadata ? JSON.parse(JSON.stringify(payload.metadata)) : {},
     template_id: payload.template_id || null,
     subtasks: payload.subtasks ? JSON.parse(JSON.stringify(payload.subtasks)) : null,
-    groups: payload.groups || [],
+    categories: payload.categories || [],
     images: payload.images ? JSON.parse(JSON.stringify(payload.images)) : null,
   };
 

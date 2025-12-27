@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type GroupRow = Tables<"groups">;
 
 export function useGroups() {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useGroups() {
     const { data, error: err } = await supabase
       .from("groups")
       .select("*")
+      .eq("org_id", orgId)
       .eq("is_archived", false)
       .order("display_order", { ascending: true });
 
@@ -34,14 +35,16 @@ export function useGroups() {
   }
 
   useEffect(() => {
-    fetchGroups();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchGroups();
+    }
+  }, [orgId, orgLoading]);
 
   return { groups, loading, error, refresh: fetchGroups };
 }
 
 export function useGroupMembers(groupId?: string) {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [members, setMembers] = useState<Tables<"group_members">[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +72,10 @@ export function useGroupMembers(groupId?: string) {
   }
 
   useEffect(() => {
-    fetchMembers();
-  }, [orgId, groupId]);
+    if (!orgLoading) {
+      fetchMembers();
+    }
+  }, [orgId, groupId, orgLoading]);
 
   return { members, loading, error, refresh: fetchMembers };
 }

@@ -10,7 +10,7 @@ import {
   ChipSuggestionContext, 
   ChipSuggestionResult,
   SuggestedChip,
-  GhostGroup
+  GhostCategory
 } from '@/types/chip-suggestions';
 import { extractChipsFromText } from './ruleBasedExtractor';
 
@@ -18,7 +18,7 @@ interface AvailableEntities {
   spaces: Array<{ id: string; name: string; property_id: string }>;
   members: Array<{ id: string; user_id: string; display_name: string }>;
   teams: Array<{ id: string; name: string }>;
-  groups: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string }>;
 }
 
 interface SuggestionEngineConfig {
@@ -53,7 +53,7 @@ export async function generateChipSuggestions(
   if (!context.description || context.description.trim().length < 3) {
     return {
       chips: [],
-      ghostGroups: [],
+      ghostCategories: [],
       complianceMode: false
     };
   }
@@ -83,7 +83,7 @@ export async function generateChipSuggestions(
   
   return {
     chips: finalChips.filter(c => c.score >= mergedConfig.minScore),
-    ghostGroups: ruleResult.ghostGroups.filter(g => g.score >= mergedConfig.minScore),
+    ghostCategories: ruleResult.ghostCategories.filter(c => c.score >= mergedConfig.minScore),
     suggestedTitle: ruleResult.suggestedTitle,
     complianceMode: ruleResult.complianceMode
   };
@@ -138,13 +138,13 @@ function generateFallbackChips(
  */
 // async function getVectorSimilarChips(
 //   context: ChipSuggestionContext
-// ): Promise<{ chips: SuggestedChip[]; ghostGroups: GhostGroup[] }> {
+// ): Promise<{ chips: SuggestedChip[]; ghostCategories: GhostCategory[] }> {
 //   // Future implementation:
 //   // 1. Generate embedding for context.description
 //   // 2. Query: SELECT * FROM task_embeddings ORDER BY embedding <-> input_embedding LIMIT 10
-//   // 3. Extract common spaces, assignees, groups from similar tasks
+//   // 3. Extract common spaces, assignees, categories from similar tasks
 //   // 4. Return chips with vector-based scores
-//   return { chips: [], ghostGroups: [] };
+  //   return { chips: [], ghostCategories: [] };
 // }
 
 /**

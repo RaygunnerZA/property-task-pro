@@ -42,10 +42,17 @@ export function SubtasksSection({
 
   // If no subtasks, show the "add subtask" placeholder row
   const showPlaceholder = subtasks.length === 0;
-  return <div className="shadow-engraved rounded-2xl bg-card/60 overflow-hidden">
+  return <div 
+      className="shadow-engraved rounded-2xl overflow-hidden text-white bg-white/80"
+      style={{
+        backgroundClip: 'unset',
+        WebkitBackgroundClip: 'unset',
+        backgroundImage: 'none'
+      }}
+    >
       {/* Description Area */}
       <div className="px-5 pt-5 pb-3 bg-black/0">
-        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-xl font-light text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" />
+        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-xl font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
       </div>
 
       {/* Divider */}

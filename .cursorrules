@@ -1,0 +1,19 @@
+# FILLA PROJECT RULES
+
+# 1. ARCHITECTURE
+- The single source of truth is the `@Docs` folder.
+- BEFORE writing code, check the relevant Chapter in `@Docs`.
+- NEVER invent database columns. Check `@Docs/03_Data_Model.md`.
+- ALWAYS use `useActiveOrg` for data fetching. Never use `user_id` directly.
+
+# 2. UI/DESIGN
+- Use the Neomorphic Design System defined in `@Docs/04_UI_System.md`.
+- No harsh borders. Use shadows (`shadow-sm`, `shadow-md`) for depth.
+- Primary Action Color: Teal (#8EC9CE).
+- Destructive Color: Coral (#EB6834).
+
+# 3. CODING STANDARDS
+- Use TypeScript strict mode.
+- Use `lucide-react` for icons.
+- When fixing a bug, explain the root cause first.
+

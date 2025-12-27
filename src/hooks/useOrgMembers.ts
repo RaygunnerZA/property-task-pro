@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 export interface OrgMember {
   id: string;
@@ -11,7 +11,7 @@ export interface OrgMember {
 
 export function useOrgMembers() {
   const supabase = useSupabase();
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +49,10 @@ export function useOrgMembers() {
   }
 
   useEffect(() => {
-    fetchMembers();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchMembers();
+    }
+  }, [orgId, orgLoading]);
 
   return { members, loading, error, refresh: fetchMembers };
 }

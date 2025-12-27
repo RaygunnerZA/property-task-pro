@@ -49,9 +49,10 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     return <Navigate to="/welcome" replace />;
   }
 
-  if (requireOrg && !orgId) {
-    return <Navigate to="/onboarding/create-organisation" replace />;
-  }
+  // TEMPORARILY DISABLED: Allow access even without orgId to break redirect loop
+  // if (requireOrg && !orgId) {
+  //   return <Navigate to="/onboarding/create-organisation" replace />;
+  // }
 
   // Only redirect to add property if we've confirmed there are no properties
   // AND we're not already on an onboarding route

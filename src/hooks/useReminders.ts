@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "../integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type SignalRow = Tables<"signals">;
 
 export function useReminders() {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [reminders, setReminders] = useState<SignalRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useReminders() {
     const { data, error: err } = await supabase
       .from("signals")
       .select("*")
+      .eq("org_id", orgId)
       .eq("type", "reminder")
       .order("due_at", { ascending: true });
 
@@ -34,8 +35,10 @@ export function useReminders() {
   }
 
   useEffect(() => {
-    fetchReminders();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchReminders();
+    }
+  }, [orgId, orgLoading]);
 
   return { reminders, loading, error, refresh: fetchReminders };
 }

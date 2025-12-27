@@ -31,7 +31,7 @@ export function SubtaskOptionsMenu({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0"
+            className="h-7 w-7 shrink-0 shadow-none"
           >
             <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
           </Button>

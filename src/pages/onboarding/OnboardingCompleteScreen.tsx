@@ -38,7 +38,11 @@ export default function OnboardingCompleteScreen() {
 
         <NeomorphicButton
           variant="primary"
-          onClick={() => navigate("/work/tasks")}
+          onClick={() => {
+            // Mark navigation to prevent AppInitializer interference
+            (window as any).__lastOnboardingNavigation = Date.now();
+            navigate("/", { replace: true });
+          }}
         >
           Go to Home
         </NeomorphicButton>

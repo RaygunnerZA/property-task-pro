@@ -5,7 +5,7 @@
 
 import { 
   SuggestedChip, 
-  GhostGroup, 
+  GhostCategory, 
   ChipSuggestionContext,
   ChipSuggestionResult,
   PriorityValue
@@ -20,7 +20,7 @@ interface AvailableEntities {
   spaces: Array<{ id: string; name: string; property_id: string }>;
   members: Array<{ id: string; user_id: string; display_name: string }>;
   teams: Array<{ id: string; name: string }>;
-  groups: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string }>;
 }
 
 /**
@@ -31,7 +31,7 @@ export function extractChipsFromText(
   entities: AvailableEntities
 ): ChipSuggestionResult {
   const chips: SuggestedChip[] = [];
-  const ghostGroups: GhostGroup[] = [];
+  const ghostCategories: GhostCategory[] = [];
   let complianceMode = false;
   
   const text = context.description.toLowerCase();
@@ -56,7 +56,7 @@ export function extractChipsFromText(
     });
     
     // Ghost group for compliance
-    ghostGroups.push({
+    ghostCategories.push({
       id: `ghost-compliance-${Date.now()}`,
       name: 'Compliance Tasks',
       reason: 'compliance',
@@ -71,7 +71,7 @@ export function extractChipsFromText(
   // Ghost groups for detected spaces
   spaceChips.forEach(chip => {
     if (chip.score >= 0.6) {
-      ghostGroups.push({
+      ghostCategories.push({
         id: `ghost-space-${chip.value}`,
         name: `${chip.label} Tasks`,
         reason: 'space',
@@ -87,7 +87,7 @@ export function extractChipsFromText(
   // Ghost groups for frequent assignees
   personChips.forEach(chip => {
     if (chip.score >= 0.7) {
-      ghostGroups.push({
+      ghostCategories.push({
         id: `ghost-person-${chip.value}`,
         name: `Tasks for ${chip.label}`,
         reason: 'assignee',
@@ -108,7 +108,7 @@ export function extractChipsFromText(
   
   // 7. Urgency-based ghost group
   if (priorityChip?.value === 'urgent') {
-    ghostGroups.push({
+    ghostCategories.push({
       id: `ghost-urgent-${Date.now()}`,
       name: 'Urgent Repairs',
       reason: 'urgency',
@@ -118,11 +118,11 @@ export function extractChipsFromText(
   
   // Sort chips by score
   chips.sort((a, b) => b.score - a.score);
-  ghostGroups.sort((a, b) => b.score - a.score);
+  ghostCategories.sort((a, b) => b.score - a.score);
   
   return {
     chips: chips.filter(c => c.score >= 0.5),
-    ghostGroups: ghostGroups.filter(g => g.score >= 0.5),
+    ghostCategories: ghostCategories.filter(c => c.score >= 0.5),
     complianceMode
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
@@ -8,6 +8,7 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -18,6 +19,7 @@ const signUpSchema = z.object({
 
 export default function SignUpScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { email, password, setEmail, setPassword, setUserId } = useOnboardingStore();
   
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -107,7 +109,7 @@ export default function SignUpScreen() {
   return (
     <OnboardingContainer>
       <div className="animate-fade-in">
-        <ProgressDots current={0} total={6} />
+        <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Create your account"

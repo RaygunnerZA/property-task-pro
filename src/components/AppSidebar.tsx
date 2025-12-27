@@ -5,37 +5,38 @@ import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 // Main navigation items with + button
 const mainNavItems = [{
   title: 'Dashboard',
-  url: '/dashboard',
+  url: '/',
   icon: LayoutDashboard,
   hasAdd: false
 }, {
+  title: 'Properties',
+  url: '/properties',
+  icon: Building2,
+  hasAdd: true,
+  addAction: 'property'
+}, {
   title: 'Tasks',
-  url: '/work/tasks',
+  url: '/tasks',
   icon: CheckSquare,
   hasAdd: true,
   addAction: 'task'
+}, {
+  title: 'Assets',
+  url: '/assets',
+  icon: Package,
+  hasAdd: true,
+  addAction: 'asset'
 }, {
   title: 'Schedule',
   url: '/work/schedule',
   icon: Calendar,
   hasAdd: true,
   addAction: 'event'
-}, {
-  title: 'Properties',
-  url: '/manage/properties',
-  icon: Building2,
-  hasAdd: true,
-  addAction: 'property'
-}, {
-  title: 'Assets',
-  url: '/record/documents',
-  icon: Package,
-  hasAdd: true,
-  addAction: 'asset'
 }, {
   title: 'Compliance',
   url: '/record/compliance',
@@ -61,8 +62,8 @@ const otherItems = [{
   url: '/notifications',
   icon: Bell
 }, {
-  title: 'Organisation Settings',
-  url: '/manage/settings',
+  title: 'Settings',
+  url: '/settings',
   icon: Settings
 }];
 
@@ -81,16 +82,17 @@ export function AppSidebar() {
     e.stopPropagation();
     switch (action) {
       case 'task':
-        navigate('/add-task');
+        // Task creation is handled by CreateTaskModal in Tasks page
+        navigate('/tasks');
         break;
       case 'event':
         navigate('/work/schedule?add=true');
         break;
       case 'property':
-        navigate('/manage/properties?add=true');
+        navigate('/onboarding/add-property');
         break;
       case 'asset':
-        navigate('/record/documents?add=true');
+        navigate('/assets');
         break;
       case 'compliance':
         navigate('/record/compliance?add=true');
@@ -101,7 +103,8 @@ export function AppSidebar() {
     }
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     navigate('/login');
   };
 
@@ -115,7 +118,8 @@ export function AppSidebar() {
         <NavLink 
           to={item.url} 
           className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-          activeClassName="text-sidebar-foreground shadow-engraved"
+          activeClassName="text-[#8EC9CE]"
+          pendingClassName="opacity-50"
         >
           <item.icon className="h-5 w-5 flex-shrink-0" />
           {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -143,7 +147,7 @@ export function AppSidebar() {
       <div 
         className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay" 
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundRepeat: 'repeat'
         }} 
       />
@@ -172,7 +176,8 @@ export function AppSidebar() {
                     <NavLink 
                       to="/manage/spaces" 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-sidebar-foreground shadow-engraved"
+                      activeClassName="text-[#8EC9CE]"
+                      pendingClassName="opacity-50"
                     >
                       <FolderOpen className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
@@ -209,7 +214,8 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-sidebar-foreground shadow-engraved"
+                      activeClassName="text-[#8EC9CE]"
+                      pendingClassName="opacity-50"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
@@ -234,7 +240,8 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-sidebar-foreground shadow-engraved"
+                      activeClassName="text-[#8EC9CE]"
+                      pendingClassName="opacity-50"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
                       {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}

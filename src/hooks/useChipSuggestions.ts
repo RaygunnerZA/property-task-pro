@@ -7,7 +7,7 @@ import { useDebounce } from './useDebounce';
 import { useSpaces } from './useSpaces';
 import { useTeams } from './useTeams';
 import { useOrgMembers } from './useOrgMembers';
-import { useGroups } from './useGroups';
+import { useCategories } from './useCategories';
 import { useDataContext } from '@/contexts/DataContext';
 import { generateChipSuggestions } from '@/services/ai/chipSuggestionEngine';
 import { 
@@ -24,7 +24,7 @@ interface UseChipSuggestionsOptions {
 
 interface UseChipSuggestionsReturn {
   chips: SuggestedChip[];
-  ghostGroups: GhostGroup[];
+  ghostCategories: GhostCategory[];
   complianceMode: boolean;
   suggestedTitle?: string;
   loading: boolean;
@@ -41,7 +41,7 @@ export function useChipSuggestions(
   
   const [result, setResult] = useState<ChipSuggestionResult>({
     chips: [],
-    ghostGroups: [],
+    ghostCategories: [],
     complianceMode: false
   });
   const [loading, setLoading] = useState(false);
@@ -52,9 +52,9 @@ export function useChipSuggestions(
   
   // Fetch entities
   const { spaces } = useSpaces(context.propertyId);
-  const { teams } = useTeams(orgId);
+  const { teams } = useTeams();
   const { members } = useOrgMembers();
-  const { groups } = useGroups();
+  const { categories } = useCategories();
   
   // Track if we should process
   const shouldProcess = debouncedDescription.length >= minDescriptionLength;
@@ -62,7 +62,7 @@ export function useChipSuggestions(
   // Generation function
   const generateSuggestions = useCallback(async () => {
     if (!shouldProcess) {
-      setResult({ chips: [], ghostGroups: [], complianceMode: false });
+      setResult({ chips: [], ghostCategories: [], complianceMode: false });
       return;
     }
     
@@ -85,9 +85,9 @@ export function useChipSuggestions(
           id: t.id,
           name: t.name ?? ''
         })),
-        groups: groups.map(g => ({
-          id: g.id,
-          name: g.name
+        categories: categories.map(c => ({
+          id: c.id,
+          name: c.name
         }))
       };
       
@@ -121,7 +121,7 @@ export function useChipSuggestions(
     spaces,
     teams,
     members,
-    groups
+    categories
   ]);
   
   // Auto-generate on context changes
@@ -131,7 +131,7 @@ export function useChipSuggestions(
   
   return {
     chips: result.chips,
-    ghostGroups: result.ghostGroups,
+    ghostCategories: result.ghostCategories,
     complianceMode: result.complianceMode,
     suggestedTitle: result.suggestedTitle,
     loading,

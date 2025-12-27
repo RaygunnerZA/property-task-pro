@@ -169,8 +169,10 @@ export function WhereTab({
       setNewSpaceName("");
       setPendingGhostSpace(null);
       setShowCreateSpace(false);
-      refreshSpaces();
+      // Add the new space to selection immediately
       onSpacesChange([...spaceIds, data.id]);
+      // Refresh the spaces list to include the new space
+      await refreshSpaces();
     } catch (err: any) {
       toast({ 
         title: "Error creating space", 

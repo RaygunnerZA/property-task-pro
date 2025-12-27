@@ -1,13 +1,25 @@
 import { useSystemStatus } from "@/hooks/useSystemStatus";
 import { cn } from "@/lib/utils";
 import { WifiOff, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export function StatusBanner() {
-  const { status } = useSystemStatus();
+  const { status, reconnect } = useSystemStatus();
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   if (status === "healthy") {
     return null;
   }
+
+  const handleReconnect = async () => {
+    setIsReconnecting(true);
+    try {
+      await reconnect();
+    } finally {
+      setIsReconnecting(false);
+    }
+  };
 
   const config = {
     offline: {
@@ -16,6 +28,7 @@ export function StatusBanner() {
       border: "border-amber-200 dark:border-amber-800",
       text: "text-amber-900 dark:text-amber-200",
       icon: WifiOff,
+      showRetry: false,
     },
     degraded: {
       message: "Connection is unstable",
@@ -23,6 +36,7 @@ export function StatusBanner() {
       border: "border-blue-200 dark:border-blue-800",
       text: "text-blue-900 dark:text-blue-200",
       icon: AlertCircle,
+      showRetry: true,
     },
     critical: {
       message: "Trying to restore connection",
@@ -30,10 +44,11 @@ export function StatusBanner() {
       border: "border-red-200 dark:border-red-800",
       text: "text-red-900 dark:text-red-200",
       icon: RefreshCw,
+      showRetry: true,
     },
   };
 
-  const { message, bg, border, text, icon: Icon } = config[status];
+  const { message, bg, border, text, icon: Icon, showRetry } = config[status];
 
   return (
     <div
@@ -46,8 +61,23 @@ export function StatusBanner() {
         text
       )}
     >
-      <Icon className="h-4 w-4 animate-pulse" />
+      <Icon className={cn("h-4 w-4", isReconnecting && "animate-spin")} />
       <span className="text-sm font-medium">{message}</span>
+      {showRetry && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleReconnect}
+          disabled={isReconnecting}
+          className={cn(
+            "ml-2 h-6 px-2 text-xs",
+            text,
+            "hover:bg-black/10 dark:hover:bg-white/10"
+          )}
+        >
+          {isReconnecting ? "Retrying..." : "Retry"}
+        </Button>
+      )}
     </div>
   );
 }

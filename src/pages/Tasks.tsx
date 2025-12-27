@@ -1,56 +1,59 @@
-import { useState } from 'react';
-import TaskCard from '@/components/TaskCard';
-import { BottomNav } from '@/components/BottomNav';
-import { mockTasks, mockProperties } from '@/data/mockData';
-import { TaskStatus } from '@/types/task';
-import { useNavigate } from 'react-router-dom';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { BottomNav } from "@/components/BottomNav";
+import { TaskList } from "@/components/tasks/TaskList";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useTasks } from "@/hooks/use-tasks";
 
 const Tasks = () => {
-  const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
   const navigate = useNavigate();
+  const { refresh } = useTasks();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const filteredTasks = filter === 'all' 
-    ? mockTasks 
-    : mockTasks.filter(task => task.status === filter);
-
-  const getProperty = (propertyId: string) => 
-    mockProperties.find(p => p.id === propertyId)!;
+  const handleTaskCreated = (taskId: string) => {
+    refresh();
+    setShowCreateModal(false);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 bg-card border-b border-border z-40">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
+      <header
+        className={cn(
+          "sticky top-0 z-40",
+          "bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+          "shadow-[inset_0_-1px_2px_rgba(0,0,0,0.05)]"
+        )}
+      >
+        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Tasks</h1>
+          </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className={cn(
+              "rounded-xl bg-gradient-to-br from-[#F4F3F0] via-[#F2F1ED] to-[#EFEDE9]",
+              "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
+              "hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+              "text-foreground border-0"
+            )}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
         </div>
       </header>
 
-      <div className="max-w-md mx-auto px-4 py-4">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as TaskStatus | 'all')} className="mb-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="in-progress">Active</TabsTrigger>
-            <TabsTrigger value="completed">Done</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <CreateTaskModal 
+        open={showCreateModal} 
+        onOpenChange={setShowCreateModal}
+        onTaskCreated={handleTaskCreated}
+      />
 
-        <div className="space-y-3">
-          {filteredTasks.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No tasks found</p>
-            </div>
-          ) : (
-            filteredTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                property={getProperty(task.propertyId)}
-                onClick={() => navigate(`/task/${task.id}`)}
-              />
-            ))
-          )}
-        </div>
+      <div className="max-w-md mx-auto px-4 py-6">
+        <TaskList />
       </div>
 
       <BottomNav />

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "../integrations/supabase/types";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "./useActiveOrg";
 
 type MessageRow = Tables<"messages">;
 
 export function useMessages() {
-  const { orgId } = useDataContext();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export function useMessages() {
     const { data, error: err } = await supabase
       .from("messages")
       .select("*")
+      .eq("org_id", orgId)
       .order("created_at", { ascending: false });
 
     if (err) setError(err.message);
@@ -33,8 +34,10 @@ export function useMessages() {
   }
 
   useEffect(() => {
-    fetchMessages();
-  }, [orgId]);
+    if (!orgLoading) {
+      fetchMessages();
+    }
+  }, [orgId, orgLoading]);
 
   return { messages, loading, error, refresh: fetchMessages };
 }
