@@ -1,6 +1,7 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
 import { Home, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export default function TaskCard({ 
   task, 
@@ -18,8 +19,8 @@ export default function TaskCard({
   return (
     <div 
       className={cn(
-        "rounded-[8px] bg-[rgba(232,230,227,0.5)]",
-        "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
+        "rounded-[8px] bg-card",
+        "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex min-h-[80px]"
       )}
@@ -31,27 +32,25 @@ export default function TaskCard({
           <h3 className="text-[15px] font-semibold text-foreground line-clamp-2 leading-tight">
             {t.title}
           </h3>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap shrink-0",
-            t.status === 'completed' 
-              ? "bg-primary/15 text-primary" 
-              : "bg-muted text-muted-foreground"
-          )}>
+          <Badge 
+            variant={t.status === 'completed' ? 'success' : 'neutral'}
+            className="text-[10px] px-2 py-0.5 shrink-0"
+          >
             {t.status || 'pending'}
-          </span>
+          </Badge>
         </div>
 
-        <div className="mt-2 text-xs text-muted-foreground flex gap-3 flex-wrap">
+        <div className="mt-2 flex gap-2 flex-wrap">
           {property && (
-            <span className="flex items-center gap-1">
+            <Badge variant="neutral" size="sm" className="text-[10px] px-2 py-0.5 flex items-center gap-1">
               <Home className="h-3 w-3" />
               <span className="truncate max-w-[100px]">{property.name || property.address}</span>
-            </span>
+            </Badge>
           )}
-          <span className="flex items-center gap-1">
+          <Badge variant="neutral" size="sm" className="text-[10px] px-2 py-0.5 flex items-center gap-1">
             <Clock className="h-3 w-3" />
             {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -62,6 +61,13 @@ export default function TaskCard({
             src={imageUrl} 
             alt={t.title}
             className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Neumorphic overlay - light inner shadow top/left, outer shadow right */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
+            }}
           />
         </div>
       )}

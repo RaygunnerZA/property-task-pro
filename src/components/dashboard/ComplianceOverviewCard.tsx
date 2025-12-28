@@ -1,4 +1,4 @@
-import { Surface, Heading, Text } from '@/components/filla';
+import { Card, CardContent } from '@/components/ui/card';
 import { FileText, Building2, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 interface ComplianceOverviewData {
@@ -32,53 +32,53 @@ export default function ComplianceOverviewCard({ data }: ComplianceOverviewCardP
       label: 'Compliant', 
       value: data.compliant, 
       icon: CheckCircle2,
-      color: 'text-green-600' 
+      color: 'text-success' 
     },
     { 
       label: 'Pending', 
       value: data.pending, 
       icon: Clock,
-      color: 'text-amber-600' 
+      color: 'text-warning' 
     },
     { 
       label: 'Drift', 
       value: data.drift, 
       icon: AlertTriangle,
-      color: 'text-red-600' 
+      color: 'text-destructive' 
     },
   ];
 
   return (
-    <Surface variant="floating" className="p-6 relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-px bg-white/60" />
-      
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Heading variant="m">Compliance Overview</Heading>
-          <Text variant="caption" className="text-neutral-500">
-            Updated {data.lastUpdated}
-          </Text>
-        </div>
+    <Card className="shadow-e1">
+      <CardContent className="p-6">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">Compliance Overview</h3>
+            <p className="text-sm text-muted-foreground">
+              Updated {data.lastUpdated}
+            </p>
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <div key={stat.label} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${stat.color}`} />
-                  <Text variant="caption" className="text-neutral-600">
-                    {stat.label}
-                  </Text>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`h-4 w-4 ${stat.color}`} />
+                    <p className="text-xs text-muted-foreground">
+                      {stat.label}
+                    </p>
+                  </div>
+                  <p className={`text-2xl font-bold ${stat.color}`}>
+                    {stat.value}
+                  </p>
                 </div>
-                <Heading variant="l" className={stat.color}>
-                  {stat.value}
-                </Heading>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </Surface>
+      </CardContent>
+    </Card>
   );
 }

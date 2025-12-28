@@ -106,9 +106,18 @@ export function WhereTab({
   };
 
   const handleGhostSpaceClick = (spaceName: string) => {
-    setPendingGhostSpace(spaceName);
-    setNewSpaceName(spaceName);
-    setShowCreateSpace(true);
+    // Allow direct selection of ghost chips - store with ghost prefix
+    // This enables "just-in-time" creation during task save
+    const ghostId = `ghost-space-${spaceName}`;
+    if (spaceIds.includes(ghostId)) {
+      onSpacesChange(spaceIds.filter(id => id !== ghostId));
+    } else {
+      onSpacesChange([...spaceIds, ghostId]);
+    }
+    // Keep modal option for manual creation (optional)
+    // setPendingGhostSpace(spaceName);
+    // setNewSpaceName(spaceName);
+    // setShowCreateSpace(true);
   };
 
   const handleCreateProperty = async () => {
@@ -294,14 +303,19 @@ export function WhereTab({
             ))}
             
             {/* Ghost chips for AI suggestions not in DB */}
-            {ghostSpaces.map((ghostName, idx) => (
-              <StandardChip
-                key={`ghost-${idx}`}
-                label={`+ ${ghostName}`}
-                ghost
-                onSelect={() => handleGhostSpaceClick(ghostName)}
-              />
-            ))}
+            {ghostSpaces.map((ghostName, idx) => {
+              const ghostId = `ghost-space-${ghostName}`;
+              const isSelected = spaceIds.includes(ghostId);
+              return (
+                <StandardChip
+                  key={`ghost-${idx}`}
+                  label={isSelected ? ghostName : `+ ${ghostName}`}
+                  ghost={!isSelected}
+                  selected={isSelected}
+                  onSelect={() => handleGhostSpaceClick(ghostName)}
+                />
+              );
+            })}
             
             {filteredSpaces.length === 0 && ghostSpaces.length === 0 && (
               <p className="text-xs text-muted-foreground">

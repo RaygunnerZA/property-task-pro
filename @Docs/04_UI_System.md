@@ -121,6 +121,29 @@ import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 </NeomorphicButton>
 ```
 
+### CardButton
+Standardized button for icons on cards (chevrons, close buttons, etc.). Normal state matches card background with no neumorphic effect. Hover state shows pressed neumorphic effect.
+
+```tsx
+import { CardButton } from "@/components/design-system/CardButton";
+import { ChevronLeft, X } from "lucide-react";
+
+// Navigation button
+<CardButton aria-label="Previous month">
+  <ChevronLeft className="h-6 w-6" />
+</CardButton>
+
+// Close button
+<CardButton aria-label="Close">
+  <X className="h-6 w-6" />
+</CardButton>
+```
+
+**Props:**
+- All standard button HTML attributes
+- `aria-label` (required for accessibility)
+- Children should be the icon component
+
 ### EmptyState
 Standardized empty state component.
 

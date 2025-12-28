@@ -8,6 +8,7 @@ import React, { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MiniCalendarDayTile, type DayData, type TaskEvent, type ComplianceEvent } from "./MiniCalendarDayTile";
+import { CardButton } from "@/components/design-system/CardButton";
 
 // ===== TYPES =====
 export interface CalendarEvent {
@@ -79,24 +80,16 @@ const NavButton: React.FC<{
   direction: "prev" | "next";
   onClick: () => void;
 }> = ({ direction, onClick }) => (
-  <button
-    type="button"
+  <CardButton
     onClick={onClick}
-    className={cn(
-      "w-10 h-10 rounded-[12px] flex items-center justify-center",
-      "bg-surface-gradient",
-      "shadow-e2 hover:shadow-e1 active:shadow-engraved",
-      "transition-all duration-150",
-      "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-    )}
     aria-label={direction === "prev" ? "Previous month" : "Next month"}
   >
     {direction === "prev" ? (
-      <ChevronLeft className="w-5 h-5 text-accent" strokeWidth={2.5} />
+      <ChevronLeft className="w-6 h-6 text-foreground" strokeWidth={2.5} />
     ) : (
-      <ChevronRight className="w-5 h-5 text-accent" strokeWidth={2.5} />
+      <ChevronRight className="w-6 h-6 text-foreground" strokeWidth={2.5} />
     )}
-  </button>
+  </CardButton>
 );
 
 // ===== MAIN COMPONENT =====
@@ -152,21 +145,13 @@ export const MiniCalendar: React.FC<MiniCalendarProps> = ({
   return (
     <div
       className={cn(
-        // Container with paper texture and neomorphic elevation
+        // Container with card background
         "p-4 rounded-[14px]",
-        "bg-gradient-to-br from-[#F2F2EE] via-[#F0EFE9] to-[#EEEDE7]",
-        "shadow-e2",
-        // Subtle paper texture overlay (CSS pattern)
+        "bg-card",
+        "shadow-e1",
         "relative overflow-hidden",
         className
       )}
-      style={{
-        backgroundImage: `
-          linear-gradient(135deg, rgba(244,243,240,0.9) 0%, rgba(238,237,231,0.9) 100%),
-          url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")
-        `,
-        backgroundBlendMode: "overlay",
-      }}
     >
       {/* Header: Month + Navigation */}
       <div className="flex items-center justify-between mb-4">

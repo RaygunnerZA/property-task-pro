@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { SectionHeader } from '@/components/filla';
 
 interface DashboardSectionProps {
   title: string;
@@ -10,10 +9,10 @@ interface DashboardSectionProps {
 export default function DashboardSection({ title, children, action }: DashboardSectionProps) {
   return (
     <section className="space-y-4">
-      <SectionHeader 
-        title={title}
-        action={action}
-      />
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        {action && <div>{action}</div>}
+      </div>
       {children}
     </section>
   );

@@ -50,27 +50,27 @@ export function StandardPage({
   contentClassName
 }: StandardPageProps) {
   const maxWidthClasses = {
-    sm: "max-w-md",
-    md: "max-w-7xl",
-    lg: "max-w-7xl",
-    xl: "max-w-7xl",
-    full: "max-w-full"
+    sm: "max-w-md",        // Mobile-first, single column
+    md: "max-w-4xl",       // Tablet, comfortable reading width
+    lg: "max-w-6xl",       // Desktop, two-column layouts
+    xl: "max-w-7xl",       // Large desktop, multi-column
+    full: "max-w-full"     // Full width, no constraints
   };
 
   return (
     <div className={cn("min-h-screen bg-background pb-20", className)}>
       <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 py-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
-          <div className="flex items-center gap-2">
-            {icon && <span className="icon-primary">{icon}</span>}
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <div className={cn("mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
+          <div className="flex items-center gap-3">
+            {icon && <span className="icon-primary shrink-0">{icon}</span>}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-foreground leading-tight">{title}</h1>
               {subtitle && (
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
+                <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
               )}
             </div>
           </div>
-          {action && <div>{action}</div>}
+          {action && <div className="shrink-0">{action}</div>}
         </div>
       </PageHeader>
 

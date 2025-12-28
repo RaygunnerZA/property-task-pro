@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
+import { useRealtime } from "./useRealtime";
 import type { Tables } from "../integrations/supabase/types";
 
 type TaskRow = Tables<"tasks">;
@@ -48,6 +49,9 @@ export function useTasks() {
       fetchTasks();
     }
   }, [fetchTasks, orgLoading]);
+
+  // Subscribe to realtime changes for automatic updates
+  useRealtime("tasks", "tasks", fetchTasks);
 
   return { tasks, loading, error, refresh: fetchTasks };
 }

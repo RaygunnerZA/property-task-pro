@@ -4,7 +4,11 @@ import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { cn } from '@/lib/utils';
 
-export const FloatingAddButton = () => {
+interface FloatingAddButtonProps {
+  onTaskCreated?: (taskId: string) => void;
+}
+
+export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -77,6 +81,7 @@ export const FloatingAddButton = () => {
       <CreateTaskModal 
         open={showCreateModal} 
         onOpenChange={setShowCreateModal}
+        onTaskCreated={onTaskCreated}
       />
 
       <AudioRecorder

@@ -16,7 +16,7 @@ interface DualPaneLayoutProps {
  */
 export function DualPaneLayout({ leftColumn, rightColumn }: DualPaneLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Mobile: Single column stack */}
       <div className="flex flex-col md:hidden">
         {leftColumn}

@@ -79,8 +79,16 @@ export function AssetsSection({
   };
 
   const handleGhostAssetClick = (assetName: string) => {
-    setNewAssetName(assetName);
-    setShowCreateModal(true);
+    // Allow direct selection of ghost chips - store with ghost prefix
+    const ghostId = `ghost-asset-${assetName}`;
+    if (selectedAssetIds.includes(ghostId)) {
+      onAssetsChange(selectedAssetIds.filter(id => id !== ghostId));
+    } else {
+      onAssetsChange([...selectedAssetIds, ghostId]);
+    }
+    // Also keep the modal option for manual creation
+    // setNewAssetName(assetName);
+    // setShowCreateModal(true);
   };
 
   const handleCreateAsset = async () => {
@@ -137,14 +145,19 @@ export function AssetsSection({
         ))}
         
         {/* Ghost chips for AI suggestions */}
-        {ghostAssets.map((ghostName, idx) => (
-          <StandardChip
-            key={`ghost-${idx}`}
-            label={`+ ${ghostName}`}
-            ghost
-            onSelect={() => handleGhostAssetClick(ghostName)}
-          />
-        ))}
+        {ghostAssets.map((ghostName, idx) => {
+          const ghostId = `ghost-asset-${ghostName}`;
+          const isSelected = selectedAssetIds.includes(ghostId);
+          return (
+            <StandardChip
+              key={`ghost-${idx}`}
+              label={isSelected ? ghostName : `+ ${ghostName}`}
+              ghost={!isSelected}
+              selected={isSelected}
+              onSelect={() => handleGhostAssetClick(ghostName)}
+            />
+          );
+        })}
         
         {assets.length === 0 && ghostAssets.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">

@@ -222,6 +222,128 @@ export function CreateTaskModal({
     
     setIsSubmitting(true);
     try {
+      // ============================================================
+      // JUST-IN-TIME GHOST CHIP CREATION
+      // ============================================================
+      // Scan for ghost chips and create them before saving the task
+      let resolvedSpaceIds = [...selectedSpaceIds];
+      let resolvedThemeIds = [...selectedThemeIds];
+      let resolvedAssetIds: string[] = []; // Will be populated if assets are added later
+      
+      // Process Ghost Spaces
+      const ghostSpaces = selectedSpaceIds.filter(id => id.startsWith('ghost-space-'));
+      for (const ghostId of ghostSpaces) {
+        const spaceName = ghostId.replace('ghost-space-', '');
+        
+        if (!propertyId) {
+          throw new Error(`Cannot create space "${spaceName}" without a property selected`);
+        }
+        
+        const { data: newSpace, error: spaceError } = await supabase
+          .from("spaces")
+          .insert({
+            org_id: orgId,
+            property_id: propertyId,
+            name: spaceName,
+          })
+          .select("id")
+          .single();
+        
+        if (spaceError) {
+          console.error("Error creating space:", spaceError);
+          throw new Error(`Failed to create space "${spaceName}": ${spaceError.message}`);
+        }
+        
+        if (!newSpace) {
+          throw new Error(`Failed to create space "${spaceName}": no data returned`);
+        }
+        
+        // Replace ghost ID with real ID
+        resolvedSpaceIds = resolvedSpaceIds.map(id => id === ghostId ? newSpace.id : id);
+        
+        toast({
+          title: "Created new Space",
+          description: spaceName,
+        });
+      }
+      
+      // Process Ghost Themes
+      const ghostThemes = selectedThemeIds.filter(id => id.startsWith('ghost-theme-'));
+      for (const ghostId of ghostThemes) {
+        // Extract name and type from ghost ID: ghost-theme-{name}-{type}
+        const match = ghostId.match(/^ghost-theme-(.+?)-(.+)$/);
+        if (!match) {
+          console.warn(`Invalid ghost theme ID format: ${ghostId}`);
+          continue;
+        }
+        
+        const [, themeName, themeType] = match;
+        
+        const { data: newTheme, error: themeError } = await supabase
+          .from("themes")
+          .insert({
+            org_id: orgId,
+            name: themeName,
+            type: themeType as 'category' | 'project' | 'tag' | 'group',
+          })
+          .select("id")
+          .single();
+        
+        if (themeError) {
+          console.error("Error creating theme:", themeError);
+          throw new Error(`Failed to create theme "${themeName}": ${themeError.message}`);
+        }
+        
+        if (!newTheme) {
+          throw new Error(`Failed to create theme "${themeName}": no data returned`);
+        }
+        
+        // Replace ghost ID with real ID
+        resolvedThemeIds = resolvedThemeIds.map(id => id === ghostId ? newTheme.id : id);
+        
+        toast({
+          title: "Created new Theme",
+          description: themeName,
+        });
+      }
+      
+      // Process Ghost Assets (if assets are implemented)
+      // For now, assets section doesn't have selectedAssetIds state, but we'll prepare for it
+      // const ghostAssets = selectedAssetIds.filter(id => id.startsWith('ghost-asset-'));
+      // for (const ghostId of ghostAssets) {
+      //   const assetName = ghostId.replace('ghost-asset-', '');
+      //   
+      //   if (!propertyId) {
+      //     throw new Error(`Cannot create asset "${assetName}" without a property selected`);
+      //   }
+      //   
+      //   const { data: newAsset, error: assetError } = await supabase
+      //     .from("assets")
+      //     .insert({
+      //       org_id: orgId,
+      //       property_id: propertyId,
+      //       title: assetName,
+      //     })
+      //     .select("id")
+      //     .single();
+      //   
+      //   if (assetError) {
+      //     console.error("Error creating asset:", assetError);
+      //     throw new Error(`Failed to create asset "${assetName}": ${assetError.message}`);
+      //   }
+      //   
+      //   if (!newAsset) {
+      //     throw new Error(`Failed to create asset "${assetName}": no data returned`);
+      //   }
+      //   
+      //   resolvedAssetIds = resolvedAssetIds.map(id => id === ghostId ? newAsset.id : id);
+      //   
+      //   toast({
+      //     title: "Created new Asset",
+      //     description: assetName,
+      //   });
+      // }
+      
       // Priority will be normalized by the RPC function
       // Frontend uses: 'low', 'medium', 'high', 'urgent'
       // RPC will map 'medium' to 'normal' automatically
@@ -235,7 +357,7 @@ export function CreateTaskModal({
         dueDateValue = dateObj.toISOString();
       }
       
-      // Use the new RPC function
+      // Use the new RPC function with resolved (non-ghost) IDs
       const { data: newTask, error: createError } = await supabase.rpc("create_task_v2", {
         p_org_id: orgId,
         p_title: finalTitle,
@@ -256,9 +378,50 @@ export function CreateTaskModal({
 
       const taskId = (newTask as any).id;
       
+      // Link spaces to task via task_spaces junction table
+      if (resolvedSpaceIds.length > 0) {
+        const spaceInserts = resolvedSpaceIds.map(spaceId => ({
+          task_id: taskId,
+          space_id: spaceId,
+        }));
+        
+        const { error: spaceLinkError } = await supabase
+          .from("task_spaces")
+          .insert(spaceInserts);
+        
+        if (spaceLinkError) {
+          console.error("Error linking spaces to task:", spaceLinkError);
+          // Don't throw - task is already created, just log the error
+        }
+      }
+      
+      // Link themes to task via task_themes junction table
+      if (resolvedThemeIds.length > 0) {
+        const themeInserts = resolvedThemeIds.map(themeId => ({
+          task_id: taskId,
+          theme_id: themeId,
+        }));
+        
+        const { error: themeLinkError } = await supabase
+          .from("task_themes")
+          .insert(themeInserts);
+        
+        if (themeLinkError) {
+          console.error("Error linking themes to task:", themeLinkError);
+          // Don't throw - task is already created, just log the error
+        }
+      }
+      
+      // Show final success toast
+      const createdEntities = [];
+      if (ghostSpaces.length > 0) createdEntities.push(`${ghostSpaces.length} space${ghostSpaces.length > 1 ? 's' : ''}`);
+      if (ghostThemes.length > 0) createdEntities.push(`${ghostThemes.length} theme${ghostThemes.length > 1 ? 's' : ''}`);
+      
       toast({
         title: "Task created",
-        description: "Your task has been added successfully."
+        description: createdEntities.length > 0 
+          ? `Task created. Created new ${createdEntities.join(' and ')}.`
+          : "Your task has been added successfully."
       });
       resetForm();
       onOpenChange(false);
@@ -338,7 +501,7 @@ export function CreateTaskModal({
                 <Badge 
                   key={`space-${idx}`} 
                   variant="outline" 
-                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
                   onClick={() => setActiveTab("where")}
                 >
                   <MapPin className="h-3 w-3 mr-1" />
@@ -349,7 +512,7 @@ export function CreateTaskModal({
                 <Badge 
                   key={`person-${idx}`} 
                   variant="outline" 
-                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
                   onClick={() => setActiveTab("who")}
                 >
                   <User className="h-3 w-3 mr-1" />
@@ -359,16 +522,15 @@ export function CreateTaskModal({
               {aiSuggestions.assets.map((asset, idx) => (
                 <Badge 
                   key={`asset-${idx}`} 
-                  variant="secondary" 
-                  className="font-mono text-xs uppercase"
+                  variant="secondary"
                 >
                   {asset}
                 </Badge>
               ))}
               {aiSuggestions.priority === "HIGH" && (
                 <Badge 
-                  variant="destructive" 
-                  className="font-mono text-xs uppercase cursor-pointer"
+                  variant="danger" 
+                  className="cursor-pointer"
                   onClick={() => {
                     setPriority("high");
                     setActiveTab("priority");
@@ -381,7 +543,7 @@ export function CreateTaskModal({
               {aiSuggestions.date && (
                 <Badge 
                   variant="outline" 
-                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
                   onClick={() => setActiveTab("when")}
                 >
                   <Calendar className="h-3 w-3 mr-1" />
@@ -389,15 +551,15 @@ export function CreateTaskModal({
                 </Badge>
               )}
               {aiSuggestions.yes_no && (
-                <Badge variant="secondary" className="font-mono text-xs uppercase flex items-center gap-1">
+                <Badge variant="secondary" className="flex items-center gap-1">
                   <Check className="h-3 w-3" />
                   Yes/No
                 </Badge>
               )}
               {aiSuggestions.signature && (
                 <Badge 
-                  variant="outline" 
-                  className="font-mono text-xs uppercase cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all border-amber-500 text-amber-600"
+                  variant="warning" 
+                  className="cursor-pointer"
                   onClick={() => {
                     setIsCompliance(true);
                     setShowAdvanced(true);
@@ -412,28 +574,69 @@ export function CreateTaskModal({
         )}
 
         {/* Metadata Tabs */}
-        <div className="rounded-xl overflow-hidden bg-primary/30">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-black/0">
-            <TabsList className="w-full grid grid-cols-4 h-11 bg-muted/50 p-1 rounded-none">
-              <TabsTrigger value="where" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
-                <MapPin className="h-3 w-3" />
+        <div className="space-y-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList
+              className={cn(
+                "w-full grid grid-cols-4 h-12 py-1 px-2 rounded-[15px] bg-transparent",
+                "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]"
+              )}
+            >
+              <TabsTrigger
+                value="where"
+                className={cn(
+                  "rounded-lg transition-all gap-1",
+                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                  "data-[state=active]:bg-card",
+                  "data-[state=inactive]:bg-transparent",
+                  "text-sm font-medium"
+                )}
+              >
+                <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline">Where</span>
               </TabsTrigger>
-              <TabsTrigger value="when" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
-                <Calendar className="h-3 w-3" />
+              <TabsTrigger
+                value="when"
+                className={cn(
+                  "rounded-lg transition-all gap-1",
+                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                  "data-[state=active]:bg-card",
+                  "data-[state=inactive]:bg-transparent",
+                  "text-sm font-medium"
+                )}
+              >
+                <Calendar className="h-4 w-4" />
                 <span className="hidden sm:inline">When</span>
               </TabsTrigger>
-              <TabsTrigger value="who" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
-                <User className="h-3 w-3" />
+              <TabsTrigger
+                value="who"
+                className={cn(
+                  "rounded-lg transition-all gap-1",
+                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                  "data-[state=active]:bg-card",
+                  "data-[state=inactive]:bg-transparent",
+                  "text-sm font-medium"
+                )}
+              >
+                <User className="h-4 w-4" />
                 <span className="hidden sm:inline">Who</span>
               </TabsTrigger>
-              <TabsTrigger value="priority" className="gap-1 text-xs text-muted-foreground/60 data-[state=active]:text-foreground data-[state=active]:bg-background rounded-[5px]">
-                <AlertTriangle className="h-3 w-3" />
+              <TabsTrigger
+                value="priority"
+                className={cn(
+                  "rounded-lg transition-all gap-1",
+                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                  "data-[state=active]:bg-card",
+                  "data-[state=inactive]:bg-transparent",
+                  "text-sm font-medium"
+                )}
+              >
+                <AlertTriangle className="h-4 w-4" />
                 <span className="hidden sm:inline">Priority</span>
               </TabsTrigger>
             </TabsList>
 
-            <div className="p-4 bg-secondary">
+            <div className="p-4 bg-background">
               <TabsContent value="where" className="mt-0">
                 <WhereTab 
                   propertyId={propertyId} 

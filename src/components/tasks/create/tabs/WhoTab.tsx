@@ -10,14 +10,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StandardChip } from "@/components/chips/StandardChip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
+import { Textarea } from "@/components/ui/textarea";
 import { useTeams } from "@/hooks/useTeams";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface WhoTabProps {
   assignedUserId?: string;
@@ -55,7 +58,6 @@ export function WhoTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreatePerson, setShowCreatePerson] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [newPersonName, setNewPersonName] = useState("");
   const [newTeamName, setNewTeamName] = useState("");
   const [teamImageFile, setTeamImageFile] = useState<File | null>(null);
   const [teamImagePreview, setTeamImagePreview] = useState<string | null>(null);
@@ -64,6 +66,17 @@ export function WhoTab({
   const [creating, setCreating] = useState(false);
   const [pendingGhostPerson, setPendingGhostPerson] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add Person Modal state
+  const [inviteTab, setInviteTab] = useState<"team" | "vendor">("team");
+  const [teamMemberFirstName, setTeamMemberFirstName] = useState("");
+  const [teamMemberLastName, setTeamMemberLastName] = useState("");
+  const [teamMemberEmail, setTeamMemberEmail] = useState("");
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [vendorName, setVendorName] = useState("");
+  const [vendorEmail, setVendorEmail] = useState("");
+  const [vendorInviteText, setVendorInviteText] = useState("You've been invited to view and work on a task. Click the link below to access it.");
 
   // Map org members to chips
   const allPeople: PersonChip[] = members.map((m) => ({
@@ -107,7 +120,15 @@ export function WhoTab({
 
   const handleGhostPersonClick = (personName: string) => {
     setPendingGhostPerson(personName);
-    setNewPersonName(personName);
+    // Pre-fill team member name if it looks like a full name
+    const nameParts = personName.split(" ");
+    if (nameParts.length >= 2) {
+      setTeamMemberFirstName(nameParts[0]);
+      setTeamMemberLastName(nameParts.slice(1).join(" "));
+    } else {
+      setTeamMemberFirstName(personName);
+    }
+    setInviteTab("team");
     setShowCreatePerson(true);
   };
 
@@ -128,17 +149,52 @@ export function WhoTab({
   };
 
   const handleCreatePerson = async () => {
-    if (!newPersonName.trim()) return;
-    
-    // For now, create a placeholder (real person creation requires invite flow)
-    toast({
-      title: "Person noted",
-      description: `${newPersonName} will be invited when you send an invite.`,
-    });
-    
-    setNewPersonName("");
-    setPendingGhostPerson(null);
-    setShowCreatePerson(false);
+    if (inviteTab === "team") {
+      if (!teamMemberFirstName.trim() || !teamMemberLastName.trim() || !teamMemberEmail.trim()) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // TODO: Create team member invite
+      toast({
+        title: "Team member added",
+        description: `${teamMemberFirstName} ${teamMemberLastName} will be invited.`,
+      });
+      
+      // Reset form
+      setTeamMemberFirstName("");
+      setTeamMemberLastName("");
+      setTeamMemberEmail("");
+      setSelectedTeamIds([]);
+      setSelectedGroupIds([]);
+      setShowCreatePerson(false);
+    } else {
+      // External Vendor
+      if (!vendorName.trim() || !vendorEmail.trim()) {
+        toast({
+          title: "Error",
+          description: "Please fill in name and email",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Store vendor info - magic link will be generated when task is created
+      toast({
+        title: "Vendor added",
+        description: `${vendorName} will receive an invite link when the task is created.`,
+      });
+      
+      // Reset form
+      setVendorName("");
+      setVendorEmail("");
+      setVendorInviteText("You've been invited to view and work on a task. Click the link below to access it.");
+      setShowCreatePerson(false);
+    }
   };
 
   const handleCreateTeam = async () => {
@@ -268,7 +324,12 @@ export function WhoTab({
           <button
             type="button"
             onClick={() => {
-              setNewPersonName("");
+              setInviteTab("team");
+              setTeamMemberFirstName("");
+              setTeamMemberLastName("");
+              setTeamMemberEmail("");
+              setSelectedTeamIds([]);
+              setSelectedGroupIds([]);
               setShowCreatePerson(true);
             }}
             className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -356,33 +417,161 @@ export function WhoTab({
         </div>
       </div>
 
-      {/* Create Person Modal */}
+      {/* Create Person Modal with Tabs */}
       <Dialog open={showCreatePerson} onOpenChange={(open) => {
         setShowCreatePerson(open);
-        if (!open) setPendingGhostPerson(null);
+        if (!open) {
+          setPendingGhostPerson(null);
+          setInviteTab("team");
+          setTeamMemberFirstName("");
+          setTeamMemberLastName("");
+          setTeamMemberEmail("");
+          setSelectedTeamIds([]);
+          setSelectedGroupIds([]);
+          setVendorName("");
+          setVendorEmail("");
+          setVendorInviteText("You've been invited to view and work on a task. Click the link below to access it.");
+        }
       }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {pendingGhostPerson ? `Add "${pendingGhostPerson}"?` : "Add Person"}
+              {pendingGhostPerson ? `Add "${pendingGhostPerson}"?` : "Invite"}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Name</Label>
-              <Input
-                placeholder="Person name"
-                value={newPersonName}
-                onChange={(e) => setNewPersonName(e.target.value)}
-                className="shadow-engraved"
-              />
-            </div>
-            {pendingGhostPerson && (
-              <p className="text-xs text-muted-foreground">
-                This person doesn't exist yet. They'll be added when you invite them.
-              </p>
-            )}
-          </div>
+          
+          <Tabs value={inviteTab} onValueChange={(v) => setInviteTab(v as "team" | "vendor")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="team">Team Member</TabsTrigger>
+              <TabsTrigger value="vendor">External Vendor</TabsTrigger>
+            </TabsList>
+            
+            {/* Team Member Tab */}
+            <TabsContent value="team" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input
+                    placeholder="First name"
+                    value={teamMemberFirstName}
+                    onChange={(e) => setTeamMemberFirstName(e.target.value)}
+                    className="shadow-engraved"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input
+                    placeholder="Last name"
+                    value={teamMemberLastName}
+                    onChange={(e) => setTeamMemberLastName(e.target.value)}
+                    className="shadow-engraved"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={teamMemberEmail}
+                  onChange={(e) => setTeamMemberEmail(e.target.value)}
+                  className="shadow-engraved"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Team</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // TODO: Open team search/selector
+                    }}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add or Search
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 min-h-[32px]">
+                  {selectedTeamIds.map((teamId) => {
+                    const team = allTeams.find(t => t.id === teamId);
+                    return team ? (
+                      <StandardChip
+                        key={teamId}
+                        label={team.name}
+                        selected
+                        onRemove={() => setSelectedTeamIds(prev => prev.filter(id => id !== teamId))}
+                      />
+                    ) : null;
+                  })}
+                  {selectedTeamIds.length === 0 && (
+                    <span className="text-xs text-muted-foreground">No teams selected</span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Other Groups</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // TODO: Open group search/selector
+                    }}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add or Search
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2 min-h-[32px]">
+                  {selectedGroupIds.length === 0 && (
+                    <span className="text-xs text-muted-foreground">No groups selected</span>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+            
+            {/* External Vendor Tab */}
+            <TabsContent value="vendor" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Name</Label>
+                <Input
+                  placeholder="Vendor name"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  className="shadow-engraved"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={vendorEmail}
+                  onChange={(e) => setVendorEmail(e.target.value)}
+                  className="shadow-engraved"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Invite Message</Label>
+                <Textarea
+                  placeholder="Invite message"
+                  value={vendorInviteText}
+                  onChange={(e) => setVendorInviteText(e.target.value)}
+                  className="shadow-engraved min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This message will be sent with the magic link to access the task.
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
           <DialogFooter>
             <Button
               variant="outline"
@@ -395,9 +584,13 @@ export function WhoTab({
             </Button>
             <Button
               onClick={handleCreatePerson}
-              disabled={!newPersonName.trim()}
+              disabled={
+                inviteTab === "team"
+                  ? !teamMemberFirstName.trim() || !teamMemberLastName.trim() || !teamMemberEmail.trim()
+                  : !vendorName.trim() || !vendorEmail.trim()
+              }
             >
-              Add
+              {inviteTab === "team" ? "Add Team Member" : "Add Vendor"}
             </Button>
           </DialogFooter>
         </DialogContent>

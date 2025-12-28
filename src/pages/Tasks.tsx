@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Plus } from "lucide-react";
-import { BottomNav } from "@/components/BottomNav";
+import { Plus, CheckSquare } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
-import { PageHeader } from "@/components/design-system/PageHeader";
+import { StandardPage } from "@/components/design-system/StandardPage";
 import { useTasks } from "@/hooks/use-tasks";
 
 const Tasks = () => {
@@ -29,31 +28,25 @@ const Tasks = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <PageHeader>
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Tasks</h1>
-          </div>
-          <NeomorphicButton onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
-          </NeomorphicButton>
-        </div>
-      </PageHeader>
-
+    <StandardPage
+      title="Tasks"
+      icon={<CheckSquare className="h-6 w-6" />}
+      action={
+        <NeomorphicButton size="sm" onClick={() => setShowCreateModal(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add Task
+        </NeomorphicButton>
+      }
+      maxWidth="md"
+    >
       <CreateTaskModal 
         open={showCreateModal} 
         onOpenChange={setShowCreateModal}
         onTaskCreated={handleTaskCreated}
       />
 
-      <div className="max-w-md mx-auto px-4 py-6">
-        <TaskList />
-      </div>
-
-      <BottomNav />
-    </div>
+      <TaskList />
+    </StandardPage>
   );
 };
 

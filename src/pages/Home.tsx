@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTasks } from '@/hooks/useTasks';
 import { StandardPage } from '@/components/design-system/StandardPage';
+import DashboardSection from '@/components/dashboard/DashboardSection';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ const Home = () => {
       icon={<HomeIcon className="h-6 w-6" />}
       maxWidth="md"
     >
+      <div className="space-y-6">
         {/* Mini Calendar */}
         <MiniCalendar
           selectedDate={selectedDate}
@@ -70,7 +73,7 @@ const Home = () => {
         />
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           {stats.map((stat) => (
             <button
               key={stat.label}
@@ -78,7 +81,7 @@ const Home = () => {
               className="p-4 rounded-lg text-left bg-card shadow-e1 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2 rounded-lg bg-background shadow-engraved">
+                <div className="p-2 rounded-lg bg-surface-gradient shadow-engraved">
                   <stat.icon className={`h-5 w-5 ${stat.colorClass}`} />
                 </div>
               </div>
@@ -93,68 +96,58 @@ const Home = () => {
         </div>
 
         {/* Recent Activity */}
-        <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Recent Activity
-            </h2>
-          </div>
-          <div className="rounded-lg p-4 bg-card shadow-e1">
-            <div className="space-y-4">
-              {recentActivity.map((item, idx) => (
-                <div key={idx} className="flex items-start gap-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${item.colorClass}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm leading-relaxed text-foreground">
-                      {item.text}
-                    </p>
+        <DashboardSection title="Recent Activity">
+          <Card className="shadow-e1">
+            <CardContent className="p-4">
+              <div className="space-y-4">
+                {recentActivity.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${item.colorClass}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-relaxed text-foreground">
+                        {item.text}
+                      </p>
+                    </div>
+                    <Badge variant="neutral" size="sm" className="text-[10px] px-2 py-0.5 shrink-0">
+                      {item.time}
+                    </Badge>
                   </div>
-                  <span className="text-xs shrink-0 text-muted-foreground">
-                    {item.time}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </DashboardSection>
 
         {/* Upcoming Reminders */}
-        <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Upcoming
-            </h2>
-            <Badge variant="primary">{upcomingReminders.length}</Badge>
-          </div>
+        <DashboardSection title="Upcoming">
           <div className="space-y-3">
             {upcomingReminders.map((reminder, idx) => (
-              <div
-                key={idx}
-                className="rounded-lg p-4 bg-card shadow-e1"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg shrink-0 bg-background shadow-engraved">
-                    <Clock className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold mb-0.5 text-foreground">
-                      {reminder.title}
-                    </p>
-                    <p className="text-xs mb-1 text-muted-foreground">
-                      {reminder.property}
-                    </p>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1 h-1 rounded-full bg-signal" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {reminder.time}
-                      </span>
+              <Card key={idx} className="shadow-e1">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg shrink-0 bg-surface-gradient shadow-engraved">
+                      <Clock className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold mb-0.5 text-foreground">
+                        {reminder.title}
+                      </p>
+                      <p className="text-xs mb-1 text-muted-foreground font-mono">
+                        {reminder.property}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="warning" size="sm" className="text-[10px] px-2 py-0.5">
+                          {reminder.time}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </div>
+        </DashboardSection>
+      </div>
       <FloatingAddButton />
     </StandardPage>
   );

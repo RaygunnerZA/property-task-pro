@@ -53,10 +53,20 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
   );
 
   const handleGhostThemeClick = (themeName: string, themeType?: string) => {
-    setPendingGhostTheme({ name: themeName, type: themeType });
-    setNewThemeName(themeName);
-    setNewThemeType((themeType as any) || 'category');
-    setShowCreateModal(true);
+    // Allow direct selection of ghost chips - store with ghost prefix and type
+    // This enables "just-in-time" creation during task save
+    const themeTypeValue = themeType || 'category';
+    const ghostId = `ghost-theme-${themeName}-${themeTypeValue}`;
+    if (selectedThemeIds.includes(ghostId)) {
+      onThemesChange(selectedThemeIds.filter(id => id !== ghostId));
+    } else {
+      onThemesChange([...selectedThemeIds, ghostId]);
+    }
+    // Keep modal option for manual creation (optional)
+    // setPendingGhostTheme({ name: themeName, type: themeType });
+    // setNewThemeName(themeName);
+    // setNewThemeType((themeType as any) || 'category');
+    // setShowCreateModal(true);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,16 +203,22 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
         ))}
         
         {/* Ghost chips for AI suggestions */}
-        {ghostThemes.map((ghost, idx) => (
-          <StandardChip
-            key={`ghost-${idx}`}
-            label={`+ ${ghost.name}`}
-            ghost
-            onSelect={() => handleGhostThemeClick(ghost.name, ghost.type)}
-            icon={<Tag className="h-3 w-3" />}
-            color="#FCD34D"
-          />
-        ))}
+        {ghostThemes.map((ghost, idx) => {
+          const themeTypeValue = ghost.type || 'category';
+          const ghostId = `ghost-theme-${ghost.name}-${themeTypeValue}`;
+          const isSelected = selectedThemeIds.includes(ghostId);
+          return (
+            <StandardChip
+              key={`ghost-${idx}`}
+              label={isSelected ? ghost.name : `+ ${ghost.name}`}
+              ghost={!isSelected}
+              selected={isSelected}
+              onSelect={() => handleGhostThemeClick(ghost.name, ghost.type)}
+              icon={<Tag className="h-3 w-3" />}
+              color="#FCD34D"
+            />
+          );
+        })}
         
         {themes.length === 0 && ghostThemes.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">

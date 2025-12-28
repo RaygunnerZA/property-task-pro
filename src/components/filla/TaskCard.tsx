@@ -94,11 +94,18 @@ export function TaskCard({
 
       {/* Image Zone - anchored right */}
       {imageUrl && (
-        <div className="w-20 sm:w-24 flex-shrink-0 -m-4 ml-0">
+        <div className="w-20 sm:w-24 flex-shrink-0 -m-4 ml-0 relative">
           <img
             src={imageUrl}
             alt={title}
             className="w-full h-full object-cover"
+          />
+          {/* Neumorphic overlay - light inner shadow top/left, outer shadow right */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
+            }}
           />
         </div>
       )}

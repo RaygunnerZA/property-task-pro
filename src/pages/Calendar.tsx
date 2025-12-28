@@ -65,7 +65,7 @@ const Calendar = () => {
 
           {/* Day Agenda - Right Side */}
           <div className="w-full">
-            <Card className="shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)] p-6">
+            <Card className="shadow-e1 p-6">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-foreground mb-1">
                   Day Agenda
@@ -76,7 +76,7 @@ const Calendar = () => {
               </div>
 
               {tasksForSelectedDate.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="py-12">
                   <p className="text-muted-foreground">
                     No tasks scheduled for this date
                   </p>

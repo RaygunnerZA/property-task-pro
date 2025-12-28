@@ -25,20 +25,20 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
   const getConditionBadge = (score: number) => {
     if (score >= 80) {
       return (
-        <Badge variant="secondary" className="bg-green-500/10 text-green-700 border-green-500/20">
+        <Badge variant="success">
           Good
         </Badge>
       );
     }
     if (score >= 60) {
       return (
-        <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">
+        <Badge variant="warning">
           Fair
         </Badge>
       );
     }
     return (
-      <Badge variant="secondary" className="bg-red-500/10 text-red-700 border-red-500/20">
+      <Badge variant="danger">
         Poor
       </Badge>
     );
@@ -59,31 +59,29 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {asset.serial && (
-          <div className="text-sm text-muted-foreground">
-            <span className="font-medium">Serial:</span> {asset.serial}
-          </div>
-        )}
-        {propertyName && (
-          <div className="flex items-start gap-2 text-sm">
-            <Wrench className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-muted-foreground">
-                <span className="font-medium">Property:</span> {propertyName}
-              </p>
-              {spaceName && (
-                <p className="text-muted-foreground">
-                  <span className="font-medium">Space:</span> {spaceName}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {asset.serial && (
+            <Badge variant="neutral" size="sm">
+              Serial: {asset.serial}
+            </Badge>
+          )}
+          {propertyName && (
+            <Badge variant="neutral" size="sm" className="flex items-center gap-1">
+              <Wrench className="h-3 w-3" />
+              {propertyName}
+            </Badge>
+          )}
+          {spaceName && (
+            <Badge variant="neutral" size="sm">
+              {spaceName}
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>Condition Score</span>
-              <span className="font-medium">{conditionScore}/100</span>
+            <div className="flex items-center justify-between mb-1">
+              <Badge variant="neutral" size="sm">Condition Score</Badge>
+              <Badge variant="neutral" size="sm">{conditionScore}/100</Badge>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div

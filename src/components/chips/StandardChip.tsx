@@ -40,8 +40,9 @@ export function StandardChip({
     if (onRemove) onRemove();
   };
 
-  // Ghost variant styling
-  if (ghost) {
+  // Ghost variant styling (only if not selected)
+  // When selected, ghost chips should show as normal selected chips
+  if (ghost && !selected) {
     return (
       <button
         type="button"

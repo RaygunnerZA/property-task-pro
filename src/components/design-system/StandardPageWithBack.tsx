@@ -55,11 +55,11 @@ export function StandardPageWithBack({
   const navigate = useNavigate();
   
   const maxWidthClasses = {
-    sm: "max-w-md",
-    md: "max-w-7xl",
-    lg: "max-w-7xl",
-    xl: "max-w-7xl",
-    full: "max-w-full"
+    sm: "max-w-md",        // Mobile-first, single column
+    md: "max-w-4xl",       // Tablet, comfortable reading width
+    lg: "max-w-6xl",       // Desktop, two-column layouts
+    xl: "max-w-7xl",       // Large desktop, multi-column
+    full: "max-w-full"     // Full width, no constraints
   };
 
   const handleBack = () => {
@@ -75,7 +75,7 @@ export function StandardPageWithBack({
   return (
     <div className={cn("min-h-screen bg-background pb-20", className)}>
       <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 py-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
+        <div className={cn("mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Button
               variant="ghost"
@@ -86,12 +86,12 @@ export function StandardPageWithBack({
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               {icon && <span className="icon-primary shrink-0">{icon}</span>}
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold text-foreground truncate">{title}</h1>
+                <h1 className="text-2xl font-semibold text-foreground leading-tight truncate">{title}</h1>
                 {subtitle && (
-                  <p className="text-sm text-muted-foreground truncate">{subtitle}</p>
+                  <p className="text-sm text-muted-foreground mt-1 truncate">{subtitle}</p>
                 )}
               </div>
             </div>

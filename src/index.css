@@ -14,7 +14,7 @@
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
 
     /* Surface Colors */
-    --card: 40 10% 90%;              /* Light warm gray surface */
+    --card: 0 0% 100%;               /* Pure white #ffffff for cards */
     --card-foreground: 248 15% 18%; /* Ink text */
 
     --popover: 0 0% 100%;
@@ -140,7 +140,7 @@
 
   /* Paper texture pattern - custom noise filter (exact as provided) */
   :root {
-    --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.58' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.52'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.52'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.52'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.19'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.47' intercept='-0.23'/%3E%3CfeFuncG type='linear' slope='1.47' intercept='-0.23'/%3E%3CfeFuncB type='linear' slope='1.47' intercept='-0.23'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)'%3E%3C/rect%3E%3C/svg%3E");
+    --paper-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E");
     --paper-gradient: linear-gradient(135deg, rgba(244,243,240,0.98) 0%, rgba(240,239,233,0.98) 50%, rgba(238,237,231,0.98) 100%);
   }
 
@@ -157,10 +157,33 @@
   main,
   [role="main"],
   div[class*="bg-background"],
-  div[class*="bg-white"],
-  div[class*="bg-card"] {
+  div[class*="bg-white"] {
     background-image: var(--paper-texture) !important;
     background-size: 100% !important;
+  }
+  
+  /* Cards use pure white with reduced opacity paper texture overlay */
+  div[class*="bg-card"] {
+    background-color: #ffffff !important;
+    position: relative;
+  }
+  
+  div[class*="bg-card"]::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--paper-texture);
+    background-size: 100%;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: inherit;
+  }
+  
+  /* Ensure card content is above the texture overlay */
+  div[class*="bg-card"] > * {
+    position: relative;
+    z-index: 1;
   }
   
   /* Modal paper texture */

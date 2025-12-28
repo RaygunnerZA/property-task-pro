@@ -163,7 +163,7 @@ const TaskDetail = () => {
         </div>
 
         {property && (
-          <Card>
+          <Card className="shadow-e1">
             <CardHeader>
               <CardTitle className="text-lg">Property Information</CardTitle>
             </CardHeader>
@@ -179,7 +179,7 @@ const TaskDetail = () => {
           </Card>
         )}
 
-        <Card>
+        <Card className="shadow-e1">
           <CardHeader>
             <CardTitle className="text-lg">Task Details</CardTitle>
           </CardHeader>
@@ -220,7 +220,7 @@ const TaskDetail = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-e1">
           <CardHeader>
             <CardTitle className="text-lg">Update Status</CardTitle>
           </CardHeader>
@@ -239,7 +239,7 @@ const TaskDetail = () => {
         </Card>
 
         {/* Chat Thread */}
-        <Card>
+        <Card className="shadow-e1">
           <CardHeader>
             <CardTitle className="text-lg">Conversation</CardTitle>
           </CardHeader>

@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
+import DashboardSection from '@/components/dashboard/DashboardSection';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
@@ -126,67 +127,60 @@ const ManagerDashboard = () => {
         </div>
 
         {/* Recent Activity */}
-        <Card
-          className={cn(
-            "rounded-xl bg-surface-gradient",
-            "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]",
-            "border-0"
-          )}
-        >
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentTasks.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No recent activity</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    onClick={() => navigate(`/task/${task.id}`)}
-                    className={cn(
-                      "p-3 rounded-lg cursor-pointer transition-all",
-                      "bg-input",
-                      "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
-                      "hover:scale-[1.01] active:scale-[0.99]"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm truncate">
-                          {(task as any).title || "Untitled Task"}
-                        </h4>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            Updated {format(new Date(task.updated_at || task.created_at), "MMM d, HH:mm")}
-                          </span>
+        <DashboardSection title="Recent Activity">
+          <Card className="shadow-e1">
+            <CardContent>
+              {recentTasks.length === 0 ? (
+                <div className="py-8 text-muted-foreground">
+                  <p>No recent activity</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {recentTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      onClick={() => navigate(`/task/${task.id}`)}
+                      className={cn(
+                        "p-3 rounded-lg cursor-pointer transition-all",
+                        "bg-input",
+                        "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]",
+                        "hover:scale-[1.01] active:scale-[0.99]"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm truncate">
+                            {(task as any).title || "Untitled Task"}
+                          </h4>
+                          <Badge variant="neutral" size="sm" className="mt-1 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {format(new Date(task.updated_at || task.created_at), "MMM d, HH:mm")}
+                            </span>
+                          </Badge>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <Badge
+                            variant={
+                              task.status === "completed"
+                                ? "success"
+                                : task.status === "in_progress"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {task.status || "open"}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        <Badge
-                          variant={
-                            task.status === "completed"
-                              ? "success"
-                              : task.status === "in_progress"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="text-xs"
-                        >
-                          {task.status || "open"}
-                        </Badge>
-                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </DashboardSection>
       </div>
     </StandardPage>
   );

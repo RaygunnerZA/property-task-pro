@@ -33,7 +33,6 @@ export const MonthCalendar: React.FC<MonthCalendarProps> = ({
   const fmtISO = (d: Date) => d.toISOString().slice(0, 10);
   const monthLabel = currentDate.toLocaleDateString("en-US", {
     month: "long",
-    year: "numeric",
   });
 
   const handleChangeMonth = (direction: "prev" | "next") => {

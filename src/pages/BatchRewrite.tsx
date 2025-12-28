@@ -46,6 +46,6 @@ export default function BatchRewrite() {
           loading={loading}
         />
       </div>
-    </div>
+    </StandardPageWithBack>
   );
 }

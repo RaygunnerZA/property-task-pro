@@ -203,7 +203,7 @@ export default function PropertyDetail() {
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card className="p-6">
+              <Card className="p-6 shadow-e1">
                 <div className="text-sm text-muted-foreground mb-1">
                   Open Tasks
                 </div>
@@ -211,7 +211,7 @@ export default function PropertyDetail() {
                   {openTasksCount}
                 </div>
               </Card>
-              <Card className="p-6">
+              <Card className="p-6 shadow-e1">
                 <div className="text-sm text-muted-foreground mb-1">
                   Assets
                 </div>
@@ -219,7 +219,7 @@ export default function PropertyDetail() {
                   {propertyAssets.length}
                 </div>
               </Card>
-              <Card className="p-6">
+              <Card className="p-6 shadow-e1">
                 <div className="text-sm text-muted-foreground mb-1">
                   Spaces
                 </div>
@@ -233,14 +233,14 @@ export default function PropertyDetail() {
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-6">
             {tasksLoading ? (
-              <div className="text-center py-12">
+              <div className="py-12">
                 <p className="text-muted-foreground">Loading tasks...</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Filter TaskList to show only property tasks */}
                 {propertyTasks.length === 0 ? (
-                  <Card className="p-8 text-center">
+                  <Card className="p-8 shadow-e1">
                     <h3 className="font-semibold text-lg mb-2">No tasks</h3>
                     <p className="text-muted-foreground text-sm mb-4">
                       This property doesn't have any tasks yet.
@@ -338,11 +338,11 @@ export default function PropertyDetail() {
               </Button>
             </div>
             {assetsLoading ? (
-              <div className="text-center py-12">
+              <div className="py-12">
                 <p className="text-muted-foreground">Loading assets...</p>
               </div>
             ) : propertyAssets.length === 0 ? (
-              <Card className="p-8 text-center">
+              <Card className="p-8 shadow-e1">
                 <h3 className="font-semibold text-lg mb-2">No assets</h3>
                 <p className="text-muted-foreground text-sm mb-4">
                   This property doesn't have any assets yet.
@@ -374,7 +374,7 @@ export default function PropertyDetail() {
 
           {/* Compliance Tab */}
           <TabsContent value="compliance" className="mt-6">
-            <Card className="p-8 text-center">
+            <Card className="p-8 shadow-e1">
               <h3 className="font-semibold text-lg mb-2">Compliance</h3>
               <p className="text-muted-foreground text-sm mb-4">
                 Compliance information will be displayed here.

@@ -75,6 +75,8 @@ import Properties from "./pages/Properties";
 import Tasks from "./pages/Tasks";
 import Calendar from "./pages/Calendar";
 import Compliance from "./pages/Compliance";
+import ContractorAccess from "./pages/contractor/ContractorAccess";
+import ContractorTask from "./pages/contractor/ContractorTask";
 
 // Settings pages
 import { SettingsLayout } from "./pages/settings/SettingsLayout";
@@ -110,6 +112,10 @@ const App = () => {
                 
                 {/* Login route (no layout) */}
                 <Route path="/login" element={<Login />} />
+                
+                {/* Contractor routes (no auth required, no layout) */}
+                <Route path="/contractor/access" element={<ContractorAccess />} />
+                <Route path="/contractor/task/:id" element={<ContractorTask />} />
                 
                 {/* All main app routes wrapped in AppLayout */}
                 <Route path="/*" element={

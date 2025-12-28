@@ -62,13 +62,13 @@ export function TaskPanel({ onTaskClick }: TaskPanelProps = {}) {
   }, [tasks]);
 
   return (
-    <div className="h-full flex flex-col bg-card">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[18px] pb-[18px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-card border-b border-border/50">
+        <div className="sticky top-0 z-10 bg-background border-b border-border/50">
           <TabsList
             className={cn(
-              "w-full grid grid-cols-3 h-12 p-1 rounded-none bg-transparent",
+              "w-full grid grid-cols-3 h-12 py-1 px-2 rounded-[15px] bg-transparent",
               "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]"
             )}
           >

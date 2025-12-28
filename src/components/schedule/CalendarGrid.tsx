@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { useTasks } from "@/hooks/use-tasks";
 import { cn } from "@/lib/utils";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, format as formatDate } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cardButtonClassName } from "@/components/design-system/CardButton";
+import type { CaptionProps } from "react-day-picker";
 
 interface CalendarGridProps {
   selectedDate?: Date;
@@ -57,8 +60,17 @@ export function CalendarGrid({ selectedDate, onDateSelect }: CalendarGridProps) 
     );
   }
 
+  // Custom CaptionLabel component that only shows month
+  const CustomCaptionLabel = (props: { displayMonth: Date }) => {
+    return (
+      <span className="text-2xl font-semibold text-foreground">
+        {formatDate(props.displayMonth, "MMMM")}
+      </span>
+    );
+  };
+
   return (
-    <div className="rounded-xl bg-surface-gradient p-4 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)]">
+    <div className="rounded-xl bg-card p-4 shadow-e1">
       <Calendar
         mode="single"
         selected={selectedDate}
@@ -74,17 +86,15 @@ export function CalendarGrid({ selectedDate, onDateSelect }: CalendarGridProps) 
           months: "flex flex-col space-y-4",
           month: "space-y-4",
           caption: "flex justify-center pt-1 relative items-center mb-2",
-          caption_label: "text-sm font-semibold text-foreground",
+          caption_label: "text-2xl font-semibold text-foreground",
           nav: "space-x-1 flex items-center",
-          nav_button: cn(
-            "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 rounded-md hover:bg-accent transition-colors"
-          ),
+          nav_button: cardButtonClassName,
           nav_button_previous: "absolute left-1",
           nav_button_next: "absolute right-1",
           table: "w-full border-collapse space-y-1",
-          head_row: "flex",
+          head_row: "flex justify-center items-center",
           head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
-          row: "flex w-full mt-2 mb-2 py-0 justify-start items-start font-mono",
+          row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
           cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
           day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full flex items-center justify-center",
           day_selected: "bg-[#8EC9CE] text-white hover:bg-[#8EC9CE] hover:text-white focus:bg-[#8EC9CE] focus:text-white",
@@ -92,6 +102,11 @@ export function CalendarGrid({ selectedDate, onDateSelect }: CalendarGridProps) 
           day_outside: "text-muted-foreground opacity-50",
           day_disabled: "text-muted-foreground opacity-50",
           day_hidden: "invisible",
+        }}
+        components={{
+          IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+          IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+          CaptionLabel: CustomCaptionLabel,
         }}
       />
       <style>{`

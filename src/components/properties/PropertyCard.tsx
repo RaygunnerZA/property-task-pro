@@ -30,11 +30,18 @@ export function PropertyCard({ property, className }: PropertyCardProps) {
     >
       {/* Thumbnail Image */}
       {property.thumbnail_url && (
-        <div className="w-full h-32 bg-muted overflow-hidden">
+        <div className="w-full h-32 bg-muted overflow-hidden relative">
           <img
             src={property.thumbnail_url}
             alt={displayName}
             className="w-full h-full object-cover"
+          />
+          {/* Neumorphic overlay - light inner shadow top/left, outer shadow right */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
+            }}
           />
         </div>
       )}
@@ -46,15 +53,17 @@ export function PropertyCard({ property, className }: PropertyCardProps) {
         </h3>
 
         {/* Address */}
-        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <p className="line-clamp-2">{property.address}</p>
+        <div>
+          <Badge variant="neutral" size="sm" className="inline-flex items-start gap-1.5">
+            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-2">{property.address}</span>
+          </Badge>
         </div>
 
         {/* Tasks Badge */}
         {taskCount > 0 && (
           <div className="pt-2">
-            <Badge variant="secondary" className="text-xs">
+            <Badge variant="secondary" className="inline-flex">
               Tasks: {taskCount}
             </Badge>
           </div>

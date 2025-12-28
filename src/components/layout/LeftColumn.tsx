@@ -3,11 +3,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { useTasks } from "@/hooks/use-tasks";
 import { useProperties } from "@/hooks/useProperties";
 import { PropertyCard } from "@/components/properties/PropertyCard";
-import { format } from "date-fns";
+import { format, format as formatDate } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cardButtonClassName } from "@/components/design-system/CardButton";
+import type { CaptionProps } from "react-day-picker";
 
 /**
  * Left Column Component
@@ -93,37 +96,41 @@ export function LeftColumn() {
     fetchTaskCounts();
   }, [orgId, properties]);
 
+  // Custom CaptionLabel component that only shows month
+  const CustomCaptionLabel = (props: { displayMonth: Date }) => {
+    return (
+      <span className="text-2xl font-semibold text-foreground">
+        {formatDate(props.displayMonth, "MMMM")}
+      </span>
+    );
+  };
+
   return (
-    <div className="h-screen bg-card flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Calendar Section - Fixed at top */}
       <div className="flex-shrink-0 border-b border-border">
-        <div className="p-4 pb-3">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Calendar</h2>
-        </div>
-        <div className="px-4 pb-4">
+        <div className="px-4 pt-4 pb-4">
           {tasksLoading ? (
             <div className="flex items-center justify-center h-64">
               <p className="text-sm text-muted-foreground">Loading calendar...</p>
             </div>
           ) : (
-            <div className="rounded-lg bg-background p-3 shadow-e1">
+            <div className="rounded-lg bg-card p-3 shadow-e1">
               <Calendar
                 className="w-full"
                 classNames={{
                   months: "flex flex-col space-y-4",
                   month: "space-y-4",
                   caption: "flex justify-center pt-1 relative items-center mb-2",
-                  caption_label: "text-sm font-semibold text-foreground",
+                  caption_label: "text-2xl font-semibold text-foreground",
                   nav: "space-x-1 flex items-center",
-                  nav_button: cn(
-                    "h-7 w-7 bg-transparent p-0 opacity-70 hover:opacity-100 rounded-md hover:bg-accent transition-colors"
-                  ),
+                  nav_button: cardButtonClassName,
                   nav_button_previous: "absolute left-1",
                   nav_button_next: "absolute right-1",
                   table: "w-full border-collapse space-y-1",
-                  head_row: "flex",
+                  head_row: "flex justify-center items-center",
                   head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
-                  row: "flex w-full mt-2 mb-2 py-0 justify-start items-start font-mono",
+                  row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
                   cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
                   day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full flex items-center justify-center",
                   day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
@@ -137,6 +144,11 @@ export function LeftColumn() {
                 }}
                 modifiersClassNames={{
                   hasTasks: "has-tasks",
+                }}
+                components={{
+                  IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+                  IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+                  CaptionLabel: CustomCaptionLabel,
                 }}
               />
               <style>{`
@@ -165,7 +177,7 @@ export function LeftColumn() {
 
       {/* Properties Section - Scrollable */}
       <div className="flex-1 overflow-y-auto">
-        <div className="sticky top-0 z-10 bg-card border-b border-border p-4 pb-3">
+        <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
           <h2 className="text-lg font-semibold text-foreground">Properties</h2>
         </div>
         <div className="p-4">

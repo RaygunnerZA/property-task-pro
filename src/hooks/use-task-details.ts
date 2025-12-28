@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types";
@@ -50,10 +50,23 @@ export function useTaskDetails(taskId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Validate taskId format
+  const isValidTaskId = useMemo(() => {
+    return taskId && typeof taskId === 'string' && taskId.trim().length > 0;
+  }, [taskId]);
+
   const fetchTaskDetails = useCallback(async () => {
-    if (!orgId || !taskId) {
+    if (!isValidTaskId) {
       setTask(null);
       setLoading(false);
+      setError(taskId ? "Invalid task ID" : "No task ID provided");
+      return;
+    }
+
+    // Wait for orgId to be available
+    if (!orgId) {
+      setLoading(true);
+      setError(null);
       return;
     }
 
@@ -70,10 +83,13 @@ export function useTaskDetails(taskId: string | undefined) {
         .single();
 
       if (taskError) {
+        console.error("Error fetching task:", taskError);
         throw taskError;
       }
 
       if (!taskData) {
+        console.warn(`Task not found: taskId=${taskId}, orgId=${orgId}`);
+        setError(`Task not found. Please check that the task exists and belongs to your organization.`);
         setTask(null);
         setLoading(false);
         return;
@@ -173,18 +189,36 @@ export function useTaskDetails(taskId: string | undefined) {
       } as TaskDetails);
     } catch (err: any) {
       console.error("Error fetching task details:", err);
-      setError(err.message || "Failed to fetch task details");
+      const errorMessage = err.message || "Failed to fetch task details";
+      // Provide more helpful error messages
+      if (err.code === 'PGRST116') {
+        setError("Task not found. The task may have been deleted or you may not have permission to view it.");
+      } else {
+        setError(errorMessage);
+      }
       setTask(null);
     } finally {
       setLoading(false);
     }
-  }, [supabase, orgId, taskId]);
+    }, [supabase, orgId, taskId, isValidTaskId]);
 
   useEffect(() => {
-    if (!orgLoading) {
+    // Only fetch when org is loaded and we have both orgId and valid taskId
+    if (!orgLoading && orgId && isValidTaskId) {
       fetchTaskDetails();
+    } else if (!orgLoading && !orgId && isValidTaskId) {
+      // Org loaded but no orgId - set error
+      setError("Organization not found");
+      setLoading(false);
+    } else if (!orgLoading && isValidTaskId) {
+      // Still loading org
+      setLoading(true);
+    } else if (!isValidTaskId && !orgLoading) {
+      // Invalid taskId and org is loaded
+      setError("Invalid task ID");
+      setLoading(false);
     }
-  }, [fetchTaskDetails, orgLoading]);
+  }, [fetchTaskDetails, orgLoading, orgId, taskId, isValidTaskId]);
 
   return { task, loading, error, refresh: fetchTaskDetails };
 }
