@@ -88,6 +88,10 @@ import DebugData from "./pages/DebugData";
 const queryClient = new QueryClient();
 
 const App = () => {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'App.tsx:88',message:'App component rendering',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -114,6 +118,8 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 
                 {/* Contractor routes (no auth required, no layout) */}
+                {/* #region agent log */}
+                {/* #endregion */}
                 <Route path="/contractor/access" element={<ContractorAccess />} />
                 <Route path="/contractor/task/:id" element={<ContractorTask />} />
                 

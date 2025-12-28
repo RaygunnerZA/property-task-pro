@@ -27,6 +27,10 @@ interface Task {
  * - No Sidebar, No Navigation
  */
 export default function ContractorTask() {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ContractorTask.tsx:29',message:'ContractorTask component rendering',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
+  
   const params = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
