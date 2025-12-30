@@ -12,6 +12,7 @@ import TaskCard from "@/components/TaskCard";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import EmptyState from "@/components/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
+import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
 import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus } from "lucide-react";
 
@@ -47,6 +48,7 @@ export function TaskList({
   const { categories } = useCategories();
   const { userId } = useDataContext();
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set()); // No default filters
+  const [view, setView] = useState<'horizontal' | 'vertical'>('horizontal');
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
   const tasks = useMemo(() => {
@@ -306,7 +308,7 @@ export function TaskList({
     },
     {
       id: "filter-assigned-me",
-      label: "Assigned to Me",
+      label: "My Tasks",
       icon: <User className="h-3 w-3" />,
     },
   ];
@@ -524,6 +526,11 @@ export function TaskList({
         onFilterChange={handleFilterChange}
       />
 
+      {/* View Toggle */}
+      <div className="flex justify-end -mt-4 -mb-2">
+        <ViewToggle view={view} onViewChange={setView} />
+      </div>
+
       {/* Show empty state if filters are active but no tasks match */}
       {hasActiveFilters && hasNoMatchingTasks ? (
         <EmptyState 
@@ -534,16 +541,32 @@ export function TaskList({
         <>
           {/* Todo Section */}
           {groupedTasks.todo.length > 0 && (
-            <div className="space-y-3">
-              <div className="space-y-3">
-                {memoizedTaskCards.todo.map((props) => (
-                  <TaskCard
-                    key={props.task.id}
-                    {...props}
-                  />
-                ))}
-              </div>
-            </div>
+            <>
+              {view === 'vertical' ? (
+                <div className={cn(
+                  "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                  groupedTasks.todo.length === 1 && "sm:grid-cols-1"
+                )}>
+                  {memoizedTaskCards.todo.map((props) => (
+                    <TaskCard
+                      key={props.task.id}
+                      {...props}
+                      layout="vertical"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memoizedTaskCards.todo.map((props) => (
+                    <TaskCard
+                      key={props.task.id}
+                      {...props}
+                      layout="horizontal"
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {/* Done Section */}
@@ -552,14 +575,30 @@ export function TaskList({
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
                 Done ({groupedTasks.done.length})
               </h2>
-              <div className="space-y-3">
-                {memoizedTaskCards.done.map((props) => (
-                  <TaskCard
-                    key={props.task.id}
-                    {...props}
-                  />
-                ))}
-              </div>
+              {view === 'vertical' ? (
+                <div className={cn(
+                  "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                  groupedTasks.done.length === 1 && "sm:grid-cols-1"
+                )}>
+                  {memoizedTaskCards.done.map((props) => (
+                    <TaskCard
+                      key={props.task.id}
+                      {...props}
+                      layout="vertical"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memoizedTaskCards.done.map((props) => (
+                    <TaskCard
+                      key={props.task.id}
+                      {...props}
+                      layout="horizontal"
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
