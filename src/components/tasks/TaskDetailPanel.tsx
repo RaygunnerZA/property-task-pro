@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
-import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
+import { FileUploadZone } from "@/components/attachments/FileUploadZone";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
@@ -12,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { StandardChip } from "@/components/chips/StandardChip";
@@ -23,21 +26,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface TaskDetailPanelProps {
   taskId: string;
   onClose: () => void;
+  variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
 }
 
 /**
  * Task Detail Panel
  * 
- * Right-side slide-over panel for viewing and editing task details
- * - Fixed position, slides in from right
+ * Modal dialog for viewing and editing task details
  * - Editable title, status, priority
  * - Tabs: Summary, Messaging, Files, Logs
+ * - Can be closed by clicking outside or the X button
  */
-export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { members, loading: membersLoading } = useOrgMembers();
   const { teams, loading: teamsLoading } = useTeams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
@@ -46,17 +51,26 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const thumbnailScrollRef = useRef<HTMLDivElement>(null);
 
   // Update local state when task data loads
   useEffect(() => {
     if (task) {
-      setTitle(task.title || "");
-      setStatus(task.status || "open");
-      setPriority(task.priority || "normal");
+      setTitle((task as any).title || "");
+      setStatus((task as any).status || "open");
+      setPriority((task as any).priority || "normal");
       // Set assigned user from task (if assigned_user_id exists)
       setSelectedUserId((task as any).assigned_user_id || undefined);
-      // Set selected teams from task.teams
-      setSelectedTeamIds(task.teams?.map(t => t.id) || []);
+      // Set selected teams from task.teams (handle both string and array)
+      const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
+      setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
+      // Reset selected image index when task changes
+      if (task.images && task.images.length > 0) {
+        setSelectedImageIndex(0);
+      } else {
+        setSelectedImageIndex(null);
+      }
     }
   }, [task]);
 
@@ -203,85 +217,76 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
 
   const selectedUser = members.find(m => m.user_id === selectedUserId);
 
+  // Loading state - show skeleton but keep left panel structure
   if (loading) {
     return (
-      <>
-        <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div
-          className={cn(
-            "fixed right-0 top-0 h-full w-full md:w-[600px]",
-            "bg-card shadow-2xl z-50",
-            "flex flex-col",
-            "transform transition-transform duration-300 ease-out",
-            "translate-x-0"
-          )}
-        >
-          <div className="p-6 space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (error || !task) {
-    return (
-      <>
-        <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div
-          className={cn(
-            "fixed right-0 top-0 h-full w-full md:w-[600px]",
-            "bg-card shadow-2xl z-50",
-            "flex flex-col",
-            "transform transition-transform duration-300 ease-out",
-            "translate-x-0"
-          )}
-        >
-          <div className="p-6">
-            <div className="text-center py-12">
-              <p className="text-destructive mb-4">{error || "Task not found"}</p>
-              <button
-                onClick={onClose}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Close
-              </button>
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Loading Task</DialogTitle>
+            <DialogDescription>Loading task details...</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left Image Panel Skeleton */}
+            <div className="w-64 border-r border-border/50 bg-muted/20 flex flex-col">
+              <div className="p-4 border-b border-border/50">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <Skeleton className="h-32 w-full mb-3" />
+              </div>
+            </div>
+            {/* Main Content Skeleton */}
+            <div className="flex-1 p-6 space-y-4">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="h-32 w-full" />
             </div>
           </div>
-        </div>
-      </>
+        </DialogContent>
+      </Dialog>
     );
   }
 
-  return (
+  // Error state - show error but keep left panel structure
+  if (error || !task) {
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Task Error</DialogTitle>
+            <DialogDescription>An error occurred while loading the task.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-1 overflow-hidden">
+            {/* Left Image Panel - Empty state */}
+            <div className="w-64 border-r border-border/50 bg-muted/20 flex flex-col">
+              <div className="p-4 border-b border-border/50">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Images</h3>
+                <div className="text-xs text-muted-foreground">Task not loaded</div>
+              </div>
+            </div>
+            {/* Main Content Error */}
+            <div className="flex-1 p-6">
+              <div className="text-center py-12">
+                <p className="text-destructive mb-4">{error || "Task not found"}</p>
+                <button
+                  onClick={onClose}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Shared panel content - extracted to avoid duplication
+  const panelContent = (
     <>
-      {/* Backdrop for mobile */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40 md:hidden"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      
-      {/* Panel */}
-      <div
-        className={cn(
-          "fixed right-0 top-0 h-full w-full md:w-[600px]",
-          "bg-card shadow-2xl z-50",
-          "flex flex-col",
-          "transform transition-transform duration-300 ease-out",
-          "translate-x-0"
-        )}
-      >
       {/* Header */}
       <div className="sticky top-0 z-10 bg-card border-b border-border/50 p-6 space-y-4">
         {/* Close Button & Overflow Menu */}
@@ -324,7 +329,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                 }
                 if (e.key === "Escape") {
                   setIsEditingTitle(false);
-                  setTitle(task.title || "");
+                  setTitle((task as any).title || "");
                 }
               }}
               className={cn(
@@ -339,7 +344,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
               onClick={() => setIsEditingTitle(true)}
               className="text-2xl font-semibold text-foreground cursor-text hover:bg-muted/30 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
             >
-              {title || task.title || "Untitled Task"}
+              {title || (task as any).title || "Untitled Task"}
             </h1>
           )}
         </div>
@@ -438,10 +443,34 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
           <div className="flex-1 overflow-hidden flex flex-col p-6">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-6">
+                {/* Task Images - Show in Summary tab too */}
+                {task.images && task.images.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Images</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {task.images.map((image: any) => (
+                        <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group">
+                          <img
+                            src={image.thumbnail_url || image.file_url}
+                            alt={image.file_name || "Task image"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to file_url if thumbnail fails
+                              if (image.thumbnail_url && image.file_url) {
+                                (e.target as HTMLImageElement).src = image.file_url;
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Description</h3>
                   <p className="text-foreground">
-                    {task.description || "No description provided"}
+                    {(task as any).description || "No description provided"}
                   </p>
                 </div>
                 {task.property && (
@@ -452,11 +481,11 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                     </p>
                   </div>
                 )}
-                {task.due_date && (
+                {(task as any).due_date && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Due Date</h3>
                     <p className="text-foreground">
-                      {new Date(task.due_date).toLocaleDateString()}
+                      {new Date((task as any).due_date).toLocaleDateString()}
                     </p>
                   </div>
                 )}
@@ -493,7 +522,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                             </SelectItem>
                           ))}
                           {members.length === 0 && (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="__no_members__" disabled>
                               No members available
                             </SelectItem>
                           )}
@@ -548,7 +577,7 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
                               </SelectItem>
                             ))}
                           {teams.filter(team => !selectedTeamIds.includes(team.id)).length === 0 && (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="__all_assigned__" disabled>
                               All teams assigned
                             </SelectItem>
                           )}
@@ -575,10 +604,44 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
             </TabsContent>
 
             <TabsContent value="files" className="mt-0 flex-1 overflow-y-auto">
-              <div className="space-y-4">
+              <div className="space-y-4 p-6">
                 <p className="text-muted-foreground text-sm">
-                  Files and attachments will appear here
+                  Images are displayed in the left panel. Use the upload zone there to add new images.
                 </p>
+                {/* Image Grid for larger view */}
+                {task.images && task.images.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                      All Images ({task.images.length})
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {task.images.map((image: any) => (
+                        <div
+                          key={image.id}
+                          className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group"
+                        >
+                          <img
+                            src={image.thumbnail_url || image.file_url}
+                            alt={image.file_name || "Task image"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to file_url if thumbnail fails
+                              if (image.thumbnail_url && image.file_url) {
+                                (e.target as HTMLImageElement).src = image.file_url;
+                              }
+                            }}
+                          />
+                          {/* Overlay on hover */}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                            <button className="opacity-0 group-hover:opacity-100 p-2 rounded-full bg-black/50 text-white transition-opacity">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -592,8 +655,171 @@ export function TaskDetailPanel({ taskId, onClose }: TaskDetailPanelProps) {
           </div>
         </Tabs>
       </div>
-    </div>
     </>
+  );
+
+  // Always render as modal dialog
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Task Details</DialogTitle>
+          <DialogDescription>View and edit task details</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Column: Primary Image + Media Gallery - Always show if task exists, even if loading */}
+          {(task || loading) && (
+            <div className="w-80 border-r border-border/50 bg-muted/20 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Primary Image Display */}
+                <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden shadow-e1 relative group">
+                  {loading ? (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <div className="text-sm">Loading...</div>
+                    </div>
+                  ) : task && task.images && task.images.length > 0 ? (
+                    <>
+                      <img
+                        src={task.images[selectedImageIndex ?? 0]?.thumbnail_url || task.images[selectedImageIndex ?? 0]?.file_url}
+                        alt={task.images[selectedImageIndex ?? 0]?.file_name || "Task image"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const image = task.images[selectedImageIndex ?? 0];
+                          if (image?.thumbnail_url && image?.file_url) {
+                            (e.target as HTMLImageElement).src = image.file_url;
+                          }
+                        }}
+                      />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          className="p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
+                          onClick={() => {
+                            // TODO: Open image viewer/edit dialog
+                          }}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                      <CheckSquare className="h-16 w-16 mb-2" />
+                      <span className="text-sm">No image</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Media Gallery Thumbnails - Only show when 2+ images exist */}
+                {!loading && task && task.images && task.images.length > 1 && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                      Media Gallery
+                    </h3>
+                    <div className="relative">
+                      {/* Container with overflow hidden to show only 3 thumbnails */}
+                      <div className="overflow-hidden" style={{ width: 'calc(3 * 6rem + 2 * 0.5rem)' }}>
+                        {/* Scrollable thumbnail container */}
+                        <div
+                          ref={thumbnailScrollRef}
+                          className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                        >
+                          {task.images.map((image: any, index: number) => (
+                            <div
+                              key={image.id}
+                              className={cn(
+                                "aspect-square w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group border-2",
+                                selectedImageIndex === index ? "border-primary" : "border-transparent"
+                              )}
+                              onClick={() => setSelectedImageIndex(index)}
+                            >
+                              <img
+                                src={image.thumbnail_url || image.file_url}
+                                alt={image.file_name || "Task image"}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  if (image.thumbnail_url && image.file_url) {
+                                    (e.target as HTMLImageElement).src = image.file_url;
+                                  }
+                                }}
+                              />
+                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // TODO: Delete image
+                                  }}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Navigation arrows - only show if more than 3 images */}
+                      {task.images.length > 3 && (
+                        <>
+                          <button
+                            onClick={() => {
+                              if (thumbnailScrollRef.current) {
+                                const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
+                                thumbnailScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                              }
+                            }}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
+                            aria-label="Scroll left"
+                          >
+                            <ChevronLeft className="h-4 w-4 text-foreground" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (thumbnailScrollRef.current) {
+                                const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
+                                thumbnailScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                              }
+                            }}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
+                            aria-label="Scroll right"
+                          >
+                            <ChevronRight className="h-4 w-4 text-foreground" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Zone - Always visible */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Upload Images
+                  </h3>
+                  <FileUploadZone
+                    taskId={taskId}
+                    onUploadComplete={() => {
+                      // Invalidate React Query cache to refetch attachments
+                      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+                      queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                      refreshTask();
+                      // Reset to first image after upload
+                      setSelectedImageIndex(0);
+                    }}
+                    accept="image/*"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {panelContent}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

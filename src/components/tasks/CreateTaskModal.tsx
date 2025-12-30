@@ -17,6 +17,7 @@ import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Tab Components
 import { WhoTab } from "./create/tabs/WhoTab";
@@ -57,6 +58,7 @@ export function CreateTaskModal({
   } = useChecklistTemplates();
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
 
   // Form state
   const [title, setTitle] = useState("");
@@ -357,18 +359,35 @@ export function CreateTaskModal({
         dueDateValue = dateObj.toISOString();
       }
       
-      // Use the new RPC function with resolved (non-ghost) IDs
-      const { data: newTask, error: createError } = await supabase.rpc("create_task_v2", {
-        p_org_id: orgId,
-        p_title: finalTitle,
-        p_property_id: propertyId || null,
-        p_priority: dbPriority,
-        p_due_date: dueDateValue,
-        p_description: description.trim() || null,
+      // Simplified: Use direct insert instead of RPC for reliability
+      // RLS is now fixed, so we can use standard Supabase client
+      console.log('[CreateTaskModal] Creating task with:', {
+        orgId,
+        title: finalTitle,
+        propertyId: propertyId || null,
+        priority: dbPriority,
+        dueDate: dueDateValue,
+        description: description.trim() || null,
+        assignedUserId,
       });
+      
+      const { data: newTask, error: createError } = await supabase
+        .from("tasks")
+        .insert({
+          org_id: orgId,
+          title: finalTitle,
+          property_id: propertyId || null,
+          priority: dbPriority,
+          due_date: dueDateValue,
+          description: description.trim() || null,
+          assigned_user_id: assignedUserId || null,
+          status: 'open',
+        })
+        .select()
+        .single();
 
       if (createError) {
-        console.error("Task creation error:", createError);
+        console.error("[CreateTaskModal] Task creation error:", createError);
         throw createError;
       }
 
@@ -376,7 +395,72 @@ export function CreateTaskModal({
         throw new Error("Failed to create task: no data returned");
       }
 
-      const taskId = (newTask as any).id;
+      const taskId = newTask.id;
+      console.log('[CreateTaskModal] Task created successfully:', { taskId, newTask });
+      
+      // Upload images to storage and create task_images records
+      if (images.length > 0 && taskId && orgId) {
+        for (const image of images) {
+          try {
+            // Convert data URL to File
+            const response = await fetch(image.image_url);
+            const blob = await response.blob();
+            const file = new File([blob], image.original_filename || 'image.jpg', { type: image.file_type || 'image/jpeg' });
+            
+            // Upload to storage
+            const fileExt = file.name.split('.').pop() || 'jpg';
+            const fileName = `org/${orgId}/tasks/${taskId}/${crypto.randomUUID()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+              .from("task-images")
+              .upload(fileName, file, {
+                cacheControl: "3600",
+                upsert: false,
+              });
+
+            if (uploadError) {
+              console.error("Image upload error:", uploadError);
+              // Show user-friendly error message
+              toast({
+                title: "Image upload failed",
+                description: uploadError.message.includes("maximum allowed size")
+                  ? `Image "${image.original_filename}" is too large. Please use a smaller image.`
+                  : `Failed to upload "${image.original_filename}": ${uploadError.message}`,
+                variant: "destructive",
+              });
+              continue;
+            }
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+              .from("task-images")
+              .getPublicUrl(fileName);
+
+            // Create attachment record (using attachments table per @Docs/14_Attachments.md)
+            const attachmentPayload = {
+              org_id: orgId,
+              parent_type: "task",
+              parent_id: taskId,
+              file_url: urlData.publicUrl,
+              file_name: image.original_filename,
+              file_type: image.file_type || file.type,
+              file_size: file.size,
+            };
+            
+            const { data: insertedAttachment, error: imageRecordError } = await supabase
+              .from("attachments")
+              .insert(attachmentPayload)
+              .select()
+              .single();
+
+            if (imageRecordError) {
+              console.error("Error creating task_images record:", imageRecordError);
+            }
+          } catch (err: any) {
+            console.error("Error uploading image:", err);
+          }
+        }
+      }
       
       // Link spaces to task via task_spaces junction table
       if (resolvedSpaceIds.length > 0) {
@@ -402,13 +486,36 @@ export function CreateTaskModal({
           theme_id: themeId,
         }));
         
+        console.log('[CreateTaskModal] Linking themes:', { taskId, themeIds: resolvedThemeIds });
         const { error: themeLinkError } = await supabase
           .from("task_themes")
           .insert(themeInserts);
         
         if (themeLinkError) {
-          console.error("Error linking themes to task:", themeLinkError);
+          console.error("[CreateTaskModal] Error linking themes to task:", themeLinkError);
           // Don't throw - task is already created, just log the error
+        } else {
+          console.log('[CreateTaskModal] Themes linked successfully');
+        }
+      }
+      
+      // Link teams to task via task_teams junction table
+      if (assignedTeamIds.length > 0) {
+        const teamInserts = assignedTeamIds.map(teamId => ({
+          task_id: taskId,
+          team_id: teamId,
+        }));
+        
+        console.log('[CreateTaskModal] Linking teams:', { taskId, teamIds: assignedTeamIds });
+        const { error: teamLinkError } = await supabase
+          .from("task_teams")
+          .insert(teamInserts);
+        
+        if (teamLinkError) {
+          console.error("[CreateTaskModal] Error linking teams to task:", teamLinkError);
+          // Don't throw - task is already created, just log the error
+        } else {
+          console.log('[CreateTaskModal] Teams linked successfully');
         }
       }
       
@@ -416,6 +523,28 @@ export function CreateTaskModal({
       const createdEntities = [];
       if (ghostSpaces.length > 0) createdEntities.push(`${ghostSpaces.length} space${ghostSpaces.length > 1 ? 's' : ''}`);
       if (ghostThemes.length > 0) createdEntities.push(`${ghostThemes.length} theme${ghostThemes.length > 1 ? 's' : ''}`);
+      
+      console.log('[CreateTaskModal] Task creation complete, invalidating queries:', {
+        taskId,
+        orgId,
+        imageCount: images.length,
+      });
+      
+      // Invalidate queries to refresh task lists and details
+      // Wait a moment for edge function to process thumbnails if images were uploaded
+      if (images.length > 0) {
+        // Wait 2 seconds for edge function to process images
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+          queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+        }, 2000);
+      } else {
+        // Immediate invalidation if no images
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+      }
       
       toast({
         title: "Task created",

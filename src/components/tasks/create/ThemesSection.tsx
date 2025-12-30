@@ -15,7 +15,7 @@ import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useThemes } from "@/hooks/useThemes";
 import { supabase } from "@/integrations/supabase/client";
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -33,7 +33,7 @@ interface ThemesSectionProps {
 
 export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedThemes = [] }: ThemesSectionProps) {
   const { themes, refresh } = useThemes();
-  const { orgId } = useDataContext();
+  const { orgId } = useActiveOrg();
   const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newThemeName, setNewThemeName] = useState("");

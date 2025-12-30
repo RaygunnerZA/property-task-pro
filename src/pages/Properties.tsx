@@ -1,23 +1,19 @@
-import { useProperties } from '@/hooks/useProperties';
+import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
 import { Building2, Plus, Home } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PropertyCard } from '@/components/properties/PropertyCard';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
-import { supabase } from '@/integrations/supabase/client';
-import { useActiveOrg } from '@/hooks/useActiveOrg';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 import { EmptyState } from '@/components/design-system/EmptyState';
 import { LoadingState } from '@/components/design-system/LoadingState';
 
 const Properties = () => {
-  const { properties, loading } = useProperties();
-  const { orgId } = useActiveOrg();
+  const { data: properties = [], isLoading: loading } = usePropertiesQuery();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showAddProperty, setShowAddProperty] = useState(false);
-  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
 
   // Check for ?add=true in URL
   useEffect(() => {
@@ -26,45 +22,14 @@ const Properties = () => {
     }
   }, [searchParams]);
 
-  // Fetch task counts for all properties
-  useEffect(() => {
-    if (!orgId || properties.length === 0) {
-      setTaskCounts({});
-      return;
-    }
-
-    async function fetchTaskCounts() {
-      try {
-        const propertyIds = properties.map(p => p.id);
-        
-        const { data, error } = await supabase
-          .from("tasks")
-          .select("property_id")
-          .eq("org_id", orgId)
-          .in("property_id", propertyIds)
-          .not("property_id", "is", null);
-
-        if (error) {
-          console.error("Error fetching task counts:", error);
-          return;
-        }
-
-        // Count tasks per property
-        const counts: Record<string, number> = {};
-        (data || []).forEach((task) => {
-          if (task.property_id) {
-            counts[task.property_id] = (counts[task.property_id] || 0) + 1;
-          }
-        });
-
-        setTaskCounts(counts);
-      } catch (err) {
-        console.error("Error fetching task counts:", err);
-      }
-    }
-
-    fetchTaskCounts();
-  }, [orgId, properties]);
+  // Extract task counts from properties_view (properties now have open_tasks_count)
+  const taskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    properties.forEach((p: any) => {
+      counts[p.id] = p.open_tasks_count || 0;
+    });
+    return counts;
+  }, [properties]);
 
   if (loading) {
     return (

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import { EmptyState } from "@/components/EmptyState";
+import EmptyState from "@/components/EmptyState";
 import { CheckSquare, MessageSquare, FileText } from "lucide-react";
 import { ContractorTaskMessaging } from "@/components/tasks/ContractorTaskMessaging";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,9 +27,6 @@ interface Task {
  * - No Sidebar, No Navigation
  */
 export default function ContractorTask() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ContractorTask.tsx:29',message:'ContractorTask component rendering',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   
   const params = useParams();
   const navigate = useNavigate();

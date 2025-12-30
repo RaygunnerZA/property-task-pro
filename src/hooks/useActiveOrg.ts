@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseActiveOrgResult {
@@ -10,141 +11,89 @@ interface UseActiveOrgResult {
 /**
  * Hook to fetch and manage the active organization for the current user.
  * 
- * For now, auto-selects the first organization found in organisation_members
+ * Uses TanStack Query for automatic caching, deduping, and stability.
+ * Auto-selects the first organization found in organisation_members
  * for the current user. In the future, this will support org switching.
  * 
  * @returns {UseActiveOrgResult} Object containing orgId, isLoading, and error
  */
 export function useActiveOrg(): UseActiveOrgResult {
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const fetchingRef = useRef(false);
-  const lastUserIdRef = useRef<string | null>(null);
-  const lastFetchTimeRef = useRef<number>(0);
+  const queryClient = useQueryClient();
 
+  // First, get the current user ID
+  const { data: userData } = useQuery({
+    queryKey: ["auth", "user"],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    },
+    staleTime: Infinity, // User ID doesn't change during session
+    retry: false,
+  });
+
+  const userId = userData?.id;
+
+  // Listen for auth state changes to invalidate queries
   useEffect(() => {
-    async function fetchActiveOrg() {
-      const now = Date.now();
-      const timeSinceLastFetch = now - lastFetchTimeRef.current;
-      
-      // Prevent concurrent fetches
-      if (fetchingRef.current) {
-        return;
-      }
-
-      // Debounce: Don't fetch if we just fetched in the last 100ms
-      if (timeSinceLastFetch < 100) {
-        return;
-      }
-
-      fetchingRef.current = true;
-      lastFetchTimeRef.current = now;
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        console.log('[useActiveOrg] Starting fetchActiveOrg');
-        
-        // Get the current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('[useActiveOrg] Auth user error:', userError);
-          setError(userError.message);
-          setOrgId(null);
-          setIsLoading(false);
-          fetchingRef.current = false;
-          return;
-        }
-
-        if (!user) {
-          console.warn('[useActiveOrg] No authenticated user found');
-          setOrgId(null);
-          setIsLoading(false);
-          fetchingRef.current = false;
-          return;
-        }
-
-        console.log('[useActiveOrg] User found:', { userId: user.id, email: user.email });
-
-        // Fetch the first organisation membership for this user
-        console.log('[useActiveOrg] Querying organisation_members for user_id:', user.id);
-        const { data: membership, error: membershipsError } = await supabase
-          .from("organisation_members")
-          .select("org_id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (membershipsError) {
-          console.error('[useActiveOrg] Query error:', {
-            message: membershipsError.message,
-            code: membershipsError.code,
-            details: membershipsError.details,
-            hint: membershipsError.hint
-          });
-          setError(membershipsError.message);
-          setOrgId(null);
-          setIsLoading(false);
-          fetchingRef.current = false;
-          return;
-        }
-
-        console.log('[useActiveOrg] Query result:', {
-          membership,
-          hasMembership: !!membership,
-          orgId: membership?.org_id || null
-        });
-
-        // Auto-select the first organisation found
-        const firstOrgId = membership?.org_id || null;
-        
-        if (!firstOrgId) {
-          console.warn('[useActiveOrg] No org_id found in membership result. Membership data:', membership);
-        } else {
-          console.log('[useActiveOrg] Found org_id:', firstOrgId);
-        }
-        
-        // Only update if orgId actually changed
-        if (firstOrgId !== orgId) {
-          console.log('[useActiveOrg] Updating orgId:', { from: orgId, to: firstOrgId });
-          setOrgId(firstOrgId);
-          lastUserIdRef.current = user.id;
-        } else {
-          console.log('[useActiveOrg] orgId unchanged:', orgId);
-        }
-      } catch (err: any) {
-        console.error('[useActiveOrg] Unexpected error:', err);
-        setError(err.message || "Failed to fetch active organisation");
-        setOrgId(null);
-      } finally {
-        setIsLoading(false);
-        fetchingRef.current = false;
-      }
-    }
-
-    fetchActiveOrg();
-
-    // Listen for auth state changes to refetch org immediately
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only refetch on SIGNED_IN, NOT on TOKEN_REFRESHED (it fires too often)
-      // Only refetch if user actually changed
-      if (event === 'SIGNED_IN') {
-        const currentUserId = session?.user?.id || null;
-        if (currentUserId && currentUserId !== lastUserIdRef.current) {
-          fetchActiveOrg();
-        }
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        // Invalidate user query to refetch
+        queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+        // Invalidate org query for the new/old user
+        queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
       }
-      // Ignore TOKEN_REFRESHED - it fires too frequently and causes loops
     });
 
     return () => {
-      subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
-  }, []); // Empty deps - only run on mount and listen to auth changes
+  }, [queryClient]);
 
-  return { orgId, isLoading, error };
+  // Fetch active org using TanStack Query
+  const { data: orgId, isLoading, error } = useQuery({
+    queryKey: ["activeOrg", userId],
+    queryFn: async () => {
+      if (!userId) {
+        return null;
+      }
+
+      // Fetch the first organisation membership for this user
+      const { data: membership, error: membershipsError } = await supabase
+        .from("organisation_members")
+        .select("org_id")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (membershipsError) {
+        console.error('[useActiveOrg] Query error:', {
+          message: membershipsError.message,
+          code: membershipsError.code,
+          details: membershipsError.details,
+          hint: membershipsError.hint
+        });
+        throw membershipsError;
+      }
+
+      // Auto-select the first organisation found
+      const firstOrgId = membership?.org_id || null;
+      
+      if (firstOrgId) {
+        console.log('[useActiveOrg] Found org_id:', firstOrgId);
+      }
+      
+      return firstOrgId;
+    },
+    enabled: !!userId, // Only fetch when we have a user ID
+    staleTime: Infinity, // Org ID rarely changes - cache forever
+    retry: false, // Don't retry on error
+  });
+
+  return {
+    orgId: orgId ?? null,
+    isLoading: isLoading || !userId, // Loading if query is loading or no user yet
+    error: error ? (error as Error).message : null,
+  };
 }
-

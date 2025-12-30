@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { useProperties } from "@/hooks/useProperties";
+import { useFileUpload } from "@/hooks/useFileUpload";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,7 @@ interface AddPropertyDialogProps {
 
 export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps) {
   const { orgId } = useActiveOrg();
-  const { refresh } = useProperties();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [address, setAddress] = useState("");
   const [nickname, setNickname] = useState("");
@@ -111,40 +112,14 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
         return;
       }
 
-      // Upload image if provided
-      let thumbnailUrl: string | null = null;
-      if (propertyImage) {
-        try {
-          const fileExt = propertyImage.name.split(".").pop();
-          const fileName = `${orgId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from("property-images")
-            .upload(fileName, propertyImage);
-
-          if (uploadError) {
-            console.error("Image upload error:", uploadError);
-            toast.error("Failed to upload image. Property will be created without image.");
-          } else {
-            const { data: { publicUrl } } = supabase.storage
-              .from("property-images")
-              .getPublicUrl(fileName);
-            thumbnailUrl = publicUrl;
-          }
-        } catch (uploadErr) {
-          console.error("Image upload failed:", uploadErr);
-          // Continue without image
-        }
-      }
-
-      // Use RPC to create property
+      // Create property first (without image)
       const { data: newProperty, error: createError } = await supabase.rpc("create_property_v2", {
         p_org_id: orgId,
         p_address: finalAddress,
         p_nickname: nickname.trim() || null,
         p_icon_name: iconName,
         p_icon_color_hex: iconColor,
-        p_thumbnail_url: thumbnailUrl,
+        p_thumbnail_url: null, // Will be set after thumbnail generation
       });
 
       if (createError) {
@@ -154,6 +129,48 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
 
       if (!newProperty) {
         throw new Error("Failed to create property: no data returned");
+      }
+
+      const propertyId = (newProperty as any).id;
+
+      // Upload image with automatic thumbnail generation if provided
+      if (propertyImage && propertyId) {
+        try {
+          const fileExt = propertyImage.name.split(".").pop();
+          const fileName = `${orgId}/${propertyId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          
+          // Upload file first
+          const { error: uploadError } = await supabase.storage
+            .from("property-images")
+            .upload(fileName, propertyImage);
+
+          if (uploadError) {
+            console.error("Image upload error:", uploadError);
+            toast.warning("Property created but image upload failed");
+          } else {
+            // Trigger thumbnail generation via edge function
+            const { error: processError } = await supabase.functions.invoke(
+              "process-image",
+              {
+                body: {
+                  bucket: "property-images",
+                  path: fileName,
+                  recordId: propertyId,
+                  table: "properties",
+                },
+              }
+            );
+
+            if (processError) {
+              console.error("Thumbnail generation failed:", processError);
+              // Property was created and image uploaded, just thumbnail generation failed
+            }
+          }
+        } catch (uploadErr) {
+          console.error("Image upload failed:", uploadErr);
+          // Continue - property was created successfully
+          toast.warning("Property created but image upload failed");
+        }
       }
 
       toast.success("Property created!");
@@ -168,7 +185,7 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
         fileInputRef.current.value = "";
       }
       onOpenChange(false);
-      await refresh();
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
     } catch (err: any) {
       console.error("Create property failed:", err);
       toast.error(err.message || "Failed to create property");

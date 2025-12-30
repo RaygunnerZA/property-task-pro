@@ -17,8 +17,17 @@ export function ImageUploadSection({ images, onImagesChange }: ImageUploadSectio
   const handleFileSelect = (files: FileList | null) => {
     if (!files) return;
     
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
     Array.from(files).forEach(file => {
       if (!file.type.startsWith('image/')) return;
+      
+      // Check file size before processing
+      if (file.size > MAX_FILE_SIZE) {
+        // Show error but don't block other files
+        console.warn(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum size is 10MB.`);
+        return;
+      }
       
       const reader = new FileReader();
       reader.onload = (e) => {

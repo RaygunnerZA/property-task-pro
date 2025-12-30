@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAssets } from "@/hooks/use-assets";
-import { useProperties } from "@/hooks/useProperties";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { AssetCard } from "@/components/assets/AssetCard";
@@ -37,8 +38,9 @@ import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 const Assets = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { assets, loading, error, refresh } = useAssets();
-  const { properties } = useProperties();
+  const { data: assets = [], isLoading: loading, error } = useAssetsQuery();
+  const { data: properties = [] } = usePropertiesQuery();
+  const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const { spaces } = useSpaces(selectedPropertyId || undefined);
@@ -59,7 +61,7 @@ const Assets = () => {
   const [type, setType] = useState("");
   const [serial, setSerial] = useState("");
   const [propertyId, setPropertyId] = useState("");
-  const [spaceId, setSpaceId] = useState("");
+  const [spaceId, setSpaceId] = useState("none");
   const [conditionScore, setConditionScore] = useState<string>("100");
 
   const assetTypes = [
@@ -75,7 +77,7 @@ const Assets = () => {
   const handlePropertyChange = (value: string) => {
     setPropertyId(value);
     setSelectedPropertyId(value);
-    setSpaceId(""); // Reset space when property changes
+    setSpaceId("none"); // Reset space when property changes
   };
 
   const handleSave = async () => {
@@ -97,7 +99,7 @@ const Assets = () => {
       const { error: insertError } = await supabase.from("assets").insert({
         org_id: orgId,
         property_id: propertyId,
-        space_id: spaceId || null,
+        space_id: spaceId && spaceId !== "none" ? spaceId : null,
         serial: name.trim() || serial || null, // Using name as serial for now
         condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
       });
@@ -113,11 +115,11 @@ const Assets = () => {
       setType("");
       setSerial("");
       setPropertyId("");
-      setSpaceId("");
+      setSpaceId("none");
       setConditionScore("100");
       setSelectedPropertyId("");
-      // Refresh assets list
-      refresh();
+      // Invalidate assets query to refresh
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (err: any) {
       console.error("Error saving asset:", err);
       toast.error(err.message || "Failed to save asset");
@@ -127,7 +129,17 @@ const Assets = () => {
   };
 
   // Create a map of property IDs to names for quick lookup
-  const propertyMap = new Map(properties.map((p) => [p.id, p.address]));
+  // assets_view includes property_name and property_address, so use those
+  const propertyMap = useMemo(() => {
+    const map = new Map(properties.map((p) => [p.id, p.address]));
+    // Also add property data from assets_view
+    assets.forEach((asset: any) => {
+      if (asset.property_id && asset.property_address && !map.has(asset.property_id)) {
+        map.set(asset.property_id, asset.property_address);
+      }
+    });
+    return map;
+  }, [properties, assets]);
   const spaceMap = new Map(spaces.map((s) => [s.id, s.name]));
 
   if (loading) {
@@ -149,7 +161,7 @@ const Assets = () => {
         icon={<Package className="h-6 w-6" />}
         maxWidth="sm"
       >
-        <ErrorState message={error} onRetry={refresh} />
+        <ErrorState message={error?.message || String(error)} onRetry={() => queryClient.invalidateQueries({ queryKey: ["assets"] })} />
       </StandardPage>
     );
   }
@@ -228,12 +240,12 @@ const Assets = () => {
                 {propertyId && (
                   <div className="space-y-2">
                     <Label htmlFor="space">Space (Optional)</Label>
-                    <Select value={spaceId} onValueChange={setSpaceId}>
+                    <Select value={spaceId || "none"} onValueChange={setSpaceId}>
                       <SelectTrigger id="space" className="input-neomorphic">
                         <SelectValue placeholder="Select a space (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {spaces.map((space) => (
                           <SelectItem key={space.id} value={space.id}>
                             {space.name}

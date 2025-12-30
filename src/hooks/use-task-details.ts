@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
-import type { Tables } from "../integrations/supabase/types";
+import type { Tables } from "../integrations/supabase/types_new";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type TaskRow = Tables<"tasks">;
 
@@ -25,201 +26,177 @@ interface Category {
 }
 
 interface TaskDetails extends TaskRow {
+  // Additional fields from tasks_view
+  property_name?: string | null;
+  property_address?: string | null;
+  property_thumbnail_url?: string | null;
+  spaces?: Space[] | string; // Can be JSON string or array
+  teams?: Team[] | string; // Can be JSON string or array
+  themes?: any[] | string; // Can be JSON string or array
+  images?: any[] | string; // Can be JSON string or array
+  assignee_user_id?: string | null;
+  // Parsed/computed fields
   property?: {
     id: string;
     nickname: string | null;
     address: string;
   } | null;
-  spaces?: Space[];
-  teams?: Team[];
   categories?: Category[];
 }
 
 /**
- * Hook to fetch full task context by ID
+ * Hook to fetch full task context by ID using tasks_view
  * Returns task data with all related information:
- * - Property (if property_id exists)
- * - Spaces (via task_spaces junction table)
- * - Teams (via task_teams junction table)
- * - Categories (via task_categories junction table)
+ * - Property (from tasks_view: property_name, property_address)
+ * - Spaces (from tasks_view: spaces JSON array)
+ * - Teams (from tasks_view: teams JSON array)
+ * - Categories (still fetched separately as not in tasks_view yet)
  */
 export function useTaskDetails(taskId: string | undefined) {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [task, setTask] = useState<TaskDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // Validate taskId format
   const isValidTaskId = useMemo(() => {
     return taskId && typeof taskId === 'string' && taskId.trim().length > 0;
   }, [taskId]);
 
-  const fetchTaskDetails = useCallback(async () => {
-    if (!isValidTaskId) {
-      setTask(null);
-      setLoading(false);
-      setError(taskId ? "Invalid task ID" : "No task ID provided");
-      return;
-    }
-
-    // Wait for orgId to be available
-    if (!orgId) {
-      setLoading(true);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch task
-      const { data: taskData, error: taskError } = await supabase
-        .from("tasks")
+  // Fetch task from tasks_view (includes property, spaces, teams)
+  const { data: taskData, isLoading: taskLoading, error: taskError } = useQuery({
+    queryKey: ["task-details", orgId, taskId],
+    queryFn: async () => {
+      if (!taskId || !orgId) return null;
+      const { data, error } = await supabase
+        .from("tasks_view")
         .select("*")
         .eq("id", taskId)
         .eq("org_id", orgId)
         .single();
 
-      if (taskError) {
-        console.error("Error fetching task:", taskError);
-        throw taskError;
-      }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!orgId && !!taskId && isValidTaskId && !orgLoading,
+    staleTime: 60000, // 1 minute
+  });
 
-      if (!taskData) {
-        console.warn(`Task not found: taskId=${taskId}, orgId=${orgId}`);
-        setError(`Task not found. Please check that the task exists and belongs to your organization.`);
-        setTask(null);
-        setLoading(false);
-        return;
-      }
+  // Fetch categories separately (not in tasks_view yet)
+  const { data: categoriesData } = useQuery({
+    queryKey: ["task-categories", taskId],
+    queryFn: async () => {
+      if (!taskId || !orgId) return [];
+      // Fetch category IDs from task_categories junction table
+      const { data: taskCategories } = await supabase
+        .from("task_categories")
+        .select("category_id")
+        .eq("task_id", taskId);
 
-      // Fetch all related data in parallel
-      const [propertyResult, taskSpacesResult, taskTeamsResult, taskCategoriesResult] = await Promise.all([
-        // Fetch property if property_id exists
-        taskData.property_id
-          ? supabase
-              .from("properties")
-              .select("id, nickname, address")
-              .eq("id", taskData.property_id)
-              .single()
-          : Promise.resolve({ data: null, error: null }),
+      if (!taskCategories || taskCategories.length === 0) return [];
 
-        // Fetch space IDs from task_spaces junction table
-        supabase
-          .from("task_spaces")
-          .select("space_id")
-          .eq("task_id", taskId),
+      const categoryIds = taskCategories.map((item: any) => item.category_id);
+      
+      // Fetch categories
+      const { data: categories } = await supabase
+        .from("categories")
+        .select("id, name, color, icon")
+        .in("id", categoryIds);
 
-        // Fetch team IDs from task_teams junction table
-        supabase
-          .from("task_teams")
-          .select("team_id")
-          .eq("task_id", taskId),
-
-        // Fetch category IDs from task_categories junction table
-        supabase
-          .from("task_categories")
-          .select("category_id")
-          .eq("task_id", taskId),
-      ]);
-
-      // Extract IDs from junction tables
-      const spaceIds = (taskSpacesResult.data || []).map((item: any) => item.space_id);
-      const teamIds = (taskTeamsResult.data || []).map((item: any) => item.team_id);
-      const categoryIds = (taskCategoriesResult.data || []).map((item: any) => item.category_id);
-
-      // Fetch related entities in parallel
-      const [spacesResult, teamsResult, categoriesResult] = await Promise.all([
-        // Fetch spaces
-        spaceIds.length > 0
-          ? supabase
-              .from("spaces")
-              .select("id, name")
-              .in("id", spaceIds)
-          : Promise.resolve({ data: [], error: null }),
-
-        // Fetch teams
-        teamIds.length > 0
-          ? supabase
-              .from("teams")
-              .select("id, name, color, icon")
-              .in("id", teamIds)
-          : Promise.resolve({ data: [], error: null }),
-
-        // Fetch categories
-        categoryIds.length > 0
-          ? supabase
-              .from("categories")
-              .select("id, name, color, icon")
-              .in("id", categoryIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-
-      // Extract and format related data
-      const property = propertyResult.data || null;
-
-      const spaces: Space[] = (spacesResult.data || []).map((space: any) => ({
-        id: space.id,
-        name: space.name,
-      }));
-
-      const teams: Team[] = (teamsResult.data || []).map((team: any) => ({
-        id: team.id,
-        name: team.name,
-        color: team.color,
-        icon: team.icon,
-      }));
-
-      const categories: Category[] = (categoriesResult.data || []).map((category: any) => ({
+      return (categories || []).map((category: any) => ({
         id: category.id,
         name: category.name,
         color: category.color,
         icon: category.icon,
       }));
+    },
+    enabled: !!taskId && !!orgId && isValidTaskId && !orgLoading,
+    staleTime: 60000,
+  });
 
-      // Combine all data
-      setTask({
-        ...taskData,
-        property,
-        spaces,
-        teams,
-        categories,
-      } as TaskDetails);
-    } catch (err: any) {
-      console.error("Error fetching task details:", err);
-      const errorMessage = err.message || "Failed to fetch task details";
-      // Provide more helpful error messages
-      if (err.code === 'PGRST116') {
-        setError("Task not found. The task may have been deleted or you may not have permission to view it.");
-      } else {
-        setError(errorMessage);
+  // Fetch task images from attachments table
+  const { data: imagesData } = useQuery({
+    queryKey: ["task-attachments", taskId],
+    queryFn: async () => {
+      if (!taskId || !orgId) return [];
+      const { data, error } = await supabase
+        .from("attachments")
+        .select("id, file_url, thumbnail_url, file_name, file_type, created_at, parent_type, parent_id, org_id")
+        .eq("parent_type", "task")
+        .eq("parent_id", taskId)
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching task attachments:", error);
+        return [];
       }
-      setTask(null);
-    } finally {
-      setLoading(false);
-    }
-    }, [supabase, orgId, taskId, isValidTaskId]);
+      return (data || []).map((att: any) => ({
+        id: att.id,
+        file_url: att.file_url,
+        thumbnail_url: att.thumbnail_url,
+        file_name: att.file_name,
+        file_type: att.file_type,
+        created_at: att.created_at,
+      }));
+    },
+    enabled: !!taskId && !!orgId && isValidTaskId && !orgLoading,
+    staleTime: 60000,
+  });
 
-  useEffect(() => {
-    // Only fetch when org is loaded and we have both orgId and valid taskId
-    if (!orgLoading && orgId && isValidTaskId) {
-      fetchTaskDetails();
-    } else if (!orgLoading && !orgId && isValidTaskId) {
-      // Org loaded but no orgId - set error
-      setError("Organization not found");
-      setLoading(false);
-    } else if (!orgLoading && isValidTaskId) {
-      // Still loading org
-      setLoading(true);
-    } else if (!isValidTaskId && !orgLoading) {
-      // Invalid taskId and org is loaded
-      setError("Invalid task ID");
-      setLoading(false);
-    }
-  }, [fetchTaskDetails, orgLoading, orgId, taskId, isValidTaskId]);
+  // Parse and combine task data
+  const task = useMemo(() => {
+    if (!taskData) return null;
 
-  return { task, loading, error, refresh: fetchTaskDetails };
+    // Parse JSON arrays from tasks_view
+    const spaces: Space[] = typeof taskData.spaces === 'string' 
+      ? JSON.parse(taskData.spaces) 
+      : (taskData.spaces || []);
+    
+    const teams: Team[] = typeof taskData.teams === 'string'
+      ? JSON.parse(taskData.teams)
+      : (taskData.teams || []);
+
+    // Extract property data from tasks_view
+    const property = taskData.property_id ? {
+      id: taskData.property_id,
+      nickname: taskData.property_name || null,
+      address: taskData.property_address || '',
+    } : null;
+
+    // Get primary image URL (first image, prefer thumbnail)
+    const primaryImageUrl = imagesData && imagesData.length > 0 
+      ? (imagesData[0].thumbnail_url || imagesData[0].file_url)
+      : null;
+
+    return {
+      ...taskData,
+      property,
+      spaces,
+      teams,
+      categories: categoriesData || [],
+      images: imagesData || [],
+      primary_image_url: primaryImageUrl,
+      assigned_user_id: taskData.assignee_user_id,
+      // Ensure due_date is included from taskData
+      due_date: (taskData as any).due_date || null,
+      title: (taskData as any).title || null,
+      description: (taskData as any).description || null,
+    } as TaskDetails & { images: any[]; primary_image_url: string | null; due_date: string | null; title: string | null; description: string | null };
+  }, [taskData, categoriesData, imagesData]);
+
+  const loading = taskLoading || orgLoading;
+  const error = taskError ? (taskError as any).message || String(taskError) : null;
+
+  return { 
+    task, 
+    loading, 
+    error, 
+    refresh: () => {
+      // Invalidate all related queries to force refetch
+      queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
+    }
+  };
 }
 
