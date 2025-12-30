@@ -142,14 +142,16 @@ Deno.serve(async (req) => {
 });
 
 // Helper functions
+// All responses include CORS headers
 const jsonOK = (data: any) =>
   new Response(JSON.stringify({ ok: true, data }), {
+    status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const jsonErr = (msg: string, status = 400) =>
+const jsonErr = (msg: string, status = 200) =>
   new Response(JSON.stringify({ ok: false, error: msg }), {
-    status,
+    status, // Default to 200 OK so upload doesn't fail
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
