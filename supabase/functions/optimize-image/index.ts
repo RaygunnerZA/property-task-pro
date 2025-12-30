@@ -22,108 +22,122 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 Deno.serve(async (req) => {
+  // Handle OPTIONS preflight request - return 200 OK immediately
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return jsonErr("POST only", 405);
-  }
-
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonErr("Invalid JSON", 400);
-  }
-
-  const { bucket, path, recordId, table } = body;
-
-  if (!bucket || !path || !recordId || !table) {
-    return jsonErr("Missing required fields: bucket, path, recordId, table", 400);
-  }
-
-  try {
-    // Step 1: Download the original image from Storage
-    const { data: imageData, error: downloadError } = await supabaseAdmin.storage
-      .from(bucket)
-      .download(path);
-
-    if (downloadError || !imageData) {
-      return jsonErr(`Failed to download image: ${downloadError?.message || "Unknown error"}`, 500);
-    }
-
-    // Convert Blob to ArrayBuffer for sharp
-    const imageBuffer = await imageData.arrayBuffer();
-    const imageUint8Array = new Uint8Array(imageBuffer);
-
-    // Step 2: Generate thumbnail using sharp
-    // Target: 800px width (as per spec), WebP format
-    const thumbnailBuffer = await sharp(imageUint8Array)
-      .resize(800, null, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .webp({
-        quality: 85,
-        effort: 4,
-      })
-      .toBuffer();
-
-    // Step 3: Generate thumbnail path (e.g., original/path_thumb.webp)
-    const pathParts = path.split("/");
-    const fileName = pathParts.pop() || "image";
-    const dirPath = pathParts.join("/");
-    const fileNameWithoutExt = fileName.split(".").slice(0, -1).join(".");
-    const thumbnailPath = dirPath ? `${dirPath}/${fileNameWithoutExt}_thumb.webp` : `${fileNameWithoutExt}_thumb.webp`;
-
-    // Step 4: Upload thumbnail back to Storage
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(bucket)
-      .upload(thumbnailPath, thumbnailBuffer, {
-        contentType: "image/webp",
-        cacheControl: "3600",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      return jsonErr(`Failed to upload thumbnail: ${uploadError.message}`, 500);
-    }
-
-    // Step 5: Get public URL for thumbnail
-    const { data: urlData } = supabaseAdmin.storage
-      .from(bucket)
-      .getPublicUrl(thumbnailPath);
-
-    const thumbnailUrl = urlData.publicUrl;
-
-    // Step 6: Update attachments table with thumbnail_url
-    const { data: updatedRecords, error: updateError } = await supabaseAdmin
-      .from(table)
-      .update({ thumbnail_url: thumbnailUrl })
-      .eq("id", recordId)
-      .select();
-
-    if (updateError) {
-      console.error("Failed to update database record:", updateError);
-      return jsonErr(`Thumbnail created but database update failed: ${updateError.message}`, 500);
-    }
-
-    if (!updatedRecords || updatedRecords.length === 0) {
-      console.error("No records updated - record may not exist");
-      return jsonErr("Thumbnail created but record not found in database", 404);
-    }
-
-    return jsonOK({
-      thumbnailUrl,
-      thumbnailPath,
-      originalPath: path,
-      recordId,
-      table,
+    return new Response(null, { 
+      status: 200,
+      headers: corsHeaders 
     });
+  }
+
+  // Wrap entire handler in try/catch to prevent crashes
+  try {
+    if (req.method !== "POST") {
+      return jsonErr("POST only", 200); // Return 200 OK even for method errors
+    }
+
+    let body;
+    try {
+      body = await req.json();
+    } catch (error: any) {
+      return jsonErr(`Invalid JSON: ${error.message}`, 200); // Return 200 OK with error
+    }
+
+    const { bucket, path, recordId, table } = body;
+
+    if (!bucket || !path || !recordId || !table) {
+      return jsonErr("Missing required fields: bucket, path, recordId, table", 200); // Return 200 OK
+    }
+
+    try {
+      // Step 1: Download the original image from Storage
+      const { data: imageData, error: downloadError } = await supabaseAdmin.storage
+        .from(bucket)
+        .download(path);
+
+      if (downloadError || !imageData) {
+        console.error("Failed to download image:", downloadError);
+        return jsonErr(`Failed to download image: ${downloadError?.message || "Unknown error"}`, 200); // Return 200 OK
+      }
+
+      // Convert Blob to ArrayBuffer for sharp
+      const imageBuffer = await imageData.arrayBuffer();
+      const imageUint8Array = new Uint8Array(imageBuffer);
+
+      // Step 2: Generate thumbnail using sharp
+      // Target: 800px width (as per spec), WebP format
+      const thumbnailBuffer = await sharp(imageUint8Array)
+        .resize(800, null, {
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({
+          quality: 85,
+          effort: 4,
+        })
+        .toBuffer();
+
+      // Step 3: Generate thumbnail path (e.g., original/path_thumb.webp)
+      const pathParts = path.split("/");
+      const fileName = pathParts.pop() || "image";
+      const dirPath = pathParts.join("/");
+      const fileNameWithoutExt = fileName.split(".").slice(0, -1).join(".");
+      const thumbnailPath = dirPath ? `${dirPath}/${fileNameWithoutExt}_thumb.webp` : `${fileNameWithoutExt}_thumb.webp`;
+
+      // Step 4: Upload thumbnail back to Storage
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from(bucket)
+        .upload(thumbnailPath, thumbnailBuffer, {
+          contentType: "image/webp",
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error("Failed to upload thumbnail:", uploadError);
+        return jsonErr(`Failed to upload thumbnail: ${uploadError.message}`, 200); // Return 200 OK
+      }
+
+      // Step 5: Get public URL for thumbnail
+      const { data: urlData } = supabaseAdmin.storage
+        .from(bucket)
+        .getPublicUrl(thumbnailPath);
+
+      const thumbnailUrl = urlData.publicUrl;
+
+      // Step 6: Update attachments table with thumbnail_url
+      const { data: updatedRecords, error: updateError } = await supabaseAdmin
+        .from(table)
+        .update({ thumbnail_url: thumbnailUrl })
+        .eq("id", recordId)
+        .select();
+
+      if (updateError) {
+        console.error("Failed to update database record:", updateError);
+        return jsonErr(`Thumbnail created but database update failed: ${updateError.message}`, 200); // Return 200 OK
+      }
+
+      if (!updatedRecords || updatedRecords.length === 0) {
+        console.error("No records updated - record may not exist");
+        return jsonErr("Thumbnail created but record not found in database", 200); // Return 200 OK
+      }
+
+      return jsonOK({
+        thumbnailUrl,
+        thumbnailPath,
+        originalPath: path,
+        recordId,
+        table,
+      });
+    } catch (error: any) {
+      // Catch any errors in image processing (e.g., ImageMagick/sharp missing, invalid image, etc.)
+      console.error("Error processing image:", error);
+      return jsonErr(`Image processing failed: ${error.message}`, 200); // Return 200 OK with error
+    }
   } catch (error: any) {
-    console.error("Error processing image:", error);
-    return jsonErr(`Image processing failed: ${error.message}`, 500);
+    // Catch any unexpected errors in the handler itself
+    console.error("Unexpected error in optimize-image function:", error);
+    return jsonErr(`Unexpected error: ${error.message}`, 200); // Return 200 OK with error
   }
 });
 
