@@ -86,21 +86,22 @@ export function useTaskDetails(taskId: string | undefined) {
     queryKey: ["task-categories", taskId],
     queryFn: async () => {
       if (!taskId || !orgId) return [];
-      // Fetch category IDs from task_categories junction table
-      const { data: taskCategories } = await supabase
-        .from("task_categories")
-        .select("category_id")
+      // Fetch theme IDs from task_themes junction table (categories are themes with type='category')
+      const { data: taskThemes } = await supabase
+        .from("task_themes")
+        .select("theme_id")
         .eq("task_id", taskId);
 
-      if (!taskCategories || taskCategories.length === 0) return [];
+      if (!taskThemes || taskThemes.length === 0) return [];
 
-      const categoryIds = taskCategories.map((item: any) => item.category_id);
+      const themeIds = taskThemes.map((item: any) => item.theme_id);
       
-      // Fetch categories
+      // Fetch categories (now themes with type='category')
       const { data: categories } = await supabase
-        .from("categories")
+        .from("themes")
         .select("id, name, color, icon")
-        .in("id", categoryIds);
+        .eq("type", "category")
+        .in("id", themeIds);
 
       return (categories || []).map((category: any) => ({
         id: category.id,

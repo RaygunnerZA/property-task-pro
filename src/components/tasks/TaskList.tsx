@@ -1,8 +1,11 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useThemes } from "@/hooks/useThemes";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useTeams } from "@/hooks/useTeams";
+import { useCategories } from "@/hooks/useCategories";
 import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import TaskCard from "@/components/TaskCard";
@@ -10,18 +13,38 @@ import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import EmptyState from "@/components/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { cn } from "@/lib/utils";
-import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag } from "lucide-react";
+import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus } from "lucide-react";
 
 interface TaskListProps {
+  tasks?: any[]; // Accept tasks as prop instead of fetching
+  properties?: any[]; // Accept properties as prop instead of fetching
+  tasksLoading?: boolean; // Accept loading state
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
 }
 
-export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
+export function TaskList({ 
+  tasks: tasksProp,
+  properties: propertiesProp,
+  tasksLoading: tasksLoadingProp,
+  onTaskClick, 
+  selectedTaskId 
+}: TaskListProps = {}) {
   const navigate = useNavigate();
-  const { data: tasksData = [], isLoading: loading, error } = useTasksQuery();
-  const { data: properties = [] } = usePropertiesQuery();
+  
+  // Only fetch if props not provided (for backward compatibility)
+  const { data: tasksDataFromQuery = [], isLoading: loadingFromQuery, error: errorFromQuery } = useTasksQuery();
+  const { data: propertiesFromQuery = [] } = usePropertiesQuery();
+  
+  // Use props if provided, otherwise fall back to queries
+  const tasksData = tasksProp ?? tasksDataFromQuery;
+  const properties = propertiesProp ?? propertiesFromQuery;
+  const loading = tasksLoadingProp ?? loadingFromQuery;
+  const error = errorFromQuery;
   const { themes } = useThemes();
+  const { members } = useOrgMembers();
+  const { teams } = useTeams();
+  const { categories } = useCategories();
   const { userId } = useDataContext();
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set()); // No default filters
 
@@ -53,6 +76,25 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
+
+  // Extract unique spaces from tasks
+  const allSpaces = useMemo(() => {
+    const spaceMap = new Map<string, { id: string; name: string; property_id: string }>();
+    tasks.forEach((task: any) => {
+      if (task.spaces && Array.isArray(task.spaces)) {
+        task.spaces.forEach((space: any) => {
+          if (space.id && !spaceMap.has(space.id)) {
+            spaceMap.set(space.id, {
+              id: space.id,
+              name: space.name || space.type || 'Unknown',
+              property_id: task.property_id,
+            });
+          }
+        });
+      }
+    });
+    return Array.from(spaceMap.values());
+  }, [tasks]);
 
   // Filter tasks based on selected filters
   const filteredTasks = useMemo(() => {
@@ -117,6 +159,125 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
       });
     }
 
+    // Secondary filters - Property
+    const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
+    if (propertyFilterIds.length > 0) {
+      const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
+      filtered = filtered.filter((task) => {
+        return task.property_id && selectedPropertyIds.includes(task.property_id);
+      });
+    }
+
+    // Secondary filters - Space
+    const spaceFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-space-"));
+    if (spaceFilterIds.length > 0) {
+      const selectedSpaceIds = spaceFilterIds.map(f => f.replace("filter-space-", ""));
+      filtered = filtered.filter((task) => {
+        if (!task.spaces || !Array.isArray(task.spaces)) return false;
+        const taskSpaceIds = task.spaces.map((s: any) => s.id).filter(Boolean);
+        return selectedSpaceIds.some(spaceId => taskSpaceIds.includes(spaceId));
+      });
+    }
+
+    // Secondary filters - Assigned to Person
+    const personFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-assigned-person-"));
+    if (personFilterIds.length > 0) {
+      const selectedPersonIds = personFilterIds.map(f => f.replace("filter-assigned-person-", ""));
+      filtered = filtered.filter((task) => {
+        return (task as any).assigned_user_id && selectedPersonIds.includes((task as any).assigned_user_id);
+      });
+    }
+
+    // Secondary filters - Assigned to Team
+    const teamFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-assigned-team-"));
+    if (teamFilterIds.length > 0) {
+      const selectedTeamIds = teamFilterIds.map(f => f.replace("filter-assigned-team-", ""));
+      filtered = filtered.filter((task) => {
+        if (!task.teams || !Array.isArray(task.teams)) return false;
+        const taskTeamIds = task.teams.map((t: any) => t.id).filter(Boolean);
+        return selectedTeamIds.some(teamId => taskTeamIds.includes(teamId));
+      });
+    }
+
+    // Secondary filters - Category
+    const categoryFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-category-"));
+    if (categoryFilterIds.length > 0) {
+      const selectedCategoryIds = categoryFilterIds.map(f => f.replace("filter-category-", ""));
+      // Note: Categories are not in tasks_view yet, so we'll need to fetch separately if needed
+      // For now, this is a placeholder that will work once categories are added to the view
+      // filtered = filtered.filter((task) => {
+      //   const taskCategoryIds = taskCategories.get(task.id) || [];
+      //   return selectedCategoryIds.some(categoryId => taskCategoryIds.includes(categoryId));
+      // });
+    }
+
+    // Secondary filters - Priority
+    const priorityFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-priority-"));
+    if (priorityFilterIds.length > 0) {
+      const selectedPriorities = priorityFilterIds.map(f => f.replace("filter-priority-", ""));
+      filtered = filtered.filter((task) => {
+        if (!task.priority) return false;
+        // Handle normalization: "normal" and "medium" are treated the same
+        const taskPriority = task.priority === "medium" ? "normal" : task.priority;
+        return selectedPriorities.some(p => {
+          const filterPriority = p === "medium" ? "normal" : p;
+          return taskPriority === filterPriority;
+        });
+      });
+    }
+
+    // Secondary filters - Date Due
+    if (selectedFilters.has("filter-date-today")) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      filtered = filtered.filter((task) => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today && dueDate < tomorrow;
+      });
+    }
+
+    if (selectedFilters.has("filter-date-tomorrow")) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      const dayAfter = new Date(tomorrow);
+      dayAfter.setDate(dayAfter.getDate() + 1);
+      filtered = filtered.filter((task) => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= tomorrow && dueDate < dayAfter;
+      });
+    }
+
+    if (selectedFilters.has("filter-date-this-week")) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const weekFromNow = new Date(today);
+      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      filtered = filtered.filter((task) => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate >= today && dueDate < weekFromNow;
+      });
+    }
+
+    if (selectedFilters.has("filter-date-overdue")) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((task) => {
+        if (!task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        dueDate.setHours(0, 0, 0, 0);
+        return dueDate < today;
+      });
+    }
+
     return filtered;
   }, [tasks, selectedFilters, userId, taskThemes]);
 
@@ -157,7 +318,7 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
       options: [
         {
           id: "filter-status-todo",
-          label: "Todo",
+          label: "To-Do",
           icon: <CheckSquare className="h-3 w-3" />,
         },
         {
@@ -178,34 +339,108 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
       ],
     },
     {
-      id: "responsibility",
-      label: "Responsibility",
+      id: "date-due",
+      label: "Date Due",
       options: [
         {
-          id: "filter-responsibility-unassigned",
-          label: "Unassigned",
-          icon: <UserX className="h-3 w-3" />,
+          id: "filter-date-today",
+          label: "Today",
+          icon: <Calendar className="h-3 w-3" />,
         },
         {
-          id: "filter-responsibility-external",
-          label: "External",
-          icon: <ExternalLink className="h-3 w-3" />,
+          id: "filter-date-tomorrow",
+          label: "Tomorrow",
+          icon: <Calendar className="h-3 w-3" />,
+        },
+        {
+          id: "filter-date-this-week",
+          label: "This Week",
+          icon: <Calendar className="h-3 w-3" />,
+        },
+        {
+          id: "filter-date-overdue",
+          label: "Overdue",
+          icon: <AlertTriangle className="h-3 w-3" />,
+          color: "#EB6834",
         },
       ],
     },
     {
-      id: "theme",
-      label: "Theme",
-      options: themes.map((theme) => ({
-        id: `filter-theme-${theme.id}`,
-        label: theme.name,
+      id: "priority",
+      label: "Priority",
+      options: [
+        {
+          id: "filter-priority-low",
+          label: "Low",
+          icon: <ArrowDown className="h-3 w-3" />,
+        },
+        {
+          id: "filter-priority-normal",
+          label: "Normal",
+          icon: <Minus className="h-3 w-3" />,
+        },
+        {
+          id: "filter-priority-high",
+          label: "High",
+          icon: <AlertTriangle className="h-3 w-3" />,
+        },
+        {
+          id: "filter-priority-urgent",
+          label: "Urgent",
+          icon: <AlertTriangle className="h-3 w-3" />,
+          color: "#EB6834",
+        },
+      ],
+    },
+    {
+      id: "assigned-to",
+      label: "Assigned To",
+      options: [
+        // People options
+        ...members.map((member) => ({
+          id: `filter-assigned-person-${member.user_id}`,
+          label: member.display_name || member.email || 'Unknown',
+          icon: <User className="h-3 w-3" />,
+        })),
+        // Team options
+        ...teams.map((team) => ({
+          id: `filter-assigned-team-${team.id}`,
+          label: team.name,
+          icon: <Users className="h-3 w-3" />,
+        })),
+      ],
+    },
+    {
+      id: "property",
+      label: "Property",
+      options: properties.map((property) => ({
+        id: `filter-property-${property.id}`,
+        label: property.name || property.address || 'Unknown',
+        icon: <Building2 className="h-3 w-3" />,
+      })),
+    },
+    {
+      id: "space",
+      label: "Space",
+      options: allSpaces.map((space) => ({
+        id: `filter-space-${space.id}`,
+        label: space.name,
+        icon: <Building2 className="h-3 w-3" />,
+      })),
+    },
+    {
+      id: "category",
+      label: "Category",
+      options: categories.map((category) => ({
+        id: `filter-category-${category.id}`,
+        label: category.name,
         icon: <Tag className="h-3 w-3" />,
-        color: theme.color || undefined,
+        color: category.color || undefined,
       })),
     },
   ];
 
-  const handleFilterChange = (filterId: string, selected: boolean) => {
+  const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
     setSelectedFilters((prev) => {
       const next = new Set(prev);
       if (selected) {
@@ -215,7 +450,40 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
       }
       return next;
     });
-  };
+  }, []);
+  
+  // Memoize click handlers to prevent recreation on every render
+  const handleTaskClick = useCallback((taskId: string) => {
+    if (onTaskClick) {
+      onTaskClick(taskId);
+    } else {
+      navigate(`/task/${taskId}`);
+    }
+  }, [onTaskClick, navigate]);
+  
+  // Memoize task card props to ensure stable references
+  // Create onClick handlers inline but ensure they're stable by using task.id directly
+  // The React.memo comparison will prevent re-renders when props are equal
+  const memoizedTaskCards = useMemo(() => {
+    const createCardProps = (task: any) => {
+      const property = task.property_id
+        ? propertyMap.get(task.property_id)
+        : undefined;
+      const isSelected = selectedTaskId === task.id;
+      const taskId = task.id; // Capture task.id in closure for stability
+      return {
+        task,
+        property,
+        isSelected,
+        onClick: () => handleTaskClick(taskId),
+      };
+    };
+    
+    return {
+      todo: groupedTasks.todo.map(createCardProps),
+      done: groupedTasks.done.map(createCardProps),
+    };
+  }, [groupedTasks.todo, groupedTasks.done, propertyMap, selectedTaskId, handleTaskClick]);
 
   if (loading) {
     return (
@@ -242,6 +510,10 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
     );
   }
 
+  // Check if filters are active but no tasks match
+  const hasActiveFilters = selectedFilters.size > 0;
+  const hasNoMatchingTasks = groupedTasks.todo.length === 0 && groupedTasks.done.length === 0;
+
   return (
     <div className="space-y-6">
       {/* Filter Bar */}
@@ -252,65 +524,45 @@ export function TaskList({ onTaskClick, selectedTaskId }: TaskListProps = {}) {
         onFilterChange={handleFilterChange}
       />
 
-      {/* Todo Section */}
-      {groupedTasks.todo.length > 0 && (
-        <div className="space-y-3">
-          <div className="space-y-3">
-            {groupedTasks.todo.map((task) => {
-              const property = task.property_id
-                ? propertyMap.get(task.property_id)
-                : undefined;
-              const isSelected = selectedTaskId === task.id;
-              return (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  property={property}
-                  isSelected={isSelected}
-                  onClick={() => {
-                    if (onTaskClick) {
-                      onTaskClick(task.id);
-                    } else {
-                      navigate(`/task/${task.id}`);
-                    }
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Show empty state if filters are active but no tasks match */}
+      {hasActiveFilters && hasNoMatchingTasks ? (
+        <EmptyState 
+          title="No tasks match your filters" 
+          subtitle="Try adjusting your filter selections to see more tasks." 
+        />
+      ) : (
+        <>
+          {/* Todo Section */}
+          {groupedTasks.todo.length > 0 && (
+            <div className="space-y-3">
+              <div className="space-y-3">
+                {memoizedTaskCards.todo.map((props) => (
+                  <TaskCard
+                    key={props.task.id}
+                    {...props}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
-      {/* Done Section */}
-      {groupedTasks.done.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
-            Done ({groupedTasks.done.length})
-          </h2>
-          <div className="space-y-3">
-            {groupedTasks.done.map((task) => {
-              const property = task.property_id
-                ? propertyMap.get(task.property_id)
-                : undefined;
-              const isSelected = selectedTaskId === task.id;
-              return (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  property={property}
-                  isSelected={isSelected}
-                  onClick={() => {
-                    if (onTaskClick) {
-                      onTaskClick(task.id);
-                    } else {
-                      navigate(`/task/${task.id}`);
-                    }
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
+          {/* Done Section */}
+          {groupedTasks.done.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                Done ({groupedTasks.done.length})
+              </h2>
+              <div className="space-y-3">
+                {memoizedTaskCards.done.map((props) => (
+                  <TaskCard
+                    key={props.task.id}
+                    {...props}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -39,7 +39,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Identify ghost chips (suggested but not in DB)
-  const existingCategoryNames = categories.map(c => (c.display_name || c.name).toLowerCase());
+  const existingCategoryNames = categories.map(c => c.name.toLowerCase());
   const ghostCategories = suggestedCategories.filter(
     suggested => !existingCategoryNames.includes(suggested.toLowerCase())
   );
@@ -129,11 +129,12 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
       }
 
       const { error } = await supabase
-        .from("categories")
+        .from("themes")
         .insert({
           org_id: jwtOrgId,
           name: newCategoryName.trim(),
-          image_url: imageUrl,
+          type: "category",
+          ...(imageUrl && { metadata: { image_url: imageUrl } }),
         });
 
       if (error) throw error;
@@ -186,7 +187,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
         {categories.map(category => (
           <StandardChip
             key={category.id}
-            label={category.display_name || category.name}
+            label={category.name}
             selected={selectedCategoryIds.includes(category.id)}
             onSelect={() => toggleCategory(category.id)}
             color={category.color || undefined}

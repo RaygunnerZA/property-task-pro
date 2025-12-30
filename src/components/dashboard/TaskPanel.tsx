@@ -2,8 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TaskList } from "@/components/tasks/TaskList";
-import { useTasks } from "@/hooks/use-tasks";
-import { useProperties } from "@/hooks/useProperties";
+import MessageList from "@/components/MessageList";
 import TaskCard from "@/components/TaskCard";
 import { CheckSquare, Inbox, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,7 +10,12 @@ import { format, isAfter, startOfDay } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 
 interface TaskPanelProps {
+  tasks?: any[];
+  properties?: any[];
+  tasksLoading?: boolean;
   onTaskClick?: (taskId: string) => void;
+  onMessageClick?: (messageId: string) => void;
+  selectedItem?: { type: 'task' | 'message'; id: string } | null;
 }
 
 /**
@@ -29,11 +33,16 @@ interface TaskPanelProps {
  * - Neomorphic tab styling (E2 elevation for active, inset for track)
  * - Paper texture background
  */
-export function TaskPanel({ onTaskClick }: TaskPanelProps = {}) {
+export function TaskPanel({ 
+  tasks = [],
+  properties = [],
+  tasksLoading = false,
+  onTaskClick, 
+  onMessageClick, 
+  selectedItem 
+}: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("tasks");
-  const { tasks, loading: tasksLoading } = useTasks();
-  const { properties } = useProperties();
 
   // Create property map for quick lookup
   const propertyMap = useMemo(() => {
@@ -118,7 +127,13 @@ export function TaskPanel({ onTaskClick }: TaskPanelProps = {}) {
         <div className="flex-1 overflow-y-auto">
           {/* Tasks Tab */}
           <TabsContent value="tasks" className="mt-0 h-full p-4">
-            <TaskList onTaskClick={onTaskClick} />
+            <TaskList 
+              tasks={tasks}
+              properties={properties}
+              tasksLoading={tasksLoading}
+              onTaskClick={onTaskClick}
+              selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
+            />
           </TabsContent>
 
           {/* Inbox Tab */}
@@ -127,9 +142,9 @@ export function TaskPanel({ onTaskClick }: TaskPanelProps = {}) {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Inbox
               </h3>
-              <EmptyState
-                title="Inbox coming soon"
-                subtitle="Messages, notifications, and AI suggestions will appear here"
+              <MessageList 
+                onMessageClick={onMessageClick}
+                selectedMessageId={selectedItem?.type === 'message' ? selectedItem.id : undefined}
               />
             </div>
           </TabsContent>
@@ -171,6 +186,7 @@ export function TaskPanel({ onTaskClick }: TaskPanelProps = {}) {
                         <TaskCard
                           task={task}
                           property={property}
+                          isSelected={selectedItem?.type === 'task' && selectedItem.id === task.id}
                           onClick={() => {
                             if (onTaskClick) {
                               onTaskClick(task.id);

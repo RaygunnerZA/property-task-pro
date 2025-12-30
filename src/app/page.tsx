@@ -6,6 +6,8 @@ import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Calendar as CalendarIcon } from "lucide-react";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 
 // lg breakpoint is 1024px - use this for three-column layout
 const LG_BREAKPOINT = 1024;
@@ -18,6 +20,10 @@ type SelectedItem = {
 export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  
+  // Fetch data once at the Dashboard level
+  const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
+  const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -74,9 +80,19 @@ export default function Dashboard() {
       </PageHeader>
       
       <DualPaneLayout
-        leftColumn={<LeftColumn />}
+        leftColumn={
+          <LeftColumn 
+            tasks={tasks}
+            properties={properties}
+            tasksLoading={tasksLoading}
+            propertiesLoading={propertiesLoading}
+          />
+        }
         rightColumn={
           <RightColumn 
+            tasks={tasks}
+            properties={properties}
+            tasksLoading={tasksLoading}
             onTaskClick={handleTaskClick}
             onMessageClick={handleMessageClick}
             selectedItem={selectedItem}

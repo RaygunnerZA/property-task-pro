@@ -3,11 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
 
-type CategoryRow = Tables<"categories">;
+type ThemeRow = Tables<"themes">;
 
 export function useCategories() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [categories, setCategories] = useState<ThemeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,11 +22,11 @@ export function useCategories() {
     setError(null);
 
     const { data, error: err } = await supabase
-      .from("categories")
+      .from("themes")
       .select("*")
       .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .order("display_order", { ascending: true });
+      .eq("type", "category")
+      .order("created_at", { ascending: true });
 
     if (err) setError(err.message);
     else setCategories(data ?? []);
@@ -43,45 +43,24 @@ export function useCategories() {
   return { categories, loading, error, refresh: fetchCategories };
 }
 
+// Note: category_members table was removed in themes migration
+// This function is kept for backward compatibility but returns empty array
 export function useCategoryMembers(categoryId?: string) {
-  const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [members, setMembers] = useState<Tables<"category_members">[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchMembers() {
-    if (!orgId || !categoryId) {
-      setMembers([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const { data, error: err } = await supabase
-      .from("category_members")
-      .select("*")
-      .eq("category_id", categoryId)
-      .eq("is_deleted", false);
-
-    if (err) setError(err.message);
-    else setMembers(data ?? []);
-
-    setLoading(false);
-  }
-
   useEffect(() => {
-    if (!orgLoading) {
-      fetchMembers();
-    }
-  }, [orgId, categoryId, orgLoading]);
+    // category_members table no longer exists - themes system doesn't have members
+    setMembers([]);
+    setLoading(false);
+  }, [categoryId]);
 
-  return { members, loading, error, refresh: fetchMembers };
+  return { members, loading, error, refresh: () => {} };
 }
 
 export function useTaskCategories(taskId?: string) {
-  const [taskCategories, setTaskCategories] = useState<Tables<"task_categories">[]>([]);
+  const [taskCategories, setTaskCategories] = useState<Tables<"task_themes">[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,8 +74,9 @@ export function useTaskCategories(taskId?: string) {
     setLoading(true);
     setError(null);
 
+    // Use task_themes junction table (replaces task_categories)
     const { data, error: err } = await supabase
-      .from("task_categories")
+      .from("task_themes")
       .select("*")
       .eq("task_id", taskId);
 

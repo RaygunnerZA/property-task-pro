@@ -454,12 +454,47 @@ export function CreateTaskModal({
               .single();
 
             if (imageRecordError) {
-              console.error("Error creating task_images record:", imageRecordError);
+              console.error("Error creating attachment record:", imageRecordError);
+              toast({
+                title: "Failed to save image",
+                description: imageRecordError.message.includes("row-level security")
+                  ? "You don't have permission to upload images. Please contact your administrator."
+                  : `Failed to save "${image.original_filename}": ${imageRecordError.message}`,
+                variant: "destructive",
+              });
+              continue;
             }
+            
+            if (!insertedAttachment) {
+              console.error("Attachment record created but no data returned");
+              toast({
+                title: "Image upload incomplete",
+                description: `Image "${image.original_filename}" was uploaded but could not be linked to the task.`,
+                variant: "destructive",
+              });
+              continue;
+            }
+            
+            console.log('[CreateTaskModal] Attachment created successfully:', {
+              attachmentId: insertedAttachment.id,
+              taskId,
+              fileName: image.original_filename,
+            });
           } catch (err: any) {
             console.error("Error uploading image:", err);
+            toast({
+              title: "Image upload failed",
+              description: err.message || `Failed to upload "${image.original_filename}"`,
+              variant: "destructive",
+            });
           }
         }
+        
+        // Invalidate queries immediately after images are uploaded
+        // This ensures the task list updates even before thumbnails are processed
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
       }
       
       // Link spaces to task via task_spaces junction table
@@ -524,16 +559,17 @@ export function CreateTaskModal({
       if (ghostSpaces.length > 0) createdEntities.push(`${ghostSpaces.length} space${ghostSpaces.length > 1 ? 's' : ''}`);
       if (ghostThemes.length > 0) createdEntities.push(`${ghostThemes.length} theme${ghostThemes.length > 1 ? 's' : ''}`);
       
-      console.log('[CreateTaskModal] Task creation complete, invalidating queries:', {
+      console.log('[CreateTaskModal] Task creation complete:', {
         taskId,
         orgId,
         imageCount: images.length,
       });
       
       // Invalidate queries to refresh task lists and details
-      // Wait a moment for edge function to process thumbnails if images were uploaded
+      // If images were uploaded, we already invalidated above, but invalidate again
+      // after a delay to pick up thumbnails processed by the edge function
       if (images.length > 0) {
-        // Wait 2 seconds for edge function to process images
+        // Wait 2 seconds for edge function to process thumbnails, then invalidate again
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
           queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });

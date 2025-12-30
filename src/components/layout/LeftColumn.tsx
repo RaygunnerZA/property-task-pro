@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { useTasks } from "@/hooks/use-tasks";
-import { useProperties } from "@/hooks/useProperties";
 import { PropertyCard } from "@/components/properties/PropertyCard";
+import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { format, format as formatDate } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { cardButtonClassName } from "@/components/design-system/CardButton";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { CaptionProps } from "react-day-picker";
+
+interface LeftColumnProps {
+  tasks?: any[];
+  properties?: any[];
+  tasksLoading?: boolean;
+  propertiesLoading?: boolean;
+}
 
 /**
  * Left Column Component
@@ -19,11 +24,14 @@ import type { CaptionProps } from "react-day-picker";
  * Desktop: Fixed 350px width, sticky on scroll
  * Mobile: Full width, stacked above RightColumn
  */
-export function LeftColumn() {
-  const { tasks, loading: tasksLoading } = useTasks();
-  const { properties, loading: propertiesLoading } = useProperties();
+export function LeftColumn({ 
+  tasks = [], 
+  properties = [], 
+  tasksLoading = false,
+  propertiesLoading = false 
+}: LeftColumnProps) {
   const { orgId } = useActiveOrg();
-  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
+  const [showAddProperty, setShowAddProperty] = useState(false);
 
   // Create a map of dates to task counts
   const tasksByDate = useMemo(() => {
@@ -44,6 +52,15 @@ export function LeftColumn() {
     return map;
   }, [tasks]);
 
+  // Extract task counts from properties_view (properties now have open_tasks_count)
+  const taskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    properties.forEach((p: any) => {
+      counts[p.id] = p.open_tasks_count || 0;
+    });
+    return counts;
+  }, [properties]);
+
   // Get dates that have tasks for styling
   const datesWithTasks = useMemo(() => {
     return Array.from(tasksByDate.keys()).map((key) => {
@@ -56,45 +73,6 @@ export function LeftColumn() {
     }).filter((date): date is Date => date !== null);
   }, [tasksByDate]);
 
-  // Fetch task counts for properties
-  useEffect(() => {
-    if (!orgId || properties.length === 0) {
-      setTaskCounts({});
-      return;
-    }
-
-    async function fetchTaskCounts() {
-      try {
-        const propertyIds = properties.map(p => p.id);
-        
-        const { data, error } = await supabase
-          .from("tasks")
-          .select("property_id")
-          .eq("org_id", orgId)
-          .in("property_id", propertyIds)
-          .not("property_id", "is", null);
-
-        if (error) {
-          console.error("Error fetching task counts:", error);
-          return;
-        }
-
-        // Count tasks per property
-        const counts: Record<string, number> = {};
-        (data || []).forEach((task) => {
-          if (task.property_id) {
-            counts[task.property_id] = (counts[task.property_id] || 0) + 1;
-          }
-        });
-
-        setTaskCounts(counts);
-      } catch (err) {
-        console.error("Error fetching task counts:", err);
-      }
-    }
-
-    fetchTaskCounts();
-  }, [orgId, properties]);
 
   // Custom CaptionLabel component that only shows month
   const CustomCaptionLabel = (props: { displayMonth: Date }) => {
@@ -111,8 +89,8 @@ export function LeftColumn() {
       <div className="flex-shrink-0 border-b border-border">
         <div className="px-4 pt-4 pb-4">
           {tasksLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <p className="text-sm text-muted-foreground">Loading calendar...</p>
+            <div className="rounded-lg bg-card p-3 shadow-e1">
+              <Skeleton className="h-64 w-full" />
             </div>
           ) : (
             <div className="rounded-lg bg-card p-3 shadow-e1">
@@ -178,12 +156,23 @@ export function LeftColumn() {
       {/* Properties Section - Scrollable */}
       <div className="flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
-          <h2 className="text-lg font-semibold text-foreground">Properties</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Properties</h2>
+            <button
+              onClick={() => setShowAddProperty(true)}
+              className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
+              aria-label="Add property"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="p-4">
           {propertiesLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-sm text-muted-foreground">Loading properties...</p>
+            <div className="space-y-3">
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-24 w-full rounded-lg" />
+              <Skeleton className="h-24 w-full rounded-lg" />
             </div>
           ) : properties.length === 0 ? (
             <div className="text-center py-8">
@@ -204,6 +193,12 @@ export function LeftColumn() {
           )}
         </div>
       </div>
+
+      {/* Add Property Dialog */}
+      <AddPropertyDialog
+        open={showAddProperty}
+        onOpenChange={setShowAddProperty}
+      />
     </div>
   );
 }

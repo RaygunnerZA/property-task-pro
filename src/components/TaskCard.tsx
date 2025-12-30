@@ -7,9 +7,9 @@ import { archiveTask } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 
-export default function TaskCard({ 
+function TaskCardComponent({
   task, 
   property, 
   onClick,
@@ -24,40 +24,43 @@ export default function TaskCard({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isArchiving, setIsArchiving] = useState(false);
-  const t = mapTask(task);
   
-  // Debug: Log the full task object to see what we're receiving
-  console.log('[TaskCard] Task object:', {
-    id: task?.id,
-    title: task?.title,
-    images: task?.images,
-    imagesType: typeof task?.images,
-    imagesIsArray: Array.isArray(task?.images),
-    primary_image_url: task?.primary_image_url,
-    image_url: task?.image_url,
-    fullTask: task
-  });
-  
-  // Get image from new images array (from tasks_view)
-  // Handle both JSON string and array formats
-  let images: any[] = [];
-  if (task?.images) {
-    if (typeof task.images === 'string') {
-      try {
-        images = JSON.parse(task.images);
-      } catch (e) {
-        console.error('[TaskCard] Failed to parse images JSON:', e);
-        images = [];
+  // Memoize task mapping and image parsing to prevent re-renders
+  // Only recalculate when task data actually changes, not when object reference changes
+  const { t, imageUrl } = useMemo(() => {
+    const mappedTask = mapTask(task);
+    
+    // Get image from new images array (from tasks_view)
+    // Handle both JSON string and array formats
+    let images: any[] = [];
+    if (task?.images) {
+      if (typeof task.images === 'string') {
+        try {
+          images = JSON.parse(task.images);
+        } catch (e) {
+          images = [];
+        }
+      } else if (Array.isArray(task.images)) {
+        images = task.images;
       }
-    } else if (Array.isArray(task.images)) {
-      images = task.images;
     }
-  }
+    
+    const firstImage = images.length > 0 ? images[0] : null;
+    const url = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
+    
+    return { t: mappedTask, imageUrl: url };
+  }, [
+    task?.id,
+    task?.title,
+    task?.status,
+    task?.due_date,
+    task?.images,
+    task?.primary_image_url,
+    task?.image_url,
+  ]);
   
-  const firstImage = images.length > 0 ? images[0] : null;
-  const imageUrl = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
-  
-  const handleDone = async (e: React.MouseEvent) => {
+  // Memoize handleDone to prevent recreation on every render
+  const handleDone = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     if (!task?.id || !orgId || isArchiving) return;
     
@@ -72,7 +75,6 @@ export default function TaskCard({
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] });
     } catch (error) {
-      console.error("Error archiving task:", error);
       toast({
         title: "Error",
         description: "Failed to archive task. Please try again.",
@@ -81,7 +83,7 @@ export default function TaskCard({
     } finally {
       setIsArchiving(false);
     }
-  };
+  }, [task?.id, orgId, isArchiving, toast, queryClient]);
   
   // Don't show Done button if task is already archived or completed
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';
@@ -174,3 +176,46 @@ export default function TaskCard({
     </div>
   );
 }
+
+// Memoize TaskCard with custom comparison to prevent unnecessary re-renders
+// Returns true if props are equal (skip re-render), false if different (re-render)
+const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
+  // Quick reference equality check first
+  if (prevProps === nextProps) return true;
+  
+  // If task ID changed, definitely re-render
+  if (prevProps.task?.id !== nextProps.task?.id) return false;
+  
+  // If selection state changed, re-render
+  if (prevProps.isSelected !== nextProps.isSelected) return false;
+  
+  // If property changed, re-render
+  if (prevProps.property?.id !== nextProps.property?.id) return false;
+  
+  // Compare all task data that affects rendering
+  const prevTask = prevProps.task;
+  const nextTask = nextProps.task;
+  
+  if (
+    prevTask?.status !== nextTask?.status ||
+    prevTask?.title !== nextTask?.title ||
+    prevTask?.due_date !== nextTask?.due_date ||
+    prevTask?.priority !== nextTask?.priority
+  ) {
+    return false; // Task fields changed, re-render
+  }
+  
+  // Compare images array (by first image URL)
+  const prevImageUrl = prevTask?.images?.[0]?.thumbnail_url || prevTask?.images?.[0]?.file_url || prevTask?.primary_image_url;
+  const nextImageUrl = nextTask?.images?.[0]?.thumbnail_url || nextTask?.images?.[0]?.file_url || nextTask?.primary_image_url;
+  if (prevImageUrl !== nextImageUrl) return false;
+  
+  // onClick comparison - if both are functions, we assume they're equivalent if task.id is the same
+  // This prevents re-renders when onClick function reference changes but functionality is the same
+  // (The onClick handler is recreated but does the same thing)
+  
+  // All props are equal, skip re-render
+  return true;
+});
+
+export default TaskCard;

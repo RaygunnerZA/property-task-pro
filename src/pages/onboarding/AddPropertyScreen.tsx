@@ -166,29 +166,12 @@ export default function AddPropertyScreen() {
 
     setLoading(true);
     try {
-      // #region agent log
-      const logData1 = {location:'AddPropertyScreen.tsx:161',message:'handleSave entry',data:{orgId,propertyNickname,propertyAddress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-      console.log('[DEBUG]', logData1);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-      // #endregion
-
       // Double-check orgId is available (shouldn't happen due to guard above, but safety check)
       if (!orgId) {
-        // #region agent log
-        const logData2 = {location:'AddPropertyScreen.tsx:170',message:'orgId is null',data:{orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
-        console.log('[DEBUG]', logData2);
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-        // #endregion
         toast.error("Organisation not found. Please create one first.");
         navigate("/onboarding/create-organisation");
         return;
       }
-
-      // #region agent log
-      const logData3 = {location:'AddPropertyScreen.tsx:177',message:'Before duplicate check query',data:{orgId,queryOrgId:orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
-      console.log('[DEBUG]', logData3);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData3)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-      // #endregion
 
       // Check for duplicate property name/address within this org
       const { data: existingProperties, error: checkError } = await supabase
@@ -196,51 +179,20 @@ export default function AddPropertyScreen() {
         .select('id, address, org_id')
         .eq('org_id', orgId);
 
-      // #region agent log
-      const logData4 = {location:'AddPropertyScreen.tsx:182',message:'After duplicate check query',data:{orgId,checkError:checkError?.message,existingPropertiesCount:existingProperties?.length,existingProperties:existingProperties?.map(p=>({id:p.id,address:p.address,org_id:p.org_id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-      console.log('[DEBUG]', logData4);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData4)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-      // #endregion
-
       if (checkError) {
         console.error("Error checking for duplicate properties:", checkError);
-        // #region agent log
-        const logData5 = {location:'AddPropertyScreen.tsx:186',message:'Query error',data:{error:checkError.message,code:checkError.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
-        console.log('[DEBUG]', logData5);
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData5)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-        // #endregion
       } else if (existingProperties) {
         // Check if any property has the same name or address
         // Note: Currently properties only have 'address' field, so we check that
         const propertyNameOrAddress = propertyNickname.trim() || propertyAddress?.trim();
         
-        // #region agent log
-        const logData6 = {location:'AddPropertyScreen.tsx:193',message:'Before duplicate comparison',data:{propertyNameOrAddress,existingProperties:existingProperties.map(p=>({address:p.address,org_id:p.org_id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
-        console.log('[DEBUG]', logData6);
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData6)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-        // #endregion
-
         const duplicate = existingProperties.find(p => {
           const existingNameOrAddress = p.address?.toLowerCase().trim();
           const isMatch = existingNameOrAddress === propertyNameOrAddress?.toLowerCase().trim();
-          
-          // #region agent log
-          if (isMatch) {
-            const logData7 = {location:'AddPropertyScreen.tsx:197',message:'Duplicate match found',data:{propertyNameOrAddress,existingAddress:p.address,existingOrgId:p.org_id,currentOrgId:orgId,match:isMatch},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
-            console.log('[DEBUG]', logData7);
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData7)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-          }
-          // #endregion
-          
           return isMatch;
         });
         
         if (duplicate) {
-          // #region agent log
-          const logData8 = {location:'AddPropertyScreen.tsx:207',message:'Duplicate detected',data:{duplicate:{id:duplicate.id,address:duplicate.address,org_id:duplicate.org_id},currentOrgId:orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
-          console.log('[DEBUG]', logData8);
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData8)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-          // #endregion
           toast.error("A property with this name or address already exists in your organisation");
           setLoading(false);
           return;
@@ -250,23 +202,11 @@ export default function AddPropertyScreen() {
       // Use propertyNickname as address if propertyAddress is empty
       const finalAddress = propertyAddress?.trim() || propertyNickname.trim() || "No address provided";
 
-      // #region agent log
-      const logData9 = {location:'AddPropertyScreen.tsx:215',message:'Before RPC call',data:{orgId,finalAddress},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'};
-      console.log('[DEBUG]', logData9);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData9)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-      // #endregion
-
       // Use RPC function to create property (bypasses RLS with SECURITY DEFINER)
       const { data: newProperty, error } = await supabase.rpc('create_property_v2', {
         p_org_id: orgId,
         p_address: finalAddress
       });
-
-      // #region agent log
-      const logData10 = {location:'AddPropertyScreen.tsx:223',message:'After RPC call',data:{error:error?.message,errorCode:error?.code,newProperty},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'};
-      console.log('[DEBUG]', logData10);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData10)}).catch((e)=>console.error('[DEBUG] Fetch failed:',e));
-      // #endregion
 
       if (error) {
         console.error("Property insert error:", error);
