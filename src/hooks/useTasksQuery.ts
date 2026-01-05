@@ -25,42 +25,31 @@ export function useTasksQuery(propertyId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       
-      // Fetch primary images for all tasks from attachments table
-      const taskIds = (data || []).map((t: any) => t.id);
-      
-      if (taskIds.length > 0 && orgId) {
-        const { data: imagesData, error: imagesError } = await supabase
-          .from("attachments")
-          .select("parent_id, file_url, thumbnail_url, parent_type, org_id")
-          .eq("parent_type", "task")
-          .in("parent_id", taskIds)
-          .eq("org_id", orgId)
-          .order("created_at", { ascending: false });
-
-        if (imagesError) {
-          console.error("Error fetching task images:", imagesError);
-        }
-
-        // Create a map of task_id -> primary image_url (prefer thumbnail)
-        const imageMap = new Map<string, string>();
-        if (imagesData) {
-          imagesData.forEach((img: any) => {
-            if (!imageMap.has(img.parent_id)) {
-              imageMap.set(img.parent_id, img.thumbnail_url || img.file_url);
-            }
-          });
-        }
-
-        // Add primary_image_url to each task
-        const tasksWithImages = (data || []).map((task: any) => ({
-          ...task,
-          primary_image_url: imageMap.get(task.id) || null,
-        }));
+      // Images are already included in tasks_view as a JSON array
+      // Extract primary_image_url from the first image in the array for backward compatibility
+      const tasksWithImages = (data || []).map((task: any) => {
+        let primary_image_url = null;
         
-        return tasksWithImages;
-      }
-
-      return data ?? [];
+        // Parse images array if it's a string (from JSON aggregation)
+        if (task.images) {
+          try {
+            const images = typeof task.images === 'string' ? JSON.parse(task.images) : task.images;
+            if (Array.isArray(images) && images.length > 0) {
+              // Use the first image's thumbnail_url or file_url
+              primary_image_url = images[0].thumbnail_url || images[0].file_url || null;
+            }
+          } catch {
+            // Skip invalid JSON
+          }
+        }
+        
+        return {
+          ...task,
+          primary_image_url,
+        };
+      });
+      
+      return tasksWithImages;
     },
     enabled: !!orgId && !orgLoading, // Only fetch when orgId is available and not loading
     staleTime: 60000, // 1 minute

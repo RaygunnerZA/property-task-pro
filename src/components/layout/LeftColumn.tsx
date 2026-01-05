@@ -1,20 +1,30 @@
-import { useMemo, useState } from "react";
-import { Calendar } from "@/components/ui/calendar";
+import { useMemo, useState, useRef } from "react";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
-import { format, format as formatDate } from "date-fns";
-import { cn } from "@/lib/utils";
+import { SpaceCard } from "@/components/spaces/SpaceCard";
+import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
+import { format } from "date-fns";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { cardButtonClassName } from "@/components/design-system/CardButton";
+import { useSpaces } from "@/hooks/useSpaces";
+import { Plus, EyeOff, Eye } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CaptionProps } from "react-day-picker";
 
 interface LeftColumnProps {
   tasks?: any[];
   properties?: any[];
   tasksLoading?: boolean;
   propertiesLoading?: boolean;
+  selectedDate?: Date | undefined;
+  onDateSelect?: (date: Date | undefined) => void;
+  tasksByDate?: Map<string, {
+    total: number;
+    high: number;
+    urgent: number;
+    overdue: number;
+  }>;
+  urgentCount?: number;
+  overdueCount?: number;
 }
 
 /**
@@ -28,29 +38,23 @@ export function LeftColumn({
   tasks = [], 
   properties = [], 
   tasksLoading = false,
-  propertiesLoading = false 
+  propertiesLoading = false,
+  selectedDate,
+  onDateSelect,
+  tasksByDate,
+  urgentCount,
+  overdueCount
 }: LeftColumnProps) {
   const { orgId } = useActiveOrg();
   const [showAddProperty, setShowAddProperty] = useState(false);
-
-  // Create a map of dates to task counts
-  const tasksByDate = useMemo(() => {
-    const map = new Map<string, number>();
-    
-    tasks.forEach((task) => {
-      if (task.due_date) {
-        try {
-          const date = new Date(task.due_date);
-          const dateKey = format(date, "yyyy-MM-dd");
-          map.set(dateKey, (map.get(dateKey) || 0) + 1);
-        } catch {
-          // Skip invalid dates
-        }
-      }
-    });
-
-    return map;
-  }, [tasks]);
+  const [showAddSpace, setShowAddSpace] = useState(false);
+  const [hideProperties, setHideProperties] = useState(false);
+  const [hideSpaces, setHideSpaces] = useState(false);
+  const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces();
+  const leftColumnRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  const propertiesRef = useRef<HTMLDivElement>(null);
+  const spacesRef = useRef<HTMLDivElement>(null);
 
   // Extract task counts from properties_view (properties now have open_tasks_count)
   const taskCounts = useMemo(() => {
@@ -61,113 +65,106 @@ export function LeftColumn({
     return counts;
   }, [properties]);
 
-  // Get dates that have tasks for styling
-  const datesWithTasks = useMemo(() => {
-    return Array.from(tasksByDate.keys()).map((key) => {
-      try {
-        const [year, month, day] = key.split("-").map(Number);
-        return new Date(year, month - 1, day);
-      } catch {
-        return null;
+  // Calculate urgent task counts per property
+  const urgentTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    tasks.forEach((task) => {
+      if (
+        task.property_id &&
+        (task.priority === 'urgent' || task.priority === 'high') &&
+        task.status !== 'completed' &&
+        task.status !== 'archived'
+      ) {
+        counts[task.property_id] = (counts[task.property_id] || 0) + 1;
       }
-    }).filter((date): date is Date => date !== null);
-  }, [tasksByDate]);
+    });
+    return counts;
+  }, [tasks]);
 
+  // Calculate task counts per space
+  const spaceTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const urgentCounts: Record<string, number> = {};
+    tasks.forEach((task) => {
+      if (task.spaces) {
+        try {
+          const taskSpaces = typeof task.spaces === 'string' ? JSON.parse(task.spaces) : task.spaces;
+          if (Array.isArray(taskSpaces)) {
+            taskSpaces.forEach((space: any) => {
+              if (space?.id && task.status !== 'completed' && task.status !== 'archived') {
+                counts[space.id] = (counts[space.id] || 0) + 1;
+                if (task.priority === 'urgent' || task.priority === 'high') {
+                  urgentCounts[space.id] = (urgentCounts[space.id] || 0) + 1;
+                }
+              }
+            });
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+    });
+    return { counts, urgentCounts };
+  }, [tasks]);
 
-  // Custom CaptionLabel component that only shows month
-  const CustomCaptionLabel = (props: { displayMonth: Date }) => {
-    return (
-      <span className="text-2xl font-semibold text-foreground">
-        {formatDate(props.displayMonth, "MMMM")}
-      </span>
-    );
-  };
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div 
+      ref={leftColumnRef}
+      className="h-auto md:h-screen bg-background flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
+    >
       {/* Calendar Section - Fixed at top */}
-      <div className="flex-shrink-0 border-b border-border">
-        <div className="px-4 pt-4 pb-4">
+      <div 
+        ref={calendarRef}
+        className="flex-shrink-0 border-b border-border w-full"
+      >
+        <div className="px-4 pt-4 pb-4 w-full">
           {tasksLoading ? (
-            <div className="rounded-lg bg-card p-3 shadow-e1">
+            <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
               <Skeleton className="h-64 w-full" />
             </div>
           ) : (
-            <div className="rounded-lg bg-card p-3 shadow-e1">
-              <Calendar
-                className="w-full"
-                classNames={{
-                  months: "flex flex-col space-y-4",
-                  month: "space-y-4",
-                  caption: "flex justify-center pt-1 relative items-center mb-2",
-                  caption_label: "text-2xl font-semibold text-foreground",
-                  nav: "space-x-1 flex items-center",
-                  nav_button: cardButtonClassName,
-                  nav_button_previous: "absolute left-1",
-                  nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse space-y-1",
-                  head_row: "flex justify-center items-center",
-                  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
-                  row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
-                  cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
-                  day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full flex items-center justify-center",
-                  day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
-                  day_today: "bg-accent/30 text-foreground font-semibold",
-                  day_outside: "text-muted-foreground opacity-50",
-                  day_disabled: "text-muted-foreground opacity-50",
-                  day_hidden: "invisible",
-                }}
-                modifiers={{
-                  hasTasks: datesWithTasks,
-                }}
-                modifiersClassNames={{
-                  hasTasks: "has-tasks",
-                }}
-                components={{
-                  IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
-                  IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
-                  CaptionLabel: CustomCaptionLabel,
-                }}
+            <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+              <DashboardCalendar
+                tasks={tasks}
+                selectedDate={selectedDate}
+                onDateSelect={onDateSelect}
+                tasksByDate={tasksByDate}
               />
-              <style>{`
-                .rdp-day.has-tasks::after {
-                  content: '';
-                  position: absolute;
-                  bottom: 2px;
-                  left: 50%;
-                  transform: translateX(-50%);
-                  width: 4px;
-                  height: 4px;
-                  border-radius: 50%;
-                  background-color: #8EC9CE;
-                }
-                .rdp-day_selected.has-tasks::after {
-                  background-color: white;
-                }
-                .rdp-day.has-tasks.rdp-day_today::after {
-                  background-color: #EB6834;
-                }
-              `}</style>
             </div>
           )}
         </div>
       </div>
 
       {/* Properties Section - Scrollable */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
-            <button
-              onClick={() => setShowAddProperty(true)}
-              className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
-              aria-label="Add property"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setHideProperties(!hideProperties)}
+                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-muted-foreground/60 hover:text-muted-foreground transition-all duration-200"
+                aria-label={hideProperties ? "Show properties" : "Hide properties"}
+              >
+                {hideProperties ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                onClick={() => setShowAddProperty(true)}
+                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
+                aria-label="Add property"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
-        <div className="p-4">
+        {!hideProperties && (
+        <div className="pt-[2px] px-4 pb-4 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
           {propertiesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -179,25 +176,130 @@ export function LeftColumn({
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {properties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={{
-                    ...property,
-                    taskCount: taskCounts[property.id] || 0,
-                  }}
-                />
-              ))}
+            <div 
+              ref={propertiesRef}
+              className="relative w-full max-w-full overflow-x-hidden overflow-y-visible"
+              style={{ borderRadius: '13px 13px 10px 0px' }}
+            >
+              <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
+                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content' }}>
+                  {properties.map((property) => (
+                    <div key={property.id} className="w-[215px] flex-shrink-0" style={{ maxHeight: '228px' }}>
+                      <PropertyCard
+                        property={{
+                          ...property,
+                          taskCount: taskCounts[property.id] || 0,
+                          urgentTaskCount: urgentTaskCounts[property.id] || 0,
+                          lastInspectedDate: null, // TODO: Add last inspected date from compliance data
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Gradient overlay - right side fade, aligned to right edge of mask */}
+              <div 
+                className="absolute top-0 right-0 bottom-0 pointer-events-none"
+                style={{
+                  width: '10px',
+                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
+                  zIndex: 20
+                }}
+              />
             </div>
           )}
         </div>
+        )}
+
+        {/* Spaces Section */}
+        <div className="border-b border-border p-4 pb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Spaces</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setHideSpaces(!hideSpaces)}
+                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-muted-foreground/60 hover:text-muted-foreground transition-all duration-200"
+                aria-label={hideSpaces ? "Show spaces" : "Hide spaces"}
+              >
+                {hideSpaces ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                onClick={() => setShowAddSpace(true)}
+                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
+                aria-label="Add space"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+        {!hideSpaces && (
+        <div className="pt-[2px] px-4 pb-4 w-full max-w-full overflow-x-hidden">
+          {spacesLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+            </div>
+          ) : spaces.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-xs text-muted-foreground">No spaces yet</p>
+            </div>
+          ) : (
+            <div 
+              ref={spacesRef}
+              className="relative w-full max-w-full overflow-hidden"
+            >
+              <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ width: 'calc(100% + 15px)' }}>
+                <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
+                  {spaces.map((space) => (
+                    <div key={space.id} className="w-[165px] flex-shrink-0 rounded-[5px]">
+                      <SpaceCard
+                        space={{
+                          ...space,
+                          taskCount: spaceTaskCounts.counts[space.id] || 0,
+                          urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Gradient overlay - right side fade, aligned to right edge of mask */}
+              <div 
+                className="absolute top-0 right-0 bottom-0 pointer-events-none"
+                style={{
+                  width: '10px',
+                  height: '155px',
+                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
+                  zIndex: 20
+                }}
+              />
+            </div>
+          )}
+        </div>
+        )}
       </div>
 
       {/* Add Property Dialog */}
       <AddPropertyDialog
         open={showAddProperty}
         onOpenChange={setShowAddProperty}
+      />
+
+      {/* Add Space Dialog */}
+      <AddSpaceDialog
+        open={showAddSpace}
+        onOpenChange={(open) => {
+          setShowAddSpace(open);
+          if (!open) {
+            refreshSpaces();
+          }
+        }}
+        properties={properties}
       />
     </div>
   );
