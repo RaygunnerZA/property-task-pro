@@ -22,37 +22,108 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ----------------------------------------------------
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
-
-  if (req.method !== "POST")
-    return jsonErr("POST only", 405);
-
-  let body;
   try {
-    body = await req.json();
-  } catch {
-    return jsonErr("Invalid JSON", 400);
+    if (req.method === "OPTIONS")
+      return new Response(null, { headers: corsHeaders });
+
+    if (req.method !== "POST")
+      return jsonErr("POST only", 405);
+
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonErr("Invalid JSON", 400);
+    }
+
+    console.log('Received payload:', JSON.stringify(body));
+
+    const description = (body.description || "").trim();
+    const orgId = body.org_id;
+
+    if (!orgId) {
+      console.log('Error: Missing org_id');
+      return jsonErr("Missing org_id", 400);
+    }
+    if (!description) {
+      console.log('Empty description, returning empty result');
+      return jsonOK(emptyResult());
+    }
+
+    console.log('Processing AI extraction:', { descriptionLength: description.length, orgId, aiProvider: AI_PROVIDER });
+
+    // 1. Semantic AI Extraction
+    let ai;
+    try {
+      ai = await withTimeout(callAI(description), 9000); // 9s timeout
+      console.log('AI extraction successful:', JSON.stringify(ai));
+    } catch (error) {
+      console.log('AI extraction error, falling back to rule-based:', error);
+      ai = ruleBased(description);
+    }
+
+    // 2. Resolve entities using database - WRAP IN TRY/CATCH
+    let combined;
+    try {
+      combined = await resolveEntities(ai, orgId);
+      console.log('Final combined result:', JSON.stringify(combined));
+    } catch (error) {
+      console.log('Error resolving entities, using AI result without resolution:', error);
+      // Fallback: return AI result without entity resolution
+      // Ensure all fields are safe and defined
+      try {
+        combined = {
+          title: ai?.title || '',
+          priority: ai?.priority || 'medium',
+          date: ai?.date || '',
+          yes_no: ai?.yes_no || false,
+          signature: ai?.signature || false,
+          assets: Array.isArray(ai?.assets) ? ai.assets : [],
+          spaces: Array.isArray(ai?.spaces) 
+            ? ai.spaces.map((n: string) => ({ name: String(n || ''), exists: false })) 
+            : [],
+          people: Array.isArray(ai?.people) 
+            ? ai.people.map((n: string) => ({ name: String(n || ''), exists: false })) 
+            : [],
+          teams: Array.isArray(ai?.teams) 
+            ? ai.teams.map((n: string) => ({ name: String(n || ''), exists: false })) 
+            : [],
+          groups: Array.isArray(ai?.groups) 
+            ? ai.groups.map((n: string) => ({ name: String(n || ''), exists: false })) 
+            : [],
+        };
+      } catch (fallbackError) {
+        console.log('Error in fallback, using empty result:', fallbackError);
+        combined = emptyResult();
+      }
+    }
+
+    // Ensure we always return a valid response
+    if (!combined) {
+      console.log('Combined result is null/undefined, using empty result');
+      combined = emptyResult();
+    }
+
+    return jsonOK(combined);
+  } catch (error) {
+    // Catch-all for any unexpected errors - be extra defensive
+    try {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+        ? error 
+        : 'Unknown error';
+      console.log('Unexpected error in ai-extract function:', errorMessage, error);
+      return jsonErr(`Internal error: ${errorMessage}`, 500);
+    } catch (nestedError) {
+      // Even the error handler failed - return a safe response
+      console.log('Critical error in error handler:', nestedError);
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Internal server error' }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
   }
-
-  const description = (body.description || "").trim();
-  const orgId = body.org_id;
-
-  if (!orgId) return jsonErr("Missing org_id", 400);
-  if (!description) return jsonOK(emptyResult());
-
-  // 1. Semantic AI Extraction
-  let ai;
-  try {
-    ai = await withTimeout(callAI(description), 9000); // 9s timeout
-  } catch {
-    ai = ruleBased(description);
-  }
-
-  // 2. Resolve entities using database
-  const combined = await resolveEntities(ai, orgId);
-
-  return jsonOK(combined);
 });
 
 // ----------------------------------------------------
@@ -75,54 +146,87 @@ async function callAI(description: string) {
 }
 
 async function callLovable(prompt: string) {
-  const res = await fetch(
-    "https://ai.gateway.lovable.dev/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.0-flash",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    }
-  );
+  try {
+    const res = await fetch(
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.0-flash",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      }
+    );
 
-  const json = await res.json();
-  return JSON.parse(json.choices[0].message.content);
+    const json = await res.json();
+    console.log('Lovable Response:', JSON.stringify(json));
+    
+    if (!res.ok) {
+      throw new Error(`Lovable API error: ${res.status} - ${JSON.stringify(json)}`);
+    }
+    
+    return JSON.parse(json.choices[0].message.content);
+  } catch (error) {
+    console.log('Lovable Error:', error);
+    throw error;
+  }
 }
 
 async function callOpenAI(prompt: string) {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
 
-  const json = await res.json();
-  return JSON.parse(json.choices[0].message.content);
+    const json = await res.json();
+    console.log('OpenAI Response:', JSON.stringify(json));
+    
+    if (!res.ok) {
+      throw new Error(`OpenAI API error: ${res.status} - ${JSON.stringify(json)}`);
+    }
+    
+    return JSON.parse(json.choices[0].message.content);
+  } catch (error) {
+    console.log('OpenAI Error:', error);
+    throw error;
+  }
 }
 
 async function callGemini(prompt: string) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-    }),
-  });
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+      }),
+    });
 
-  const json = await res.json();
-  return JSON.parse(json.candidates[0].content.parts[0].text);
+    const json = await res.json();
+    console.log('Gemini Response:', JSON.stringify(json));
+    
+    if (!res.ok) {
+      throw new Error(`Gemini API error: ${res.status} - ${JSON.stringify(json)}`);
+    }
+    
+    return JSON.parse(json.candidates[0].content.parts[0].text);
+  } catch (error) {
+    console.log('Gemini Error:', error);
+    throw error;
+  }
 }
 
 // ----------------------------------------------------
@@ -249,10 +353,18 @@ const jsonErr = (msg: string, status = 400) =>
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error("Timeout")), ms);
-    promise.then((v) => {
-      clearTimeout(t);
-      resolve(v);
-    }).catch(reject);
+    const t = setTimeout(() => {
+      reject(new Error("Timeout"));
+    }, ms);
+    
+    promise
+      .then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      })
+      .catch((err) => {
+        clearTimeout(t); // Clear timeout on rejection too
+        reject(err);
+      });
   });
 }
