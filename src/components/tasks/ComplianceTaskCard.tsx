@@ -3,7 +3,7 @@ import { Surface, Text } from '@/components/filla';
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { SLABadge } from './SLABadge';
 import { AlertCircle, Building2, FileText, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatTaskDate } from '@/utils/formatTaskDate';
 
 interface ComplianceTask {
   id: string;
@@ -66,7 +66,7 @@ export const ComplianceTaskCard: React.FC<ComplianceTaskCardProps> = ({ task, on
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <Text variant="caption">
-            Due {format(new Date(task.dueDate), 'MMM d, yyyy')}
+            {formatTaskDate(task.dueDate instanceof Date ? task.dueDate.toISOString() : task.dueDate)}
           </Text>
           {task.isOverdue && (
             <span className="flex items-center gap-1 text-red-600">

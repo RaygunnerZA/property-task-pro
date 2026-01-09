@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useScheduleData } from "@/hooks/useScheduleData";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { getScheduleRange, ScheduleViewMode } from "@/utils/scheduleRange";
-import { MiniCalendar, type CalendarEvent } from "@/components/filla/MiniCalendar";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { WeekStripCalendar } from "@/components/schedule/WeekStripCalendar";
 import { DayScheduleDrawer } from "@/components/schedule/DayScheduleDrawer";
 import { ScheduleItemBase } from "@/types/schedule";
@@ -21,10 +22,10 @@ import { Button } from "@/components/ui/button";
  */
 
 const Schedule = () => {
-  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("month");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   /* --------------------------------------------
      BUILD DATE RANGE BASED ON VIEW MODE
@@ -46,6 +47,18 @@ const Schedule = () => {
     filters,
   });
 
+  // Get tasks for calendar (DashboardCalendar needs tasks array)
+  const { data: tasksData = [] } = useTasksQuery();
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+    }));
+  }, [tasksData]);
+
   /* --------------------------------------------
      ITEMS FOR SELECTED DATE
   --------------------------------------------- */
@@ -55,37 +68,6 @@ const Schedule = () => {
     return items.filter((i) => i.date === selectedISO);
   }, [items, selectedISO]);
 
-  /* --------------------------------------------
-     CONVERT ITEMS TO CALENDAR EVENTS
-  --------------------------------------------- */
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    // Group items by date
-    const byDate = new Map<string, ScheduleItemBase[]>();
-    for (const item of items) {
-      const existing = byDate.get(item.date) || [];
-      existing.push(item);
-      byDate.set(item.date, existing);
-    }
-
-    // Convert to CalendarEvent format
-    return Array.from(byDate.entries()).map(([date, dayItems]) => ({
-      date,
-      tasks: dayItems
-        .filter((item) => item.kind === "task")
-        .map((item) => ({
-          priority: (item.priority || "normal") as "low" | "normal" | "high",
-        })),
-      compliance: dayItems
-        .filter((item) => item.kind === "signal")
-        .map(() => ({
-          severity: "medium" as "low" | "medium" | "high",
-        })),
-    }));
-  }, [items]);
-
-  const daysWithItems = useMemo(() => {
-    return Array.from(new Set(items.map((i) => i.date)));
-  }, [items]);
 
   /* --------------------------------------------
      VIEW MODE OPTIONS
@@ -114,9 +96,13 @@ const Schedule = () => {
 
   const handleItemPress = (item: ScheduleItemBase) => {
     if (item.kind === "task") {
-      navigate(`/task/${item.id}`);
+      setSelectedTaskId(item.id);
     }
     // Handle signal navigation later if needed
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
   };
 
   /* --------------------------------------------
@@ -177,15 +163,16 @@ const Schedule = () => {
         <ErrorState message={error} />
       ) : (
           <>
-            {/* MONTH VIEW - New MiniCalendar */}
+            {/* MONTH VIEW - DashboardCalendar */}
             {viewMode === "month" && (
               <>
-                <MiniCalendar
-                  selectedDate={selectedDate}
-                  events={calendarEvents}
-                  onSelect={handleSelectDate}
-                  showMonthNav={true}
-                />
+                <div className="rounded-xl bg-card p-4 shadow-e1">
+                  <DashboardCalendar
+                    tasks={tasks}
+                    selectedDate={selectedDate}
+                    onDateSelect={handleSelectDate}
+                  />
+                </div>
                 <div className="mt-4">
                   <DayScheduleDrawer
                     dateLabel={dateLabel}
@@ -224,6 +211,14 @@ const Schedule = () => {
             )}
           </>
         )}
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
+      )}
     </StandardPage>
   );
 };

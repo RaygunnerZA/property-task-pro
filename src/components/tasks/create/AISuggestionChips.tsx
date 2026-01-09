@@ -1,12 +1,18 @@
 /**
  * AI Suggestion Chips Component
  * Displays intelligent chip suggestions with fade-in animations
+ * 
+ * Design Contract:
+ * - Suggestions never auto-apply
+ * - Suggestions never disappear when applied
+ * - Suggestions never look "decided" until validated
+ * - Background: same as modal background (no card)
  */
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { AIChip } from '@/components/filla/AIChip';
-import { SuggestedChip, GhostGroup } from '@/types/chip-suggestions';
+import { SuggestedChip, GhostGroup, ChipState } from '@/types/chip-suggestions';
+import { FillaIcon } from '@/components/filla/FillaIcon';
 import { 
   MapPin, 
   User, 
@@ -15,7 +21,7 @@ import {
   Folder, 
   Shield, 
   Calendar,
-  Sparkles
+  Check
 } from 'lucide-react';
 
 interface AISuggestionChipsProps {
@@ -26,6 +32,17 @@ interface AISuggestionChipsProps {
   selectedChipIds?: string[];
   loading?: boolean;
   className?: string;
+}
+
+/**
+ * Get chip state based on selection and resolution
+ */
+function getChipState(chip: SuggestedChip, isSelected: boolean): ChipState {
+  if (chip.state) return chip.state;
+  if (chip.resolvedEntityId) return 'resolved';
+  if (isSelected) return 'applied';
+  if (chip.blockingRequired && !chip.resolvedEntityId) return 'blocked';
+  return 'suggested';
 }
 
 const chipTypeIcons: Record<string, React.ElementType> = {
@@ -60,7 +77,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center gap-2 py-2', className)}>
-        <Sparkles className="w-4 h-4 text-accent animate-pulse" />
+        <FillaIcon size={16} className="text-accent animate-pulse" />
         <span className="text-xs text-muted-foreground font-mono">
           Analyzing...
         </span>
@@ -87,9 +104,9 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
 
   return (
     <div className={cn('space-y-2', className)}>
-      {/* AI indicator */}
+      {/* AI indicator - using Filla.svg */}
       <div className="flex items-center gap-1.5 mb-1">
-        <Sparkles className="w-3 h-3 text-accent" />
+        <FillaIcon size={12} className="text-muted-foreground" />
         <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
           Suggestions
         </span>
@@ -100,8 +117,17 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
         {sortedTypes.map((type) => (
           <div key={type} className="flex flex-wrap gap-1.5">
             {chipsByType[type].map((chip, index) => {
-              const Icon = chipTypeIcons[chip.type] || Sparkles;
+              const Icon = chipTypeIcons[chip.type] || MapPin;
               const isSelected = selectedChipIds.includes(chip.id);
+              const state = getChipState(chip, isSelected);
+              
+              // Chip styling based on state (Design Constraints section 1)
+              const chipStyles = {
+                suggested: 'border-dashed border-muted-foreground/30 bg-transparent text-ink',
+                applied: 'bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]',
+                resolved: 'bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]',
+                blocked: 'border border-amber-500/50 bg-transparent text-amber-700'
+              };
               
               return (
                 <button
@@ -109,11 +135,9 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
                   onClick={() => onChipSelect(chip)}
                   className={cn(
                     'inline-flex items-center gap-1.5 px-2.5 py-1.5',
-                    'text-xs font-medium rounded-[5px] transition-all duration-150',
+                    'text-[13px] font-medium rounded-[5px] transition-all duration-150',
                     'animate-in fade-in slide-in-from-bottom-1',
-                    isSelected
-                      ? 'bg-accent text-white shadow-e2'
-                      : 'bg-card text-ink shadow-e1 hover:shadow-e2 hover:bg-card/80'
+                    chipStyles[state]
                   )}
                   style={{
                     animationDelay: `${index * 20}ms`,
@@ -122,8 +146,8 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
                 >
                   <Icon className="w-3 h-3" />
                   <span className="font-mono">{chip.label}</span>
-                  {chip.score >= 0.8 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  {state === 'resolved' && (
+                    <Check className="w-3 h-3 text-muted-foreground" />
                   )}
                 </button>
               );
@@ -134,7 +158,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
 
       {/* Ghost groups */}
       {ghostGroups.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
+        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/20">
           <span className="text-[10px] text-muted-foreground font-mono mr-1 self-center">
             Quick groups:
           </span>
@@ -144,7 +168,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
               onClick={() => onGhostGroupSelect(group)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5',
-                'text-xs font-medium rounded-[5px]',
+                'text-[13px] font-medium rounded-[5px]',
                 'bg-transparent border border-dashed border-accent/40',
                 'text-accent/70 hover:bg-accent/5 hover:border-accent',
                 'transition-all duration-150',

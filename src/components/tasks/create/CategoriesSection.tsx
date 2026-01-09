@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { StandardChip } from "@/components/chips/StandardChip";
@@ -222,6 +223,11 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
             <DialogTitle>
               {pendingGhostCategory ? `Create "${pendingGhostCategory}"?` : "Create Category"}
             </DialogTitle>
+            <DialogDescription>
+              {pendingGhostCategory
+                ? `Create a new category called "${pendingGhostCategory}" to organize this task.`
+                : "Create a new category to organize and group your tasks."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input
@@ -243,7 +249,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
               />
               
               {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden shadow-e1">
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"

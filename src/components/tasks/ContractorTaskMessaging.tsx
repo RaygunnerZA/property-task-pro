@@ -333,7 +333,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
   if (error) {
     return (
       <div className="p-4 text-center text-sm text-destructive">
-        {error}
+        {error?.message || String(error)}
       </div>
     );
   }
@@ -397,12 +397,12 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
 
       {/* Attachment Previews */}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 border-t border-border">
+        <div className="px-4 py-2 border-t border-border/20">
           <div className="flex flex-wrap gap-2">
             {attachments.map((att) => (
               <div key={att.id} className="relative group">
                 {att.preview ? (
-                  <div className="relative w-20 h-20 rounded overflow-hidden border border-border">
+                  <div className="relative w-20 h-20 rounded overflow-hidden shadow-e1">
                     <img src={att.preview} alt="Preview" className="w-full h-full object-cover" />
                     <button
                       onClick={() => removeAttachment(att.id)}
@@ -412,7 +412,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded border border-border">
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded shadow-e1">
                     <FileText className="h-4 w-4" />
                     <span className="text-xs truncate max-w-[100px]">{att.file.name}</span>
                     <button
@@ -430,7 +430,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border p-4 space-y-2">
+      <div className="border-t border-border/20 p-4 space-y-2">
         <div className="flex gap-2">
           <input
             ref={fileInputRef}

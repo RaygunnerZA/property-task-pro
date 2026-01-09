@@ -3,15 +3,17 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, CheckSquare } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { StandardPage } from "@/components/design-system/StandardPage";
-import { useTasks } from "@/hooks/use-tasks";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Tasks = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { refresh } = useTasks();
+  const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   // Check for ?add=true in URL to open modal
   useEffect(() => {
@@ -23,8 +25,17 @@ const Tasks = () => {
   }, [searchParams, navigate]);
 
   const handleTaskCreated = (taskId: string) => {
-    refresh();
+    // Invalidate tasks query to refresh
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
     setShowCreateModal(false);
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
   };
 
   return (
@@ -45,7 +56,15 @@ const Tasks = () => {
         onTaskCreated={handleTaskCreated}
       />
 
-      <TaskList />
+      <TaskList onTaskClick={handleTaskClick} selectedTaskId={selectedTaskId} />
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
+      )}
     </StandardPage>
   );
 };

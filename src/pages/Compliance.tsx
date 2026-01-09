@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useCompliance } from "@/hooks/use-compliance";
+import { useComplianceQuery } from "@/hooks/useComplianceQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import { DocumentUploadDialog } from "@/components/compliance/DocumentUploadDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,8 @@ import { useRecentActivity } from "@/hooks/useRecentActivity";
 const Compliance = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { documents, loading, error, refresh } = useCompliance();
+  const { data: documentsData = [], isLoading: loading, error } = useComplianceQuery();
+  const queryClient = useQueryClient();
   const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   // Check for ?add=true in URL to open dialog
@@ -37,29 +39,14 @@ const Compliance = () => {
     }
   }, [searchParams, navigate]);
 
-  // Calculate expiry status for each document
+  // compliance_view already calculates expiry_status and days_until_expiry
+  const documents = documentsData;
   const documentsWithStatus = useMemo(() => {
-    return documents.map((doc) => {
-      if (!doc.expiry_date) {
-        return { ...doc, expiryStatus: "none" as const, daysUntilExpiry: null };
-      }
-
-      try {
-        const expiryDate = parseISO(doc.expiry_date);
-        const daysUntilExpiry = differenceInDays(expiryDate, new Date());
-        const isExpired = isPast(expiryDate);
-
-        if (isExpired) {
-          return { ...doc, expiryStatus: "expired" as const, daysUntilExpiry: Math.abs(daysUntilExpiry) };
-        } else if (daysUntilExpiry <= 30) {
-          return { ...doc, expiryStatus: "expiring" as const, daysUntilExpiry };
-        } else {
-          return { ...doc, expiryStatus: "valid" as const, daysUntilExpiry };
-        }
-      } catch {
-        return { ...doc, expiryStatus: "none" as const, daysUntilExpiry: null };
-      }
-    });
+    return documents.map((doc: any) => ({
+      ...doc,
+      expiryStatus: doc.expiry_status || "none",
+      daysUntilExpiry: doc.days_until_expiry,
+    }));
   }, [documents]);
 
   const getExpiryBadge = (status: "expired" | "expiring" | "valid" | "none", days: number | null) => {
@@ -106,7 +93,7 @@ const Compliance = () => {
           open={showUploadDialog}
           onOpenChange={setShowUploadDialog}
           onDocumentCreated={() => {
-            refresh();
+            queryClient.invalidateQueries({ queryKey: ["compliance"] });
             setShowUploadDialog(false);
           }} 
         />

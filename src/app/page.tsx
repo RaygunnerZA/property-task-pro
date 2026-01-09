@@ -19,13 +19,23 @@ type SelectedItem = {
 } | null;
 
 export default function Dashboard() {
+  // #region agent log
+  console.error('[DEBUG app/page.tsx:21] Dashboard component executing', { hypothesisId: 'B' });
+  // #endregion
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
+  const [filterToApply, setFilterToApply] = useState<string | null>(null);
   
+  // #region agent log
+  console.error('[DEBUG app/page.tsx:28] Before useTasksQuery hook', { hypothesisId: 'B' });
+  // #endregion
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
+  // #region agent log
+  console.error('[DEBUG app/page.tsx:31] After useTasksQuery hook', { tasksCount: tasks?.length, isLoading: tasksLoading, hypothesisId: 'B' });
+  // #endregion
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
 
   // Centralized aggregation: Calculate stats once at Dashboard level
@@ -122,6 +132,15 @@ export default function Dashboard() {
     }
   };
 
+  const handleFilterClick = (filterId: string) => {
+    // Set the filter to apply, which will trigger TaskList to apply it
+    setFilterToApply(filterId);
+    // Switch to tasks tab when filtering
+    setActiveTab("tasks");
+    // Reset filterToApply after a brief moment to allow the filter to be toggled again
+    setTimeout(() => setFilterToApply(null), 100);
+  };
+
   // Render third column content - only when item is selected on large screens
   const thirdColumnContent = isLargeScreen && selectedItem ? (
     selectedItem.type === 'task' ? (
@@ -166,6 +185,7 @@ export default function Dashboard() {
             tasksByDate={tasksByDate}
             urgentCount={urgentCount}
             overdueCount={overdueCount}
+            onFilterClick={handleFilterClick}
           />
         }
         rightColumn={
@@ -179,6 +199,7 @@ export default function Dashboard() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             selectedDate={selectedDate}
+            filterToApply={filterToApply}
           />
         }
         thirdColumn={thirdColumnContent}

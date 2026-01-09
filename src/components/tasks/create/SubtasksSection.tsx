@@ -43,11 +43,12 @@ export function SubtasksSection({
   // If no subtasks, show the "add subtask" placeholder row
   const showPlaceholder = subtasks.length === 0;
   return <div 
-      className="shadow-engraved rounded-2xl overflow-hidden text-white bg-white/80"
+      className="shadow-engraved rounded-2xl overflow-hidden text-white bg-white/80 mt-[15px]"
       style={{
         backgroundClip: 'unset',
         WebkitBackgroundClip: 'unset',
-        backgroundImage: 'none'
+        backgroundImage: 'none',
+        paddingTop: '0px'
       }}
     >
       {/* Description Area */}
@@ -62,9 +63,9 @@ export function SubtasksSection({
       <div className="px-4 py-[14px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
       <div className="flex items-center gap-3 py-2 cursor-pointer group" onClick={handleAddFirstSubtask}>
-            <div className="w-6 h-6 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
+            <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
             <span className="flex-1 text-muted-foreground/50 text-base">
-              add subtask
+              Add subtask
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

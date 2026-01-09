@@ -2,7 +2,7 @@ import React from 'react';
 import { Surface, Text, Badge } from '@/components/filla';
 import { TaskStatusBadge } from './TaskStatusBadge';
 import { Calendar, User, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatTaskDate } from '@/utils/formatTaskDate';
 
 interface PropertyTask {
   id: string;
@@ -62,7 +62,7 @@ export const PropertyTaskCard: React.FC<PropertyTaskCardProps> = ({ task, onClic
         <div className="flex items-center gap-2 text-sm">
           <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <Text variant="caption">
-            Due {format(new Date(task.dueDate), 'MMM d, yyyy')}
+            {formatTaskDate(task.dueDate instanceof Date ? task.dueDate.toISOString() : task.dueDate)}
           </Text>
           {task.isOverdue && (
             <span className="flex items-center gap-1 text-red-600">

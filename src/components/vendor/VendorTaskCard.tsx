@@ -3,6 +3,7 @@ import { Surface, Text, Heading } from '@/components/filla';
 import { VendorTaskStatusBadge } from './VendorTaskStatusBadge';
 import { VendorTask } from '@/hooks/vendor/useVendorTasks';
 import { Calendar, MapPin } from 'lucide-react';
+import { formatTaskDate } from '@/utils/formatTaskDate';
 
 interface VendorTaskCardProps {
   task: VendorTask;
@@ -34,7 +35,7 @@ export const VendorTaskCard: React.FC<VendorTaskCardProps> = ({ task, onClick })
       <div className="flex items-center gap-2">
         <Calendar className="w-4 h-4 text-muted-foreground" />
         <Text variant="caption">
-          Due: {new Date(task.due_at).toLocaleDateString()}
+          {formatTaskDate(task.due_at)}
         </Text>
       </div>
     </Surface>

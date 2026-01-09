@@ -26,7 +26,7 @@ export interface CardButtonProps
  * Use this when you can't use the CardButton component directly (e.g., react-day-picker)
  */
 export const cardButtonClassName = cn(
-  "h-10 w-10 rounded-lg",
+  "h-10 w-10 rounded-full",
   "bg-card",
   "flex items-center justify-center",
   "transition-all duration-150",

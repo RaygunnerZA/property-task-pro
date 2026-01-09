@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTasks } from '@/hooks/useTasks';
+import { useState, useMemo } from 'react';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { useMessages } from '@/hooks/useMessages';
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { MessageSquare, Paperclip, Sparkles, AlertCircle, Clock, Inbox } from 'lucide-react';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';
@@ -24,10 +24,24 @@ interface InboxItem {
 }
 
 export default function WorkInbox() {
-  const navigate = useNavigate();
-  const { tasks, loading: tasksLoading } = useTasks();
+  const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();
   const { messages, loading: messagesLoading } = useMessages();
   const [filter, setFilter] = useState<'all' | InboxItemType>('all');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      // Map due_date to due_at for backward compatibility
+      due_at: task.due_date,
+      title: task.title,
+    }));
+  }, [tasksData]);
 
   // Combine different data sources into inbox items
   const inboxItems: InboxItem[] = [];
@@ -49,14 +63,14 @@ export default function WorkInbox() {
   if (tasks) {
     const now = new Date();
     tasks
-      .filter(task => task.due_at && new Date(task.due_at) < now && task.status !== 'completed')
+      .filter(task => (task.due_at || task.due_date) && new Date(task.due_at || task.due_date) < now && task.status !== 'completed')
       .forEach(task => {
         inboxItems.push({
           id: task.id,
           type: 'overdue',
           title: 'Overdue task',
-          description: task.title,
-          timestamp: new Date(task.due_at),
+          description: task.title || 'Untitled Task',
+          timestamp: new Date(task.due_at || task.due_date),
           taskId: task.id,
         });
       });
@@ -82,8 +96,12 @@ export default function WorkInbox() {
 
   const handleItemClick = (item: InboxItem) => {
     if (item.taskId) {
-      navigate(`/task/${item.taskId}`);
+      setSelectedTaskId(item.taskId);
     }
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
   };
 
   const loading = tasksLoading || messagesLoading;
@@ -172,6 +190,14 @@ export default function WorkInbox() {
           icon={Inbox}
           title="No inbox items"
           description="Your inbox is empty"
+        />
+      )}
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
         />
       )}
     </StandardPage>

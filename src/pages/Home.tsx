@@ -2,37 +2,31 @@ import { useMemo, useState } from 'react';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { MiniCalendar, type CalendarEvent } from '@/components/filla/MiniCalendar';
+import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useTasks } from '@/hooks/useTasks';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import DashboardSection from '@/components/dashboard/DashboardSection';
 
 const Home = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const { tasks } = useTasks();
+  const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();
 
-  // Convert tasks to calendar events
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    const byDate = new Map<string, typeof tasks>();
-    for (const task of tasks) {
-      if (!task.due_date) continue;
-      const dateStr = task.due_date.slice(0, 10);
-      const existing = byDate.get(dateStr) || [];
-      existing.push(task);
-      byDate.set(dateStr, existing);
-    }
-
-    return Array.from(byDate.entries()).map(([date, dayTasks]) => ({
-      date,
-      tasks: dayTasks.map((t) => ({
-        priority: (t.priority || 'normal') as 'low' | 'normal' | 'high',
-      })),
-      compliance: [],
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      // Map due_date from tasks_view
+      due_at: task.due_date,
     }));
-  }, [tasks]);
+  }, [tasksData]);
+
 
   // Stats derived from real data
   const activeTasks = tasks.filter(t => t.status !== 'completed').length;
@@ -64,13 +58,14 @@ const Home = () => {
       maxWidth="md"
     >
       <div className="space-y-6">
-        {/* Mini Calendar */}
-        <MiniCalendar
-          selectedDate={selectedDate}
-          events={calendarEvents}
-          onSelect={(date) => setSelectedDate(date)}
-          showMonthNav={true}
-        />
+        {/* Calendar */}
+        <div className="rounded-xl bg-card p-4 shadow-e1">
+          <DashboardCalendar
+            tasks={tasks}
+            selectedDate={selectedDate}
+            onDateSelect={(date) => setSelectedDate(date || new Date())}
+          />
+        </div>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-4">

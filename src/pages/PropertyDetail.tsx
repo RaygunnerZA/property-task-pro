@@ -11,17 +11,24 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { propertiesService } from "@/services/properties/properties";
-import { TaskList } from "@/components/tasks/TaskList";
-import { AssetList } from "@/components/assets/AssetList";
-import { ComplianceList } from "@/components/compliance/ComplianceList";
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
-import { MapPin, Plus, Trash2, Archive, Building2, Edit, MoreVertical, CheckSquare, Package, FolderOpen, ArrowRight, Check, X, Upload, ChevronLeft, ChevronRight } from "lucide-react";
+import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
+import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCard";
+import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
+import { PropertyRelatedEntities } from "@/components/properties/PropertyRelatedEntities";
+import { PropertyTasksSection } from "@/components/properties/PropertyTasksSection";
+import { ComplianceOverviewSection } from "@/components/properties/ComplianceOverviewSection";
+import { DocumentsSection } from "@/components/properties/DocumentsSection";
+import { MediaGallerySection } from "@/components/properties/MediaGallerySection";
+import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsPanel";
+import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
+import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -40,12 +47,39 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { EmptyState } from "@/components/design-system/EmptyState";
-import PropertyPhotoGallery from "@/components/property/media/PropertyPhotoGallery";
+import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
+import { PageHeader } from "@/components/design-system/PageHeader";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+
+const PROPERTY_ICONS = {
+  home: Home,
+  building: Building2,
+  hotel: Hotel,
+  warehouse: Warehouse,
+  store: Store,
+  castle: Castle,
+} as const;
+
+const PROPERTY_COLORS = [
+  "#FF6B6B", // Coral
+  "#4ECDC4", // Teal
+  "#45B7D1", // Sky Blue
+  "#96CEB4", // Sage
+  "#FFEAA7", // Yellow
+  "#DDA0DD", // Plum
+];
 
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +92,7 @@ export default function PropertyDetail() {
   const { spaces } = useSpaces(id);
   const { orgId } = useActiveOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   // Use file upload hook with automatic thumbnail generation
   const { uploadFile, isUploading: isUploadingImage } = useFileUpload({
@@ -119,9 +154,16 @@ export default function PropertyDetail() {
   const [editedContactName, setEditedContactName] = useState("");
   const [editedContactEmail, setEditedContactEmail] = useState("");
   const [editedContactPhone, setEditedContactPhone] = useState("");
-  const [activeTab, setActiveTab] = useState("tasks");
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showImageDialog, setShowImageDialog] = useState(false);
+  const [showIconEditDialog, setShowIconEditDialog] = useState(false);
+  const [editedIconName, setEditedIconName] = useState("");
+  const [editedIconColor, setEditedIconColor] = useState("");
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  
+  // Additional data hooks
+  const { data: compliance = [] } = useComplianceQuery(id);
+  const { documents } = usePropertyDocuments(id || "");
 
   // Tasks are already filtered by property_id from the query
   const propertyTasks = tasks;
@@ -154,6 +196,8 @@ export default function PropertyDetail() {
       setEditedContactName((property as any).contact_name || "");
       setEditedContactEmail((property as any).contact_email || "");
       setEditedContactPhone((property as any).contact_phone || "");
+      setEditedIconName((property as any).icon_name || "home");
+      setEditedIconColor((property as any).icon_color_hex || "#8EC9CE");
     }
   }, [property]);
 
@@ -247,6 +291,30 @@ export default function PropertyDetail() {
     }
   };
 
+  // Handle save icon and color
+  const handleSaveIcon = async () => {
+    if (!id || !property) return;
+    try {
+      const { error } = await supabase
+        .from("properties")
+        .update({ 
+          icon_name: editedIconName || null,
+          icon_color_hex: editedIconColor || null,
+        })
+        .eq("id", id);
+      
+      if (error) throw error;
+      setShowIconEditDialog(false);
+      refreshProperty();
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    } catch (error) {
+      console.error("Error updating icon:", error);
+      alert("Failed to update icon and color");
+      setEditedIconName((property as any).icon_name || "home");
+      setEditedIconColor((property as any).icon_color_hex || "#8EC9CE");
+    }
+  };
+
   // Handle image upload using useFileUpload hook (with automatic thumbnail generation)
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -272,7 +340,7 @@ export default function PropertyDetail() {
         title="Property Details"
         backTo="/properties"
         icon={<Building2 className="h-6 w-6" />}
-        maxWidth="full"
+        maxWidth="xl"
       >
         <LoadingState message="Loading property..." />
       </StandardPageWithBack>
@@ -285,7 +353,7 @@ export default function PropertyDetail() {
         title="Property Details"
         backTo="/properties"
         icon={<Building2 className="h-6 w-6" />}
-        maxWidth="full"
+        maxWidth="xl"
       >
         <EmptyState
           icon={Building2}
@@ -344,566 +412,122 @@ export default function PropertyDetail() {
     }
   };
 
+  // Prepare property data for PropertyIdentityCard
+  const propertyWithContacts = property ? {
+    ...property,
+    owner_name: (property as any).owner_name,
+    owner_email: (property as any).owner_email,
+    contact_name: (property as any).contact_name,
+    contact_email: (property as any).contact_email,
+    contact_phone: (property as any).contact_phone,
+  } : null;
+
   return (
-    <StandardPageWithBack
-      title=""
-      backTo="/properties"
-      icon={<Building2 className="h-6 w-6" />}
-      maxWidth="full"
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
-        {/* Left Column: Profile Image + Media Gallery */}
-        <div className="space-y-4">
-          {/* Square Profile Image */}
-          <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden shadow-e1 relative group">
-            {primaryImage ? (
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+      <PageHeader>
+        <div className="mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between max-w-full">
+          <div className="flex items-center gap-3">
+            <span className="icon-primary shrink-0">
+              <Building2 className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-foreground leading-tight">{displayName}</h1>
+            </div>
+          </div>
+        </div>
+      </PageHeader>
+      <DualPaneLayout
+        leftColumn={
+          <div className="h-screen flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
+            {propertyWithContacts && id && (
               <>
-                <img
-                  src={primaryImage}
-                  alt={displayName}
-                  className="w-full h-full object-cover"
+                <PropertyIdentityCard
+                  property={propertyWithContacts}
+                  onAddTask={() => {
+                    // TODO: Open create task dialog
+                    navigate(`/tasks/create?propertyId=${id}`);
+                  }}
+                  onAddPhoto={() => fileInputRef.current?.click()}
+                  onMessage={() => {
+                    // TODO: Open message dialog
+                  }}
+                  onCall={() => {
+                    const phone = (property as any).contact_phone;
+                    if (phone) {
+                      window.location.href = `tel:${phone}`;
+                    }
+                  }}
                 />
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    className="p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowImageDialog(true);
-                    }}
-                  >
-                    <Edit className="h-3 w-3" />
-                  </button>
-                </div>
-                <div 
-                  className="absolute inset-0 cursor-pointer"
-                  onClick={() => setShowImageDialog(true)}
-                  title="Click to edit image"
+                <PropertySpacesList
+                  propertyId={id}
+                  tasks={propertyTasks}
+                  onSpaceClick={setSelectedSpaceId}
+                  selectedSpaceId={selectedSpaceId}
+                />
+                <PropertyRelatedEntities
+                  propertyId={id}
+                  tasks={propertyTasks}
                 />
               </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                <Building2 className="h-16 w-16 mb-2" />
-                <span className="text-sm">No image</span>
-              </div>
             )}
           </div>
+        }
+        rightColumn={
+          <div className="min-h-screen bg-background overflow-y-auto">
+            <div className="p-[15px] space-y-6">
+              {/* Property Tasks Section */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Property Tasks</h2>
+                <PropertyTasksSection
+                  propertyId={id || ""}
+                  tasks={propertyTasks}
+                  properties={properties}
+                  tasksLoading={tasksLoading}
+                  selectedSpaceId={selectedSpaceId}
+                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                  selectedTaskId={selectedTaskId || undefined}
+                />
+              </div>
 
-          {/* Media Gallery Thumbnails - Only show when 2+ images exist (hide when only one primary image) */}
-          {photos.length > 1 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Media Gallery
-              </h3>
-              <div className="relative">
-                {/* Container with overflow hidden to show only 3 thumbnails */}
-                <div className="overflow-hidden" style={{ width: 'calc(3 * 6rem + 2 * 0.5rem)' }}>
-                  {/* Scrollable thumbnail container */}
-                  <div
-                    ref={thumbnailScrollRef}
-                    className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                  >
-                    {photos.map((photo) => (
-                      <div
-                        key={photo.id}
-                        className="aspect-square w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group"
-                        onClick={() => {
-                          // TODO: Open photo viewer
-                        }}
-                      >
-                        <img
-                          src={photo.url}
-                          alt={photo.caption || "Property photo"}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // TODO: Archive/delete image
-                            }}
-                          >
-                            <Edit className="h-2.5 w-2.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Navigation arrows - only show if more than 3 photos */}
-                {photos.length > 3 && (
-                  <>
-                    <button
-                      onClick={() => {
-                        if (thumbnailScrollRef.current) {
-                          const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
-                          thumbnailScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-                        }
-                      }}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
-                      aria-label="Scroll left"
-                    >
-                      <ChevronLeft className="h-4 w-4 text-foreground" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (thumbnailScrollRef.current) {
-                          const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
-                          thumbnailScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                        }
-                      }}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
-                      aria-label="Scroll right"
-                    >
-                      <ChevronRight className="h-4 w-4 text-foreground" />
-                    </button>
-                  </>
+              {/* Compliance Overview Section */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
+                {id && <ComplianceOverviewSection propertyId={id} />}
+              </div>
+
+              {/* Documents Section */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+                <DocumentsSection documents={documents} />
+              </div>
+
+              {/* Media Gallery Section */}
+              <div className="space-y-4">
+                {id && (
+                  <MediaGallerySection
+                    propertyId={id}
+                    onImageUpdated={() => {
+                      refreshProperty();
+                      queryClient.invalidateQueries({ queryKey: ["properties"] });
+                    }}
+                  />
                 )}
               </div>
             </div>
-          )}
-
-          {/* Add Image Button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploadingImage}
-          >
-            {isUploadingImage ? (
-              <>
-                <Upload className="h-4 w-4 mr-2 animate-pulse" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Image
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Middle Column: Property Info + Dashboard + Tabs */}
-        <div className="space-y-6">
-          {/* Property ID Card */}
-          <Card className="p-6 shadow-e1">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Property Name Column (First Column) */}
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                  Property Name
-                </div>
-                {isEditingName ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={editedName}
-                      onChange={(e) => setEditedName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleSaveName();
-                        }
-                        if (e.key === "Escape") {
-                          setIsEditingName(false);
-                          setEditedName(property.nickname || "");
-                        }
-                      }}
-                      className="text-xl font-semibold"
-                      autoFocus
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleSaveName}
-                        className="h-8 px-3"
-                      >
-                        <Check className="h-4 w-4 text-primary mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsEditingName(false);
-                          setEditedName(property.nickname || "");
-                        }}
-                        className="h-8 px-3"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-2">
-                    <h1
-                      className="text-xl font-semibold cursor-pointer hover:text-primary transition-colors"
-                      onClick={() => setIsEditingName(true)}
-                    >
-                      {displayName}
-                    </h1>
-                    {/* Options Menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="p-1.5 rounded-[5px] hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label="Property options"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          // TODO: Open edit dialog
-                        }}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Property
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setShowArchiveDialog(true)}>
-                          <Archive className="h-4 w-4 mr-2" />
-                          Archive
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setShowDeleteDialog(true)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                )}
-              </div>
-
-              {/* Owner Column (Second Column) */}
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                  Owner
-                </div>
-                {isEditingOwner ? (
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Owner name"
-                      value={editedOwnerName}
-                      onChange={(e) => setEditedOwnerName(e.target.value)}
-                      className="text-sm"
-                      autoFocus
-                    />
-                    <Input
-                      placeholder="Owner email"
-                      type="email"
-                      value={editedOwnerEmail}
-                      onChange={(e) => setEditedOwnerEmail(e.target.value)}
-                      className="text-sm"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleSaveOwner}
-                        className="h-8 px-3"
-                      >
-                        <Check className="h-4 w-4 text-primary mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsEditingOwner(false);
-                          setEditedOwnerName((property as any).owner_name || "");
-                          setEditedOwnerEmail((property as any).owner_email || "");
-                        }}
-                        className="h-8 px-3"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="text-sm cursor-pointer hover:text-primary transition-colors flex items-center justify-between group"
-                    onClick={() => setIsEditingOwner(true)}
-                  >
-                    {(property as any).owner_name || (property as any).owner_email ? (
-                      <div>
-                        {(property as any).owner_name && (
-                          <div className="font-medium">{(property as any).owner_name}</div>
-                        )}
-                        {(property as any).owner_email && (
-                          <div className="text-muted-foreground text-xs">{(property as any).owner_email}</div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground italic">Add Owner</span>
-                    )}
-                    <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                )}
-              </div>
-
-              {/* Contact Column (Third Column) */}
-              <div>
-                <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-                  Contact
-                </div>
-                {isEditingContact ? (
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="Contact name"
-                      value={editedContactName}
-                      onChange={(e) => setEditedContactName(e.target.value)}
-                      className="text-sm"
-                      autoFocus
-                    />
-                    <Input
-                      placeholder="Contact email"
-                      type="email"
-                      value={editedContactEmail}
-                      onChange={(e) => setEditedContactEmail(e.target.value)}
-                      className="text-sm"
-                    />
-                    <Input
-                      placeholder="Contact phone"
-                      type="tel"
-                      value={editedContactPhone}
-                      onChange={(e) => setEditedContactPhone(e.target.value)}
-                      className="text-sm"
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={handleSaveContact}
-                        className="h-8 px-3"
-                      >
-                        <Check className="h-4 w-4 text-primary mr-1" />
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setIsEditingContact(false);
-                          setEditedContactName((property as any).contact_name || "");
-                          setEditedContactEmail((property as any).contact_email || "");
-                          setEditedContactPhone((property as any).contact_phone || "");
-                        }}
-                        className="h-8 px-3"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="text-sm cursor-pointer hover:text-primary transition-colors flex items-center justify-between group"
-                    onClick={() => setIsEditingContact(true)}
-                  >
-                    {(property as any).contact_name || (property as any).contact_email || (property as any).contact_phone ? (
-                      <div>
-                        {(property as any).contact_name && (
-                          <div className="font-medium">{(property as any).contact_name}</div>
-                        )}
-                        {(property as any).contact_email && (
-                          <div className="text-muted-foreground text-xs">{(property as any).contact_email}</div>
-                        )}
-                        {(property as any).contact_phone && (
-                          <div className="text-muted-foreground text-xs">{(property as any).contact_phone}</div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground italic">Add Contact</span>
-                    )}
-                    <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                )}
-              </div>
-
-              {/* Address (Editable) - Below 2nd and 3rd columns */}
-              <div className="md:col-start-2 md:col-span-2">
-                {isEditingAddress ? (
-                  <Input
-                    value={editedAddress}
-                    onChange={(e) => setEditedAddress(e.target.value)}
-                    onBlur={handleSaveAddress}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSaveAddress();
-                      }
-                      if (e.key === "Escape") {
-                        setIsEditingAddress(false);
-                        setEditedAddress(property.address || "");
-                      }
-                    }}
-                    className="text-sm"
-                    autoFocus
-                  />
-                ) : (
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <span
-                      className="text-sm cursor-pointer hover:text-primary transition-colors flex-1"
-                      onClick={() => setIsEditingAddress(true)}
-                    >
-                      {property.address}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          {/* Dashboard Panel: 3 Cards */}
-          <div className="flex justify-center items-center gap-4">
-            {/* Open Tasks Card */}
-            <Card 
-              className="p-6 shadow-e1 bg-gradient-to-br from-[#8EC9CE]/20 to-[#8EC9CE]/10 border border-[#8EC9CE]/30 w-[138px] h-[138px]"
-              style={{ background: 'linear-gradient(135deg, rgba(142, 201, 206, 0.2) 0%, rgba(142, 201, 206, 0.1) 100%)' }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <CheckSquare className="h-5 w-5 text-[#8EC9CE]" />
-              </div>
-              <div className="text-sm text-muted-foreground mb-1">Open Tasks</div>
-              <div className="text-3xl font-bold text-[#8EC9CE]">{openTasksCount}</div>
-            </Card>
-
-            {/* Assets Card */}
-            <Card
-              className="p-6 shadow-e1 bg-gradient-to-br from-[#6B9BD1]/20 to-[#6B9BD1]/10 border border-[#6B9BD1]/30 cursor-pointer hover:shadow-md transition-shadow relative group w-[138px] h-[138px]"
-              onClick={() => navigate(`/properties/${id}?tab=assets`)}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <Package className="h-5 w-5 text-[#6B9BD1]" />
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-[#6B9BD1] transition-colors" />
-              </div>
-              <div className="text-sm text-muted-foreground mb-1">Assets</div>
-              <div className="text-3xl font-bold text-[#6B9BD1]">{assetsCount}</div>
-            </Card>
-
-            {/* Spaces Card */}
-            <Card
-              className="p-6 shadow-e1 bg-gradient-to-br from-[#A8D5BA]/20 to-[#A8D5BA]/10 border border-[#A8D5BA]/30 cursor-pointer hover:shadow-md transition-shadow relative group w-[138px] h-[138px]"
-              onClick={() => navigate(`/properties/${id}?tab=spaces`)}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <FolderOpen className="h-5 w-5 text-[#A8D5BA]" />
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-[#A8D5BA] transition-colors" />
-              </div>
-              <div className="text-sm text-muted-foreground mb-1">Spaces</div>
-              <div className="text-3xl font-bold text-[#A8D5BA]">{spaces.length}</div>
-            </Card>
           </div>
+        }
+        thirdColumn={
+          id && (
+            <PropertyInsightsPanel
+              propertyId={id}
+              tasks={propertyTasks}
+              compliance={compliance}
+            />
+          )
+        }
+      />
 
-          {/* Tabs Section */}
-          <div className="w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              {/* Sticky Tab Bar */}
-              <div className="sticky top-0 z-10 bg-background border-b border-border/50">
-                <TabsList
-                  className={cn(
-                    "w-full grid grid-cols-4 h-12 py-1 px-2 rounded-[15px] bg-transparent",
-                    "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]"
-                  )}
-                >
-                  <TabsTrigger
-                    value="tasks"
-                    className={cn(
-                      "rounded-lg transition-all",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                      "data-[state=active]:bg-card",
-                      "data-[state=inactive]:bg-transparent",
-                      "text-sm font-medium"
-                    )}
-                  >
-                    Tasks
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="assets"
-                    className={cn(
-                      "rounded-lg transition-all",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                      "data-[state=active]:bg-card",
-                      "data-[state=inactive]:bg-transparent",
-                      "text-sm font-medium"
-                    )}
-                  >
-                    Assets
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="documents"
-                    className={cn(
-                      "rounded-lg transition-all",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                      "data-[state=active]:bg-card",
-                      "data-[state=inactive]:bg-transparent",
-                      "text-sm font-medium"
-                    )}
-                  >
-                    <span className="hidden md:inline">Documents</span>
-                    <span className="md:hidden">Docs</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="compliance"
-                    className={cn(
-                      "rounded-lg transition-all",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                      "data-[state=active]:bg-card",
-                      "data-[state=inactive]:bg-transparent",
-                      "text-sm font-medium"
-                    )}
-                  >
-                    Compliance
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              {/* Scrollable Content Area */}
-              <div className="bg-background">
-                {/* Tasks Tab */}
-                <TabsContent value="tasks" className="mt-0 py-4 px-[3px]">
-                  <TaskList
-                    onTaskClick={(taskId) => navigate(`/task/${taskId}`)}
-                  />
-                </TabsContent>
-
-                {/* Assets Tab */}
-                <TabsContent value="assets" className="mt-0 p-4">
-                  <AssetList propertyId={id} />
-                </TabsContent>
-
-                {/* Documents Tab */}
-                <TabsContent value="documents" className="mt-0 p-4">
-                  <EmptyState
-                    title="No documents"
-                    subtitle="Documents will appear here"
-                  />
-          </TabsContent>
-
-          {/* Compliance Tab */}
-                <TabsContent value="compliance" className="mt-0 p-4">
-                  <ComplianceList propertyId={id} />
-          </TabsContent>
-              </div>
-        </Tabs>
-          </div>
-        </div>
-      </div>
-
+      {/* Dialogs */}
       <CreateAssetDialog
         open={showCreateAsset}
         onOpenChange={setShowCreateAsset}
@@ -971,6 +595,119 @@ export default function PropertyDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </StandardPageWithBack>
+
+      {/* Icon Edit Dialog */}
+      <Dialog open={showIconEditDialog} onOpenChange={setShowIconEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Property Icon</DialogTitle>
+            <DialogDescription>
+              Choose an icon and color for this property
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            {/* Icon Preview */}
+            <div className="flex justify-center">
+              {(() => {
+                const SelectedIcon = PROPERTY_ICONS[editedIconName as keyof typeof PROPERTY_ICONS] || Home;
+                return (
+                  <div
+                    className="p-4 rounded-2xl transition-all duration-300"
+                    style={{
+                      backgroundColor: editedIconColor,
+                      boxShadow:
+                        "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    <SelectedIcon className="w-10 h-10 text-white" />
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Icon Selection */}
+            <div>
+              <Label className="mb-2 block">Choose an icon</Label>
+              <div className="flex justify-center gap-3 flex-wrap">
+                {Object.entries(PROPERTY_ICONS).map(([name, Icon]) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => setEditedIconName(name)}
+                    className={`p-3 rounded-xl transition-all duration-200 ${
+                      editedIconName === name
+                        ? "bg-white shadow-lg scale-110"
+                        : "bg-muted hover:bg-white"
+                    }`}
+                    style={{
+                      boxShadow:
+                        editedIconName === name
+                          ? "3px 3px 8px rgba(0,0,0,0.12), -2px -2px 6px rgba(255,255,255,0.8)"
+                          : "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    <Icon
+                      className="w-6 h-6"
+                      style={{
+                        color: editedIconName === name ? editedIconColor : "#6D7480",
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Color Selection */}
+            <div>
+              <Label className="mb-2 block">Choose a color</Label>
+              <div className="flex justify-center gap-3 flex-wrap">
+                {PROPERTY_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setEditedIconColor(color)}
+                    className={`w-10 h-10 rounded-full transition-all duration-200 ${
+                      editedIconColor === color
+                        ? "scale-125 ring-2 ring-offset-2 ring-gray-400"
+                        : "hover:scale-110"
+                    }`}
+                    style={{
+                      backgroundColor: color,
+                      boxShadow:
+                        editedIconColor === color
+                          ? "3px 3px 8px rgba(0,0,0,0.12), -2px -2px 6px rgba(255,255,255,0.8)"
+                          : "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowIconEditDialog(false);
+                setEditedIconName((property as any).icon_name || "home");
+                setEditedIconColor((property as any).icon_color_hex || "#8EC9CE");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveIcon}>
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          variant="modal"
+        />
+      )}
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseActiveOrgResult {
@@ -34,10 +34,47 @@ export function useActiveOrg(): UseActiveOrgResult {
 
   const userId = userData?.id;
 
+  // Memoize the fetch function to prevent unnecessary re-renders
+  const fetchActiveOrg = useCallback(async () => {
+    if (!userId) {
+      return null;
+    }
+
+    // Fetch the first organisation membership for this user
+    const { data: membership, error: membershipsError } = await supabase
+      .from("organisation_members")
+      .select("org_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (membershipsError) {
+      console.error('[useActiveOrg] Query error:', {
+        message: membershipsError.message,
+        code: membershipsError.code,
+        details: membershipsError.details,
+        hint: membershipsError.hint
+      });
+      throw membershipsError;
+    }
+
+    // Auto-select the first organisation found
+    const firstOrgId = membership?.org_id || null;
+    
+    if (firstOrgId) {
+      console.log('[useActiveOrg] Found org_id:', firstOrgId);
+    }
+    
+    return firstOrgId;
+  }, [userId]);
+
   // Listen for auth state changes to invalidate queries
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      // Only invalidate on actual sign in/out, not token refresh
+      // Token refresh doesn't change the user or org
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
         // Invalidate user query to refetch
         queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
         // Invalidate org query for the new/old user
@@ -53,39 +90,7 @@ export function useActiveOrg(): UseActiveOrgResult {
   // Fetch active org using TanStack Query
   const { data: orgId, isLoading, error } = useQuery({
     queryKey: ["activeOrg", userId],
-    queryFn: async () => {
-      if (!userId) {
-        return null;
-      }
-
-      // Fetch the first organisation membership for this user
-      const { data: membership, error: membershipsError } = await supabase
-        .from("organisation_members")
-        .select("org_id")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (membershipsError) {
-        console.error('[useActiveOrg] Query error:', {
-          message: membershipsError.message,
-          code: membershipsError.code,
-          details: membershipsError.details,
-          hint: membershipsError.hint
-        });
-        throw membershipsError;
-      }
-
-      // Auto-select the first organisation found
-      const firstOrgId = membership?.org_id || null;
-      
-      if (firstOrgId) {
-        console.log('[useActiveOrg] Found org_id:', firstOrgId);
-      }
-      
-      return firstOrgId;
-    },
+    queryFn: fetchActiveOrg,
     enabled: !!userId, // Only fetch when we have a user ID
     staleTime: Infinity, // Org ID rarely changes - cache forever
     retry: false, // Don't retry on error

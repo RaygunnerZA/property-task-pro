@@ -128,7 +128,7 @@ export function ChatThread({ taskId }: ChatThreadProps) {
   if (error) {
     return (
       <div className="p-4 text-center text-destructive">
-        <p>Error loading messages: {error}</p>
+        <p>Error loading messages: {error?.message || String(error)}</p>
       </div>
     );
   }

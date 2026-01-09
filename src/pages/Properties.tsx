@@ -75,6 +75,8 @@ const Properties = () => {
               property={{
                 ...property,
                 taskCount: taskCounts[property.id] || 0,
+                urgentTaskCount: 0, // TODO: Calculate from tasks if needed
+                lastInspectedDate: null, // TODO: Add last inspected date from compliance data
               }}
             />
           ))}

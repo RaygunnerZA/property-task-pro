@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import { EmptyState } from "@/components/EmptyState";
+import EmptyState from "@/components/EmptyState";
 
 /**
  * Contractor Access Page
@@ -14,10 +14,6 @@ import { EmptyState } from "@/components/EmptyState";
  * - Redirects to /contractor/task/:taskId
  */
 export default function ContractorAccess() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ContractorAccess.tsx:16',message:'ContractorAccess component rendering',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-  
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -76,7 +72,7 @@ export default function ContractorAccess() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <EmptyState
           title="Access Denied"
-          subtitle={error}
+          subtitle={error?.message || String(error)}
         />
       </div>
     );

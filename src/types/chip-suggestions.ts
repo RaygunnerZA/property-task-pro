@@ -3,9 +3,15 @@
  * Used by the Create Task modal's intelligent chip suggestion engine
  */
 
-export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date';
+export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset';
 
 export type PriorityValue = 'low' | 'medium' | 'high' | 'urgent';
+
+export type ChipState = 'suggested' | 'applied' | 'resolved' | 'blocked';
+
+export type EntityType = 'person' | 'team' | 'space' | 'asset' | 'category' | 'subcategory' | 'property';
+
+export type ResolutionSource = 'exact' | 'fuzzy' | 'user_choice' | 'created';
 
 export interface SuggestedChip {
   id: string;
@@ -15,6 +21,13 @@ export interface SuggestedChip {
   score: number; // 0-1, chips with score >= 0.5 are shown
   source: 'rule' | 'vector' | 'ai' | 'fallback';
   metadata?: Record<string, unknown>;
+  // Resolution Truth Model fields
+  state?: ChipState;
+  resolvedEntityId?: string; // Real entity ID when resolved
+  resolvedEntityType?: EntityType;
+  resolutionSource?: ResolutionSource;
+  resolutionConfidence?: number; // 0-1
+  blockingRequired?: boolean; // If true, task creation blocked until resolved
 }
 
 export interface GhostCategory {
@@ -23,6 +36,9 @@ export interface GhostCategory {
   reason: 'space' | 'assignee' | 'urgency' | 'compliance' | 'historical' | 'repeat';
   score: number;
 }
+
+// Alias for backward compatibility
+export type GhostGroup = GhostCategory;
 
 export interface ChipSuggestionContext {
   description: string;

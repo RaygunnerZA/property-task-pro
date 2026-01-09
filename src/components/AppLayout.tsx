@@ -9,12 +9,12 @@ export function AppLayout({
   children
 }: AppLayoutProps) {
   return <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative">
         {/* Sidebar - fixed to left */}
         <AppSidebar />
         
         {/* Main content area */}
-        <div className="flex-1 flex flex-col min-h-screen">
+        <div className="flex-1 flex flex-col min-h-screen min-w-0">
           {/* Mobile header with sidebar trigger */}
           <header className="h-12 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center px-4 sticky top-0 z-40 md:hidden">
             <SidebarTrigger className="mr-4">
@@ -24,7 +24,7 @@ export function AppLayout({
 
           {/* Main content with paper background and noise texture */}
           <main 
-            className="flex-1 overflow-auto relative bg-background"
+            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-16 md:pb-0"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,
               backgroundRepeat: 'repeat',
@@ -32,7 +32,7 @@ export function AppLayout({
             }}
           >
             {/* Content */}
-            <div className="relative z-10">
+            <div className="relative z-10 w-full max-w-full">
               {children}
             </div>
           </main>

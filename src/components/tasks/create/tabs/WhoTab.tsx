@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,12 +23,22 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+export interface PendingInvitation {
+  id: string; // Temporary ID
+  firstName: string;
+  lastName: string;
+  email: string;
+  displayName: string;
+}
+
 interface WhoTabProps {
   assignedUserId?: string;
   assignedTeamIds: string[];
   onUserChange: (userId: string | undefined) => void;
   onTeamsChange: (teamIds: string[]) => void;
   suggestedPeople?: string[];
+  pendingInvitations?: PendingInvitation[];
+  onPendingInvitationsChange?: (invitations: PendingInvitation[]) => void;
 }
 
 interface PersonChip {
@@ -49,6 +60,8 @@ export function WhoTab({
   onUserChange,
   onTeamsChange,
   suggestedPeople = [],
+  pendingInvitations = [],
+  onPendingInvitationsChange,
 }: WhoTabProps) {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
@@ -107,6 +120,18 @@ export function WhoTab({
   );
 
   const handleSelectPerson = (userId: string | null) => {
+    // If switching from a pending invitation to a real user, clean up pending invitations
+    if (assignedUserId?.startsWith('pending-') && userId && !userId.startsWith('pending-')) {
+      const email = assignedUserId.replace('pending-', '');
+      const updated = pendingInvitations.filter(inv => inv.email !== email);
+      onPendingInvitationsChange?.(updated);
+    }
+    // If removing assignment and it was a pending invitation, clean it up
+    if (!userId && assignedUserId?.startsWith('pending-')) {
+      const email = assignedUserId.replace('pending-', '');
+      const updated = pendingInvitations.filter(inv => inv.email !== email);
+      onPendingInvitationsChange?.(updated);
+    }
     onUserChange(userId || undefined);
   };
 
@@ -159,10 +184,28 @@ export function WhoTab({
         return;
       }
       
-      // TODO: Create team member invite
+      // Create pending invitation immediately
+      const displayName = `${teamMemberFirstName} ${teamMemberLastName}`.trim();
+      const pendingInvitation: PendingInvitation = {
+        id: `pending-${Date.now()}-${Math.random()}`,
+        firstName: teamMemberFirstName.trim(),
+        lastName: teamMemberLastName.trim(),
+        email: teamMemberEmail.trim(),
+        displayName,
+      };
+      
+      // Add to pending invitations
+      const updatedInvitations = [...pendingInvitations, pendingInvitation];
+      onPendingInvitationsChange?.(updatedInvitations);
+      
+      // Create chip immediately and allocate task
+      // Use a temporary user_id format: "pending-{email}" to track this
+      const tempUserId = `pending-${pendingInvitation.email}`;
+      onUserChange(tempUserId);
+      
       toast({
-        title: "Team member added",
-        description: `${teamMemberFirstName} ${teamMemberLastName} will be invited.`,
+        title: "Team member invited",
+        description: `${displayName} will receive an invitation.`,
       });
       
       // Reset form
@@ -172,6 +215,7 @@ export function WhoTab({
       setSelectedTeamIds([]);
       setSelectedGroupIds([]);
       setShowCreatePerson(false);
+      setPendingGhostPerson(null);
     } else {
       // External Vendor
       if (!vendorName.trim() || !vendorEmail.trim()) {
@@ -260,15 +304,52 @@ export function WhoTab({
         </Label>
         <div className="flex flex-wrap gap-2 items-center min-h-[32px]">
           {assignedUserId && (() => {
-            const person = allPeople.find(p => p.user_id === assignedUserId);
-            const displayName = person?.display_name || `User ${assignedUserId.slice(0, 8)}`;
+            // Check if this is a pending invitation
+            const isPending = assignedUserId.startsWith('pending-');
+            let displayName: string;
+            let isPendingInvitation = false;
+            
+            if (isPending) {
+              // Extract email from pending user_id format: "pending-{email}"
+              const email = assignedUserId.replace('pending-', '');
+              const pendingInv = pendingInvitations.find(inv => inv.email === email);
+              if (pendingInv) {
+                displayName = pendingInv.displayName;
+                // Don't mark as pending if user was just created - show as normal
+                // Only mark as pending if this is a truly pending invitation (not just created)
+                isPendingInvitation = false;
+              } else {
+                displayName = email;
+              }
+            } else {
+              const person = allPeople.find(p => p.user_id === assignedUserId);
+              displayName = person?.display_name || `User ${assignedUserId.slice(0, 8)}`;
+            }
+            
             return (
               <StandardChip
                 key={`person-${assignedUserId}`}
                 label={displayName}
                 selected
-                onSelect={() => handleSelectPerson(null)}
-                onRemove={() => handleSelectPerson(null)}
+                pending={isPendingInvitation}
+                onSelect={() => {
+                  handleSelectPerson(null);
+                  // Also remove from pending invitations if it was pending
+                  if (isPendingInvitation) {
+                    const email = assignedUserId.replace('pending-', '');
+                    const updated = pendingInvitations.filter(inv => inv.email !== email);
+                    onPendingInvitationsChange?.(updated);
+                  }
+                }}
+                onRemove={() => {
+                  handleSelectPerson(null);
+                  // Also remove from pending invitations if it was pending
+                  if (isPendingInvitation) {
+                    const email = assignedUserId.replace('pending-', '');
+                    const updated = pendingInvitations.filter(inv => inv.email !== email);
+                    onPendingInvitationsChange?.(updated);
+                  }
+                }}
               />
             );
           })()}
@@ -438,6 +519,11 @@ export function WhoTab({
             <DialogTitle>
               {pendingGhostPerson ? `Add "${pendingGhostPerson}"?` : "Invite"}
             </DialogTitle>
+            <DialogDescription>
+              {pendingGhostPerson 
+                ? `Invite "${pendingGhostPerson}" to join your organization and assign them to this task.`
+                : "Invite a person or team to join your organization and assign them to this task."}
+            </DialogDescription>
           </DialogHeader>
           
           <Tabs value={inviteTab} onValueChange={(v) => setInviteTab(v as "team" | "vendor")} className="w-full">
@@ -601,6 +687,9 @@ export function WhoTab({
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Team</DialogTitle>
+            <DialogDescription>
+              Create a new team to assign tasks to multiple people at once.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <div className="space-y-2">
@@ -624,7 +713,7 @@ export function WhoTab({
               />
               
               {teamImagePreview ? (
-                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden shadow-e1">
                   <img src={teamImagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"

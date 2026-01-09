@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -12,8 +13,70 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
+      asset_themes: {
+        Row: {
+          asset_id: string
+          theme_id: string
+        }
+        Insert: {
+          asset_id: string
+          theme_id: string
+        }
+        Update: {
+          asset_id?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_themes_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_themes_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_themes_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           condition_score: number | null
@@ -61,6 +124,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "assets_space_id_fkey"
             columns: ["space_id"]
             isOneToOne: false
@@ -72,29 +142,41 @@ export type Database = {
       attachments: {
         Row: {
           created_at: string
+          file_name: string | null
+          file_size: number | null
+          file_type: string | null
           file_url: string
           id: string
           org_id: string
           parent_id: string
           parent_type: string
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
           file_url: string
           id?: string
           org_id: string
           parent_id: string
           parent_type: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          file_name?: string | null
+          file_size?: number | null
+          file_type?: string | null
           file_url?: string
           id?: string
           org_id?: string
           parent_id?: string
           parent_type?: string
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -111,25 +193,31 @@ export type Database = {
         Row: {
           created_at: string
           expiry_date: string | null
+          file_url: string | null
           id: string
           org_id: string
           status: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           expiry_date?: string | null
+          file_url?: string | null
           id?: string
           org_id: string
           status?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           expiry_date?: string | null
+          file_url?: string | null
           id?: string
           org_id?: string
           status?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -224,6 +312,75 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          channel: string
+          created_at: string
+          external_ref: string | null
+          id: string
+          org_id: string
+          property_id: string | null
+          subject: string | null
+          task_id: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          org_id: string
+          property_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          external_ref?: string | null
+          id?: string
+          org_id?: string
+          property_id?: string | null
+          subject?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence: {
         Row: {
           attachment_id: string
@@ -271,6 +428,13 @@ export type Database = {
             referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "evidence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       issues: {
@@ -295,6 +459,63 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "issues_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          author_name: string | null
+          author_role: string | null
+          author_user_id: string | null
+          body: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          org_id: string
+          raw_payload: Json | null
+          source: string
+        }
+        Insert: {
+          author_name?: string | null
+          author_role?: string | null
+          author_user_id?: string | null
+          body: string
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          org_id: string
+          raw_payload?: Json | null
+          source: string
+        }
+        Update: {
+          author_name?: string | null
+          author_role?: string | null
+          author_user_id?: string | null
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          org_id?: string
+          raw_payload?: Json | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -437,6 +658,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          name: string
           org_type: Database["public"]["Enums"]["org_type"]
           updated_at: string
         }
@@ -444,6 +666,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          name?: string
           org_type: Database["public"]["Enums"]["org_type"]
           updated_at?: string
         }
@@ -451,6 +674,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
           updated_at?: string
         }
@@ -459,23 +683,53 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
+          icon_color_hex: string | null
+          icon_name: string | null
           id: string
+          is_archived: boolean
+          nickname: string | null
           org_id: string
+          owner_email: string | null
+          owner_name: string | null
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
           address: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
+          icon_color_hex?: string | null
+          icon_name?: string | null
           id?: string
+          is_archived?: boolean
+          nickname?: string | null
           org_id: string
+          owner_email?: string | null
+          owner_name?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
           address?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
+          icon_color_hex?: string | null
+          icon_name?: string | null
           id?: string
+          is_archived?: boolean
+          nickname?: string | null
           org_id?: string
+          owner_email?: string | null
+          owner_name?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -484,6 +738,329 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_details: {
+        Row: {
+          created_at: string
+          floor_count: number | null
+          listing_grade: string | null
+          org_id: string
+          ownership_type: Database["public"]["Enums"]["ownership_type"] | null
+          property_id: string
+          site_type: Database["public"]["Enums"]["site_type"] | null
+          total_area_sqft: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          floor_count?: number | null
+          listing_grade?: string | null
+          org_id: string
+          ownership_type?: Database["public"]["Enums"]["ownership_type"] | null
+          property_id: string
+          site_type?: Database["public"]["Enums"]["site_type"] | null
+          total_area_sqft?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          floor_count?: number | null
+          listing_grade?: string | null
+          org_id?: string
+          ownership_type?: Database["public"]["Enums"]["ownership_type"] | null
+          property_id?: string
+          site_type?: Database["public"]["Enums"]["site_type"] | null
+          total_area_sqft?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_details_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_details_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_details_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_image_actions: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          id: string
+          image_version_id: string | null
+          metadata: Json | null
+          property_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          id?: string
+          image_version_id?: string | null
+          metadata?: Json | null
+          property_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          id?: string
+          image_version_id?: string | null
+          metadata?: Json | null
+          property_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_actions_image_version_id_fkey"
+            columns: ["image_version_id"]
+            isOneToOne: false
+            referencedRelation: "property_image_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_actions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_actions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_image_versions: {
+        Row: {
+          annotation_summary: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_archived: boolean | null
+          is_original: boolean | null
+          metadata: Json | null
+          original_file_url: string | null
+          property_id: string
+          storage_path: string
+          thumbnail_path: string | null
+          version_number: number
+        }
+        Insert: {
+          annotation_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_original?: boolean | null
+          metadata?: Json | null
+          original_file_url?: string | null
+          property_id: string
+          storage_path: string
+          thumbnail_path?: string | null
+          version_number: number
+        }
+        Update: {
+          annotation_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_original?: boolean | null
+          metadata?: Json | null
+          original_file_url?: string | null
+          property_id?: string
+          storage_path?: string
+          thumbnail_path?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_image_versions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_image_versions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_legal: {
+        Row: {
+          agent_contact: Json | null
+          created_at: string
+          landlord_name: string | null
+          lease_end: string | null
+          lease_start: string | null
+          org_id: string
+          property_id: string
+          purchase_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_contact?: Json | null
+          created_at?: string
+          landlord_name?: string | null
+          lease_end?: string | null
+          lease_start?: string | null
+          org_id: string
+          property_id: string
+          purchase_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_contact?: Json | null
+          created_at?: string
+          landlord_name?: string | null
+          lease_end?: string | null
+          lease_start?: string | null
+          org_id?: string
+          property_id?: string
+          purchase_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_legal_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_legal_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_legal_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_themes: {
+        Row: {
+          property_id: string
+          theme_id: string
+        }
+        Insert: {
+          property_id: string
+          theme_id: string
+        }
+        Update: {
+          property_id?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_themes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_themes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_themes_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_utilities: {
+        Row: {
+          account_number: string | null
+          created_at: string
+          id: string
+          meter_serial: string | null
+          org_id: string
+          property_id: string
+          supplier: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          created_at?: string
+          id?: string
+          meter_serial?: string | null
+          org_id: string
+          property_id: string
+          supplier?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          created_at?: string
+          id?: string
+          meter_serial?: string | null
+          org_id?: string
+          property_id?: string
+          supplier?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_utilities_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_utilities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_utilities_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
             referencedColumns: ["id"]
           },
         ]
@@ -527,25 +1104,25 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          name: string
           org_id: string
           property_id: string
-          type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           id?: string
+          name: string
           org_id: string
           property_id: string
-          type: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           id?: string
+          name?: string
           org_id?: string
           property_id?: string
-          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -561,6 +1138,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spaces_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
             referencedColumns: ["id"]
           },
         ]
@@ -624,35 +1208,155 @@ export type Database = {
           },
         ]
       }
+      task_spaces: {
+        Row: {
+          space_id: string
+          task_id: string
+        }
+        Insert: {
+          space_id: string
+          task_id: string
+        }
+        Update: {
+          space_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_spaces_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_spaces_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_spaces_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_teams: {
+        Row: {
+          task_id: string
+          team_id: string
+        }
+        Insert: {
+          task_id: string
+          team_id: string
+        }
+        Update: {
+          task_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_teams_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_teams_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_teams_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_themes: {
+        Row: {
+          task_id: string
+          theme_id: string
+        }
+        Insert: {
+          task_id: string
+          theme_id: string
+        }
+        Update: {
+          task_id?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_themes_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_themes_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_themes_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
+          assigned_user_id: string | null
           created_at: string
+          description: string | null
           due_date: string | null
           id: string
           org_id: string
           priority: string | null
           property_id: string | null
           status: Database["public"]["Enums"]["task_status"]
+          title: string
           updated_at: string
         }
         Insert: {
+          assigned_user_id?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           id?: string
           org_id: string
           priority?: string | null
           property_id?: string | null
           status: Database["public"]["Enums"]["task_status"]
+          title: string
           updated_at?: string
         }
         Update: {
+          assigned_user_id?: string | null
           created_at?: string
+          description?: string | null
           due_date?: string | null
           id?: string
           org_id?: string
           priority?: string | null
           property_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          title?: string
           updated_at?: string
         }
         Relationships: [
@@ -670,15 +1374,419 @@ export type Database = {
             referencedRelation: "properties"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      themes: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          metadata: Json | null
+          name: string
+          org_id: string
+          parent_id: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          metadata?: Json | null
+          name: string
+          org_id: string
+          parent_id?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string
+          org_id?: string
+          parent_id?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "themes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "themes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      assets_view: {
+        Row: {
+          condition_score: number | null
+          created_at: string | null
+          id: string | null
+          open_tasks_count: number | null
+          org_id: string | null
+          property_address: string | null
+          property_id: string | null
+          property_name: string | null
+          serial: string | null
+          space_id: string | null
+          space_name: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assets_space_id_fkey"
+            columns: ["space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_view: {
+        Row: {
+          created_at: string | null
+          days_until_expiry: number | null
+          expiry_date: string | null
+          expiry_status: string | null
+          id: string | null
+          org_id: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          days_until_expiry?: never
+          expiry_date?: string | null
+          expiry_status?: never
+          id?: string | null
+          org_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          days_until_expiry?: never
+          expiry_date?: string | null
+          expiry_status?: never
+          id?: string | null
+          org_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_documents_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      properties_view: {
+        Row: {
+          address: string | null
+          assets_count: number | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          expired_compliance_count: number | null
+          icon_color_hex: string | null
+          icon_name: string | null
+          id: string | null
+          nickname: string | null
+          open_tasks_count: number | null
+          org_id: string | null
+          owner_email: string | null
+          owner_name: string | null
+          spaces_count: number | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          valid_compliance_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks_view: {
+        Row: {
+          assigned_user_id: string | null
+          assignee_user_id: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string | null
+          images: Json | null
+          org_id: string | null
+          priority: string | null
+          property_address: string | null
+          property_id: string | null
+          property_name: string | null
+          property_thumbnail_url: string | null
+          spaces: Json | null
+          status: Database["public"]["Enums"]["task_status"] | null
+          teams: Json | null
+          themes: Json | null
+          title: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      annotate_property_image:
+        | {
+            Args: {
+              p_annotated_storage_path: string
+              p_annotated_thumbnail_path: string
+              p_annotation_summary?: string
+              p_property_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_annotated_storage_path: string
+              p_annotated_thumbnail_path: string
+              p_annotation_json?: Json
+              p_annotation_summary?: string
+              p_original_file_url?: string
+              p_property_id: string
+            }
+            Returns: Json
+          }
+      archive_property_image_version: {
+        Args: { p_property_id: string; p_version_id: string }
+        Returns: Json
+      }
+      archive_task: {
+        Args: { p_org: string; p_task_id: string }
+        Returns: boolean
+      }
       assigned_properties: { Args: never; Returns: string[] }
+      check_duplicate_org_name:
+        | { Args: { p_org_name: string; p_user_id: string }; Returns: boolean }
+        | {
+            Args: {
+              p_org_name: string
+              p_org_type?: Database["public"]["Enums"]["org_type"]
+              p_user_id: string
+            }
+            Returns: boolean
+          }
+      check_duplicate_property_address: {
+        Args: { p_address: string; p_org_id: string }
+        Returns: boolean
+      }
+      check_user_org_membership: {
+        Args: { p_org_id: string }
+        Returns: boolean
+      }
+      create_attachment_record: {
+        Args: {
+          p_file_name?: string
+          p_file_size?: number
+          p_file_type?: string
+          p_file_url: string
+          p_org_id: string
+          p_parent_id: string
+          p_parent_type: string
+          p_thumbnail_url?: string
+        }
+        Returns: {
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          id: string
+          org_id: string
+          parent_id: string
+          parent_type: string
+          thumbnail_url: string
+          updated_at: string
+        }[]
+      }
+      create_organisation: {
+        Args: {
+          creator_id: string
+          org_name: string
+          org_type_value: Database["public"]["Enums"]["org_type"]
+        }
+        Returns: string
+      }
+      create_property_v2:
+        | { Args: { p_address: string; p_org_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_address: string
+              p_icon_color_hex?: string
+              p_icon_name?: string
+              p_nickname?: string
+              p_org_id: string
+              p_thumbnail_url?: string
+            }
+            Returns: Json
+          }
+      create_task_v2: {
+        Args: {
+          p_description?: string
+          p_due_date?: string
+          p_org_id: string
+          p_priority?: string
+          p_property_id?: string
+          p_title: string
+        }
+        Returns: Json
+      }
       current_org_id: { Args: never; Returns: string }
+      ensure_user_has_org: { Args: { p_user_id: string }; Returns: string }
+      get_users_info: {
+        Args: { user_ids: string[] }
+        Returns: {
+          avatar_url: string
+          email: string
+          id: string
+          nickname: string
+        }[]
+      }
+      is_org_member: { Args: { org_uuid: string }; Returns: boolean }
+      replace_property_image: {
+        Args: {
+          p_annotation_summary?: string
+          p_new_storage_path: string
+          p_new_thumbnail_path: string
+          p_property_id: string
+        }
+        Returns: Json
+      }
+      restore_task: {
+        Args: { p_org: string; p_task_id: string }
+        Returns: boolean
+      }
+      test_user_org_membership: {
+        Args: { p_org_id: string }
+        Returns: {
+          is_member: boolean
+          membership_count: number
+          org_id: string
+          user_id: string
+        }[]
+      }
+      update_property_thumbnail: {
+        Args: { p_property_id: string; p_thumbnail_url: string }
+        Returns: Json
+      }
     }
     Enums: {
       identity_type:
@@ -688,6 +1796,14 @@ export type Database = {
         | "contractor"
         | "contractor_pro"
       org_type: "personal" | "business" | "contractor"
+      ownership_type: "owned" | "leased" | "rented" | "managed" | "other"
+      site_type:
+        | "residential"
+        | "commercial"
+        | "mixed_use"
+        | "industrial"
+        | "land"
+        | "other"
       task_status: "open" | "in_progress" | "completed" | "archived"
     }
     CompositeTypes: {
@@ -814,6 +1930,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       identity_type: [
@@ -824,7 +1943,18 @@ export const Constants = {
         "contractor_pro",
       ],
       org_type: ["personal", "business", "contractor"],
+      ownership_type: ["owned", "leased", "rented", "managed", "other"],
+      site_type: [
+        "residential",
+        "commercial",
+        "mixed_use",
+        "industrial",
+        "land",
+        "other",
+      ],
       task_status: ["open", "in_progress", "completed", "archived"],
     },
   },
 } as const
+A new version of Supabase CLI is available: v2.67.1 (currently installed v2.65.5)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

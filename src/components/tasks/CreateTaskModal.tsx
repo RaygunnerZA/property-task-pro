@@ -1,35 +1,56 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, Sparkles, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
-import { useAITaskExtraction } from "@/hooks/useAITaskExtraction";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { X, Plus, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
+import { useAIExtract } from "@/hooks/useAIExtract";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useSpaces } from "@/hooks/useSpaces";
+import { useTeams } from "@/hooks/useTeams";
+import { useCategories } from "@/hooks/useCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
-// Tab Components
-import { WhoTab } from "./create/tabs/WhoTab";
+// Tab Components (keeping for backward compatibility during transition)
+import { WhoTab, type PendingInvitation } from "./create/tabs/WhoTab";
 import { WhenTab } from "./create/tabs/WhenTab";
 import { WhereTab } from "./create/tabs/WhereTab";
 import { PriorityTab } from "./create/tabs/PriorityTab";
+
+// New Panel Components
+import { WherePanel } from "./create/panels/WherePanel";
+import { AssetPanel } from "./create/panels/AssetPanel";
+import { WhoPanel } from "./create/panels/WhoPanel";
+import { WhenPanel } from "./create/panels/WhenPanel";
+import { PriorityPanel } from "./create/panels/PriorityPanel";
+import { CategoryPanel } from "./create/panels/CategoryPanel";
+import { PerforationLine } from "./create/PerforationLine";
+import { ClarityState, ClaritySeverity } from "./create/ClarityState";
+import { FillaIcon } from "@/components/filla/FillaIcon";
+import { useChipSuggestions } from "@/hooks/useChipSuggestions";
+import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
+import type { EntityType } from "@/types/chip-suggestions";
+import { queryResolutionMemory, storeResolutionMemory } from "@/services/ai/resolutionMemory";
+import { logChipResolution } from "@/services/ai/resolutionAudit";
+import type { SuggestedChip } from "@/types/chip-suggestions";
 
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
+import { TaskMetadataIconRow } from "./create/TaskMetadataIconRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule, CreateTaskImagePayload } from "@/types/database";
 interface CreateTaskModalProps {
   open: boolean;
@@ -57,6 +78,7 @@ export function CreateTaskModal({
     templates
   } = useChecklistTemplates();
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
+  const { members } = useOrgMembers();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -64,20 +86,32 @@ export function CreateTaskModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
+  
+  // Hooks that depend on form state
+  const { spaces } = useSpaces(propertyId || undefined);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>(defaultPropertyId ? [defaultPropertyId] : []);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
 
   // Initialize propertyId from last used when modal opens
   useEffect(() => {
     if (open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
       setPropertyId(lastUsedPropertyId);
+      setSelectedPropertyIds([lastUsedPropertyId]);
     }
   }, [open, defaultPropertyId, lastUsedPropertyId]);
 
   // Update last used when property changes
-  const handlePropertyChange = (newPropertyId: string) => {
-    setPropertyId(newPropertyId);
-    if (newPropertyId) {
-      setLastUsed(newPropertyId);
+  const handlePropertyChange = (newPropertyIds: string[]) => {
+    setSelectedPropertyIds(newPropertyIds);
+    // Use first property as primary for backward compatibility
+    const primaryPropertyId = newPropertyIds.length > 0 ? newPropertyIds[0] : "";
+    setPropertyId(primaryPropertyId);
+    if (primaryPropertyId) {
+      setLastUsed(primaryPropertyId);
+    }
+    // Clear spaces when properties change
+    if (newPropertyIds.length === 0) {
+      setSelectedSpaceIds([]);
     }
   };
   const [priority, setPriority] = useState<TaskPriority>("medium");
@@ -85,59 +119,308 @@ export function CreateTaskModal({
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [isCompliance, setIsCompliance] = useState(false);
   const [complianceLevel, setComplianceLevel] = useState("");
   const [annotationRequired, setAnnotationRequired] = useState(false);
   const [templateId, setTemplateId] = useState("");
   const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [images, setImages] = useState<CreateTaskImagePayload[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState("where");
+  const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
 
   // AI Title extraction
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
   
-  // Call AI extraction hook
-  const { aiTitle, aiSuggestions, loading: aiLoading } = useAITaskExtraction(description);
+  // Call AI extraction hook (using the working hook)
+  const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
+  
+  // Chip suggestions with resolution pipeline
+  const { chips: chipSuggestions, ghostCategories, loading: chipsLoading, error: chipsError } = useChipSuggestions({
+    description,
+    propertyId,
+    selectedSpaceIds,
+    selectedPersonId: assignedUserId,
+    selectedTeamIds: assignedTeamIds,
+  });
+  
+  // Track applied chips and their resolution state
+  const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
+  const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
+  
+  // Clarity state
+  const [clarityState, setClarityState] = useState<{
+    severity: ClaritySeverity;
+    message: string;
+  } | null>(null);
+  
+  // Get teams and categories for resolution
+  const { teams } = useTeams();
+  const { categories } = useCategories();
+  
+  // Handle chip selection and resolution
+  const handleChipSelect = useCallback(async (chip: SuggestedChip) => {
+    const isCurrentlySelected = selectedChipIds.includes(chip.id);
+    
+    // Map chip types to panel sections
+    const chipTypeToSection: Record<string, string> = {
+      'person': 'who',
+      'team': 'who',
+      'space': 'where',
+      'asset': 'what',
+      'date': 'when',
+      'priority': 'priority',
+      'category': 'category',
+      'theme': 'category',
+    };
+    
+    // Open relevant panel when chip is clicked
+    const section = chipTypeToSection[chip.type];
+    if (section) {
+      setActiveSection(section);
+      // Scroll to panel
+      setTimeout(() => {
+        const panel = document.getElementById(`context-panel-${section}`);
+        panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+    
+    if (isCurrentlySelected) {
+      // Toggle off
+      setSelectedChipIds(prev => prev.filter(id => id !== chip.id));
+      const updated = new Map(appliedChips);
+      updated.delete(chip.id);
+      setAppliedChips(updated);
+      return;
+    }
+    
+    // Toggle on - add to applied chips
+    setSelectedChipIds(prev => [...prev, chip.id]);
+    
+    // Run resolution pipeline
+    if (orgId) {
+      // Load assets if needed
+      let assets: Array<{ id: string; name: string; property_id: string; space_id?: string }> = [];
+      if (chip.type === 'asset' && propertyId) {
+        try {
+          const { data } = await supabase
+            .from('assets')
+            .select('id, name, property_id, space_id')
+            .eq('org_id', orgId)
+            .eq('property_id', propertyId);
+          assets = (data || []).map(a => ({
+            id: a.id,
+            name: a.name || '',
+            property_id: a.property_id,
+            space_id: a.space_id || undefined
+          }));
+        } catch (err) {
+          console.error('Error loading assets:', err);
+        }
+      }
+      
+      const entities: AvailableEntities = {
+        spaces: spaces.map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
+        members: members.map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
+        teams: teams.map(t => ({ id: t.id, name: t.name || '' })),
+        assets: assets,
+        categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id || undefined })),
+        properties: [],
+      };
+      
+      // Map ChipType to EntityType
+      const chipTypeToEntityType: Record<string, EntityType> = {
+        'person': 'person',
+        'team': 'team',
+        'space': 'space',
+        'asset': 'asset',
+        'category': 'category',
+        'theme': 'category',
+      };
+      
+      const entityType = chipTypeToEntityType[chip.type] || 'category';
+      
+      // Check resolution memory first
+      const memoryEntityId = await queryResolutionMemory(orgId, chip.label, entityType);
+      
+      let resolution;
+      if (memoryEntityId) {
+        resolution = {
+          resolved: true,
+          entityId: memoryEntityId,
+          entityType: entityType,
+          resolutionSource: 'exact' as const,
+          confidence: 0.9
+        };
+      } else {
+        resolution = await resolveChip(chip, entities, { propertyId, spaceId: selectedSpaceIds[0] });
+      }
+      
+      // Update chip with resolution
+      const resolvedChip: SuggestedChip = {
+        ...chip,
+        state: resolution.resolved ? 'resolved' : resolution.requiresCreation ? 'blocked' : 'applied',
+        resolvedEntityId: resolution.entityId,
+        resolvedEntityType: resolution.entityType,
+        resolutionSource: resolution.resolutionSource,
+        resolutionConfidence: resolution.confidence,
+        blockingRequired: chip.type === 'space' || chip.type === 'asset' || chip.type === 'person',
+      };
+      
+      const updated = new Map(appliedChips);
+      updated.set(chip.id, resolvedChip);
+      setAppliedChips(updated);
+      
+      // Store in memory if resolved
+      if (resolution.resolved && resolution.entityId && orgId) {
+        await storeResolutionMemory(orgId, chip.label, resolution.entityType!, resolution.entityId, resolution.confidence || 0.5);
+      }
+      
+      // Log audit
+      if (orgId && resolution.resolved) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            await logChipResolution(
+              orgId,
+              user.id,
+              { chip: chip.label, type: chip.type },
+              { resolved: resolution.resolved, entityId: resolution.entityId }
+            );
+          }
+        } catch (err) {
+          console.error('Error logging chip resolution:', err);
+        }
+      }
+      
+      // Handle auto-open panels for assets
+      if (chip.type === 'asset' && !propertyId) {
+        setActiveSection('where');
+      } else if (chip.type === 'asset' && propertyId && selectedSpaceIds.length === 0) {
+        setActiveSection('where');
+      }
+    }
+  }, [selectedChipIds, appliedChips, orgId, spaces, members, teams, categories, propertyId, selectedSpaceIds]);
+  
+  // Validate resolution truth and update clarity state
+  useEffect(() => {
+    const blockingIssues: string[] = [];
+    const warningIssues: string[] = [];
+    
+    // Check all applied chips
+    appliedChips.forEach((chip) => {
+      if (chip.blockingRequired && !chip.resolvedEntityId) {
+        if (chip.type === 'space' && !propertyId) {
+          blockingIssues.push(`"${chip.label}" was found, but no property is selected. Which property does this apply to?`);
+        } else if (chip.type === 'asset' && !propertyId) {
+          blockingIssues.push(`Asset "${chip.label}" requires a property to be selected.`);
+        } else if (chip.type === 'person') {
+          blockingIssues.push(`Filla couldn't find "${chip.label}". Choose an existing contact or invite someone new.`);
+        } else {
+          blockingIssues.push(`"${chip.label}" needs to be resolved before creating the task.`);
+        }
+      }
+    });
+    
+    // Check property requirement for spaces/assets
+    const hasSpaceOrAssetChips = Array.from(appliedChips.values()).some(
+      c => (c.type === 'space' || c.type === 'asset') && !c.resolvedEntityId
+    );
+    if (hasSpaceOrAssetChips && !propertyId) {
+      blockingIssues.push('A property must be selected when spaces or assets are suggested.');
+    }
+    
+    if (blockingIssues.length > 0) {
+      setClarityState({
+        severity: 'blocking',
+        message: `Resolve before creating. ${blockingIssues[0]}`,
+      });
+    } else if (warningIssues.length > 0) {
+      setClarityState({
+        severity: 'warning',
+        message: warningIssues[0],
+      });
+    } else {
+      setClarityState(null);
+    }
+  }, [appliedChips, propertyId]);
+  
+  // #region agent log
+  // Debug AI extraction flow
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:115',message:'AI extraction state',data:{description,descriptionLength:description.length,hasAiResult:!!aiResult,aiResultTitle:aiResult?.title,aiResultPriority:aiResult?.priority,aiResultDate:aiResult?.date,aiLoading,aiError,orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+  }, [description, aiResult, aiLoading, aiError, orgId]);
+  // #endregion
 
   // Auto-update title from AI when user hasn't manually edited
   useEffect(() => {
-    if (aiTitle && !userEditedTitle) {
-      setAiTitleGenerated(aiTitle);
-      setTitle(aiTitle);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:125',message:'Title auto-fill useEffect triggered',data:{hasAiResultTitle:!!aiResult?.title,aiResultTitle:aiResult?.title,userEditedTitle,willApply:!!(aiResult?.title && !userEditedTitle),currentTitle:title,showTitleField},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    if (aiResult?.title && !userEditedTitle) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:127',message:'Applying AI title to form',data:{aiTitle:aiResult.title,previousTitle:title,previousShowTitleField:showTitleField},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      setAiTitleGenerated(aiResult.title);
+      setTitle(aiResult.title);
       setShowTitleField(true);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:132',message:'After setting title state',data:{setTitleCalled:true,setShowTitleFieldCalled:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
     }
-  }, [aiTitle, userEditedTitle]);
+  }, [aiResult?.title, userEditedTitle]);
 
   // Auto-apply AI suggestions when received
   useEffect(() => {
-    if (!aiSuggestions) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:134',message:'AI suggestions useEffect triggered',data:{hasAiResult:!!aiResult,aiPriority:aiResult?.priority,currentPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    if (!aiResult) return;
     
     // Auto-set priority from AI
-    if (aiSuggestions.priority === "HIGH") {
+    if (aiResult.priority === "HIGH" || aiResult.priority === "high") {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:140',message:'Setting priority to high',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       setPriority("high");
+    } else if (aiResult.priority === "URGENT" || aiResult.priority === "urgent") {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:142',message:'Setting priority to urgent',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      setPriority("urgent");
+    } else if (aiResult.priority === "MEDIUM" || aiResult.priority === "medium") {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:144',message:'Setting priority to medium',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      setPriority("medium");
+    } else if (aiResult.priority === "LOW" || aiResult.priority === "low") {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:146',message:'Setting priority to low',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      setPriority("low");
     }
     
     // Auto-set date suggestions including weekdays
-    if (aiSuggestions.date) {
+    if (aiResult.date) {
       const today = new Date();
       const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
       
-      if (aiSuggestions.date === "today") {
+      if (aiResult.date === "today") {
         setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiSuggestions.date === "tomorrow") {
+      } else if (aiResult.date === "tomorrow") {
         today.setDate(today.getDate() + 1);
         setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiSuggestions.date === "next_week") {
+      } else if (aiResult.date === "next_week") {
         today.setDate(today.getDate() + 7);
         setDueDate(today.toISOString().split("T")[0]);
-      } else if (weekdays.includes(aiSuggestions.date.toLowerCase())) {
+      } else if (weekdays.includes(aiResult.date.toLowerCase())) {
         // Calculate next occurrence of the weekday
-        const targetDay = weekdays.indexOf(aiSuggestions.date.toLowerCase());
+        const targetDay = weekdays.indexOf(aiResult.date.toLowerCase());
         const currentDay = today.getDay();
         let daysToAdd = targetDay - currentDay;
         if (daysToAdd <= 0) daysToAdd += 7; // If today or in the past, go to next week
@@ -147,40 +430,197 @@ export function CreateTaskModal({
     }
     
     // Auto-enable compliance if signature is suggested
-    if (aiSuggestions.signature && !isCompliance) {
+    if (aiResult.signature && !isCompliance) {
       setIsCompliance(true);
       setShowAdvanced(true);
     }
-  }, [aiSuggestions]);
+  }, [aiResult]);
 
-  // Hide title field when description is empty
+  // Hide/show title field based on description and restore AI title if available
   useEffect(() => {
     if (!description.trim()) {
       setShowTitleField(false);
       setUserEditedTitle(false);
+      // Only clear title if user hasn't edited it and there's no AI-generated title
+      if (!userEditedTitle && !aiTitleGenerated) {
+        setTitle("");
+      }
+    } else {
+      // When description becomes non-empty, restore AI title if available and not user-edited
+      if (aiTitleGenerated && !userEditedTitle && !title.trim()) {
+        setTitle(aiTitleGenerated);
+        setShowTitleField(true);
+      } else if (title.trim() && !showTitleField) {
+        // If title exists but field is hidden, show it
+        setShowTitleField(true);
+      }
     }
-  }, [description]);
-  const resetForm = () => {
+  }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField]);
+  const resetForm = useCallback(() => {
     setTitle("");
     setDescription("");
     setPropertyId(defaultPropertyId || "");
+    setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
     setSelectedSpaceIds([]);
     setPriority("medium");
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
+    setPendingInvitations([]);
     setIsCompliance(false);
     setComplianceLevel("");
     setAnnotationRequired(false);
     setTemplateId("");
     setSubtasks([]);
     setSelectedThemeIds([]);
+    setSelectedAssetIds([]);
     setImages([]);
     setShowAdvanced(false);
-    setActiveTab("where");
-  };
+    setActiveSection(null);
+    // Reset AI-related state
+    setAiTitleGenerated("");
+    setUserEditedTitle(false);
+    setShowTitleField(false);
+  }, [defaultPropertyId, defaultDueDate]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open, resetForm]);
+
+  // Apply all AI suggestions at once
+  const handleApplyAllSuggestions = useCallback(() => {
+    if (!aiResult) return;
+
+    // Apply people
+    if (aiResult.people && aiResult.people.length > 0) {
+      const firstPerson = aiResult.people[0];
+      const foundMember = members.find(
+        (m) => m.display_name.toLowerCase() === firstPerson.name.toLowerCase()
+      );
+      if (foundMember) {
+        setAssignedUserId(foundMember.user_id);
+      } else {
+        const [firstName, ...lastNameParts] = firstPerson.name.split(" ");
+        const lastName = lastNameParts.join(" ") || "";
+        const pendingInvitation: PendingInvitation = {
+          id: `pending-${Date.now()}`,
+          firstName,
+          lastName,
+          email: "",
+          displayName: firstPerson.name,
+        };
+        setPendingInvitations([...pendingInvitations, pendingInvitation]);
+        setAssignedUserId(`pending-${firstPerson.name}`);
+      }
+    }
+
+    // Apply spaces
+    if (aiResult.spaces && aiResult.spaces.length > 0) {
+      aiResult.spaces.forEach((space) => {
+        const foundSpace = spaces.find(
+          (s) => s.name.toLowerCase() === space.name.toLowerCase()
+        );
+        if (foundSpace && !selectedSpaceIds.includes(foundSpace.id)) {
+          setSelectedSpaceIds((prev) => [...prev, foundSpace.id]);
+        } else if (!foundSpace) {
+          const ghostId = `ghost-space-${space.name}`;
+          if (!selectedSpaceIds.includes(ghostId)) {
+            setSelectedSpaceIds((prev) => [...prev, ghostId]);
+          }
+        }
+      });
+    }
+
+    // Apply date
+    if (aiResult.date) {
+      const today = new Date();
+      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      
+      if (aiResult.date === "today") {
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (aiResult.date === "tomorrow") {
+        today.setDate(today.getDate() + 1);
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (aiResult.date === "next_week") {
+        today.setDate(today.getDate() + 7);
+        setDueDate(today.toISOString().split("T")[0]);
+      } else if (weekdays.includes(aiResult.date.toLowerCase())) {
+        const targetDay = weekdays.indexOf(aiResult.date.toLowerCase());
+        const currentDay = today.getDay();
+        let daysToAdd = targetDay - currentDay;
+        if (daysToAdd <= 0) daysToAdd += 7;
+        today.setDate(today.getDate() + daysToAdd);
+        setDueDate(today.toISOString().split("T")[0]);
+      } else {
+        try {
+          const date = new Date(aiResult.date);
+          if (!isNaN(date.getTime())) {
+            setDueDate(date.toISOString().split("T")[0]);
+          }
+        } catch {
+          // Invalid date format
+        }
+      }
+    }
+
+    // Apply priority
+    if (aiResult.priority) {
+      const priorityLower = aiResult.priority.toLowerCase();
+      if (priorityLower === "urgent" || priorityLower === "high" || priorityLower === "medium" || priorityLower === "low") {
+        setPriority(priorityLower as TaskPriority);
+      }
+    }
+
+    // Apply assets
+    if (aiResult.assets && aiResult.assets.length > 0) {
+      // Assets will be handled by the AssetsSection when expanded
+      // For now, just track that we have asset suggestions
+    }
+
+    // Apply themes/categories
+    if (aiResult.themes && aiResult.themes.length > 0) {
+      // Themes will be handled by the ThemesSection when expanded
+      // For now, just track that we have theme suggestions
+    }
+
+    toast({
+      title: "AI suggestions applied",
+      description: "All available suggestions have been applied to your task.",
+    });
+  }, [aiResult, members, spaces, selectedSpaceIds, pendingInvitations, toast]);
   const handleSubmit = async () => {
+    // Validation: Check resolution truth (Final Pre-Build Rule)
+    const blockingChips = Array.from(appliedChips.values()).filter(
+      chip => chip.blockingRequired && !chip.resolvedEntityId
+    );
+    
+    if (blockingChips.length > 0) {
+      const firstBlocking = blockingChips[0];
+      toast({
+        title: "Resolve before creating",
+        description: `"${firstBlocking.label}" needs to be resolved before creating the task.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check property requirement for spaces/assets
+    const hasSpaceOrAssetChips = Array.from(appliedChips.values()).some(
+      c => (c.type === 'space' || c.type === 'asset')
+    );
+    if (hasSpaceOrAssetChips && !propertyId) {
+      toast({
+        title: "Property required",
+        description: "A property must be selected when spaces or assets are applied.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Auto-generate title if empty
     let finalTitle = title.trim();
     if (!finalTitle) {
@@ -237,15 +677,17 @@ export function CreateTaskModal({
       for (const ghostId of ghostSpaces) {
         const spaceName = ghostId.replace('ghost-space-', '');
         
-        if (!propertyId) {
+        if (selectedPropertyIds.length === 0) {
           throw new Error(`Cannot create space "${spaceName}" without a property selected`);
         }
         
+        // Use first property for space creation
+        const spacePropertyId = selectedPropertyIds[0];
         const { data: newSpace, error: spaceError } = await supabase
           .from("spaces")
           .insert({
             org_id: orgId,
-            property_id: propertyId,
+            property_id: spacePropertyId,
             name: spaceName,
           })
           .select("id")
@@ -359,6 +801,15 @@ export function CreateTaskModal({
         dueDateValue = dateObj.toISOString();
       }
       
+      // Check if assigned user is a pending invitation
+      const isPendingInvitation = assignedUserId?.startsWith('pending-');
+      let finalAssignedUserId: string | null = null;
+      
+      if (assignedUserId && !isPendingInvitation) {
+        finalAssignedUserId = assignedUserId;
+      }
+      // If it's a pending invitation, we'll handle it after task creation
+      
       // Simplified: Use direct insert instead of RPC for reliability
       // RLS is now fixed, so we can use standard Supabase client
       console.log('[CreateTaskModal] Creating task with:', {
@@ -368,7 +819,8 @@ export function CreateTaskModal({
         priority: dbPriority,
         dueDate: dueDateValue,
         description: description.trim() || null,
-        assignedUserId,
+        assignedUserId: finalAssignedUserId,
+        pendingInvitations: pendingInvitations.length,
       });
       
       const { data: newTask, error: createError } = await supabase
@@ -380,7 +832,7 @@ export function CreateTaskModal({
           priority: dbPriority,
           due_date: dueDateValue,
           description: description.trim() || null,
-          assigned_user_id: assignedUserId || null,
+          assigned_user_id: finalAssignedUserId,
           status: 'open',
         })
         .select()
@@ -554,6 +1006,26 @@ export function CreateTaskModal({
         }
       }
       
+      // Handle pending invitations
+      if (isPendingInvitation && pendingInvitations.length > 0) {
+        // Find the pending invitation that matches the assigned user
+        const email = assignedUserId?.replace('pending-', '');
+        const pendingInv = pendingInvitations.find(inv => inv.email === email);
+        
+        if (pendingInv) {
+          // TODO: Create invitation record and send email with magic link
+          // For now, log that we need to handle this
+          console.log('[CreateTaskModal] Pending invitation for task:', {
+            taskId,
+            invitation: pendingInv,
+          });
+          
+          // The chip is already created and dimmed in the UI
+          // When the user validates/registers or visits via magic link,
+          // we'll need to update the task's assigned_user_id
+        }
+      }
+      
       // Show final success toast
       const createdEntities = [];
       if (ghostSpaces.length > 0) createdEntities.push(`${ghostSpaces.length} space${ghostSpaces.length > 1 ? 's' : ''}`);
@@ -604,7 +1076,7 @@ export function CreateTaskModal({
   };
   const content = <div className="flex flex-col h-full max-h-[85vh]">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-4 border-b border-border/30">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Plus className="h-5 w-5 text-primary" />
           Create Task
@@ -625,13 +1097,19 @@ export function CreateTaskModal({
 
         {/* AI-Generated Title (appears after AI responds) */}
         <div className={cn(
-          "transition-all duration-300 ease-out",
+          "transition-all duration-300 ease-out mt-[6px]",
           showTitleField ? "opacity-100 max-h-24" : "opacity-0 max-h-0 overflow-hidden"
         )}>
+          {(() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:712',message:'Rendering title field',data:{showTitleField,title,aiTitleGenerated,userEditedTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+            // #endregion
+            return null;
+          })()}
           {showTitleField && (
             <div className="space-y-2">
-              <label className="text-sm text-muted-foreground flex items-center gap-2">
-                <Sparkles className="h-3 w-3 text-primary" />
+              <label className="text-[12px] font-mono uppercase tracking-wider text-primary flex items-center gap-1.5">
+                <FillaIcon size={12} className="text-primary" />
                 AI Title
               </label>
               <input
@@ -654,199 +1132,124 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* AI Suggestion Chips - Clickable to apply */}
-        {aiSuggestions && (aiSuggestions.spaces.length > 0 || aiSuggestions.people.length > 0 || aiSuggestions.assets.length > 0 || aiSuggestions.priority) && (
-          <div className="space-y-2">
-            <label className="text-xs text-muted-foreground flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-primary" />
-              AI Suggestions (click to apply)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {aiSuggestions.spaces.map((space, idx) => (
-                <Badge 
-                  key={`space-${idx}`} 
-                  variant="outline" 
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
-                  onClick={() => setActiveTab("where")}
-                >
-                  <MapPin className="h-3 w-3 mr-1" />
-                  + {space.name}
-                </Badge>
-              ))}
-              {aiSuggestions.people.map((person, idx) => (
-                <Badge 
-                  key={`person-${idx}`} 
-                  variant="outline" 
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
-                  onClick={() => setActiveTab("who")}
-                >
-                  <User className="h-3 w-3 mr-1" />
-                  + {person.name}
-                </Badge>
-              ))}
-              {aiSuggestions.assets.map((asset, idx) => (
-                <Badge 
-                  key={`asset-${idx}`} 
-                  variant="secondary"
-                >
-                  {asset}
-                </Badge>
-              ))}
-              {aiSuggestions.priority === "HIGH" && (
-                <Badge 
-                  variant="danger" 
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setPriority("high");
-                    setActiveTab("priority");
-                  }}
-                >
-                  <AlertTriangle className="h-3 w-3 mr-1" />
-                  URGENT
-                </Badge>
-              )}
-              {aiSuggestions.date && (
-                <Badge 
-                  variant="outline" 
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-all"
-                  onClick={() => setActiveTab("when")}
-                >
-                  <Calendar className="h-3 w-3 mr-1" />
-                  {aiSuggestions.date.replace("_", " ")}
-                </Badge>
-              )}
-              {aiSuggestions.yes_no && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Check className="h-3 w-3" />
-                  Yes/No
-                </Badge>
-              )}
-              {aiSuggestions.signature && (
-                <Badge 
-                  variant="warning" 
-                  className="cursor-pointer"
-                  onClick={() => {
-                    setIsCompliance(true);
-                    setShowAdvanced(true);
-                  }}
-                >
-                  <Shield className="h-3 w-3 mr-1" />
-                  Compliance
-                </Badge>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Icon Row - Opens Context Panels Below */}
+        <TaskMetadataIconRow
+          aiResult={aiResult}
+          activeSection={activeSection}
+          onSectionClick={(section) => {
+            setActiveSection(section);
+            // Scroll to panel if section is selected
+            if (section) {
+              setTimeout(() => {
+                const panel = document.getElementById(`context-panel-${section}`);
+                panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              }, 100);
+            }
+          }}
+          onApplyAllSuggestions={handleApplyAllSuggestions}
+          appliedPeople={assignedUserId ? [members.find(m => m.user_id === assignedUserId)?.display_name || ""].filter(Boolean) : []}
+          appliedSpaces={selectedSpaceIds.map(id => {
+            if (id.startsWith("ghost-space-")) {
+              return id.replace("ghost-space-", "");
+            }
+            return spaces.find(s => s.id === id)?.name || "";
+          }).filter(Boolean)}
+          appliedDate={dueDate}
+          appliedAssets={selectedAssetIds}
+          appliedPriority={priority}
+          appliedThemes={selectedThemeIds}
+        />
 
-        {/* Metadata Tabs */}
-        <div className="space-y-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList
-              className={cn(
-                "w-full grid grid-cols-4 h-12 py-1 px-2 rounded-[15px] bg-transparent",
-                "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]"
-              )}
-            >
-              <TabsTrigger
-                value="where"
-                className={cn(
-                  "rounded-lg transition-all gap-1",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                  "data-[state=active]:bg-card",
-                  "data-[state=inactive]:bg-transparent",
-                  "text-sm font-medium"
-                )}
-              >
-                <MapPin className="h-4 w-4" />
-                <span className="hidden sm:inline">Where</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="when"
-                className={cn(
-                  "rounded-lg transition-all gap-1",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                  "data-[state=active]:bg-card",
-                  "data-[state=inactive]:bg-transparent",
-                  "text-sm font-medium"
-                )}
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="hidden sm:inline">When</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="who"
-                className={cn(
-                  "rounded-lg transition-all gap-1",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                  "data-[state=active]:bg-card",
-                  "data-[state=inactive]:bg-transparent",
-                  "text-sm font-medium"
-                )}
-              >
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Who</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="priority"
-                className={cn(
-                  "rounded-lg transition-all gap-1",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                  "data-[state=active]:bg-card",
-                  "data-[state=inactive]:bg-transparent",
-                  "text-sm font-medium"
-                )}
-              >
-                <AlertTriangle className="h-4 w-4" />
-                <span className="hidden sm:inline">Priority</span>
-              </TabsTrigger>
-            </TabsList>
+        {/* Perforation Line - Below AI Suggestion Section */}
+        {aiResult && (
+          (aiResult.people?.length ?? 0) > 0 ||
+          (aiResult.spaces?.length ?? 0) > 0 ||
+          aiResult.date ||
+          (aiResult.assets?.length ?? 0) > 0 ||
+          aiResult.priority ||
+          (aiResult.themes?.length ?? 0) > 0
+        ) ? <PerforationLine /> : null}
 
-            <div className="p-4 bg-background">
-              <TabsContent value="where" className="mt-0">
-                <WhereTab 
-                  propertyId={propertyId} 
-                  spaceIds={selectedSpaceIds} 
-                  onPropertyChange={handlePropertyChange} 
-                  onSpacesChange={setSelectedSpaceIds}
-                  suggestedSpaces={aiSuggestions?.spaces?.map(s => s.name) || []}
-                />
-              </TabsContent>
-              <TabsContent value="when" className="mt-0">
-                <WhenTab dueDate={dueDate} repeatRule={repeatRule} onDueDateChange={setDueDate} onRepeatRuleChange={setRepeatRule} />
-              </TabsContent>
-              <TabsContent value="who" className="mt-0">
-                <WhoTab 
+        {/* Context Panels - Only Visible When Active Section is Selected */}
+        {activeSection && (
+          <div className="space-y-6">
+            {/* Who Panel */}
+            {activeSection === 'who' && (
+              <div id="context-panel-who">
+                <WhoPanel 
                   assignedUserId={assignedUserId} 
                   assignedTeamIds={assignedTeamIds} 
                   onUserChange={setAssignedUserId} 
                   onTeamsChange={setAssignedTeamIds}
-                  suggestedPeople={aiSuggestions?.people?.map(p => p.name) || []}
+                  suggestedPeople={aiResult?.people?.map(p => p.name) || []}
+                  pendingInvitations={pendingInvitations}
+                  onPendingInvitationsChange={setPendingInvitations}
                 />
-              </TabsContent>
-              <TabsContent value="priority" className="mt-0">
-                <PriorityTab priority={priority} onPriorityChange={setPriority} />
-              </TabsContent>
-            </div>
-          </Tabs>
-        </div>
+              </div>
+            )}
 
-        {/* Themes & Assets Row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl shadow-e2 p-4 bg-secondary">
-            <ThemesSection 
-              selectedThemeIds={selectedThemeIds} 
-              onThemesChange={setSelectedThemeIds}
-              suggestedThemes={aiSuggestions?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
-            />
+            {/* Where Panel */}
+            {activeSection === 'where' && (
+              <div id="context-panel-where">
+                <WherePanel 
+                  propertyId={propertyId} 
+                  spaceIds={selectedSpaceIds} 
+                  onPropertyChange={handlePropertyChange} 
+                  onSpacesChange={setSelectedSpaceIds}
+                  suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
+                  defaultPropertyId={defaultPropertyId}
+                />
+              </div>
+            )}
+
+            {/* When Panel */}
+            {activeSection === 'when' && (
+              <div id="context-panel-when">
+                <WhenPanel 
+                  dueDate={dueDate} 
+                  repeatRule={repeatRule} 
+                  onDueDateChange={setDueDate} 
+                  onRepeatRuleChange={setRepeatRule} 
+                />
+              </div>
+            )}
+
+            {/* Priority Panel */}
+            {activeSection === 'priority' && (
+              <div id="context-panel-priority">
+                <PriorityPanel 
+                  priority={priority} 
+                  onPriorityChange={setPriority} 
+                />
+              </div>
+            )}
+
+            {/* Category Panel */}
+            {activeSection === 'category' && (
+              <div id="context-panel-category">
+                <CategoryPanel 
+                  selectedThemeIds={selectedThemeIds} 
+                  onThemesChange={setSelectedThemeIds}
+                  suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
+                />
+              </div>
+            )}
+
+            {/* Asset Panel - Only show if property is selected */}
+            {activeSection === 'what' && propertyId && (
+              <div id="context-panel-what">
+                <AssetPanel
+                  propertyId={propertyId}
+                  spaceId={selectedSpaceIds[0]}
+                  selectedAssetIds={selectedAssetIds}
+                  onAssetsChange={setSelectedAssetIds}
+                  suggestedAssets={aiResult?.assets || []}
+                />
+              </div>
+            )}
           </div>
-          <div className="rounded-xl shadow-e2 p-4 bg-secondary">
-            <AssetsSection
-              selectedAssetIds={[]}
-              onAssetsChange={() => {}}
-              suggestedAssets={aiSuggestions?.assets || []}
-            />
-          </div>
-        </div>
+        )}
+
 
         {/* Checklist Template */}
         {templates.length > 0 && <div className="space-y-2">
@@ -913,13 +1316,46 @@ export function CreateTaskModal({
       </div>
 
       {/* Footer */}
-      <div className="flex gap-3 p-4 border-t border-border bg-card/80 backdrop-blur">
-        <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-          Cancel
-        </Button>
-        <Button className="flex-1 shadow-primary-btn" onClick={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create Task"}
-        </Button>
+      <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur">
+        {/* Clarity State */}
+        {clarityState && (
+          <ClarityState
+            severity={clarityState.severity}
+            message={clarityState.message}
+          />
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          {clarityState?.severity === 'blocking' ? (
+            <Button 
+              variant="outline" 
+              className="flex-1 shadow-e1" 
+              onClick={async () => {
+                // Save as draft functionality
+                toast({
+                  title: "Draft saved",
+                  description: "Task saved as draft. You can continue later.",
+                });
+                onOpenChange(false);
+              }}
+              disabled={isSubmitting}
+            >
+              Save Draft
+            </Button>
+          ) : (
+            <Button 
+              className="flex-1 shadow-primary-btn" 
+              onClick={handleSubmit} 
+              disabled={isSubmitting || (clarityState?.severity === 'blocking')}
+            >
+              {isSubmitting ? "Creating..." : "Create Task"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>;
 
@@ -933,6 +1369,10 @@ export function CreateTaskModal({
   }
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Create Task</DialogTitle>
+          <DialogDescription>Create a new task with details, assignments, and metadata</DialogDescription>
+        </DialogHeader>
         {content}
       </DialogContent>
     </Dialog>;

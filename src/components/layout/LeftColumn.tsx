@@ -25,6 +25,7 @@ interface LeftColumnProps {
   }>;
   urgentCount?: number;
   overdueCount?: number;
+  onFilterClick?: (filterId: string) => void;
 }
 
 /**
@@ -43,7 +44,8 @@ export function LeftColumn({
   onDateSelect,
   tasksByDate,
   urgentCount,
-  overdueCount
+  overdueCount,
+  onFilterClick
 }: LeftColumnProps) {
   const { orgId } = useActiveOrg();
   const [showAddProperty, setShowAddProperty] = useState(false);
@@ -164,7 +166,7 @@ export function LeftColumn({
           </div>
         </div>
         {!hideProperties && (
-        <div className="pt-[2px] px-4 pb-4 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
+        <div className="pt-[2px] px-4 pb-0 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
           {propertiesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -182,7 +184,7 @@ export function LeftColumn({
               style={{ borderRadius: '13px 13px 10px 0px' }}
             >
               <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
-                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content' }}>
+                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content', height: '229px' }}>
                   {properties.map((property) => (
                     <div key={property.id} className="w-[215px] flex-shrink-0" style={{ maxHeight: '228px' }}>
                       <PropertyCard
@@ -191,6 +193,11 @@ export function LeftColumn({
                           taskCount: taskCounts[property.id] || 0,
                           urgentTaskCount: urgentTaskCounts[property.id] || 0,
                           lastInspectedDate: null, // TODO: Add last inspected date from compliance data
+                        }}
+                        onFilterClick={(propertyId) => {
+                          if (onFilterClick) {
+                            onFilterClick(`filter-property-${propertyId}`);
+                          }
                         }}
                       />
                     </div>
@@ -262,6 +269,11 @@ export function LeftColumn({
                           ...space,
                           taskCount: spaceTaskCounts.counts[space.id] || 0,
                           urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
+                        }}
+                        onFilterClick={(spaceId) => {
+                          if (onFilterClick) {
+                            onFilterClick(`filter-space-${spaceId}`);
+                          }
                         }}
                       />
                     </div>

@@ -22,6 +22,7 @@ interface TaskListProps {
   tasksLoading?: boolean; // Accept loading state
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
+  filterToApply?: string | null; // Filter ID to apply programmatically
 }
 
 export function TaskList({ 
@@ -29,7 +30,8 @@ export function TaskList({
   properties: propertiesProp,
   tasksLoading: tasksLoadingProp,
   onTaskClick, 
-  selectedTaskId 
+  selectedTaskId,
+  filterToApply
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -453,6 +455,22 @@ export function TaskList({
       return next;
     });
   }, []);
+
+  // Apply filter programmatically when filterToApply prop changes
+  useEffect(() => {
+    if (filterToApply) {
+      setSelectedFilters((prev) => {
+        const next = new Set(prev);
+        // Toggle the filter - if it's already selected, deselect it; otherwise select it
+        if (next.has(filterToApply)) {
+          next.delete(filterToApply);
+        } else {
+          next.add(filterToApply);
+        }
+        return next;
+      });
+    }
+  }, [filterToApply]);
   
   // Memoize click handlers to prevent recreation on every render
   const handleTaskClick = useCallback((taskId: string) => {
@@ -489,7 +507,7 @@ export function TaskList({
 
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <SkeletonTaskCard />
         <SkeletonTaskCard />
         <SkeletonTaskCard />
@@ -518,17 +536,21 @@ export function TaskList({
 
   return (
     <div className="space-y-6">
-      {/* Filter Bar */}
-      <FilterBar
-        primaryOptions={primaryOptions}
-        secondaryGroups={secondaryGroups}
-        selectedFilters={selectedFilters}
-        onFilterChange={handleFilterChange}
-      />
-
-      {/* View Toggle */}
-      <div className="flex justify-end -mt-4 -mb-2">
-        <ViewToggle view={view} onViewChange={setView} />
+      {/* Filter Bar with View Toggle on same row (desktop) */}
+      <div>
+        <FilterBar
+          primaryOptions={primaryOptions}
+          secondaryGroups={secondaryGroups}
+          selectedFilters={selectedFilters}
+          onFilterChange={handleFilterChange}
+          rightElement={<ViewToggle view={view} onViewChange={setView} />}
+          properties={properties}
+        />
+        
+        {/* View Toggle - Mobile: below filter bar */}
+        <div className="flex justify-end mt-[6px] -mb-2 lg:hidden">
+          <ViewToggle view={view} onViewChange={setView} />
+        </div>
       </div>
 
       {/* Show empty state if filters are active but no tasks match */}
@@ -543,20 +565,37 @@ export function TaskList({
           {groupedTasks.todo.length > 0 && (
             <>
               {view === 'vertical' ? (
-                <div className={cn(
-                  "grid grid-cols-1 sm:grid-cols-2 gap-4",
-                  groupedTasks.todo.length === 1 && "sm:grid-cols-1"
-                )}>
-                  {memoizedTaskCards.todo.map((props) => (
-                    <TaskCard
-                      key={props.task.id}
-                      {...props}
-                      layout="vertical"
-                    />
-                  ))}
-                </div>
+                <>
+                  {/* Mobile: Horizontal scroll */}
+                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent md:hidden">
+                    <div className="flex gap-4 min-w-max">
+                      {memoizedTaskCards.todo.map((props) => (
+                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
+                          <TaskCard
+                            {...props}
+                            layout="vertical"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Desktop: Grid layout - 4 columns */}
+                  <div className={cn(
+                    "hidden md:grid md:grid-cols-4 gap-4 mt-[7px]",
+                    groupedTasks.todo.length === 1 && "md:grid-cols-1",
+                    groupedTasks.todo.length === 2 && "md:grid-cols-2"
+                  )}>
+                    {memoizedTaskCards.todo.map((props) => (
+                      <TaskCard
+                        key={props.task.id}
+                        {...props}
+                        layout="vertical"
+                      />
+                    ))}
+                  </div>
+                </>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 mt-2">
                   {memoizedTaskCards.todo.map((props) => (
                     <TaskCard
                       key={props.task.id}
@@ -576,18 +615,35 @@ export function TaskList({
                 Done ({groupedTasks.done.length})
               </h2>
               {view === 'vertical' ? (
-                <div className={cn(
-                  "grid grid-cols-1 sm:grid-cols-2 gap-4",
-                  groupedTasks.done.length === 1 && "sm:grid-cols-1"
-                )}>
-                  {memoizedTaskCards.done.map((props) => (
-                    <TaskCard
-                      key={props.task.id}
-                      {...props}
-                      layout="vertical"
-                    />
-                  ))}
-                </div>
+                <>
+                  {/* Mobile: Horizontal scroll */}
+                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent md:hidden">
+                    <div className="flex gap-4 min-w-max">
+                      {memoizedTaskCards.done.map((props) => (
+                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
+                          <TaskCard
+                            {...props}
+                            layout="vertical"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Desktop: Grid layout - 4 columns */}
+                  <div className={cn(
+                    "hidden md:grid md:grid-cols-4 gap-4 mt-[7px]",
+                    groupedTasks.done.length === 1 && "md:grid-cols-1",
+                    groupedTasks.done.length === 2 && "md:grid-cols-2"
+                  )}>
+                    {memoizedTaskCards.done.map((props) => (
+                      <TaskCard
+                        key={props.task.id}
+                        {...props}
+                        layout="vertical"
+                      />
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="space-y-3">
                   {memoizedTaskCards.done.map((props) => (

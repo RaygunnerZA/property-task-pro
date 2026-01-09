@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
 import TaskCard from '@/components/TaskCard';
-import { useTasks } from '@/hooks/useTasks';
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { EmptyState } from '@/components/design-system/EmptyState';
@@ -18,8 +19,21 @@ interface GroupedTasks {
 }
 
 export default function WorkSchedule() {
-  const navigate = useNavigate();
-  const { tasks, loading } = useTasks();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const { data: tasksData = [], isLoading: loading } = useTasksQuery();
+
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      // Map due_date to due_at for backward compatibility
+      due_at: task.due_date,
+    }));
+  }, [tasksData]);
 
   const groupTasksByTime = (): GroupedTasks => {
     const grouped: GroupedTasks = {
@@ -84,6 +98,14 @@ export default function WorkSchedule() {
     }
   };
 
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+  };
+
   const renderGroup = (group: TimeGroup, tasks: any[]) => {
     if (tasks.length === 0) return null;
 
@@ -92,13 +114,14 @@ export default function WorkSchedule() {
         <h2 className={`text-lg font-semibold mb-3 ${getGroupColor(group)}`}>
           {getGroupLabel(group)} ({tasks.length})
         </h2>
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {tasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
               property={null}
-              onClick={() => navigate(`/task/${task.id}`)}
+              layout="vertical"
+              onClick={() => handleTaskClick(task.id)}
             />
           ))}
         </div>
@@ -131,6 +154,14 @@ export default function WorkSchedule() {
             />
           )}
         </>
+      )}
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
       )}
     </StandardPage>
   );

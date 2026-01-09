@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ComplianceTaskCard } from '@/components/tasks/ComplianceTaskCard';
 import { TaskListSectionHeader } from '@/components/tasks/TaskListSectionHeader';
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { useComplianceTasks } from '@/hooks/useComplianceTasks';
 import { SegmentedControl } from '@/components/filla/SegmentedControl';
 import { StandardPage } from '@/components/design-system/StandardPage';
@@ -10,8 +10,8 @@ import { EmptyState } from '@/components/design-system/EmptyState';
 import { Shield, CheckSquare } from 'lucide-react';
 
 export default function ComplianceTasks() {
-  const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'pending' | 'in-progress' | 'completed'>('all');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const { data: tasks, loading } = useComplianceTasks();
 
   const filteredTasks = tasks.filter(task => 
@@ -22,6 +22,14 @@ export default function ComplianceTasks() {
     overdue: filteredTasks.filter(t => t.isOverdue),
     today: filteredTasks.filter(t => t.isDueToday && !t.isOverdue),
     upcoming: filteredTasks.filter(t => !t.isDueToday && !t.isOverdue)
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
   };
 
   return (
@@ -50,12 +58,12 @@ export default function ComplianceTasks() {
             {groupedTasks.overdue.length > 0 && (
               <div>
                 <TaskListSectionHeader title="Overdue" count={groupedTasks.overdue.length} variant="danger" />
-                <div className="space-y-3 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   {groupedTasks.overdue.map(task => (
                     <ComplianceTaskCard
                       key={task.id}
                       task={task}
-                      onClick={() => navigate(`/task/${task.id}`)}
+                      onClick={() => handleTaskClick(task.id)}
                     />
                   ))}
                 </div>
@@ -65,12 +73,12 @@ export default function ComplianceTasks() {
             {groupedTasks.today.length > 0 && (
               <div>
                 <TaskListSectionHeader title="Due Today" count={groupedTasks.today.length} variant="warning" />
-                <div className="space-y-3 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   {groupedTasks.today.map(task => (
                     <ComplianceTaskCard
                       key={task.id}
                       task={task}
-                      onClick={() => navigate(`/task/${task.id}`)}
+                      onClick={() => handleTaskClick(task.id)}
                     />
                   ))}
                 </div>
@@ -80,12 +88,12 @@ export default function ComplianceTasks() {
             {groupedTasks.upcoming.length > 0 && (
               <div>
                 <TaskListSectionHeader title="Upcoming" count={groupedTasks.upcoming.length} />
-                <div className="space-y-3 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   {groupedTasks.upcoming.map(task => (
                     <ComplianceTaskCard
                       key={task.id}
                       task={task}
-                      onClick={() => navigate(`/task/${task.id}`)}
+                      onClick={() => handleTaskClick(task.id)}
                     />
                   ))}
                 </div>
@@ -101,6 +109,14 @@ export default function ComplianceTasks() {
             )}
           </div>
         )}
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
+      )}
     </StandardPage>
   );
 }

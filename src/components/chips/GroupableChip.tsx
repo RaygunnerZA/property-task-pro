@@ -92,7 +92,7 @@ export function GroupableChip({
         // Base styles
         "inline-flex items-center gap-1.5 px-3 py-1.5",
         "rounded-[5px] border",
-        "font-mono text-xs uppercase tracking-wide",
+        "font-mono text-[13px] uppercase tracking-wide",
         "transition-all duration-150 ease-out",
         "cursor-pointer select-none",
         // Variant styles

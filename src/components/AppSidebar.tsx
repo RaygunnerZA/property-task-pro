@@ -1,5 +1,22 @@
-import { useState } from 'react';
-import { LayoutDashboard, CheckSquare, Calendar, Building2, FolderOpen, Shield, Zap, Lightbulb, Bell, Settings, LogOut, Plus, Package } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { 
+  LayoutDashboard, 
+  CheckSquare, 
+  Building2, 
+  Package,
+  FolderOpen,
+  Shield,
+  FileText,
+  Users,
+  StickyNote,
+  Wrench,
+  History,
+  Camera,
+  FileCheck,
+  Plus,
+  Settings,
+  LogOut
+} from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
@@ -7,70 +24,92 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGrou
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
-// Main navigation items with + button
-const mainNavItems = [{
-  title: 'Dashboard',
-  url: '/',
-  icon: LayoutDashboard,
-  hasAdd: false
-}, {
-  title: 'Properties',
-  url: '/properties',
-  icon: Building2,
-  hasAdd: true,
-  addAction: 'property'
-}, {
-  title: 'Tasks',
-  url: '/tasks',
-  icon: CheckSquare,
-  hasAdd: true,
-  addAction: 'task'
-}, {
-  title: 'Assets',
-  url: '/assets',
-  icon: Package,
-  hasAdd: true,
-  addAction: 'asset'
-}, {
-  title: 'Calendar',
-  url: '/calendar',
-  icon: Calendar,
-  hasAdd: false
-}, {
-  title: 'Schedule',
-  url: '/work/schedule',
-  icon: Calendar,
-  hasAdd: true,
-  addAction: 'event'
-}, {
-  title: 'Compliance',
-  url: '/compliance',
-  icon: Shield,
-  hasAdd: true,
-  addAction: 'compliance'
-}];
+// Global navigation items (always visible)
+const globalNavItems = [
+  {
+    title: 'Dashboard',
+    url: '/',
+    icon: LayoutDashboard,
+  },
+  {
+    title: 'My Tasks',
+    url: '/tasks',
+    icon: CheckSquare,
+  },
+];
 
-// Intelligence section
-const intelligenceItems = [{
-  title: 'Automations',
-  url: '/work/automations',
-  icon: Zap
-}, {
-  title: 'Insights',
-  url: '/insights',
-  icon: Lightbulb
-}];
+// Property context items (from Appendix A: Overview, Spaces, Assets, Tasks, Compliance, Documents, People, Notes)
+const propertyContextItems = [
+  {
+    title: 'Overview',
+    icon: Building2,
+    getUrl: (id: string) => `/properties/${id}`,
+  },
+  {
+    title: 'Assets',
+    icon: Package,
+    getUrl: (id: string) => `/properties/${id}`, // Assets shown in overview for now
+  },
+  {
+    title: 'Tasks',
+    icon: CheckSquare,
+    getUrl: (id: string) => `/properties/${id}/tasks`,
+  },
+  {
+    title: 'Compliance',
+    icon: Shield,
+    getUrl: (id: string) => `/properties/${id}/compliance`,
+  },
+  {
+    title: 'Documents',
+    icon: FileText,
+    getUrl: (id: string) => `/properties/${id}/documents`,
+  },
+  {
+    title: 'Spaces',
+    icon: FolderOpen,
+    getUrl: (id: string) => `/properties/${id}`, // Spaces shown in overview for now
+  },
+];
 
-// Other section
-const otherItems = [{
-  title: 'Notifications',
-  url: '/notifications',
-  icon: Bell
-}, {
-  title: 'Settings',
-  url: '/settings',
-  icon: Settings
-}];
+// Asset context items (from Appendix A: Overview, Tasks, Maintenance, History, Documents, Photos, Warranty)
+const assetContextItems = [
+  {
+    title: 'Overview',
+    icon: Package,
+    getUrl: (id: string) => `/assets/${id}`, // Assuming asset detail route exists
+  },
+  {
+    title: 'Tasks',
+    icon: CheckSquare,
+    getUrl: (id: string) => `/assets/${id}/tasks`,
+  },
+  {
+    title: 'Maintenance',
+    icon: Wrench,
+    getUrl: (id: string) => `/assets/${id}/maintenance`,
+  },
+  {
+    title: 'History',
+    icon: History,
+    getUrl: (id: string) => `/assets/${id}/history`,
+  },
+  {
+    title: 'Documents',
+    icon: FileText,
+    getUrl: (id: string) => `/assets/${id}/documents`,
+  },
+  {
+    title: 'Photos',
+    icon: Camera,
+    getUrl: (id: string) => `/assets/${id}/photos`,
+  },
+  {
+    title: 'Warranty',
+    icon: FileCheck,
+    getUrl: (id: string) => `/assets/${id}/warranty`,
+  },
+];
 
 export function AppSidebar() {
   const { open } = useSidebar();
@@ -79,190 +118,191 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  // Check if current path includes a property context for Spaces
-  const hasPropertyContext = currentPath.includes('/properties/') || currentPath.includes('/property/');
-  
-  const handleAddClick = (e: React.MouseEvent, action: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    switch (action) {
-      case 'task':
-        // Navigate to tasks page with add param to open modal
-        navigate('/tasks?add=true');
-        break;
-      case 'event':
-        navigate('/work/schedule?add=true');
-        break;
-      case 'property':
-        // Navigate to properties page with add param to open dialog
-        navigate('/properties?add=true');
-        break;
-      case 'asset':
-        // Navigate to assets page with add param to open dialog
-        navigate('/assets?add=true');
-        break;
-      case 'compliance':
-        navigate('/compliance?add=true');
-        break;
-      case 'space':
-        navigate('/manage/spaces?add=true');
-        break;
+  // Detect entity context from URL
+  const entityContext = useMemo(() => {
+    // Check for property context: /properties/:id or /property/:id
+    const propertyMatch = currentPath.match(/^\/(?:properties|property)\/([^/]+)/);
+    if (propertyMatch) {
+      return {
+        type: 'property' as const,
+        id: propertyMatch[1],
+      };
     }
-  };
+
+    // Check for asset context: /assets/:id or /asset/:id
+    const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
+    if (assetMatch) {
+      return {
+        type: 'asset' as const,
+        id: assetMatch[1],
+      };
+    }
+
+    return null;
+  }, [currentPath]);
+
+  // Get context items based on entity type
+  const contextItems = useMemo(() => {
+    if (!entityContext) return [];
+    
+    if (entityContext.type === 'property') {
+      return propertyContextItems;
+    } else if (entityContext.type === 'asset') {
+      return assetContextItems;
+    }
+    
+    return [];
+  }, [entityContext]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/login');
   };
 
-  const renderNavItem = (item: typeof mainNavItems[0], showAdd = false) => (
-    <SidebarMenuItem 
-      key={item.title} 
-      onMouseEnter={() => setHoveredItem(item.title)} 
-      onMouseLeave={() => setHoveredItem(null)}
-    >
-      <SidebarMenuButton asChild className="group relative">
-        <NavLink 
-          to={item.url} 
-          className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-          activeClassName="text-primary"
-          pendingClassName="opacity-50"
-        >
-          <item.icon className="h-5 w-5 flex-shrink-0" />
-          {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
-          
-          {/* Plus button - only show on hover */}
-          {open && showAdd && item.hasAdd && (
-            <button 
-              onClick={e => handleAddClick(e, item.addAction!)} 
-              className={cn(
-                "absolute right-2 p-1 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200",
-                hoveredItem === item.title ? "opacity-100" : "opacity-0"
-              )}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          )}
-        </NavLink>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  const handleCreateNew = () => {
+    // Trigger FAB - this will be handled by FloatingAddButton
+    // For now, navigate to tasks with add param
+    navigate('/tasks?add=true');
+  };
+
+  const renderNavItem = (
+    item: { title: string; url?: string; icon: any; getUrl?: (id: string) => string },
+    isContextItem = false,
+    entityId?: string
+  ) => {
+    const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
+    const isActive = currentPath === url || (isContextItem && currentPath.startsWith(url.split('?')[0]));
+    
+    return (
+      <SidebarMenuItem 
+        key={item.title}
+        onMouseEnter={() => setHoveredItem(item.title)} 
+        onMouseLeave={() => setHoveredItem(null)}
+      >
+        <SidebarMenuButton asChild className="group relative">
+          <NavLink 
+            to={url} 
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-[5px] transition-all bg-transparent",
+              isActive || hoveredItem === item.title
+                ? "text-white shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
+                : "text-[#F4F3F0] hover:text-white hover:bg-transparent hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
+            )}
+            activeClassName=""
+            pendingClassName="opacity-50"
+          >
+            <item.icon className={cn(
+              "h-5 w-5 flex-shrink-0",
+              (isActive || hoveredItem === item.title) ? "text-white" : "text-[#F4F3F0]"
+            )} />
+            {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden h-screen sticky top-0">
-      {/* Noise overlay for texture */}
+    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden">
+      {/* Paper texture background */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-overlay" 
+        className="absolute inset-0 pointer-events-none" 
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("/textures/white-texture2.jpg")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '50%'
+        }} 
+      />
+      
+      {/* Vertical gradient: dark blue-gray to teal */}
+      <div 
+        className="absolute inset-0 pointer-events-none" 
+        style={{
+          background: 'linear-gradient(to bottom, #212131 0%, #4AA7AD 100%)'
+        }} 
+      />
+      
+      {/* Noise overlay with similar grain as main paper bg */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.15]" 
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`,
           backgroundRepeat: 'repeat'
         }} 
       />
       
-      <SidebarContent className="px-3 py-4 relative z-10 bg-sidebar-background">
+      <SidebarContent className="px-3 py-4 relative z-10 flex flex-col h-full">
         {/* Logo & Brand */}
-        <div className="px-2 py-6 mb-4">
-          <div className="flex items-center gap-3">
+        <div className="pl-[21px] pr-2 pt-[14px] pb-0 mb-[15px]">
+          <div className="flex items-center gap-3 w-[127px]">
             <img src={fillaLogo} alt="Filla" className="h-28 w-auto" />
           </div>
         </div>
 
-        {/* Main Navigation */}
+        {/* Global Navigation Layer */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {mainNavItems.map(item => renderNavItem(item, true))}
-              
-              {/* Spaces - only visible when property is selected */}
-              {hasPropertyContext && (
-                <SidebarMenuItem 
-                  onMouseEnter={() => setHoveredItem('Spaces')} 
-                  onMouseLeave={() => setHoveredItem(null)}
-                >
-                  <SidebarMenuButton asChild className="group relative pl-8">
-                    <NavLink 
-                      to="/manage/spaces" 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-primary"
-                      pendingClassName="opacity-50"
-                    >
-                      <FolderOpen className="h-5 w-5 flex-shrink-0" />
-                      {open && <span className="text-sm font-medium tracking-tight">Spaces</span>}
-                      
-                      {open && (
-                        <button 
-                          onClick={e => handleAddClick(e, 'space')} 
-                          className={cn(
-                            "absolute right-2 p-1 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200",
-                            hoveredItem === 'Spaces' ? "opacity-100" : "opacity-0"
-                          )}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      )}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              {globalNavItems.map(item => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Intelligence Section */}
-        <SidebarGroup className="mt-8">
-          <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-sidebar-muted mb-2">
-            Intelligence
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {intelligenceItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-primary"
-                      pendingClassName="opacity-50"
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Context Layer (Dynamic) */}
+        {entityContext && contextItems.length > 0 && (
+          <SidebarGroup className="mt-8">
+            <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-[#F4F3F0] mb-2">
+              {entityContext.type === 'property' ? 'Property' : 'Asset'} Context
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {contextItems.map(item => renderNavItem(item, true, entityContext.id))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-        {/* Other Section */}
-        <SidebarGroup className="mt-8">
-          <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-sidebar-muted mb-2">
-            Other
-          </SidebarGroupLabel>
+        {/* Spacer to push action layer to bottom */}
+        <div className="flex-1" />
+
+        {/* Action Layer (Bottom) */}
+        <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {otherItems.map(item => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all" 
-                      activeClassName="text-primary"
-                      pendingClassName="opacity-50"
-                    >
-                      <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              {/* Sign Out */}
+              {/* Create New Button */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
+                  <button
+                    onClick={handleCreateNew}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all w-full bg-transparent"
+                  >
+                    <Plus className="h-5 w-5 flex-shrink-0 text-white" />
+                    {open && <span className="text-sm font-medium tracking-tight text-white">Create New</span>}
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Settings */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
+                  <NavLink 
+                    to="/settings" 
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-[#F4F3F0] hover:text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all" 
+                    activeClassName="text-white shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
+                    pendingClassName="opacity-50"
+                  >
+                    <Settings className="h-5 w-5 flex-shrink-0" />
+                    {open && <span className="text-sm font-medium tracking-tight">Settings</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Sign Out */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button 
                     onClick={handleSignOut} 
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-sidebar-muted hover:text-sidebar-foreground hover:shadow-engraved transition-all w-full"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-[#F4F3F0] hover:text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all w-full"
                   >
                     <LogOut className="h-5 w-5 flex-shrink-0" />
                     {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}

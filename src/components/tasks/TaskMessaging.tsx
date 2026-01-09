@@ -255,7 +255,7 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
   if (error) {
     return (
       <div className="p-4 text-center text-destructive">
-        <p>Error loading messages: {error}</p>
+        <p>Error loading messages: {error?.message || String(error)}</p>
       </div>
     );
   }
@@ -356,12 +356,12 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
 
       {/* Attachment Previews */}
       {attachments.length > 0 && (
-        <div className="border-t border-border/50 p-3 space-y-2">
+        <div className="border-t border-border/20 p-3 space-y-2">
           <div className="flex flex-wrap gap-2">
             {attachments.map((attachment) => (
               <div
                 key={attachment.id}
-                className="relative rounded-md overflow-hidden border border-border"
+                className="relative rounded-md overflow-hidden shadow-e1"
               >
                 {attachment.preview ? (
                   <div className="relative">
@@ -398,7 +398,7 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border/50 p-4">
+      <div className="border-t border-border/20 p-4">
         <div className="flex gap-2">
           <div className="flex gap-1">
             <input

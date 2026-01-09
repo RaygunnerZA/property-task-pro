@@ -12,7 +12,7 @@ export default function ReminderList() {
     </div>
   );
 
-  if (error) return <EmptyState title="Unable to load reminders" subtitle={error} />;
+  if (error) return <EmptyState title="Unable to load reminders" subtitle={error?.message || String(error)} />;
 
   if (!reminders.length) return (
     <EmptyState title="No reminders" subtitle="Scheduled reminders will appear here" />

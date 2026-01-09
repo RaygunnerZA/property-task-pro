@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -174,6 +175,9 @@ export function AssetsSection({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Create Asset</DialogTitle>
+            <DialogDescription>
+              Create a new asset to track equipment and items for this task.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input
@@ -194,7 +198,7 @@ export function AssetsSection({
               />
               
               {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden shadow-e1">
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"

@@ -144,7 +144,7 @@ export function SubtaskCard({
           {/* Input */}
           <Input ref={inputRef} placeholder="Add subtask..." value={subtask.title} onChange={e => onUpdate(subtask.id, {
           title: e.target.value
-        })} onKeyDown={handleKeyDown} className="flex-1 h-8 text-sm border-0 bg-transparent shadow-none focus-visible:ring-0 px-0" style={{ border: 'none', outline: 'none' }} />
+        })} onKeyDown={handleKeyDown} className="flex-1 h-8 text-base md:text-base border-0 bg-transparent shadow-none focus-visible:ring-0 px-0" style={{ border: 'none', outline: 'none' }} />
 
           {/* Badges */}
           <div className="flex items-center gap-1.5 shrink-0">
@@ -160,7 +160,7 @@ export function SubtaskCard({
 
         {/* Expanded Options - Only show Yes/No toggle when is_yes_no is true */}
         {showOptions && subtask.is_yes_no && (
-          <div className="px-4 pb-3 pt-1 border-t border-border/30">
+          <div className="px-4 pb-3 pt-1 border-t border-border/20">
             <div className="flex items-center justify-between">
               <div>
                 <Label className="text-xs font-medium">Yes/No Question</Label>

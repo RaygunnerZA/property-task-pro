@@ -90,10 +90,13 @@ export function WhenTab({
                 type="button"
                 onClick={() => setQuickDate(days)}
                 className={cn(
-                  "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase border transition-all",
+                  "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase tracking-wide transition-all",
+                  "select-none cursor-pointer",
                   isActive
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-muted-foreground hover:border-primary hover:text-foreground"
+                    ? // Active: Pressed neumorphic with off-white fill
+                      "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    : // Inactive: Transparent with neumorphic shadows
+                      "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                 )}
               >
                 {label}
@@ -147,7 +150,7 @@ export function WhenTab({
       </div>
 
       {/* Repeat Settings */}
-      <div className="space-y-3 pt-2 border-t border-border">
+      <div className="space-y-3 pt-2 border-t border-border/20">
         <div className="flex items-center justify-between">
           <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <Repeat className="h-3.5 w-3.5" />

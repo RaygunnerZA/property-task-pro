@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
-import { useProperties } from "./useProperties";
+import { usePropertiesQuery } from "./usePropertiesQuery";
 
 const STORAGE_KEY = "filla_last_used_property";
 
 export function useLastUsedProperty() {
-  const { properties, loading } = useProperties();
+  const { data: properties = [], isLoading: loading } = usePropertiesQuery();
   const [lastUsedPropertyId, setLastUsedPropertyId] = useState<string | null>(null);
 
   // Load last used from localStorage on mount

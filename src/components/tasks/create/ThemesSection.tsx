@@ -8,10 +8,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { StandardChip } from "@/components/chips/StandardChip";
-import { IconPicker } from "@/components/ui/IconPicker";
+import { IconPicker, getIconByName } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useThemes } from "@/hooks/useThemes";
 import { supabase } from "@/integrations/supabase/client";
@@ -198,7 +199,7 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
             selected={selectedThemeIds.includes(theme.id)}
             onSelect={() => toggleTheme(theme.id)}
             color={theme.color || (theme.type === 'project' ? '#FCD34D' : undefined)}
-            icon={theme.icon ? <span>{theme.icon}</span> : <Tag className="h-3 w-3" />}
+            icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
           />
         ))}
         
@@ -237,6 +238,11 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
             <DialogTitle>
               {pendingGhostTheme ? `Create "${pendingGhostTheme.name}"?` : "Create Theme"}
             </DialogTitle>
+            <DialogDescription>
+              {pendingGhostTheme
+                ? `Create a new theme called "${pendingGhostTheme.name}" to categorize this task.`
+                : "Create a new theme to categorize and organize your tasks."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Input
@@ -274,7 +280,7 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
               />
               
               {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden shadow-e1">
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"

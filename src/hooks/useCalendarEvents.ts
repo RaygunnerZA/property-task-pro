@@ -1,11 +1,40 @@
-import { useTasks } from "@/hooks/useTasks";
-import type { CalendarEvent, TaskEvent } from "@/components/filla/MiniCalendar";
+import { useMemo } from "react";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+
+// Types for calendar events (previously from MiniCalendar)
+export interface TaskEvent {
+  priority: "low" | "normal" | "high";
+}
+
+export interface ComplianceEvent {
+  severity: "low" | "medium" | "high";
+}
+
+export interface CalendarEvent {
+  date: string; // ISO format: "2025-12-15"
+  tasks?: TaskEvent[];
+  compliance?: ComplianceEvent[];
+}
 
 /**
- * Convert tasks from useTasks hook into MiniCalendar events format
+ * Convert tasks from useTasksQuery hook into CalendarEvent format
+ * @deprecated This hook is deprecated. Use DashboardCalendar with tasks directly.
  */
 export function useCalendarEvents(selectedMonth?: Date): CalendarEvent[] {
-  const { tasks } = useTasks();
+  const { data: tasksData = [] } = useTasksQuery();
+
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      // Map due_date to due_at for backward compatibility
+      due_at: task.due_date,
+    }));
+  }, [tasksData]);
 
   const events: Map<string, CalendarEvent> = new Map();
 
@@ -51,13 +80,27 @@ export function useCalendarEvents(selectedMonth?: Date): CalendarEvent[] {
  * Get tasks for a specific date range
  */
 export function useTasksForDateRange(startDate: Date, endDate: Date) {
-  const { tasks, loading, error } = useTasks();
+  const { data: tasksData = [], isLoading: loading, error } = useTasksQuery();
 
-  const filteredTasks = tasks.filter(task => {
-    if (!task.due_at) return false;
-    const dueDate = new Date(task.due_at);
-    return dueDate >= startDate && dueDate <= endDate;
-  });
+  // Parse tasks from view
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      due_at: task.due_date,
+    }));
+  }, [tasksData]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (!task.due_at && !task.due_date) return false;
+      const dueDate = new Date(task.due_at || task.due_date);
+      return dueDate >= startDate && dueDate <= endDate;
+    });
+  }, [tasks, startDate, endDate]);
 
   return { tasks: filteredTasks, loading, error };
 }
@@ -66,14 +109,28 @@ export function useTasksForDateRange(startDate: Date, endDate: Date) {
  * Get tasks for a specific date
  */
 export function useTasksForDate(date: Date) {
-  const { tasks, loading, error } = useTasks();
+  const { data: tasksData = [], isLoading: loading, error } = useTasksQuery();
+
+  // Parse tasks from view
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      due_at: task.due_date,
+    }));
+  }, [tasksData]);
 
   const dateStr = date.toISOString().slice(0, 10);
   
-  const filteredTasks = tasks.filter(task => {
-    if (!task.due_at) return false;
-    return task.due_at.slice(0, 10) === dateStr;
-  });
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      if (!task.due_at && !task.due_date) return false;
+      return (task.due_at || task.due_date)?.slice(0, 10) === dateStr;
+    });
+  }, [tasks, dateStr]);
 
   return { tasks: filteredTasks, loading, error };
 }

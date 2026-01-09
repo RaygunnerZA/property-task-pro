@@ -119,7 +119,7 @@ export function DashboardTabs({
                   key={filter}
                   onClick={() => setSelectedFilter(filter)}
                   className={cn(
-                    'px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
+                    'px-3 py-1.5 rounded-[5px] font-mono text-[13px] uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
                     selectedFilter === filter
                       ? 'bg-primary text-white'
                       : 'bg-concrete/50 text-ink/70 hover:bg-concrete'

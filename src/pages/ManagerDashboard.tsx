@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
-import { useTasks } from '@/hooks/use-tasks';
+import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { useActiveOrg } from '@/hooks/useActiveOrg';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,10 +25,11 @@ import DashboardSection from '@/components/dashboard/DashboardSection';
 
 const ManagerDashboard = () => {
   const navigate = useNavigate();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   // Safety check: Ensure we have an org
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const { metrics, loading: metricsLoading, error: metricsError } = useDashboardMetrics();
-  const { tasks, loading: tasksLoading, error: tasksError } = useTasks();
+  const { data: tasksData = [], isLoading: tasksLoading, error: tasksError } = useTasksQuery();
 
   // Safe defaults if data loading fails - show 0 instead of crashing
   const safeMetrics = useMemo(() => {
@@ -42,12 +44,21 @@ const ManagerDashboard = () => {
     return metrics;
   }, [metrics, metricsError]);
 
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
   const safeTasks = useMemo(() => {
-    if (tasksError || !tasks) {
+    if (tasksError || !tasksData) {
       return [];
     }
-    return tasks;
-  }, [tasks, tasksError]);
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+      // Map title from tasks_view
+      title: task.title,
+    }));
+  }, [tasksData, tasksError]);
 
   // Get last 5 modified tasks (sorted by updated_at)
   const recentTasks = useMemo(() => {
@@ -60,6 +71,14 @@ const ManagerDashboard = () => {
       })
       .slice(0, 5);
   }, [safeTasks]);
+
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+  };
 
   if (orgLoading || metricsLoading || tasksLoading) {
     return (
@@ -139,7 +158,7 @@ const ManagerDashboard = () => {
                   {recentTasks.map((task) => (
                     <div
                       key={task.id}
-                      onClick={() => navigate(`/task/${task.id}`)}
+                      onClick={() => handleTaskClick(task.id)}
                       className={cn(
                         "p-3 rounded-lg cursor-pointer transition-all",
                         "bg-input",
@@ -182,6 +201,14 @@ const ManagerDashboard = () => {
           </Card>
         </DashboardSection>
       </div>
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
+      )}
     </StandardPage>
   );
 };

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload } from "lucide-react";
+import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
@@ -215,7 +215,56 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   };
 
+  // Update task fields (title, status, priority)
+  const handleUpdateTask = async () => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+
+    try {
+      const updates: any = {};
+      
+      // Only update fields that have changed
+      if (title !== ((task as any)?.title || "")) {
+        updates.title = title;
+      }
+      if (status !== ((task as any)?.status || "open")) {
+        updates.status = status;
+      }
+      if (priority !== ((task as any)?.priority || "normal")) {
+        updates.priority = priority;
+      }
+
+      // Only make API call if there are changes
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from("tasks")
+          .update(updates)
+          .eq("id", taskId);
+
+        if (updateError) throw updateError;
+
+        await refreshTask();
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        
+        toast({
+          title: "Task updated",
+          description: "Changes saved successfully",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error updating task:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update task",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const selectedUser = members.find(m => m.user_id === selectedUserId);
+  const isUnconfirmedUser = selectedUserId && selectedUserId.startsWith("pending-");
 
   // Loading state - show skeleton but keep left panel structure
   if (loading) {
@@ -228,8 +277,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </DialogHeader>
           <div className="flex flex-1 overflow-hidden">
             {/* Left Image Panel Skeleton */}
-            <div className="w-64 border-r border-border/50 bg-muted/20 flex flex-col">
-              <div className="p-4 border-b border-border/50">
+            <div className="w-64 border-r border-border/20 bg-muted/20 flex flex-col">
+              <div className="p-4 border-b border-border/20">
                 <Skeleton className="h-4 w-20 mb-2" />
                 <Skeleton className="h-24 w-full" />
               </div>
@@ -260,8 +309,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </DialogHeader>
           <div className="flex flex-1 overflow-hidden">
             {/* Left Image Panel - Empty state */}
-            <div className="w-64 border-r border-border/50 bg-muted/20 flex flex-col">
-              <div className="p-4 border-b border-border/50">
+            <div className="w-64 border-r border-border/20 bg-muted/20 flex flex-col">
+              <div className="p-4 border-b border-border/20">
                 <h3 className="text-sm font-semibold text-muted-foreground mb-2">Images</h3>
                 <div className="text-xs text-muted-foreground">Task not loaded</div>
               </div>
@@ -288,8 +337,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const panelContent = (
     <>
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border/50 p-6 space-y-4">
-        {/* Close Button & Overflow Menu */}
+      <div className="sticky top-0 z-10 bg-card border-b border-border/20 p-6 space-y-4">
+        {/* Close Button & Actions */}
         <div className="flex items-center justify-between">
           <button
             onClick={onClose}
@@ -298,21 +347,37 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           >
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                aria-label="More options"
-              >
-                <MoreVertical className="h-5 w-5 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Duplicate Task</DropdownMenuItem>
-              <DropdownMenuItem>Archive Task</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Delete Task</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUpdateTask}
+              disabled={isUpdating}
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium text-sm transition-all",
+                "bg-primary text-primary-foreground hover:bg-primary/90",
+                "shadow-e1 hover:shadow-e2 active:scale-[0.98]",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "flex items-center gap-2"
+              )}
+            >
+              <Save className="h-4 w-4" />
+              {isUpdating ? "Updating..." : "Update"}
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                  aria-label="More options"
+                >
+                  <MoreVertical className="h-5 w-5 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Duplicate Task</DropdownMenuItem>
+                <DropdownMenuItem>Archive Task</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">Delete Task</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {/* Editable Title */}
@@ -394,7 +459,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       {/* Tabs */}
       <div className="flex-1 overflow-y-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <div className="sticky top-0 z-10 bg-card border-b border-border/50 px-6">
+          <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
             <TabsList className="w-full grid grid-cols-4 h-12 bg-transparent p-1">
               <TabsTrigger
                 value="summary"
@@ -496,38 +561,50 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     <User className="h-4 w-4 text-muted-foreground" />
                     <h3 className="text-sm font-semibold text-muted-foreground">Assignee</h3>
                   </div>
-                  <div className="flex flex-wrap gap-2 min-h-[32px]">
-                    {selectedUser ? (
-                      <StandardChip
-                        label={selectedUser.display_name}
-                        selected
-                        onSelect={() => handleUserChange(undefined)}
-                        onRemove={() => handleUserChange(undefined)}
-                      />
-                    ) : (
-                      <Select
-                        value=""
-                        onValueChange={(value) => {
-                          if (value) handleUserChange(value);
-                        }}
-                        disabled={isUpdating || membersLoading}
-                      >
-                        <SelectTrigger className="h-8 w-full max-w-[200px] shadow-engraved">
-                          <SelectValue placeholder="Select assignee..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {members.map((member) => (
-                            <SelectItem key={member.user_id} value={member.user_id}>
-                              {member.display_name}
-                            </SelectItem>
-                          ))}
-                          {members.length === 0 && (
-                            <SelectItem value="__no_members__" disabled>
-                              No members available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 min-h-[32px]">
+                      {selectedUser ? (
+                        <StandardChip
+                          label={selectedUser.display_name}
+                          selected
+                          onSelect={() => handleUserChange(undefined)}
+                          onRemove={() => handleUserChange(undefined)}
+                        />
+                      ) : isUnconfirmedUser ? (
+                        <StandardChip
+                          label={selectedUserId?.replace("pending-", "") || "Unconfirmed user"}
+                          selected
+                          onSelect={() => handleUserChange(undefined)}
+                          onRemove={() => handleUserChange(undefined)}
+                        />
+                      ) : (
+                        <Select
+                          value=""
+                          onValueChange={(value) => {
+                            if (value) handleUserChange(value);
+                          }}
+                          disabled={isUpdating || membersLoading}
+                        >
+                          <SelectTrigger className="h-8 w-full max-w-[200px] shadow-engraved">
+                            <SelectValue placeholder="Select assignee..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {members.map((member) => (
+                              <SelectItem key={member.user_id} value={member.user_id}>
+                                {member.display_name}
+                              </SelectItem>
+                            ))}
+                            {members.length === 0 && (
+                              <SelectItem value="__no_members__" disabled>
+                                No members available
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                    {isUnconfirmedUser && (
+                      <p className="text-xs text-muted-foreground">User unconfirmed</p>
                     )}
                   </div>
                 </div>
@@ -669,7 +746,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         <div className="flex flex-1 overflow-hidden">
           {/* Left Column: Primary Image + Media Gallery - Always show if task exists, even if loading */}
           {(task || loading) && (
-            <div className="w-80 border-r border-border/50 bg-muted/20 flex flex-col overflow-hidden">
+            <div className="w-80 border-r border-border/20 bg-muted/20 flex flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {/* Primary Image Display */}
                 <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden shadow-e1 relative group">
@@ -767,7 +844,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                                 thumbnailScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
                               }
                             }}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-e1 hover:shadow-e2 transition-all z-10"
                             aria-label="Scroll left"
                           >
                             <ChevronLeft className="h-4 w-4 text-foreground" />
@@ -779,7 +856,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                                 thumbnailScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
                               }
                             }}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-md hover:bg-background border border-border transition-colors z-10"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-e1 hover:shadow-e2 transition-all z-10"
                             aria-label="Scroll right"
                           >
                             <ChevronRight className="h-4 w-4 text-foreground" />

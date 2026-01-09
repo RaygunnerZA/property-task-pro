@@ -43,26 +43,14 @@ export function useScheduleData({
 
       try {
         /* --------------------------------------------
-           FETCH TASKS
+           FETCH TASKS (using tasks_view)
         --------------------------------------------- */
         let taskQuery = supabase
-          .from("tasks")
-          .select(`
-            id,
-            title,
-            description,
-            due_date,
-            property_id,
-            priority,
-            status,
-            properties:properties!inner (
-              id,
-              org_id
-            )
-          `)
+          .from("tasks_view")
+          .select("*")
           .eq("org_id", orgId)
-          .gte("due_at", rangeStart)
-          .lte("due_at", rangeEnd);
+          .gte("due_date", rangeStart)
+          .lte("due_date", rangeEnd);
 
         if (filters?.propertyId) {
           taskQuery = taskQuery.eq("property_id", filters.propertyId);

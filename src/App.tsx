@@ -77,7 +77,6 @@ const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const Dashboard = lazy(() => import("./app/page"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Tasks = lazy(() => import("./pages/Tasks"));
-const Calendar = lazy(() => import("./pages/Calendar"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"));
 const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
@@ -145,7 +144,6 @@ const App = () => {
                                 <Route path="/properties" element={<Properties />} />
                                 <Route path="/tasks" element={<Tasks />} />
                                 <Route path="/assets" element={<Assets />} />
-                                <Route path="/calendar" element={<Calendar />} />
                                 <Route path="/compliance" element={<Compliance />} />
                                 
                                 {/* WORK pillar */}

@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarGrid } from "@/components/schedule/CalendarGrid";
-import { useTasks } from "@/hooks/use-tasks";
-import { useProperties } from "@/hooks/useProperties";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import TaskCard from "@/components/TaskCard";
-import { cn } from "@/lib/utils";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
@@ -12,15 +11,39 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 import { Card } from "@/components/ui/card";
 
 const Calendar = () => {
-  const navigate = useNavigate();
-  const { tasks, loading } = useTasks();
-  const { properties } = useProperties();
+  const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();
+  const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  // Create property map for quick lookup
+  const loading = tasksLoading || propertiesLoading;
+
+  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  const tasks = useMemo(() => {
+    return tasksData.map((task: any) => ({
+      ...task,
+      spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
+      themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
+      teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
+      assigned_user_id: task.assignee_user_id,
+    }));
+  }, [tasksData]);
+
+  // Create property map for quick lookup (use property_name from tasks_view or fallback to properties)
   const propertyMap = useMemo(() => {
-    return new Map(properties.map((p) => [p.id, p]));
-  }, [properties]);
+    const map = new Map(properties.map((p) => [p.id, p]));
+    // Also add property data from tasks_view
+    tasksData.forEach((task: any) => {
+      if (task.property_id && task.property_name && !map.has(task.property_id)) {
+        map.set(task.property_id, {
+          id: task.property_id,
+          nickname: task.property_name,
+          address: task.property_address || '',
+        } as any);
+      }
+    });
+    return map;
+  }, [properties, tasksData]);
 
   // Get tasks for the selected date
   const tasksForSelectedDate = useMemo(() => {
@@ -45,6 +68,14 @@ const Calendar = () => {
     }
   };
 
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+  };
+
   return (
     <StandardPage
       title="Calendar"
@@ -57,10 +88,13 @@ const Calendar = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Calendar Grid - Left Side */}
           <div className="w-full">
-            <CalendarGrid
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-            />
+            <div className="rounded-xl bg-card p-4 shadow-e1">
+              <DashboardCalendar
+                tasks={tasks}
+                selectedDate={selectedDate}
+                onDateSelect={handleDateSelect}
+              />
+            </div>
           </div>
 
           {/* Day Agenda - Right Side */}
@@ -82,7 +116,7 @@ const Calendar = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {tasksForSelectedDate.map((task) => {
                     const property = task.property_id
                       ? propertyMap.get(task.property_id)
@@ -92,7 +126,8 @@ const Calendar = () => {
                         key={task.id}
                         task={task}
                         property={property}
-                        onClick={() => navigate(`/task/${task.id}`)}
+                        layout="vertical"
+                        onClick={() => handleTaskClick(task.id)}
                       />
                     );
                   })}
@@ -101,6 +136,14 @@ const Calendar = () => {
             </Card>
           </div>
         </div>
+      )}
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
       )}
     </StandardPage>
   );

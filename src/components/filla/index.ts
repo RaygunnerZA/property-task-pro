@@ -26,10 +26,10 @@ export * from './SegmentControl';
 export * from './FilterRow';
 export * from './SectionHeader';
 
-// Mini Calendar
-export { MiniCalendar } from './MiniCalendar';
-export { MiniCalendarDayTile } from './MiniCalendarDayTile';
-export type { CalendarEvent, TaskEvent, ComplianceEvent, DayData } from './MiniCalendar';
+// Mini Calendar - DEPRECATED: Use DashboardCalendar from @/components/dashboard/DashboardCalendar instead
+// export { MiniCalendar } from './MiniCalendar'; // DELETED
+// export { MiniCalendarDayTile } from './MiniCalendarDayTile'; // DELETED
+// export type { CalendarEvent, TaskEvent, ComplianceEvent, DayData } from './MiniCalendar'; // DELETED
 
 // Cards & Tabs
 export { TaskCard } from './TaskCard';

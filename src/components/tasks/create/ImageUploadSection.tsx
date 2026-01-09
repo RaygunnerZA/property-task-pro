@@ -68,20 +68,20 @@ export function ImageUploadSection({ images, onImagesChange }: ImageUploadSectio
   return (
     <div className="space-y-3">
       {/* Compact Upload Icons */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 justify-end items-end">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-[5px] bg-muted/50 border border-border hover:bg-muted transition-colors"
+          className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
         >
-          <Camera className="h-4 w-4 text-muted-foreground" />
+          <Camera className="h-5 w-5 text-muted-foreground" />
         </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-[5px] bg-muted/50 border border-border hover:bg-muted transition-colors"
+          className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
         >
-          <Upload className="h-4 w-4 text-muted-foreground" />
+          <Upload className="h-5 w-5 text-muted-foreground" />
         </button>
         <input
           ref={fileInputRef}

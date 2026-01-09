@@ -1,12 +1,87 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Home, Clock } from "lucide-react";
+import { Home, Clock, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { archiveTask } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo } from "react";
+import { formatTaskDate } from "@/utils/formatTaskDate";
+import { OverlappingAvatars } from "@/components/tasks/UserAvatar";
+
+// Property icon mapping
+const PROPERTY_ICONS = {
+  home: Home,
+  building: Building2,
+  hotel: Hotel,
+  warehouse: Warehouse,
+  store: Store,
+  castle: Castle,
+} as const;
+
+// Property Icon Chip Component - shows property icon on property color background
+// Height matches Badge size="sm" which is py-0.5 (2px) + text-[10px] (~14px line-height) = ~18px total
+function PropertyIconChip({ property }: { property: any }) {
+  if (!property) return null;
+  
+  const iconName = property.icon_name || "home";
+  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const iconColor = property.icon_color_hex || "#8EC9CE";
+  
+  return (
+    <div
+      className="inline-flex items-center justify-center rounded-[5px] border-0"
+      style={{
+        backgroundColor: iconColor,
+        width: '18px',
+        height: '18px',
+        boxShadow: '2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)',
+      }}
+    >
+      <IconComponent className="h-3 w-3 text-white" />
+    </div>
+  );
+}
+
+// Multiple Property Icon Chips - shows overlapping icons for multiple properties
+function PropertyIconChips({ properties }: { properties: any[] }) {
+  if (!properties || properties.length === 0) return null;
+  
+  // For single property, just show one chip
+  if (properties.length === 1) {
+    return <PropertyIconChip property={properties[0]} />;
+  }
+  
+  // For multiple properties, show overlapping chips (30% overlap)
+  return (
+    <div className="inline-flex items-center" style={{ gap: '-6px' }}>
+      {properties.map((property, index) => {
+        const iconName = property?.icon_name || "home";
+        const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+        const iconColor = property?.icon_color_hex || "#8EC9CE";
+        const zIndex = properties.length - index; // Later properties have higher z-index
+        
+        return (
+          <div
+            key={property?.id || index}
+            className="inline-flex items-center justify-center rounded-[5px] border-0 relative"
+            style={{
+              backgroundColor: iconColor,
+              width: '18px',
+              height: '18px',
+              boxShadow: '2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)',
+              marginLeft: index > 0 ? '-5.4px' : '0', // 30% overlap (5.4px out of 18px)
+              zIndex,
+            }}
+          >
+            <IconComponent className="h-3 w-3 text-white" />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function TaskCardComponent({
   task, 
@@ -28,7 +103,7 @@ function TaskCardComponent({
   
   // Memoize task mapping and image parsing to prevent re-renders
   // Only recalculate when task data actually changes, not when object reference changes
-  const { t, imageUrl } = useMemo(() => {
+  const { t, imageUrl, themes, spaces, assignedUsers, teams } = useMemo(() => {
     const mappedTask = mapTask(task);
     
     // Get image from new images array (from tasks_view)
@@ -49,7 +124,68 @@ function TaskCardComponent({
     const firstImage = images.length > 0 ? images[0] : null;
     const url = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
     
-    return { t: mappedTask, imageUrl: url };
+    // Parse themes, spaces, and teams (handle both string and array formats)
+    let themesArray: any[] = [];
+    if (task?.themes) {
+      if (typeof task.themes === 'string') {
+        try {
+          themesArray = JSON.parse(task.themes);
+        } catch (e) {
+          themesArray = [];
+        }
+      } else if (Array.isArray(task.themes)) {
+        themesArray = task.themes;
+      }
+    }
+    
+    let spacesArray: any[] = [];
+    if (task?.spaces) {
+      if (typeof task.spaces === 'string') {
+        try {
+          spacesArray = JSON.parse(task.spaces);
+        } catch (e) {
+          spacesArray = [];
+        }
+      } else if (Array.isArray(task.spaces)) {
+        spacesArray = task.spaces;
+      }
+    }
+    
+    let teamsArray: any[] = [];
+    if (task?.teams) {
+      if (typeof task.teams === 'string') {
+        try {
+          teamsArray = JSON.parse(task.teams);
+        } catch (e) {
+          teamsArray = [];
+        }
+      } else if (Array.isArray(task.teams)) {
+        teamsArray = task.teams;
+      }
+    }
+    
+    // Get assigned user ID (check both field names)
+    const assignedUserId = task?.assigned_user_id || task?.assignee_user_id;
+    
+    // Get assigned users (check both field names for user ID)
+    const assignedUsersArray: any[] = [];
+    if (assignedUserId) {
+      assignedUsersArray.push({
+        id: assignedUserId,
+        name: task?.assigned_user_name || task?.assignee_name || task?.assigned_user_display_name || task?.assignee_display_name || undefined,
+        imageUrl: task?.assigned_user_image_url || task?.assignee_image_url || task?.assigned_user_avatar_url || task?.assignee_avatar_url || undefined,
+        propertyColor: property?.icon_color_hex || "#8EC9CE",
+      });
+    }
+    
+    return { 
+      t: mappedTask, 
+      imageUrl: url,
+      themes: themesArray,
+      spaces: spacesArray,
+      teams: teamsArray,
+      assignedUsers: assignedUsersArray,
+    };
   }, [
     task?.id,
     task?.title,
@@ -59,6 +195,20 @@ function TaskCardComponent({
     task?.images,
     task?.primary_image_url,
     task?.image_url,
+    task?.themes,
+    task?.spaces,
+    task?.teams,
+    task?.assigned_user_id,
+    task?.assignee_user_id,
+    task?.assigned_user_name,
+    task?.assignee_name,
+    task?.assigned_user_display_name,
+    task?.assignee_display_name,
+    task?.assigned_user_image_url,
+    task?.assignee_image_url,
+    task?.assigned_user_avatar_url,
+    task?.assignee_avatar_url,
+    property?.icon_color_hex,
   ]);
   
   // Memoize handleDone to prevent recreation on every render
@@ -91,12 +241,13 @@ function TaskCardComponent({
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';
 
   // Get priority color for indicator circle
+  // No priority is treated as normal, and normal/low priorities don't show a dot
   const getPriorityColor = (priority?: string | null) => {
-    if (!priority) return 'bg-transparent'; // Transparent when no priority
+    if (!priority) return 'bg-transparent'; // No priority = normal, don't show
     const normalizedPriority = priority?.toLowerCase();
-    if (normalizedPriority === 'low') return 'bg-transparent'; // Transparent for low
-    if (normalizedPriority === 'normal' || normalizedPriority === 'medium') return 'bg-gray-400'; // Light grey
-    if (normalizedPriority === 'high') return 'bg-[#EB6834]'; // Filla orange
+    if (normalizedPriority === 'low') return 'bg-transparent'; // Don't show for low
+    if (normalizedPriority === 'normal' || normalizedPriority === 'medium') return 'bg-transparent'; // Don't show for normal/medium
+    if (normalizedPriority === 'high') return 'bg-[#FFB84D]'; // Lighter yellow-orange
     if (normalizedPriority === 'urgent') return 'bg-red-500'; // Red
     return 'bg-transparent'; // Default: transparent
   };
@@ -108,10 +259,11 @@ function TaskCardComponent({
     return (
       <div 
         className={cn(
+          "task-card-horizontal",
           "rounded-[8px] bg-card",
           "shadow-e1",
           "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
-          "overflow-hidden flex min-h-[80px] relative group",
+          "overflow-hidden flex flex-row min-h-[80px] relative group",
           isSelected && "border-2 border-primary shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] bg-primary/5"
         )}
         onClick={onClick}
@@ -119,29 +271,55 @@ function TaskCardComponent({
         {/* Priority Indicator Circle - Top Left Corner */}
         <div 
           className={cn(
-            "absolute top-[3px] left-[3px] w-2.5 h-2.5 rounded-full",
+            "absolute top-[2px] left-[2px] w-[10px] h-[10px] rounded-full",
             priorityColor
           )}
         />
         {/* Content */}
-        <div className="flex-1 px-[7px] py-4 flex flex-col justify-center">
-          <div className="flex justify-start items-center gap-2 h-[44px]">
+        <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
+          {/* Theme/Category */}
+          {themes.length > 0 && (
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+              {themes[0].name}
+            </div>
+          )}
+          
+          {/* Task Title */}
+          <div className="flex justify-start items-center gap-2 min-h-[44px]">
             <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
               {t.title}
             </h3>
           </div>
 
-          <div className="mt-[7px] flex gap-2 flex-wrap">
+          {/* Property Icon + Space + Date/Time + Teams + Avatars */}
+          <div className="mt-[7px] flex gap-2 flex-wrap items-center">
             {property && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1">
-                <Home className="h-3 w-3" />
-                <span className="truncate max-w-[100px]">{property.name || property.address}</span>
+              <PropertyIconChips properties={[property]} />
+            )}
+            {spaces.length > 0 && (
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+                {spaces[0].name}
               </Badge>
             )}
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}
-            </Badge>
+            {t.due_at && (
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1 font-mono">
+                <Clock className="h-3 w-3" />
+                {formatTaskDate(t.due_at)}
+              </Badge>
+            )}
+            {teams.length > 0 && teams.map((team: any) => (
+              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+                {team.name}
+              </Badge>
+            ))}
+            {assignedUsers.length > 0 && (
+              <OverlappingAvatars 
+                users={assignedUsers}
+                size={20}
+                overlap={20}
+                className="ml-auto"
+              />
+            )}
           </div>
         </div>
 
@@ -201,6 +379,7 @@ function TaskCardComponent({
   return (
     <div 
       className={cn(
+        "task-card-vertical",
         "rounded-[8px] bg-card",
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
@@ -210,11 +389,11 @@ function TaskCardComponent({
       onClick={onClick}
     >
       {/* Image Zone - Top */}
-      <div className="w-full h-40 sm:h-48 relative flex-shrink-0">
+      <div className="w-full h-[170px] relative flex-shrink-0">
         {/* Priority Indicator Circle - Top Left Corner of Image */}
         <div 
           className={cn(
-            "absolute top-[3px] left-[3px] w-2.5 h-2.5 rounded-full z-10",
+            "absolute top-[2px] left-[2px] w-[15px] h-[15px] rounded-full z-10",
             priorityColor
           )}
         />
@@ -265,24 +444,50 @@ function TaskCardComponent({
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-[7px] py-4 flex flex-col justify-center">
+      <div className="flex-1 px-[14px] pt-[6px] pb-[14px] flex flex-col justify-center">
+        {/* Theme/Category */}
+        {themes.length > 0 && (
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+            {themes[0].name}
+          </div>
+        )}
+        
+        {/* Task Title */}
         <div className="flex justify-start items-center gap-2 min-h-[44px]">
           <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
             {t.title}
           </h3>
         </div>
 
-        <div className="mt-[7px] flex gap-2 flex-wrap">
+        {/* Property Icon + Space + Date/Time + Teams + Avatars */}
+        <div className="mt-[12px] flex gap-2 flex-wrap items-center">
           {property && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1">
-              <Home className="h-3 w-3" />
-              <span className="truncate max-w-[100px]">{property.name || property.address}</span>
+            <PropertyIconChips properties={[property]} />
+          )}
+          {spaces.length > 0 && (
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+              {spaces[0].name}
             </Badge>
           )}
-          <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {t.due_at ? new Date(t.due_at).toLocaleDateString() : "No due date"}
-          </Badge>
+          {t.due_at && (
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1 font-mono">
+              <Clock className="h-3 w-3" />
+              {formatTaskDate(t.due_at)}
+            </Badge>
+          )}
+          {teams.length > 0 && teams.map((team: any) => (
+            <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+              {team.name}
+            </Badge>
+          ))}
+          {assignedUsers.length > 0 && (
+            <OverlappingAvatars 
+              users={assignedUsers}
+              size={20}
+              overlap={20}
+              className="ml-auto"
+            />
+          )}
         </div>
       </div>
     </div>

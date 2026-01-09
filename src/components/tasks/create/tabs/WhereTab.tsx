@@ -8,12 +8,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { StandardChip } from "@/components/chips/StandardChip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { useProperties } from "@/hooks/useProperties";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 interface WhereTabProps {
   propertyId: string;
   spaceIds: string[];
-  onPropertyChange: (propertyId: string) => void;
+  onPropertyChange: (propertyIds: string[]) => void;
   onSpacesChange: (spaceIds: string[]) => void;
   suggestedSpaces?: string[];
 }
@@ -36,8 +38,17 @@ export function WhereTab({
 }: WhereTabProps) {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
-  const { properties, loading: propertiesLoading, refresh: refreshProperties } = useProperties();
-  const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces(propertyId || undefined);
+  const queryClient = useQueryClient();
+  const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
+  // Track selected property IDs (for multiple selection)
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>(propertyId ? [propertyId] : []);
+  // Use first property for spaces (spaces are property-specific)
+  const primaryPropertyId = selectedPropertyIds.length > 0 ? selectedPropertyIds[0] : propertyId;
+  const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces(primaryPropertyId || undefined);
+  
+  const refreshProperties = () => {
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+  };
   
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateProperty, setShowCreateProperty] = useState(false);
@@ -88,11 +99,18 @@ export function WhereTab({
   );
 
   const handlePropertySelect = (id: string) => {
-    if (propertyId === id) {
-      onPropertyChange("");
-      onSpacesChange([]);
+    let newSelectedIds: string[];
+    if (selectedPropertyIds.includes(id)) {
+      // Deselect property
+      newSelectedIds = selectedPropertyIds.filter(pid => pid !== id);
     } else {
-      onPropertyChange(id);
+      // Select property (add to selection)
+      newSelectedIds = [...selectedPropertyIds, id];
+    }
+    setSelectedPropertyIds(newSelectedIds);
+    onPropertyChange(newSelectedIds);
+    // Clear spaces when properties change
+    if (newSelectedIds.length === 0) {
       onSpacesChange([]);
     }
   };
@@ -143,7 +161,10 @@ export function WhereTab({
       setNewPropertyName("");
       setShowCreateProperty(false);
       refreshProperties();
-      onPropertyChange(data.id);
+      // Add new property to selection
+      const newSelectedIds = [...selectedPropertyIds, data.id];
+      setSelectedPropertyIds(newSelectedIds);
+      onPropertyChange(newSelectedIds);
     } catch (err: any) {
       toast({ 
         title: "Error creating property", 
@@ -156,19 +177,19 @@ export function WhereTab({
   };
 
   const handleCreateSpace = async () => {
-    if (!newSpaceName.trim() || !propertyId || !orgId) return;
+    if (!newSpaceName.trim() || !primaryPropertyId || !orgId) return;
     
     setCreating(true);
     try {
       await supabase.auth.refreshSession();
       
-      const { data, error } = await supabase
-        .from("spaces")
-        .insert({
-          org_id: orgId,
-          property_id: propertyId,
-          name: newSpaceName.trim(),
-        })
+        const { data, error } = await supabase
+          .from("spaces")
+          .insert({
+            org_id: orgId,
+            property_id: primaryPropertyId,
+            name: newSpaceName.trim(),
+          })
         .select("id")
         .single();
 
@@ -249,7 +270,7 @@ export function WhereTab({
               <StandardChip
                 key={property.id}
                 label={property.nickname || property.address}
-                selected={propertyId === property.id}
+                selected={selectedPropertyIds.includes(property.id)}
                 onSelect={() => handlePropertySelect(property.id)}
                 color={property.icon_color_hex || undefined}
               />
@@ -283,7 +304,7 @@ export function WhereTab({
           </button>
         </div>
 
-        {!propertyId ? (
+        {selectedPropertyIds.length === 0 ? (
           <p className="text-xs text-muted-foreground py-2">
             Select a property first
           </p>
@@ -331,6 +352,9 @@ export function WhereTab({
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Property</DialogTitle>
+            <DialogDescription>
+              Create a new property to organize your tasks and spaces.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <Input
@@ -351,7 +375,7 @@ export function WhereTab({
               />
               
               {propertyImagePreview ? (
-                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden border border-border">
+                <div className="relative w-16 h-16 rounded-[5px] overflow-hidden shadow-e1">
                   <img src={propertyImagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -411,6 +435,11 @@ export function WhereTab({
             <DialogTitle>
               {pendingGhostSpace ? `Create "${pendingGhostSpace}"?` : "Create Space"}
             </DialogTitle>
+            <DialogDescription>
+              {pendingGhostSpace
+                ? `Create a new space called "${pendingGhostSpace}" within this property.`
+                : "Create a new space within this property to organize tasks by location."}
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <Input

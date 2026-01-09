@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import TaskCard from '@/components/TaskCard';
+import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { mockTasks, mockProperties } from '@/data/mockData';
 import { TaskStatus } from '@/types/task';
-import { useNavigate } from 'react-router-dom';
 import { SegmentControl, SegmentOption } from '@/components/filla';
 
 const WorkTasks = () => {
   const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
-  const navigate = useNavigate();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const filterOptions: SegmentOption[] = [
     { id: 'all', label: 'All' },
@@ -23,6 +23,14 @@ const WorkTasks = () => {
   const getProperty = (propertyId: string) => 
     mockProperties.find(p => p.id === propertyId)!;
 
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTaskId(taskId);
+  };
+
+  const handleCloseTaskDetail = () => {
+    setSelectedTaskId(null);
+  };
+
   return (
     <div className="space-y-4">
       <SegmentControl 
@@ -31,9 +39,9 @@ const WorkTasks = () => {
         onChange={(id) => setFilter(id as TaskStatus | 'all')}
       />
 
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {filteredTasks.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-12 col-span-full">
             <p className="text-muted-foreground">No tasks found</p>
           </div>
         ) : (
@@ -42,11 +50,20 @@ const WorkTasks = () => {
               key={task.id}
               task={task}
               property={getProperty(task.propertyId)}
-              onClick={() => navigate(`/task/${task.id}`)}
+              layout="vertical"
+              onClick={() => handleTaskClick(task.id)}
             />
           ))
         )}
       </div>
+
+      {selectedTaskId && (
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={handleCloseTaskDetail}
+          variant="modal"
+        />
+      )}
     </div>
   );
 };

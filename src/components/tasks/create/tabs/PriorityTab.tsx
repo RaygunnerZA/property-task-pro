@@ -14,7 +14,7 @@ const priorities: { value: TaskPriority; label: string; icon: React.ReactNode; c
     label: "LOW", 
     icon: <ArrowDown className="h-4 w-4" />,
     color: "text-foreground",
-    bgClass: "bg-card border-border"
+    bgClass: "bg-card"
   },
   { 
     value: "medium", 
@@ -50,25 +50,32 @@ export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
       <div className="flex flex-wrap gap-2">
         {priorities.map(({ value, label, icon, color }) => {
           const isSelected = priority === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onPriorityChange(value)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5",
-                "rounded-[5px] border",
-                "font-mono text-xs uppercase tracking-wide",
-                "transition-colors cursor-pointer select-none",
-                isSelected
-                  ? cn("border-transparent", color, value === "low" ? "bg-muted" : value === "medium" ? "bg-primary text-primary-foreground" : value === "high" ? "bg-warning text-warning-foreground" : "bg-accent text-accent-foreground")
-                  : "bg-white border-border text-muted-foreground hover:border-primary hover:text-foreground"
-              )}
-            >
-              <span className="flex-shrink-0">{icon}</span>
-              <span>{label}</span>
-            </button>
-          );
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onPriorityChange(value)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px]",
+                  "font-mono text-xs uppercase tracking-wide transition-all",
+                  "select-none cursor-pointer",
+                  isSelected
+                    ? // Active: Pressed neumorphic with off-white fill (priority colors override when provided)
+                      value === "low"
+                        ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                        : value === "medium"
+                        ? "bg-primary text-primary-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                        : value === "high"
+                        ? "bg-warning text-warning-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                        : "bg-accent text-accent-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    : // Inactive: Transparent with neumorphic shadows
+                      "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                )}
+              >
+                <span className="flex-shrink-0">{icon}</span>
+                <span>{label}</span>
+              </button>
+            );
         })}
       </div>
 
