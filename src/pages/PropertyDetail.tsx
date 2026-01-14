@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, Suspense, lazy } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { useProperty } from "@/hooks/property/useProperty";
 import { usePropertyPhotos } from "@/hooks/property/usePropertyPhotos";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -18,11 +19,14 @@ import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCa
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertyRelatedEntities } from "@/components/properties/PropertyRelatedEntities";
 import { PropertyTasksSection } from "@/components/properties/PropertyTasksSection";
+import { PropertySpacesSection } from "@/components/properties/PropertySpacesSection";
 import { ComplianceOverviewSection } from "@/components/properties/ComplianceOverviewSection";
 import { DocumentsSection } from "@/components/properties/DocumentsSection";
 import { MediaGallerySection } from "@/components/properties/MediaGallerySection";
 import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsPanel";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
@@ -160,6 +164,7 @@ export default function PropertyDetail() {
   const [editedIconName, setEditedIconName] = useState("");
   const [editedIconColor, setEditedIconColor] = useState("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
@@ -167,6 +172,61 @@ export default function PropertyDetail() {
 
   // Tasks are already filtered by property_id from the query
   const propertyTasks = tasks;
+
+  // Calculate tasksByDate for calendar (only property tasks)
+  const tasksByDate = useMemo(() => {
+    const dateMap = new Map<string, {
+      total: number;
+      high: number;
+      urgent: number;
+      overdue: number;
+    }>();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Normalize priority helper
+    const normalizePriority = (priority: string | null | undefined): string => {
+      if (!priority) return 'normal';
+      const normalized = priority.toLowerCase();
+      if (normalized === 'medium') return 'normal';
+      return normalized;
+    };
+    
+    propertyTasks.forEach((task) => {
+      const dueDateValue = task.due_date || task.due_at;
+      
+      if (dueDateValue && task.status !== 'completed' && task.status !== 'archived') {
+        try {
+          const date = new Date(dueDateValue);
+          const dateKey = format(date, "yyyy-MM-dd");
+          const current = dateMap.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
+          
+          current.total += 1;
+          
+          const priority = normalizePriority(task.priority);
+          
+          if (priority === 'high') {
+            current.high += 1;
+          } else if (priority === 'urgent') {
+            current.urgent += 1;
+          }
+          
+          // Check if overdue
+          date.setHours(0, 0, 0, 0);
+          if (date < today) {
+            current.overdue += 1;
+          }
+          
+          dateMap.set(dateKey, current);
+        } catch {
+          // Skip invalid dates
+        }
+      }
+    });
+    
+    return dateMap;
+  }, [propertyTasks]);
 
   // Assets are already filtered by property_id from the query
   const propertyAssets = assets;
@@ -422,16 +482,38 @@ export default function PropertyDetail() {
     contact_phone: (property as any).contact_phone,
   } : null;
 
+  // Get property icon and color for header
+  const iconName = (property as any).icon_name || "home";
+  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const iconColor = (property as any).icon_color_hex || "#8EC9CE";
+  
+  // Paper background color (from design system: hsl(40, 20%, 94%) = #F1EEE8)
+  const paperBg = "#F1EEE8";
+  
+  // Paper texture pattern (from design system)
+  const paperTexture = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`;
+  
+  // Create gradient: property color solid until 20%, then transition to paper bg by 70%
+  // Paper bg with texture is set as base background, gradient overlays on top
+  const gradientStyle = {
+    backgroundColor: paperBg,
+    backgroundImage: `${paperTexture}, linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, ${iconColor} 20%, ${paperBg} 70%, ${paperBg} 100%)`,
+    backgroundSize: '100%, 100%'
+  };
+
   return (
     <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <PageHeader>
-        <div className="mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between max-w-full">
+        <div 
+          className="mx-auto px-4 pt-[63px] pb-4 h-[115px] flex items-center justify-between max-w-full"
+          style={gradientStyle}
+        >
           <div className="flex items-center gap-3">
-            <span className="icon-primary shrink-0">
-              <Building2 className="h-6 w-6" />
+            <span className="shrink-0">
+              <IconComponent className="h-6 w-6 text-white" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-foreground leading-tight">{displayName}</h1>
+              <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
             </div>
           </div>
         </div>
@@ -439,25 +521,50 @@ export default function PropertyDetail() {
       <DualPaneLayout
         leftColumn={
           <div className="h-screen flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
+            {/* Contact Card - Above calendar */}
             {propertyWithContacts && id && (
+              <PropertyIdentityCard
+                property={propertyWithContacts}
+                onAddTask={() => {
+                  // TODO: Open create task dialog
+                  navigate(`/tasks/create?propertyId=${id}`);
+                }}
+                onAddPhoto={() => fileInputRef.current?.click()}
+                onMessage={() => {
+                  // TODO: Open message dialog
+                }}
+                onCall={() => {
+                  const phone = (property as any).contact_phone;
+                  if (phone) {
+                    window.location.href = `tel:${phone}`;
+                  }
+                }}
+              />
+            )}
+
+            {/* Calendar Section - Below contact card */}
+            <div className="flex-shrink-0 border-b border-border w-full">
+              <div className="px-4 pt-4 pb-4 w-full">
+                {tasksLoading ? (
+                  <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                    <div className="h-64 w-full bg-muted/50 rounded-lg animate-pulse" />
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                    <DashboardCalendar
+                      tasks={propertyTasks}
+                      selectedDate={selectedDate}
+                      onDateSelect={setSelectedDate}
+                      tasksByDate={tasksByDate}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Property Info Sections - Below calendar */}
+            {id && (
               <>
-                <PropertyIdentityCard
-                  property={propertyWithContacts}
-                  onAddTask={() => {
-                    // TODO: Open create task dialog
-                    navigate(`/tasks/create?propertyId=${id}`);
-                  }}
-                  onAddPhoto={() => fileInputRef.current?.click()}
-                  onMessage={() => {
-                    // TODO: Open message dialog
-                  }}
-                  onCall={() => {
-                    const phone = (property as any).contact_phone;
-                    if (phone) {
-                      window.location.href = `tel:${phone}`;
-                    }
-                  }}
-                />
                 <PropertySpacesList
                   propertyId={id}
                   tasks={propertyTasks}
@@ -474,7 +581,18 @@ export default function PropertyDetail() {
         }
         rightColumn={
           <div className="min-h-screen bg-background overflow-y-auto">
+            {/* Daily Briefing Card at the top (same position as dashboard) - Property-specific */}
+            <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px]">
+              <DailyBriefingCard showGreeting={false} tasks={propertyTasks} />
+            </div>
+            
             <div className="p-[15px] space-y-6">
+              {/* Spaces Section */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Spaces</h2>
+                {id && <PropertySpacesSection propertyId={id} />}
+              </div>
+
               {/* Property Tasks Section */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Property Tasks</h2>

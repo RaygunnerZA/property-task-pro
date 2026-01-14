@@ -27,6 +27,13 @@ export function ScheduleView({
   onTaskClick,
   selectedTaskId,
 }: ScheduleViewProps) {
+  // #region agent log
+  console.log('[DEBUG] ScheduleView component executing', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
+  useEffect(() => {
+    console.log('[DEBUG] ScheduleView useEffect running', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:23',message:'ScheduleView render',data:{tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null,firstTask:tasks[0]||null},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] ScheduleView log failed:',e));
+  }, [tasks, selectedDate]);
+  // #endregion
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -70,6 +77,9 @@ export function ScheduleView({
     // Sort time tasks chronologically
     withTime.sort((a, b) => a.time.getTime() - b.time.getTime());
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:73',message:'Tasks categorized',data:{timeTasksCount:withTime.length,anyTimeTasksCount:withoutTime.length,totalTasks:tasks.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return {
       timeTasks: withTime,
       anyTimeTasks: withoutTime,

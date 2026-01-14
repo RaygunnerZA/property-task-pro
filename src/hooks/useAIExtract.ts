@@ -1,24 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDebounce } from "./useDebounce";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
+import { debugLog } from "@/lib/logger";
+
+// Minimum description length before making expensive AI calls
+const MIN_DESCRIPTION_LENGTH = 10;
+
+// Cooldown period between AI calls (ms) - prevents rapid successive calls
+const AI_CALL_COOLDOWN = 2000;
 
 export interface ThemeSuggestion {
   name: string;
   exists: boolean;
   id?: string;
   type?: 'category' | 'project' | 'tag' | 'group'; // AI-suggested subtype
+  authority?: number; // Internal authority score (0-1)
 }
 
 export interface AIExtractResponse {
   ok: boolean;
   combined: {
     title: string | null;
-    spaces: Array<{ name: string; exists: boolean; id?: string }>;
-    people: Array<{ name: string; exists: boolean; id?: string }>;
-    teams: Array<{ name: string; exists: boolean; id?: string }>;
+    spaces: Array<{ name: string; exists: boolean; id?: string; authority?: number }>;
+    people: Array<{ name: string; exists: boolean; id?: string; authority?: number }>;
+    teams: Array<{ name: string; exists: boolean; id?: string; authority?: number }>;
     themes: ThemeSuggestion[];
-    assets: string[];
+    assets: Array<{ name: string; authority?: number }> | string[]; // Support both formats for backward compatibility
     priority: string | null;
     date: string | null;
     yes_no: boolean;
@@ -33,29 +41,72 @@ export function useAIExtract(input: string) {
   const [result, setResult] = useState<AIExtractResponse["combined"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track last processed description to avoid reprocessing the same text
+  const lastProcessedRef = useRef<string>("");
+  const lastCallTimeRef = useRef<number>(0);
+  const isProcessingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!debouncedInput.trim() || !orgId || orgLoading) {
+    const trimmedInput = debouncedInput.trim();
+    
+    // Clear result if input is empty
+    if (!trimmedInput || !orgId || orgLoading) {
+      if (trimmedInput === "") {
+        // Only clear when description is actually empty, not on loading states
+        lastProcessedRef.current = "";
+      }
       setResult(null);
       setLoading(false);
       return;
     }
 
-    async function extract() {
+    // Skip if description hasn't actually changed (content comparison, not reference)
+    if (lastProcessedRef.current === trimmedInput) {
+      return;
+    }
+
+    // Skip if description is too short (not enough context for AI)
+    if (trimmedInput.length < MIN_DESCRIPTION_LENGTH) {
+      return;
+    }
+
+    // Skip if already processing to prevent duplicate calls
+    if (isProcessingRef.current) {
+      return;
+    }
+
+    // Define extract function that can be called immediately or from setTimeout
+    async function extractNow(inputToProcess: string) {
+      // Double-check we're not already processing and input hasn't changed
+      if (isProcessingRef.current || lastProcessedRef.current === inputToProcess) {
+        return;
+      }
+
+      // Mark as processing and update last call time
+      isProcessingRef.current = true;
+      lastCallTimeRef.current = Date.now();
+      
+      // Update last processed BEFORE the async call to prevent duplicates
+      // if the component re-renders during the call
+      lastProcessedRef.current = inputToProcess;
+      
       setLoading(true);
       setError(null);
 
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:44',message:'Starting AI extraction',data:{debouncedInput,debouncedInputLength:debouncedInput.length,orgId,orgLoading,hasInput:!!debouncedInput.trim()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      debugLog({location:'useAIExtract.ts:44',message:'Starting AI extraction',data:{debouncedInput:inputToProcess,debouncedInputLength:inputToProcess.length,orgId,orgLoading,hasInput:!!inputToProcess,lastProcessed:lastProcessedRef.current},sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
       // #endregion
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:49',message:'Session check',data:{hasSession:!!session,hasAccessToken:!!session?.access_token},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        debugLog({location:'useAIExtract.ts:49',message:'Session check',data:{hasSession:!!session,hasAccessToken:!!session?.access_token},sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
         // #endregion
         if (!session) {
           setError("Not authenticated");
+          isProcessingRef.current = false;
+          lastProcessedRef.current = "";
           return;
         }
 
@@ -64,7 +115,7 @@ export function useAIExtract(input: string) {
         const functionUrl = `${supabaseUrl}/functions/v1/ai-extract`;
 
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:57',message:'Making API call',data:{functionUrl,hasSupabaseUrl:!!supabaseUrl,requestBody:{description:debouncedInput,org_id:orgId}},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        debugLog({location:'useAIExtract.ts:57',message:'Making API call',data:{functionUrl,hasSupabaseUrl:!!supabaseUrl,requestBody:{description:inputToProcess,org_id:orgId}},sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
         // #endregion
 
         const response = await fetch(functionUrl, {
@@ -74,7 +125,7 @@ export function useAIExtract(input: string) {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            description: debouncedInput,
+            description: inputToProcess,
             org_id: orgId,
           }),
         });
@@ -88,7 +139,7 @@ export function useAIExtract(input: string) {
         } catch {
           responseData = { raw: responseText };
         }
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:71',message:'API response received',data:{status:responseStatus,ok:responseData?.ok,hasCombined:!!responseData?.combined,combinedTitle:responseData?.combined?.title,combinedPriority:responseData?.combined?.priority,error:responseData?.error,responseData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        debugLog({location:'useAIExtract.ts:71',message:'API response received',data:{status:responseStatus,ok:responseData?.ok,hasCombined:!!responseData?.combined,combinedTitle:responseData?.combined?.title,combinedPriority:responseData?.combined?.priority,error:responseData?.error,responseData},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
         // #endregion
 
         // Log exact response for debugging
@@ -105,25 +156,51 @@ export function useAIExtract(input: string) {
         if (data.ok && data.combined) {
           setResult(data.combined);
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:74',message:'AI result set successfully',data:{title:data.combined.title,priority:data.combined.priority,date:data.combined.date,spacesCount:data.combined.spaces.length,peopleCount:data.combined.people.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+          debugLog({location:'useAIExtract.ts:74',message:'AI result set successfully',data:{title:data.combined.title,priority:data.combined.priority,date:data.combined.date,spacesCount:data.combined.spaces.length,peopleCount:data.combined.people.length},sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
           // #endregion
         } else {
           setError(data.error || "AI extraction failed");
           setResult(null);
+          // Reset last processed on error so user can retry
+          lastProcessedRef.current = "";
         }
       } catch (err: any) {
         console.error("AI extract error:", err);
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useAIExtract.ts:79',message:'AI extraction error caught',data:{error:err?.message,stack:err?.stack,name:err?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+        debugLog({location:'useAIExtract.ts:79',message:'AI extraction error caught',data:{error:err?.message,stack:err?.stack,name:err?.name},sessionId:'debug-session',runId:'run1',hypothesisId:'G'});
         // #endregion
         setError(err.message || "Failed to extract");
         setResult(null);
+        // Reset last processed on error so user can retry
+        lastProcessedRef.current = "";
       } finally {
         setLoading(false);
+        isProcessingRef.current = false;
       }
     }
 
-    extract();
+    // Rate limiting: Check if we're within cooldown period
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCallTimeRef.current;
+    if (timeSinceLastCall < AI_CALL_COOLDOWN) {
+      // Schedule call after cooldown expires
+      const remainingCooldown = AI_CALL_COOLDOWN - timeSinceLastCall;
+      const inputToProcess = trimmedInput; // Capture current input
+      const timeoutId = setTimeout(() => {
+        // Re-check conditions before processing
+        if (lastProcessedRef.current !== inputToProcess &&
+            inputToProcess.length >= MIN_DESCRIPTION_LENGTH &&
+            !isProcessingRef.current) {
+          // Process the input that was pending
+          extractNow(inputToProcess);
+        }
+      }, remainingCooldown);
+      
+      return () => clearTimeout(timeoutId);
+    }
+
+    // Call immediately if not in cooldown
+    extractNow(trimmedInput);
   }, [debouncedInput, orgId, orgLoading]);
 
   return { result, loading, error };

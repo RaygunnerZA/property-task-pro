@@ -28,7 +28,7 @@ export function MobileBottomNav() {
     { to: "/", icon: Home, label: "Home" },
     { to: "/tasks", icon: CheckSquare, label: "Tasks" },
     { to: "/work/inbox", icon: Inbox, label: "Inbox" },
-    { to: "/work/schedule", icon: Calendar, label: "Schedule" },
+    { to: "/schedule", icon: Calendar, label: "Schedule" },
   ];
 
   const isActiveRoute = (path: string) => {

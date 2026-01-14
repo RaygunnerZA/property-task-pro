@@ -73,39 +73,12 @@ export function PropertyIdentityCard({
   return (
     <div className="sticky top-0 z-10 bg-background border-b border-border">
       <div className="bg-card rounded-[8px] overflow-hidden shadow-e1 m-4">
-        {/* Square Thumbnail Image */}
-        <div 
-          className="aspect-square w-full bg-muted overflow-hidden relative"
-          style={{
-            backgroundColor: thumbnailUrl ? undefined : iconColor,
-          }}
-        >
-          {thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={displayName}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <IconComponent className="h-12 w-12 text-white" />
-            </div>
-          )}
-          {/* Neumorphic overlay */}
-          <div 
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
-            }}
-          />
-        </div>
-
         {/* Property Info */}
         <div className="p-4 space-y-3">
-          {/* Property Name */}
+          {/* Contact Title */}
           <div>
             <h2 className="font-semibold text-lg text-foreground leading-tight">
-              {displayName}
+              Contact
             </h2>
             {/* Address/Location Chip */}
             <div className="flex items-center gap-1.5 mt-1">
@@ -121,9 +94,6 @@ export function PropertyIdentityCard({
                 <div className="text-sm">
                   <span className="text-muted-foreground text-xs">Owner: </span>
                   <span className="font-medium text-foreground">{ownerName}</span>
-                  {ownerEmail && (
-                    <span className="text-muted-foreground text-xs ml-1">({ownerEmail})</span>
-                  )}
                 </div>
               )}
               {contactName && (
@@ -138,53 +108,36 @@ export function PropertyIdentityCard({
             </div>
           )}
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+          {/* Quick Actions - Icon Only */}
+          <div className="flex items-center gap-2 pt-2 border-t border-border/50">
             {(contactPhone || onCall) && (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={handleCall}
-                className="text-xs"
+                className="p-2 rounded-lg hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!contactPhone && !onCall}
+                aria-label="Call"
               >
-                <Phone className="h-3 w-3 mr-1.5" />
-                Call
-              </Button>
+                <Phone className="h-4 w-4" />
+              </button>
             )}
             {((contactEmail || ownerEmail) || onMessage) && (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={onMessage || handleEmail}
-                className="text-xs"
+                className="p-2 rounded-lg hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!contactEmail && !ownerEmail && !onMessage}
+                aria-label="Message"
               >
-                <MessageSquare className="h-3 w-3 mr-1.5" />
-                Message
-              </Button>
+                <MessageSquare className="h-4 w-4" />
+              </button>
             )}
-            {onAddTask && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onAddTask}
-                className="text-xs"
+            {(contactEmail || ownerEmail) && (
+              <button
+                onClick={handleEmail}
+                className="p-2 rounded-lg hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors"
+                aria-label="Email"
               >
-                <Plus className="h-3 w-3 mr-1.5" />
-                Add Task
-              </Button>
-            )}
-            {onAddPhoto && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onAddPhoto}
-                className="text-xs"
-              >
-                <Upload className="h-3 w-3 mr-1.5" />
-                Add Photo
-              </Button>
+                <Mail className="h-4 w-4" />
+              </button>
             )}
           </div>
         </div>

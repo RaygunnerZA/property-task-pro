@@ -37,6 +37,7 @@ export function DashboardCalendar({
   className,
   tasksByDate: providedTasksByDate,
 }: DashboardCalendarProps) {
+  // Removed excessive debug logging to prevent re-render performance issues
   // Normalize priority: treat null, undefined, 'normal', and 'medium' as the same
   const normalizePriority = (priority: string | null | undefined): string => {
     if (!priority) return 'normal';
@@ -64,10 +65,13 @@ export function DashboardCalendar({
     
     tasks.forEach((task) => {
       const dueDateValue = task.due_date || task.due_at;
-      
       if (dueDateValue && task.status !== 'completed' && task.status !== 'archived') {
         try {
           const date = new Date(dueDateValue);
+          const isValidDate = !isNaN(date.getTime());
+          if (!isValidDate) {
+            return;
+          }
           const dateKey = format(date, "yyyy-MM-dd");
           const current = map.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
           
@@ -93,6 +97,7 @@ export function DashboardCalendar({
         }
       }
     });
+
 
     return map;
   }, [providedTasksByDate, tasks]);
@@ -157,7 +162,7 @@ export function DashboardCalendar({
           IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
           CaptionLabel: CustomCaptionLabel,
           Day: (props: any) => {
-            const { date, onClick, className: propClassName, ...restProps } = props;
+            const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
             const dateKey = format(date, "yyyy-MM-dd");
             const dateData = tasksByDate.get(dateKey);
             const taskCount = dateData?.total || 0;
@@ -188,9 +193,11 @@ export function DashboardCalendar({
               } else {
                 // Normal tasks: Teal fill with opacity based on count
                 if (taskCount >= 4) {
+                  fillColor = 'rgba(78, 179, 182, 0.6)';
+                } else if (taskCount >= 2) {
                   fillColor = 'rgba(78, 179, 182, 0.5)';
                 } else {
-                  fillColor = 'rgba(78, 179, 182, 0.3)';
+                  fillColor = 'rgba(78, 179, 182, 0.4)';
                 }
               }
             }
@@ -209,6 +216,7 @@ export function DashboardCalendar({
                 onDateSelect(date);
               }
             };
+
             
             return (
               <button

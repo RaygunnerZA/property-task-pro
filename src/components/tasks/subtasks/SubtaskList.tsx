@@ -165,7 +165,7 @@ export function SubtaskList({
         items={subtasks.map((s) => s.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="space-y-2">
+        <div className="space-y-1">
           {subtasks.map((subtask, index) => (
             <SubtaskCard
               key={subtask.id}

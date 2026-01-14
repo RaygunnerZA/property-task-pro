@@ -52,8 +52,8 @@ export function SubtasksSection({
       }}
     >
       {/* Description Area */}
-      <div className="px-5 pt-5 pb-3 bg-black/0">
-        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-xl font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+      <div className="pt-5 pb-3 bg-black/0" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-lg font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
       </div>
 
       {/* Divider */}
@@ -64,7 +64,7 @@ export function SubtasksSection({
         {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
       <div className="flex items-center gap-3 py-2 cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
-            <span className="flex-1 text-muted-foreground/50 text-base">
+            <span className="flex-1 text-muted-foreground/50 text-sm">
               Add subtask
             </span>
             <DropdownMenu>
@@ -82,8 +82,40 @@ export function SubtasksSection({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>) : (/* Subtask List with DnD */
-      <SubtaskList subtasks={subtasks} isCreator={true} onSubtasksChange={onSubtasksChange} onReorder={handleReorder} />)}
+          </div>) : (
+          <>
+            {/* Subtask List with DnD */}
+            <SubtaskList subtasks={subtasks} isCreator={true} onSubtasksChange={onSubtasksChange} onReorder={handleReorder} />
+            {/* Make Checklist | Save as Template - shown after 3 subtasks */}
+            {subtasks.length > 3 && (
+              <div className="flex items-center justify-center gap-4 pt-2 mt-1 text-xs text-muted-foreground/60">
+                <button 
+                  type="button"
+                  className="hover:text-muted-foreground transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // TODO: Implement Make Checklist functionality
+                    console.log("Make Checklist clicked");
+                  }}
+                >
+                  + Make Checklist
+                </button>
+                <span className="text-muted-foreground/30">|</span>
+                <button 
+                  type="button"
+                  className="hover:text-muted-foreground transition-colors"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    // TODO: Implement Save as Template functionality
+                    console.log("Save as Template clicked");
+                  }}
+                >
+                  Save as Template
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>;
 }

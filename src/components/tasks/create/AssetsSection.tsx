@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
@@ -134,32 +134,41 @@ export function AssetsSection({
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {assets.map(asset => (
-          <StandardChip
-            key={asset.id}
-            label={asset.name}
-            selected={selectedAssetIds.includes(asset.id)}
-            onSelect={() => toggleAsset(asset.id)}
-            color={asset.color || undefined}
-          />
-        ))}
-        
-        {/* Ghost chips for AI suggestions */}
-        {ghostAssets.map((ghostName, idx) => {
-          const ghostId = `ghost-asset-${ghostName}`;
-          const isSelected = selectedAssetIds.includes(ghostId);
-          return (
-            <StandardChip
-              key={`ghost-${idx}`}
-              label={isSelected ? ghostName : `+ ${ghostName}`}
-              ghost={!isSelected}
-              selected={isSelected}
-              onSelect={() => handleGhostAssetClick(ghostName)}
-            />
-          );
-        })}
-        
+      <div className="space-y-2">
+        {/* Row 1: AI Suggestions (if any) */}
+        {ghostAssets.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {ghostAssets.map((ghostName, idx) => {
+              const ghostId = `ghost-asset-${ghostName}`;
+              const isSelected = selectedAssetIds.includes(ghostId);
+              return (
+                <Chip
+                  key={`ghost-${idx}`}
+                  role="suggestion"
+                  label={isSelected ? ghostName.toUpperCase() : `+ ${ghostName.toUpperCase()}`}
+                  selected={isSelected}
+                  onSelect={() => handleGhostAssetClick(ghostName)}
+                  animate={true}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Row 2: Fact Chips (committed assets) */}
+        {assets.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {assets.map(asset => (
+              <Chip
+                key={asset.id}
+                role="fact"
+                label={asset.name.toUpperCase()}
+                onRemove={() => toggleAsset(asset.id)}
+              />
+            ))}
+          </div>
+        )}
+
         {assets.length === 0 && ghostAssets.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">
             No assets yet. Create one to track equipment.

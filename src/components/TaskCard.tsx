@@ -21,7 +21,7 @@ const PROPERTY_ICONS = {
 } as const;
 
 // Property Icon Chip Component - shows property icon on property color background
-// Height matches Badge size="sm" which is py-0.5 (2px) + text-[10px] (~14px line-height) = ~18px total
+// 24x24px icon bounding box
 function PropertyIconChip({ property }: { property: any }) {
   if (!property) return null;
   
@@ -31,15 +31,14 @@ function PropertyIconChip({ property }: { property: any }) {
   
   return (
     <div
-      className="inline-flex items-center justify-center rounded-[5px] border-0"
+      className="inline-flex items-center justify-center rounded-[146px] border-0"
       style={{
         backgroundColor: iconColor,
-        width: '18px',
-        height: '18px',
-        boxShadow: '2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)',
+        width: '24px',
+        height: '24px',
       }}
     >
-      <IconComponent className="h-3 w-3 text-white" />
+      <IconComponent className="h-4 w-4 text-white" />
     </div>
   );
 }
@@ -65,17 +64,16 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
         return (
           <div
             key={property?.id || index}
-            className="inline-flex items-center justify-center rounded-[5px] border-0 relative"
+            className="inline-flex items-center justify-center rounded-[146px] border-0 relative"
             style={{
               backgroundColor: iconColor,
-              width: '18px',
-              height: '18px',
-              boxShadow: '2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)',
-              marginLeft: index > 0 ? '-5.4px' : '0', // 30% overlap (5.4px out of 18px)
+              width: '24px',
+              height: '24px',
+              marginLeft: index > 0 ? '-7.2px' : '0', // 30% overlap (7.2px out of 24px)
               zIndex,
             }}
           >
-            <IconComponent className="h-3 w-3 text-white" />
+            <IconComponent className="h-4 w-4 text-white" />
           </div>
         );
       })}
@@ -297,25 +295,25 @@ function TaskCardComponent({
               <PropertyIconChips properties={[property]} />
             )}
             {spaces.length > 0 && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
                 {spaces[0].name}
               </Badge>
             )}
             {t.due_at && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1 font-mono">
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
                 <Clock className="h-3 w-3" />
                 {formatTaskDate(t.due_at)}
               </Badge>
             )}
             {teams.length > 0 && teams.map((team: any) => (
-              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
                 {team.name}
               </Badge>
             ))}
             {assignedUsers.length > 0 && (
               <OverlappingAvatars 
                 users={assignedUsers}
-                size={20}
+                size={24}
                 overlap={20}
                 className="ml-auto"
               />
@@ -364,7 +362,7 @@ function TaskCardComponent({
               }}
             >
               <Badge 
-                className="text-[10px] px-2 py-0.5 bg-success text-success-foreground border-0"
+                className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0"
               >
                 DONE
               </Badge>
@@ -465,25 +463,25 @@ function TaskCardComponent({
             <PropertyIconChips properties={[property]} />
           )}
           {spaces.length > 0 && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
               {spaces[0].name}
             </Badge>
           )}
           {t.due_at && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 flex items-center gap-1 font-mono">
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
               <Clock className="h-3 w-3" />
               {formatTaskDate(t.due_at)}
             </Badge>
           )}
           {teams.length > 0 && teams.map((team: any) => (
-            <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] py-0.5 font-mono uppercase">
+            <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
               {team.name}
             </Badge>
           ))}
           {assignedUsers.length > 0 && (
             <OverlappingAvatars 
               users={assignedUsers}
-              size={20}
+              size={24}
               overlap={20}
               className="ml-auto"
             />

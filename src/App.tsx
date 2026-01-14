@@ -20,6 +20,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const WelcomeScreen = lazy(() => import("./pages/onboarding/WelcomeScreen"));
 const SignUpScreen = lazy(() => import("./pages/onboarding/SignUpScreen"));
 const VerifyEmailScreen = lazy(() => import("./pages/onboarding/VerifyEmailScreen"));
+const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 const CreateOrganisationScreen = lazy(() => import("./pages/onboarding/CreateOrganisationScreen"));
 const AddPropertyScreen = lazy(() => import("./pages/onboarding/AddPropertyScreen"));
 const AddSpaceScreen = lazy(() => import("./pages/onboarding/AddSpaceScreen"));
@@ -77,6 +78,7 @@ const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const Dashboard = lazy(() => import("./app/page"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Tasks = lazy(() => import("./pages/Tasks"));
+const Schedule = lazy(() => import("./pages/Schedule"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"));
 const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
@@ -116,6 +118,7 @@ const App = () => {
                       <Route path="/welcome" element={<WelcomeScreen />} />
                       <Route path="/signup" element={<SignUpScreen />} />
                       <Route path="/verify" element={<VerifyEmailScreen />} />
+                      <Route path="/accept-invitation" element={<AcceptInvitation />} />
                       <Route path="/onboarding/create-organisation" element={<CreateOrganisationScreen />} />
                       <Route path="/onboarding/add-property" element={<AddPropertyScreen />} />
                       <Route path="/onboarding/add-spaces" element={<AddSpaceScreen />} />
@@ -143,6 +146,7 @@ const App = () => {
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<Properties />} />
                                 <Route path="/tasks" element={<Tasks />} />
+                                <Route path="/schedule" element={<Schedule />} />
                                 <Route path="/assets" element={<Assets />} />
                                 <Route path="/compliance" element={<Compliance />} />
                                 

@@ -15,11 +15,11 @@ const badgeVariants = cva(
         success: "bg-success/20 text-success border-success/30",
         warning: "bg-warning/20 text-warning border-warning/30",
         danger: "bg-destructive/10 text-destructive border-destructive/20",
-        neutral: "bg-muted text-muted-foreground border-border",
+        neutral: "bg-muted text-muted-foreground border-0",
       },
       size: {
         default: "px-2.5 py-1 text-[11px]",
-        sm: "px-[5px] py-0.5 text-[10px]",
+        sm: "px-[7px] text-[10px] h-[24px]",
       },
     },
     defaultVariants: {

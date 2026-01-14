@@ -192,6 +192,46 @@ export default {
             transform: "translateX(0)",
           },
         },
+        "tooltip-slide-from-top": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(8px) scale(0.95)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0) scale(1)",
+          },
+        },
+        "tooltip-slide-from-bottom": {
+          "0%": {
+            opacity: "0",
+            transform: "translateY(-8px) scale(0.95)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0) scale(1)",
+          },
+        },
+        "tooltip-slide-from-left": {
+          "0%": {
+            opacity: "0",
+            transform: "translateX(8px) scale(0.95)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateX(0) scale(1)",
+          },
+        },
+        "tooltip-slide-from-right": {
+          "0%": {
+            opacity: "0",
+            transform: "translateX(-8px) scale(0.95)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateX(0) scale(1)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -203,6 +243,10 @@ export default {
         "chip-slide-out": "chip-slide-out 0.15s ease-in",
         "wipe-right-to-left": "wipe-right-to-left 0.3s ease-out",
         "wipe-left-to-right": "wipe-left-to-right 0.3s ease-out",
+        "tooltip-slide-from-top": "tooltip-slide-from-top 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "tooltip-slide-from-bottom": "tooltip-slide-from-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "tooltip-slide-from-left": "tooltip-slide-from-left 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "tooltip-slide-from-right": "tooltip-slide-from-right 300ms cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },

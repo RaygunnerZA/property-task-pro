@@ -5,10 +5,28 @@ import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
 import { PageHeader } from "@/components/design-system/PageHeader";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
+
+// Helper function to create gradient header style with paper texture
+const createGradientHeaderStyle = (color: string) => {
+  // Paper background color (from design system: hsl(40, 20%, 94%) = #F1EEE8)
+  const paperBg = "#F1EEE8";
+  
+  // Paper texture pattern (from design system)
+  const paperTexture = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`;
+  
+  // Create gradient: color solid until 20%, then transition to paper bg by 70%
+  // Paper bg with texture is set as base background, gradient overlays on top
+  return {
+    backgroundColor: paperBg,
+    backgroundImage: `${paperTexture}, linear-gradient(to right, ${color} 0%, ${color} 20%, ${color} 20%, ${paperBg} 70%, ${paperBg} 100%)`,
+    backgroundSize: '100%, 100%'
+  };
+};
 
 // lg breakpoint is 1024px - use this for three-column layout
 const LG_BREAKPOINT = 1024;
@@ -19,24 +37,24 @@ type SelectedItem = {
 } | null;
 
 export default function Dashboard() {
-  // #region agent log
-  console.error('[DEBUG app/page.tsx:21] Dashboard component executing', { hypothesisId: 'B' });
-  // #endregion
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   
-  // #region agent log
-  console.error('[DEBUG app/page.tsx:28] Before useTasksQuery hook', { hypothesisId: 'B' });
-  // #endregion
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
-  // #region agent log
-  console.error('[DEBUG app/page.tsx:31] After useTasksQuery hook', { tasksCount: tasks?.length, isLoading: tasksLoading, hypothesisId: 'B' });
-  // #endregion
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
+  const { weather } = useDailyBriefing();
+
+  // Initialize selectedPropertyIds with all properties when properties load
+  useEffect(() => {
+    if (properties.length > 0 && selectedPropertyIds.size === 0) {
+      setSelectedPropertyIds(new Set(properties.map(p => p.id)));
+    }
+  }, [properties, selectedPropertyIds.size]);
 
   // Centralized aggregation: Calculate stats once at Dashboard level
   const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
@@ -141,6 +159,22 @@ export default function Dashboard() {
     setTimeout(() => setFilterToApply(null), 100);
   };
 
+  // Get weather icon based on condition code
+  const getWeatherIcon = (conditionCode: number | null) => {
+    if (!conditionCode) return Cloud;
+    
+    // WMO Weather interpretation codes (simplified)
+    // 0: Clear sky, 1-3: Mainly clear/partly cloudy, 45-48: Fog
+    // 51-67: Drizzle/Rain, 71-77: Snow, 80-99: Rain showers/Thunderstorm
+    if (conditionCode === 0) return Sun;
+    if (conditionCode >= 1 && conditionCode <= 3) return CloudSun;
+    if (conditionCode >= 51 && conditionCode <= 67) return CloudRain;
+    if (conditionCode >= 80 && conditionCode <= 99) return CloudRain;
+    return Cloud;
+  };
+
+  const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
+
   // Render third column content - only when item is selected on large screens
   const thirdColumnContent = isLargeScreen && selectedItem ? (
     selectedItem.type === 'task' ? (
@@ -158,16 +192,30 @@ export default function Dashboard() {
     )
   ) : undefined;
 
+  // Primary color for dashboard header (from design system: #8EC9CE)
+  const primaryColor = "#8EC9CE";
+  const headerStyle = createGradientHeaderStyle(primaryColor);
+
   return (
     <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <PageHeader>
-        <div className="mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between max-w-full">
-          <div className="flex items-center gap-3">
-            <span className="icon-primary shrink-0">
-              <CalendarIcon className="h-6 w-6" />
+        <div 
+          className="mx-auto px-4 pt-[63px] pb-4 h-[115px] flex items-center justify-between max-w-full"
+          style={headerStyle}
+        >
+          <div className="flex items-center gap-3 w-[303px]">
+            <span className="shrink-0">
+              <CalendarIcon className="h-6 w-6 text-white" />
             </span>
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-foreground leading-tight">Today</h1>
+              <h1 className="text-2xl font-semibold text-white leading-tight">Today</h1>
+            </div>
+            <div className="h-6 w-px bg-white/30 mx-2"></div>
+            <div className="flex items-center gap-2 text-right">
+              <WeatherIcon className="h-4 w-4 text-white/90" />
+              <span className="text-sm text-white/90">
+                {weather ? `${weather.temp}°C` : "--°C"}
+              </span>
             </div>
           </div>
         </div>
@@ -186,6 +234,8 @@ export default function Dashboard() {
             urgentCount={urgentCount}
             overdueCount={overdueCount}
             onFilterClick={handleFilterClick}
+            selectedPropertyIds={selectedPropertyIds}
+            onPropertySelectionChange={setSelectedPropertyIds}
           />
         }
         rightColumn={
@@ -200,6 +250,7 @@ export default function Dashboard() {
             onTabChange={setActiveTab}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
+            selectedPropertyIds={selectedPropertyIds}
           />
         }
         thirdColumn={thirdColumnContent}

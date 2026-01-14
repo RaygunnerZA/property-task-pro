@@ -14,6 +14,7 @@ interface RightColumnProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  selectedPropertyIds?: Set<string>;
 }
 
 /**
@@ -34,13 +35,17 @@ export function RightColumn({
   activeTab,
   onTabChange,
   selectedDate,
-  filterToApply
+  filterToApply,
+  selectedPropertyIds
 }: RightColumnProps) {
   return (
     <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
       {/* Daily Briefing Card at the top */}
-      <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px]">
-        <DailyBriefingCard />
+      <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px] h-[152px]">
+        <DailyBriefingCard 
+          selectedPropertyIds={selectedPropertyIds}
+          properties={properties}
+        />
       </div>
       
       {/* Task Panel or custom children */}

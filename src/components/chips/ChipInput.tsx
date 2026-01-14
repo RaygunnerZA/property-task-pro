@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { StandardChip } from "./StandardChip";
+import { Chip } from "./Chip";
 import { Input } from "@/components/ui/input";
 import { GripVertical, X, Loader2, Sparkles, MapPin, User, Users, Folder, AlertTriangle, Package, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,12 @@ interface SortableChipItemProps {
   isNested?: boolean;
 }
 
-function SortableChipItem({ chip, isDragging, onRemove, isNested = false }: SortableChipItemProps) {
+interface SortableChipItemPropsWithChips extends SortableChipItemProps {
+  chips: Chip[];
+  onChipsChange: (chips: Chip[]) => void;
+}
+
+function SortableChipItem({ chip, isDragging, onRemove, isNested = false, chips, onChipsChange }: SortableChipItemPropsWithChips) {
   const {
     attributes,
     listeners,
@@ -84,24 +89,23 @@ function SortableChipItem({ chip, isDragging, onRemove, isNested = false }: Sort
       >
         <GripVertical className="h-3 w-3 text-muted-foreground/40" />
       </div>
-      <StandardChip
-        label={chip.label}
-        ghost={chip.ghost}
-        color={chip.color}
-        icon={chip.icon}
+      <Chip
+        role={chip.ghost ? "suggestion" : "fact"}
+        label={chip.label.toUpperCase()}
         selected={!chip.ghost}
         onRemove={onRemove}
+        icon={chip.ghost ? undefined : chip.icon} // No icons for suggestions
+        color={chip.color}
+        animate={chip.ghost}
         className="flex-shrink-0"
       />
       {chip.children && chip.children.length > 0 && (
             <div className="ml-2 flex flex-wrap gap-1 pl-4 border-l-2 border-border/30">
               {chip.children.map((child) => (
-                <StandardChip
+                <Chip
                   key={child.id}
-                  label={child.label}
-                  ghost={child.ghost}
-                  color={child.color}
-                  icon={child.icon}
+                  role={child.ghost ? "suggestion" : "fact"}
+                  label={child.label.toUpperCase()}
                   selected={!child.ghost}
                   onRemove={() => {
                     // Remove nested chip
@@ -519,11 +523,12 @@ export function ChipInput({
                             onClick={() => handleFilteredChipClick(chip)}
                             className="inline-block"
                           >
-                            <StandardChip
-                              label={chip.label}
-                              ghost={chip.ghost}
+                            <Chip
+                              role={chip.ghost ? "suggestion" : "filter"}
+                              label={chip.label.toUpperCase()}
+                              icon={chip.ghost ? undefined : chip.icon} // No icons for suggestions
                               color={chip.color}
-                              icon={chip.icon}
+                              animate={chip.ghost}
                               className="cursor-pointer hover:scale-105 transition-transform"
                             />
                           </button>
@@ -565,9 +570,10 @@ export function ChipInput({
                 <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-e3 p-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Press Enter to create:</span>
-                    <StandardChip
-                      label={inputValue.trim()}
-                      ghost
+                    <Chip
+                      role="suggestion"
+                      label={inputValue.trim().toUpperCase()}
+                      animate={true}
                       className="flex-shrink-0"
                     />
                   </div>
@@ -589,6 +595,8 @@ export function ChipInput({
                       chip={chip}
                       isDragging={activeId === chip.id}
                       onRemove={() => handleChipRemove(chip.id)}
+                      chips={chips}
+                      onChipsChange={onChipsChange}
                     />
                   ))}
                 </div>

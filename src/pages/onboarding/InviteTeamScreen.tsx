@@ -6,14 +6,18 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function InviteTeamScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const { teamInvites, addTeamInvite, removeTeamInvite } = useOnboardingStore();
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const [sending, setSending] = useState(false);
   
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("member");
@@ -40,13 +44,84 @@ export default function InviteTeamScreen() {
     toast.success("Invite added");
   };
 
-  const handleSendInvites = () => {
-    // In a real app, this would call an API to send emails
-    // For now, we'll just show success and continue
-    if (teamInvites.length > 0) {
-      toast.success(`${teamInvites.length} invite(s) queued for sending`);
+  const handleSendInvites = async () => {
+    if (teamInvites.length === 0) {
+      navigate("/onboarding/preferences");
+      return;
     }
-    navigate("/onboarding/preferences");
+
+    if (!orgId) {
+      toast.error("Organization not found. Please complete organization setup first.");
+      return;
+    }
+
+    if (orgLoading) {
+      toast.error("Loading organization information...");
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Get the current session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("You must be logged in to send invitations");
+      }
+
+      // Send all invitations
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const invite of teamInvites) {
+        try {
+          const { data, error } = await supabase.functions.invoke("invite-team-member", {
+            body: {
+              email: invite.email.trim(),
+              org_id: orgId,
+              first_name: null, // Onboarding doesn't collect first/last name separately
+              last_name: null,
+              role: invite.role || "member",
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (error || data?.error) {
+            errorCount++;
+            errors.push(`${invite.email}: ${error?.message || data?.error || "Failed to send"}`);
+          } else {
+            successCount++;
+          }
+        } catch (err: any) {
+          errorCount++;
+          errors.push(`${invite.email}: ${err.message || "Failed to send"}`);
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        toast.success(`Successfully sent ${successCount} invitation(s)`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Failed to send ${errorCount} invitation(s)`, {
+          description: errors.slice(0, 3).join(", "),
+        });
+      }
+
+      // Clear all invites from store after sending (remove from end to avoid index issues)
+      for (let i = teamInvites.length - 1; i >= 0; i--) {
+        removeTeamInvite(i);
+      }
+    } catch (err: any) {
+      console.error("Error sending invitations:", err);
+      toast.error(err.message || "Failed to send invitations");
+    } finally {
+      setSending(false);
+      // Navigate to next step regardless of errors
+      navigate("/onboarding/preferences");
+    }
   };
 
   const handleSkip = () => {
@@ -153,8 +228,13 @@ export default function InviteTeamScreen() {
             <NeomorphicButton
               variant="primary"
               onClick={handleSendInvites}
+              disabled={sending || orgLoading}
             >
-              {teamInvites.length > 0 ? `Send ${teamInvites.length} invite(s)` : "Continue"}
+              {sending 
+                ? "Sending invitations..." 
+                : teamInvites.length > 0 
+                  ? `Send ${teamInvites.length} invite(s)` 
+                  : "Continue"}
             </NeomorphicButton>
 
             <NeomorphicButton

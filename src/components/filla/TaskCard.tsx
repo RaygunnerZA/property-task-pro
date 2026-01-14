@@ -40,7 +40,7 @@ export function TaskCard({
   return (
     <div
       className={cn(
-        'card-flat p-4 rounded-[5px] hover:shadow-e2 hover:translate-y-[-2px] transition-all cursor-pointer overflow-hidden flex gap-4',
+        'card-flat p-4 rounded-[8px] hover:shadow-e2 hover:translate-y-[-2px] transition-all cursor-pointer overflow-hidden flex gap-4',
         onClick && 'cursor-pointer'
       )}
       onClick={onClick}

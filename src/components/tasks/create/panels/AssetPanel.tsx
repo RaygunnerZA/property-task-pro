@@ -9,8 +9,9 @@
 
 import React, { useState, useEffect } from "react";
 import { Package, Plus } from "lucide-react";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { ContextResolver } from "../ContextResolver";
+import { InstructionBlock } from "../InstructionBlock";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,8 @@ interface AssetPanelProps {
   selectedAssetIds: string[];
   onAssetsChange: (assetIds: string[]) => void;
   suggestedAssets?: string[];
+  instructionBlock?: { section: string; entityName: string; entityType: string } | null;
+  onInstructionDismiss?: () => void;
 }
 
 export function AssetPanel({
@@ -29,12 +32,31 @@ export function AssetPanel({
   spaceId,
   selectedAssetIds,
   onAssetsChange,
-  suggestedAssets = []
+  suggestedAssets = [],
+  instructionBlock,
+  onInstructionDismiss
 }: AssetPanelProps) {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
   const [assets, setAssets] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Check if instruction block should be shown (only for 'what' section and 'asset' type)
+  const showInstruction = instructionBlock?.section === 'what' && instructionBlock?.entityType === 'asset';
+  const assetName = instructionBlock?.entityName;
+  
+  // Check if entity is now resolved (asset exists)
+  const isResolved = assetName ? (
+    assets.some(a => a.name.toLowerCase() === assetName.toLowerCase()) ||
+    selectedAssetIds.some(id => id.includes(`ghost-asset-${assetName.toLowerCase()}`))
+  ) : false;
+  
+  // Auto-dismiss instruction block when resolved
+  useEffect(() => {
+    if (showInstruction && isResolved && onInstructionDismiss) {
+      onInstructionDismiss();
+    }
+  }, [showInstruction, isResolved, onInstructionDismiss, assets, selectedAssetIds, assetName]);
 
   // Load assets filtered by property and space
   const loadAssets = async () => {
@@ -59,7 +81,7 @@ export function AssetPanel({
     } catch (err: any) {
       console.error('Error loading assets:', err);
       toast({
-        title: "Error loading assets",
+        title: "Couldn't load assets",
         description: err.message,
         variant: "destructive"
       });
@@ -90,21 +112,40 @@ export function AssetPanel({
   if (!propertyId) {
     return (
       <ContextResolver
-        title="Select a property first to view assets."
+        title="Pick a property first to see assets."
         helperText="Assets"
       >
         <p className="text-xs text-muted-foreground">
-          Assets require a property to be selected.
+          Assets are linked to properties. Pick one to continue.
         </p>
       </ContextResolver>
     );
   }
 
   return (
-    <ContextResolver
-      title=""
-      helperText=""
-    >
+    <div className="space-y-6">
+      {/* Instruction Block - Show when asset is not in system */}
+      {showInstruction && !isResolved && assetName && propertyId && (
+        <InstructionBlock
+          message={`${assetName} isn't in the system yet. Choose how you'd like to add it.`}
+          buttons={[
+            {
+              label: "Create asset",
+              helperText: "Add this asset to the selected property or space",
+              onClick: () => {
+                // TODO: Open asset creation dialog
+                toast({ title: "Asset creation coming soon", description: `Would create "${assetName}"` });
+              },
+            },
+          ]}
+          onDismiss={onInstructionDismiss}
+        />
+      )}
+      
+      <ContextResolver
+        title=""
+        helperText=""
+      >
         <div className="flex items-center gap-2 w-full min-w-0">
           {/* ASSETS + chip - Fixed on left */}
           <button
@@ -122,9 +163,10 @@ export function AssetPanel({
                 <p className="text-xs text-muted-foreground whitespace-nowrap">Loading assets...</p>
               ) : filteredAssets.length > 0 ? (
                 filteredAssets.map(asset => (
-                  <StandardChip
+                  <Chip
                     key={asset.id}
-                    label={asset.name}
+                    role="filter"
+                    label={asset.name.toUpperCase()}
                     selected={selectedAssetIds.includes(asset.id)}
                     onSelect={() => toggleAsset(asset.id)}
                     className="shrink-0"
@@ -138,6 +180,7 @@ export function AssetPanel({
             </div>
           </div>
         </div>
-    </ContextResolver>
+      </ContextResolver>
+    </div>
   );
 }

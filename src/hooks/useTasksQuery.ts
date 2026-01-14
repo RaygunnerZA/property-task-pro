@@ -23,6 +23,10 @@ export function useTasksQuery(propertyId?: string) {
       }
 
       const { data, error } = await query;
+      // #region agent log
+      console.log('[DEBUG] useTasksQuery result', {dataCount:data?.length||0,error:error?.message||null,orgId});
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'useTasksQuery.ts:25',message:'Tasks query result',data:{dataCount:data?.length||0,error:error?.message||null,orgId,firstTask:data?.[0]||null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (error) throw error;
       
       // Images are already included in tasks_view as a JSON array

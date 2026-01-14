@@ -1,28 +1,32 @@
 import { Tag } from "lucide-react";
-import { StandardChip, StandardChipProps } from "@/components/chips/StandardChip";
+import { Chip, ChipProps, ChipRole } from "@/components/chips/Chip";
 
-export interface SmartChipProps extends Omit<StandardChipProps, 'icon' | 'color'> {
+export interface SmartChipProps extends Omit<ChipProps, 'icon' | 'color' | 'role'> {
   type?: 'space' | 'person' | 'team' | 'priority' | 'theme' | 'category' | 'compliance' | 'date';
   themeType?: 'category' | 'project' | 'tag' | 'group'; // For theme chips
+  role?: ChipRole; // Override default role inference
 }
 
 /**
  * SmartChip - Enhanced chip component with type-based styling
  * Automatically applies appropriate icons and colors based on type
+ * Now wraps the unified Chip component
  */
 export function SmartChip({
   type,
   themeType,
+  role,
   ...props
 }: SmartChipProps) {
   // Default icon and color based on type
   let icon: React.ReactNode | undefined;
   let color: string | undefined;
+  let inferredRole: ChipRole = role || 'fact'; // Default to fact
 
   switch (type) {
     case 'theme':
       icon = <Tag className="h-3 w-3" />;
-      color = '#FCD34D'; // Yellow for themes
+      // Themes don't get color in fact chips (only filters can be colorful)
       break;
     case 'space':
       // Will use MapPin icon if provided
@@ -34,22 +38,25 @@ export function SmartChip({
       // Will use Users icon if provided
       break;
     case 'priority':
-      // Will use AlertTriangle icon if provided
+      // Priority is a fact, not status (status is for alerts)
+      inferredRole = role || 'fact';
       break;
     default:
       break;
   }
 
-  // Override with theme-specific color if it's a project theme
-  if (type === 'theme' && themeType === 'project') {
-    color = '#FCD34D'; // Yellow for projects
+  // Color is only allowed for filter and status roles
+  if (inferredRole === 'filter' && type === 'theme' && themeType === 'project') {
+    color = '#FCD34D'; // Yellow for projects in filter context
   }
 
   return (
-    <StandardChip
+    <Chip
       {...props}
+      role={inferredRole}
       icon={props.icon || icon}
-      color={props.color || color}
+      color={inferredRole === 'filter' ? (props.color || color) : undefined}
+      label={typeof props.label === 'string' ? props.label.toUpperCase() : props.label}
     />
   );
 }

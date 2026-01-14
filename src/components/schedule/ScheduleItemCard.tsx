@@ -31,7 +31,7 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
     <button
       type="button"
       onClick={() => onPress?.(item)}
-      className="w-full flex items-start gap-3 px-3 py-3 rounded-2xl text-left bg-card shadow-e2 transition-all active:shadow-engraved"
+      className="w-full flex items-start gap-3 px-3 py-3 rounded-[8px] text-left bg-card shadow-e2 transition-all active:shadow-engraved"
     >
       {/* Accent Bar */}
       <div className={`w-1.5 h-12 rounded-full ${accentColor}`} />

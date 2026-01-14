@@ -1,13 +1,9 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
-import { SpaceCard } from "@/components/spaces/SpaceCard";
-import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { format } from "date-fns";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { useSpaces } from "@/hooks/useSpaces";
-import { Plus, EyeOff, Eye } from "lucide-react";
+import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface LeftColumnProps {
@@ -26,6 +22,8 @@ interface LeftColumnProps {
   urgentCount?: number;
   overdueCount?: number;
   onFilterClick?: (filterId: string) => void;
+  selectedPropertyIds?: Set<string>;
+  onPropertySelectionChange?: (propertyIds: Set<string>) => void;
 }
 
 /**
@@ -45,18 +43,34 @@ export function LeftColumn({
   tasksByDate,
   urgentCount,
   overdueCount,
-  onFilterClick
+  onFilterClick,
+  selectedPropertyIds: externalSelectedPropertyIds,
+  onPropertySelectionChange
 }: LeftColumnProps) {
   const { orgId } = useActiveOrg();
   const [showAddProperty, setShowAddProperty] = useState(false);
-  const [showAddSpace, setShowAddSpace] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
-  const [hideSpaces, setHideSpaces] = useState(false);
-  const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces();
+  const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
+    () => {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:53',message:'Initializing selectedPropertyIds',data:{propertiesCount:properties.length,propertyIds:properties.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      return new Set();
+    }
+  );
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const propertiesRef = useRef<HTMLDivElement>(null);
-  const spacesRef = useRef<HTMLDivElement>(null);
+
+  // Use external selectedPropertyIds if provided, otherwise use internal state
+  const selectedPropertyIds = externalSelectedPropertyIds !== undefined 
+    ? externalSelectedPropertyIds 
+    : internalSelectedPropertyIds;
+  
+  const setSelectedPropertyIds = onPropertySelectionChange || setInternalSelectedPropertyIds;
+
+  // Property filters start as inactive by default (no filters = show all properties)
+  // No auto-selection - users must explicitly click property icons to filter
 
   // Extract task counts from properties_view (properties now have open_tasks_count)
   const taskCounts = useMemo(() => {
@@ -83,31 +97,15 @@ export function LeftColumn({
     return counts;
   }, [tasks]);
 
-  // Calculate task counts per space
-  const spaceTaskCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    const urgentCounts: Record<string, number> = {};
-    tasks.forEach((task) => {
-      if (task.spaces) {
-        try {
-          const taskSpaces = typeof task.spaces === 'string' ? JSON.parse(task.spaces) : task.spaces;
-          if (Array.isArray(taskSpaces)) {
-            taskSpaces.forEach((space: any) => {
-              if (space?.id && task.status !== 'completed' && task.status !== 'archived') {
-                counts[space.id] = (counts[space.id] || 0) + 1;
-                if (task.priority === 'urgent' || task.priority === 'high') {
-                  urgentCounts[space.id] = (urgentCounts[space.id] || 0) + 1;
-                }
-              }
-            });
-          }
-        } catch {
-          // Skip invalid JSON
-        }
-      }
-    });
-    return { counts, urgentCounts };
-  }, [tasks]);
+  // Property icon mapping
+  const PROPERTY_ICONS = {
+    home: Home,
+    building: Building2,
+    hotel: Hotel,
+    warehouse: Warehouse,
+    store: Store,
+    castle: Castle,
+  } as const;
 
 
   return (
@@ -115,58 +113,79 @@ export function LeftColumn({
       ref={leftColumnRef}
       className="h-auto md:h-screen bg-background flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
     >
-      {/* Calendar Section - Fixed at top */}
-      <div 
-        ref={calendarRef}
-        className="flex-shrink-0 border-b border-border w-full"
-      >
-        <div className="px-4 pt-4 pb-4 w-full">
-          {tasksLoading ? (
-            <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
-              <Skeleton className="h-64 w-full" />
-            </div>
-          ) : (
-            <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
-              <DashboardCalendar
-                tasks={tasks}
-                selectedDate={selectedDate}
-                onDateSelect={onDateSelect}
-                tasksByDate={tasksByDate}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Properties Section - Scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+      {/* Properties Section - Fixed at top */}
+      <div className="flex-shrink-0 border-b border-border w-full">
         <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setHideProperties(!hideProperties)}
-                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-muted-foreground/60 hover:text-muted-foreground transition-all duration-200"
-                aria-label={hideProperties ? "Show properties" : "Hide properties"}
-              >
-                {hideProperties ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-              </button>
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowAddProperty(true)}
-                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
+                className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+                style={{
+                  width: '35px',
+                  height: '35px',
+                }}
                 aria-label="Add property"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: '18px', height: '16px' }} />
               </button>
+              {/* Property Icon Buttons - Aligned Right */}
+              {properties.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  {properties.map((property) => {
+                    const iconName = property.icon_name || "home";
+                    const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                    const iconColor = property.icon_color_hex || "#8EC9CE";
+                    const isActive = selectedPropertyIds.has(property.id);
+                    
+                    return (
+                      <button
+                        key={property.id}
+                        onClick={() => {
+                          // #region agent log
+                          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:144',message:'Property icon clicked',data:{propertyId:property.id,isActiveBefore:isActive,selectedPropertyIdsSize:selectedPropertyIds.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                          // #endregion
+                          // Toggle active state
+                          const newSelection = new Set(selectedPropertyIds);
+                          if (isActive) {
+                            newSelection.delete(property.id);
+                          } else {
+                            newSelection.add(property.id);
+                          }
+                          setSelectedPropertyIds(newSelection);
+                          if (onFilterClick) {
+                            // #region agent log
+                            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:154',message:'Calling onFilterClick',data:{filterId:`filter-property-${property.id}`,propertyId:property.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                            // #endregion
+                            onFilterClick(`filter-property-${property.id}`);
+                          }
+                        }}
+                        className="flex items-center justify-center rounded-[342px] transition-all duration-200 hover:scale-110 active:scale-95"
+                        style={{
+                          width: '35px',
+                          height: '35px',
+                          backgroundColor: isActive ? iconColor : 'transparent',
+                          boxShadow: isActive 
+                            ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                            : "none",
+                          borderColor: "rgba(0, 0, 0, 0)",
+                          borderStyle: "none",
+                          borderImage: "none",
+                        }}
+                        aria-label={`Filter by ${property.nickname || property.address}`}
+                      >
+                        <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
         {!hideProperties && (
-        <div className="pt-[2px] px-4 pb-0 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
+        <div className="px-4 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
           {propertiesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -186,7 +205,7 @@ export function LeftColumn({
               <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
                 <div className="flex gap-3 items-start py-2" style={{ width: 'max-content', height: '229px' }}>
                   {properties.map((property) => (
-                    <div key={property.id} className="w-[215px] flex-shrink-0" style={{ maxHeight: '228px' }}>
+                    <div key={property.id} className="w-[195px] flex-shrink-0" style={{ maxHeight: '228px' }}>
                       <PropertyCard
                         property={{
                           ...property,
@@ -217,101 +236,37 @@ export function LeftColumn({
           )}
         </div>
         )}
+      </div>
 
-        {/* Spaces Section */}
-        <div className="border-b border-border p-4 pb-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Spaces</h2>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setHideSpaces(!hideSpaces)}
-                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-muted-foreground/60 hover:text-muted-foreground transition-all duration-200"
-                aria-label={hideSpaces ? "Show spaces" : "Hide spaces"}
-              >
-                {hideSpaces ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                onClick={() => setShowAddSpace(true)}
-                className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
-                aria-label="Add space"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
+      {/* Calendar Section - Scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+        <div 
+          ref={calendarRef}
+          className="flex-shrink-0 border-b border-border w-full"
+        >
+          <div className="px-4 pt-4 pb-4 w-full">
+            {tasksLoading ? (
+              <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                <Skeleton className="h-64 w-full" />
+              </div>
+            ) : (
+              <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                <DashboardCalendar
+                  tasks={tasks}
+                  selectedDate={selectedDate}
+                  onDateSelect={onDateSelect}
+                  tasksByDate={tasksByDate}
+                />
+              </div>
+            )}
           </div>
         </div>
-        {!hideSpaces && (
-        <div className="pt-[2px] px-4 pb-4 w-full max-w-full overflow-x-hidden">
-          {spacesLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-20 w-full rounded-lg" />
-              <Skeleton className="h-20 w-full rounded-lg" />
-            </div>
-          ) : spaces.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-xs text-muted-foreground">No spaces yet</p>
-            </div>
-          ) : (
-            <div 
-              ref={spacesRef}
-              className="relative w-full max-w-full overflow-hidden"
-            >
-              <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ width: 'calc(100% + 15px)' }}>
-                <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
-                  {spaces.map((space) => (
-                    <div key={space.id} className="w-[165px] flex-shrink-0 rounded-[5px]">
-                      <SpaceCard
-                        space={{
-                          ...space,
-                          taskCount: spaceTaskCounts.counts[space.id] || 0,
-                          urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
-                        }}
-                        onFilterClick={(spaceId) => {
-                          if (onFilterClick) {
-                            onFilterClick(`filter-space-${spaceId}`);
-                          }
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Gradient overlay - right side fade, aligned to right edge of mask */}
-              <div 
-                className="absolute top-0 right-0 bottom-0 pointer-events-none"
-                style={{
-                  width: '10px',
-                  height: '155px',
-                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
-                  zIndex: 20
-                }}
-              />
-            </div>
-          )}
-        </div>
-        )}
       </div>
 
       {/* Add Property Dialog */}
       <AddPropertyDialog
         open={showAddProperty}
         onOpenChange={setShowAddProperty}
-      />
-
-      {/* Add Space Dialog */}
-      <AddSpaceDialog
-        open={showAddSpace}
-        onOpenChange={(open) => {
-          setShowAddSpace(open);
-          if (!open) {
-            refreshSpaces();
-          }
-        }}
-        properties={properties}
       />
     </div>
   );

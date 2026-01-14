@@ -75,7 +75,7 @@ export function StandardPageWithBack({
   return (
     <div className={cn("min-h-screen bg-background pb-20", className)}>
       <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 pt-[50px] pb-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
+        <div className={cn("mx-auto px-4 pt-[63px] pb-4 h-[115px] flex items-center justify-between", maxWidthClasses[maxWidth])}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <Button
               variant="ghost"

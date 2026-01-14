@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Plus, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
 import { useAIExtract } from "@/hooks/useAIExtract";
@@ -35,7 +35,6 @@ import { WhoPanel } from "./create/panels/WhoPanel";
 import { WhenPanel } from "./create/panels/WhenPanel";
 import { PriorityPanel } from "./create/panels/PriorityPanel";
 import { CategoryPanel } from "./create/panels/CategoryPanel";
-import { PerforationLine } from "./create/PerforationLine";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
@@ -43,15 +42,18 @@ import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPip
 import type { EntityType } from "@/types/chip-suggestions";
 import { queryResolutionMemory, storeResolutionMemory } from "@/services/ai/resolutionMemory";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
-import type { SuggestedChip } from "@/types/chip-suggestions";
+import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
+import { Chip } from "@/components/chips/Chip";
 
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
-import { TaskMetadataIconRow } from "./create/TaskMetadataIconRow";
-import type { CreateTaskPayload, TaskPriority, RepeatRule, CreateTaskImagePayload } from "@/types/database";
+import { TaskContextRow } from "./create/TaskContextRow";
+import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
+import type { TempImage } from "@/types/temp-image";
+import { cleanupTempImage } from "@/utils/image-optimization";
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -127,7 +129,7 @@ export function CreateTaskModal({
   const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
-  const [images, setImages] = useState<CreateTaskImagePayload[]>([]);
+  const [images, setImages] = useState<TempImage[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
@@ -153,17 +155,120 @@ export function CreateTaskModal({
   const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
   const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
   
+  // Fact chips include: person, team, space, asset, category, date, recurrence
+  // Recurrence never blocks entity resolution - only space, asset, person do
+  const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
+  
+  // Calculate fact chips (resolved context) - chips that are resolved or don't require blocking
+  const factChips = useMemo(() => {
+    const chipMap = new Map<string, SuggestedChip>();
+    
+    // Add suggestions first
+    chipSuggestions
+      .filter(chip => factChipTypes.includes(chip.type))
+      .forEach(chip => chipMap.set(chip.id, chip));
+    
+    // Override with applied chips (more current state)
+    Array.from(appliedChips.values())
+      .filter(chip => factChipTypes.includes(chip.type))
+      .forEach(chip => chipMap.set(chip.id, chip));
+    
+    // Fact chips are resolved (have resolvedEntityId) OR don't require blocking
+    return Array.from(chipMap.values()).filter(chip => 
+      chip.resolvedEntityId || !chip.blockingRequired
+    );
+  }, [chipSuggestions, appliedChips]);
+  
+  // Calculate verb (unresolved) chips - chips that require blocking and aren't resolved
+  const verbChips = useMemo(() => {
+    const chipMap = new Map<string, SuggestedChip>();
+    
+    // Add suggestions first
+    chipSuggestions
+      .filter(chip => factChipTypes.includes(chip.type))
+      .forEach(chip => chipMap.set(chip.id, chip));
+    
+    // Override with applied chips (more current state)
+    Array.from(appliedChips.values())
+      .filter(chip => factChipTypes.includes(chip.type))
+      .forEach(chip => chipMap.set(chip.id, chip));
+    
+    // A chip is unresolved (verb) if: blockingRequired && !resolvedEntityId
+    // Recurrence chips never have blockingRequired, so they're excluded from verb chips
+    return Array.from(chipMap.values()).filter(chip => 
+      chip.blockingRequired && !chip.resolvedEntityId
+    );
+  }, [chipSuggestions, appliedChips]);
+  
+  // Calculate unresolved sections from verb chips
+  const unresolvedSections = useMemo(() => {
+    const unresolved: string[] = [];
+    const chipTypeToSection: Record<string, string> = {
+      'person': 'who',
+      'team': 'who',
+      'space': 'where',
+      'asset': 'what',
+      'category': 'category',
+      'date': 'when',
+    };
+    
+    verbChips.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section && !unresolved.includes(section)) {
+        unresolved.push(section);
+      }
+    });
+    
+    return unresolved;
+  }, [verbChips]);
+  
+  // Helper to generate verb label
+  const generateVerbLabel = useCallback((chip: SuggestedChip): string => {
+    const value = chip.value || chip.label;
+    switch (chip.type) {
+      case 'person':
+        return `INVITE ${value.toUpperCase()}`;
+      case 'team':
+        return `CHOOSE ${value.toUpperCase()}`;
+      case 'space':
+        return `ADD ${value.toUpperCase()} TO SPACES`;
+      case 'asset':
+        return `ADD ${value.toUpperCase()} TO ASSETS`;
+      case 'category':
+        return `CHOOSE ${value.toUpperCase()}`;
+      case 'date':
+        return `SET ${value.toUpperCase()}`;
+      default:
+        return `CHOOSE ${value.toUpperCase()}`;
+    }
+  }, []);
+  
   // Clarity state
   const [clarityState, setClarityState] = useState<{
     severity: ClaritySeverity;
     message: string;
   } | null>(null);
   
+  // Instruction block state - track which entity needs to be added
+  const [instructionBlock, setInstructionBlock] = useState<{
+    section: string;
+    entityName: string;
+    entityType: string;
+  } | null>(null);
+  
   // Get teams and categories for resolution
   const { teams } = useTeams();
   const { categories } = useCategories();
   
-  // Handle chip selection and resolution
+  // Handle chip removal (for fact chips in context row)
+  const handleChipRemove = useCallback((chip: SuggestedChip) => {
+    const updated = new Map(appliedChips);
+    updated.delete(chip.id);
+    setAppliedChips(updated);
+    setSelectedChipIds(prev => prev.filter(id => id !== chip.id));
+  }, [appliedChips]);
+  
+  // Handle chip selection and resolution (only for verb chips)
   const handleChipSelect = useCallback(async (chip: SuggestedChip) => {
     const isCurrentlySelected = selectedChipIds.includes(chip.id);
     
@@ -262,6 +367,7 @@ export function CreateTaskModal({
       }
       
       // Update chip with resolution
+      // Recurrence chips never block entity resolution - only space, asset, and person do
       const resolvedChip: SuggestedChip = {
         ...chip,
         state: resolution.resolved ? 'resolved' : resolution.requiresCreation ? 'blocked' : 'applied',
@@ -269,6 +375,8 @@ export function CreateTaskModal({
         resolvedEntityType: resolution.entityType,
         resolutionSource: resolution.resolutionSource,
         resolutionConfidence: resolution.confidence,
+        // Only space, asset, and person chips block entity resolution
+        // Recurrence, date, priority, category, team chips never block
         blockingRequired: chip.type === 'space' || chip.type === 'asset' || chip.type === 'person',
       };
       
@@ -318,11 +426,11 @@ export function CreateTaskModal({
         if (chip.type === 'space' && !propertyId) {
           blockingIssues.push(`"${chip.label}" was found, but no property is selected. Which property does this apply to?`);
         } else if (chip.type === 'asset' && !propertyId) {
-          blockingIssues.push(`Asset "${chip.label}" requires a property to be selected.`);
+          blockingIssues.push(`"${chip.label}" needs a property. Pick one to continue.`);
         } else if (chip.type === 'person') {
           blockingIssues.push(`Filla couldn't find "${chip.label}". Choose an existing contact or invite someone new.`);
         } else {
-          blockingIssues.push(`"${chip.label}" needs to be resolved before creating the task.`);
+          blockingIssues.push(`"${chip.label}" needs sorting before creating this task.`);
         }
       }
     });
@@ -332,7 +440,7 @@ export function CreateTaskModal({
       c => (c.type === 'space' || c.type === 'asset') && !c.resolvedEntityId
     );
     if (hasSpaceOrAssetChips && !propertyId) {
-      blockingIssues.push('A property must be selected when spaces or assets are suggested.');
+      blockingIssues.push('Pick a property when adding spaces or assets.');
     }
     
     if (blockingIssues.length > 0) {
@@ -350,58 +458,29 @@ export function CreateTaskModal({
     }
   }, [appliedChips, propertyId]);
   
-  // #region agent log
-  // Debug AI extraction flow
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:115',message:'AI extraction state',data:{description,descriptionLength:description.length,hasAiResult:!!aiResult,aiResultTitle:aiResult?.title,aiResultPriority:aiResult?.priority,aiResultDate:aiResult?.date,aiLoading,aiError,orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-  }, [description, aiResult, aiLoading, aiError, orgId]);
-  // #endregion
-
   // Auto-update title from AI when user hasn't manually edited
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:125',message:'Title auto-fill useEffect triggered',data:{hasAiResultTitle:!!aiResult?.title,aiResultTitle:aiResult?.title,userEditedTitle,willApply:!!(aiResult?.title && !userEditedTitle),currentTitle:title,showTitleField},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     if (aiResult?.title && !userEditedTitle) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:127',message:'Applying AI title to form',data:{aiTitle:aiResult.title,previousTitle:title,previousShowTitleField:showTitleField},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
-      setAiTitleGenerated(aiResult.title);
-      setTitle(aiResult.title);
+      // Capitalize first letter of AI title
+      const capitalizedTitle = aiResult.title.charAt(0).toUpperCase() + aiResult.title.slice(1);
+      setAiTitleGenerated(capitalizedTitle);
+      setTitle(capitalizedTitle);
       setShowTitleField(true);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:132',message:'After setting title state',data:{setTitleCalled:true,setShowTitleFieldCalled:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
     }
   }, [aiResult?.title, userEditedTitle]);
 
   // Auto-apply AI suggestions when received
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:134',message:'AI suggestions useEffect triggered',data:{hasAiResult:!!aiResult,aiPriority:aiResult?.priority,currentPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     if (!aiResult) return;
     
     // Auto-set priority from AI
     if (aiResult.priority === "HIGH" || aiResult.priority === "high") {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:140',message:'Setting priority to high',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       setPriority("high");
     } else if (aiResult.priority === "URGENT" || aiResult.priority === "urgent") {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:142',message:'Setting priority to urgent',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       setPriority("urgent");
     } else if (aiResult.priority === "MEDIUM" || aiResult.priority === "medium") {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:144',message:'Setting priority to medium',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       setPriority("medium");
     } else if (aiResult.priority === "LOW" || aiResult.priority === "low") {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:146',message:'Setting priority to low',data:{previousPriority:priority},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       setPriority("low");
     }
     
@@ -491,107 +570,6 @@ export function CreateTaskModal({
     }
   }, [open, resetForm]);
 
-  // Apply all AI suggestions at once
-  const handleApplyAllSuggestions = useCallback(() => {
-    if (!aiResult) return;
-
-    // Apply people
-    if (aiResult.people && aiResult.people.length > 0) {
-      const firstPerson = aiResult.people[0];
-      const foundMember = members.find(
-        (m) => m.display_name.toLowerCase() === firstPerson.name.toLowerCase()
-      );
-      if (foundMember) {
-        setAssignedUserId(foundMember.user_id);
-      } else {
-        const [firstName, ...lastNameParts] = firstPerson.name.split(" ");
-        const lastName = lastNameParts.join(" ") || "";
-        const pendingInvitation: PendingInvitation = {
-          id: `pending-${Date.now()}`,
-          firstName,
-          lastName,
-          email: "",
-          displayName: firstPerson.name,
-        };
-        setPendingInvitations([...pendingInvitations, pendingInvitation]);
-        setAssignedUserId(`pending-${firstPerson.name}`);
-      }
-    }
-
-    // Apply spaces
-    if (aiResult.spaces && aiResult.spaces.length > 0) {
-      aiResult.spaces.forEach((space) => {
-        const foundSpace = spaces.find(
-          (s) => s.name.toLowerCase() === space.name.toLowerCase()
-        );
-        if (foundSpace && !selectedSpaceIds.includes(foundSpace.id)) {
-          setSelectedSpaceIds((prev) => [...prev, foundSpace.id]);
-        } else if (!foundSpace) {
-          const ghostId = `ghost-space-${space.name}`;
-          if (!selectedSpaceIds.includes(ghostId)) {
-            setSelectedSpaceIds((prev) => [...prev, ghostId]);
-          }
-        }
-      });
-    }
-
-    // Apply date
-    if (aiResult.date) {
-      const today = new Date();
-      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-      
-      if (aiResult.date === "today") {
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiResult.date === "tomorrow") {
-        today.setDate(today.getDate() + 1);
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiResult.date === "next_week") {
-        today.setDate(today.getDate() + 7);
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (weekdays.includes(aiResult.date.toLowerCase())) {
-        const targetDay = weekdays.indexOf(aiResult.date.toLowerCase());
-        const currentDay = today.getDay();
-        let daysToAdd = targetDay - currentDay;
-        if (daysToAdd <= 0) daysToAdd += 7;
-        today.setDate(today.getDate() + daysToAdd);
-        setDueDate(today.toISOString().split("T")[0]);
-      } else {
-        try {
-          const date = new Date(aiResult.date);
-          if (!isNaN(date.getTime())) {
-            setDueDate(date.toISOString().split("T")[0]);
-          }
-        } catch {
-          // Invalid date format
-        }
-      }
-    }
-
-    // Apply priority
-    if (aiResult.priority) {
-      const priorityLower = aiResult.priority.toLowerCase();
-      if (priorityLower === "urgent" || priorityLower === "high" || priorityLower === "medium" || priorityLower === "low") {
-        setPriority(priorityLower as TaskPriority);
-      }
-    }
-
-    // Apply assets
-    if (aiResult.assets && aiResult.assets.length > 0) {
-      // Assets will be handled by the AssetsSection when expanded
-      // For now, just track that we have asset suggestions
-    }
-
-    // Apply themes/categories
-    if (aiResult.themes && aiResult.themes.length > 0) {
-      // Themes will be handled by the ThemesSection when expanded
-      // For now, just track that we have theme suggestions
-    }
-
-    toast({
-      title: "AI suggestions applied",
-      description: "All available suggestions have been applied to your task.",
-    });
-  }, [aiResult, members, spaces, selectedSpaceIds, pendingInvitations, toast]);
   const handleSubmit = async () => {
     // Validation: Check resolution truth (Final Pre-Build Rule)
     const blockingChips = Array.from(appliedChips.values()).filter(
@@ -601,8 +579,8 @@ export function CreateTaskModal({
     if (blockingChips.length > 0) {
       const firstBlocking = blockingChips[0];
       toast({
-        title: "Resolve before creating",
-        description: `"${firstBlocking.label}" needs to be resolved before creating the task.`,
+        title: "Sort this first",
+        description: `"${firstBlocking.label}" needs sorting before creating the task.`,
         variant: "destructive"
       });
       return;
@@ -614,8 +592,8 @@ export function CreateTaskModal({
     );
     if (hasSpaceOrAssetChips && !propertyId) {
       toast({
-        title: "Property required",
-        description: "A property must be selected when spaces or assets are applied.",
+        title: "Pick a property",
+        description: "Choose a property when adding spaces or assets.",
         variant: "destructive"
       });
       return;
@@ -637,8 +615,8 @@ export function CreateTaskModal({
     
     if (!finalTitle || !finalTitle.trim()) {
       toast({
-        title: "Description required",
-        description: "Please enter a task title or description.",
+        title: "Add a description",
+        description: "Enter a task title or description to continue.",
         variant: "destructive"
       });
       return;
@@ -655,8 +633,8 @@ export function CreateTaskModal({
     
     if (!orgId) {
       toast({
-        title: "Not authenticated",
-        description: "Please log in to create tasks.",
+        title: "Not signed in",
+        description: "Log in to create tasks.",
         variant: "destructive"
       });
       return;
@@ -678,7 +656,7 @@ export function CreateTaskModal({
         const spaceName = ghostId.replace('ghost-space-', '');
         
         if (selectedPropertyIds.length === 0) {
-          throw new Error(`Cannot create space "${spaceName}" without a property selected`);
+          throw new Error(`Can't create space "${spaceName}" without picking a property`);
         }
         
         // Use first property for space creation
@@ -695,11 +673,11 @@ export function CreateTaskModal({
         
         if (spaceError) {
           console.error("Error creating space:", spaceError);
-          throw new Error(`Failed to create space "${spaceName}": ${spaceError.message}`);
+          throw new Error(`Couldn't create space "${spaceName}": ${spaceError.message}`);
         }
         
         if (!newSpace) {
-          throw new Error(`Failed to create space "${spaceName}": no data returned`);
+          throw new Error(`Couldn't create space "${spaceName}": no data returned`);
         }
         
         // Replace ghost ID with real ID
@@ -735,11 +713,11 @@ export function CreateTaskModal({
         
         if (themeError) {
           console.error("Error creating theme:", themeError);
-          throw new Error(`Failed to create theme "${themeName}": ${themeError.message}`);
+          throw new Error(`Couldn't create theme "${themeName}": ${themeError.message}`);
         }
         
         if (!newTheme) {
-          throw new Error(`Failed to create theme "${themeName}": no data returned`);
+          throw new Error(`Couldn't create theme "${themeName}": no data returned`);
         }
         
         // Replace ghost ID with real ID
@@ -844,109 +822,144 @@ export function CreateTaskModal({
       }
 
       if (!newTask) {
-        throw new Error("Failed to create task: no data returned");
+        throw new Error("Couldn't create task: no data returned");
       }
 
       const taskId = newTask.id;
       console.log('[CreateTaskModal] Task created successfully:', { taskId, newTask });
       
-      // Upload images to storage and create task_images records
+      // Upload images in background (non-blocking)
       if (images.length > 0 && taskId && orgId) {
-        for (const image of images) {
+        // Update taskId in ImageUploadSection for annotation support
+        // Upload images in background
+        const uploadPromises = images.map(async (tempImage, index) => {
           try {
-            // Convert data URL to File
-            const response = await fetch(image.image_url);
-            const blob = await response.blob();
-            const file = new File([blob], image.original_filename || 'image.jpg', { type: image.file_type || 'image/jpeg' });
+            // Update status to uploading
+            setImages(prev => {
+              const updated = [...prev];
+              updated[index] = { ...updated[index], upload_status: 'uploading' };
+              return updated;
+            });
+
+            const imageUuid = crypto.randomUUID();
+            const basePath = `org/${orgId}/tasks/${taskId}/images/${imageUuid}`;
             
-            // Upload to storage
-            const fileExt = file.name.split('.').pop() || 'jpg';
-            const fileName = `org/${orgId}/tasks/${taskId}/${crypto.randomUUID()}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
+            // Upload thumbnail
+            const thumbnailPath = `${basePath}/thumb.webp`;
+            const { error: thumbError } = await supabase.storage
               .from("task-images")
-              .upload(fileName, file, {
-                cacheControl: "3600",
-                upsert: false,
+              .upload(thumbnailPath, tempImage.thumbnail_blob, {
+                contentType: 'image/webp',
+                cacheControl: '31536000', // 1 year
               });
 
-            if (uploadError) {
-              console.error("Image upload error:", uploadError);
-              // Show user-friendly error message
-              toast({
-                title: "Image upload failed",
-                description: uploadError.message.includes("maximum allowed size")
-                  ? `Image "${image.original_filename}" is too large. Please use a smaller image.`
-                  : `Failed to upload "${image.original_filename}": ${uploadError.message}`,
-                variant: "destructive",
-              });
-              continue;
-            }
+            if (thumbError) throw thumbError;
 
-            // Get public URL
-            const { data: urlData } = supabase.storage
+            // Upload optimized
+            const optimizedPath = `${basePath}/optimized.webp`;
+            const { error: optError } = await supabase.storage
               .from("task-images")
-              .getPublicUrl(fileName);
+              .upload(optimizedPath, tempImage.optimized_blob, {
+                contentType: 'image/webp',
+                cacheControl: '31536000',
+              });
 
-            // Create attachment record (using attachments table per @Docs/14_Attachments.md)
-            const attachmentPayload = {
-              org_id: orgId,
-              parent_type: "task",
-              parent_id: taskId,
-              file_url: urlData.publicUrl,
-              file_name: image.original_filename,
-              file_type: image.file_type || file.type,
-              file_size: file.size,
-            };
+            if (optError) throw optError;
+
+            // Get public URLs
+            const { data: thumbUrl } = supabase.storage
+              .from("task-images")
+              .getPublicUrl(thumbnailPath);
             
-            const { data: insertedAttachment, error: imageRecordError } = await supabase
+            const { data: optUrl } = supabase.storage
+              .from("task-images")
+              .getPublicUrl(optimizedPath);
+
+            // Create attachment record with annotations
+            const { data: attachment, error: attachError } = await supabase
               .from("attachments")
-              .insert(attachmentPayload)
+              .insert({
+                org_id: orgId,
+                parent_type: "task",
+                parent_id: taskId,
+                file_url: optUrl.publicUrl,
+                thumbnail_url: thumbUrl.publicUrl,
+                optimized_url: optUrl.publicUrl,
+                file_name: tempImage.display_name,
+                file_type: 'image/webp',
+                file_size: tempImage.optimized_blob.size,
+                annotation_json: tempImage.annotation_json || [],
+                upload_status: 'complete',
+              })
               .select()
               .single();
 
-            if (imageRecordError) {
-              console.error("Error creating attachment record:", imageRecordError);
-              toast({
-                title: "Failed to save image",
-                description: imageRecordError.message.includes("row-level security")
-                  ? "You don't have permission to upload images. Please contact your administrator."
-                  : `Failed to save "${image.original_filename}": ${imageRecordError.message}`,
-                variant: "destructive",
-              });
-              continue;
+            if (attachError) throw attachError;
+
+            // Create annotation record if annotations exist
+            if (tempImage.annotation_json && tempImage.annotation_json.length > 0 && attachment) {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                await supabase
+                  .from("task_image_annotations")
+                  .insert({
+                    task_id: taskId,
+                    image_id: attachment.id,
+                    created_by: user.id,
+                    annotations: tempImage.annotation_json,
+                  });
+              }
             }
-            
-            if (!insertedAttachment) {
-              console.error("Attachment record created but no data returned");
-              toast({
-                title: "Image upload incomplete",
-                description: `Image "${image.original_filename}" was uploaded but could not be linked to the task.`,
-                variant: "destructive",
-              });
-              continue;
-            }
-            
-            console.log('[CreateTaskModal] Attachment created successfully:', {
-              attachmentId: insertedAttachment.id,
-              taskId,
-              fileName: image.original_filename,
+
+            // Update status to uploaded
+            setImages(prev => {
+              const updated = [...prev];
+              updated[index] = { 
+                ...updated[index], 
+                upload_status: 'uploaded', 
+                uploaded: true,
+                storage_paths: {
+                  thumbnail: thumbnailPath,
+                  optimized: optimizedPath,
+                }
+              };
+              return updated;
             });
-          } catch (err: any) {
-            console.error("Error uploading image:", err);
+
+            // Cleanup blob URLs
+            cleanupTempImage(tempImage);
+
+            return attachment;
+          } catch (error: any) {
+            console.error(`Error uploading image ${index}:`, error);
+            
+            // Update status to failed
+            setImages(prev => {
+              const updated = [...prev];
+              updated[index] = { 
+                ...updated[index], 
+                upload_status: 'failed',
+                upload_error: error.message 
+              };
+              return updated;
+            });
+
             toast({
               title: "Image upload failed",
-              description: err.message || `Failed to upload "${image.original_filename}"`,
+              description: `Couldn't upload "${tempImage.display_name}". You can retry later.`,
               variant: "destructive",
             });
+
+            return null;
           }
-        }
-        
-        // Invalidate queries immediately after images are uploaded
-        // This ensures the task list updates even before thumbnails are processed
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+        });
+
+        // Don't await - let uploads happen in background
+        Promise.all(uploadPromises).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+          queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+        });
       }
       
       // Link spaces to task via task_spaces junction table
@@ -1066,8 +1079,8 @@ export function CreateTaskModal({
     } catch (error: any) {
       console.error("Create task failed:", error);
       toast({
-        title: "Error creating task",
-        description: error.message || "Something went wrong.",
+        title: "Couldn't create task",
+        description: error.message || "Something didn't work. Try again.",
         variant: "destructive"
       });
     } finally {
@@ -1078,7 +1091,6 @@ export function CreateTaskModal({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/30">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Plus className="h-5 w-5 text-primary" />
           Create Task
         </h2>
         <button 
@@ -1093,19 +1105,13 @@ export function CreateTaskModal({
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         {/* Image Upload Icons */}
-        <ImageUploadSection images={images} onImagesChange={setImages} />
+        <ImageUploadSection images={images} onImagesChange={setImages} taskId={undefined} />
 
         {/* AI-Generated Title (appears after AI responds) */}
         <div className={cn(
           "transition-all duration-300 ease-out mt-[6px]",
           showTitleField ? "opacity-100 max-h-24" : "opacity-0 max-h-0 overflow-hidden"
         )}>
-          {(() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CreateTaskModal.tsx:712',message:'Rendering title field',data:{showTitleField,title,aiTitleGenerated,userEditedTitle},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-            // #endregion
-            return null;
-          })()}
           {showTitleField && (
             <div className="space-y-2">
               <label className="text-[12px] font-mono uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -1122,7 +1128,7 @@ export function CreateTaskModal({
                     setUserEditedTitle(false);
                   }
                 }}
-                className="w-full px-4 py-3 rounded-xl bg-card shadow-e1 focus:shadow-e2 focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
+                className="w-full px-4 py-3 rounded-xl bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
                 placeholder="Generated title…"
               />
             </div>
@@ -1132,9 +1138,10 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* Icon Row - Opens Context Panels Below */}
-        <TaskMetadataIconRow
-          aiResult={aiResult}
+        {/* Task Context Row - Resolved context chips + Section Navigation */}
+        <TaskContextRow
+          factChips={factChips}
+          onChipRemove={handleChipRemove}
           activeSection={activeSection}
           onSectionClick={(section) => {
             setActiveSection(section);
@@ -1146,29 +1153,8 @@ export function CreateTaskModal({
               }, 100);
             }
           }}
-          onApplyAllSuggestions={handleApplyAllSuggestions}
-          appliedPeople={assignedUserId ? [members.find(m => m.user_id === assignedUserId)?.display_name || ""].filter(Boolean) : []}
-          appliedSpaces={selectedSpaceIds.map(id => {
-            if (id.startsWith("ghost-space-")) {
-              return id.replace("ghost-space-", "");
-            }
-            return spaces.find(s => s.id === id)?.name || "";
-          }).filter(Boolean)}
-          appliedDate={dueDate}
-          appliedAssets={selectedAssetIds}
-          appliedPriority={priority}
-          appliedThemes={selectedThemeIds}
+          unresolvedSections={unresolvedSections}
         />
-
-        {/* Perforation Line - Below AI Suggestion Section */}
-        {aiResult && (
-          (aiResult.people?.length ?? 0) > 0 ||
-          (aiResult.spaces?.length ?? 0) > 0 ||
-          aiResult.date ||
-          (aiResult.assets?.length ?? 0) > 0 ||
-          aiResult.priority ||
-          (aiResult.themes?.length ?? 0) > 0
-        ) ? <PerforationLine /> : null}
 
         {/* Context Panels - Only Visible When Active Section is Selected */}
         {activeSection && (
@@ -1184,6 +1170,16 @@ export function CreateTaskModal({
                   suggestedPeople={aiResult?.people?.map(p => p.name) || []}
                   pendingInvitations={pendingInvitations}
                   onPendingInvitationsChange={setPendingInvitations}
+                  instructionBlock={instructionBlock}
+                  onInstructionDismiss={() => setInstructionBlock(null)}
+                  onInviteToOrg={() => {
+                    // TODO: Open invite dialog or navigate to invite page
+                    toast({ title: "Invite functionality coming soon" });
+                  }}
+                  onAddAsContractor={() => {
+                    // TODO: Open contractor creation dialog
+                    toast({ title: "Contractor creation coming soon" });
+                  }}
                 />
               </div>
             )}
@@ -1198,6 +1194,8 @@ export function CreateTaskModal({
                   onSpacesChange={setSelectedSpaceIds}
                   suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
                   defaultPropertyId={defaultPropertyId}
+                  instructionBlock={instructionBlock}
+                  onInstructionDismiss={() => setInstructionBlock(null)}
                 />
               </div>
             )}
@@ -1231,6 +1229,8 @@ export function CreateTaskModal({
                   selectedThemeIds={selectedThemeIds} 
                   onThemesChange={setSelectedThemeIds}
                   suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
+                  instructionBlock={instructionBlock}
+                  onInstructionDismiss={() => setInstructionBlock(null)}
                 />
               </div>
             )}
@@ -1244,6 +1244,8 @@ export function CreateTaskModal({
                   selectedAssetIds={selectedAssetIds}
                   onAssetsChange={setSelectedAssetIds}
                   suggestedAssets={aiResult?.assets || []}
+                  instructionBlock={instructionBlock}
+                  onInstructionDismiss={() => setInstructionBlock(null)}
                 />
               </div>
             )}
@@ -1317,6 +1319,31 @@ export function CreateTaskModal({
 
       {/* Footer */}
       <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur">
+        {/* Verb Chips Clarity Block - Shows when unresolved chips exist */}
+        {verbChips.length > 0 && (
+          <div className="w-full px-4 py-3 rounded-[5px] bg-muted/30 border border-border/40">
+            <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
+              {verbChips.length === 1 
+                ? "One thing to sort before creating this task."
+                : "A few things to sort before creating this task."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {verbChips.map((chip) => {
+                const verbLabel = generateVerbLabel(chip);
+                return (
+                  <Chip
+                    key={chip.id}
+                    role="verb"
+                    label={verbLabel}
+                    onSelect={() => handleChipSelect(chip)}
+                    animate={false}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
         {/* Clarity State */}
         {clarityState && (
           <ClarityState
@@ -1350,7 +1377,7 @@ export function CreateTaskModal({
             <Button 
               className="flex-1 shadow-primary-btn" 
               onClick={handleSubmit} 
-              disabled={isSubmitting || (clarityState?.severity === 'blocking')}
+              disabled={isSubmitting || (clarityState?.severity === 'blocking') || verbChips.length > 0}
             >
               {isSubmitting ? "Creating..." : "Create Task"}
             </Button>

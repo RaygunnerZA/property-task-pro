@@ -3,7 +3,7 @@
  * Used by the Create Task modal's intelligent chip suggestion engine
  */
 
-export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset';
+export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset' | 'recurrence';
 
 export type PriorityValue = 'low' | 'medium' | 'high' | 'urgent';
 

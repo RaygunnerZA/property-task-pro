@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker, getIconByName } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useThemes } from "@/hooks/useThemes";
@@ -97,8 +97,8 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
   const handleCreateTheme = async () => {
     if (!newThemeName.trim()) {
       toast({ 
-        title: "Name required", 
-        description: "Please enter a theme name.",
+        title: "Add a name", 
+        description: "Enter a theme name to continue.",
         variant: "destructive" 
       });
       return;
@@ -153,7 +153,7 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
     } catch (err: any) {
       console.error("Theme creation error:", err);
       toast({ 
-        title: "Error creating theme", 
+        title: "Couldn't create theme", 
         description: err.message,
         variant: "destructive" 
       });
@@ -191,36 +191,43 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {themes.map(theme => (
-          <StandardChip
-            key={theme.id}
-            label={theme.name}
-            selected={selectedThemeIds.includes(theme.id)}
-            onSelect={() => toggleTheme(theme.id)}
-            color={theme.color || (theme.type === 'project' ? '#FCD34D' : undefined)}
-            icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
-          />
-        ))}
-        
-        {/* Ghost chips for AI suggestions */}
-        {ghostThemes.map((ghost, idx) => {
-          const themeTypeValue = ghost.type || 'category';
-          const ghostId = `ghost-theme-${ghost.name}-${themeTypeValue}`;
-          const isSelected = selectedThemeIds.includes(ghostId);
-          return (
-            <StandardChip
-              key={`ghost-${idx}`}
-              label={isSelected ? ghost.name : `+ ${ghost.name}`}
-              ghost={!isSelected}
-              selected={isSelected}
-              onSelect={() => handleGhostThemeClick(ghost.name, ghost.type)}
-              icon={<Tag className="h-3 w-3" />}
-              color="#FCD34D"
-            />
-          );
-        })}
-        
+      <div className="space-y-2">
+        {/* Row 1: AI Suggestions (if any) */}
+        {ghostThemes.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {ghostThemes.map((ghost, idx) => {
+              const themeTypeValue = ghost.type || 'category';
+              const ghostId = `ghost-theme-${ghost.name}-${themeTypeValue}`;
+              const isSelected = selectedThemeIds.includes(ghostId);
+              return (
+                  <Chip
+                    key={`ghost-${idx}`}
+                    role="suggestion"
+                    label={isSelected ? ghost.name.toUpperCase() : `+ ${ghost.name.toUpperCase()}`}
+                    selected={isSelected}
+                    onSelect={() => handleGhostThemeClick(ghost.name, ghost.type)}
+                    animate={true}
+                  />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Row 2: Fact Chips (committed themes) */}
+        {themes.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {themes.map(theme => (
+              <Chip
+                key={theme.id}
+                role="fact"
+                label={theme.name.toUpperCase()}
+                onRemove={() => toggleTheme(theme.id)}
+                icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
+              />
+            ))}
+          </div>
+        )}
+
         {themes.length === 0 && ghostThemes.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">
             No themes yet. Create one to organize tasks.

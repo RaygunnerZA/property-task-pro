@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
@@ -167,7 +167,7 @@ export function WhereTab({
       onPropertyChange(newSelectedIds);
     } catch (err: any) {
       toast({ 
-        title: "Error creating property", 
+        title: "Couldn't create property", 
         description: err.message,
         variant: "destructive" 
       });
@@ -205,7 +205,7 @@ export function WhereTab({
       await refreshSpaces();
     } catch (err: any) {
       toast({ 
-        title: "Error creating space", 
+        title: "Couldn't create space", 
         description: err.message,
         variant: "destructive" 
       });
@@ -267,9 +267,10 @@ export function WhereTab({
         ) : filteredProperties.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {filteredProperties.map(property => (
-              <StandardChip
+              <Chip
                 key={property.id}
-                label={property.nickname || property.address}
+                role="filter"
+                label={(property.nickname || property.address).toUpperCase()}
                 selected={selectedPropertyIds.includes(property.id)}
                 onSelect={() => handlePropertySelect(property.id)}
                 color={property.icon_color_hex || undefined}
@@ -314,9 +315,10 @@ export function WhereTab({
           <div className="flex flex-wrap gap-2">
             {/* Existing spaces */}
             {filteredSpaces.map(space => (
-              <StandardChip
+              <Chip
                 key={space.id}
-                label={space.name}
+                role="filter"
+                label={space.name.toUpperCase()}
                 selected={spaceIds.includes(space.id)}
                 onSelect={() => toggleSpace(space.id)}
                 icon={space.icon ? <span>{space.icon}</span> : undefined}
@@ -328,12 +330,13 @@ export function WhereTab({
               const ghostId = `ghost-space-${ghostName}`;
               const isSelected = spaceIds.includes(ghostId);
               return (
-                <StandardChip
+                <Chip
                   key={`ghost-${idx}`}
-                  label={isSelected ? ghostName : `+ ${ghostName}`}
-                  ghost={!isSelected}
+                  role="suggestion"
+                  label={isSelected ? ghostName.toUpperCase() : `+ ${ghostName.toUpperCase()}`}
                   selected={isSelected}
                   onSelect={() => handleGhostSpaceClick(ghostName)}
+                  animate={true}
                 />
               );
             })}

@@ -34,7 +34,7 @@ export function UserAvatar({
 
   return (
     <Avatar 
-      className={cn("rounded-full border-2 border-background", className)}
+      className={cn("rounded-[5px] border-2 border-background", className)}
       style={{ width: size, height: size }}
     >
       {imageUrl && (
@@ -102,7 +102,7 @@ export function OverlappingAvatars({
       ))}
       {remainingCount > 0 && (
         <div
-          className="flex items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-xs font-medium"
+          className="flex items-center justify-center rounded-[5px] border-2 border-background bg-muted text-muted-foreground text-xs font-medium"
           style={{ 
             marginLeft: `-${overlapPx}px`,
             zIndex: 0,

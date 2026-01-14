@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, FileSignature } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { SubtaskOptionsMenu } from "./SubtaskOptionsMenu";
@@ -39,7 +39,7 @@ export function SubtaskCard({
   onFocusPrevious,
   onFocusNext
 }: SubtaskCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [backspaceCount, setBackspaceCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
@@ -69,8 +69,16 @@ export function SubtaskCard({
       setBackspaceCount(0);
     }
   }, [subtask.title]);
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 64)}px`;
+    }
+  }, [subtask.title]);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       setShowOptions(false); // Collapse panel when moving to next question
       onEnterPress(subtask.id);
@@ -130,29 +138,40 @@ export function SubtaskCard({
   return <div ref={setNodeRef} style={style} className={cn("transition-all duration-150", isDragging && "opacity-50 z-50", isDeleting && "opacity-0 scale-95")}>
       <div className={cn("rounded-xl bg-transparent shadow-e1 transition-shadow", isDragging && "shadow-e2")} style={{ color: "rgba(255, 255, 255, 0)", boxShadow: "none", border: "none" }}>
         {/* Main Row */}
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded" style={{ color: "rgba(255, 255, 255, 0)", backgroundColor: "rgba(255, 255, 255, 0)" }}>
+        <div className="flex items-center gap-[3px] pl-0 pr-0 py-2.5 rounded" style={{ color: "rgba(255, 255, 255, 0)", backgroundColor: "rgba(255, 255, 255, 0)", height: "49px" }}>
           {/* Drag Handle */}
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
             <GripVertical className="h-4 w-4 text-muted-foreground/40" />
           </div>
 
           {/* Index */}
-          <span className="font-mono text-xs text-muted-foreground w-5 shrink-0">
+          <span className="font-mono text-xs text-muted-foreground w-5 shrink-0 pl-1 pr-1">
             {index + 1}.
           </span>
 
           {/* Input */}
-          <Input ref={inputRef} placeholder="Add subtask..." value={subtask.title} onChange={e => onUpdate(subtask.id, {
+          <Textarea ref={inputRef} placeholder="Add subtask..." value={subtask.title} onChange={e => onUpdate(subtask.id, {
           title: e.target.value
-        })} onKeyDown={handleKeyDown} className="flex-1 h-8 text-base md:text-base border-0 bg-transparent shadow-none focus-visible:ring-0 px-0" style={{ border: 'none', outline: 'none' }} />
+        })} onKeyDown={handleKeyDown} className="flex-1 min-w-0 min-h-[32px] max-h-[64px] text-base md:text-base border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 resize-none overflow-y-auto" style={{ border: 'none', outline: 'none', color: 'rgba(42, 41, 62, 1)' }} rows={1} />
 
           {/* Badges */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {subtask.is_yes_no && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono uppercase">
-                Y/N
-              </span>}
             {subtask.requires_signature && <FileSignature className="h-3.5 w-3.5 text-accent" />}
           </div>
+
+          {/* Yes/No Toggle - shown when is_yes_no is true, before options menu */}
+          {subtask.is_yes_no && (
+            <div 
+              className="px-2 py-1 rounded-md text-[10px] font-mono text-muted-foreground/60 shrink-0 opacity-50"
+              style={{
+                boxShadow: "inset 1px 1px 2px rgba(0, 0, 0, 0.08), inset -1px -1px 2px rgba(255, 255, 255, 0.7)"
+              }}
+            >
+              <span className="text-muted-foreground/50">yes</span>
+              <span className="text-muted-foreground/30 mx-1">|</span>
+              <span className="text-muted-foreground/50">no</span>
+            </div>
+          )}
 
           {/* Options Menu */}
           <SubtaskOptionsMenu isCreator={isCreator} onConvertToYesNo={toggleYesNo} onAddSignature={toggleSignature} onDuplicate={() => onDuplicate(subtask.id)} onDelete={handleDelete} />

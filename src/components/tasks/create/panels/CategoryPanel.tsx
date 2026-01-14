@@ -2,10 +2,11 @@
  * CategoryPanel - Task Context Resolver for categories/themes
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Plus } from 'lucide-react';
 import { ContextResolver } from '../ContextResolver';
-import { StandardChip } from '@/components/chips/StandardChip';
+import { InstructionBlock } from '../InstructionBlock';
+import { Chip } from '@/components/chips/Chip';
 import { useCategories } from '@/hooks/useCategories';
 import { cn } from '@/lib/utils';
 
@@ -13,16 +14,38 @@ interface CategoryPanelProps {
   selectedThemeIds: string[];
   onThemesChange: (themeIds: string[]) => void;
   suggestedThemes?: Array<{ name: string; type: string }>;
+  instructionBlock?: { section: string; entityName: string; entityType: string } | null;
+  onInstructionDismiss?: () => void;
 }
 
 export function CategoryPanel({
   selectedThemeIds,
   onThemesChange,
-  suggestedThemes = []
+  suggestedThemes = [],
+  instructionBlock,
+  onInstructionDismiss
 }: CategoryPanelProps) {
   const { categories } = useCategories();
 
   const filteredCategories = categories;
+  
+  // Check if instruction block should be shown (only for 'category' section and 'category'/'theme' type)
+  const showInstruction = instructionBlock?.section === 'category' && 
+    (instructionBlock?.entityType === 'category' || instructionBlock?.entityType === 'theme');
+  const categoryName = instructionBlock?.entityName;
+  
+  // Check if entity is now resolved (category exists)
+  const isResolved = categoryName ? (
+    categories.some(c => c.name.toLowerCase() === categoryName.toLowerCase()) ||
+    selectedThemeIds.some(id => id.includes(`ghost-category-${categoryName.toLowerCase()}`))
+  ) : false;
+  
+  // Auto-dismiss instruction block when resolved
+  useEffect(() => {
+    if (showInstruction && isResolved && onInstructionDismiss) {
+      onInstructionDismiss();
+    }
+  }, [showInstruction, isResolved, onInstructionDismiss, categories, selectedThemeIds, categoryName]);
 
   const toggleCategory = (categoryId: string) => {
     if (selectedThemeIds.includes(categoryId)) {
@@ -33,10 +56,33 @@ export function CategoryPanel({
   };
 
   return (
-    <ContextResolver
-      title=""
-      helperText=""
-    >
+    <div className="space-y-6">
+      {/* Instruction Block - Show when category is not in system */}
+      {showInstruction && !isResolved && categoryName && (
+        <InstructionBlock
+          message={`${categoryName} isn't in the system yet. Choose how you'd like to add it.`}
+          buttons={[
+            {
+              label: "Create category",
+              helperText: "Add this category to organize similar tasks",
+              onClick: () => {
+                // TODO: Open category creation dialog
+                // For now, we can auto-create as a ghost category
+                const ghostId = `ghost-category-${categoryName}`;
+                if (!selectedThemeIds.includes(ghostId)) {
+                  onThemesChange([...selectedThemeIds, ghostId]);
+                }
+              },
+            },
+          ]}
+          onDismiss={onInstructionDismiss}
+        />
+      )}
+      
+      <ContextResolver
+        title=""
+        helperText=""
+      >
         <div className="flex items-center gap-2 w-full min-w-0">
           {/* CATEGORY + chip - Fixed on left */}
           <button
@@ -52,9 +98,10 @@ export function CategoryPanel({
             <div className="flex items-center gap-2 h-[40px]">
               {filteredCategories.length > 0 ? (
                 filteredCategories.map(category => (
-                  <StandardChip
+                  <Chip
                     key={category.id}
-                    label={category.name}
+                    role="filter"
+                    label={category.name.toUpperCase()}
                     selected={selectedThemeIds.includes(category.id)}
                     onSelect={() => toggleCategory(category.id)}
                     className="shrink-0"
@@ -68,7 +115,8 @@ export function CategoryPanel({
             </div>
           </div>
         </div>
-    </ContextResolver>
+      </ContextResolver>
+    </div>
   );
 }
 

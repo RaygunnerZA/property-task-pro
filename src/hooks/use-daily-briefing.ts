@@ -29,9 +29,12 @@ interface DailyBriefingData {
  * - Most frequent property (Context)
  * - Count of recurring tasks (Reminder)
  * - Local weather from open-meteo.com
+ * 
+ * @param providedTasks - Optional array of tasks to use instead of fetching all tasks
  */
-export function useDailyBriefing(): DailyBriefingData {
-  const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
+export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
+  const { data: allTasks = [], isLoading: tasksLoading } = useTasksQuery();
+  const tasks = providedTasks !== undefined ? providedTasks : allTasks;
   const [userFirstName, setUserFirstName] = useState<string>("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherError, setWeatherError] = useState<string | null>(null);

@@ -21,7 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
@@ -31,6 +31,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ContextResolver } from "../ContextResolver";
+import { InstructionBlock } from "../InstructionBlock";
 import { cn } from "@/lib/utils";
 
 // Property icon mapping
@@ -50,15 +51,19 @@ interface WherePanelProps {
   onSpacesChange: (spaceIds: string[]) => void;
   suggestedSpaces?: string[];
   defaultPropertyId?: string;
+  instructionBlock?: { section: string; entityName: string; entityType: string } | null;
+  onInstructionDismiss?: () => void;
 }
 
 export function WherePanel({ 
   propertyId, 
   spaceIds, 
   onPropertyChange, 
-  onSpacesChange,
+  onSpacesChange, 
   suggestedSpaces = [],
-  defaultPropertyId
+  defaultPropertyId,
+  instructionBlock,
+  onInstructionDismiss
 }: WherePanelProps) {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
@@ -78,6 +83,31 @@ export function WherePanel({
   // Use first property for spaces (spaces are property-specific)
   const primaryPropertyId = selectedPropertyIds.length > 0 ? selectedPropertyIds[0] : propertyId;
   const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces(primaryPropertyId || undefined);
+  
+  // Check if instruction block should be shown (only for 'where' section and 'space' type)
+  const showInstruction = instructionBlock?.section === 'where' && instructionBlock?.entityType === 'space';
+  const spaceName = instructionBlock?.entityName;
+  
+  // Check if entity is now resolved (space exists)
+  const isResolved = spaceName ? (
+    spaces.some(s => s.name.toLowerCase() === spaceName.toLowerCase()) ||
+    spaceIds.some(id => id.includes(`ghost-space-${spaceName.toLowerCase()}`))
+  ) : false;
+  
+  // Auto-dismiss instruction block when resolved
+  useEffect(() => {
+    if (showInstruction && isResolved && onInstructionDismiss) {
+      onInstructionDismiss();
+    }
+  }, [showInstruction, isResolved, onInstructionDismiss, spaces, spaceIds, spaceName]);
+  
+  // Update selectedPropertyIds when properties load and user has exactly one
+  useEffect(() => {
+    if (properties.length === 1 && selectedPropertyIds.length === 0 && !defaultPropertyId && !propertyId) {
+      setSelectedPropertyIds([properties[0].id]);
+      onPropertyChange([properties[0].id]);
+    }
+  }, [properties.length, defaultPropertyId, propertyId, selectedPropertyIds.length, onPropertyChange]);
   
   const refreshProperties = () => {
     queryClient.invalidateQueries({ queryKey: ["properties"] });
@@ -197,7 +227,7 @@ export function WherePanel({
       onPropertyChange(newSelectedIds);
     } catch (err: any) {
       toast({ 
-        title: "Error creating property", 
+        title: "Couldn't create property", 
         description: err.message,
         variant: "destructive" 
       });
@@ -233,7 +263,7 @@ export function WherePanel({
       await refreshSpaces();
     } catch (err: any) {
       toast({ 
-        title: "Error creating space", 
+        title: "Couldn't create space", 
         description: err.message,
         variant: "destructive" 
       });
@@ -258,6 +288,26 @@ export function WherePanel({
 
   return (
     <div className="space-y-6">
+      {/* Instruction Block - Show when space is not in system */}
+      {showInstruction && !isResolved && spaceName && (
+        <InstructionBlock
+          message={`${spaceName} isn't in the system yet. Choose how you'd like to add it.`}
+          buttons={[
+            {
+              label: "Create space",
+              helperText: "Add this space to the selected property",
+              onClick: () => {
+                setNewSpaceName(spaceName);
+                setPendingGhostSpace(spaceName);
+                setShowCreateSpace(true);
+                // Instruction block will dismiss when space is created
+              },
+            },
+          ]}
+          onDismiss={onInstructionDismiss}
+        />
+      )}
+      
       {/* Step 1: Property (always shown first) */}
       <ContextResolver
         title=""
@@ -282,9 +332,10 @@ export function WherePanel({
             <div className="flex items-center gap-2 h-[40px]">
               {/* Step 3: Composite property+space chip when space is selected */}
               {selectedSpace && selectedProperty ? (
-                <StandardChip
+                <Chip
                   key={`composite-${selectedProperty.id}-${selectedSpace.id}`}
-                  label={`${selectedProperty.nickname || selectedProperty.address} – ${selectedSpace.name}`}
+                  role="filter"
+                  label={`${selectedProperty.nickname || selectedProperty.address} – ${selectedSpace.name}`.toUpperCase()}
                   selected={true}
                   onSelect={() => {}}
                   color={selectedProperty.icon_color_hex || undefined}
@@ -311,9 +362,10 @@ export function WherePanel({
                   }
                   
                   return (
-                    <StandardChip
+                    <Chip
                       key={property.id}
-                      label={property.nickname || property.address}
+                      role="filter"
+                      label={(property.nickname || property.address).toUpperCase()}
                       selected={isSelected}
                       onSelect={() => handlePropertySelect(property.id)}
                       color={property.icon_color_hex || undefined}
@@ -367,9 +419,10 @@ export function WherePanel({
                 ) : filteredSpaces.length > 0 || ghostSpaces.length > 0 ? (
                   <>
                     {filteredSpaces.map(space => (
-                      <StandardChip
+                      <Chip
                         key={space.id}
-                        label={space.name}
+                        role="filter"
+                        label={space.name.toUpperCase()}
                         selected={spaceIds.includes(space.id)}
                         onSelect={() => toggleSpace(space.id)}
                         icon={space.icon ? <span>{space.icon}</span> : undefined}
@@ -381,14 +434,15 @@ export function WherePanel({
                       const ghostId = `ghost-space-${ghostName}`;
                       const isSelected = spaceIds.includes(ghostId);
                       return (
-                        <StandardChip
-                          key={`ghost-${idx}`}
-                          label={isSelected ? ghostName : `+ ${ghostName}`}
-                          ghost={!isSelected}
-                          selected={isSelected}
-                          onSelect={() => handleGhostSpaceClick(ghostName)}
-                          className="shrink-0"
-                        />
+                      <Chip
+                        key={`ghost-${idx}`}
+                        role="suggestion"
+                        label={isSelected ? ghostName.toUpperCase() : `+ ${ghostName.toUpperCase()}`}
+                        selected={isSelected}
+                        onSelect={() => handleGhostSpaceClick(ghostName)}
+                        animate={true}
+                        className="shrink-0"
+                      />
                       );
                     })}
                   </>

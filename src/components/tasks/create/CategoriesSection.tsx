@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useCategories } from "@/hooks/useCategories";
@@ -78,8 +78,8 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) {
       toast({ 
-        title: "Name required", 
-        description: "Please enter a category name.",
+        title: "Add a name", 
+        description: "Enter a category name to continue.",
         variant: "destructive" 
       });
       return;
@@ -90,8 +90,8 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
     
     if (refreshError) {
       toast({ 
-        title: "Session error", 
-        description: "Please log out and log back in.",
+        title: "Sign in issue", 
+        description: "Log out and back in to continue.",
         variant: "destructive" 
       });
       return;
@@ -147,7 +147,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
     } catch (err: any) {
       console.error("Category creation error:", err);
       toast({ 
-        title: "Error creating category", 
+        title: "Couldn't create category", 
         description: err.message,
         variant: "destructive" 
       });
@@ -184,28 +184,37 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {categories.map(category => (
-          <StandardChip
-            key={category.id}
-            label={category.name}
-            selected={selectedCategoryIds.includes(category.id)}
-            onSelect={() => toggleCategory(category.id)}
-            color={category.color || undefined}
-            icon={category.icon ? <span>{category.icon}</span> : undefined}
-          />
-        ))}
-        
-        {/* Ghost chips for AI suggestions */}
-        {ghostCategories.map((ghostName, idx) => (
-          <StandardChip
-            key={`ghost-${idx}`}
-            label={`+ ${ghostName}`}
-            ghost
-            onSelect={() => handleGhostCategoryClick(ghostName)}
-          />
-        ))}
-        
+      <div className="space-y-2">
+        {/* Row 1: AI Suggestions (if any) */}
+        {ghostCategories.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {ghostCategories.map((ghostName, idx) => (
+              <Chip
+                key={`ghost-${idx}`}
+                role="suggestion"
+                label={`+ ${ghostName.toUpperCase()}`}
+                onSelect={() => handleGhostCategoryClick(ghostName)}
+                animate={true}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Row 2: Fact Chips (committed categories) */}
+        {categories.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {categories.map(category => (
+              <Chip
+                key={category.id}
+                role="fact"
+                label={category.name.toUpperCase()}
+                onRemove={() => toggleCategory(category.id)}
+                icon={category.icon ? <span>{category.icon}</span> : undefined}
+              />
+            ))}
+          </div>
+        )}
+
         {categories.length === 0 && ghostCategories.length === 0 && (
           <p className="text-xs text-muted-foreground text-center py-2">
             No categories yet. Create one to organize tasks.

@@ -42,21 +42,29 @@ export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
   return (
     <div
       className={cn(
-        "bg-card rounded-[8px] overflow-hidden shadow-e1",
+        "bg-card rounded-[8px] overflow-hidden shadow-e1 h-[155px]",
         "transition-all duration-200",
         className
       )}
     >
       {/* Thumbnail Image */}
       <div 
-        className="w-full h-[70px] overflow-hidden relative"
+        className="w-full h-[63px] overflow-hidden relative"
         style={{
           backgroundColor: iconColor,
         }}
       >
-        {/* Space Icon - centered */}
-        <div className="absolute inset-0 flex items-center justify-start pl-[9px] pr-[9px]">
-          <FolderOpen className="h-6 w-6 text-white" />
+        {/* Space Icon - positioned top left */}
+        <div 
+          className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10"
+          style={{
+            backgroundColor: iconColor,
+            width: '24px',
+            height: '24px',
+            boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+          }}
+        >
+          <FolderOpen className="h-4 w-4 text-white" />
         </div>
         {/* Neumorphic overlay */}
         <div 
@@ -67,14 +75,14 @@ export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
         />
       </div>
       
-      <div className="pt-3 pb-3 pl-2.5 pr-2.5 space-y-2">
+      <div className="pt-2.5 pb-2.5 pl-2.5 pr-2.5 space-y-2 h-[96px]">
         {/* Top Section - Clickable for navigation */}
         <div 
           onClick={handleTopSectionClick}
           style={{ verticalAlign: 'middle' }}
-          className="cursor-pointer active:scale-[0.99]"
+          className="cursor-pointer active:scale-[0.99] mb-[22px] mt-[4px] h-[15px] flex flex-col justify-center items-start"
         >
-          <h3 className="font-semibold text-sm text-foreground leading-tight h-[20px]" style={{ verticalAlign: 'middle' }}>
+          <h3 className="font-semibold text-sm text-foreground leading-tight h-[16px]" style={{ verticalAlign: 'middle', lineHeight: '15px' }}>
             {displayName}
           </h3>
         </div>
@@ -97,7 +105,7 @@ export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
           className="cursor-pointer active:scale-[0.99] m-0"
         >
           {/* Task Counts Row */}
-          <div className="flex items-center gap-2 flex-wrap mt-[2px]">
+          <div className="flex items-center gap-2 flex-wrap mt-0">
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <CheckSquare className="h-3 w-3" />
               {taskCount} Task{taskCount !== 1 ? 's' : ''}

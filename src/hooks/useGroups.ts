@@ -28,8 +28,17 @@ export function useGroups() {
       .eq("is_archived", false)
       .order("display_order", { ascending: true });
 
-    if (err) setError(err.message);
-    else setGroups(data ?? []);
+    // 404 is expected if groups table doesn't exist or has no data - don't treat as error
+    if (err) {
+      if (err.code === 'PGRST116' || err.status === 404 || err.message?.includes('404')) {
+        setGroups([]);
+        setError(null);
+      } else {
+        setError(err.message);
+      }
+    } else {
+      setGroups(data ?? []);
+    }
 
     setLoading(false);
   }

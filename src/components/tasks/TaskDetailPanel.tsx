@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save } from "lucide-react";
+import { createPortal } from "react-dom";
+import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
+import { ImageAnnotationEditor } from "./ImageAnnotationEditor";
+import { useImageAnnotations } from "@/hooks/useImageAnnotations";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +20,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -53,6 +56,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
+  const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
+  const [editingImageId, setEditingImageId] = useState<string | null>(null);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -137,8 +142,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     } catch (err: any) {
       console.error("Error updating assignee:", err);
       toast({
-        title: "Error",
-        description: err.message || "Failed to update assignee",
+        title: "Couldn't update assignee",
+        description: err.message || "Something didn't work. Try again.",
         variant: "destructive",
       });
     } finally {
@@ -198,8 +203,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     } catch (err: any) {
       console.error("Error updating teams:", err);
       toast({
-        title: "Error",
-        description: err.message || "Failed to update teams",
+        title: "Couldn't update teams",
+        description: err.message || "Something didn't work. Try again.",
         variant: "destructive",
       });
     } finally {
@@ -254,8 +259,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     } catch (err: any) {
       console.error("Error updating task:", err);
       toast({
-        title: "Error",
-        description: err.message || "Failed to update task",
+        title: "Couldn't update task",
+        description: err.message || "Something didn't work. Try again.",
         variant: "destructive",
       });
     } finally {
@@ -318,7 +323,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             {/* Main Content Error */}
             <div className="flex-1 p-6">
               <div className="text-center py-12">
-                <p className="text-destructive mb-4">{error || "Task not found"}</p>
+                <p className="text-destructive mb-4">{error || "Couldn't find this task"}</p>
                 <button
                   onClick={onClose}
                   className="text-sm text-muted-foreground hover:text-foreground"
@@ -564,18 +569,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-2 min-h-[32px]">
                       {selectedUser ? (
-                        <StandardChip
-                          label={selectedUser.display_name}
-                          selected
-                          onSelect={() => handleUserChange(undefined)}
+                        <Chip
+                          role="fact"
+                          label={selectedUser.display_name.toUpperCase()}
                           onRemove={() => handleUserChange(undefined)}
                         />
                       ) : isUnconfirmedUser ? (
-                        <StandardChip
-                          label={selectedUserId?.replace("pending-", "") || "Unconfirmed user"}
-                          selected
-                          onSelect={() => handleUserChange(undefined)}
+                        <Chip
+                          role="fact"
+                          label={(selectedUserId?.replace("pending-", "") || "Unconfirmed user").toUpperCase()}
                           onRemove={() => handleUserChange(undefined)}
+                          className="opacity-50"
                         />
                       ) : (
                         <Select
@@ -621,11 +625,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         {selectedTeamIds.map((teamId) => {
                           const team = teams.find(t => t.id === teamId);
                           return team ? (
-                            <StandardChip
+                            <Chip
                               key={teamId}
-                              label={team.name}
-                              selected
-                              onSelect={() => toggleTeam(teamId)}
+                              role="fact"
+                              label={team.name.toUpperCase()}
                               onRemove={() => toggleTeam(teamId)}
                             />
                           ) : null;
@@ -737,6 +740,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   // Always render as modal dialog
   return (
+    <>
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="sr-only">
@@ -771,10 +775,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         <button
                           className="p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
                           onClick={() => {
-                            // TODO: Open image viewer/edit dialog
+                            const image = task.images[selectedImageIndex ?? 0];
+                            if (image?.id) {
+                              setEditingImageId(image.id);
+                              setShowAnnotationEditor(true);
+                            }
                           }}
+                          title="Annotate image"
                         >
-                          <Edit className="h-3 w-3" />
+                          <SquarePen className="h-3 w-3" />
                         </button>
                       </div>
                     </>
@@ -819,7 +828,20 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                                   }
                                 }}
                               />
-                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                <button
+                                  className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (image.id) {
+                                      setEditingImageId(image.id);
+                                      setShowAnnotationEditor(true);
+                                    }
+                                  }}
+                                  title="Annotate image"
+                                >
+                                  <SquarePen className="h-2.5 w-2.5" />
+                                </button>
                                 <button
                                   className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
                                   onClick={(e) => {
@@ -896,7 +918,64 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </div>
         </div>
       </DialogContent>
+      
     </Dialog>
+    
+    {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
+    {showAnnotationEditor && editingImageId && task && createPortal(
+      <ImageAnnotationEditorWrapper
+        taskId={taskId}
+        imageId={editingImageId}
+        imageUrl={
+          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
+          task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
+          ""
+        }
+        onClose={() => {
+          setShowAnnotationEditor(false);
+          setEditingImageId(null);
+        }}
+      />,
+      document.body
+    )}
+    </>
   );
 }
 
+// Wrapper component to handle annotation hook
+function ImageAnnotationEditorWrapper({
+  taskId,
+  imageId,
+  imageUrl,
+  onClose,
+}: {
+  taskId: string;
+  imageId: string;
+  imageUrl: string;
+  onClose: () => void;
+}) {
+  const { annotations, saveAnnotations } = useImageAnnotations(taskId, imageId);
+
+  return (
+    <ImageAnnotationEditor
+      imageUrl={imageUrl}
+      imageId={imageId}
+      taskId={taskId}
+      initialAnnotations={annotations}
+      onSave={async (anns, isAutosave) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave',message:'onSave called in wrapper',data:{annotationsCount:anns.length,isAutosave},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        await saveAnnotations(anns);
+        // Only close on manual save, not autosave
+        if (!isAutosave) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave-close',message:'closing editor after manual save',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          onClose();
+        }
+      }}
+      onCancel={onClose}
+    />
+  );
+}

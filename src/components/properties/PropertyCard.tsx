@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { Shield, Building2, Home, Hotel, Warehouse, Store, Castle, CheckSquare, AlertTriangle } from "lucide-react";
+import { Shield, Building2, Home, Hotel, Warehouse, Store, Castle, CheckSquare, AlertTriangle, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tables } from "@/integrations/supabase/types";
 import { differenceInDays } from "date-fns";
 
 type PropertyRow = Tables<"properties">;
+
 
 // Property icon mapping
 const PROPERTY_ICONS = {
@@ -79,19 +80,27 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
             />
             {/* Property Icon - positioned top left over image */}
             <div
-              className="absolute top-2 left-2 p-2 rounded-[5px] flex items-center justify-center z-10"
+              className="absolute top-2 left-2 rounded-[151px] flex items-center justify-center z-10"
               style={{
                 backgroundColor: iconColor,
-                boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+                width: '24px',
+                height: '24px',
+                boxShadow: "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
               }}
             >
               <IconComponent className="h-4 w-4 text-white" />
             </div>
           </>
         ) : (
-          /* Property Icon - centered when no image, just white icon on colored background */
-          <div className="absolute inset-0 flex items-start justify-start pl-[10px] pr-[10px] pt-[11px] pb-[11px]">
-            <IconComponent className="h-8 w-8 text-white" />
+          /* Property Icon - positioned when no image */
+          <div className="absolute top-2 left-2 rounded-[151px] flex items-center justify-center z-10"
+            style={{
+              backgroundColor: iconColor,
+              width: '24px',
+              height: '24px',
+              boxShadow: "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
+            }}>
+            <IconComponent className="h-4 w-4 text-white" />
           </div>
         )}
         {/* Neumorphic overlay - light inner shadow top/left, outer shadow right */}
@@ -109,9 +118,12 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
           onClick={handleTopSectionClick}
           className="cursor-pointer active:scale-[0.99] mt-0"
         >
-          <h3 className="font-semibold text-lg text-foreground leading-tight">
-            {displayName}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-semibold text-lg text-foreground leading-tight">
+              {displayName}
+            </h3>
+            <Layers className="h-6 w-[18px] text-muted-foreground flex-shrink-0" style={{ width: '16px', height: '16px' }} />
+          </div>
         </div>
 
         {/* Neumorphic Perforation Line - Row of cut circles */}

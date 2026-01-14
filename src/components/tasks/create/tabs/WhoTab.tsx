@@ -12,7 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Textarea } from "@/components/ui/textarea";
@@ -177,8 +177,8 @@ export function WhoTab({
     if (inviteTab === "team") {
       if (!teamMemberFirstName.trim() || !teamMemberLastName.trim() || !teamMemberEmail.trim()) {
         toast({
-          title: "Error",
-          description: "Please fill in all required fields",
+          title: "Missing info",
+          description: "Fill in all fields to continue",
           variant: "destructive",
         });
         return;
@@ -220,8 +220,8 @@ export function WhoTab({
       // External Vendor
       if (!vendorName.trim() || !vendorEmail.trim()) {
         toast({
-          title: "Error",
-          description: "Please fill in name and email",
+          title: "Missing info",
+          description: "Add a name and email to continue",
           variant: "destructive",
         });
         return;
@@ -286,7 +286,7 @@ export function WhoTab({
       onTeamsChange([...assignedTeamIds, data.id]);
     } catch (err: any) {
       toast({ 
-        title: "Error creating team", 
+        title: "Couldn't create team", 
         description: err.message,
         variant: "destructive" 
       });
@@ -327,20 +327,10 @@ export function WhoTab({
             }
             
             return (
-              <StandardChip
+              <Chip
                 key={`person-${assignedUserId}`}
-                label={displayName}
-                selected
-                pending={isPendingInvitation}
-                onSelect={() => {
-                  handleSelectPerson(null);
-                  // Also remove from pending invitations if it was pending
-                  if (isPendingInvitation) {
-                    const email = assignedUserId.replace('pending-', '');
-                    const updated = pendingInvitations.filter(inv => inv.email !== email);
-                    onPendingInvitationsChange?.(updated);
-                  }
-                }}
+                role="fact"
+                label={displayName.toUpperCase()}
                 onRemove={() => {
                   handleSelectPerson(null);
                   // Also remove from pending invitations if it was pending
@@ -350,6 +340,7 @@ export function WhoTab({
                     onPendingInvitationsChange?.(updated);
                   }
                 }}
+                className={isPendingInvitation ? "opacity-50" : ""}
               />
             );
           })()}
@@ -358,21 +349,19 @@ export function WhoTab({
             if (!team) {
               // Team might not be loaded yet, show placeholder
               return (
-                <StandardChip
+                <Chip
                   key={`team-${teamId}`}
-                  label={`Team ${teamId.slice(0, 8)}`}
-                  selected
-                  onSelect={() => toggleTeam(teamId)}
+                  role="fact"
+                  label={`TEAM ${teamId.slice(0, 8).toUpperCase()}`}
                   onRemove={() => toggleTeam(teamId)}
                 />
               );
             }
             return (
-              <StandardChip
+              <Chip
                 key={`team-${teamId}`}
-                label={team.name}
-                selected
-                onSelect={() => toggleTeam(teamId)}
+                role="fact"
+                label={team.name.toUpperCase()}
                 onRemove={() => toggleTeam(teamId)}
               />
             );
@@ -424,9 +413,10 @@ export function WhoTab({
           {filteredPeople.map((person) => {
             const isSelected = assignedUserId === person.user_id;
             return (
-              <StandardChip
+              <Chip
                 key={person.id}
-                label={person.display_name}
+                role="filter"
+                label={person.display_name.toUpperCase()}
                 selected={isSelected}
                 onSelect={() => {
                   if (isSelected) {
@@ -441,11 +431,12 @@ export function WhoTab({
           
           {/* Ghost chips for AI suggestions */}
           {ghostPeople.map((ghostName, idx) => (
-            <StandardChip
+            <Chip
               key={`ghost-${idx}`}
-              label={`+ ${ghostName}`}
-              ghost
+              role="suggestion"
+              label={`+ ${ghostName.toUpperCase()}`}
               onSelect={() => handleGhostPersonClick(ghostName)}
+              animate={true}
             />
           ))}
           
@@ -482,9 +473,10 @@ export function WhoTab({
         
         <div className="flex flex-wrap gap-2">
           {filteredTeams.map((team) => (
-            <StandardChip
+            <Chip
               key={team.id}
-              label={team.name}
+              role="filter"
+              label={team.name.toUpperCase()}
               selected={assignedTeamIds.includes(team.id)}
               onSelect={() => toggleTeam(team.id)}
             />
@@ -584,10 +576,10 @@ export function WhoTab({
                   {selectedTeamIds.map((teamId) => {
                     const team = allTeams.find(t => t.id === teamId);
                     return team ? (
-                      <StandardChip
+                      <Chip
                         key={teamId}
-                        label={team.name}
-                        selected
+                        role="fact"
+                        label={team.name.toUpperCase()}
                         onRemove={() => setSelectedTeamIds(prev => prev.filter(id => id !== teamId))}
                       />
                     ) : null;

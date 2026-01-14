@@ -7,12 +7,13 @@
  * - Chips below perforation = commitment
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User, Users, Plus } from "lucide-react";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { useTeams } from "@/hooks/useTeams";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { ContextResolver } from "../ContextResolver";
+import { InstructionBlock } from "../InstructionBlock";
 import { cn } from "@/lib/utils";
 
 export interface PendingInvitation {
@@ -31,6 +32,10 @@ interface WhoPanelProps {
   suggestedPeople?: string[];
   pendingInvitations?: PendingInvitation[];
   onPendingInvitationsChange?: (invitations: PendingInvitation[]) => void;
+  instructionBlock?: { section: string; entityName: string; entityType: string } | null;
+  onInstructionDismiss?: () => void;
+  onInviteToOrg?: () => void;
+  onAddAsContractor?: () => void;
 }
 
 export function WhoPanel({
@@ -40,10 +45,31 @@ export function WhoPanel({
   onTeamsChange,
   suggestedPeople = [],
   pendingInvitations = [],
-  onPendingInvitationsChange
+  onPendingInvitationsChange,
+  instructionBlock,
+  onInstructionDismiss,
+  onInviteToOrg,
+  onAddAsContractor
 }: WhoPanelProps) {
   const { members } = useOrgMembers();
   const { teams } = useTeams();
+  
+  // Check if instruction block should be shown (only for 'who' section and 'person' type)
+  const showInstruction = instructionBlock?.section === 'who' && instructionBlock?.entityType === 'person';
+  const personName = instructionBlock?.entityName;
+  
+  // Check if entity is now resolved (person exists or was invited)
+  const isResolved = personName ? (
+    members.some(m => m.display_name.toLowerCase() === personName.toLowerCase()) ||
+    pendingInvitations.some(inv => inv.displayName.toLowerCase() === personName.toLowerCase())
+  ) : false;
+  
+  // Auto-dismiss instruction block when resolved
+  useEffect(() => {
+    if (showInstruction && isResolved && onInstructionDismiss) {
+      onInstructionDismiss();
+    }
+  }, [showInstruction, isResolved, onInstructionDismiss]);
 
   const filteredMembers = members;
   const filteredTeams = teams;
@@ -66,6 +92,32 @@ export function WhoPanel({
 
   return (
     <div className="space-y-6">
+      {/* Instruction Block - Show when entity is not in system */}
+      {showInstruction && !isResolved && personName && (
+        <InstructionBlock
+          message={`${personName} isn't in the system yet. Choose how you'd like to add them.`}
+          buttons={[
+            {
+              label: "Invite to your organisation",
+              helperText: "Best for staff or team members",
+              onClick: () => {
+                onInviteToOrg?.();
+                // Instruction block will dismiss when person is added
+              },
+            },
+            {
+              label: "Add as contractor",
+              helperText: "Best for external suppliers",
+              onClick: () => {
+                onAddAsContractor?.();
+                // Instruction block will dismiss when person is added
+              },
+            },
+          ]}
+          onDismiss={onInstructionDismiss}
+        />
+      )}
+      
       {/* Person Assignment */}
       <ContextResolver
         title=""
@@ -87,9 +139,10 @@ export function WhoPanel({
               {filteredMembers.length > 0 || pendingInvitations.length > 0 ? (
                 <>
                   {filteredMembers.map(member => (
-                    <StandardChip
+                    <Chip
                       key={member.user_id}
-                      label={member.display_name}
+                      role="filter"
+                      label={member.display_name.toUpperCase()}
                       selected={assignedUserId === member.user_id}
                       onSelect={() => handlePersonSelect(member.user_id)}
                       className="shrink-0"
@@ -97,12 +150,13 @@ export function WhoPanel({
                   ))}
                   
                   {pendingInvitations.map(inv => (
-                    <StandardChip
+                    <Chip
                       key={inv.id}
-                      label={inv.displayName}
+                      role="filter"
+                      label={inv.displayName.toUpperCase()}
                       selected={assignedUserId === inv.id}
                       onSelect={() => handlePersonSelect(inv.id)}
-                      className="shrink-0 border-dashed"
+                      className="shrink-0"
                     />
                   ))}
                 </>
@@ -136,9 +190,10 @@ export function WhoPanel({
             <div className="flex items-center gap-2 h-[40px]">
               {filteredTeams.length > 0 ? (
                 filteredTeams.map(team => (
-                  <StandardChip
+                  <Chip
                     key={team.id}
-                    label={team.name || 'Unnamed Team'}
+                    role="filter"
+                    label={(team.name || 'Unnamed Team').toUpperCase()}
                     selected={assignedTeamIds.includes(team.id)}
                     onSelect={() => handleTeamSelect(team.id)}
                     className="shrink-0"

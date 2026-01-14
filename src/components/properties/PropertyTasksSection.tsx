@@ -20,7 +20,7 @@ const FunnelX = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) 
     strokeLinecap="round"
     strokeLinejoin="round"
     className={cn("lucide lucide-funnel-x", className)}
-    style={style}
+    style={{ width: '24px', height: '24px', ...style }}
     {...props}
   >
     <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473"/>
@@ -208,21 +208,20 @@ export function PropertyTasksSection({
             </button>
           );
         })}
-        {/* Clear Filters Button */}
-        {selectedFilter && (
-          <button
-            onClick={() => setSelectedFilter(null)}
-            className={cn(
-              "inline-flex items-center justify-center h-[35px] w-[35px] rounded-[8px] flex-shrink-0",
-              "select-none cursor-pointer transition-all",
-              "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-              "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-            )}
-            title="Clear all filters"
-          >
-            <FunnelX className="h-4 w-4" />
-          </button>
-        )}
+        {/* Filter Button */}
+        <button
+          onClick={() => setSelectedFilter(null)}
+          className={cn(
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] flex-shrink-0",
+            "select-none cursor-pointer transition-all",
+            "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+            "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+          )}
+          title="Filter"
+        >
+          <FunnelX className="h-6 w-6" style={{ width: '24px', height: '24px' }} />
+          <span className="font-mono text-[13px] uppercase tracking-wider">FILTER</span>
+        </button>
       </div>
 
       {/* Task List - One row, horizontal scroll */}

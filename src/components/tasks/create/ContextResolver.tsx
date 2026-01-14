@@ -187,59 +187,11 @@ export const ContextResolver: React.FC<ContextResolverProps> = ({
   // Legacy layout for backwards compatibility
   return (
     <div className={cn('space-y-3', className)}>
-      {/* Header: Title (descriptive text) and Search Icon */}
+      {/* Header: Title (descriptive text) */}
       {title && (
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">{title}</h3>
-        <div className="flex items-center gap-2">
-          {/* Search Input - appears when search icon is clicked */}
-          {showSearch && (
-            <Input
-              type="text"
-              placeholder={searchPlaceholder}
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className={cn(
-                'w-48 h-[30px] shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]',
-                'bg-card font-mono text-sm',
-                'border-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none'
-              )}
-              autoFocus
-            />
-          )}
-          {/* Search Icon */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowSearch(!showSearch);
-              if (showSearch) {
-                setSearchQuery('');
-                onSearch?.('');
-              }
-            }}
-            className={cn(
-              'h-[30px] w-[30px] rounded-[8px] flex items-center justify-center',
-              'transition-all duration-150',
-              showSearch
-                ? 'bg-card shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]'
-                : 'bg-background shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]'
-            )}
-          >
-            {showSearch ? (
-              <X className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Search className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        </div>
+        <h3 className="text-base font-medium text-foreground">{title}</h3>
       </div>
-      )}
-      
-      {/* Helper text (short label) */}
-      {helperText && (
-        <p className="text-xs text-muted-foreground">
-          {helperText}
-        </p>
       )}
       
       {/* Content */}

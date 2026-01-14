@@ -97,7 +97,13 @@ export function DataProvider({ children }: DataProviderProps) {
         .single();
       
       if (fetchError) {
-        console.error('Failed to fetch organisation:', fetchError);
+        // 406 (Not Acceptable) / PGRST116 errors are expected when user isn't a member yet
+        // This is common during invitation acceptance flow
+        if (fetchError.code === 'PGRST116' || fetchError.message?.includes('0 rows')) {
+          console.debug('Cannot fetch organisation - user not yet a member (expected during invitation acceptance):', fetchError);
+        } else {
+          console.error('Failed to fetch organisation:', fetchError);
+        }
         return null;
       }
       return data as Organisation;

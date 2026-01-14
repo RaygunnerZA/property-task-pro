@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { usePropertyThemes } from "@/hooks/use-property-themes";
 import { useThemes } from "@/hooks/useThemes";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
 import { Button } from "@/components/ui/button";
 import { Plus, Tag, X } from "lucide-react";
 import { getIconByName } from "@/components/ui/IconPicker";
@@ -87,24 +87,22 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
           {Object.values(groupedThemes).map((group) => (
             <div key={group.parent.id} className="space-y-2">
               <div className="flex items-center gap-2">
-                <StandardChip
-                  label={group.parent.name}
-                  selected={true}
+                <Chip
+                  role="fact"
+                  label={group.parent.name.toUpperCase()}
                   onRemove={() => handleRemoveTheme(group.parent.id)}
                   icon={group.parent.icon ? getIconByName(group.parent.icon) : <Tag className="h-3 w-3" />}
-                  color={group.parent.color || undefined}
                 />
               </div>
               {group.children.length > 0 && (
                 <div className="flex flex-wrap gap-2 pl-4">
                   {group.children.map((child) => (
-                    <StandardChip
+                    <Chip
                       key={child.id}
-                      label={child.name}
-                      selected={true}
+                      role="fact"
+                      label={child.name.toUpperCase()}
                       onRemove={() => handleRemoveTheme(child.id)}
                       icon={child.icon ? getIconByName(child.icon) : <Tag className="h-3 w-3" />}
-                      color={child.color || undefined}
                     />
                   ))}
                 </div>
@@ -116,13 +114,12 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
           {standaloneThemes.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {standaloneThemes.map((theme) => (
-                <StandardChip
+                <Chip
                   key={theme.id}
-                  label={theme.name}
-                  selected={true}
+                  role="fact"
+                  label={theme.name.toUpperCase()}
                   onRemove={() => handleRemoveTheme(theme.id)}
                   icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
-                  color={theme.color || undefined}
                 />
               ))}
             </div>

@@ -49,7 +49,14 @@ export function TaskList({
   const { teams } = useTeams();
   const { categories } = useCategories();
   const { userId } = useDataContext();
-  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set()); // No default filters
+  
+  // Property filters start as inactive by default (no filters = show all properties)
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:54',message:'Initializing selectedFilters',data:{propertiesCount:properties.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    return new Set();
+  });
   const [view, setView] = useState<'horizontal' | 'vertical'>('horizontal');
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
@@ -165,11 +172,22 @@ export function TaskList({
 
     // Secondary filters - Property
     const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
+    // #region agent log
+    if (propertyFilterIds.length > 0 || selectedFilters.size > 0) {
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:169',message:'Property filter check',data:{propertyFilterIdsCount:propertyFilterIds.length,selectedFiltersSize:selectedFilters.size,propertyFilterIds,allSelectedFilters:Array.from(selectedFilters),tasksBeforeFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    }
+    // #endregion
     if (propertyFilterIds.length > 0) {
       const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:172',message:'Applying property filter',data:{selectedPropertyIds,tasksBeforeFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       filtered = filtered.filter((task) => {
         return task.property_id && selectedPropertyIds.includes(task.property_id);
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:175',message:'After property filter',data:{tasksAfterFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
     }
 
     // Secondary filters - Space
@@ -300,18 +318,18 @@ export function TaskList({
     {
       id: "filter-due",
       label: "Due",
-      icon: <Calendar className="h-3 w-3" />,
+      icon: <Calendar className="h-4 w-4" />,
     },
     {
       id: "filter-urgent",
       label: "Urgent",
-      icon: <AlertTriangle className="h-3 w-3" />,
+      icon: <AlertTriangle className="h-4 w-4" />,
       color: "#EB6834", // Accent color
     },
     {
       id: "filter-assigned-me",
       label: "My Tasks",
-      icon: <User className="h-3 w-3" />,
+      icon: <User className="h-4 w-4" />,
     },
   ];
 
@@ -323,22 +341,22 @@ export function TaskList({
         {
           id: "filter-status-todo",
           label: "To-Do",
-          icon: <CheckSquare className="h-3 w-3" />,
+          icon: <CheckSquare className="h-4 w-4" />,
         },
         {
           id: "filter-status-in-progress",
           label: "In Progress",
-          icon: <Clock className="h-3 w-3" />,
+          icon: <Clock className="h-4 w-4" />,
         },
         {
           id: "filter-status-blocked",
           label: "Blocked",
-          icon: <AlertTriangle className="h-3 w-3" />,
+          icon: <AlertTriangle className="h-4 w-4" />,
         },
         {
           id: "filter-status-done",
           label: "Done",
-          icon: <CheckSquare className="h-3 w-3" />,
+          icon: <CheckSquare className="h-4 w-4" />,
         },
       ],
     },
@@ -349,22 +367,22 @@ export function TaskList({
         {
           id: "filter-date-today",
           label: "Today",
-          icon: <Calendar className="h-3 w-3" />,
+          icon: <Calendar className="h-4 w-4" />,
         },
         {
           id: "filter-date-tomorrow",
           label: "Tomorrow",
-          icon: <Calendar className="h-3 w-3" />,
+          icon: <Calendar className="h-4 w-4" />,
         },
         {
           id: "filter-date-this-week",
           label: "This Week",
-          icon: <Calendar className="h-3 w-3" />,
+          icon: <Calendar className="h-4 w-4" />,
         },
         {
           id: "filter-date-overdue",
           label: "Overdue",
-          icon: <AlertTriangle className="h-3 w-3" />,
+          icon: <AlertTriangle className="h-4 w-4" />,
           color: "#EB6834",
         },
       ],
@@ -376,22 +394,22 @@ export function TaskList({
         {
           id: "filter-priority-low",
           label: "Low",
-          icon: <ArrowDown className="h-3 w-3" />,
+          icon: <ArrowDown className="h-4 w-4" />,
         },
         {
           id: "filter-priority-normal",
           label: "Normal",
-          icon: <Minus className="h-3 w-3" />,
+          icon: <Minus className="h-4 w-4" />,
         },
         {
           id: "filter-priority-high",
           label: "High",
-          icon: <AlertTriangle className="h-3 w-3" />,
+          icon: <AlertTriangle className="h-4 w-4" />,
         },
         {
           id: "filter-priority-urgent",
           label: "Urgent",
-          icon: <AlertTriangle className="h-3 w-3" />,
+          icon: <AlertTriangle className="h-4 w-4" />,
           color: "#EB6834",
         },
       ],
@@ -404,13 +422,13 @@ export function TaskList({
         ...members.map((member) => ({
           id: `filter-assigned-person-${member.user_id}`,
           label: member.display_name || member.email || 'Unknown',
-          icon: <User className="h-3 w-3" />,
+          icon: <User className="h-4 w-4" />,
         })),
         // Team options
         ...teams.map((team) => ({
           id: `filter-assigned-team-${team.id}`,
           label: team.name,
-          icon: <Users className="h-3 w-3" />,
+          icon: <Users className="h-4 w-4" />,
         })),
       ],
     },
@@ -420,7 +438,7 @@ export function TaskList({
       options: properties.map((property) => ({
         id: `filter-property-${property.id}`,
         label: property.name || property.address || 'Unknown',
-        icon: <Building2 className="h-3 w-3" />,
+        icon: <Building2 className="h-4 w-4" />,
       })),
     },
     {
@@ -429,7 +447,7 @@ export function TaskList({
       options: allSpaces.map((space) => ({
         id: `filter-space-${space.id}`,
         label: space.name,
-        icon: <Building2 className="h-3 w-3" />,
+        icon: <Building2 className="h-4 w-4" />,
       })),
     },
     {
@@ -438,13 +456,16 @@ export function TaskList({
       options: categories.map((category) => ({
         id: `filter-category-${category.id}`,
         label: category.name,
-        icon: <Tag className="h-3 w-3" />,
+        icon: <Tag className="h-4 w-4" />,
         color: category.color || undefined,
       })),
     },
   ];
 
   const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:457',message:'handleFilterChange called',data:{filterId,selected},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     setSelectedFilters((prev) => {
       const next = new Set(prev);
       if (selected) {
@@ -452,10 +473,15 @@ export function TaskList({
       } else {
         next.delete(filterId);
       }
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:465',message:'Filter state updated',data:{filterId,selected,prevSize:prev.size,nextSize:next.size,allFilters:Array.from(next)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       return next;
     });
   }, []);
 
+  // Note: Property filters are not auto-selected - users must explicitly select them
+  
   // Apply filter programmatically when filterToApply prop changes
   useEffect(() => {
     if (filterToApply) {
@@ -537,14 +563,13 @@ export function TaskList({
   return (
     <div className="space-y-6">
       {/* Filter Bar with View Toggle on same row (desktop) */}
-      <div>
+      <div className="mb-[9px]" style={{ marginLeft: '-3px' }}>
         <FilterBar
           primaryOptions={primaryOptions}
           secondaryGroups={secondaryGroups}
           selectedFilters={selectedFilters}
           onFilterChange={handleFilterChange}
           rightElement={<ViewToggle view={view} onViewChange={setView} />}
-          properties={properties}
         />
         
         {/* View Toggle - Mobile: below filter bar */}
@@ -595,7 +620,7 @@ export function TaskList({
                   </div>
                 </>
               ) : (
-                <div className="space-y-3 mt-2">
+                <div className="space-y-3 mt-[7px]">
                   {memoizedTaskCards.todo.map((props) => (
                     <TaskCard
                       key={props.task.id}

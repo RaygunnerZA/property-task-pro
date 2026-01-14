@@ -1,126 +1,134 @@
-import { useState } from "react";
-import { useSpaces } from "@/hooks/useSpaces";
-import { Button } from "@/components/ui/button";
-import { Plus, MapPin } from "lucide-react";
-import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { cn } from "@/lib/utils";
-import { SPACE_TEMPLATES } from "@/lib/taxonomy";
+import { useMemo } from "react";
+import { useSupabase } from "@/integrations/supabase/useSupabase";
+import { useQuery } from "@tanstack/react-query";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { SpaceGroupCard } from "./SpaceGroupCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PropertySpacesSectionProps {
   propertyId: string;
 }
 
+// Space group definitions with descriptions
+const SPACE_GROUPS = [
+  {
+    name: "Circulation",
+    description: "Corridors, hallways, staircases, and other movement areas that connect spaces throughout the property.",
+    color: "#8EC9CE",
+  },
+  {
+    name: "Habitable / Working",
+    description: "Living, working, and activity spaces including bedrooms, offices, meeting rooms, and sales floors.",
+    color: "#A8D5BA",
+  },
+  {
+    name: "Service Areas",
+    description: "Support spaces like kitchens, break areas, utility rooms, and staff facilities.",
+    color: "#F4A261",
+  },
+  {
+    name: "Sanitary Spaces",
+    description: "Bathrooms, WCs, showers, changing rooms, and other hygiene facilities.",
+    color: "#E76F51",
+  },
+  {
+    name: "Storage",
+    description: "Storage rooms, stock rooms, archives, cupboards, and other spaces for keeping items.",
+    color: "#D4A574",
+  },
+  {
+    name: "Technical / Plant",
+    description: "Plant rooms, server rooms, electrical rooms, boiler rooms, and mechanical infrastructure spaces.",
+    color: "#6C757D",
+  },
+  {
+    name: "External Areas",
+    description: "Outdoor spaces including gardens, terraces, car parks, loading bays, yards, and roof areas.",
+    color: "#95A5A6",
+  },
+];
+
 export function PropertySpacesSection({ propertyId }: PropertySpacesSectionProps) {
-  const { spaces, loading, refresh } = useSpaces(propertyId);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const supabase = useSupabase();
+  const { orgId } = useActiveOrg();
 
-  // Group spaces by category (if space_type is "category") and regular spaces
-  const categorySpaces = spaces.filter((s) => s.space_type === "category");
-  const regularSpaces = spaces.filter((s) => s.space_type !== "category");
+  // Fetch space types grouped by default_ui_group
+  const { data: spaceTypes = [], isLoading: spaceTypesLoading } = useQuery({
+    queryKey: ["space-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("space_types")
+        .select("id, name, default_ui_group, functional_class")
+        .order("default_ui_group");
 
-  // Group regular spaces by matching category names from SPACE_TEMPLATES
-  const spacesByCategory = categorySpaces.reduce((acc, categorySpace) => {
-    const categoryName = categorySpace.name;
-    const children = regularSpaces.filter((space) => {
-      // Check if space name exists in the category's template list
-      return SPACE_TEMPLATES[categoryName as keyof typeof SPACE_TEMPLATES]?.includes(space.name);
-    });
-    acc[categoryName] = {
-      category: categorySpace,
-      children,
-    };
-    return acc;
-  }, {} as Record<string, { category: typeof spaces[0]; children: typeof spaces[] }>);
-
-  // Standalone spaces (not in any category)
-  const standaloneSpaces = regularSpaces.filter((space) => {
-    return !Object.values(spacesByCategory).some((group) =>
-      group.children.some((s) => s.id === space.id)
-    );
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!supabase,
   });
 
-  if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading spaces...</div>;
+  // Fetch spaces for this property to count spaces per group
+  const { data: spaces = [], isLoading: spacesLoading } = useQuery({
+    queryKey: ["spaces", propertyId],
+    queryFn: async () => {
+      if (!orgId || !propertyId) return [];
+      
+      const { data, error } = await supabase
+        .from("spaces")
+        .select("id, space_type_id, name")
+        .eq("property_id", propertyId)
+        .eq("org_id", orgId);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orgId && !!propertyId && !!supabase,
+  });
+
+  // Count spaces per group
+  const spacesByGroup = useMemo(() => {
+    const counts = new Map<string, number>();
+    
+    spaces.forEach((space) => {
+      if (space.space_type_id) {
+        const spaceType = spaceTypes.find(st => st.id === space.space_type_id);
+        if (spaceType?.default_ui_group) {
+          const current = counts.get(spaceType.default_ui_group) || 0;
+          counts.set(spaceType.default_ui_group, current + 1);
+        }
+      }
+    });
+    
+    return counts;
+  }, [spaces, spaceTypes]);
+
+  const isLoading = spaceTypesLoading || spacesLoading;
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <Skeleton key={i} className="h-[240px] rounded-[8px]" />
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Spaces List */}
-      {spaces.length > 0 ? (
-        <div className="space-y-4">
-          {/* Grouped by Category */}
-          {Object.values(spacesByCategory).map((group) => (
-            <div key={group.category.id} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <h4 className="font-semibold text-sm text-foreground">{group.category.name}</h4>
-                <span className="text-xs text-muted-foreground">
-                  ({group.children.length})
-                </span>
-              </div>
-              {group.children.length > 0 && (
-                <div className="flex flex-wrap gap-2 pl-6">
-                  {group.children.map((space) => (
-                    <div
-                      key={space.id}
-                      className="px-3 py-1.5 rounded-[5px] bg-card shadow-e1 text-sm font-medium"
-                    >
-                      {space.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Standalone Spaces */}
-          {standaloneSpaces.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-semibold text-sm text-foreground">Other Spaces</h4>
-              <div className="flex flex-wrap gap-2">
-                {standaloneSpaces.map((space) => (
-                  <div
-                    key={space.id}
-                    className="px-3 py-1.5 rounded-[5px] bg-card shadow-e1 text-sm font-medium"
-                  >
-                    {space.name}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-sm text-muted-foreground py-4">
-          No spaces created yet. Add your first space to get started.
-        </div>
-      )}
-
-      {/* Add Space Button */}
-      <div className="pt-2 border-t border-border/50">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setShowAddDialog(true)}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          New Space
-        </Button>
-      </div>
-
-      {/* Add Space Dialog */}
-      <AddSpaceDialog
-        open={showAddDialog}
-        onOpenChange={(open) => {
-          setShowAddDialog(open);
-          if (!open) {
-            refresh(); // Refresh spaces list when dialog closes
-          }
-        }}
-        propertyId={propertyId} // Pass propertyId to pre-select
-      />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      {SPACE_GROUPS.map((group) => {
+        const spaceCount = spacesByGroup.get(group.name) || 0;
+        return (
+          <SpaceGroupCard
+            key={group.name}
+            groupName={group.name}
+            description={group.description}
+            color={group.color}
+            spaceCount={spaceCount}
+            propertyId={propertyId}
+          />
+        );
+      })}
     </div>
   );
 }
-

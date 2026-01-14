@@ -16,9 +16,13 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
           "p-1.5 rounded-[5px] transition-all",
           "flex items-center justify-center",
           view === 'horizontal'
-            ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-            : "text-muted-foreground hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+            ? "text-foreground shadow-none"
+            : "text-muted-foreground hover:bg-card"
         )}
+        style={view === 'horizontal' ? {
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          boxShadow: 'none'
+        } : undefined}
         aria-label="Horizontal view"
       >
         <Rows3 className="h-4 w-4" />
@@ -29,9 +33,13 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
           "p-1.5 rounded-[5px] transition-all",
           "flex items-center justify-center",
           view === 'vertical'
-            ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-            : "text-muted-foreground hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+            ? "text-foreground shadow-none"
+            : "text-muted-foreground hover:bg-card"
         )}
+        style={view === 'vertical' ? {
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          boxShadow: 'none'
+        } : undefined}
         aria-label="Vertical view"
       >
         <Columns2 className="h-4 w-4" />

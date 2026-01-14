@@ -94,7 +94,7 @@ export function PropertySpacesList({
                 {spaces.map((space) => (
                   <div 
                     key={space.id} 
-                    className="w-[165px] flex-shrink-0 rounded-[5px]"
+                    className="w-[120px] flex-shrink-0 rounded-[5px]"
                     onClick={() => handleSpaceClick(space)}
                   >
                     <SpaceCard

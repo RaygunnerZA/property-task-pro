@@ -113,7 +113,7 @@ export function DashboardTabs({
         {activeTab === 'tasks' && (
           <div className="space-y-4">
             {/* Filter Chips */}
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
               {filters.map(filter => (
                 <button
                   key={filter}
@@ -130,8 +130,8 @@ export function DashboardTabs({
               ))}
             </div>
 
-            {/* Task List */}
-            <div className="space-y-3">
+            {/* Task List - spacing separation from filter chips */}
+            <div className="space-y-3 pt-2">
               {tasks.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
                   No tasks to display

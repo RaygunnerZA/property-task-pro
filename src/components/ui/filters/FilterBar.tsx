@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Chip } from "@/components/chips/Chip";
+import { IconButton } from "@/components/ui/IconButton";
+import { debugLog } from "@/lib/logger";
 
 // Custom Funnel icon component (not available in lucide-react)
 const Funnel = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
+    width="16"
+    height="16"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -15,7 +18,7 @@ const Funnel = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) =
     strokeLinecap="round"
     strokeLinejoin="round"
     className={cn("lucide lucide-funnel", className)}
-    style={style}
+    style={{ marginLeft: 0, marginRight: 0, ...style }}
     {...props}
   >
     <path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"/>
@@ -64,7 +67,6 @@ interface FilterBarProps {
   onFilterChange: (filterId: string, selected: boolean) => void;
   className?: string;
   rightElement?: React.ReactNode; // Optional element to render on the right side of the row (desktop only)
-  properties?: Array<{ id: string; icon_name?: string; icon_color_hex?: string }>; // Properties to display as filter chips
 }
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
@@ -99,7 +101,6 @@ export function FilterBar({
   onFilterChange,
   className,
   rightElement,
-  properties = [],
 }: FilterBarProps) {
   const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>('primary');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export function FilterBar({
   };
 
   const handleFilterByClick = () => {
-    setAnimationDirection('right-to-left');
+    setAnimationDirection('left-to-right');
     setNavigationLevel('categories');
     setSelectedCategory(null);
   };
@@ -137,23 +138,36 @@ export function FilterBar({
       setSelectedCategory(null);
     } else if (navigationLevel === 'categories') {
       // Go back from categories to primary
-      setAnimationDirection('left-to-right');
+      setAnimationDirection('right-to-left');
       setNavigationLevel('primary');
       setSelectedCategory(null);
     }
   };
 
   const handleClearAllFilters = () => {
-    // Clear all selected filters
+    // Clear all selected filters except property filters
     selectedFilters.forEach(filterId => {
-      onFilterChange(filterId, false);
+      // Don't clear property filters (they should be managed separately)
+      if (!filterId.startsWith('filter-property-')) {
+        onFilterChange(filterId, false);
+      }
     });
   };
+
+  // Count active filters excluding property filters (property icons are managed separately)
+  const hasNonPropertyFilters = Array.from(selectedFilters).some(
+    filterId => !filterId.startsWith('filter-property-')
+  );
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:160',message:'hasNonPropertyFilters calculation',data:{selectedFiltersSize:selectedFilters.size,hasNonPropertyFilters,allFilters:Array.from(selectedFilters),propertyFilters:Array.from(selectedFilters).filter(f=>f.startsWith('filter-property-')),nonPropertyFilters:Array.from(selectedFilters).filter(f=>!f.startsWith('filter-property-'))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+  }, [selectedFilters, hasNonPropertyFilters]);
+  // #endregion
 
   // #region agent log
   // Verify icons are defined after fix
   useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:97',message:'Post-fix icon verification',data:{funnelDefined:typeof Funnel !== 'undefined',arrowLeftToLineDefined:typeof ArrowLeftToLine !== 'undefined',funnelXDefined:typeof FunnelX !== 'undefined'},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+    debugLog({location:'FilterBar.tsx:97',message:'Post-fix icon verification',data:{funnelDefined:typeof Funnel !== 'undefined',arrowLeftToLineDefined:typeof ArrowLeftToLine !== 'undefined',funnelXDefined:typeof FunnelX !== 'undefined'},sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'});
   }, []);
   // #endregion
 
@@ -166,64 +180,41 @@ export function FilterBar({
     }
   }, [animationDirection, navigationLevel, selectedCategory]);
 
-  // Render chip with animation
+  // Render chip with animation - now uses unified Chip component
   const renderChip = (
     option: FilterOption,
     index: number,
     isSelected: boolean,
     onClick: () => void
   ) => (
-    <button
+    <Chip
       key={option.id}
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] flex-shrink-0",
-        "font-mono text-[13px] uppercase tracking-wide",
-        "select-none cursor-pointer transition-all",
-        isSelected
-          ? // Active: Pressed neumorphic with off-white fill
-            "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-          : // Inactive: Transparent with neumorphic shadows
-            "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
-        option.color && isSelected && "text-white"
-      )}
-      style={{
-        ...(isSelected && option.color ? { backgroundColor: option.color } : {}),
-      }}
-    >
-      {option.icon && <span className="flex-shrink-0">{option.icon}</span>}
-      <span>{option.label}</span>
-    </button>
+      role="filter"
+      label={option.label}
+      selected={isSelected}
+      onSelect={onClick}
+      icon={option.icon}
+      color={option.color}
+      className="h-[35px]"
+    />
   );
 
-  // Render icon button with neumorphic styling - matches AISuggestionChip style
+  // Render icon button - now uses unified IconButton component
   const renderIconButton = (
     icon: React.ReactNode,
     onClick: () => void,
-    className?: string
-  ) => {
-    // #region agent log
-    try {
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:150',message:'renderIconButton called',data:{iconType:typeof icon,iconIsUndefined:icon===undefined,iconIsNull:icon===null,iconName:icon?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-    } catch (e: any) {
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:150',message:'renderIconButton error',data:{error:e?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-    }
-    // #endregion
-    return (
-      <button
-        onClick={onClick}
-        className={cn(
-          "inline-flex items-center justify-center h-[35px] w-[35px] rounded-[8px] flex-shrink-0",
-          "select-none cursor-pointer transition-all",
-          "bg-background shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-          "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
-          className
-        )}
-      >
-        {icon}
-      </button>
-    );
-  };
+    className?: string,
+    active?: boolean
+  ) => (
+    <IconButton
+      role="filter-toggle"
+      icon={icon}
+      onClick={onClick}
+      active={active}
+      size={35}
+      className={className}
+    />
+  );
 
   // Render back button
   const renderBackButton = () => renderIconButton(
@@ -240,9 +231,9 @@ export function FilterBar({
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-2 min-h-[42px]", className)}>
+    <div className={cn("flex items-center justify-between gap-2 min-h-[35px]", className)}>
       {/* Single Row Container - horizontally scrollable */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[42px]">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[48px] px-[5px]">
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
@@ -256,83 +247,38 @@ export function FilterBar({
               {/* #region agent log */}
               {(() => {
                 try {
-                  const funnelEl = <Funnel className="h-4 w-4 text-foreground" />;
-                  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
-                  return renderIconButton(funnelEl, handleFilterByClick);
+                  const funnelEl = <Funnel className="h-[18px] w-[18px] text-foreground" />;
+                  debugLog({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
+                  return (
+                    <button
+                      type="button"
+                      onClick={handleFilterByClick}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
+                        "font-mono text-[13px] uppercase tracking-wider",
+                        "select-none cursor-pointer transition-all duration-150",
+                        "bg-background",
+                        "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+                        "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
+                      )}
+                      style={{ paddingLeft: '9px', paddingRight: '11px' }}
+                    >
+                      {funnelEl}
+                      <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
+                    </button>
+                  );
                 } catch (e: any) {
-                  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:244',message:'Error creating Funnel',data:{error:e?.message,stack:e?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
+                  debugLog({location:'FilterBar.tsx:244',message:'Error creating Funnel',data:{error:e?.message,stack:e?.stack},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
                   return null;
                 }
               })()}
-              {/* FunnelX (Clear filters) - appears when filters are selected */}
-              {selectedFilters.size > 0 && (
-                <button
-                  onClick={handleClearAllFilters}
-                  className={cn(
-                    "inline-flex items-center justify-center h-[35px] w-[35px] rounded-[8px] flex-shrink-0",
-                    "select-none cursor-pointer transition-all",
-                    "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                    "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                  )}
-                >
-                  <FunnelX className="h-4 w-4" />
-                </button>
+              {/* FunnelX (Clear filters) - appears when filters are selected (excluding property filters) */}
+              {hasNonPropertyFilters && (
+                renderIconButton(
+                  <FunnelX className="h-5 w-5 text-foreground" />,
+                  handleClearAllFilters
+                )
               )}
-              {/* Property filter chips */}
-              {properties.map((property) => {
-                const filterId = `filter-property-${property.id}`;
-                const isSelected = selectedFilters.has(filterId);
-                const iconName = property.icon_name || "home";
-                const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
-                const propertyColor = property.icon_color_hex || "#8EC9CE";
-                
-                // Convert hex to rgba for muted background (12% opacity)
-                const hexToRgba = (hex: string, alpha: number) => {
-                  const r = parseInt(hex.slice(1, 3), 16);
-                  const g = parseInt(hex.slice(3, 5), 16);
-                  const b = parseInt(hex.slice(5, 7), 16);
-                  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-                };
-                const mutedPropertyColor = hexToRgba(propertyColor, 0.12);
-                
-                return (
-                  <button
-                    key={property.id}
-                    onClick={() => handleFilterToggle(filterId)}
-                    className={cn(
-                      "inline-flex items-center justify-center w-[24px] h-[35px] rounded-[8px] flex-shrink-0",
-                      "select-none cursor-pointer transition-all",
-                      isSelected
-                        ? "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                        : "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                    )}
-                    style={{
-                      backgroundColor: isSelected ? propertyColor : mutedPropertyColor,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = propertyColor;
-                        const icon = e.currentTarget.querySelector('svg');
-                        if (icon) icon.style.color = 'white';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isSelected) {
-                        e.currentTarget.style.backgroundColor = mutedPropertyColor;
-                        const icon = e.currentTarget.querySelector('svg');
-                        if (icon) icon.style.color = propertyColor;
-                      }
-                    }}
-                  >
-                    <IconComponent 
-                      className="h-4 w-4 transition-colors" 
-                      style={{
-                        color: isSelected ? 'white' : propertyColor
-                      }} 
-                    />
-                  </button>
-                );
-              })}
               {/* #endregion */}
               {mostUsedOptions.map((option, index) => {
                 const isSelected = selectedFilters.has(option.id);
@@ -359,7 +305,7 @@ export function FilterBar({
                   <span>{group.label}</span>
                 </button>
               ))}
-              {selectedFilters.size > 0 && (
+              {hasNonPropertyFilters && (
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
@@ -369,7 +315,7 @@ export function FilterBar({
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
-                  <FunnelX className="h-4 w-4" />
+                  <FunnelX className="h-5 w-5" />
                 </button>
               )}
             </>
@@ -383,7 +329,7 @@ export function FilterBar({
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
               })}
-              {selectedFilters.size > 0 && (
+              {hasNonPropertyFilters && (
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
@@ -393,7 +339,7 @@ export function FilterBar({
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
-                  <FunnelX className="h-4 w-4" />
+                  <FunnelX className="h-5 w-5" />
                 </button>
               )}
             </>

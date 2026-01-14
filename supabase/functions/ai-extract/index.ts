@@ -72,24 +72,44 @@ Deno.serve(async (req) => {
       // Fallback: return AI result without entity resolution
       // Ensure all fields are safe and defined
       try {
+        // Helper to normalize entity arrays with authority
+        const normalizeEntityArray = (arr: any[]): Array<{ name: string; exists: boolean; authority?: number }> => {
+          if (!Array.isArray(arr)) return [];
+          return arr.map((item: any) => {
+            if (typeof item === 'string') {
+              return { name: item, exists: false, authority: 0.5 };
+            }
+            return {
+              name: String(item.name || item),
+              exists: false,
+              authority: item.authority ?? 0.5,
+            };
+          });
+        };
+
         combined = {
           title: ai?.title || '',
           priority: ai?.priority || 'medium',
           date: ai?.date || '',
           yes_no: ai?.yes_no || false,
           signature: ai?.signature || false,
-          assets: Array.isArray(ai?.assets) ? ai.assets : [],
-          spaces: Array.isArray(ai?.spaces) 
-            ? ai.spaces.map((n: string) => ({ name: String(n || ''), exists: false })) 
+          assets: Array.isArray(ai?.assets) 
+            ? ai.assets.map((item: any) => {
+                if (typeof item === 'string') return { name: item, authority: 0.5 };
+                return { name: item.name || String(item), authority: item.authority ?? 0.5 };
+              })
             : [],
-          people: Array.isArray(ai?.people) 
-            ? ai.people.map((n: string) => ({ name: String(n || ''), exists: false })) 
-            : [],
-          teams: Array.isArray(ai?.teams) 
-            ? ai.teams.map((n: string) => ({ name: String(n || ''), exists: false })) 
-            : [],
-          groups: Array.isArray(ai?.groups) 
-            ? ai.groups.map((n: string) => ({ name: String(n || ''), exists: false })) 
+          spaces: normalizeEntityArray(ai?.spaces || []),
+          people: normalizeEntityArray(ai?.people || []),
+          teams: normalizeEntityArray(ai?.teams || []),
+          groups: normalizeEntityArray(ai?.groups || []),
+          themes: Array.isArray(ai?.themes)
+            ? ai.themes.map((t: any) => ({
+                name: typeof t === 'string' ? t : t.name,
+                exists: false,
+                type: typeof t === 'object' ? (t.type || 'category') : 'category',
+                authority: typeof t === 'object' ? (t.authority ?? 0.5) : 0.5,
+              }))
             : [],
         };
       } catch (fallbackError) {
@@ -242,15 +262,24 @@ Extract structured task metadata. Understand context:
 - leak → urgent
 - Tuesday → date
 
+For each entity (spaces, people, teams, groups, assets), assign an authority score (0-1):
+- Explicit name mentioned (e.g., "Frank", "Kitchen", "HVAC Unit") → authority: 0.9-1.0 (High)
+- Role-based inference (e.g., "the cleaner", "maintenance", "manager") → authority: 0.5-0.8 (Medium)
+- Ambiguous name or weak inference → authority: 0.3-0.5 (Low)
+- Missing entity or uncertain → authority: 0.0-0.3 (Very Low)
+
+Themes: Array of {name, type, authority}. Type can be: "category", "project", "tag", "group".
+
 Return ONLY JSON:
 
 {
   "title": "",
-  "spaces": [],
-  "people": [],
-  "teams": [],
+  "spaces": [{"name": "Kitchen", "authority": 0.9}],
+  "people": [{"name": "Frank", "authority": 1.0}, {"name": "the cleaner", "authority": 0.6}],
+  "teams": [{"name": "Maintenance Team", "authority": 0.8}],
   "groups": [],
-  "assets": [],
+  "assets": [{"name": "HVAC Unit A", "authority": 0.95}],
+  "themes": [{"name": "Maintenance", "type": "category", "authority": 0.7}],
   "priority": "low|medium|high|urgent",
   "date": "",
   "yes_no": false,
@@ -273,29 +302,50 @@ async function resolveEntities(ai: any, orgId: string) {
     supabase.from("groups").select("id,name").eq("org_id", orgId),
   ]);
 
+  // Helper to normalize assets array (handle both string[] and object[] formats)
+  const normalizeAssets = (assets: any[]): Array<{ name: string; authority?: number }> => {
+    if (!assets || assets.length === 0) return [];
+    return assets.map((item: any) => {
+      if (typeof item === 'string') {
+        return { name: item, authority: 0.5 }; // Default medium authority for string assets
+      }
+      return { name: item.name || String(item), authority: item.authority };
+    });
+  };
+
   return {
     title: ai.title,
     priority: ai.priority,
     date: ai.date,
     yes_no: ai.yes_no,
     signature: ai.signature,
-    assets: ai.assets || [],
+    assets: normalizeAssets(ai.assets || []),
 
-    spaces: match(ai.spaces, spacesRes.data || []),
-    people: ai.people?.map((n: string) => ({ name: n, exists: false })) || [],
-    teams: match(ai.teams, teamsRes.data || []),
-    groups: match(ai.groups, groupsRes.data || []),
+    spaces: matchWithAuthority(ai.spaces || [], spacesRes.data || []),
+    people: matchWithAuthority(ai.people || [], []), // People resolution handled in frontend
+    teams: matchWithAuthority(ai.teams || [], teamsRes.data || []),
+    groups: matchWithAuthority(ai.groups || [], groupsRes.data || []),
+    themes: (ai.themes || []).map((t: any) => ({
+      name: typeof t === 'string' ? t : t.name,
+      exists: false,
+      type: typeof t === 'object' ? (t.type || 'category') : 'category',
+      authority: typeof t === 'object' ? (t.authority ?? 0.5) : 0.5,
+    })),
   };
 }
 
-function match(list: string[] = [], existing: any[] = []) {
-  return list.map((name) => {
+function matchWithAuthority(list: any[] = [], existing: any[] = []) {
+  return list.map((item: any) => {
+    // Handle both string and object formats
+    const name = typeof item === 'string' ? item : item.name;
+    const authority = typeof item === 'object' ? (item.authority ?? 0.5) : 0.5;
+    
     const found = existing.find(
       (e) => e.name.toLowerCase() === name.toLowerCase()
     );
     return found
-      ? { name, exists: true, id: found.id }
-      : { name, exists: false };
+      ? { name, exists: true, id: found.id, authority }
+      : { name, exists: false, authority };
   });
 }
 
@@ -314,6 +364,7 @@ function ruleBased(text: string) {
     teams: [],
     groups: [],
     assets: [],
+    themes: [],
     priority,
     date: "",
     yes_no: false,
@@ -329,6 +380,7 @@ function emptyResult() {
     teams: [],
     groups: [],
     assets: [],
+    themes: [],
     priority: "medium",
     date: "",
     yes_no: false,

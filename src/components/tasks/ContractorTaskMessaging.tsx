@@ -143,7 +143,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
       }
     } catch (err: any) {
       console.error("Error fetching messages:", err);
-      setError(err.message || "Failed to load messages");
+      setError(err.message || "Couldn't load messages");
       setMessages([]);
     } finally {
       setLoading(false);
@@ -313,8 +313,8 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast({
-        title: "Error",
-        description: err.message || "Failed to send message",
+        title: "Couldn't send message",
+        description: err.message || "Something didn't work. Try again.",
         variant: "destructive",
       });
     } finally {

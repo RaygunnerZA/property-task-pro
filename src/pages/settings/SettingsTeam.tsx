@@ -51,8 +51,34 @@ export default function SettingsTeam() {
 
     setInviteLoading(true);
     try {
-      // TODO: Implement actual invite logic (send email, create invitation record, etc.)
-      // For now, just show success
+      // Get the current session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error("You must be logged in to send invitations");
+      }
+
+      // Call the invitation edge function
+      const { data, error } = await supabase.functions.invoke("invite-team-member", {
+        body: {
+          email: email.trim(),
+          org_id: orgId,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          role: "member", // Default role - can be made configurable later
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       toast.success(`Invitation sent to ${email}`);
       setInviteModalOpen(false);
       setFirstName("");
@@ -61,6 +87,7 @@ export default function SettingsTeam() {
       // Refresh members list after invite
       await refresh();
     } catch (err: any) {
+      console.error("Error sending invitation:", err);
       toast.error(err.message || "Failed to send invitation");
     } finally {
       setInviteLoading(false);

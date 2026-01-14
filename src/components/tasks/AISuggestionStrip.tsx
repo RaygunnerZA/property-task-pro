@@ -2,7 +2,8 @@ import { useState } from "react";
 import { User, MapPin, Calendar, Tag, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIExtractResponse } from "@/hooks/useAIExtract";
-import { StandardChip } from "@/components/chips/StandardChip";
+import { Chip } from "@/components/chips/Chip";
+import fillaAI from "@/assets/filla-ai.svg";
 
 interface AISuggestionStripProps {
   aiResult: AIExtractResponse["combined"];
@@ -131,10 +132,11 @@ export function AISuggestionStrip({
 
   return (
     <div className="space-y-2">
-      {/* Header */}
-      <label className="text-[10px] font-mono uppercase tracking-wider text-primary block">
-        TAP TO APPLY FILLA SUGGESTIONS
-      </label>
+      {/* Header - one Filla glyph at row level only */}
+      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70">
+        <img src={fillaAI} alt="Filla AI" className="h-3 w-3 opacity-70" />
+        <span>Filla picked up:</span>
+      </div>
 
       {/* Horizontal scrolling chips */}
       <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent -mx-4 px-4">
@@ -144,13 +146,14 @@ export function AISuggestionStrip({
             const chipId = `person-${person.name}`;
             const applied = isApplied(person.name, appliedPeople) || clickedChips.has(chipId);
             return (
-              <StandardChip
+              <Chip
                 key={chipId}
+                role="suggestion"
                 label={person.name.toUpperCase()}
                 selected={applied}
                 onSelect={() => handleChipClick(chipId, () => onPersonClick?.(person))}
-                icon={<User className="h-3 w-3" />}
                 color={applied ? "#8EC9CE" : undefined}
+                animate={true}
                 className="shrink-0"
               />
             );
@@ -161,13 +164,14 @@ export function AISuggestionStrip({
             const chipId = `space-${space.name}`;
             const applied = isApplied(space.name, appliedSpaces) || clickedChips.has(chipId);
             return (
-              <StandardChip
+              <Chip
                 key={chipId}
+                role="suggestion"
                 label={formatSpaceName(space.name)}
                 selected={applied}
                 onSelect={() => handleChipClick(chipId, () => onSpaceClick?.(space))}
-                icon={<MapPin className="h-3 w-3" />}
                 color={applied ? "#8EC9CE" : undefined}
+                animate={true}
                 className="shrink-0"
               />
             );
@@ -179,13 +183,14 @@ export function AISuggestionStrip({
               const chipId = `date-${aiResult.date}`;
               const applied = isApplied(aiResult.date, appliedDate) || clickedChips.has(chipId);
               return (
-                <StandardChip
+                <Chip
                   key={chipId}
+                  role="suggestion"
                   label={formatDateForChip(aiResult.date)}
                   selected={applied}
                   onSelect={() => handleChipClick(chipId, () => onDateClick?.(aiResult.date!))}
-                  icon={<Calendar className="h-3 w-3" />}
                   color={applied ? "#8EC9CE" : undefined}
+                  animate={true}
                   className="shrink-0"
                 />
               );
@@ -197,13 +202,14 @@ export function AISuggestionStrip({
             const chipId = `theme-${theme.name}`;
             const applied = isApplied(theme.name, appliedThemes) || clickedChips.has(chipId);
             return (
-              <StandardChip
+              <Chip
                 key={chipId}
+                role="suggestion"
                 label={theme.name.toUpperCase()}
                 selected={applied}
                 onSelect={() => handleChipClick(chipId, () => onThemeClick?.(theme))}
-                icon={<Tag className="h-3 w-3" />}
                 color={applied ? "#8EC9CE" : undefined}
+                animate={true}
                 className="shrink-0"
               />
             );
@@ -216,13 +222,14 @@ export function AISuggestionStrip({
               const chipId = `priority-${priorityUpper}`;
               const applied = isApplied(priorityUpper, appliedPriority) || clickedChips.has(chipId);
               return (
-                <StandardChip
+                <Chip
                   key={chipId}
+                  role="suggestion"
                   label={priorityUpper}
                   selected={applied}
                   onSelect={() => handleChipClick(chipId, () => onPriorityClick?.(aiResult.priority!))}
-                  icon={<AlertTriangle className="h-3 w-3" />}
                   color={applied ? "#8EC9CE" : undefined}
+                  animate={true}
                   className="shrink-0"
                 />
               );
