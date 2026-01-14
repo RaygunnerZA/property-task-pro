@@ -291,8 +291,11 @@ export default function AddPropertyScreen() {
                 }}
               >
                 <Icon 
-                  className="w-5 h-5" 
-                  className={propertyIcon === name ? undefined : "text-muted-foreground"}
+                  className={
+                    propertyIcon === name
+                      ? "w-5 h-5"
+                      : "w-5 h-5 text-muted-foreground"
+                  }
                   style={propertyIcon === name ? { color: propertyIconColor } : undefined}
                 />
               </button>

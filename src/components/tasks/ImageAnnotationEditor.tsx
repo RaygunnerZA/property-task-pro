@@ -1179,7 +1179,6 @@ export function ImageAnnotationEditor({
             e.stopPropagation();
           }}
           className="max-w-full max-h-full cursor-crosshair"
-          style={{ imageRendering: "high-quality" }}
         />
       </div>
 
