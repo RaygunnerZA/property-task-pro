@@ -21,6 +21,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -191,10 +192,16 @@ export function AppSidebar() {
             activeClassName=""
             pendingClassName="opacity-50"
           >
-            <item.icon className={cn(
-              "h-5 w-5 flex-shrink-0",
-              (isActive || hoveredItem === item.title) ? "text-white" : "text-[#F4F3F0]"
-            )} />
+            <AnimatedIcon
+              icon={item.icon}
+              size={20}
+              animateOnHover
+              animation="path-draw"
+              className={cn(
+                "flex-shrink-0",
+                (isActive || hoveredItem === item.title) ? "text-white" : "text-[#F4F3F0]"
+              )}
+            />
             {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
           </NavLink>
         </SidebarMenuButton>

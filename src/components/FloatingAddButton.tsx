@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Mic } from 'lucide-react';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
+import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
 
 interface FloatingAddButtonProps {
@@ -46,7 +47,13 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
             }}
             aria-label="Record audio"
           >
-            <Mic className="w-5 h-5" />
+            <AnimatedIcon 
+              icon={Mic} 
+              size={20} 
+              animateOnHover 
+              animateOnTap 
+              animation="pulse"
+            />
           </button>
           {/* Task button - bottom */}
           <button
@@ -58,7 +65,13 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
             }}
             aria-label="Add task"
           >
-            <Plus className="w-5 h-5" />
+            <AnimatedIcon 
+              icon={Plus} 
+              size={20} 
+              animateOnHover 
+              animateOnTap 
+              animation="rotate"
+            />
           </button>
         </div>
       )}
@@ -74,7 +87,13 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
         )}
         aria-label={expanded ? "Close menu" : "Open menu"}
       >
-        <Plus className="h-6 w-6" />
+        <AnimatedIcon 
+          icon={Plus} 
+          size={24} 
+          animateOnHover
+          animateOnTap 
+          animation="shake"
+        />
       </button>
 
       {/* Modals */}
