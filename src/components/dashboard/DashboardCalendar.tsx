@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { format, format as formatDate, isToday } from "date-fns";
+import { format, format as formatDate, isSameDay, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cardButtonClassName } from "@/components/design-system/CardButton";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { CardButton, cardButtonClassName } from "@/components/design-system/CardButton";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { CalendarStrip } from "@/components/dashboard/CalendarStrip";
 
 interface DashboardCalendarProps {
   tasks?: any[];
@@ -37,6 +39,20 @@ export function DashboardCalendar({
   className,
   tasksByDate: providedTasksByDate,
 }: DashboardCalendarProps) {
+  const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(isMobile);
+  const [isScheduleMode, setIsScheduleMode] = useState(false);
+  const [activeDate, setActiveDate] = useState<Date>(selectedDate || new Date());
+
+  useEffect(() => {
+    setIsCollapsed(isMobile);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      setActiveDate(selectedDate);
+    }
+  }, [selectedDate]);
   // Removed excessive debug logging to prevent re-render performance issues
   // Normalize priority: treat null, undefined, 'normal', and 'medium' as the same
   const normalizePriority = (priority: string | null | undefined): string => {
@@ -123,134 +139,171 @@ export function DashboardCalendar({
     );
   };
 
+  const handleDatePress = (date: Date) => {
+    setIsScheduleMode(true);
+    setActiveDate(date);
+    onDateSelect?.(date);
+  };
+
+  const handleActiveDateChange = (date: Date) => {
+    setActiveDate(date);
+    if (isScheduleMode) {
+      onDateSelect?.(date);
+    }
+  };
+
   return (
-    <div className={cn("w-full", className)}>
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={onDateSelect}
-        className="w-full"
-        classNames={{
-          months: "flex flex-col space-y-4",
-          month: "space-y-4",
-          caption: "flex justify-center pt-1 relative items-center mb-2",
-          caption_label: "text-2xl font-semibold text-foreground",
-          nav: "space-x-1 flex items-center",
-          nav_button: cardButtonClassName,
-          nav_button_previous: "absolute left-1",
-          nav_button_next: "absolute right-1",
-          table: "w-full border-collapse space-y-1",
-          head_row: "flex justify-center items-center",
-          head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
-          row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
-          cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
-          day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
-          day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
-          day_today: "bg-accent/30 text-foreground font-semibold",
-          day_outside: "text-muted-foreground opacity-50",
-          day_disabled: "text-muted-foreground opacity-50",
-          day_hidden: "invisible",
-        }}
-        modifiers={{
-          hasTasks: datesWithTasks,
-        }}
-        modifiersClassNames={{
-          hasTasks: "has-tasks",
-        }}
-        components={{
-          IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
-          IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
-          CaptionLabel: CustomCaptionLabel,
-          Day: (props: any) => {
-            const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
-            const dateKey = format(date, "yyyy-MM-dd");
-            const dateData = tasksByDate.get(dateKey);
-            const taskCount = dateData?.total || 0;
-            const highCount = dateData?.high || 0;
-            const urgentCount = dateData?.urgent || 0;
-            const overdueCount = dateData?.overdue || 0;
-            const hasTasks = taskCount > 0;
-            const isTodayDate = isToday(date);
-            
-            // Determine fill color based on task count and priorities
-            let fillColor = '';
-            
-            if (hasTasks) {
-              // Priority: Overdue/Urgent takes precedence
-              const totalUrgentOrOverdue = urgentCount + overdueCount;
-              
-              if (totalUrgentOrOverdue >= 3) {
-                // 3+ Urgent/Overdue: Red fill
-                fillColor = 'rgba(220, 38, 38, 0.6)';
-              } else if (highCount >= 3) {
-                // 3+ High: Orange fill
-                fillColor = 'rgba(245, 138, 48, 0.6)';
-              } else if (totalUrgentOrOverdue >= 1 || highCount >= 1) {
-                // 1-2 Urgent/High: Lighter red/orange
-                fillColor = totalUrgentOrOverdue > 0 
-                  ? 'rgba(220, 38, 38, 0.4)' 
-                  : 'rgba(245, 138, 48, 0.4)';
-              } else {
-                // Normal tasks: Teal fill with opacity based on count
-                if (taskCount >= 4) {
-                  fillColor = 'rgba(78, 179, 182, 0.6)';
-                } else if (taskCount >= 2) {
-                  fillColor = 'rgba(78, 179, 182, 0.5)';
+    <div className={cn("w-full relative", className)}>
+      {isMobile && (
+        <div className="absolute right-0 top-0 z-10">
+          <CardButton
+            aria-label={isCollapsed ? "Expand calendar" : "Collapse calendar"}
+            className="h-8 w-8"
+            onClick={() => setIsCollapsed((prev) => !prev)}
+          >
+            {isCollapsed ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronUp className="h-4 w-4" />
+            )}
+          </CardButton>
+        </div>
+      )}
+
+      {isMobile && isCollapsed ? (
+        <div className="space-y-2">
+          <div className="text-2xl font-semibold text-foreground text-center">
+            {formatDate(activeDate, "MMMM")}
+          </div>
+          <CalendarStrip
+            activeDate={activeDate}
+            mode={isScheduleMode ? "schedule" : "browse"}
+            onActiveDateChange={handleActiveDateChange}
+            onDatePress={handleDatePress}
+            tasksByDate={tasksByDate}
+          />
+        </div>
+      ) : (
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={onDateSelect}
+          className="w-full"
+          classNames={{
+            months: "flex flex-col space-y-4",
+            month: "space-y-4",
+            caption: "flex justify-center pt-1 relative items-center mb-2 mr-[-5px]",
+            caption_label: "text-2xl font-semibold text-foreground",
+            nav: "space-x-1 flex items-center",
+            nav_button: cardButtonClassName,
+            nav_button_previous: "absolute left-1",
+            nav_button_next: "absolute right-1",
+            table: "w-full border-separate border-spacing-2 mt-[5px]",
+            head_row: "grid grid-cols-7 gap-2",
+            head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono text-center",
+            row: "grid grid-cols-7 gap-2",
+            cell: "flex h-[35px] w-[35px] items-center justify-center font-mono text-sm mt-[2px] mb-[2px]",
+            day: "h-[35px] w-[35px] p-0 font-normal font-mono text-sm relative rounded-full grid items-center justify-center",
+            day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
+            day_today: "bg-white text-foreground font-semibold",
+            day_outside: "text-muted-foreground opacity-50",
+            day_disabled: "text-muted-foreground opacity-50",
+            day_hidden: "invisible",
+          }}
+          modifiers={{
+            hasTasks: datesWithTasks,
+          }}
+          modifiersClassNames={{
+            hasTasks: "has-tasks",
+          }}
+          components={{
+            IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+            IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+            CaptionLabel: CustomCaptionLabel,
+            Day: (props: any) => {
+              const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
+              const dateKey = format(date, "yyyy-MM-dd");
+              const dateData = tasksByDate.get(dateKey);
+              const taskCount = dateData?.total || 0;
+              const highCount = dateData?.high || 0;
+              const urgentCount = dateData?.urgent || 0;
+              const overdueCount = dateData?.overdue || 0;
+              const hasTasks = taskCount > 0;
+              const isTodayDate = isToday(date);
+              const isSelected = selectedDate ? isSameDay(selectedDate, date) : false;
+
+              // Determine fill color based on task count and priorities
+              let fillColor = "";
+
+              if (hasTasks) {
+                // Priority: Overdue/Urgent takes precedence
+                const totalUrgentOrOverdue = urgentCount + overdueCount;
+
+                if (totalUrgentOrOverdue >= 3) {
+                  // 3+ Urgent/Overdue: Red fill
+                  fillColor = "rgba(220, 38, 38, 0.6)";
+                } else if (highCount >= 3) {
+                  // 3+ High: Orange fill
+                  fillColor = "rgba(245, 138, 48, 0.6)";
+                } else if (totalUrgentOrOverdue >= 1 || highCount >= 1) {
+                  // 1-2 Urgent/High: Lighter red/orange
+                  fillColor = totalUrgentOrOverdue > 0
+                    ? "rgba(220, 38, 38, 0.4)"
+                    : "rgba(245, 138, 48, 0.4)";
                 } else {
-                  fillColor = 'rgba(78, 179, 182, 0.4)';
+                  // Normal tasks: Teal fill with opacity based on count
+                  if (taskCount >= 4) {
+                    fillColor = "rgba(78, 179, 182, 0.6)";
+                  } else if (taskCount >= 2) {
+                    fillColor = "rgba(78, 179, 182, 0.5)";
+                  } else {
+                    fillColor = "rgba(78, 179, 182, 0.4)";
+                  }
                 }
               }
-            }
-            
-            const finalClassName = cn(
-              propClassName,
-              hasTasks && "has-tasks",
-              isTodayDate && "is-today"
-            );
-            
-            const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-              if (onClick) {
-                onClick(e);
-              }
-              if (onDateSelect) {
-                onDateSelect(date);
-              }
-            };
 
-            
-            return (
-              <button
-                {...restProps}
-                onClick={handleClick}
-                className={finalClassName}
-                data-task-count={taskCount}
-                data-high-count={highCount}
-                data-urgent-count={urgentCount}
-                data-overdue-count={overdueCount}
-                data-date-key={dateKey}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  backgroundColor: fillColor || undefined,
-                  borderRadius: '9999px',
-                  // Apply neomorphic pressed effect directly via inline style
-                  ...(hasTasks ? {
-                    boxShadow: 'inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)'
-                  } : {})
-                }}
-              >
-                {date.getDate()}
-                {isTodayDate && (
-                  <span 
-                    className="absolute top-0 right-0 w-2 h-2 rounded-full bg-primary"
-                    style={{ transform: 'translate(25%, -25%)' }}
-                  />
-                )}
-              </button>
-            );
-          },
-        }}
-      />
+              const finalClassName = cn(
+                propClassName,
+                hasTasks && "has-tasks",
+                isTodayDate && "is-today"
+              );
+
+              const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                if (onClick) {
+                  onClick(e);
+                }
+                onDateSelect?.(date);
+              };
+
+              return (
+                <button
+                  {...restProps}
+                  onClick={handleClick}
+                  className={finalClassName}
+                  data-task-count={taskCount}
+                  data-high-count={highCount}
+                  data-urgent-count={urgentCount}
+                  data-overdue-count={overdueCount}
+                  data-date-key={dateKey}
+                  style={{
+                    width: "35px",
+                    height: "35px",
+                    backgroundColor: !isSelected
+                      ? (isTodayDate ? "#ffffff" : (fillColor || undefined))
+                      : undefined,
+                    borderRadius: "9999px",
+                    ...(hasTasks ? {
+                      boxShadow: "inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)"
+                    } : {})
+                  }}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            },
+          }}
+        />
+      )}
       <style>{`
         /* Ensure cells are properly styled with max border radius */
         .rdp-cell {
@@ -275,6 +328,16 @@ export function DashboardCalendar({
           box-shadow: inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), 
                       inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17) !important;
         }
+
+        /* Match preview: if a has-tasks day doesn't have an inline background-color, give it a subtle surface fill */
+        button.rdp-day.has-tasks:not([style*="background-color"]) {
+          background-color: #F6F4F2;
+        }
+
+        /* Match preview: reduce DayPicker table top margin (react-day-picker defaults to ~16px) */
+        table.rdp-table {
+          margin-top: 5px !important;
+        }
         
         /* Add overlay pseudo-element for additional depth on pressed effect */
         button.rdp-day.has-tasks::before {
@@ -297,11 +360,6 @@ export function DashboardCalendar({
         button.rdp-day.has-tasks > * {
           position: relative !important;
           z-index: 2 !important;
-        }
-        
-        /* Today indicator circle positioning */
-        .rdp-day.is-today > span {
-          z-index: 3 !important;
         }
         
         /* Selected day styling - ensure it's visible above fills */

@@ -10,6 +10,7 @@ import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
+import { useScheduleContext } from "@/contexts/ScheduleContext";
 
 // Helper function to create gradient header style with paper texture
 const createGradientHeaderStyle = (color: string) => {
@@ -39,7 +40,7 @@ type SelectedItem = {
 export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const { selectedDate, setSelectedDateOrToday } = useScheduleContext();
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
@@ -143,7 +144,7 @@ export default function Dashboard() {
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
+    setSelectedDateOrToday(date);
     // Auto-switch to schedule tab when a date is selected
     if (date) {
       setActiveTab("schedule");

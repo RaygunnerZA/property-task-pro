@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getSession, subscribeToSession } from "@/lib/sessionManager";
 
 interface UseActiveOrgResult {
   orgId: string | null;
@@ -24,9 +25,9 @@ export function useActiveOrg(): UseActiveOrgResult {
   const { data: userData } = useQuery({
     queryKey: ["auth", "user"],
     queryFn: async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      return user;
+      // SessionManager is the single source of truth for session reads.
+      const session = await getSession();
+      return session?.user ?? null;
     },
     staleTime: Infinity, // User ID doesn't change during session
     retry: false,
@@ -71,20 +72,11 @@ export function useActiveOrg(): UseActiveOrgResult {
 
   // Listen for auth state changes to invalidate queries
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only invalidate on actual sign in/out, not token refresh
-      // Token refresh doesn't change the user or org
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        // Invalidate user query to refetch
-        queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-        // Invalidate org query for the new/old user
-        queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
-      }
+    return subscribeToSession((_session) => {
+      // Session changes can affect the user/org.
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
     });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, [queryClient]);
 
   // Fetch active org using TanStack Query

@@ -64,7 +64,7 @@ export function PropertySpacesList({
     <>
       <div className="border-b border-border p-4 pb-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Spaces</h2>
+          <h2 className="text-base font-semibold text-foreground">Recent Spaces</h2>
           <button
             onClick={() => setShowAddSpace(true)}
             className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"

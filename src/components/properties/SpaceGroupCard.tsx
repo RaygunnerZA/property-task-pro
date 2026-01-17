@@ -33,7 +33,7 @@ export function SpaceGroupCard({
       className={cn(
         "bg-card rounded-[8px] overflow-hidden shadow-e1",
         "transition-all duration-200 cursor-pointer hover:shadow-md",
-        "active:scale-[0.99] h-[260px]",
+        "active:scale-[0.99] h-[270px] w-full",
         className
       )}
       onClick={handleClick}

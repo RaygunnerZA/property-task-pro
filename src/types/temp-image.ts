@@ -1,4 +1,4 @@
-import type { Annotation } from "@/types/image-annotations";
+import type { AnnotationPayload } from "@/types/annotation-payload";
 
 export type UploadStatus = "pending" | "uploading" | "uploaded" | "failed";
 
@@ -8,7 +8,8 @@ export interface TempImage {
   original_file: File;
   thumbnail_blob: Blob;          // 200x200px compressed WebP
   optimized_blob: Blob;          // ≤1200px longest side, WebP
-  annotation_json?: Annotation[]; // Saved before task exists
+  annotation_json?: AnnotationPayload[]; // Saved before task exists
+  annotated_preview_url?: string; // data URL preview for local display
   uploaded: boolean;             // false until after task creation
   upload_status?: UploadStatus;
   storage_paths?: {

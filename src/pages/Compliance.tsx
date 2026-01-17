@@ -3,16 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { DocumentUploadDialog } from "@/components/compliance/DocumentUploadDialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Shield, AlertTriangle, CheckCircle2, FileText, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format, differenceInDays, isPast, parseISO } from "date-fns";
+import { ComplianceFiles } from "@/components/compliance/ComplianceFiles";
+import { Shield, FileText } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { EmptyState } from "@/components/design-system/EmptyState";
-import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import DashboardSection from "@/components/dashboard/DashboardSection";
 import ComplianceOverviewCard from "@/components/dashboard/ComplianceOverviewCard";
 import RuleStatusDistribution from "@/components/dashboard/RuleStatusDistribution";
@@ -41,41 +37,6 @@ const Compliance = () => {
 
   // compliance_view already calculates expiry_status and days_until_expiry
   const documents = documentsData;
-  const documentsWithStatus = useMemo(() => {
-    return documents.map((doc: any) => ({
-      ...doc,
-      expiryStatus: doc.expiry_status || "none",
-      daysUntilExpiry: doc.days_until_expiry,
-    }));
-  }, [documents]);
-
-  const getExpiryBadge = (status: "expired" | "expiring" | "valid" | "none", days: number | null) => {
-    switch (status) {
-      case "expired":
-        return (
-          <Badge variant="danger">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Expired {days !== null && `(${days} days ago)`}
-          </Badge>
-        );
-      case "expiring":
-        return (
-          <Badge variant="warning">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Expiring in {days} days
-          </Badge>
-        );
-      case "valid":
-        return (
-          <Badge variant="success">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Valid
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
 
   // Dashboard data hooks
   const overview = useComplianceOverview();
@@ -156,7 +117,7 @@ const Compliance = () => {
           {loading ? (
             <LoadingState message="Loading compliance documents..." />
           ) : error ? (
-            <ErrorState message={error} onRetry={refresh} />
+            <ErrorState message={error} onRetry={() => queryClient.invalidateQueries({ queryKey: ["compliance"] })} />
           ) : documents.length === 0 ? (
             <EmptyState
               icon={Shield}
@@ -169,57 +130,8 @@ const Compliance = () => {
               }}
             />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {documentsWithStatus.map((doc) => (
-                <Card
-                  key={doc.id}
-                  className={cn(
-                    "shadow-e1 hover:shadow-md transition-shadow cursor-pointer",
-                    doc.expiryStatus === "expired" && "border-destructive/20",
-                    doc.expiryStatus === "expiring" && "border-warning/20"
-                  )}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-start gap-2">
-                      <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                      <span className="line-clamp-2">
-                        {(doc as any).title || "Untitled Document"}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {getExpiryBadge(doc.expiryStatus, doc.daysUntilExpiry)}
-                    
-                    {doc.expiry_date && (
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium">Expiry:</span>{" "}
-                        {format(parseISO(doc.expiry_date), "MMM d, yyyy")}
-                      </div>
-                    )}
-
-                    {doc.status && (
-                      <div className="text-sm text-muted-foreground">
-                        <span className="font-medium">Status:</span> {doc.status}
-                      </div>
-                    )}
-
-                    {(doc as any).file_url && (
-                      <NeomorphicButton
-                        variant="secondary"
-                        size="sm"
-                        className="w-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open((doc as any).file_url, "_blank");
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Document
-                      </NeomorphicButton>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="bg-card rounded-lg shadow-sm p-4">
+              <ComplianceFiles documents={documents} />
             </div>
           )}
         </DashboardSection>

@@ -3,6 +3,7 @@ import { useGroups } from "@/hooks/useGroups";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { ENABLE_GROUPS_FEATURE } from "@/lib/featureFlags";
 import { Card } from "@/components/ui/card";
 import { Users, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,7 @@ export function PropertyRelatedEntities({
 
   // Filter groups to only those related to this property
   const relatedGroups = useMemo(() => {
+    if (!ENABLE_GROUPS_FEATURE) return [];
     if (groupIds.length === 0) return [];
     return groups.filter((group) => groupIds.includes(group.id));
   }, [groups, groupIds]);

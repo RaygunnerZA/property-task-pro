@@ -19,6 +19,34 @@ const PROPERTY_ICONS = {
   castle: Castle,
 } as const;
 
+function PropertyIconChip({ property }: { property: any }) {
+  if (!property) return null;
+  const iconName = property.icon_name || "home";
+  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const iconColor = property.icon_color_hex || "#8EC9CE";
+  return (
+    <div
+      className="inline-flex items-center justify-center rounded-[146px] border-0"
+      style={{ backgroundColor: iconColor, width: "24px", height: "24px" }}
+    >
+      <IconComponent className="h-4 w-4 text-white" />
+    </div>
+  );
+}
+
+function PriorityDot({ priority }: { priority: string | null | undefined }) {
+  const p = (priority || "").toLowerCase();
+  const cls =
+    p === "urgent"
+      ? "bg-destructive"
+      : p === "high"
+        ? "bg-orange-500"
+        : p === "low"
+          ? "bg-muted-foreground/50"
+          : "bg-primary";
+  return <span className={cn("absolute left-1 top-1 h-[10px] w-[10px] rounded-full", cls)} />;
+}
+
 interface TaskCardActiveProps {
   task: any;
   property?: any;
@@ -145,137 +173,120 @@ export function TaskCardActive({
         "active:scale-[0.99]"
       )}
     >
-      {/* Image Preview */}
-      {imageUrl && (
-        <div className="w-full h-32 overflow-hidden rounded-t-[8px]">
-          <img
-            src={imageUrl}
-            alt={t.title || "Task image"}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      <div className="relative">
+        <PriorityDot priority={t.priority} />
 
-      <div className="p-4 space-y-3">
-        {/* Title - 2-4 lines */}
-        <div>
-          <h3 className="font-semibold text-foreground text-base leading-tight line-clamp-4">
-            {t.title || "Untitled Task"}
-          </h3>
-          {t.description && (
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {t.description}
-            </p>
-          )}
-        </div>
+        <div className="flex items-stretch">
+          {/* Main content */}
+          <div className="flex-1 min-w-0 pr-4 pb-4 pl-[25px] pt-[13px]">
+            {/* Title */}
+            <h3 className="font-semibold text-foreground text-base leading-tight line-clamp-4">
+              {t.title || "Untitled Task"}
+            </h3>
 
-        {/* Chips Row */}
-        <div className="flex flex-wrap gap-2 items-center">
-          {/* Property Chip */}
-          {property && (
-            <div
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-xs font-medium"
-              style={{
-                backgroundColor: `${iconColor}20`,
-                color: iconColor,
-                border: `1px solid ${iconColor}40`,
-              }}
-            >
-              <IconComponent className="h-3 w-3" />
-              <span>{property.nickname || property.address || "Property"}</span>
-            </div>
-          )}
+            {/* Chips Row */}
+            <div className="flex flex-wrap gap-2 items-center mt-3">
+              {/* Property Icon Chip (matches main task cards) */}
+              {property ? <PropertyIconChip property={property} /> : null}
 
-          {/* Priority Chip */}
-          {t.priority && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-xs",
-                priorityColors[t.priority] || priorityColors.medium
+              {/* Priority chip (optional) */}
+              {t.priority && (
+                <Badge
+                  variant="outline"
+                  className={cn("text-xs", priorityColors[t.priority] || priorityColors.medium)}
+                >
+                  {t.priority}
+                </Badge>
               )}
-            >
-              {t.priority}
-            </Badge>
-          )}
 
-          {/* Space Chips */}
-          {spaces.length > 0 && (
-            <Badge variant="outline" className="text-xs">
-              {spaces.length} space{spaces.length !== 1 ? 's' : ''}
-            </Badge>
-          )}
+              {spaces.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {spaces.length} space{spaces.length !== 1 ? "s" : ""}
+                </Badge>
+              )}
 
-          {/* Team Chips */}
-          {teams.length > 0 && (
-            <Badge variant="outline" className="text-xs">
-              {teams.length} team{teams.length !== 1 ? 's' : ''}
-            </Badge>
-          )}
-        </div>
+              {teams.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {teams.length} team{teams.length !== 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (onDone) {
-                onDone();
-              } else if (task?.id && orgId && !isArchiving) {
-                setIsArchiving(true);
-                try {
-                  await archiveTask(task.id, orgId);
-                  toast({
-                    title: "Task archived",
-                    description: "The task has been archived.",
-                  });
-                  queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                } catch (error) {
-                  toast({
-                    title: "Error",
-                    description: "Failed to archive task.",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setIsArchiving(false);
-                }
-              }
-            }}
-            disabled={isArchiving}
-            className="flex-1 text-xs"
-          >
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            {isArchiving ? "..." : "Done"}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSnooze?.();
-            }}
-            className="flex-1 text-xs"
-          >
-            <Clock className="h-3 w-3 mr-1" />
-            Snooze
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onDetails) {
-                onDetails();
-              } else if (onClick) {
-                onClick();
-              }
-            }}
-            className="flex-1 text-xs"
-          >
-            Details
-          </Button>
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-border/50 mt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (onDone) {
+                    onDone();
+                  } else if (task?.id && orgId && !isArchiving) {
+                    setIsArchiving(true);
+                    try {
+                      await archiveTask(task.id, orgId);
+                      toast({
+                        title: "Task archived",
+                        description: "The task has been archived.",
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to archive task.",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsArchiving(false);
+                    }
+                  }
+                }}
+                disabled={isArchiving}
+                className="w-full sm:flex-1 text-xs"
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {isArchiving ? "..." : "Done"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSnooze?.();
+                }}
+                className="w-full sm:flex-1 text-xs"
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                Snooze
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDetails) {
+                    onDetails();
+                  } else if (onClick) {
+                    onClick();
+                  }
+                }}
+                className="w-full sm:flex-1 text-xs"
+              >
+                Details
+              </Button>
+            </div>
+          </div>
+
+          {/* Right thumbnail (full height of card) */}
+          {imageUrl ? (
+            <div className="w-24 flex-shrink-0 overflow-hidden rounded-r-[8px] border-l border-border/40">
+              <img
+                src={imageUrl}
+                alt={t.title || "Task image"}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

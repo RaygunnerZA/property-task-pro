@@ -48,9 +48,6 @@ export default function AcceptInvitation() {
         windowLocation: window.location.href,
       });
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:42',message:'URL inspection - checking for hash tokens',data:{fullUrl:window.location.href,hash:window.location.hash,hashLength:window.location.hash?.length,pathname:window.location.pathname,search:window.location.search,hasHash:!!window.location.hash},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       
       // Check URL hash for access_token (Supabase puts auth tokens in hash fragments)
       let hashAccessToken = null;
@@ -62,18 +59,12 @@ export default function AcceptInvitation() {
       if (window.location.hash) {
         try {
           const hashString = window.location.hash.substring(1);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:50',message:'Parsing hash string',data:{hashString,hashStringLength:hashString.length,startsWithHash:hashString.startsWith('#')},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
           
           const hashParams = new URLSearchParams(hashString);
           hashAccessToken = hashParams.get("access_token");
           hashRefreshToken = hashParams.get("refresh_token");
           hashType = hashParams.get("type");
           
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:57',message:'Hash params extracted',data:{hashAccessToken:!!hashAccessToken,hashAccessTokenLength:hashAccessToken?.length,hashRefreshToken:!!hashRefreshToken,hashType,allHashParams:Object.fromEntries(hashParams.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
           
           console.log("Found hash tokens", { hashAccessToken: !!hashAccessToken, hashType });
           
@@ -83,9 +74,6 @@ export default function AcceptInvitation() {
           hashErrorDescription = hashParams.get("error_description");
           
           if (hashError) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:65',message:'Hash contains error - link expired or invalid',data:{hashError,hashErrorCode,hashErrorDescription,hasToken:!!tokenToUse},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
             
             console.warn("Supabase link error in hash:", { error: hashError, code: hashErrorCode, description: hashErrorDescription });
             
@@ -104,9 +92,6 @@ export default function AcceptInvitation() {
               return;
             }
           } else if (hashAccessToken && hashType === "invite") {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:85',message:'Before setSession call',data:{hasAccessToken:!!hashAccessToken,hasRefreshToken:!!hashRefreshToken,hashType},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
             
             console.log("Setting session from hash token...");
             try {
@@ -115,9 +100,6 @@ export default function AcceptInvitation() {
                 refresh_token: hashRefreshToken || "",
               });
               
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:95',message:'After setSession call',data:{sessionError:!!sessionError,errorCode:sessionError?.code,errorMessage:sessionError?.message,hasSession:!!sessionData?.session,hasUser:!!sessionData?.user},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-              // #endregion
               
               if (sessionError) {
                 console.error("Error setting session from hash:", sessionError);
@@ -130,21 +112,13 @@ export default function AcceptInvitation() {
               console.error("Exception setting session from hash:", err);
             }
           } else if (hashAccessToken) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:110',message:'Hash token found but type mismatch',data:{hashAccessToken:!!hashAccessToken,hashType,expectedType:'invite'},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
             console.warn("Hash token found but type is not 'invite':", hashType);
           }
         } catch (err) {
           console.error("Error parsing hash:", err);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:93',message:'Error parsing hash',data:{error:err?.message,hash:window.location.hash},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
         }
       } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:97',message:'No hash found in URL',data:{fullUrl:window.location.href},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
+        // No hash found
       }
 
       // If there's an access_token in query params, try to use it
@@ -192,9 +166,7 @@ export default function AcceptInvitation() {
             // If we have a token, try to find the invitation even without authentication
             // This allows us to show helpful messages even if the Supabase link expired
             if (tokenToUse) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:179',message:'User not authenticated - trying token lookup',data:{tokenToUse,hasHashError:!!hashError},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-              // #endregion
+              
               
               try {
                 // Try to find invitation by token (public RLS policy allows this)
@@ -205,9 +177,7 @@ export default function AcceptInvitation() {
                   .eq("status", "pending")
                   .maybeSingle();
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:189',message:'Token lookup result',data:{found:!!invitationByToken,errorCode:tokenError?.code,errorMessage:tokenError?.message,hasHashError:!!hashError},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-                // #endregion
+                
                 
                 if (invitationByToken && !tokenError) {
                   // Found invitation - the link expired but invitation is still valid
@@ -311,9 +281,7 @@ export default function AcceptInvitation() {
         // They might need to set a password, but let's first try to find the invitation
         // We'll check if they need password after finding the invitation
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:116',message:'User authenticated - checking auth state',data:{userId:user.id,userEmail:user.email,emailConfirmed:user.email_confirmed_at,hasSession:true,identities:user.identities?.map(i=>({provider:i.provider,id:i.id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
+        
         
         console.log("User authenticated:", { userId: user.id, email: user.email });
 
@@ -344,9 +312,7 @@ export default function AcceptInvitation() {
         });
 
         if (lookupToken) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:147',message:'Before token query',data:{lookupToken,hasToken:!!lookupToken},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
+          
           
           // Try to find by token first
           // Don't join organisations - user isn't a member yet, so RLS would block it
@@ -357,9 +323,7 @@ export default function AcceptInvitation() {
             .eq("status", "pending")
             .maybeSingle();
 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:156',message:'After token query',data:{found:!!invitationByToken,errorCode:tokenError?.code,errorMessage:tokenError?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
+          
 
           if (!tokenError && invitationByToken) {
             invitation = invitationByToken;
@@ -376,9 +340,7 @@ export default function AcceptInvitation() {
         // This is important because Supabase redirects might not preserve query params
         // Don't join organisations - user isn't a member yet, so RLS would block it
         if (!invitation && user.email) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:200',message:'Before email query - checking user email',data:{userEmail:user.email,userEmailLower:user.email?.toLowerCase(),userId:user.id,emailConfirmed:user.email_confirmed_at},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
+          
           
           console.log("Trying to find invitation by email:", user.email);
           const { data: invitationByEmail, error: emailError } = await supabase
@@ -390,9 +352,7 @@ export default function AcceptInvitation() {
             .limit(1)
             .maybeSingle();
 
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:215',message:'After email query - result',data:{found:!!invitationByEmail,errorCode:emailError?.code,errorMessage:emailError?.message,errorDetails:emailError?.details,errorHint:emailError?.hint,queryEmail:user.email.toLowerCase()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C'})}).catch(()=>{});
-          // #endregion
+          
 
           if (!emailError && invitationByEmail) {
             invitation = invitationByEmail;
@@ -447,9 +407,7 @@ export default function AcceptInvitation() {
           orgId: invitation.org_id 
         });
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:448',message:'Invitation found - proceeding to accept',data:{invitationId:invitation.id,invitationEmail:invitation.email,userEmail:user.email,orgId:invitation.org_id,role:invitation.role,status:invitation.status,expiresAt:invitation.expires_at},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        
 
         // Check if invitation has expired
         if (new Date(invitation.expires_at) < new Date()) {
@@ -470,9 +428,7 @@ export default function AcceptInvitation() {
         // We'll show password setup if they try to continue without one
 
         // Check if user is already a member of this organization
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:469',message:'Checking if user already member',data:{userId:user.id,orgId:invitation.org_id},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        
         
         const { data: existingMember, error: checkError } = await supabase
           .from("organisation_members")
@@ -481,9 +437,7 @@ export default function AcceptInvitation() {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:477',message:'Existing member check result',data:{isMember:!!existingMember,memberId:existingMember?.id,checkError:!!checkError,checkErrorCode:checkError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        
 
         if (existingMember) {
           // Already a member - just mark invitation as accepted
@@ -511,9 +465,7 @@ export default function AcceptInvitation() {
         }
 
         // Add user to the organization
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:501',message:'Before adding user to organisation',data:{userId:user.id,userEmail:user.email,orgId:invitation.org_id,role:invitation.role||'member',invitationId:invitation.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        
         
         const { data: memberData, error: memberError } = await supabase
           .from("organisation_members")
@@ -524,15 +476,11 @@ export default function AcceptInvitation() {
           })
           .select();
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:512',message:'After adding user to organisation',data:{success:!memberError,errorCode:memberError?.code,errorMessage:memberError?.message,errorDetails:memberError?.details,errorHint:memberError?.hint,memberData:!!memberData,memberId:memberData?.[0]?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        
 
         if (memberError) {
           console.error("Error adding member:", memberError);
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AcceptInvitation.tsx:520',message:'Member insert failed - showing error',data:{errorCode:memberError.code,errorMessage:memberError.message,errorDetails:memberError.details,errorHint:memberError.hint},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'F'})}).catch(()=>{});
-          // #endregion
+          
           setStatus("error");
           setMessage("Failed to join organization. Please try again or contact support.");
           setLoading(false);

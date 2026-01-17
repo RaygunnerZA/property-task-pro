@@ -1,15 +1,26 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import MediaSection from '@/components/property/media/MediaSection';
-import PropertyDocumentList from '@/components/property/media/PropertyDocumentList';
+import PropertyDocumentsFiles from '@/components/property/media/PropertyDocumentsFiles';
+import PropertyDocumentViewerModal from '@/components/property/media/PropertyDocumentViewerModal';
 import PropertyUploadButton from '@/components/property/media/PropertyUploadButton';
-import { usePropertyDocuments } from '@/hooks/property/usePropertyDocuments';
+import { usePropertyDocuments, PropertyDocument } from '@/hooks/property/usePropertyDocuments';
 import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
 import { LoadingState } from '@/components/design-system/LoadingState';
 
 export default function PropertyDocuments() {
   const { id } = useParams<{ id: string }>();
   const { documents, isLoading } = usePropertyDocuments(id || '');
+  const [selectedDocument, setSelectedDocument] = useState<PropertyDocument | null>(null);
+
+  const handleDocumentClick = (document: PropertyDocument) => {
+    setSelectedDocument(document);
+  };
+
+  const handleClose = () => {
+    setSelectedDocument(null);
+  };
 
   return (
     <StandardPageWithBack
@@ -26,9 +37,21 @@ export default function PropertyDocuments() {
         {isLoading ? (
           <LoadingState message="Loading documents..." />
         ) : (
-          <PropertyDocumentList documents={documents} />
+          <div className="bg-card rounded-lg shadow-sm p-4">
+            <PropertyDocumentsFiles 
+              documents={documents} 
+              onDocumentClick={handleDocumentClick}
+            />
+          </div>
         )}
       </MediaSection>
+
+      {selectedDocument && (
+        <PropertyDocumentViewerModal
+          document={selectedDocument}
+          onClose={handleClose}
+        />
+      )}
     </StandardPageWithBack>
   );
 }

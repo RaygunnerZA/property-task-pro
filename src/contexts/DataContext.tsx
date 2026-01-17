@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getSession, subscribeToSession } from "@/lib/sessionManager";
 
 interface Organisation {
   id: string;
@@ -113,41 +114,13 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   }, []);
 
-  // Main refresh function - uses refreshSession to ensure fresh JWT with org_id claim
+  // Main refresh function - reads session only (no refreshSession)
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Use refreshSession instead of getSession to get fresh JWT with updated claims
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
-      if (refreshError) {
-        // If refresh fails, try getSession as fallback (might be a new session)
-        const { data: { session: fallbackSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          setError(sessionError.message);
-          setSession(null);
-          setOrganisation(null);
-          return;
-        }
-        
-        setSession(fallbackSession);
-        
-        const newOrgId = fallbackSession?.user?.app_metadata?.org_id || 
-                         fallbackSession?.user?.user_metadata?.org_id;
-        
-        if (newOrgId) {
-          const org = await fetchOrganisation(newOrgId);
-          setOrganisation(org);
-        } else {
-          setOrganisation(null);
-        }
-        return;
-      }
-      
-      const newSession = refreshData.session;
+      const newSession = await getSession();
       setSession(newSession);
       
       // If we have an org_id in claims, fetch the organisation
@@ -171,53 +144,52 @@ export function DataProvider({ children }: DataProviderProps) {
     setError(null);
   }, []);
 
-  // Initialize on mount - try to get a fresh session
+  // Initialize on mount - read existing session (no refreshSession)
   useEffect(() => {
-    // Try refreshSession first to get fresh JWT with org_id claim
-    supabase.auth.refreshSession().then(({ data: refreshData, error }) => {
-      if (error || !refreshData.session) {
-        // Fall back to getSession for new sessions without refresh token
-        return supabase.auth.getSession();
-      }
-      return { data: { session: refreshData.session }, error: null };
-    }).then((result) => {
-      const initialSession = result?.data?.session ?? null;
+    let mounted = true;
+
+    getSession().then((initialSession) => {
+      if (!mounted) return;
       setSession(initialSession);
-      
-      const initialOrgId = initialSession?.user?.app_metadata?.org_id || 
-                           initialSession?.user?.user_metadata?.org_id;
-      
+
+      const initialOrgId =
+        initialSession?.user?.app_metadata?.org_id ||
+        initialSession?.user?.user_metadata?.org_id;
+
       if (initialOrgId) {
-        fetchOrganisation(initialOrgId).then(setOrganisation);
+        fetchOrganisation(initialOrgId).then((org) => {
+          if (!mounted) return;
+          setOrganisation(org);
+        });
       }
+
       setLoading(false);
     });
 
-    // Listen for auth state changes
-    // IMPORTANT: Do NOT use async callback or make Supabase calls directly inside
-    // This prevents auth deadlock issues
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        // Only synchronous state updates here
-        setSession(newSession);
-        
-        // Defer Supabase calls with setTimeout to prevent deadlock
-        const newOrgId = newSession?.user?.app_metadata?.org_id || 
-                         newSession?.user?.user_metadata?.org_id;
-        
-        if (newOrgId) {
-          setTimeout(() => {
-            fetchOrganisation(newOrgId).then(setOrganisation);
-          }, 0);
-        } else {
-          setOrganisation(null);
-        }
-        
-        setLoading(false);
-      }
-    );
+    const unsubscribe = subscribeToSession((newSession) => {
+      // Only synchronous state updates here
+      setSession(newSession);
 
-    return () => subscription.unsubscribe();
+      const newOrgId =
+        newSession?.user?.app_metadata?.org_id ||
+        newSession?.user?.user_metadata?.org_id;
+
+      if (newOrgId) {
+        // Defer DB call to avoid re-entrancy issues
+        setTimeout(() => {
+          fetchOrganisation(newOrgId).then(setOrganisation);
+        }, 0);
+      } else {
+        setOrganisation(null);
+      }
+
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [fetchOrganisation]);
 
   const value: DataContextValue = {

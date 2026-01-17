@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { ScheduleItemBase } from "@/types/schedule";
 import { ScheduleItemCard } from "./ScheduleItemCard";
 
@@ -20,11 +20,6 @@ export const DayScheduleDrawer: React.FC<DayScheduleDrawerProps> = ({
   items,
   onItemPress,
 }) => {
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'D',location:'DayScheduleDrawer.tsx:18',message:'DayScheduleDrawer render',data:{dateLabel,itemsCount:items.length,items:items.map(i=>({id:i.id,kind:i.kind,date:i.date,title:i.title}))},timestamp:Date.now()})}).catch(()=>{});
-  }, [dateLabel, items]);
-  // #endregion
   const countLabel =
     items.length === 0
       ? "No items"

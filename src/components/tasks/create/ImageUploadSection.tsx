@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Camera, Upload, SquarePen, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { TempImage, UploadStatus } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
-import { ImageAnnotationEditor } from "@/components/tasks/ImageAnnotationEditor";
-import type { Annotation } from "@/types/image-annotations";
+import { ImageAnnotationEditorWrapper } from "@/components/tasks/ImageAnnotationEditorWrapper";
+import type { AnnotationPayload, AnnotationSavePayload } from "@/types/annotation-payload";
 
 interface ImageUploadSectionProps {
   images: TempImage[];
@@ -63,11 +62,16 @@ export function ImageUploadSection({
     onImagesChange(images.filter((_, i) => i !== index));
   };
 
-  const updateImageAnnotations = (index: number, annotations: Annotation[]) => {
+  const updateImageAnnotations = (
+    index: number,
+    annotations: AnnotationPayload[],
+    previewDataUrl?: string
+  ) => {
     const updated = [...images];
     updated[index] = {
       ...updated[index],
       annotation_json: annotations,
+      annotated_preview_url: previewDataUrl ?? updated[index].annotated_preview_url,
     };
     onImagesChange(updated);
   };
@@ -95,7 +99,7 @@ export function ImageUploadSection({
           {/* Thumbnail - 50% width */}
           <div className="w-1/2 relative group aspect-square rounded-lg overflow-hidden shadow-e1">
             <img
-              src={primaryImage.thumbnail_url}
+              src={primaryImage.annotated_preview_url || primaryImage.thumbnail_url}
               alt={primaryImage.display_name}
               className="w-full h-full object-cover"
             />
@@ -185,7 +189,7 @@ export function ImageUploadSection({
               className="relative group aspect-square rounded-lg overflow-hidden shadow-e1"
             >
               <img
-                src={image.thumbnail_url}
+                src={image.annotated_preview_url || image.thumbnail_url}
                 alt={image.display_name}
                 className="w-full h-full object-cover"
               />
@@ -233,52 +237,29 @@ export function ImageUploadSection({
 
       {/* Annotation Editor - works with temp images */}
       {showAnnotationEditor && editingImageIndex !== null && images[editingImageIndex] && (
-        <TempImageAnnotationEditor
-          tempImage={images[editingImageIndex]}
-          onSave={(annotations) => {
-            updateImageAnnotations(editingImageIndex, annotations);
+        <ImageAnnotationEditorWrapper
+          open={showAnnotationEditor}
+          imageUrl={images[editingImageIndex].optimized_url || images[editingImageIndex].thumbnail_url || ""}
+          initialAnnotations={images[editingImageIndex].annotation_json || []}
+          onSave={(data: AnnotationSavePayload) => {
+            updateImageAnnotations(editingImageIndex, data.annotations, data.previewDataUrl);
             setShowAnnotationEditor(false);
             setEditingImageIndex(null);
           }}
-      onCancel={() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageUploadSection.tsx:onCancel',message:'TempImageAnnotationEditor onCancel called',data:{editingImageIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        setShowAnnotationEditor(false);
-        setEditingImageIndex(null);
-      }}
+          onCancel={() => {
+            setShowAnnotationEditor(false);
+            setEditingImageIndex(null);
+          }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowAnnotationEditor(false);
+              setEditingImageIndex(null);
+            }
+          }}
         />
       )}
     </div>
   );
 }
 
-// Annotation editor for temp images (before task creation)
-function TempImageAnnotationEditor({
-  tempImage,
-  onSave,
-  onCancel,
-}: {
-  tempImage: TempImage;
-  onSave: (annotations: Annotation[]) => void;
-  onCancel: () => void;
-}) {
-  return (
-    <ImageAnnotationEditor
-      imageUrl={tempImage.optimized_url || tempImage.thumbnail_url || ''}
-      imageId={tempImage.local_id} // Use local_id as identifier
-      taskId={''} // No task yet
-      initialAnnotations={tempImage.annotation_json || []}
-      onSave={async (annotations, isAutosave) => {
-        // For temp images, always save (autosave or manual)
-        onSave(annotations);
-        // Don't close on autosave for temp images either
-        if (!isAutosave) {
-          setShowAnnotationEditor(false);
-          setEditingImageIndex(null);
-        }
-      }}
-      onCancel={onCancel}
-    />
-  );
-}
+// Annotation editor is handled by ImageAnnotationEditorWrapper (pre-upload)

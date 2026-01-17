@@ -6,8 +6,8 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
-import { ImageAnnotationEditor } from "./ImageAnnotationEditor";
-import { useImageAnnotations } from "@/hooks/useImageAnnotations";
+import { ImageAnnotationEditorWrapper } from "@/components/tasks/ImageAnnotationEditorWrapper";
+import type { AnnotationSavePayload } from "@/types/annotation-payload";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,6 +58,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  const [annotatedPreviews, setAnnotatedPreviews] = useState<Record<string, string>>({});
 
   // Update local state when task data loads
   useEffect(() => {
@@ -761,7 +762,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   ) : task && task.images && task.images.length > 0 ? (
                     <>
                       <img
-                        src={task.images[selectedImageIndex ?? 0]?.thumbnail_url || task.images[selectedImageIndex ?? 0]?.file_url}
+                        src={
+                          annotatedPreviews[task.images[selectedImageIndex ?? 0]?.id] ||
+                          task.images[selectedImageIndex ?? 0]?.annotated_preview_url ||
+                          task.images[selectedImageIndex ?? 0]?.thumbnail_url ||
+                          task.images[selectedImageIndex ?? 0]?.file_url
+                        }
                         alt={task.images[selectedImageIndex ?? 0]?.file_name || "Task image"}
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -819,7 +825,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                               onClick={() => setSelectedImageIndex(index)}
                             >
                               <img
-                                src={image.thumbnail_url || image.file_url}
+                                src={
+                                  annotatedPreviews[image.id] ||
+                                  image.annotated_preview_url ||
+                                  image.thumbnail_url ||
+                                  image.file_url
+                                }
                                 alt={image.file_name || "Task image"}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -924,58 +935,63 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {showAnnotationEditor && editingImageId && task && createPortal(
       <ImageAnnotationEditorWrapper
-        taskId={taskId}
-        imageId={editingImageId}
+        open={showAnnotationEditor}
         imageUrl={
-          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
+          task.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
           task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
+          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
           ""
         }
-        onClose={() => {
+        initialAnnotations={
+          task.images?.find((img: any) => img.id === editingImageId)?.annotation_json || []
+        }
+        onSave={async (data: AnnotationSavePayload) => {
+          if (!editingImageId) return;
+
+          setAnnotatedPreviews((prev) => ({
+            ...prev,
+            [editingImageId]: data.previewDataUrl,
+          }));
+
+          try {
+            const updatePayload: Record<string, any> = {
+              annotation_json: data.annotations,
+            };
+            if (data.previewDataUrl) {
+              updatePayload.annotated_preview_url = data.previewDataUrl;
+            }
+
+            const { error } = await supabase
+              .from("attachments")
+              .update(updatePayload)
+              .eq("id", editingImageId);
+
+            if (error) {
+              console.error("Error updating image annotations:", error);
+            }
+          } catch (err) {
+            console.error("Failed to save annotations:", err);
+          } finally {
+            queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+            queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
+            refreshTask();
+            setShowAnnotationEditor(false);
+            setEditingImageId(null);
+          }
+        }}
+        onCancel={() => {
           setShowAnnotationEditor(false);
           setEditingImageId(null);
+        }}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAnnotationEditor(false);
+            setEditingImageId(null);
+          }
         }}
       />,
       document.body
     )}
     </>
-  );
-}
-
-// Wrapper component to handle annotation hook
-function ImageAnnotationEditorWrapper({
-  taskId,
-  imageId,
-  imageUrl,
-  onClose,
-}: {
-  taskId: string;
-  imageId: string;
-  imageUrl: string;
-  onClose: () => void;
-}) {
-  const { annotations, saveAnnotations } = useImageAnnotations(taskId, imageId);
-
-  return (
-    <ImageAnnotationEditor
-      imageUrl={imageUrl}
-      imageId={imageId}
-      taskId={taskId}
-      initialAnnotations={annotations}
-      onSave={async (anns, isAutosave) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave',message:'onSave called in wrapper',data:{annotationsCount:anns.length,isAutosave},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        await saveAnnotations(anns);
-        // Only close on manual save, not autosave
-        if (!isAutosave) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave-close',message:'closing editor after manual save',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
-          onClose();
-        }
-      }}
-      onCancel={onClose}
-    />
   );
 }

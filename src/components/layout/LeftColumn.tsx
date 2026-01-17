@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -52,9 +53,6 @@ export function LeftColumn({
   const [hideProperties, setHideProperties] = useState(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
     () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:53',message:'Initializing selectedPropertyIds',data:{propertiesCount:properties.length,propertyIds:properties.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return new Set();
     }
   );
@@ -113,6 +111,15 @@ export function LeftColumn({
       ref={leftColumnRef}
       className="h-auto md:h-screen bg-background flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
     >
+      {/* Overview panel - mobile only */}
+      <div className="md:hidden w-full px-4 pt-4">
+        <DailyBriefingCard
+          tasks={tasks}
+          properties={properties}
+          selectedPropertyIds={selectedPropertyIds}
+        />
+      </div>
+
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 border-b border-border w-full">
         <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
@@ -143,9 +150,6 @@ export function LeftColumn({
                       <button
                         key={property.id}
                         onClick={() => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:144',message:'Property icon clicked',data:{propertyId:property.id,isActiveBefore:isActive,selectedPropertyIdsSize:selectedPropertyIds.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
                           // Toggle active state
                           const newSelection = new Set(selectedPropertyIds);
                           if (isActive) {
@@ -155,9 +159,6 @@ export function LeftColumn({
                           }
                           setSelectedPropertyIds(newSelection);
                           if (onFilterClick) {
-                            // #region agent log
-                            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:154',message:'Calling onFilterClick',data:{filterId:`filter-property-${property.id}`,propertyId:property.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                            // #endregion
                             onFilterClick(`filter-property-${property.id}`);
                           }
                         }}

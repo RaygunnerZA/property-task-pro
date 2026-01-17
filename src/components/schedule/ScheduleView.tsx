@@ -3,6 +3,7 @@ import { format, isToday, startOfDay } from "date-fns";
 import { TaskCardActive } from "./TaskCardActive";
 import { TaskCardMinimized } from "./TaskCardMinimized";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 interface ScheduleViewProps {
   tasks: any[];
@@ -10,6 +11,7 @@ interface ScheduleViewProps {
   selectedDate?: Date | undefined;
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
+  showDateHeaders?: boolean;
 }
 
 /**
@@ -26,14 +28,8 @@ export function ScheduleView({
   selectedDate,
   onTaskClick,
   selectedTaskId,
+  showDateHeaders = true,
 }: ScheduleViewProps) {
-  // #region agent log
-  console.log('[DEBUG] ScheduleView component executing', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
-  useEffect(() => {
-    console.log('[DEBUG] ScheduleView useEffect running', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:23',message:'ScheduleView render',data:{tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null,firstTask:tasks[0]||null},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] ScheduleView log failed:',e));
-  }, [tasks, selectedDate]);
-  // #endregion
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -49,13 +45,14 @@ export function ScheduleView({
     const withoutTime: any[] = [];
 
     tasks.forEach((task) => {
-      if (!task.due_date) {
+      const dueValue = task?.due_date || task?.due_at;
+      if (!dueValue) {
         withoutTime.push(task);
         return;
       }
 
       try {
-        const dueDate = new Date(task.due_date);
+        const dueDate = new Date(dueValue);
         // Check if task has a specific time (not just date)
         const startOfTaskDay = startOfDay(dueDate);
         const hasTime = dueDate.getTime() !== startOfTaskDay.getTime();
@@ -77,9 +74,6 @@ export function ScheduleView({
     // Sort time tasks chronologically
     withTime.sort((a, b) => a.time.getTime() - b.time.getTime());
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:73',message:'Tasks categorized',data:{timeTasksCount:withTime.length,anyTimeTasksCount:withoutTime.length,totalTasks:tasks.length},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return {
       timeTasks: withTime,
       anyTimeTasks: withoutTime,
@@ -202,6 +196,26 @@ export function ScheduleView({
     }
   }, []);
 
+  const scrollTaskToTop = useCallback((taskId: string) => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const el = container.querySelector(`[data-task-id="${taskId}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const handleTaskCardClick = useCallback(
+    (taskId: string, isActive: boolean) => {
+      if (!isActive) {
+        setActiveTaskId(taskId);
+        scrollTaskToTop(taskId);
+        return;
+      }
+      onTaskClick?.(taskId);
+    },
+    [onTaskClick, scrollTaskToTop]
+  );
+
   // Auto-scroll to current time if viewing today
   useEffect(() => {
     if (selectedDate && isToday(selectedDate) && scrollContainerRef.current && timeTasks.length > 0) {
@@ -236,10 +250,7 @@ export function ScheduleView({
   return (
     <div className="flex h-full w-full relative">
       {/* Task Stack */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 py-4"
-      >
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
         <div className="space-y-6">
           {/* Time-scheduled tasks grouped by date */}
           {dates.map((dateKey) => {
@@ -255,22 +266,34 @@ export function ScheduleView({
             return (
               <div key={dateKey} className="space-y-3">
                 {/* Date Header */}
-                <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2 border-b border-border/50">
-                  <h3 className="text-sm font-semibold text-foreground tracking-wide">
-                    {dateLabel}
-                  </h3>
-                </div>
+                {showDateHeaders ? (
+                  <div className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-2 border-b border-border/50">
+                    <h3 className="text-sm font-semibold text-foreground tracking-wide">
+                      {dateLabel}
+                    </h3>
+                  </div>
+                ) : null}
 
                 {/* Tasks for this date */}
-                {dateTasks.map(({ task, time, hour }) => {
+                <div className="relative">
+                  {/* Time spine */}
+                  <div className="absolute left-[2px] top-0 bottom-0 border-l-2 border-primary" />
+
+                  {dateTasks.map(({ task, time }, idx) => {
                   const property = task.property_id
                     ? propertyMap.get(task.property_id)
                     : undefined;
                   const isActive = activeTaskId === task.id;
                   const timeLabel = format(time, "HH:mm");
+                  const prev = idx > 0 ? dateTasks[idx - 1] : null;
+                  const showTimeLabel =
+                    idx === 0 ||
+                    !prev ||
+                    format(prev.time, "HH") !== format(time, "HH");
 
                   return (
-                    <div
+                    <motion.div
+                      layout
                       key={task.id}
                       ref={(el) => setTaskRef(task.id, el)}
                       data-task-id={task.id}
@@ -278,44 +301,50 @@ export function ScheduleView({
                         "transition-all duration-300 ease-in-out",
                         isActive ? "opacity-100 scale-100" : "opacity-70 scale-[0.98]"
                       )}
+                      transition={{ type: "spring", stiffness: 260, damping: 30 }}
                     >
                       {/* Time label inline with task */}
-                      <div className="flex items-start gap-3">
-                        <span className="text-xs font-mono text-muted-foreground w-12 flex-shrink-0 pt-1">
-                          {timeLabel}
-                        </span>
+                      <div className="flex items-start gap-2">
+                        <div className="w-12 flex-shrink-0 pt-1 relative">
+                          {/* dot on spine */}
+                          <div
+                            className={cn(
+                              "absolute left-0 top-0 h-2 w-2 rounded-full",
+                              isActive ? "bg-primary" : "bg-muted-foreground/40"
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "text-[10px] font-mono font-medium block mt-[20px] ml-2 w-[38px]",
+                              showTimeLabel ? "text-muted-foreground" : "text-transparent"
+                            )}
+                          >
+                            {timeLabel}
+                          </span>
+                        </div>
                         <div className="flex-1">
                           {isActive ? (
                             <TaskCardActive
                               task={task}
                               property={property}
-                              onClick={() => {
-                                if (onTaskClick) {
-                                  onTaskClick(task.id);
-                                }
-                              }}
+                              onClick={() => handleTaskCardClick(task.id, true)}
                               onDetails={() => {
-                                if (onTaskClick) {
-                                  onTaskClick(task.id);
-                                }
+                                handleTaskCardClick(task.id, true);
                               }}
                             />
                           ) : (
                             <TaskCardMinimized
                               task={task}
                               property={property}
-                              onClick={() => {
-                                if (onTaskClick) {
-                                  onTaskClick(task.id);
-                                }
-                              }}
+                              onClick={() => handleTaskCardClick(task.id, false)}
                             />
                           )}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
-                })}
+                  })}
+                </div>
               </div>
             );
           })}
@@ -334,7 +363,8 @@ export function ScheduleView({
                   const isActive = activeTaskId === task.id;
 
                   return (
-                    <div
+                    <motion.div
+                      layout
                       key={task.id}
                       ref={(el) => setTaskRef(task.id, el)}
                       data-task-id={task.id}
@@ -342,34 +372,25 @@ export function ScheduleView({
                         "transition-all duration-300 ease-in-out",
                         isActive ? "opacity-100 scale-100" : "opacity-70 scale-[0.98]"
                       )}
+                      transition={{ type: "spring", stiffness: 260, damping: 30 }}
                     >
                       {isActive ? (
                         <TaskCardActive
                           task={task}
                           property={property}
-                          onClick={() => {
-                            if (onTaskClick) {
-                              onTaskClick(task.id);
-                            }
-                          }}
+                          onClick={() => handleTaskCardClick(task.id, true)}
                           onDetails={() => {
-                            if (onTaskClick) {
-                              onTaskClick(task.id);
-                            }
+                            handleTaskCardClick(task.id, true);
                           }}
                         />
                       ) : (
                         <TaskCardMinimized
                           task={task}
                           property={property}
-                          onClick={() => {
-                            if (onTaskClick) {
-                              onTaskClick(task.id);
-                            }
-                          }}
+                          onClick={() => handleTaskCardClick(task.id, false)}
                         />
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

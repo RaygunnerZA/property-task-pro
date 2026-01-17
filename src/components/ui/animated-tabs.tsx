@@ -66,16 +66,20 @@ interface TabsContentsProps {
 const TabsContents = React.forwardRef<HTMLDivElement, TabsContentsProps>(
   ({ children, transition, className, ...props }, ref) => {
     const { value: currentValue } = React.useContext(TabsContext);
+    const childrenArray = React.Children.toArray(children);
     
     return (
-      <div ref={ref} className={cn("relative", className)} {...props}>
+      <div ref={ref} className={cn("relative h-full min-h-0", className)} {...props}>
         <AnimatePresence mode="wait">
-          {React.Children.map(children, (child) => {
-            if (React.isValidElement(child) && child.props.value === currentValue) {
-              return child;
-            }
-            return null;
-          })}
+          {currentValue
+            ? React.Children.map(children, (child) => {
+                if (React.isValidElement(child) && child.props.value === currentValue) {
+                  return child;
+                }
+                return null;
+              })
+            : // Fail-safe: if TabsContext doesn't have a value yet, render the first tab panel.
+              (childrenArray[0] as any) ?? null}
         </AnimatePresence>
       </div>
     );
@@ -112,6 +116,7 @@ const TabsContent = React.forwardRef<
       ref={ref}
       className={cn(
         "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "h-full min-h-0",
         className,
       )}
       value={value}
@@ -123,7 +128,7 @@ const TabsContent = React.forwardRef<
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -10 }}
         transition={defaultTransition}
-        className="h-full"
+        className="h-full min-h-0"
       >
         {children}
       </motion.div>

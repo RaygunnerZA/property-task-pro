@@ -158,18 +158,7 @@ export function FilterBar({
   const hasNonPropertyFilters = Array.from(selectedFilters).some(
     filterId => !filterId.startsWith('filter-property-')
   );
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:160',message:'hasNonPropertyFilters calculation',data:{selectedFiltersSize:selectedFilters.size,hasNonPropertyFilters,allFilters:Array.from(selectedFilters),propertyFilters:Array.from(selectedFilters).filter(f=>f.startsWith('filter-property-')),nonPropertyFilters:Array.from(selectedFilters).filter(f=>!f.startsWith('filter-property-'))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-  }, [selectedFilters, hasNonPropertyFilters]);
-  // #endregion
 
-  // #region agent log
-  // Verify icons are defined after fix
-  useEffect(() => {
-    debugLog({location:'FilterBar.tsx:97',message:'Post-fix icon verification',data:{funnelDefined:typeof Funnel !== 'undefined',arrowLeftToLineDefined:typeof ArrowLeftToLine !== 'undefined',funnelXDefined:typeof FunnelX !== 'undefined'},sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'});
-  }, []);
-  // #endregion
 
 
   // Reset animation direction after animation completes
@@ -233,7 +222,31 @@ export function FilterBar({
   return (
     <div className={cn("flex items-center justify-between gap-2 min-h-[35px]", className)}>
       {/* Single Row Container - horizontally scrollable */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[48px] px-[5px]">
+      <div className="relative flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[48px] px-[5px]">
+        {/* Top gradient box - fades in on categories level, fades out on primary */}
+        <div
+          className="absolute top-0 right-0 pointer-events-none z-10 transition-opacity duration-300"
+          style={{
+            top: '1px',
+            width: '7px',
+            height: '47px',
+            opacity: navigationLevel === 'categories' ? 1 : 0,
+            background: 'linear-gradient(270deg, rgba(0, 0, 0, 0.13) 0%, rgba(0, 0, 0, 0.05) 63%, transparent 100%)',
+            borderRadius: '5px 160px 160px 0px',
+            borderTopWidth: '0px',
+            borderTopStyle: 'none',
+            borderTopColor: 'rgba(0, 0, 0, 0)',
+            borderRightWidth: '0px',
+            borderRightColor: 'rgba(0, 0, 0, 0.1)',
+            borderRightStyle: 'none',
+            borderBottomWidth: '0px',
+            borderBottomStyle: 'none',
+            borderBottomColor: 'rgba(0, 0, 0, 0)',
+            borderLeftWidth: '0px',
+            borderLeftStyle: 'none',
+            borderLeftColor: 'rgba(0, 0, 0, 0)',
+          }}
+        />
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
@@ -244,34 +257,22 @@ export function FilterBar({
           {/* Level 1: Primary filters + Filter By button */}
           {navigationLevel === 'primary' && (
             <>
-              {/* #region agent log */}
-              {(() => {
-                try {
-                  const funnelEl = <Funnel className="h-[18px] w-[18px] text-foreground" />;
-                  debugLog({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
-                  return (
-                    <button
-                      type="button"
-                      onClick={handleFilterByClick}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
-                        "font-mono text-[13px] uppercase tracking-wider",
-                        "select-none cursor-pointer transition-all duration-150",
-                        "bg-background",
-                        "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                        "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
-                      )}
-                      style={{ paddingLeft: '9px', paddingRight: '11px' }}
-                    >
-                      {funnelEl}
-                      <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
-                    </button>
-                  );
-                } catch (e: any) {
-                  debugLog({location:'FilterBar.tsx:244',message:'Error creating Funnel',data:{error:e?.message,stack:e?.stack},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
-                  return null;
-                }
-              })()}
+              <button
+                type="button"
+                onClick={handleFilterByClick}
+                className={cn(
+                  "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
+                  "font-mono text-[13px] uppercase tracking-wider",
+                  "select-none cursor-pointer transition-all duration-150",
+                  "bg-background",
+                  "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
+                )}
+                style={{ paddingLeft: '9px', paddingRight: '11px' }}
+              >
+                <Funnel className="h-[18px] w-[18px] text-foreground" />
+                <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
+              </button>
               {/* FunnelX (Clear filters) - appears when filters are selected (excluding property filters) */}
               {hasNonPropertyFilters && (
                 renderIconButton(
@@ -279,7 +280,6 @@ export function FilterBar({
                   handleClearAllFilters
                 )
               )}
-              {/* #endregion */}
               {mostUsedOptions.map((option, index) => {
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));

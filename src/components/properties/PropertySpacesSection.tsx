@@ -106,29 +106,58 @@ export function PropertySpacesSection({ propertyId }: PropertySpacesSectionProps
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Skeleton key={i} className="h-[240px] rounded-[8px]" />
-        ))}
+      <div className="relative w-full max-w-full overflow-x-hidden overflow-y-visible">
+        <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0">
+          <div className="flex gap-3 items-start py-2" style={{ width: 'max-content' }}>
+            {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+              <div key={i} className="w-[175px] flex-shrink-0">
+                <Skeleton className="h-[270px] rounded-[8px]" />
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Gradient overlay - right side fade */}
+        <div 
+          className="absolute top-0 right-0 bottom-0 pointer-events-none"
+          style={{
+            width: '10px',
+            background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
+            zIndex: 20
+          }}
+        />
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-      {SPACE_GROUPS.map((group) => {
-        const spaceCount = spacesByGroup.get(group.name) || 0;
-        return (
-          <SpaceGroupCard
-            key={group.name}
-            groupName={group.name}
-            description={group.description}
-            color={group.color}
-            spaceCount={spaceCount}
-            propertyId={propertyId}
-          />
-        );
-      })}
+    <div className="relative w-full max-w-full overflow-x-hidden overflow-y-visible">
+      <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0">
+        <div className="flex gap-3 items-start py-2" style={{ width: 'max-content' }}>
+          {SPACE_GROUPS.map((group) => {
+            const spaceCount = spacesByGroup.get(group.name) || 0;
+            return (
+              <div key={group.name} className="w-[175px] flex-shrink-0">
+                <SpaceGroupCard
+                  groupName={group.name}
+                  description={group.description}
+                  color={group.color}
+                  spaceCount={spaceCount}
+                  propertyId={propertyId}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {/* Gradient overlay - right side fade */}
+      <div 
+        className="absolute top-0 right-0 bottom-0 pointer-events-none"
+        style={{
+          width: '10px',
+          background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
+          zIndex: 20
+        }}
+      />
     </div>
   );
 }

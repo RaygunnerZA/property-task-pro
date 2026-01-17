@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 
 interface WhenTabProps {
   dueDate: string;
@@ -71,6 +72,15 @@ export function WhenTab({
 
   return (
     <div className="space-y-4">
+      <DashboardCalendar
+        selectedDate={dueDate ? new Date(dueDate) : undefined}
+        onDateSelect={(date) => {
+          if (!date) return;
+          onDueDateChange(date.toISOString().split("T")[0]);
+        }}
+        className="mb-4"
+      />
+
       {/* Quick Date Selection */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">

@@ -208,6 +208,30 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
   useEffect(() => {
     async function fetchWeather() {
       try {
+        // If the user has previously denied location, don't prompt again.
+        // (Browsers generally won't re-prompt, but repeated calls still produce noisy errors.)
+        const GEO_DENIED_KEY = "filla_geo_denied";
+        if (localStorage.getItem(GEO_DENIED_KEY) === "1") {
+          setWeatherError("Location access denied");
+          return;
+        }
+
+        // If Permissions API is available, respect an already-denied state up front.
+        // @ts-expect-error - Permissions API types vary across TS lib configs
+        if (navigator.permissions?.query) {
+          try {
+            // @ts-expect-error - 'geolocation' is a valid permission name in browsers
+            const perm = await navigator.permissions.query({ name: "geolocation" });
+            if (perm?.state === "denied") {
+              localStorage.setItem(GEO_DENIED_KEY, "1");
+              setWeatherError("Location access denied");
+              return;
+            }
+          } catch {
+            // Ignore permission query errors; fall back to getCurrentPosition
+          }
+        }
+
         // Get user's location from browser
         if (!navigator.geolocation) {
           setWeatherError("Geolocation not supported");
@@ -242,8 +266,15 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
             }
           },
           (error) => {
+            // Permission denied
+            if (error?.code === 1) {
+              localStorage.setItem(GEO_DENIED_KEY, "1");
+              setWeatherError("Location access denied");
+              return;
+            }
+
             console.error("Geolocation error:", error);
-            setWeatherError("Location access denied");
+            setWeatherError("Geolocation error");
           }
         );
       } catch (err) {

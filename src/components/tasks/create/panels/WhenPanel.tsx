@@ -15,6 +15,7 @@ import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ContextResolver } from "../ContextResolver";
+import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 
 interface WhenPanelProps {
   dueDate: string;
@@ -81,6 +82,15 @@ export function WhenPanel({
         title="Set due date and time."
         helperText="When?"
       >
+        <DashboardCalendar
+          selectedDate={dueDate ? new Date(dueDate) : undefined}
+          onDateSelect={(date) => {
+            if (!date) return;
+            onDueDateChange(date.toISOString().split("T")[0]);
+          }}
+          className="mb-4"
+        />
+
         {/* Quick Date Selection */}
         <div className="flex flex-wrap gap-2 mb-4">
           {quickDates.map(({ label, days }) => {

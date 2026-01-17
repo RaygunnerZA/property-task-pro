@@ -12,15 +12,15 @@ interface DualPaneLayoutProps {
  * Mobile: Single column stack
  * 
  * Desktop (md+): CSS Grid with 2 columns
- *   - Left: 335px fixed (Calendar + Properties)
- *   - Right: 1fr (Task Tabs) - flexible up to max width
+ *   - Left: 320px fixed (Calendar + Properties)
+ *   - Right: 590px fixed (Task Tabs)
  * 
  * Desktop (lg+): CSS Grid with conditional columns
- *   - Without third column: [335px minmax(450px, 800px)]
- *   - With third column: [335px 799px 500px]
- *   - Left: 335px fixed (Calendar + Properties)
- *   - Middle: Flexible width (Task Tabs)
- *   - Right: 500px fixed (Task Details) - only shown when thirdColumn prop provided
+ *   - Without third column: [320px 590px]
+ *   - With third column: [320px 590px 360px]
+ *   - Left: 320px fixed (Calendar + Properties)
+ *   - Middle: 590px fixed (Task Tabs)
+ *   - Right: 360px fixed (Task Details) - only shown when thirdColumn prop provided
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
@@ -34,13 +34,13 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       </div>
 
       {/* Desktop: Two-column layout (md+), shown when screen is md-lg */}
-      <div className="hidden md:grid md:grid-cols-[335px_1fr] lg:hidden min-h-screen">
-        {/* Left Column: Fixed 335px, sticky on scroll */}
+      <div className="hidden md:grid md:grid-cols-[320px_590px] lg:hidden min-h-screen overflow-x-auto">
+        {/* Left Column: Fixed 320px, sticky on scroll */}
         <div className="border-r border-border h-screen sticky top-0">
           {leftColumn}
         </div>
 
-        {/* Right Column: Dynamic 1fr */}
+        {/* Right Column: Fixed 590px */}
         <div className="overflow-y-auto min-w-0">
           {rightColumn}
         </div>
@@ -48,23 +48,23 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
 
       {/* Desktop: Conditional three-column layout (lg+) */}
       <div 
-        className={`hidden lg:grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out ${
+        className={`hidden lg:grid min-h-screen overflow-x-auto transition-[grid-template-columns] duration-300 ease-in-out ${
           hasThirdColumn 
-            ? 'lg:grid-cols-[335px_799px_500px]' 
-            : 'lg:grid-cols-[335px_minmax(450px,_800px)]'
+            ? 'lg:grid-cols-[320px_590px_360px]' 
+            : 'lg:grid-cols-[320px_590px]'
         }`}
       >
-        {/* Left Column: Fixed 335px, sticky on scroll */}
+        {/* Left Column: Fixed 320px, sticky on scroll */}
         <div className="border-r border-border h-screen sticky top-0">
           {leftColumn}
         </div>
 
-        {/* Middle Column: Flexible width (Task Tabs) */}
+        {/* Middle Column: Fixed 590px (Task Tabs) */}
         <div className="overflow-y-auto border-r border-border min-w-0">
           {rightColumn}
         </div>
 
-        {/* Third Column: Fixed 500px (Task Details) - only shown when thirdColumn prop provided */}
+        {/* Third Column: Fixed 360px (Task Details) - only shown when thirdColumn prop provided */}
         {hasThirdColumn && (
           <div className="overflow-y-auto">
             {thirdColumn}

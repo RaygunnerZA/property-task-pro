@@ -80,10 +80,7 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
     }
 
     try {
-      // First try to refresh the session
-      await supabase.auth.refreshSession();
-
-      // Then test the connection
+      // Connectivity check only (must not mutate auth state)
       const { error } = await supabase
         .from("organisations")
         .select("id")

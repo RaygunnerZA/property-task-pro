@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
+import { ENABLE_GROUPS_FEATURE } from "@/lib/featureFlags";
 
 type GroupRow = Tables<"groups">;
 
@@ -12,6 +13,12 @@ export function useGroups() {
   const [error, setError] = useState<string | null>(null);
 
   async function fetchGroups() {
+    if (!ENABLE_GROUPS_FEATURE) {
+      setGroups([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     if (!orgId) {
       setGroups([]);
       setLoading(false);

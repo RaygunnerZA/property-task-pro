@@ -1,44 +1,30 @@
-import { useEffect, useState } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
+import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type SpaceRow = Tables<"spaces">;
 
 export function useSpaces(propertyId?: string) {
-  const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [spaces, setSpaces] = useState<SpaceRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery({
+    queryKey: ["org", orgId, "spaces", propertyId ?? null],
+    queryFn: async () => {
+      if (!orgId) return [] as SpaceRow[];
+      let q = supabase.from("spaces").select("*").eq("org_id", orgId);
+      if (propertyId) q = q.eq("property_id", propertyId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as SpaceRow[];
+    },
+    enabled: !!orgId && !orgLoading,
+    staleTime: 60000,
+  });
 
-  async function fetchSpaces() {
-    if (!orgId) {
-      setSpaces([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    let query = supabase.from("spaces").select("*").eq("org_id", orgId);
-
-    if (propertyId) query = query.eq("property_id", propertyId);
-
-    const { data, error: err } = await query;
-
-    if (err) setError(err.message);
-    else setSpaces(data ?? []);
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchSpaces();
-    }
-  }, [propertyId, orgId, orgLoading]);
-
-  return { spaces, loading, error, refresh: fetchSpaces };
+  return {
+    spaces: (query.data ?? []) as SpaceRow[],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: () => query.refetch(),
+  };
 }
