@@ -125,6 +125,18 @@ export const queryKeys = {
 
   // Vendor
   vendorTasks: () => ['vendorTasks'] as const,
+  vendorTaskDetail: (taskId?: string) => ['vendorTaskDetail', taskId] as const,
+  vendorReporting: () => ['vendorReporting'] as const,
+  vendor: (vendorId?: string) => ['vendor', vendorId] as const,
+
+  // Property Sub-entities (photos, documents, vendors, timeline, drift, compliance)
+  propertyPhotos: (orgId?: string, propertyId?: string) => ['propertyPhotos', orgId, propertyId] as const,
+  propertyDocuments: (orgId?: string, propertyId?: string) => ['propertyDocuments', orgId, propertyId] as const,
+  propertyVendors: (orgId?: string, propertyId?: string) => ['propertyVendors', orgId, propertyId] as const,
+  propertyTimeline: (orgId?: string, propertyId?: string) => ['propertyTimeline', orgId, propertyId] as const,
+  propertyDrift: (orgId?: string, propertyId?: string) => ['propertyDrift', orgId, propertyId] as const,
+  propertyCompliance: (orgId?: string, propertyId?: string) => ['propertyCompliance', orgId, propertyId] as const,
+  propertyTasksSummary: (orgId?: string, propertyId?: string) => ['propertyTasksSummary', orgId, propertyId] as const,
 } as const;
 
 /**

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 
 export interface Vendor {
   id: string;
@@ -9,26 +10,37 @@ export interface Vendor {
 }
 
 /**
- * Stub hook for vendor profile data
- * Returns placeholder vendor information
+ * Hook to fetch vendor profile data.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * NOTE: Currently returns mock data. Backend service implementation pending.
+ * 
+ * @param vendorId - The vendor ID to fetch
+ * @returns Vendor data and loading state
  */
 export const useVendor = (vendorId?: string) => {
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: vendor = null, isLoading } = useQuery({
+    queryKey: queryKeys.vendor(vendorId),
+    queryFn: async (): Promise<Vendor | null> => {
+      if (!vendorId) {
+        return null;
+      }
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setVendor({
-        id: vendorId || 'vendor-1',
+      // TODO: Connect to backend service
+      // For now, return mock data
+      return {
+        id: vendorId,
         org_id: 'org-1',
         name: 'ABC Maintenance Co.',
         email: 'contact@abcmaintenance.com',
         phone: '555-0123'
-      });
-      setIsLoading(false);
-    }, 300);
-  }, [vendorId]);
+      };
+    },
+    enabled: !!vendorId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 0, // Don't retry mock implementation
+  });
 
   return { vendor, isLoading };
 };
