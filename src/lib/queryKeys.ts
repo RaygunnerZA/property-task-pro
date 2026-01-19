@@ -29,6 +29,8 @@ export const queryKeys = {
     ['conversations', orgId, conversationId] as const,
   messages: (orgId?: string, conversationId?: string) =>
     ['messages', orgId, conversationId] as const,
+  allMessages: (orgId?: string) =>
+    ['messages', orgId] as const, // All messages for an org
 
   // Properties
   properties: (orgId?: string) => ['properties', orgId] as const,
@@ -58,6 +60,17 @@ export const queryKeys = {
 
   // Reminders/Signals
   reminders: (orgId?: string) => ['reminders', orgId] as const,
+
+  // AI Extractions
+  aiExtractions: (orgId?: string, taskId?: string) =>
+    ['aiExtractions', orgId, taskId] as const,
+  latestAIExtraction: (orgId?: string, taskId?: string) =>
+    ['aiExtractions', orgId, taskId, 'latest'] as const,
+  aiModels: () => ['aiModels'] as const,
+
+  // Labels
+  labels: (orgId?: string) => ['labels', orgId] as const,
+  taskLabels: (taskId?: string) => ['taskLabels', taskId] as const,
 
   // Schedule
   schedule: (orgId?: string, startDate?: string, endDate?: string) =>

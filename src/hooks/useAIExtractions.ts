@@ -1,116 +1,152 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 type AIExtractionRow = Tables<"ai_extractions">;
+type AIModelRow = Tables<"ai_models">;
 
+/**
+ * Hook to fetch AI extractions for a task or all tasks in an org.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param taskId - Optional task ID to filter extractions. If not provided, fetches all extractions for the org.
+ * @returns Extractions array, loading state, error state, and refresh function
+ */
 export function useAIExtractions(taskId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [extractions, setExtractions] = useState<AIExtractionRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchExtractions() {
-    if (!orgId) {
-      setExtractions([]);
-      setLoading(false);
-      return;
-    }
+  const { data: extractions = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.aiExtractions(orgId ?? undefined, taskId),
+    queryFn: async (): Promise<AIExtractionRow[]> => {
+      if (!orgId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
+      let query = supabase
+        .from("ai_extractions")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("created_at", { ascending: false });
 
-    let query = supabase
-      .from("ai_extractions")
-      .select("*")
-      .eq("org_id", orgId)
-      .order("created_at", { ascending: false });
+      if (taskId) {
+        query = query.eq("task_id", taskId);
+      }
 
-    if (taskId) {
-      query = query.eq("task_id", taskId);
-    }
+      const { data, error: err } = await query;
 
-    const { data, error: err } = await query;
+      if (err) {
+        throw err;
+      }
 
-    if (err) setError(err.message);
-    else setExtractions(data ?? []);
+      return (data as AIExtractionRow[]) ?? [];
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 2 * 60 * 1000, // 2 minutes - AI extractions change less frequently
+    retry: 1, // Retry once on error
+  });
 
-    setLoading(false);
-  }
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchExtractions();
-    }
-  }, [orgId, taskId, orgLoading]);
-
-  return { extractions, loading, error, refresh: fetchExtractions };
+  return {
+    extractions,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
 
+/**
+ * Hook to fetch the latest AI extraction for a task.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param taskId - The task ID to fetch the latest extraction for
+ * @returns Latest extraction, loading state, error state, and refresh function
+ */
 export function useLatestAIExtraction(taskId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [extraction, setExtraction] = useState<AIExtractionRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchLatest() {
-    if (!orgId || !taskId) {
-      setExtraction(null);
-      setLoading(false);
-      return;
-    }
+  const { data: extraction, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.latestAIExtraction(orgId ?? undefined, taskId),
+    queryFn: async (): Promise<AIExtractionRow | null> => {
+      if (!orgId || !taskId) {
+        return null;
+      }
 
-    setLoading(true);
-    setError(null);
+      const { data, error: err } = await supabase
+        .from("ai_extractions")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    const { data, error: err } = await supabase
-      .from("ai_extractions")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("task_id", taskId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      if (err) {
+        throw err;
+      }
 
-    if (err) setError(err.message);
-    else setExtraction(data);
+      return (data as AIExtractionRow) || null;
+    },
+    enabled: !!orgId && !!taskId && !orgLoading, // Only fetch when we have orgId and taskId
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 1,
+  });
 
-    setLoading(false);
-  }
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchLatest();
-    }
-  }, [orgId, taskId, orgLoading]);
-
-  return { extraction, loading, error, refresh: fetchLatest };
+  return {
+    extraction,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
 
+/**
+ * Hook to fetch all AI models.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @returns AI models array, loading state, error state, and refresh function
+ */
 export function useAIModels() {
-  const [models, setModels] = useState<Tables<"ai_models">[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: models = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.aiModels(),
+    queryFn: async (): Promise<AIModelRow[]> => {
+      const { data, error: err } = await supabase
+        .from("ai_models")
+        .select("*")
+        .order("name", { ascending: true });
 
-  async function fetchModels() {
-    setLoading(true);
-    setError(null);
+      if (err) {
+        throw err;
+      }
 
-    const { data, error: err } = await supabase
-      .from("ai_models")
-      .select("*")
-      .order("name", { ascending: true });
+      return (data as AIModelRow[]) ?? [];
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes - models change very infrequently
+    retry: 1,
+  });
 
-    if (err) setError(err.message);
-    else setModels(data ?? []);
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchModels();
-  }, []);
-
-  return { models, loading, error, refresh: fetchModels };
+  return {
+    models,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
