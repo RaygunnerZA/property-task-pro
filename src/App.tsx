@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useRoutes } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
+import { ActiveOrgProvider } from "@/providers/ActiveOrgProvider";
 import { DataProvider } from "@/contexts/DataContext";
 import { ScheduleProvider } from "@/contexts/ScheduleContext";
 import { AppInitializer } from "@/components/AppInitializer";
@@ -40,7 +41,8 @@ const App = () => {
               <StatusBanner />
               <ScheduleProvider>
                 <DataProvider>
-                  <AppInitializer>
+                  <ActiveOrgProvider>
+                    <AppInitializer>
                     <Suspense fallback={<LoadingState message="Loading..." />}>
                       <Routes>
                         {publicRoutes.map((r) => (
@@ -59,7 +61,8 @@ const App = () => {
                         } />
                       </Routes>
                     </Suspense>
-                  </AppInitializer>
+                    </AppInitializer>
+                  </ActiveOrgProvider>
                 </DataProvider>
               </ScheduleProvider>
             </SystemStatusProvider>
