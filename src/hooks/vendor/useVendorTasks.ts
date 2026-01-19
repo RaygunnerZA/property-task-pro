@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryKeys';
 
 export interface VendorTask {
   id: string;
@@ -11,17 +12,21 @@ export interface VendorTask {
 }
 
 /**
- * Stub hook for vendor task list
- * Returns placeholder task data
+ * Hook to fetch vendor tasks.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * NOTE: Currently returns mock data. Backend service implementation pending.
+ * 
+ * @returns Vendor tasks array, loading state, and stats
  */
 export const useVendorTasks = () => {
-  const [tasks, setTasks] = useState<VendorTask[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setTasks([
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: queryKeys.vendorTasks(),
+    queryFn: async (): Promise<VendorTask[]> => {
+      // TODO: Connect to backend service
+      // For now, return mock data
+      return [
         {
           id: 'task-1',
           title: 'Fix leaking faucet in Unit 203',
@@ -49,10 +54,11 @@ export const useVendorTasks = () => {
           property_name: 'Sunset Apartments',
           priority: 'low'
         }
-      ]);
-      setIsLoading(false);
-    }, 300);
-  }, []);
+      ];
+    },
+    staleTime: 60 * 1000, // 1 minute
+    retry: 0, // Don't retry mock implementation
+  });
 
   const stats = {
     assigned: tasks.filter(t => t.status === 'Assigned').length,

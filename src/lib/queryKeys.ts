@@ -114,6 +114,17 @@ export const queryKeys = {
 
   // Image Annotations
   imageAnnotations: (taskId?: string, imageId?: string) => ['imageAnnotations', taskId, imageId] as const,
+
+  // Compliance
+  rulesCompliance: (orgId?: string) => ['rulesCompliance', orgId] as const,
+  ruleStatusDistribution: (orgId?: string) => ['ruleStatusDistribution', orgId] as const,
+  pendingReviews: (orgId?: string) => ['pendingReviews', orgId] as const,
+  propertyDriftHeatmap: (orgId?: string) => ['propertyDriftHeatmap', orgId] as const,
+  complianceTasks: (orgId?: string) => ['complianceTasks', orgId] as const,
+  batchRewrite: (reviewId?: string) => ['batchRewrite', reviewId] as const,
+
+  // Vendor
+  vendorTasks: () => ['vendorTasks'] as const,
 } as const;
 
 /**

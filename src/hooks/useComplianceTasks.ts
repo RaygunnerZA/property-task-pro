@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useActiveOrg } from './useActiveOrg';
+import { queryKeys } from '@/lib/queryKeys';
 
 interface ComplianceTask {
   id: string;
@@ -17,16 +19,30 @@ interface ComplianceTask {
   slaStatus: 'on-track' | 'at-risk' | 'breached';
 }
 
+/**
+ * Hook to fetch compliance tasks.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * NOTE: Currently returns empty array as backend service is not yet fully implemented.
+ * This is a placeholder for future compliance task functionality.
+ * 
+ * @returns Compliance tasks array and loading state
+ */
 export function useComplianceTasks() {
-  const [data, setData] = useState<ComplianceTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
 
-  useEffect(() => {
-    // TODO: Connect to backend service
-    // This is a stub that returns empty data
-    setLoading(false);
-    setData([]);
-  }, []);
+  const { data = [], isLoading: loading } = useQuery({
+    queryKey: queryKeys.complianceTasks(orgId ?? undefined),
+    queryFn: async (): Promise<ComplianceTask[]> => {
+      // TODO: Connect to backend service
+      // For now, return empty array as placeholder
+      return [];
+    },
+    enabled: !!orgId && !orgLoading,
+    staleTime: 60 * 1000, // 1 minute
+    retry: 0, // Don't retry stub implementation
+  });
 
   return { data, loading };
 }

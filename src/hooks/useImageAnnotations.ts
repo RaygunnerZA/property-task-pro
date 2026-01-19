@@ -1,26 +1,33 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { debounce } from "@/lib/debounce";
-import type { Annotation, TaskImageAnnotationRecord } from "@/types/image-annotations";
+import { queryKeys } from "@/lib/queryKeys";
+import { useRef } from "react";
+import type { Annotation } from "@/types/image-annotations";
 
+/**
+ * Hook to fetch and manage image annotations for a task image.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Mutations are handled via useMutation for save operations.
+ * 
+ * @param taskId - The task ID
+ * @param imageId - The image ID to fetch annotations for
+ * @returns Annotations array, loading state, error state, refresh function, and save mutation
+ */
 export function useImageAnnotations(taskId: string, imageId: string) {
-  const { orgId } = useActiveOrg();
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
+  const lastSavedRef = useRef<string>("");
 
-  const fetchAnnotations = useCallback(async () => {
-    if (!orgId || !taskId || !imageId) {
-      setAnnotations([]);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching image annotations
+  const { data: annotations = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.imageAnnotations(taskId, imageId),
+    queryFn: async (): Promise<Annotation[]> => {
+      if (!orgId || !taskId || !imageId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const { data, error: fetchError } = await supabase
         .from("task_image_annotations")
         .select("*")
@@ -28,39 +35,40 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         .eq("image_id", imageId)
         .maybeSingle();
 
-      if (fetchError) throw fetchError;
-
-      if (data) {
-        // Get the latest version of each annotation (append-only log)
-        const annotationMap = new Map<string, Annotation>();
-        (data.annotations as Annotation[]).forEach((ann) => {
-          const existing = annotationMap.get(ann.annotationId);
-          if (!existing || ann.version > existing.version) {
-            annotationMap.set(ann.annotationId, ann);
-          }
-        });
-        setAnnotations(Array.from(annotationMap.values()));
-      } else {
-        setAnnotations([]);
-      }
-    } catch (err: any) {
       // 404 is expected when no annotations exist yet - don't treat as error
-      if (err.code === 'PGRST116' || err.status === 404 || err.message?.includes('404')) {
-        setAnnotations([]);
-        setError(null);
-      } else {
-        console.error("Error fetching annotations:", err);
-        setError(err.message || "Failed to fetch annotations");
+      if (fetchError) {
+        if (fetchError.code === 'PGRST116' || fetchError.status === 404 || fetchError.message?.includes('404')) {
+          return [];
+        }
+        throw fetchError;
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId, taskId, imageId]);
 
-  const lastSavedRef = useRef<string>("");
-  
-  const saveAnnotations = useCallback(
-    async (newAnnotations: Annotation[]) => {
+      if (!data) {
+        return [];
+      }
+
+      // Get the latest version of each annotation (append-only log)
+      const annotationMap = new Map<string, Annotation>();
+      (data.annotations as Annotation[]).forEach((ann) => {
+        const existing = annotationMap.get(ann.annotationId);
+        if (!existing || ann.version > existing.version) {
+          annotationMap.set(ann.annotationId, ann);
+        }
+      });
+
+      const result = Array.from(annotationMap.values());
+      // Update last saved reference
+      lastSavedRef.current = JSON.stringify(result);
+      return result;
+    },
+    enabled: !!orgId && !!taskId && !!imageId && !orgLoading,
+    staleTime: 2 * 60 * 1000, // 2 minutes - annotations change moderately
+    retry: 1,
+  });
+
+  // Mutation for saving annotations
+  const saveAnnotationsMutation = useMutation({
+    mutationFn: async (newAnnotations: Annotation[]) => {
       if (!orgId || !taskId || !imageId) {
         throw new Error("Missing required IDs");
       }
@@ -72,7 +80,9 @@ export function useImageAnnotations(taskId: string, imageId: string) {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
 
       // Fetch existing record
       const { data: existing } = await supabase
@@ -96,7 +106,9 @@ export function useImageAnnotations(taskId: string, imageId: string) {
           })
           .eq("id", existing.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          throw updateError;
+        }
       } else {
         // Create new record
         const { error: insertError } = await supabase
@@ -108,32 +120,35 @@ export function useImageAnnotations(taskId: string, imageId: string) {
             annotations: mergedAnnotations,
           });
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       // Update last saved reference
       lastSavedRef.current = newJson;
-      await fetchAnnotations();
     },
-    [orgId, taskId, imageId, fetchAnnotations]
-  );
+    onSuccess: () => {
+      // Invalidate and refetch annotations after save
+      queryClient.invalidateQueries({ queryKey: queryKeys.imageAnnotations(taskId, imageId) });
+    },
+  });
 
-  // Update lastSavedRef when annotations are fetched
-  useEffect(() => {
-    if (annotations.length > 0) {
-      lastSavedRef.current = JSON.stringify(annotations);
-    }
-  }, [annotations]);
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-  useEffect(() => {
-    fetchAnnotations();
-  }, [fetchAnnotations]);
+  // Backward-compatible mutation function
+  const saveAnnotations = async (newAnnotations: Annotation[]) => {
+    await saveAnnotationsMutation.mutateAsync(newAnnotations);
+  };
 
   return {
     annotations,
     loading,
-    error,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     saveAnnotations,
-    refresh: fetchAnnotations,
+    refresh,
   };
 }
