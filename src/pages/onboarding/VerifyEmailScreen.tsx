@@ -20,9 +20,10 @@ export default function VerifyEmailScreen() {
   const checkVerification = async () => {
     setChecking(true);
     try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      const session = await refreshSession();
       
-      if (error) throw error;
+      if (!session) throw new Error("Failed to refresh session");
 
       if (session?.user) {
         // User has a session - either verified or confirmation is disabled

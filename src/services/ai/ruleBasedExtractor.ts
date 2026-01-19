@@ -13,7 +13,8 @@ import {
 import { 
   extractionPatterns, 
   isFuzzyMatch, 
-  extractWords 
+  extractWords,
+  extractPotentialNames
 } from './chipSuggestionPatterns';
 
 interface AvailableEntities {
@@ -80,9 +81,13 @@ export function extractChipsFromText(
     }
   });
   
-  // 4. Person detection
+  // 4. Person detection (matches existing members)
   const personChips = detectPersons(text, words, entities.members);
   chips.push(...personChips);
+  
+  // 4b. Unresolved name detection (names mentioned but not in members)
+  const unresolvedNameChips = detectUnresolvedNames(context.description, entities.members);
+  chips.push(...unresolvedNameChips);
   
   // Ghost groups for frequent assignees
   personChips.forEach(chip => {
@@ -99,6 +104,10 @@ export function extractChipsFromText(
   // 5. Team detection
   const teamChips = detectTeams(text, words, entities.teams);
   chips.push(...teamChips);
+  
+  // 5b. Asset detection (unresolved assets)
+  const assetChips = detectAssets(text, words);
+  chips.push(...assetChips);
   
   // 6. Date detection
   const dateChip = detectDate(text);
@@ -339,4 +348,117 @@ function detectDate(text: string): SuggestedChip | null {
   }
   
   return null;
+}
+
+/**
+ * Detect unresolved names (names mentioned but not matching any member)
+ * These should be shown as suggestion chips with "[Add Frank]" format
+ */
+function detectUnresolvedNames(
+  text: string,
+  members: Array<{ id: string; user_id: string; display_name: string }>
+): SuggestedChip[] {
+  const chips: SuggestedChip[] = [];
+  const potentialNames = extractPotentialNames(text);
+  const memberNameParts = new Set<string>();
+  
+  // Build set of all name parts from members (for case-insensitive matching)
+  members.forEach(member => {
+    const parts = member.display_name.toLowerCase().split(' ');
+    parts.forEach(part => {
+      if (part.length >= 2) {
+        memberNameParts.add(part);
+      }
+    });
+  });
+  
+  // Check each potential name
+  for (const name of potentialNames) {
+    const nameLower = name.toLowerCase();
+    
+    // Skip if this name matches any member
+    if (memberNameParts.has(nameLower)) {
+      continue;
+    }
+    
+    // Skip common words that might be capitalized
+    const commonWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+    if (commonWords.includes(nameLower)) {
+      continue;
+    }
+    
+    // Create suggestion chip for unresolved name
+    chips.push({
+      id: `unresolved-person-${nameLower}-${Date.now()}`,
+      type: 'person',
+      value: nameLower,
+      label: name,
+      score: 0.7,
+      source: 'rule',
+      blockingRequired: false, // Don't block task creation, just suggest
+      metadata: { isUnresolved: true }
+    });
+  }
+  
+  return chips;
+}
+
+/**
+ * Detect assets mentioned in text (even if not in database)
+ * More sensitive detection using asset keywords
+ */
+function detectAssets(
+  text: string,
+  words: string[]
+): SuggestedChip[] {
+  const chips: SuggestedChip[] = [];
+  const textLower = text.toLowerCase();
+  const { assetKeywords } = extractionPatterns;
+  
+  // Check for asset keywords in text
+  for (const asset of assetKeywords) {
+    const assetLower = asset.toLowerCase();
+    
+    // Check if asset is mentioned in text (exact or fuzzy match)
+    if (textLower.includes(assetLower)) {
+      // Check if we haven't already added this asset
+      if (!chips.some(c => c.value === assetLower)) {
+        chips.push({
+          id: `unresolved-asset-${assetLower}-${Date.now()}`,
+          type: 'asset',
+          value: assetLower,
+          label: asset.charAt(0).toUpperCase() + asset.slice(1), // Capitalize first letter
+          score: 0.75,
+          source: 'rule',
+          blockingRequired: false, // Don't block task creation, just suggest
+          metadata: { isUnresolved: true }
+        });
+      }
+    }
+  }
+  
+  // Also check individual words for asset matches
+  for (const word of words) {
+    if (word.length >= 3) {
+      // Check if word matches any asset keyword (fuzzy)
+      const matchingAsset = assetKeywords.find(asset => 
+        isFuzzyMatch(word, asset.toLowerCase(), 1) // Stricter threshold for assets
+      );
+      
+      if (matchingAsset && !chips.some(c => c.value === matchingAsset.toLowerCase())) {
+        chips.push({
+          id: `unresolved-asset-${matchingAsset.toLowerCase()}-${Date.now()}`,
+          type: 'asset',
+          value: matchingAsset.toLowerCase(),
+          label: matchingAsset.charAt(0).toUpperCase() + matchingAsset.slice(1),
+          score: 0.7,
+          source: 'rule',
+          blockingRequired: false,
+          metadata: { isUnresolved: true }
+        });
+      }
+    }
+  }
+  
+  return chips;
 }

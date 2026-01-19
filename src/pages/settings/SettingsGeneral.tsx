@@ -189,7 +189,8 @@ export default function SettingsGeneral() {
       setEditModalOpen(false);
       
       // Refresh user data
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       
       // Update local state
       setUserNickname(editingNickname.trim() || "");
@@ -269,7 +270,8 @@ export default function SettingsGeneral() {
       setNewOrgName("");
       
       // Refresh session and organization data
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       await refreshActiveOrg();
       
       // Wait a moment for the database to be ready

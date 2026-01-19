@@ -63,7 +63,8 @@ export default function AddSpaceScreen() {
     
     try {
       // Refresh session to ensure JWT is up to date
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       
       // Get the latest property for this org
       // Retry a few times in case of timing issues

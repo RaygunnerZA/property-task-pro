@@ -50,7 +50,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       <div 
         className={`hidden lg:grid min-h-screen overflow-x-auto transition-[grid-template-columns] duration-300 ease-in-out ${
           hasThirdColumn 
-            ? 'lg:grid-cols-[320px_590px_360px]' 
+            ? 'lg:grid-cols-[320px_590px_minmax(0,600px)]' 
             : 'lg:grid-cols-[320px_590px]'
         }`}
       >
@@ -60,13 +60,13 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
         </div>
 
         {/* Middle Column: Fixed 590px (Task Tabs) */}
-        <div className="overflow-y-auto border-r border-border min-w-0">
+        <div className="overflow-y-auto min-w-0">
           {rightColumn}
         </div>
 
-        {/* Third Column: Fixed 360px (Task Details) - only shown when thirdColumn prop provided */}
+        {/* Third Column: Flexible with max 600px (Task Details) - only shown when thirdColumn prop provided */}
         {hasThirdColumn && (
-          <div className="overflow-y-auto">
+          <div className="overflow-y-auto min-w-0 flex-1 max-w-[600px] pt-[1px] pb-[1px] px-0">
             {thirdColumn}
           </div>
         )}

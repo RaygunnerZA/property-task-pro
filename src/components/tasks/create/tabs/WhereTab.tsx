@@ -143,7 +143,8 @@ export function WhereTab({
     
     setCreating(true);
     try {
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       
       const { data, error } = await supabase
         .from("properties")
@@ -181,7 +182,8 @@ export function WhereTab({
     
     setCreating(true);
     try {
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       
         const { data, error } = await supabase
           .from("spaces")

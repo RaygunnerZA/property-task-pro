@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { refreshSession } from "@/lib/sessionManager";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
@@ -184,8 +185,8 @@ export default function LoginPage() {
         // Save email to localStorage for next visit
         localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
         
-        // Refresh session to ensure auth state is updated
-        await supabase.auth.refreshSession();
+        // Refresh session to ensure auth state is updated (protected against loops)
+        await refreshSession();
         
         // Let AppBootLoader handle all routing decisions
         // It will check for org, properties, spaces and route accordingly

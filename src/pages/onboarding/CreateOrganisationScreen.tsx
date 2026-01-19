@@ -144,7 +144,9 @@ export default function CreateOrganisationScreen() {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Refresh session to get fresh JWT (though org_id won't be in JWT yet)
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      const session = await refreshSession();
+      const refreshError = session ? null : { message: "Failed to refresh session" };
       if (refreshError) {
         console.error("Session refresh error:", refreshError);
       }

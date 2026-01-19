@@ -5,7 +5,8 @@ import { TaskList } from "@/components/tasks/TaskList";
 import MessageList from "@/components/MessageList";
 import TaskCard from "@/components/TaskCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
@@ -24,6 +25,7 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  onCreateTask?: () => void;
 }
 
 /**
@@ -51,7 +53,8 @@ export function TaskPanel({
   activeTab: externalActiveTab,
   onTabChange,
   selectedDate: selectedDateProp,
-  filterToApply
+  filterToApply,
+  onCreateTask
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const [internalActiveTab, setInternalActiveTab] = useState("tasks");
@@ -154,7 +157,7 @@ export function TaskPanel({
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[18px] pb-[18px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-start">
+        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-between items-center gap-4">
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
@@ -223,6 +226,18 @@ export function TaskPanel({
               Schedule
             </TabsTrigger>
           </TabsList>
+          {/* Create Task Button - Right aligned */}
+          {onCreateTask ? (
+            <Button
+              onClick={() => {
+                onCreateTask();
+              }}
+              className="hidden md:flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-e1"
+            >
+              <Plus className="h-4 w-4" />
+              Create Task
+            </Button>
+          ) : null}
         </div>
 
         {/* Content Area (each tab owns its own scrolling to avoid nested scroll/height collapse) */}

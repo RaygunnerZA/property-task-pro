@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useDebounce } from "./useDebounce";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
-import { debugLog } from "@/lib/logger";
 
 // Minimum description length before making expensive AI calls
 const MIN_DESCRIPTION_LENGTH = 10;
@@ -94,15 +93,8 @@ export function useAIExtract(input: string) {
       setLoading(true);
       setError(null);
 
-      // #region agent log
-      debugLog({location:'useAIExtract.ts:44',message:'Starting AI extraction',data:{debouncedInput:inputToProcess,debouncedInputLength:inputToProcess.length,orgId,orgLoading,hasInput:!!inputToProcess,lastProcessed:lastProcessedRef.current},sessionId:'debug-session',runId:'run1',hypothesisId:'B'});
-      // #endregion
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        // #region agent log
-        debugLog({location:'useAIExtract.ts:49',message:'Session check',data:{hasSession:!!session,hasAccessToken:!!session?.access_token},sessionId:'debug-session',runId:'run1',hypothesisId:'C'});
-        // #endregion
         if (!session) {
           setError("Not authenticated");
           isProcessingRef.current = false;
@@ -113,10 +105,6 @@ export function useAIExtract(input: string) {
         // Get Supabase URL from environment
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const functionUrl = `${supabaseUrl}/functions/v1/ai-extract`;
-
-        // #region agent log
-        debugLog({location:'useAIExtract.ts:57',message:'Making API call',data:{functionUrl,hasSupabaseUrl:!!supabaseUrl,requestBody:{description:inputToProcess,org_id:orgId}},sessionId:'debug-session',runId:'run1',hypothesisId:'D'});
-        // #endregion
 
         const response = await fetch(functionUrl, {
           method: "POST",
@@ -130,7 +118,6 @@ export function useAIExtract(input: string) {
           }),
         });
 
-        // #region agent log
         const responseStatus = response.status;
         const responseText = await response.text();
         let responseData;
@@ -139,8 +126,6 @@ export function useAIExtract(input: string) {
         } catch {
           responseData = { raw: responseText };
         }
-        debugLog({location:'useAIExtract.ts:71',message:'API response received',data:{status:responseStatus,ok:responseData?.ok,hasCombined:!!responseData?.combined,combinedTitle:responseData?.combined?.title,combinedPriority:responseData?.combined?.priority,error:responseData?.error,responseData},sessionId:'debug-session',runId:'run1',hypothesisId:'E'});
-        // #endregion
 
         // Log exact response for debugging
         console.log('[useAIExtract] Function Response:', {
@@ -155,9 +140,6 @@ export function useAIExtract(input: string) {
 
         if (data.ok && data.combined) {
           setResult(data.combined);
-          // #region agent log
-          debugLog({location:'useAIExtract.ts:74',message:'AI result set successfully',data:{title:data.combined.title,priority:data.combined.priority,date:data.combined.date,spacesCount:data.combined.spaces.length,peopleCount:data.combined.people.length},sessionId:'debug-session',runId:'run1',hypothesisId:'F'});
-          // #endregion
         } else {
           setError(data.error || "AI extraction failed");
           setResult(null);
@@ -166,9 +148,6 @@ export function useAIExtract(input: string) {
         }
       } catch (err: any) {
         console.error("AI extract error:", err);
-        // #region agent log
-        debugLog({location:'useAIExtract.ts:79',message:'AI extraction error caught',data:{error:err?.message,stack:err?.stack,name:err?.name},sessionId:'debug-session',runId:'run1',hypothesisId:'G'});
-        // #endregion
         setError(err.message || "Failed to extract");
         setResult(null);
         // Reset last processed on error so user can retry

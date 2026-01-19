@@ -184,7 +184,7 @@ export function FilterBar({
       onSelect={onClick}
       icon={option.icon}
       color={option.color}
-      className="h-[35px]"
+      className="h-[32px]"
     />
   );
 
@@ -261,7 +261,7 @@ export function FilterBar({
                 type="button"
                 onClick={handleFilterByClick}
                 className={cn(
-                  "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
+                  "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0 h-[32px]",
                   "font-mono text-[13px] uppercase tracking-wider",
                   "select-none cursor-pointer transition-all duration-150",
                   "bg-background",
@@ -270,13 +270,13 @@ export function FilterBar({
                 )}
                 style={{ paddingLeft: '9px', paddingRight: '11px' }}
               >
-                <Funnel className="h-[18px] w-[18px] text-foreground" />
-                <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
+                <Funnel className="h-[16px] w-[16px] text-foreground" />
+                <span style={{ fontSize: '12px', letterSpacing: '0px' }}>FILTER</span>
               </button>
               {/* FunnelX (Clear filters) - appears when filters are selected (excluding property filters) */}
               {hasNonPropertyFilters && (
                 renderIconButton(
-                  <FunnelX className="h-5 w-5 text-foreground" />,
+                  <FunnelX className="h-5 w-[18px] text-foreground" />,
                   handleClearAllFilters
                 )
               )}

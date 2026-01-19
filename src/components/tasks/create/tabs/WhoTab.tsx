@@ -246,7 +246,8 @@ export function WhoTab({
     
     setCreating(true);
     try {
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
       
       let imageUrl: string | null = null;
 

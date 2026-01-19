@@ -13,6 +13,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCard";
@@ -23,7 +24,7 @@ import { PropertySpacesSection } from "@/components/properties/PropertySpacesSec
 import { ComplianceOverviewSection } from "@/components/properties/ComplianceOverviewSection";
 import { DocumentsSection } from "@/components/properties/DocumentsSection";
 import { MediaGallerySection } from "@/components/properties/MediaGallerySection";
-import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsPanel";
+import { QuickActionsSection } from "@/components/properties/QuickActionsSection";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
@@ -85,6 +86,8 @@ const PROPERTY_COLORS = [
   "#DDA0DD", // Plum
 ];
 
+const LG_BREAKPOINT = 1024;
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -97,6 +100,8 @@ export default function PropertyDetail() {
   const { orgId } = useActiveOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
   
   // Use file upload hook with automatic thumbnail generation
   const { uploadFile, isUploading: isUploadingImage } = useFileUpload({
@@ -165,6 +170,15 @@ export default function PropertyDetail() {
   const [editedIconColor, setEditedIconColor] = useState("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+
+  useEffect(() => {
+    const updateScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= LG_BREAKPOINT);
+    };
+    updateScreenSize();
+    window.addEventListener("resize", updateScreenSize);
+    return () => window.removeEventListener("resize", updateScreenSize);
+  }, []);
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
@@ -172,6 +186,20 @@ export default function PropertyDetail() {
 
   // Tasks are already filtered by property_id from the query
   const propertyTasks = tasks;
+
+  const handleOpenCreateTask = () => {
+    // Wide screen: opening create task should collapse any open task detail
+    setSelectedTaskId(null);
+    setShowCreateTask(true);
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    // Wide screen: selecting a task should auto-minimise the Create Task accordion
+    if (isLargeScreen) {
+      setShowCreateTask(false);
+    }
+    setSelectedTaskId(taskId);
+  };
 
   // Calculate tasksByDate for calendar (only property tasks)
   const tasksByDate = useMemo(() => {
@@ -526,8 +554,7 @@ export default function PropertyDetail() {
               <PropertyIdentityCard
                 property={propertyWithContacts}
                 onAddTask={() => {
-                  // TODO: Open create task dialog
-                  navigate(`/tasks/create?propertyId=${id}`);
+                  handleOpenCreateTask();
                 }}
                 onAddPhoto={() => fileInputRef.current?.click()}
                 onMessage={() => {
@@ -571,6 +598,9 @@ export default function PropertyDetail() {
                   onSpaceClick={setSelectedSpaceId}
                   selectedSpaceId={selectedSpaceId}
                 />
+                <div className="px-4 pb-4">
+                  <QuickActionsSection propertyId={id} />
+                </div>
                 <PropertyRelatedEntities
                   propertyId={id}
                   tasks={propertyTasks}
@@ -581,11 +611,6 @@ export default function PropertyDetail() {
         }
         rightColumn={
           <div className="min-h-screen bg-background overflow-y-auto">
-            {/* Daily Briefing Card at the top (same position as dashboard) - Property-specific */}
-            <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px]">
-              <DailyBriefingCard showGreeting={false} tasks={propertyTasks} />
-            </div>
-            
             <div className="p-[15px] space-y-6">
               {/* Spaces Section */}
               <div className="space-y-4">
@@ -602,7 +627,7 @@ export default function PropertyDetail() {
                   properties={properties}
                   tasksLoading={tasksLoading}
                   selectedSpaceId={selectedSpaceId}
-                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                  onTaskClick={handleTaskClick}
                   selectedTaskId={selectedTaskId || undefined}
                 />
               </div>
@@ -635,13 +660,28 @@ export default function PropertyDetail() {
           </div>
         }
         thirdColumn={
-          id && (
-            <PropertyInsightsPanel
-              propertyId={id}
-              tasks={propertyTasks}
-              compliance={compliance}
-            />
-          )
+          isLargeScreen
+            ? (
+              <div className="flex flex-col gap-4">
+                <CreateTaskModal
+                  open={showCreateTask}
+                  onOpenChange={setShowCreateTask}
+                  defaultPropertyId={id || ""}
+                  onTaskCreated={() => {
+                    queryClient.invalidateQueries({ queryKey: ["tasks", orgId, id] });
+                  }}
+                  variant="column"
+                />
+                {selectedTaskId ? (
+                  <TaskDetailPanel
+                    taskId={selectedTaskId}
+                    onClose={() => setSelectedTaskId(null)}
+                    variant="column"
+                  />
+                ) : null}
+              </div>
+            )
+            : undefined
         }
       />
 
@@ -819,7 +859,19 @@ export default function PropertyDetail() {
         </DialogContent>
       </Dialog>
 
-      {selectedTaskId && (
+      {!isLargeScreen && showCreateTask && (
+        <CreateTaskModal
+          open={showCreateTask}
+          onOpenChange={setShowCreateTask}
+          defaultPropertyId={id || ""}
+          onTaskCreated={() => {
+            queryClient.invalidateQueries({ queryKey: ["tasks", orgId, id] });
+          }}
+          variant="modal"
+        />
+      )}
+
+      {!isLargeScreen && selectedTaskId && (
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}

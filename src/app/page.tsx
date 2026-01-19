@@ -4,6 +4,7 @@ import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -12,20 +13,20 @@ import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 import { useScheduleContext } from "@/contexts/ScheduleContext";
 
-// Helper function to create gradient header style with paper texture
+// Helper function to create gradient header style with multiply blend mode
 const createGradientHeaderStyle = (color: string) => {
   // Paper background color (from design system: hsl(40, 20%, 94%) = #F1EEE8)
+  // This matches exactly what bg-background uses in the right column
   const paperBg = "#F1EEE8";
   
-  // Paper texture pattern (from design system)
-  const paperTexture = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`;
-  
-  // Create gradient: color solid until 20%, then transition to paper bg by 70%
-  // Paper bg with texture is set as base background, gradient overlays on top
+  // Create gradient with multiply blend mode
+  // Header is transparent, gradient overlays with multiply to darken/colorize the paper texture
+  // Paper texture comes from parent container (bg-background class)
   return {
-    backgroundColor: paperBg,
-    backgroundImage: `${paperTexture}, linear-gradient(to right, ${color} 0%, ${color} 20%, ${color} 20%, ${paperBg} 70%, ${paperBg} 100%)`,
-    backgroundSize: '100%, 100%'
+    backgroundColor: 'transparent',
+    backgroundImage: `linear-gradient(to right, ${color} 0%, ${color} 20%, ${paperBg} 50%, ${paperBg} 100%)`,
+    backgroundBlendMode: 'multiply',
+    backgroundSize: '100%'
   };
 };
 
@@ -40,6 +41,7 @@ type SelectedItem = {
 export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const { selectedDate, setSelectedDateOrToday } = useScheduleContext();
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
@@ -132,6 +134,11 @@ export default function Dashboard() {
   }, []);
 
   const handleTaskClick = (taskId: string) => {
+    // Wide screen: selecting a task should auto-minimise the Create Task accordion
+    // (on mobile, CreateTaskModal is a modal/drawer so this interaction doesn't apply)
+    if (isLargeScreen) {
+      setShowCreateTask(false);
+    }
     setSelectedItem({ type: 'task', id: taskId });
   };
 
@@ -141,6 +148,11 @@ export default function Dashboard() {
 
   const handleClosePanel = () => {
     setSelectedItem(null);
+  };
+
+  const handleOpenCreateTask = () => {
+    setSelectedItem(null); // Close any open task detail
+    setShowCreateTask(true); // Open create task (draft will be restored automatically if exists)
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -176,21 +188,30 @@ export default function Dashboard() {
 
   const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
 
-  // Render third column content - only when item is selected on large screens
-  const thirdColumnContent = isLargeScreen && selectedItem ? (
-    selectedItem.type === 'task' ? (
-      <TaskDetailPanel 
-        taskId={selectedItem.id} 
-        onClose={handleClosePanel}
+  // Render third column content - Create Task accordion + details below (lg+)
+  const thirdColumnContent = isLargeScreen ? (
+    <div className="flex flex-col gap-4">
+      <CreateTaskModal
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
         variant="column"
       />
-    ) : (
-      <MessageDetailPanel 
-        messageId={selectedItem.id} 
-        onClose={handleClosePanel}
-        variant="column"
-      />
-    )
+      {selectedItem ? (
+        selectedItem.type === 'task' ? (
+          <TaskDetailPanel 
+            taskId={selectedItem.id} 
+            onClose={handleClosePanel}
+            variant="column"
+          />
+        ) : (
+          <MessageDetailPanel 
+            messageId={selectedItem.id} 
+            onClose={handleClosePanel}
+            variant="column"
+          />
+        )
+      ) : null}
+    </div>
   ) : undefined;
 
   // Primary color for dashboard header (from design system: #8EC9CE)
@@ -252,6 +273,7 @@ export default function Dashboard() {
             selectedDate={selectedDate}
             filterToApply={filterToApply}
             selectedPropertyIds={selectedPropertyIds}
+            onCreateTask={handleOpenCreateTask}
           />
         }
         thirdColumn={thirdColumnContent}
@@ -272,6 +294,15 @@ export default function Dashboard() {
             variant="modal"
           />
         )
+      )}
+      
+      {/* Create Task Modal - Modal variant for smaller screens */}
+      {showCreateTask && !isLargeScreen && (
+        <CreateTaskModal
+          open={showCreateTask}
+          onOpenChange={setShowCreateTask}
+          variant="modal"
+        />
       )}
     </div>
   );

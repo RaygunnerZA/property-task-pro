@@ -39,6 +39,7 @@ export const extractionPatterns: ExtractionPatterns = {
     'oven': ['Kitchen'],
     'cooker': ['Kitchen'],
     'fridge': ['Kitchen'],
+    'refrigerator': ['Kitchen'],
     'washing machine': ['Utility Room', 'Kitchen'],
     'dryer': ['Utility Room'],
     'window': ['Living Room', 'Bedroom', 'Kitchen'],
@@ -52,8 +53,60 @@ export const extractionPatterns: ExtractionPatterns = {
     'ceiling': ['Living Room', 'Bedroom', 'Kitchen'],
     'light': ['Living Room', 'Bedroom', 'Kitchen', 'Hallway'],
     'socket': ['Living Room', 'Bedroom', 'Kitchen'],
-    'switch': ['Hallway', 'Living Room', 'Bedroom']
+    'switch': ['Hallway', 'Living Room', 'Bedroom'],
+    // Add common assets for more sensitive detection
+    'stove': ['Kitchen'],
+    'dishwasher': ['Kitchen'],
+    'microwave': ['Kitchen'],
+    'freezer': ['Kitchen'],
+    'hob': ['Kitchen'],
+    'cooktop': ['Kitchen'],
+    'appliance': ['Kitchen'],
+    'faucet': ['Kitchen', 'Bathroom'],
+    'tap': ['Kitchen', 'Bathroom'],
+    'heater': ['Living Room', 'Bedroom'],
+    'ac': ['Living Room', 'Bedroom'],
+    'air conditioning': ['Living Room', 'Bedroom'],
+    'fan': ['Living Room', 'Bedroom'],
+    'boiler': ['Boiler Room', 'Utility Room'],
+    'pump': ['Utility Room', 'Basement'],
+    'water heater': ['Utility Room', 'Basement'],
+    'furnace': ['Utility Room', 'Basement'],
+    'chimney': ['Exterior'],
+    'wall': ['Living Room', 'Bedroom', 'Kitchen'],
+    'pipe': ['Utility Room', 'Bathroom', 'Kitchen'],
+    'drain': ['Bathroom', 'Kitchen'],
+    'vent': ['Living Room', 'Bedroom', 'Kitchen'],
+    'outlet': ['Living Room', 'Bedroom', 'Kitchen'],
+    'circuit': ['Living Room', 'Bedroom', 'Kitchen'],
+    'panel': ['Utility Room', 'Basement'],
+    'meter': ['Exterior', 'Utility Room'],
+    'lock': ['Hallway', 'Entrance'],
+    'gate': ['Exterior', 'Garden'],
+    'shed': ['Garden', 'Exterior'],
+    'driveway': ['Exterior'],
+    'path': ['Exterior', 'Garden'],
+    'deck': ['Exterior', 'Garden'],
+    'patio': ['Exterior', 'Garden'],
+    'balcony': ['Exterior'],
+    'railing': ['Exterior'],
+    'stairs': ['Hallway', 'Entrance'],
+    'step': ['Hallway', 'Entrance'],
+    'handrail': ['Hallway', 'Entrance'],
+    'elevator': ['Hallway'],
+    'lift': ['Hallway']
   },
+
+  // Common asset names for detection (case-insensitive matching)
+  assetKeywords: [
+    'boiler', 'radiator', 'sink', 'toilet', 'shower', 'bath', 'oven', 'cooker', 'fridge', 'refrigerator',
+    'washing machine', 'dryer', 'window', 'door', 'roof', 'gutter', 'garden', 'fence', 'carpet', 'floor',
+    'ceiling', 'light', 'socket', 'switch', 'stove', 'dishwasher', 'microwave', 'freezer', 'hob', 'cooktop',
+    'appliance', 'faucet', 'tap', 'heater', 'ac', 'air conditioning', 'fan', 'pump', 'water heater', 'furnace',
+    'chimney', 'wall', 'pipe', 'drain', 'vent', 'outlet', 'circuit', 'panel', 'meter', 'lock', 'gate',
+    'shed', 'driveway', 'path', 'deck', 'patio', 'balcony', 'railing', 'stairs', 'step', 'handrail',
+    'elevator', 'lift'
+  ],
 
   // Date detection patterns
   datePatterns: [
@@ -120,4 +173,31 @@ export function isFuzzyMatch(a: string, b: string, threshold = 2): boolean {
  */
 export function extractWords(text: string): string[] {
   return text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+}
+
+/**
+ * Extract potential name candidates from text
+ * Looks for capitalized words that might be names (e.g., "Frank", "John", "Alex")
+ */
+export function extractPotentialNames(text: string): string[] {
+  // Split by whitespace and punctuation
+  const words = text.split(/\s+|[,.;!?]+/).filter(w => w.trim().length > 0);
+  const potentialNames: string[] = [];
+  
+  for (const word of words) {
+    // Check if word starts with capital letter and is 2-20 characters
+    // Exclude common words that start with capitals (I, Today, Monday, etc.)
+    if (
+      /^[A-Z][a-z]{1,19}$/.test(word) && 
+      word.length >= 2 &&
+      word.length <= 20 &&
+      !['I', 'A', 'The', 'Today', 'Tomorrow', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+        'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+        'Kitchen', 'Bathroom', 'Living', 'Bedroom', 'Hallway', 'Garden', 'Exterior'].includes(word)
+    ) {
+      potentialNames.push(word);
+    }
+  }
+  
+  return potentialNames;
 }

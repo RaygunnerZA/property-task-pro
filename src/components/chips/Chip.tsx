@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 // Import filla-ai icon
 import fillaAISrc from "@/assets/filla-ai.svg";
 
@@ -21,6 +23,8 @@ export interface ChipProps {
   animate?: boolean; // For suggestions sliding in
   // AI-pre-filled: Distinguishes AI-pre-filled fact chips from user-selected ones
   aiPreFilled?: boolean; // For fact chips: true if AI-pre-filled, false/undefined if user-selected
+  // Tooltip/Description - shown on hover
+  description?: string; // Optional description shown on hover (e.g., "Add person or Team", "Add Venue", etc.)
 }
 
 /**
@@ -50,6 +54,7 @@ export function Chip({
   aiGlyph = false,
   animate = false,
   aiPreFilled = false,
+  description,
 }: ChipProps) {
   // Enforce role-based behavior contracts
   const canToggle = role === 'filter';
@@ -59,6 +64,9 @@ export function Chip({
   const hasDashedBorder = role === 'verb';
   // No per-chip AI glyphs - only at row level
   const showAIGlyph = false;
+  
+  // Hover state for suggestion chips with checkmark expansion
+  const [isHovered, setIsHovered] = useState(false);
 
   // Validation warnings (in development)
   if (process.env.NODE_ENV === 'development') {
@@ -99,24 +107,24 @@ export function Chip({
   const isIconOnly = !label || className?.includes('w-[24px]') || className?.includes('w-[35px]') || className?.includes('px-0');
   
   // Determine height based on role and className
-  // Filter chips in FilterBar should be 35px, others default to 24px
-  const isFilterBarChip = role === 'filter' && (className?.includes('h-[35px]') || className?.includes('w-[35px]'));
-  const chipHeight = isFilterBarChip ? "h-[35px]" : "h-[24px]";
+  // Filter chips in FilterBar should be 32px, suggestion chips should be 24px, others default to 24px
+  const isFilterBarChip = role === 'filter' && (className?.includes('h-[35px]') || className?.includes('w-[35px]') || className?.includes('h-[32px]') || className?.includes('w-[32px]'));
+  const chipHeight = isFilterBarChip ? "h-[32px]" : role === 'suggestion' ? "h-[24px]" : "h-[24px]";
   
   // Base styles - same for all roles (Level 2: Tactile), except verb (no shadow)
   const baseStyles = cn(
     "inline-flex items-center",
-    isIconOnly ? "justify-center gap-0" : "gap-1.5",
-    "px-2 py-1",
+    isIconOnly ? "justify-center gap-0" : role === 'fact' ? "gap-0" : role === 'suggestion' ? "gap-0" : "gap-1.5",
+    role === 'fact' ? "px-1 py-1" : role === 'suggestion' ? "px-1 py-1" : "px-2 py-1", // Fact chips and suggestion chips: 4px padding, others: 8px
     chipHeight,
     "rounded-[5px]",
-    "font-mono text-[13px] uppercase tracking-wide",
+    "font-mono text-[13px] uppercase tracking-normal",
     "transition-all duration-150 cursor-pointer select-none",
     role === 'verb' 
       ? "bg-white text-muted-foreground"
       : "bg-background text-muted-foreground",
-    role === 'verb'
-      ? "" // No shadow for verb chips
+    role === 'verb' || role === 'fact' || role === 'suggestion'
+      ? "" // No shadow for verb chips, fact chips, and suggestion chips
       : "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
     className
   );
@@ -131,18 +139,20 @@ export function Chip({
         : "hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
     ),
     fact: cn(
-      // User-selected fact chips: off-white fill with inner highlight
-      !aiPreFilled && "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+      // User-selected fact chips: off-white fill, no inline shadows
+      !aiPreFilled && "bg-card text-foreground text-[10px]",
       // AI-pre-filled fact chips: more settled and passive (reduced contrast ~15%, no inner highlight, softer text)
-      aiPreFilled && "bg-card/92 text-foreground/85",
+      aiPreFilled && "bg-card/92 text-foreground/85 text-[10px]",
       // Fact chips are always "active" (committed data) - no hover toggle
       "cursor-default"
     ),
     suggestion: cn(
-      hasDottedBorder && "border border-dashed border-muted-foreground/30 bg-transparent",
+      hasDottedBorder && "border-[2px] border-dashed border-white bg-transparent",
       selected && "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] border-transparent",
-      // Suggestion chips - lighter text weight, readable before clickable
-      !selected && "text-primary/70 font-normal opacity-85"
+      // Suggestion chips - grey text, white dotted border, 24px height
+      !selected && "text-muted-foreground/70 font-medium",
+      // Hover: expand width to show checkmark
+      !selected && "transition-all duration-200"
     ),
     status: cn(
       color 
@@ -165,17 +175,24 @@ export function Chip({
       {/* No per-chip AI glyphs - only at row level */}
       {icon && role !== 'suggestion' && role !== 'verb' && <span className="flex-shrink-0">{icon}</span>}
       <span className={cn(
-        "truncate max-w-[120px] flex-1",
-        role === 'suggestion' && "font-normal" // Lighter text weight for suggestions
+        "truncate flex-1 text-[12px]",
+        role === 'suggestion' && !isHovered && "max-w-[120px]", // Constrain width when not hovered
+        role === 'suggestion' && isHovered && "max-w-none", // Allow expansion on hover
+        role === 'suggestion' && "text-[10px] font-medium", // Suggestion chips use 10px font size and medium weight
+        role === 'fact' && "text-[10px]" // Fact chips use 10px font size
       )}>{label}</span>
-      {/* For fact chips, show X only on hover (right aligned) */}
+      {/* Checkmark for suggestion chips on hover */}
+      {role === 'suggestion' && isHovered && (
+        <Check className="h-3 w-3 ml-2 flex-shrink-0 text-muted-foreground/70" />
+      )}
+      {/* For fact chips, show X only on hover (right aligned) - smoothly expands on hover */}
       {canRemove && onRemove && role === 'fact' && (
         <button
           type="button"
           onClick={handleRemove}
-          className="ml-0.5 text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
+          className="ml-0.5 text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-all duration-150 flex-shrink-0 max-w-0 group-hover:max-w-4 overflow-hidden whitespace-nowrap"
         >
-          <X className="h-3 w-3" />
+          <X className="h-3 w-3 flex-shrink-0" />
         </button>
       )}
       {/* For filter chips, show X always when selected */}
@@ -201,10 +218,10 @@ export function Chip({
             rx="5"
             ry="5"
             fill="none"
-            stroke="currentColor"
+            stroke="white"
             strokeWidth="1.5"
             strokeDasharray="2 2"
-            opacity="0.3"
+            opacity="0.4"
           />
         </svg>
       )}
@@ -214,26 +231,42 @@ export function Chip({
   const props = {
     type: 'button' as const,
     onClick: (canToggle || role === 'suggestion' || role === 'verb') ? handleClick : undefined,
+    onMouseEnter: role === 'suggestion' ? () => setIsHovered(true) : undefined,
+    onMouseLeave: role === 'suggestion' ? () => setIsHovered(false) : undefined,
     style: activeBgColor,
-    className: cn(baseStyles, roleStyles[role], "relative", role === 'fact' && "group"),
+    className: cn(baseStyles, roleStyles[role], "relative", role === 'fact' && "group", role === 'suggestion' && "group"),
   };
 
-  if (animate && (role === 'suggestion' || role === 'verb')) {
-    return (
-      <motion.button
-        {...props}
-        initial={{ opacity: 0, scale: 0.8, x: -10 }}
-        animate={{ opacity: 1, scale: 1, x: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-      >
-        {chipContent}
-      </motion.button>
-    );
-  }
-
-  return (
+  const chipButton = animate && (role === 'suggestion' || role === 'verb') ? (
+    <motion.button
+      {...props}
+      initial={{ opacity: 0, scale: 0.8, x: -10 }}
+      animate={{ opacity: 1, scale: 1, x: 0 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
+      {chipContent}
+    </motion.button>
+  ) : (
     <button {...props}>
       {chipContent}
     </button>
   );
+
+  // Wrap with tooltip if description is provided
+  if (description) {
+    return (
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {chipButton}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {description}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return chipButton;
 }

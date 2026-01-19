@@ -129,12 +129,40 @@ export function SubtaskCard({
     setShowOptions(newValue);
   };
   
-  // Collapse options panel when moving to next question
+  // #region agent log
+  const effectRunCountRef = useRef(0);
+  // #endregion
+  
+  // Collapse options panel when subtask properties change (but not showOptions to avoid loops)
   useEffect(() => {
+    // #region agent log
+    effectRunCountRef.current += 1;
+    if (effectRunCountRef.current > 50) {
+      console.error('[SubtaskCard] useEffect LOOP DETECTED:', {
+        effectRunCount: effectRunCountRef.current,
+        showOptions,
+        isYesNo: subtask.is_yes_no,
+        requiresSignature: subtask.requires_signature,
+        subtaskId: subtask.id,
+      });
+    } else {
+      console.log('[SubtaskCard] useEffect run', {
+        runCount: effectRunCountRef.current,
+        showOptions,
+        isYesNo: subtask.is_yes_no,
+        requiresSignature: subtask.requires_signature,
+      });
+    }
+    // #endregion
+    
     if (showOptions && !subtask.is_yes_no && !subtask.requires_signature) {
+      // #region agent log
+      console.log('[SubtaskCard] Setting showOptions to false');
+      // #endregion
       setShowOptions(false);
     }
-  }, [showOptions, subtask.is_yes_no, subtask.requires_signature]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtask.is_yes_no, subtask.requires_signature]);
   return <div ref={setNodeRef} style={style} className={cn("transition-all duration-150", isDragging && "opacity-50 z-50", isDeleting && "opacity-0 scale-95")}>
       <div className={cn("rounded-xl bg-transparent shadow-e1 transition-shadow", isDragging && "shadow-e2")} style={{ color: "rgba(255, 255, 255, 0)", boxShadow: "none", border: "none" }}>
         {/* Main Row */}

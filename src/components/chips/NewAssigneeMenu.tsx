@@ -109,7 +109,8 @@ export function NewAssigneeMenu({
     setIsSubmitting(true);
     try {
       // Refresh session for RLS
-      await supabase.auth.refreshSession();
+      const { refreshSession } = await import("@/lib/sessionManager");
+      await refreshSession();
 
       const { data, error } = await supabase
         .from("teams")

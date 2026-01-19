@@ -64,9 +64,10 @@ export function AssetPanel({
     
     setLoading(true);
     try {
+      // Use assets_view which has serial (not name) - assets table doesn't have name column
       let query = supabase
-        .from('assets')
-        .select('id, name')
+        .from('assets_view')
+        .select('id, serial, property_id, space_id')
         .eq('org_id', orgId)
         .eq('property_id', propertyId);
 
@@ -77,7 +78,13 @@ export function AssetPanel({
       const { data, error } = await query;
 
       if (error) throw error;
-      setAssets(data || []);
+      
+      // Map serial to name for compatibility
+      const mappedData = (data || []).map(a => ({
+        id: a.id,
+        name: (a as any).serial || ''
+      }));
+      setAssets(mappedData);
     } catch (err: any) {
       console.error('Error loading assets:', err);
       toast({

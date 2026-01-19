@@ -33,8 +33,20 @@ export function useChecklistTemplates() {
       .eq("is_archived", false)
       .order("name", { ascending: true });
 
-    if (err) setError(err.message);
-    else setTemplates(data ?? []);
+    if (err) {
+      // Table might not exist yet (404) or RLS might be blocking - log but don't fail completely
+      // Supabase REST API returns 404 for non-existent tables, 42P01 is Postgres error code
+      if (err.code === '42P01' || err.code === 'PGRST116' || err.message?.includes('does not exist') || (err as any)?.status === 404) {
+        console.warn('[useChecklistTemplates] checklist_templates table does not exist yet or is not accessible:', err.code, err.message);
+        setTemplates([]);
+        setError(null); // Don't set error state if table just doesn't exist yet
+      } else {
+        setError(err.message);
+      }
+    } else {
+      setTemplates(data ?? []);
+      setError(null);
+    }
 
     setLoading(false);
   }

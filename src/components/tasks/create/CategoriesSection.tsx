@@ -86,9 +86,10 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
     }
     
     // Refresh session to ensure JWT has latest org_id claim
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    const { refreshSession } = await import("@/lib/sessionManager");
+    const session = await refreshSession();
     
-    if (refreshError) {
+    if (!session) {
       toast({ 
         title: "Sign in issue", 
         description: "Log out and back in to continue.",
@@ -98,7 +99,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
     }
 
     // Get org_id from refreshed JWT claims
-    const jwtOrgId = refreshData.session?.user?.app_metadata?.org_id;
+    const jwtOrgId = session?.user?.app_metadata?.org_id;
     
     if (!jwtOrgId) {
       toast({ 
