@@ -299,12 +299,12 @@
     /* Paper texture behind gradient so transparent areas reveal paper */
     background-image:
       linear-gradient(135deg, rgba(142, 201, 206, 1) 3%, rgba(142, 201, 206, 1) 28%, rgba(142, 201, 206, 0) 61%),
-      var(--paper-texture);
+      var(--paper-texture) !important;
     /* Blend gradient with texture so noise is visible even under teal */
-    background-blend-mode: multiply, normal;
-    background-size: 100% 100%, 100%;
-    background-repeat: no-repeat, repeat;
-    background-color: hsl(var(--background));
+    background-blend-mode: multiply, normal !important;
+    background-size: 100% 100%, 100% !important;
+    background-repeat: no-repeat, repeat !important;
+    background-color: hsl(var(--background)) !important;
     border-color: rgba(0, 0, 0, 0);
     border-style: none;
     border-image: none;

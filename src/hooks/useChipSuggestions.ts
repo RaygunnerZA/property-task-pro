@@ -14,7 +14,7 @@ import {
   ChipSuggestionContext, 
   ChipSuggestionResult,
   SuggestedChip,
-  GhostGroup
+  GhostCategory
 } from '@/types/chip-suggestions';
 
 interface UseChipSuggestionsOptions {
@@ -56,11 +56,58 @@ export function useChipSuggestions(
   const { members } = useOrgMembers();
   const { categories } = useCategories();
   
+  // Use refs to store latest arrays to avoid dependency issues
+  const spacesRef = useRef(spaces);
+  const teamsRef = useRef(teams);
+  const membersRef = useRef(members);
+  const categoriesRef = useRef(categories);
+  const contextRef = useRef(context);
+  
+  // Update refs when values change
+  useEffect(() => {
+    spacesRef.current = spaces;
+  }, [spaces]);
+  useEffect(() => {
+    teamsRef.current = teams;
+  }, [teams]);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
+  useEffect(() => {
+    categoriesRef.current = categories;
+  }, [categories]);
+  // Extract context properties for stable dependencies
+  const contextPropertyId = context.propertyId;
+  const contextSelectedPersonId = context.selectedPersonId;
+  const contextImageOcrText = context.imageOcrText;
+  
+  useEffect(() => {
+    contextRef.current = context;
+  }, [context, contextPropertyId, contextSelectedPersonId, contextImageOcrText]);
+  
+  // Create stable string keys for array dependencies (copy arrays before sorting to avoid mutation)
+  const selectedSpaceIdsKey = Array.isArray(context.selectedSpaceIds) 
+    ? [...context.selectedSpaceIds].sort().join(',') 
+    : '';
+  const selectedTeamIdsKey = Array.isArray(context.selectedTeamIds)
+    ? [...context.selectedTeamIds].sort().join(',')
+    : '';
+  const spacesKey = spaces.map(s => s.id).sort().join(',');
+  const teamsKey = teams.map(t => t.id).sort().join(',');
+  const membersKey = members.map(m => m.id || m.user_id).sort().join(',');
+  const categoriesKey = categories.map(c => c.id).sort().join(',');
+  
   // Track if we should process
   const shouldProcess = debouncedDescription.length >= minDescriptionLength;
   
-  // Generation function
+  // Generation function - use refs to access latest values without dependencies
   const generateSuggestions = useCallback(async () => {
+    const latestSpaces = spacesRef.current;
+    const latestTeams = teamsRef.current;
+    const latestMembers = membersRef.current;
+    const latestCategories = categoriesRef.current;
+    const latestContext = contextRef.current;
+    
     if (!shouldProcess) {
       setResult({ chips: [], ghostCategories: [], complianceMode: false });
       return;
@@ -71,21 +118,21 @@ export function useChipSuggestions(
     
     try {
       const entities = {
-        spaces: spaces.map(s => ({
+        spaces: latestSpaces.map(s => ({
           id: s.id,
           name: s.name,
           property_id: s.property_id
         })),
-        members: members.map(m => ({
+        members: latestMembers.map(m => ({
           id: m.id,
           user_id: m.user_id,
           display_name: m.display_name
         })),
-        teams: teams.map(t => ({
+        teams: latestTeams.map(t => ({
           id: t.id,
           name: t.name ?? ''
         })),
-        categories: categories.map(c => ({
+        categories: latestCategories.map(c => ({
           id: c.id,
           name: c.name
         }))
@@ -94,11 +141,11 @@ export function useChipSuggestions(
       const suggestions = await generateChipSuggestions(
         {
           description: debouncedDescription,
-          propertyId: context.propertyId,
-          selectedSpaceIds: context.selectedSpaceIds,
-          selectedPersonId: context.selectedPersonId,
-          selectedTeamIds: context.selectedTeamIds,
-          imageOcrText: context.imageOcrText
+          propertyId: latestContext.propertyId,
+          selectedSpaceIds: latestContext.selectedSpaceIds,
+          selectedPersonId: latestContext.selectedPersonId,
+          selectedTeamIds: latestContext.selectedTeamIds,
+          imageOcrText: latestContext.imageOcrText
         },
         entities
       );
@@ -113,15 +160,15 @@ export function useChipSuggestions(
   }, [
     shouldProcess,
     debouncedDescription,
-    context.propertyId,
-    context.selectedSpaceIds,
-    context.selectedPersonId,
-    context.selectedTeamIds,
-    context.imageOcrText,
-    spaces,
-    teams,
-    members,
-    categories
+    contextPropertyId,
+    selectedSpaceIdsKey,
+    contextSelectedPersonId,
+    selectedTeamIdsKey,
+    contextImageOcrText,
+    spacesKey,
+    teamsKey,
+    membersKey,
+    categoriesKey
   ]);
   
   // Auto-generate on context changes
