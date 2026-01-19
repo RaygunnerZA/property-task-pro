@@ -1,28 +1,30 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useSupabase } from '@/integrations/supabase/useSupabase';
 import { useActiveOrg } from '@/hooks/useActiveOrg';
 import type { Tables } from '@/integrations/supabase/types';
+import { queryKeys } from '@/lib/queryKeys';
 
 type PropertyRow = Tables<"properties">;
 
+/**
+ * Hook to fetch a single property by ID.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param propertyId - The property ID to fetch
+ * @returns Property data, loading state, error state, and refresh function
+ */
 export const useProperty = (propertyId: string | undefined) => {
   const supabase = useSupabase();
-  const { orgId } = useActiveOrg();
-  const [property, setProperty] = useState<PropertyRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
 
-  const fetchProperty = useCallback(async () => {
-    if (!propertyId || !orgId) {
-      setProperty(null);
-      setLoading(false);
-      return;
-    }
+  const { data: property = null, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.property(orgId ?? undefined, propertyId),
+    queryFn: async (): Promise<PropertyRow | null> => {
+      if (!propertyId || !orgId) {
+        return null;
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const { data, error: err } = await supabase
         .from("properties")
         .select("*")
@@ -31,22 +33,25 @@ export const useProperty = (propertyId: string | undefined) => {
         .single();
 
       if (err) {
-        setError(err.message);
-        setProperty(null);
-      } else {
-        setProperty(data);
+        throw err;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch property");
-      setProperty(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, propertyId, orgId]);
 
-  useEffect(() => {
-    fetchProperty();
-  }, [fetchProperty]);
+      return (data as PropertyRow) || null;
+    },
+    enabled: !!propertyId && !!orgId && !orgLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes - properties change infrequently
+    retry: 1,
+  });
 
-  return { property, loading, error, refresh: fetchProperty };
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  return { 
+    property, 
+    loading, 
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh 
+  };
 };

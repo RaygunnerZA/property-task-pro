@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useActiveOrg } from './useActiveOrg';
+import { queryKeys } from '@/lib/queryKeys';
 
 interface ActivityEvent {
   id: string;
@@ -17,16 +19,25 @@ interface UseRecentActivityResult {
   error: Error | null;
 }
 
+/**
+ * Hook to fetch recent activity events.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * NOTE: Currently returns mock data. Backend service implementation pending.
+ * 
+ * @returns Activity events array, loading state, and error state
+ */
 export const useRecentActivity = (): UseRecentActivityResult => {
-  const [data, setData] = useState<ActivityEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
 
-  useEffect(() => {
-    // Simulate loading delay
-    const timer = setTimeout(() => {
+  const { data = [], isLoading: loading, error } = useQuery({
+    queryKey: queryKeys.recentActivity(orgId ?? undefined),
+    queryFn: async (): Promise<ActivityEvent[]> => {
+      // TODO: Connect to backend service
+      // For now, return mock data
       const now = new Date();
-      setData([
+      return [
         {
           id: '1',
           type: 'drift_detected',
@@ -74,12 +85,16 @@ export const useRecentActivity = (): UseRecentActivityResult => {
             propertyName: 'Garden Estates',
           },
         },
-      ]);
-      setLoading(false);
-    }, 500);
+      ];
+    },
+    enabled: !!orgId && !orgLoading,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    retry: 0, // Don't retry mock implementation
+  });
 
-    return () => clearTimeout(timer);
-  }, []);
-
-  return { data, loading, error };
+  return { 
+    data, 
+    loading, 
+    error: error ? (error instanceof Error ? error : new Error(String(error))) : null 
+  };
 };

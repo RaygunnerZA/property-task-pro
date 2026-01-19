@@ -95,6 +95,25 @@ export const queryKeys = {
 
   // Initial Org Data (combined query for org, member, hasProperties, hasSpaces)
   initialOrgData: (orgId?: string) => ['initialOrgData', orgId] as const,
+
+  // Groups
+  groups: (orgId?: string) => ['groups', orgId] as const,
+  groupMembers: (orgId?: string, groupId?: string) => ['groupMembers', orgId, groupId] as const,
+  taskGroups: (taskId?: string) => ['taskGroups', taskId] as const,
+
+  // Property Details & Related
+  propertyDetails: (orgId?: string, propertyId?: string) => ['propertyDetails', orgId, propertyId] as const,
+  propertyUtilities: (orgId?: string, propertyId?: string) => ['propertyUtilities', orgId, propertyId] as const,
+  propertyLegal: (orgId?: string, propertyId?: string) => ['propertyLegal', orgId, propertyId] as const,
+  propertyThemes: (orgId?: string, propertyId?: string) => ['propertyThemes', orgId, propertyId] as const,
+  propertyTasks: (orgId?: string, propertyId?: string) => ['propertyTasks', orgId, propertyId] as const,
+
+  // Task Timeline & Activity
+  taskTimeline: (taskId?: string) => ['taskTimeline', taskId] as const,
+  recentActivity: (orgId?: string) => ['recentActivity', orgId] as const,
+
+  // Image Annotations
+  imageAnnotations: (taskId?: string, imageId?: string) => ['imageAnnotations', taskId, imageId] as const,
 } as const;
 
 /**
