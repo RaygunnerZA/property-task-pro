@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 export interface OrgMember {
   id: string;
@@ -12,24 +13,25 @@ export interface OrgMember {
   avatar_url: string | null;
 }
 
+/**
+ * Hook to fetch organization members for the active organization.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * Fetches memberships and then enriches with user data via RPC function.
+ * 
+ * @returns Members array, loading state, error state, and refresh function
+ */
 export function useOrgMembers() {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [members, setMembers] = useState<OrgMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchMembers() {
-    if (!orgId) {
-      setMembers([]);
-      setLoading(false);
-      return;
-    }
+  const { data: members = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.orgMembers(orgId ?? undefined),
+    queryFn: async (): Promise<OrgMember[]> => {
+      if (!orgId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       // Fetch memberships
       const { data: memberships, error: err } = await supabase
         .from("organisation_members")
@@ -37,16 +39,11 @@ export function useOrgMembers() {
         .eq("org_id", orgId);
 
       if (err) {
-        setError(err.message);
-        setMembers([]);
-        setLoading(false);
-        return;
+        throw err;
       }
 
       if (!memberships || memberships.length === 0) {
-        setMembers([]);
-        setLoading(false);
-        return;
+        return [];
       }
 
       // Fetch user data via RPC function
@@ -59,7 +56,7 @@ export function useOrgMembers() {
       if (userError) {
         console.error("Error fetching user info:", userError);
         // Fallback to basic info if RPC fails
-        const mapped: OrgMember[] = memberships.map((m) => ({
+        return memberships.map((m) => ({
           id: m.id,
           user_id: m.user_id,
           role: m.role,
@@ -68,13 +65,10 @@ export function useOrgMembers() {
           nickname: null,
           avatar_url: null,
         }));
-        setMembers(mapped);
-        setLoading(false);
-        return;
       }
 
       // Map members with user data
-      const mapped: OrgMember[] = memberships.map((m) => {
+      return memberships.map((m) => {
         const user = userData?.find((u: any) => u.id === m.user_id);
         return {
           id: m.id,
@@ -86,21 +80,21 @@ export function useOrgMembers() {
           avatar_url: user?.avatar_url || null,
         };
       });
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 2 * 60 * 1000, // 2 minutes - members change moderately
+    retry: 1,
+  });
 
-      setMembers(mapped);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch members");
-      setMembers([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchMembers();
-    }
-  }, [orgId, orgLoading]);
-
-  return { members, loading, error, refresh: fetchMembers };
+  return {
+    members,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }

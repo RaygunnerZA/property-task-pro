@@ -80,6 +80,12 @@ export const queryKeys = {
 
   // Checklist Templates
   checklistTemplates: (orgId?: string) => ['checklistTemplates', orgId] as const,
+  checklistTemplateItems: (templateId?: string) => ['checklistTemplateItems', templateId] as const,
+  checklistTemplateWithItems: (orgId?: string, templateId?: string) =>
+    ['checklistTemplateWithItems', orgId, templateId] as const,
+
+  // Task Categories (task_themes junction table)
+  taskCategories: (taskId?: string) => ['taskCategories', taskId] as const,
 
   // Initial Org Data (combined query for org, member, hasProperties, hasSpaces)
   initialOrgData: (orgId?: string) => ['initialOrgData', orgId] as const,

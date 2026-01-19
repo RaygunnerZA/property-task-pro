@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 type ChecklistTemplateRow = Tables<"checklist_templates">;
 type ChecklistTemplateItemRow = Tables<"checklist_template_items">;
@@ -10,147 +11,167 @@ export interface TemplateWithItems extends ChecklistTemplateRow {
   items: ChecklistTemplateItemRow[];
 }
 
+/**
+ * Hook to fetch checklist templates for the active organization.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @returns Templates array, loading state, error state, and refresh function
+ */
 export function useChecklistTemplates() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [templates, setTemplates] = useState<ChecklistTemplateRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchTemplates() {
-    if (!orgId) {
-      setTemplates([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const { data, error: err } = await supabase
-      .from("checklist_templates")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("is_archived", false)
-      .order("name", { ascending: true });
-
-    if (err) {
-      // Table might not exist yet (404) or RLS might be blocking - log but don't fail completely
-      // Supabase REST API returns 404 for non-existent tables, 42P01 is Postgres error code
-      if (err.code === '42P01' || err.code === 'PGRST116' || err.message?.includes('does not exist') || (err as any)?.status === 404) {
-        console.warn('[useChecklistTemplates] checklist_templates table does not exist yet or is not accessible:', err.code, err.message);
-        setTemplates([]);
-        setError(null); // Don't set error state if table just doesn't exist yet
-      } else {
-        setError(err.message);
+  const { data: templates = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.checklistTemplates(orgId ?? undefined),
+    queryFn: async (): Promise<ChecklistTemplateRow[]> => {
+      if (!orgId) {
+        return [];
       }
-    } else {
-      setTemplates(data ?? []);
-      setError(null);
-    }
 
-    setLoading(false);
-  }
+      const { data, error: err } = await supabase
+        .from("checklist_templates")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("is_archived", false)
+        .order("name", { ascending: true });
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchTemplates();
-    }
-  }, [orgId, orgLoading]);
+      if (err) {
+        // Table might not exist yet (404) or RLS might be blocking - log but don't fail completely
+        // Supabase REST API returns 404 for non-existent tables, 42P01 is Postgres error code
+        if (err.code === '42P01' || err.code === 'PGRST116' || err.message?.includes('does not exist') || (err as any)?.status === 404) {
+          console.warn('[useChecklistTemplates] checklist_templates table does not exist yet or is not accessible:', err.code, err.message);
+          return []; // Return empty array if table doesn't exist
+        }
+        throw err; // Throw other errors
+      }
 
-  return { templates, loading, error, refresh: fetchTemplates };
+      return (data as ChecklistTemplateRow[]) ?? [];
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 5 * 60 * 1000, // 5 minutes - templates change infrequently
+    retry: 1,
+  });
+
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  return {
+    templates,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
 
+/**
+ * Hook to fetch checklist template items for a specific template.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param templateId - The template ID to fetch items for
+ * @returns Template items array, loading state, error state, and refresh function
+ */
 export function useChecklistTemplateItems(templateId?: string) {
-  const [items, setItems] = useState<ChecklistTemplateItemRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: items = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.checklistTemplateItems(templateId),
+    queryFn: async (): Promise<ChecklistTemplateItemRow[]> => {
+      if (!templateId) {
+        return [];
+      }
 
-  async function fetchItems() {
-    if (!templateId) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
+      const { data, error: err } = await supabase
+        .from("checklist_template_items")
+        .select("*")
+        .eq("template_id", templateId)
+        .eq("is_archived", false)
+        .order("order_index", { ascending: true });
 
-    setLoading(true);
-    setError(null);
+      if (err) {
+        throw err;
+      }
 
-    const { data, error: err } = await supabase
-      .from("checklist_template_items")
-      .select("*")
-      .eq("template_id", templateId)
-      .eq("is_archived", false)
-      .order("order_index", { ascending: true });
+      return (data as ChecklistTemplateItemRow[]) ?? [];
+    },
+    enabled: !!templateId, // Only fetch when we have templateId
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
-    if (err) setError(err.message);
-    else setItems(data ?? []);
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    fetchItems();
-  }, [templateId]);
-
-  return { items, loading, error, refresh: fetchItems };
+  return {
+    items,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
 
+/**
+ * Hook to fetch a checklist template with its items.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param templateId - The template ID to fetch
+ * @returns Template with items, loading state, error state, and refresh function
+ */
 export function useTemplateWithItems(templateId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [template, setTemplate] = useState<TemplateWithItems | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchTemplate() {
-    if (!orgId || !templateId) {
-      setTemplate(null);
-      setLoading(false);
-      return;
-    }
+  const { data: template, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.checklistTemplateWithItems(orgId ?? undefined, templateId),
+    queryFn: async (): Promise<TemplateWithItems | null> => {
+      if (!orgId || !templateId) {
+        return null;
+      }
 
-    setLoading(true);
-    setError(null);
+      // Fetch template
+      const { data: templateData, error: templateErr } = await supabase
+        .from("checklist_templates")
+        .select("*")
+        .eq("id", templateId)
+        .single();
 
-    // Fetch template
-    const { data: templateData, error: templateErr } = await supabase
-      .from("checklist_templates")
-      .select("*")
-      .eq("id", templateId)
-      .single();
+      if (templateErr) {
+        throw templateErr;
+      }
 
-    if (templateErr) {
-      setError(templateErr.message);
-      setLoading(false);
-      return;
-    }
+      // Fetch items
+      const { data: itemsData, error: itemsErr } = await supabase
+        .from("checklist_template_items")
+        .select("*")
+        .eq("template_id", templateId)
+        .eq("is_archived", false)
+        .order("order_index", { ascending: true });
 
-    // Fetch items
-    const { data: itemsData, error: itemsErr } = await supabase
-      .from("checklist_template_items")
-      .select("*")
-      .eq("template_id", templateId)
-      .eq("is_archived", false)
-      .order("order_index", { ascending: true });
+      if (itemsErr) {
+        throw itemsErr;
+      }
 
-    if (itemsErr) {
-      setError(itemsErr.message);
-      setLoading(false);
-      return;
-    }
+      return {
+        ...templateData,
+        items: itemsData ?? [],
+      } as TemplateWithItems;
+    },
+    enabled: !!orgId && !!templateId && !orgLoading, // Only fetch when we have orgId and templateId
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
-    setTemplate({
-      ...templateData,
-      items: itemsData ?? [],
-    });
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchTemplate();
-    }
-  }, [orgId, templateId, orgLoading]);
-
-  return { template, loading, error, refresh: fetchTemplate };
+  return {
+    template: template ?? null,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
