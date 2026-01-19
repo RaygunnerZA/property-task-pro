@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
+import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "../integrations/supabase/client";
+import { queryKeys } from "@/lib/queryKeys";
 
-interface Message {
+export interface Message {
   id: string;
   org_id: string;
   conversation_id: string;
@@ -14,24 +14,27 @@ interface Message {
   created_at: string;
 }
 
+/**
+ * Hook to fetch messages for a task.
+ * 
+ * Automatically finds or creates a conversation for the task, then fetches messages.
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * 
+ * @param taskId - The task ID to fetch messages for
+ * @returns Messages array, loading state, error state, and refresh function
+ */
 export function useTaskMessages(taskId: string | undefined) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchMessages = useCallback(async () => {
-    if (!orgId || !taskId) {
-      setMessages([]);
-      setLoading(false);
-      return;
-    }
+  const { data: messages = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.taskMessages(orgId ?? undefined, taskId),
+    queryFn: async (): Promise<Message[]> => {
+      if (!orgId || !taskId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       // First, find or create conversation for this task
+      // This is idempotent - if conversation exists, we use it; if not, we create it
       let { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("id")
@@ -40,13 +43,14 @@ export function useTaskMessages(taskId: string | undefined) {
         .maybeSingle();
 
       if (convError && convError.code !== "PGRST116") {
+        // PGRST116 is "not found" which is expected when conversation doesn't exist yet
         throw convError;
       }
 
       let conversationId: string | null = null;
 
       if (!conversation) {
-        // Create conversation if it doesn't exist
+        // Create conversation if it doesn't exist (auto-creation pattern)
         const { data: newConv, error: createError } = await supabase
           .from("conversations")
           .insert({
@@ -78,21 +82,22 @@ export function useTaskMessages(taskId: string | undefined) {
         throw err;
       }
 
-      setMessages((data as Message[]) ?? []);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch messages");
-      setMessages([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [orgId, taskId]);
+      return (data as Message[]) ?? [];
+    },
+    enabled: !!orgId && !!taskId && !orgLoading, // Only fetch when we have orgId and taskId
+    staleTime: 30 * 1000, // 30 seconds - messages are relatively fresh data
+    retry: 1, // Retry once on error
+  });
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchMessages();
-    }
-  }, [fetchMessages, orgLoading]);
+  // Wrapper for backward compatibility - old refresh() was async and could be awaited
+  const refresh = async () => {
+    await refetch();
+  };
 
-  return { messages, loading, error, refresh: fetchMessages };
+  return {
+    messages,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
-
