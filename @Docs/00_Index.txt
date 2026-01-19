@@ -22,4 +22,5 @@
 20_Billing.md               : (Formerly Ch 19) Subscriptions, entitlements, and gates.
 21_Data_Lifecycle.md        : (Formerly Ch 20) Retention, archiving, and deletion rules.
 22_State_Management.md      : State management patterns, React Query, Context, Zustand guidelines.
+23_Architecture_Audit.md    : Comprehensive architecture audit, best practices analysis, and improvement roadmap.
 Appendix_A.md               : Entity -> Context Map.
