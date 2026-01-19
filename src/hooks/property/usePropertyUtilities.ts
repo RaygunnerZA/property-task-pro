@@ -1,28 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import type { Tables } from "@/integrations/supabase/types";
+import { queryKeys } from "@/lib/queryKeys";
 
 type PropertyUtilityRow = Tables<"property_utilities">;
 
+/**
+ * Hook to fetch and manage property utilities.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Mutations are handled via useMutation for create/update/delete operations.
+ * 
+ * @param propertyId - The property ID to fetch utilities for
+ * @returns Utilities array, loading state, error state, refresh function, and mutation functions
+ */
 export const usePropertyUtilities = (propertyId: string | undefined) => {
   const supabase = useSupabase();
-  const { orgId } = useActiveOrg();
-  const [utilities, setUtilities] = useState<PropertyUtilityRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
 
-  const fetchUtilities = useCallback(async () => {
-    if (!propertyId || !orgId) {
-      setUtilities([]);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching property utilities
+  const { data: utilities = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.propertyUtilities(orgId ?? undefined, propertyId),
+    queryFn: async (): Promise<PropertyUtilityRow[]> => {
+      if (!propertyId || !orgId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const { data, error: err } = await supabase
         .from("property_utilities")
         .select("*")
@@ -31,27 +36,23 @@ export const usePropertyUtilities = (propertyId: string | undefined) => {
         .order("type", { ascending: true });
 
       if (err) {
-        setError(err.message);
-        setUtilities([]);
-      } else {
-        setUtilities(data || []);
+        throw err;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch property utilities");
-      setUtilities([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, propertyId, orgId]);
 
-  useEffect(() => {
-    fetchUtilities();
-  }, [fetchUtilities]);
+      return (data as PropertyUtilityRow[]) ?? [];
+    },
+    enabled: !!propertyId && !!orgId && !orgLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
-  const createUtility = useCallback(async (utility: Omit<PropertyUtilityRow, "id" | "created_at" | "updated_at">) => {
-    if (!propertyId || !orgId) return { error: "Missing property ID or org ID" };
+  // Mutation for creating a utility
+  const createUtilityMutation = useMutation({
+    mutationFn: async (utility: Omit<PropertyUtilityRow, "id" | "created_at" | "updated_at">) => {
+      if (!propertyId || !orgId) {
+        throw new Error("Missing property ID or org ID");
+      }
 
-    try {
       const { data, error: err } = await supabase
         .from("property_utilities")
         .insert({
@@ -63,23 +64,23 @@ export const usePropertyUtilities = (propertyId: string | undefined) => {
         .single();
 
       if (err) {
-        setError(err.message);
-        return { error: err };
+        throw err;
       }
 
-      setUtilities((prev) => [...prev, data]);
-      return { data, error: null };
-    } catch (err: any) {
-      const errorMsg = err.message || "Failed to create utility";
-      setError(errorMsg);
-      return { error: errorMsg };
-    }
-  }, [supabase, propertyId, orgId]);
+      return data as PropertyUtilityRow;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyUtilities(orgId ?? undefined, propertyId) });
+    },
+  });
 
-  const updateUtility = useCallback(async (id: string, updates: Partial<PropertyUtilityRow>) => {
-    if (!orgId) return { error: "Missing org ID" };
+  // Mutation for updating a utility
+  const updateUtilityMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<PropertyUtilityRow> }) => {
+      if (!orgId) {
+        throw new Error("Missing org ID");
+      }
 
-    try {
       const { data, error: err } = await supabase
         .from("property_utilities")
         .update(updates)
@@ -89,23 +90,23 @@ export const usePropertyUtilities = (propertyId: string | undefined) => {
         .single();
 
       if (err) {
-        setError(err.message);
-        return { error: err };
+        throw err;
       }
 
-      setUtilities((prev) => prev.map((u) => (u.id === id ? data : u)));
-      return { data, error: null };
-    } catch (err: any) {
-      const errorMsg = err.message || "Failed to update utility";
-      setError(errorMsg);
-      return { error: errorMsg };
-    }
-  }, [supabase, orgId]);
+      return data as PropertyUtilityRow;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyUtilities(orgId ?? undefined, propertyId) });
+    },
+  });
 
-  const deleteUtility = useCallback(async (id: string) => {
-    if (!orgId) return { error: "Missing org ID" };
+  // Mutation for deleting a utility
+  const deleteUtilityMutation = useMutation({
+    mutationFn: async (id: string) => {
+      if (!orgId) {
+        throw new Error("Missing org ID");
+      }
 
-    try {
       const { error: err } = await supabase
         .from("property_utilities")
         .delete()
@@ -113,27 +114,57 @@ export const usePropertyUtilities = (propertyId: string | undefined) => {
         .eq("org_id", orgId);
 
       if (err) {
-        setError(err.message);
-        return { error: err };
+        throw err;
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyUtilities(orgId ?? undefined, propertyId) });
+    },
+  });
 
-      setUtilities((prev) => prev.filter((u) => u.id !== id));
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation functions
+  const createUtility = async (utility: Omit<PropertyUtilityRow, "id" | "created_at" | "updated_at">) => {
+    try {
+      const data = await createUtilityMutation.mutateAsync(utility);
+      return { data, error: null };
+    } catch (err: any) {
+      const errorMsg = err.message || "Failed to create utility";
+      return { error: errorMsg };
+    }
+  };
+
+  const updateUtility = async (id: string, updates: Partial<PropertyUtilityRow>) => {
+    try {
+      const data = await updateUtilityMutation.mutateAsync({ id, updates });
+      return { data, error: null };
+    } catch (err: any) {
+      const errorMsg = err.message || "Failed to update utility";
+      return { error: errorMsg };
+    }
+  };
+
+  const deleteUtility = async (id: string) => {
+    try {
+      await deleteUtilityMutation.mutateAsync(id);
       return { error: null };
     } catch (err: any) {
       const errorMsg = err.message || "Failed to delete utility";
-      setError(errorMsg);
       return { error: errorMsg };
     }
-  }, [supabase, orgId]);
+  };
 
   return {
     utilities,
     loading,
-    error,
-    refresh: fetchUtilities,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
     createUtility,
     updateUtility,
     deleteUtility,
   };
 };
-

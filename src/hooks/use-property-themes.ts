@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 type Theme = {
   id: string;
@@ -12,24 +13,28 @@ type Theme = {
   org_id: string;
 };
 
+/**
+ * Hook to fetch and manage property themes (themes linked to a property).
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Mutations are handled via useMutation for add/remove operations.
+ * 
+ * @param propertyId - The property ID to fetch themes for
+ * @returns Themes array, loading state, error state, refresh function, and mutation functions
+ */
 export function usePropertyThemes(propertyId: string | undefined) {
   const supabase = useSupabase();
-  const { orgId } = useActiveOrg();
-  const [themes, setThemes] = useState<Theme[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
 
-  const fetchThemes = useCallback(async () => {
-    if (!propertyId || !orgId) {
-      setThemes([]);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching property themes
+  const { data: themes = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.propertyThemes(orgId ?? undefined, propertyId),
+    queryFn: async (): Promise<Theme[]> => {
+      if (!propertyId || !orgId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       // Fetch themes linked to this property via property_themes junction table
       const { data, error: err } = await supabase
         .from("property_themes")
@@ -48,32 +53,28 @@ export function usePropertyThemes(propertyId: string | undefined) {
         .eq("property_id", propertyId);
 
       if (err) {
-        setError(err.message);
-        setThemes([]);
-      } else {
-        // Extract themes from the join result
-        const linkedThemes = (data || [])
-          .map((item: any) => item.themes)
-          .filter((theme: any) => theme !== null) as Theme[];
-        
-        setThemes(linkedThemes);
+        throw err;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch property themes");
-      setThemes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, propertyId, orgId]);
 
-  useEffect(() => {
-    fetchThemes();
-  }, [fetchThemes]);
+      // Extract themes from the join result
+      const linkedThemes = (data || [])
+        .map((item: any) => item.themes)
+        .filter((theme: any) => theme !== null) as Theme[];
 
-  const addTheme = useCallback(async (themeId: string) => {
-    if (!propertyId || !orgId) return { error: "Missing property ID or org ID" };
+      return linkedThemes;
+    },
+    enabled: !!propertyId && !!orgId && !orgLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
-    try {
+  // Mutation for adding a theme to property
+  const addThemeMutation = useMutation({
+    mutationFn: async (themeId: string) => {
+      if (!propertyId || !orgId) {
+        throw new Error("Missing property ID or org ID");
+      }
+
       const { error: err } = await supabase
         .from("property_themes")
         .insert({
@@ -81,28 +82,23 @@ export function usePropertyThemes(propertyId: string | undefined) {
           theme_id: themeId,
         });
 
-      if (err) {
-        // Ignore duplicate key errors
-        if (err.code !== "23505") {
-          setError(err.message);
-          return { error: err };
-        }
+      // Ignore duplicate key errors (23505)
+      if (err && err.code !== "23505") {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyThemes(orgId ?? undefined, propertyId) });
+    },
+  });
+
+  // Mutation for removing a theme from property
+  const removeThemeMutation = useMutation({
+    mutationFn: async (themeId: string) => {
+      if (!propertyId || !orgId) {
+        throw new Error("Missing property ID or org ID");
       }
 
-      // Refresh themes
-      await fetchThemes();
-      return { error: null };
-    } catch (err: any) {
-      const errorMsg = err.message || "Failed to add theme";
-      setError(errorMsg);
-      return { error: errorMsg };
-    }
-  }, [supabase, propertyId, orgId, fetchThemes]);
-
-  const removeTheme = useCallback(async (themeId: string) => {
-    if (!propertyId || !orgId) return { error: "Missing property ID or org ID" };
-
-    try {
       const { error: err } = await supabase
         .from("property_themes")
         .delete()
@@ -110,27 +106,46 @@ export function usePropertyThemes(propertyId: string | undefined) {
         .eq("theme_id", themeId);
 
       if (err) {
-        setError(err.message);
-        return { error: err };
+        throw err;
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyThemes(orgId ?? undefined, propertyId) });
+    },
+  });
 
-      // Refresh themes
-      await fetchThemes();
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation functions
+  const addTheme = async (themeId: string) => {
+    try {
+      await addThemeMutation.mutateAsync(themeId);
+      return { error: null };
+    } catch (err: any) {
+      const errorMsg = err.message || "Failed to add theme";
+      return { error: errorMsg };
+    }
+  };
+
+  const removeTheme = async (themeId: string) => {
+    try {
+      await removeThemeMutation.mutateAsync(themeId);
       return { error: null };
     } catch (err: any) {
       const errorMsg = err.message || "Failed to remove theme";
-      setError(errorMsg);
       return { error: errorMsg };
     }
-  }, [supabase, propertyId, orgId, fetchThemes]);
+  };
 
   return {
     themes,
     loading,
-    error,
-    refresh: fetchThemes,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
     addTheme,
     removeTheme,
   };
 }
-

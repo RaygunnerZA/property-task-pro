@@ -1,28 +1,33 @@
-import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import type { Tables } from "@/integrations/supabase/types";
+import { queryKeys } from "@/lib/queryKeys";
 
 type PropertyLegalRow = Tables<"property_legal">;
 
+/**
+ * Hook to fetch and manage property legal information.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Mutations are handled via useMutation for update operations.
+ * 
+ * @param propertyId - The property ID to fetch legal info for
+ * @returns Legal data, loading state, error state, refresh function, and update mutation
+ */
 export const usePropertyLegal = (propertyId: string | undefined) => {
   const supabase = useSupabase();
-  const { orgId } = useActiveOrg();
-  const [legal, setLegal] = useState<PropertyLegalRow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
 
-  const fetchLegal = useCallback(async () => {
-    if (!propertyId || !orgId) {
-      setLegal(null);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching property legal info
+  const { data: legal = null, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.propertyLegal(orgId ?? undefined, propertyId),
+    queryFn: async (): Promise<PropertyLegalRow | null> => {
+      if (!propertyId || !orgId) {
+        return null;
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const { data, error: err } = await supabase
         .from("property_legal")
         .select("*")
@@ -31,27 +36,23 @@ export const usePropertyLegal = (propertyId: string | undefined) => {
         .maybeSingle();
 
       if (err) {
-        setError(err.message);
-        setLegal(null);
-      } else {
-        setLegal(data);
+        throw err;
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch property legal info");
-      setLegal(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, propertyId, orgId]);
 
-  useEffect(() => {
-    fetchLegal();
-  }, [fetchLegal]);
+      return (data as PropertyLegalRow) || null;
+    },
+    enabled: !!propertyId && !!orgId && !orgLoading,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1,
+  });
 
-  const updateLegal = useCallback(async (updates: Partial<PropertyLegalRow>) => {
-    if (!propertyId || !orgId) return { error: "Missing property ID or org ID" };
+  // Mutation for updating property legal info
+  const updateLegalMutation = useMutation({
+    mutationFn: async (updates: Partial<PropertyLegalRow>) => {
+      if (!propertyId || !orgId) {
+        throw new Error("Missing property ID or org ID");
+      }
 
-    try {
       // Check if record exists
       const { data: existing } = await supabase
         .from("property_legal")
@@ -59,19 +60,24 @@ export const usePropertyLegal = (propertyId: string | undefined) => {
         .eq("property_id", propertyId)
         .maybeSingle();
 
-      let result;
       if (existing) {
         // Update existing
-        result = await supabase
+        const { data, error: err } = await supabase
           .from("property_legal")
           .update(updates)
           .eq("property_id", propertyId)
           .eq("org_id", orgId)
           .select()
           .single();
+
+        if (err) {
+          throw err;
+        }
+
+        return data as PropertyLegalRow;
       } else {
         // Insert new
-        result = await supabase
+        const { data, error: err } = await supabase
           .from("property_legal")
           .insert({
             property_id: propertyId,
@@ -80,22 +86,40 @@ export const usePropertyLegal = (propertyId: string | undefined) => {
           })
           .select()
           .single();
-      }
 
-      if (result.error) {
-        setError(result.error.message);
-        return { error: result.error };
-      }
+        if (err) {
+          throw err;
+        }
 
-      setLegal(result.data);
-      return { data: result.data, error: null };
+        return data as PropertyLegalRow;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.propertyLegal(orgId ?? undefined, propertyId) });
+    },
+  });
+
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation function
+  const updateLegal = async (updates: Partial<PropertyLegalRow>) => {
+    try {
+      const data = await updateLegalMutation.mutateAsync(updates);
+      return { data, error: null };
     } catch (err: any) {
       const errorMsg = err.message || "Failed to update property legal info";
-      setError(errorMsg);
       return { error: errorMsg };
     }
-  }, [supabase, propertyId, orgId]);
+  };
 
-  return { legal, loading, error, refresh: fetchLegal, updateLegal };
+  return {
+    legal,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+    updateLegal,
+  };
 };
-
