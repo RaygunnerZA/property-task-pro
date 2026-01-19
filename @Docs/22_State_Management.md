@@ -1,7 +1,31 @@
 # CHAPTER 22 — State Management Patterns
 
 **Last Updated:** 2026-01-17  
-**Status:** Active Guidelines
+**Status:** Active Guidelines  
+**Priority:** CRITICAL — NON-NEGOTIABLE RULES
+
+---
+
+## ⚠️ MANDATORY RULES (ENFORCED IN .cursorrules)
+
+These rules are **mandatory** and must be followed strictly:
+
+1. **Follow `@Docs/22_State_Management.md` strictly**
+   - All state management decisions must align with patterns in this document
+   - Use the decision tree (Section 3) to choose the right pattern
+   - When in doubt, consult this document before implementing
+
+2. **Do not introduce new server state outside TanStack Query**
+   - ❌ **FORBIDDEN:** `useState + useEffect` for server data
+   - ✅ **REQUIRED:** Use `useQuery` or `useMutation` for all API/Supabase data
+   - Exception: Only if migrating existing code (must have migration plan)
+
+3. **Do not add Context values without memoization**
+   - ❌ **FORBIDDEN:** Creating context value objects without `useMemo`
+   - ✅ **REQUIRED:** All Context Provider values must be wrapped in `useMemo`
+   - Must include all dependencies in dependency array
+
+**Violations of these rules will cause performance issues and architectural debt.**
 
 ---
 
@@ -528,10 +552,13 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 
 ---
 
-## 13. REVIEW CHECKLIST
+## 13. REVIEW CHECKLIST (MANDATORY)
 
-When adding new state management, ask:
+**Before committing any state management code, verify ALL of these:**
 
+- [ ] **MANDATORY:** Followed patterns from `@Docs/22_State_Management.md`
+- [ ] **MANDATORY:** Server data uses TanStack Query (not useState + useEffect)
+- [ ] **MANDATORY:** Context values are memoized with useMemo
 - [ ] Is this server data? → Use React Query
 - [ ] Is this needed globally? → Use Context (memoize value!)
 - [ ] Is this a complex workflow? → Use Zustand
@@ -540,6 +567,12 @@ When adding new state management, ask:
 - [ ] Is orgId included in org-scoped queries?
 - [ ] Are Context values memoized?
 - [ ] Is staleTime appropriate for the data type?
+
+**Failure to comply with mandatory rules will cause:**
+- Performance degradation
+- Unnecessary re-renders
+- Architecture debt
+- Technical debt accumulation
 
 ---
 

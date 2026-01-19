@@ -6,13 +6,23 @@
 - NEVER invent database columns. Check `@Docs/03_Data_Model.md`.
 - ALWAYS use `useActiveOrg` for data fetching. Never use `user_id` directly.
 
-# 2. UI/DESIGN
+# 2. STATE MANAGEMENT (CRITICAL - NON-NEGOTIABLE)
+- **STRICTLY FOLLOW** `@Docs/22_State_Management.md` patterns.
+- **DO NOT** introduce new server state outside TanStack Query (React Query).
+  - All API/Supabase data fetching MUST use `useQuery` or `useMutation`.
+  - Never use `useState + useEffect` for server data.
+- **DO NOT** add Context values without memoization.
+  - All Context Provider values MUST be wrapped in `useMemo`.
+  - Include all dependencies in the dependency array.
+- When in doubt about state management, consult `@Docs/22_State_Management.md`.
+
+# 3. UI/DESIGN
 - Use the Neomorphic Design System defined in `@Docs/04_UI_System.md`.
 - No harsh borders. Use shadows (`shadow-sm`, `shadow-md`) for depth.
 - Primary Action Color: Teal (#8EC9CE).
 - Destructive Color: Coral (#EB6834).
 
-# 3. CODING STANDARDS
+# 4. CODING STANDARDS
 - Use TypeScript strict mode.
 - Use `lucide-react` for icons.
 - When fixing a bug, explain the root cause first.
