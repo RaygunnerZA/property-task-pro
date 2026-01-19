@@ -552,7 +552,91 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 
 ---
 
-## 13. REVIEW CHECKLIST (MANDATORY)
+## 13. VALIDATED EXAMPLES (PRODUCTION PATTERNS)
+
+### Example: useTaskMessages Migration
+
+**Before (useState + useEffect):**
+```typescript
+export function useTaskMessages(taskId: string | undefined) {
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMessages = useCallback(async () => {
+    if (!orgId || !taskId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    // ... fetch logic
+  }, [orgId, taskId]);
+
+  useEffect(() => {
+    if (!orgLoading) {
+      fetchMessages();
+    }
+  }, [fetchMessages, orgLoading]);
+
+  return { messages, loading, error, refresh: fetchMessages };
+}
+```
+
+**After (React Query):**
+```typescript
+export function useTaskMessages(taskId: string | undefined) {
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+
+  const { data: messages = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.taskMessages(orgId ?? undefined, taskId),
+    queryFn: async (): Promise<Message[]> => {
+      if (!orgId || !taskId) return [];
+      // ... fetch logic
+      return data ?? [];
+    },
+    enabled: !!orgId && !!taskId && !orgLoading,
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 1,
+  });
+
+  const refresh = async () => {
+    await refetch();
+  };
+
+  return { messages, loading, error: error?.message || null, refresh };
+}
+```
+
+**Key Patterns Validated:**
+1. ✅ Uses centralized `queryKeys.taskMessages(orgId, taskId)`
+2. ✅ Proper `enabled` flag waits for dependencies (`orgId`, `taskId`, `!orgLoading`)
+3. ✅ Appropriate `staleTime` for data freshness (30s for messages)
+4. ✅ Backward-compatible interface maintained
+5. ✅ Type-safe return type (`Promise<Message[]>`)
+6. ✅ Error handling via React Query's built-in error state
+
+**Migration Checklist Applied:**
+- [x] Extract fetch logic to async function
+- [x] Create queryKey using queryKeys factory
+- [x] Add `enabled` flag if query depends on other data
+- [x] Set appropriate `staleTime`
+- [x] Update components to use `data` instead of state (automatic with React Query)
+- [x] Remove manual loading/error state management
+- [x] Maintain backward-compatible interface
+
+**Benefits Realized:**
+- Automatic caching prevents duplicate requests
+- Automatic refetch on window focus/reconnect
+- Better error handling and retry logic
+- Reduced code complexity
+- Improved performance through React Query's optimizations
+
+---
+
+## 14. REVIEW CHECKLIST (MANDATORY)
 
 **Before committing any state management code, verify ALL of these:**
 
@@ -576,7 +660,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
 
 ---
 
-## 14. REFERENCES
+## 15. REFERENCES
 
 - **TanStack Query Docs:** https://tanstack.com/query/latest
 - **React Context:** https://react.dev/reference/react/useContext
