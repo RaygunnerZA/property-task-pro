@@ -1,145 +1,236 @@
-import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 type LabelRow = Tables<"labels">;
 
+/**
+ * Hook to fetch labels for the active organization.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * Mutations are handled via useMutation for create/delete operations.
+ * 
+ * @returns Labels array, loading state, error state, refresh function, and mutation functions
+ */
 export function useLabels() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [labels, setLabels] = useState<LabelRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  async function fetchLabels() {
-    if (!orgId) {
-      setLabels([]);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching labels
+  const { data: labels = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.labels(orgId ?? undefined),
+    queryFn: async (): Promise<LabelRow[]> => {
+      if (!orgId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
+      const { data, error: err } = await supabase
+        .from("labels")
+        .select("*")
+        .eq("org_id", orgId)
+        .order("name", { ascending: true });
 
-    const { data, error: err } = await supabase
-      .from("labels")
-      .select("*")
-      .eq("org_id", orgId)
-      .order("name", { ascending: true });
+      if (err) {
+        throw err;
+      }
 
-    if (err) setError(err.message);
-    else setLabels(data ?? []);
+      return (data as LabelRow[]) ?? [];
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 5 * 60 * 1000, // 5 minutes - labels change infrequently
+    retry: 1,
+  });
 
-    setLoading(false);
-  }
+  // Mutation for creating a label
+  const createLabelMutation = useMutation({
+    mutationFn: async ({ name, color, icon }: { name: string; color?: string; icon?: string }) => {
+      if (!orgId) {
+        throw new Error("No active organization");
+      }
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchLabels();
-    }
-  }, [orgId, orgLoading]);
+      const { data, error: err } = await supabase
+        .from("labels")
+        .insert({ org_id: orgId, name, color, icon })
+        .select()
+        .single();
 
-  async function createLabel(name: string, color?: string, icon?: string) {
-    if (!orgId) return null;
+      if (err) {
+        throw err;
+      }
 
-    const { data, error: err } = await supabase
-      .from("labels")
-      .insert({ org_id: orgId, name, color, icon })
-      .select()
-      .single();
+      return data as LabelRow;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch labels after creation
+      queryClient.invalidateQueries({ queryKey: queryKeys.labels(orgId ?? undefined) });
+    },
+  });
 
-    if (err) {
-      setError(err.message);
+  // Mutation for deleting a label
+  const deleteLabelMutation = useMutation({
+    mutationFn: async (labelId: string) => {
+      const { error: err } = await supabase
+        .from("labels")
+        .delete()
+        .eq("id", labelId);
+
+      if (err) {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate and refetch labels after deletion
+      queryClient.invalidateQueries({ queryKey: queryKeys.labels(orgId ?? undefined) });
+    },
+  });
+
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation functions
+  const createLabel = async (name: string, color?: string, icon?: string) => {
+    try {
+      const data = await createLabelMutation.mutateAsync({ name, color, icon });
+      return data;
+    } catch (err: any) {
       return null;
     }
+  };
 
-    await fetchLabels();
-    return data;
-  }
-
-  async function deleteLabel(labelId: string) {
-    const { error: err } = await supabase
-      .from("labels")
-      .delete()
-      .eq("id", labelId);
-
-    if (err) {
-      setError(err.message);
+  const deleteLabel = async (labelId: string) => {
+    try {
+      await deleteLabelMutation.mutateAsync(labelId);
+      return true;
+    } catch {
       return false;
     }
+  };
 
-    await fetchLabels();
-    return true;
-  }
-
-  return { labels, loading, error, refresh: fetchLabels, createLabel, deleteLabel };
+  return {
+    labels,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+    createLabel,
+    deleteLabel,
+  };
 }
 
+/**
+ * Hook to fetch task labels for a specific task.
+ * 
+ * Uses TanStack Query for caching, automatic refetching, and error handling.
+ * Mutations are handled via useMutation for add/remove operations.
+ * 
+ * @param taskId - The task ID to fetch labels for
+ * @returns Task labels array, loading state, error state, refresh function, and mutation functions
+ */
 export function useTaskLabels(taskId?: string) {
-  const [taskLabels, setTaskLabels] = useState<Tables<"task_labels">[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { orgId } = useActiveOrg();
+  const queryClient = useQueryClient();
 
-  async function fetchTaskLabels() {
-    if (!taskId) {
-      setTaskLabels([]);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching task labels
+  const { data: taskLabels = [], isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.taskLabels(taskId),
+    queryFn: async (): Promise<Tables<"task_labels">[]> => {
+      if (!taskId) {
+        return [];
+      }
 
-    setLoading(true);
-    setError(null);
+      const { data, error: err } = await supabase
+        .from("task_labels")
+        .select("*")
+        .eq("task_id", taskId);
 
-    const { data, error: err } = await supabase
-      .from("task_labels")
-      .select("*")
-      .eq("task_id", taskId);
+      if (err) {
+        throw err;
+      }
 
-    if (err) setError(err.message);
-    else setTaskLabels(data ?? []);
+      return (data as Tables<"task_labels">[]) ?? [];
+    },
+    enabled: !!taskId, // Only fetch when we have taskId
+    staleTime: 2 * 60 * 1000, // 2 minutes - task labels change moderately
+    retry: 1,
+  });
 
-    setLoading(false);
-  }
+  // Mutation for adding a label to a task
+  const addLabelMutation = useMutation({
+    mutationFn: async (labelId: string) => {
+      if (!taskId || !orgId) {
+        throw new Error("Missing taskId or orgId");
+      }
 
-  useEffect(() => {
-    fetchTaskLabels();
-  }, [taskId]);
+      const { error: err } = await supabase
+        .from("task_labels")
+        .insert({ task_id: taskId, label_id: labelId, org_id: orgId });
 
-  async function addLabelToTask(labelId: string) {
-    if (!taskId) return false;
+      if (err) {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate and refetch task labels after adding
+      queryClient.invalidateQueries({ queryKey: queryKeys.taskLabels(taskId) });
+    },
+  });
 
-    if (!orgId) return false;
+  // Mutation for removing a label from a task
+  const removeLabelMutation = useMutation({
+    mutationFn: async (labelId: string) => {
+      if (!taskId) {
+        throw new Error("Missing taskId");
+      }
 
-    const { error: err } = await supabase
-      .from("task_labels")
-      .insert({ task_id: taskId, label_id: labelId, org_id: orgId });
+      const { error: err } = await supabase
+        .from("task_labels")
+        .delete()
+        .eq("task_id", taskId)
+        .eq("label_id", labelId);
 
-    if (err) {
-      setError(err.message);
+      if (err) {
+        throw err;
+      }
+    },
+    onSuccess: () => {
+      // Invalidate and refetch task labels after removing
+      queryClient.invalidateQueries({ queryKey: queryKeys.taskLabels(taskId) });
+    },
+  });
+
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation functions
+  const addLabelToTask = async (labelId: string) => {
+    try {
+      await addLabelMutation.mutateAsync(labelId);
+      return true;
+    } catch {
       return false;
     }
+  };
 
-    await fetchTaskLabels();
-    return true;
-  }
-
-  async function removeLabelFromTask(labelId: string) {
-    if (!taskId) return false;
-
-    const { error: err } = await supabase
-      .from("task_labels")
-      .delete()
-      .eq("task_id", taskId)
-      .eq("label_id", labelId);
-
-    if (err) {
-      setError(err.message);
+  const removeLabelFromTask = async (labelId: string) => {
+    try {
+      await removeLabelMutation.mutateAsync(labelId);
+      return true;
+    } catch {
       return false;
     }
+  };
 
-    await fetchTaskLabels();
-    return true;
-  }
-
-  return { taskLabels, loading, error, refresh: fetchTaskLabels, addLabelToTask, removeLabelFromTask };
+  return {
+    taskLabels,
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+    addLabelToTask,
+    removeLabelFromTask,
+  };
 }
