@@ -340,8 +340,8 @@ const TaskDetail = () => {
             <FileUploadZone
               taskId={id!}
               onUploadComplete={() => {
-                queryClient.invalidateQueries({ queryKey: ["task", orgId, id] });
-                queryClient.invalidateQueries({ queryKey: ["task-attachments", id] });
+                queryClient.invalidateQueries({ queryKey: queryKeys.task(orgId ?? undefined, id) });
+                queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(id) });
               }}
               accept="image/*"
             />

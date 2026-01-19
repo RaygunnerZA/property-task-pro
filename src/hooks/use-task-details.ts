@@ -3,6 +3,7 @@ import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types_new";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 type TaskRow = Tables<"tasks">;
 
@@ -64,7 +65,7 @@ export function useTaskDetails(taskId: string | undefined) {
 
   // Fetch task from tasks_view (includes property, spaces, teams)
   const { data: taskData, isLoading: taskLoading, error: taskError } = useQuery({
-    queryKey: ["task-details", orgId, taskId],
+    queryKey: queryKeys.taskDetails(orgId ?? undefined, taskId),
     queryFn: async () => {
       if (!taskId || !orgId) return null;
       const { data, error } = await supabase
@@ -83,7 +84,7 @@ export function useTaskDetails(taskId: string | undefined) {
 
   // Fetch categories separately (not in tasks_view yet)
   const { data: categoriesData } = useQuery({
-    queryKey: ["task-categories", taskId],
+    queryKey: queryKeys.taskCategoriesLegacy(taskId),
     queryFn: async () => {
       if (!taskId || !orgId) return [];
       // Fetch theme IDs from task_themes junction table (categories are themes with type='category')
@@ -116,7 +117,7 @@ export function useTaskDetails(taskId: string | undefined) {
 
   // Fetch task images from attachments table
   const { data: imagesData } = useQuery({
-    queryKey: ["task-attachments", taskId],
+    queryKey: queryKeys.taskAttachments(taskId),
     queryFn: async () => {
       if (!taskId || !orgId) return [];
       const { data, error } = await supabase
@@ -194,9 +195,9 @@ export function useTaskDetails(taskId: string | undefined) {
     error, 
     refresh: () => {
       // Invalidate all related queries to force refetch
-      queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(orgId ?? undefined, taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.taskCategoriesLegacy(taskId) });
     }
   };
 }

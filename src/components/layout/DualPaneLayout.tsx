@@ -66,7 +66,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
 
         {/* Third Column: Flexible with max 600px (Task Details) - only shown when thirdColumn prop provided */}
         {hasThirdColumn && (
-          <div className="overflow-y-auto min-w-0 flex-1 max-w-[600px] pt-[1px] pb-[1px] px-0">
+          <div className="overflow-y-auto min-w-0 flex-1 max-w-[600px] pt-[1px] pb-[1px] pl-0 pr-5">
             {thirdColumn}
           </div>
         )}

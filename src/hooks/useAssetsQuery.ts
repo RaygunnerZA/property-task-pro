@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
+import { queryKeys } from "@/lib/queryKeys";
 
 export function useAssetsQuery(propertyId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
 
   return useQuery({
-    queryKey: ["assets", orgId, propertyId],
+    queryKey: queryKeys.assets(orgId ?? undefined, propertyId),
     queryFn: async () => {
       let query = supabase
         .from("assets_view")

@@ -21,6 +21,9 @@ export const queryKeys = {
   // Tasks
   tasks: (orgId?: string) => ['tasks', orgId] as const,
   task: (orgId?: string, taskId?: string) => ['tasks', orgId, taskId] as const,
+  taskDetails: (orgId?: string, taskId?: string) =>
+    ['taskDetails', orgId, taskId] as const,
+  taskAttachments: (taskId?: string) => ['taskAttachments', taskId] as const,
   
   // Messages & Conversations
   taskMessages: (orgId?: string, taskId?: string) => 
@@ -86,6 +89,9 @@ export const queryKeys = {
 
   // Task Categories (task_themes junction table)
   taskCategories: (taskId?: string) => ['taskCategories', taskId] as const,
+  
+  // Task Categories (alternative key used in use-task-details)
+  taskCategoriesLegacy: (taskId?: string) => ['task-categories', taskId] as const,
 
   // Initial Org Data (combined query for org, member, hasProperties, hasSpaces)
   initialOrgData: (orgId?: string) => ['initialOrgData', orgId] as const,

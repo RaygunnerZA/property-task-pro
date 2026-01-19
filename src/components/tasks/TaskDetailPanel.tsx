@@ -14,6 +14,7 @@ import { ImageAnnotationEditorWrapper } from "@/components/tasks/ImageAnnotation
 import type { AnnotationSavePayload } from "@/types/annotation-payload";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
@@ -271,7 +272,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         if (updateError) throw updateError;
 
         await refreshTask();
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks(orgId ?? undefined) });
         
         toast({
           title: "Task updated",
@@ -634,8 +635,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       <FileUploadZone
                         taskId={taskId}
                         onUploadComplete={() => {
-                          queryClient.invalidateQueries({ queryKey: ["task-details", taskId] });
-                          queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+                          // Get orgId from task if available, otherwise use undefined
+                          const taskOrgId = task?.org_id || undefined;
+                          queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(taskOrgId, taskId) });
+                          queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
                           refreshTask();
                         }}
                         accept="image/*"
@@ -879,18 +882,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex gap-2">
                     <Button
                       onClick={() => {
-                        // Focus message input or scroll to it
-                        document.querySelector('textarea[placeholder*="Type your message"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        (document.querySelector('textarea[placeholder*="Type your message"]') as HTMLTextAreaElement)?.focus();
-                      }}
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Add Message
-                    </Button>
-                    <Button
-                      onClick={() => {
                         // TODO: Open reassign dialog
                         toast({ title: "Reassign", description: "Reassign functionality coming soon" });
                       }}
@@ -1053,8 +1044,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               } catch (err) {
                 console.error("Failed to save annotations:", err);
               } finally {
-                      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-                      queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
+                      queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+                      queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails((task as any)?.org_id, taskId) });
                       refreshTask();
                 setShowAnnotationEditor(false);
                 setEditingImageId(null);
@@ -1134,8 +1125,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           } catch (err) {
             console.error("Failed to save annotations:", err);
           } finally {
-            queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-            queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails((task as any)?.org_id, taskId) });
             refreshTask();
             setShowAnnotationEditor(false);
             setEditingImageId(null);

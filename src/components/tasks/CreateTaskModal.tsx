@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
 
 // Tab Components (keeping for backward compatibility during transition)
 import { WhoTab, type PendingInvitation } from "./create/tabs/WhoTab";
@@ -1599,9 +1600,9 @@ export function CreateTaskModal({
 
         // Don't await - let uploads happen in background
         Promise.all(uploadPromises).then(() => {
-          queryClient.invalidateQueries({ queryKey: ["tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-          queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks(orgId ?? undefined) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(orgId ?? undefined, taskId) });
         });
       }
       
@@ -1699,15 +1700,15 @@ export function CreateTaskModal({
       if (images.length > 0) {
         // Wait 2 seconds for edge function to process thumbnails, then invalidate again
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-          queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.tasks(orgId ?? undefined) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+          queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(orgId ?? undefined, taskId) });
         }, 2000);
       } else {
         // Immediate invalidation if no images
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks(orgId ?? undefined) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.taskAttachments(taskId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.taskDetails(orgId ?? undefined, taskId) });
       }
       
       toast({
