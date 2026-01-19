@@ -21,4 +21,5 @@
 19_Platform_Arch.md         : (Formerly Ch 18) Global events, internal APIs, and extensibility.
 20_Billing.md               : (Formerly Ch 19) Subscriptions, entitlements, and gates.
 21_Data_Lifecycle.md        : (Formerly Ch 20) Retention, archiving, and deletion rules.
+22_State_Management.md      : State management patterns, React Query, Context, Zustand guidelines.
 Appendix_A.md               : Entity -> Context Map.

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getSession, subscribeToSession } from "@/lib/sessionManager";
@@ -192,7 +192,9 @@ export function DataProvider({ children }: DataProviderProps) {
     };
   }, [fetchOrganisation]);
 
-  const value: DataContextValue = {
+  // Memoize context value to prevent unnecessary re-renders of all consumers
+  // Only recreate when dependencies actually change
+  const value: DataContextValue = useMemo(() => ({
     session,
     user,
     isAuthenticated,
@@ -206,7 +208,21 @@ export function DataProvider({ children }: DataProviderProps) {
     error,
     refresh,
     clearError,
-  };
+  }), [
+    session,
+    user,
+    isAuthenticated,
+    orgId,
+    organisation,
+    userId,
+    isOrgUser,
+    contractorToken,
+    isContractor,
+    loading,
+    error,
+    refresh,
+    clearError,
+  ]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
