@@ -20,6 +20,7 @@ import { useTeams } from "@/hooks/useTeams";
 import { useCategories } from "@/hooks/useCategories";
 import { useThemes } from "@/hooks/useThemes";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -268,10 +269,29 @@ export function CreateTaskModal({
   } | null>(null);
   
   // Get teams, categories/themes, and properties for resolution
+  // React Query provides stable references, so no refs needed
   const { teams } = useTeams();
   const { categories } = useCategories();
   const { themes } = useThemes(); // All themes (categories, projects, tags, groups)
   const { data: properties = [] } = usePropertiesQuery();
+  
+  // Load assets using React Query hook instead of manual useState/useEffect
+  const { data: assetsData = [] } = useAssetsQuery(propertyId || undefined);
+  // Filter assets by space if space selected, and map to expected format
+  const assets = useMemo(() => {
+    let filtered = assetsData || [];
+    if (selectedSpaceIds.length > 0 && propertyId) {
+      filtered = filtered.filter((a: any) => 
+        a.space_id === selectedSpaceIds[0] || !a.space_id
+      );
+    }
+    return filtered.map((a: any) => ({
+      id: a.id,
+      name: a.serial || a.name || '',
+      property_id: a.property_id,
+      space_id: a.space_id,
+    }));
+  }, [assetsData, selectedSpaceIds, propertyId]);
   
   // Helper to get fact chips by section
   const getFactChipsBySection = useCallback((sectionId: string) => {
@@ -288,48 +308,10 @@ export function CreateTaskModal({
     return factChips.filter(chip => types.includes(chip.type));
   }, [factChips]);
   
-  // Use refs for arrays to access latest values without dependencies
-  const membersRef = useRef(members);
-  const teamsRef = useRef(teams);
-  const propertiesRef = useRef(properties);
-  const spacesRef = useRef(spaces);
-  const themesRef = useRef(themes);
+  // Only keep refs for local state used in async callbacks
+  // React Query data (members, teams, properties, spaces, themes) provides stable references
   const appliedChipsRef = useRef(appliedChips);
-  const assignedUserIdRef = useRef(assignedUserId);
-  const assignedTeamIdsRef = useRef(assignedTeamIds);
-  const selectedSpaceIdsRef = useRef(selectedSpaceIds);
-  const selectedPropertyIdsRef = useRef(selectedPropertyIds);
-  const selectedThemeIdsRef = useRef(selectedThemeIds);
-  const selectedAssetIdsRef = useRef(selectedAssetIds);
-  const propertyIdRef = useRef(propertyId);
-  
-  // Update refs when values change
-  useEffect(() => { membersRef.current = members; }, [members]);
-  useEffect(() => { teamsRef.current = teams; }, [teams]);
-  useEffect(() => { propertiesRef.current = properties; }, [properties]);
-  useEffect(() => { spacesRef.current = spaces; }, [spaces]);
-  useEffect(() => { themesRef.current = themes; }, [themes]);
   useEffect(() => { appliedChipsRef.current = appliedChips; }, [appliedChips]);
-  useEffect(() => { assignedUserIdRef.current = assignedUserId; }, [assignedUserId]);
-  useEffect(() => { assignedTeamIdsRef.current = assignedTeamIds; }, [assignedTeamIds]);
-  useEffect(() => { selectedSpaceIdsRef.current = selectedSpaceIds; }, [selectedSpaceIds]);
-  useEffect(() => { selectedPropertyIdsRef.current = selectedPropertyIds; }, [selectedPropertyIds]);
-  useEffect(() => { selectedThemeIdsRef.current = selectedThemeIds; }, [selectedThemeIds]);
-  useEffect(() => { selectedAssetIdsRef.current = selectedAssetIds; }, [selectedAssetIds]);
-  useEffect(() => { propertyIdRef.current = propertyId; }, [propertyId]);
-  
-  // Create stable string keys for array dependencies
-  const membersKey = members.map(m => m.id || m.user_id).sort().join(',');
-  const teamsKey = teams.map(t => t.id).sort().join(',');
-  const propertiesKey = properties.map(p => p.id).sort().join(',');
-  const spacesKey = spaces.map(s => s.id).sort().join(',');
-  const themesKey = themes.map(t => t.id).sort().join(',');
-  const assignedTeamIdsKey = [...assignedTeamIds].sort().join(',');
-  const selectedSpaceIdsKey = [...selectedSpaceIds].sort().join(',');
-  const selectedPropertyIdsKey = [...selectedPropertyIds].sort().join(',');
-  const selectedThemeIdsKey = [...selectedThemeIds].sort().join(',');
-  const selectedAssetIdsKey = [...selectedAssetIds].sort().join(',');
-  const appliedChipsKey = Array.from(appliedChips.keys()).sort().join(',');
   
   // Handle chip removal (for fact chips)
   const handleChipRemove = useCallback((chip: SuggestedChip) => {
@@ -483,78 +465,34 @@ export function CreateTaskModal({
     }
   }, [selectedChipIds, appliedChips, orgId, spaces, members, teams, categories, propertyId, selectedSpaceIds]);
   
-  // Load assets for ASSETS section
-  const [assets, setAssets] = useState<Array<{ id: string; name: string }>>([]);
-  useEffect(() => {
-    const loadAssets = async () => {
-      if (!propertyId || !orgId) {
-        setAssets([]);
-        return;
-      }
-      
-      try {
-        // Use assets_view which has serial (not name) - assets table doesn't have name column
-        let query = supabase
-          .from('assets_view')
-          .select('id, serial, property_id, space_id')
-          .eq('org_id', orgId)
-          .eq('property_id', propertyId);
-
-        if (selectedSpaceIds.length > 0) {
-          query = query.eq('space_id', selectedSpaceIds[0]);
-        }
-
-        const { data, error } = await query;
-        if (error) throw error;
-        // Map serial to name for compatibility
-        setAssets((data || []).map(a => ({
-          ...a,
-          name: a.serial || ''
-        })));
-      } catch (err) {
-        console.error('Error loading assets:', err);
-        setAssets([]);
-      }
-    };
-    
-    loadAssets();
-  }, [propertyId, selectedSpaceIds, orgId]);
+  // Assets are now loaded via useAssetsQuery hook above (React Query handles caching)
   
-  const assetsRef = useRef(assets);
-  useEffect(() => { assetsRef.current = assets; }, [assets]);
-  const assetsKey = assets.map(a => a.id).sort().join(',');
-  
-  // Helper to get active chips for WHO section - use refs to avoid dependency issues
+  // Helper to get active chips for WHO section
+  // React Query provides stable references, so we can use arrays directly
   const getWhoActiveChips = useMemo(() => {
-    const latestMembers = membersRef.current;
-    const latestTeams = teamsRef.current;
-    const latestAssignedUserId = assignedUserIdRef.current;
-    const latestAssignedTeamIds = assignedTeamIdsRef.current;
-    const latestAppliedChips = appliedChipsRef.current;
     const chips: Array<{ id: string; label: string; onRemove?: () => void }> = [];
     
     // User chip
-    if (latestAssignedUserId) {
-      const member = latestMembers.find(m => m.user_id === latestAssignedUserId);
+    if (assignedUserId) {
+      const member = members.find(m => m.user_id === assignedUserId);
       if (member) {
         chips.push({
-          id: `user-${latestAssignedUserId}`,
+          id: `user-${assignedUserId}`,
           label: member.display_name.toUpperCase(),
           onRemove: () => setAssignedUserId(undefined)
         });
       }
     }
     
-    // Team chips
-    latestAssignedTeamIds.forEach(teamId => {
-      const team = latestTeams.find(t => t.id === teamId);
+    // Team chips - use functional setState to get latest value
+    assignedTeamIds.forEach(teamId => {
+      const team = teams.find(t => t.id === teamId);
       if (team) {
         chips.push({
           id: `team-${teamId}`,
           label: (team.name || 'TEAM').toUpperCase(),
           onRemove: () => {
-            const current = assignedTeamIdsRef.current;
-            setAssignedTeamIds(current.filter(id => id !== teamId));
+            setAssignedTeamIds(prev => prev.filter(id => id !== teamId));
           }
         });
       }
@@ -564,28 +502,32 @@ export function CreateTaskModal({
     getFactChipsBySection('who').forEach(chip => {
       if (chip.resolvedEntityId) {
         if (chip.type === 'person') {
-          const member = latestMembers.find(m => m.user_id === chip.resolvedEntityId);
+          const member = members.find(m => m.user_id === chip.resolvedEntityId);
           if (member && !chips.find(c => c.id === `user-${member.user_id}`)) {
             chips.push({
               id: `fact-user-${chip.id}`,
               label: member.display_name.toUpperCase(),
               onRemove: () => {
-                const updated = new Map(latestAppliedChips);
-                updated.delete(chip.id);
-                setAppliedChips(updated);
+                setAppliedChips(prev => {
+                  const updated = new Map(prev);
+                  updated.delete(chip.id);
+                  return updated;
+                });
               }
             });
           }
         } else if (chip.type === 'team') {
-          const team = latestTeams.find(t => t.id === chip.resolvedEntityId);
+          const team = teams.find(t => t.id === chip.resolvedEntityId);
           if (team && !chips.find(c => c.id === `team-${team.id}`)) {
             chips.push({
               id: `fact-team-${chip.id}`,
               label: (team.name || 'TEAM').toUpperCase(),
               onRemove: () => {
-                const updated = new Map(latestAppliedChips);
-                updated.delete(chip.id);
-                setAppliedChips(updated);
+                setAppliedChips(prev => {
+                  const updated = new Map(prev);
+                  updated.delete(chip.id);
+                  return updated;
+                });
               }
             });
           }
@@ -594,39 +536,33 @@ export function CreateTaskModal({
     });
     
     return chips;
-  }, [assignedUserId, assignedTeamIdsKey, membersKey, teamsKey, getFactChipsBySection, appliedChipsKey]);
+  }, [assignedUserId, assignedTeamIds, members, teams, getFactChipsBySection]);
   
   // Helper to get active chips for WHERE section
   const getWhereActiveChips = useMemo(() => {
-    const latestProperties = propertiesRef.current;
-    const latestSpaces = spacesRef.current;
-    const latestPropertyId = propertyIdRef.current;
-    const latestSelectedPropertyIds = selectedPropertyIdsRef.current;
-    const latestSelectedSpaceIds = selectedSpaceIdsRef.current;
     const chips: Array<{ id: string; label: string; onRemove?: () => void }> = [];
     
     // Property chip (if selected)
-    if (latestPropertyId && latestSelectedPropertyIds.length > 0) {
-      const property = latestProperties.find(p => p.id === latestPropertyId);
+    if (propertyId && selectedPropertyIds.length > 0) {
+      const property = properties.find(p => p.id === propertyId);
       if (property) {
         // If spaces selected, show composite "Property · Space" chips
-        if (latestSelectedSpaceIds.length > 0) {
-          latestSelectedSpaceIds.forEach(spaceId => {
-            const space = latestSpaces.find(s => s.id === spaceId);
+        if (selectedSpaceIds.length > 0) {
+          selectedSpaceIds.forEach(spaceId => {
+            const space = spaces.find(s => s.id === spaceId);
             if (space) {
               chips.push({
                 id: `space-${spaceId}`,
                 label: `${property.name || 'Property'} · ${space.name.toUpperCase()}`,
                 onRemove: () => {
-                  const current = selectedSpaceIdsRef.current;
-                  setSelectedSpaceIds(current.filter(id => id !== spaceId));
+                  setSelectedSpaceIds(prev => prev.filter(id => id !== spaceId));
                 }
               });
             }
           });
         } else {
           chips.push({
-            id: `property-${latestPropertyId}`,
+            id: `property-${propertyId}`,
             label: (property.name || 'PROPERTY').toUpperCase(),
             onRemove: () => {
               setPropertyId("");
@@ -638,7 +574,7 @@ export function CreateTaskModal({
     }
     
     return chips;
-  }, [propertyId, selectedPropertyIdsKey, selectedSpaceIdsKey, propertiesKey, spacesKey]);
+  }, [propertyId, selectedPropertyIds, selectedSpaceIds, properties, spaces]);
   
   // Helper to get active chips for WHEN section
   const getWhenActiveChips = useMemo(() => {
@@ -677,9 +613,7 @@ export function CreateTaskModal({
   
   // Helper to get active chips for CATEGORY section
   const getCategoryActiveChips = useMemo(() => {
-    const latestThemes = themesRef.current;
-    const latestSelectedThemeIds = selectedThemeIdsRef.current;
-    return latestSelectedThemeIds.map(themeId => {
+    return selectedThemeIds.map(themeId => {
       // Handle ghost themes
       if (themeId.startsWith('ghost-theme-')) {
         const match = themeId.match(/^ghost-theme-(.+?)-(.+)$/);
@@ -689,41 +623,36 @@ export function CreateTaskModal({
             id: `theme-${themeId}`,
             label: themeName.toUpperCase(),
             onRemove: () => {
-              const current = selectedThemeIdsRef.current;
-              setSelectedThemeIds(current.filter(id => id !== themeId));
+              setSelectedThemeIds(prev => prev.filter(id => id !== themeId));
             }
           };
         }
       }
       // Get theme name
-      const theme = latestThemes.find(t => t.id === themeId);
+      const theme = themes.find(t => t.id === themeId);
       return {
         id: `theme-${themeId}`,
         label: (theme?.name || 'CATEGORY').toUpperCase(),
         onRemove: () => {
-          const current = selectedThemeIdsRef.current;
-          setSelectedThemeIds(current.filter(id => id !== themeId));
+          setSelectedThemeIds(prev => prev.filter(id => id !== themeId));
         }
       };
     });
-  }, [selectedThemeIdsKey, themesKey]);
+  }, [selectedThemeIds, themes]);
   
   // Helper to get active chips for ASSETS section
   const getAssetsActiveChips = useMemo(() => {
-    const latestAssets = assetsRef.current;
-    const latestSelectedAssetIds = selectedAssetIdsRef.current;
-    return latestSelectedAssetIds.map(assetId => {
-      const asset = latestAssets.find(a => a.id === assetId);
+    return selectedAssetIds.map(assetId => {
+      const asset = assets.find(a => a.id === assetId);
       return {
         id: `asset-${assetId}`,
         label: (asset?.name || 'ASSET').toUpperCase(),
         onRemove: () => {
-          const current = selectedAssetIdsRef.current;
-          setSelectedAssetIds(current.filter(id => id !== assetId));
+          setSelectedAssetIds(prev => prev.filter(id => id !== assetId));
         }
       };
     });
-  }, [selectedAssetIdsKey, assetsKey]);
+  }, [selectedAssetIds, assets]);
   
   // Handle section toggle - only one expands at a time
   const handleSectionToggle = useCallback((sectionId: string) => {
@@ -751,22 +680,17 @@ export function CreateTaskModal({
       }));
   }, [chipSuggestions, handleChipSelect]);
   
-  // Memoized dropdown items for each section - use stable dependencies
+  // Memoized dropdown items for each section - React Query provides stable references
   // WHO dropdown items
   const whoDropdownItems = useMemo(() => {
-    const latestMembers = membersRef.current;
-    const latestTeams = teamsRef.current;
-    const latestAssignedUserId = assignedUserIdRef.current;
-    const latestAssignedTeamIds = assignedTeamIdsRef.current;
-    
     return [
       // Matches - People
-      ...latestMembers.map(m => ({
+      ...members.map(m => ({
         id: `match-user-${m.user_id}`,
         label: m.display_name,
         type: 'match' as const,
         action: () => {
-          if (latestAssignedUserId === m.user_id) {
+          if (assignedUserId === m.user_id) {
             setAssignedUserId(undefined);
           } else {
             setAssignedUserId(m.user_id);
@@ -774,21 +698,23 @@ export function CreateTaskModal({
         }
       })),
       // Matches - Teams
-      ...latestTeams.map(t => ({
+      ...teams.map(t => ({
         id: `match-team-${t.id}`,
         label: t.name || 'Unnamed Team',
         type: 'match' as const,
         action: () => {
-          if (latestAssignedTeamIds.includes(t.id)) {
-            setAssignedTeamIds(latestAssignedTeamIds.filter(id => id !== t.id));
-          } else {
-            setAssignedTeamIds([...latestAssignedTeamIds, t.id]);
-          }
+          setAssignedTeamIds(prev => {
+            if (prev.includes(t.id)) {
+              return prev.filter(id => id !== t.id);
+            } else {
+              return [...prev, t.id];
+            }
+          });
         }
       })),
       // Actions - Invite people from AI suggestions
       ...(aiResult?.people?.filter(p => 
-        !latestMembers.some(m => m.display_name.toLowerCase() === p.name.toLowerCase())
+        !members.some(m => m.display_name.toLowerCase() === p.name.toLowerCase())
       ).map(p => ({
         id: `action-invite-${p.name}`,
         label: `Invite "${p.name}"…`,
@@ -799,7 +725,7 @@ export function CreateTaskModal({
       })) || []),
       // Actions - Create teams from AI suggestions
       ...(aiResult?.teams?.filter(t => 
-        !latestTeams.some(existingTeam => existingTeam.name?.toLowerCase() === t.name.toLowerCase())
+        !teams.some(existingTeam => existingTeam.name?.toLowerCase() === t.name.toLowerCase())
       ).map(t => ({
         id: `action-create-team-${t.name}`,
         label: `Create team "${t.name}"…`,
@@ -809,58 +735,57 @@ export function CreateTaskModal({
         }
       })) || [])
     ];
-  }, [membersKey, teamsKey, assignedUserId, assignedTeamIdsKey, aiResult?.people, aiResult?.teams, toast]);
+  }, [members, teams, assignedUserId, aiResult?.people, aiResult?.teams, toast]);
   
   // WHERE dropdown items
   const whereDropdownItems = useMemo(() => {
-    const latestProperties = propertiesRef.current;
-    const latestSpaces = spacesRef.current;
-    const latestPropertyId = propertyIdRef.current;
-    const latestSelectedPropertyIds = selectedPropertyIdsRef.current;
-    const latestSelectedSpaceIds = selectedSpaceIdsRef.current;
-    
     return [
       // Matches - Properties
-      ...latestProperties.map(p => ({
+      ...properties.map(p => ({
         id: `match-property-${p.id}`,
         label: p.name || 'Unnamed Property',
         type: 'match' as const,
         action: () => {
-          if (latestSelectedPropertyIds.includes(p.id)) {
-            setSelectedPropertyIds(latestSelectedPropertyIds.filter(id => id !== p.id));
-            if (latestPropertyId === p.id) {
-              setPropertyId("");
+          setSelectedPropertyIds(prev => {
+            if (prev.includes(p.id)) {
+              const updated = prev.filter(id => id !== p.id);
+              if (propertyId === p.id) {
+                setPropertyId("");
+              }
+              return updated;
+            } else {
+              if (!propertyId) {
+                setPropertyId(p.id);
+              }
+              return [...prev, p.id];
             }
-          } else {
-            setSelectedPropertyIds([...latestSelectedPropertyIds, p.id]);
-            if (!latestPropertyId) {
-              setPropertyId(p.id);
-            }
-          }
+          });
         }
       })),
       // Matches - Spaces (scoped to property if selected)
-      ...(latestPropertyId ? latestSpaces.map(s => ({
+      ...(propertyId ? spaces.map(s => ({
         id: `match-space-${s.id}`,
         label: s.name,
         type: 'match' as const,
         action: () => {
-          if (latestSelectedSpaceIds.includes(s.id)) {
-            setSelectedSpaceIds(latestSelectedSpaceIds.filter(id => id !== s.id));
-          } else {
-            setSelectedSpaceIds([...latestSelectedSpaceIds, s.id]);
-          }
+          setSelectedSpaceIds(prev => {
+            if (prev.includes(s.id)) {
+              return prev.filter(id => id !== s.id);
+            } else {
+              return [...prev, s.id];
+            }
+          });
         }
       })) : []),
       // Actions - Create spaces from AI suggestions
       ...(aiResult?.spaces?.filter(s => 
-        !latestSpaces.some(existingSpace => existingSpace.name.toLowerCase() === s.name.toLowerCase())
+        !spaces.some(existingSpace => existingSpace.name.toLowerCase() === s.name.toLowerCase())
       ).map(s => ({
         id: `action-create-space-${s.name}`,
         label: `Add space "${s.name}"…`,
         type: 'action' as const,
         action: () => {
-          if (!latestPropertyId) {
+          if (!propertyId) {
             toast({ 
               title: "Select a property first",
               description: "Choose a property before adding spaces.",
@@ -870,12 +795,12 @@ export function CreateTaskModal({
           }
           // Create ghost space (will be created on submit)
           const ghostId = `ghost-space-${s.name}`;
-          setSelectedSpaceIds([...latestSelectedSpaceIds, ghostId]);
+          setSelectedSpaceIds(prev => [...prev, ghostId]);
           toast({ title: `Space "${s.name}" will be created` });
         }
       })) || [])
     ];
-  }, [propertiesKey, spacesKey, propertyId, selectedPropertyIdsKey, selectedSpaceIdsKey, aiResult?.spaces, toast]);
+  }, [properties, spaces, propertyId, selectedPropertyIds, selectedSpaceIds, aiResult?.spaces, toast]);
   
   // WHEN dropdown items (static, but memoized for consistency)
   const whenDropdownItems = useMemo(() => [
@@ -939,26 +864,25 @@ export function CreateTaskModal({
   
   // ASSETS dropdown items
   const assetsDropdownItems = useMemo(() => {
-    const latestAssets = assetsRef.current;
-    const latestSelectedAssetIds = selectedAssetIdsRef.current;
-    
     return [
       // Matches - Existing assets
-      ...latestAssets.map(a => ({
+      ...assets.map(a => ({
         id: `match-asset-${a.id}`,
         label: a.name,
         type: 'match' as const,
         action: () => {
-          if (latestSelectedAssetIds.includes(a.id)) {
-            setSelectedAssetIds(latestSelectedAssetIds.filter(id => id !== a.id));
-          } else {
-            setSelectedAssetIds([...latestSelectedAssetIds, a.id]);
-          }
+          setSelectedAssetIds(prev => {
+            if (prev.includes(a.id)) {
+              return prev.filter(id => id !== a.id);
+            } else {
+              return [...prev, a.id];
+            }
+          });
         }
       })),
       // Actions - Create assets from AI suggestions
       ...(aiResult?.assets?.filter(a => 
-        !latestAssets.some(existing => existing.name.toLowerCase() === a.name.toLowerCase())
+        !assets.some(existing => existing.name.toLowerCase() === a.name.toLowerCase())
       ).map(a => ({
         id: `action-create-asset-${a.name}`,
         label: `Create asset "${a.name}"…`,
@@ -966,35 +890,34 @@ export function CreateTaskModal({
         action: () => {
           // Create ghost asset (will be created on submit)
           const ghostId = `ghost-asset-${a.name}`;
-          setSelectedAssetIds([...latestSelectedAssetIds, ghostId]);
+          setSelectedAssetIds(prev => [...prev, ghostId]);
           toast({ title: `Asset "${a.name}" will be created` });
         }
       })) || [])
     ];
-  }, [assetsKey, selectedAssetIdsKey, aiResult?.assets, toast]);
+  }, [assets, selectedAssetIds, aiResult?.assets, toast]);
   
   // CATEGORY dropdown items
   const categoryDropdownItems = useMemo(() => {
-    const latestThemes = themesRef.current;
-    const latestSelectedThemeIds = selectedThemeIdsRef.current;
-    
     return [
       // Matches - Existing themes (categories, projects, tags, groups)
-      ...latestThemes.map(t => ({
+      ...themes.map(t => ({
         id: `match-theme-${t.id}`,
         label: t.name,
         type: 'match' as const,
         action: () => {
-          if (latestSelectedThemeIds.includes(t.id)) {
-            setSelectedThemeIds(latestSelectedThemeIds.filter(id => id !== t.id));
-          } else {
-            setSelectedThemeIds([...latestSelectedThemeIds, t.id]);
-          }
+          setSelectedThemeIds(prev => {
+            if (prev.includes(t.id)) {
+              return prev.filter(id => id !== t.id);
+            } else {
+              return [...prev, t.id];
+            }
+          });
         }
       })),
       // Actions - Create themes from AI suggestions
       ...(aiResult?.themes?.filter(t => 
-        !latestThemes.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())
+        !themes.some(existing => existing.name.toLowerCase() === t.name.toLowerCase())
       ).map(t => ({
         id: `action-create-theme-${t.name}`,
         label: `Create ${t.type} "${t.name}"…`,
@@ -1002,12 +925,12 @@ export function CreateTaskModal({
         action: () => {
           // Create ghost theme
           const ghostId = `ghost-theme-${t.name}-${t.type}`;
-          setSelectedThemeIds([...latestSelectedThemeIds, ghostId]);
+          setSelectedThemeIds(prev => [...prev, ghostId]);
           toast({ title: `${t.type.charAt(0).toUpperCase() + t.type.slice(1)} "${t.name}" will be created` });
         }
       })) || [])
     ];
-  }, [themesKey, selectedThemeIdsKey, aiResult?.themes, toast]);
+  }, [themes, selectedThemeIds, aiResult?.themes, toast]);
   
   // Memoized onItemSelect callbacks
   const handleWhoItemSelect = useCallback((item: { action?: () => void }) => {
