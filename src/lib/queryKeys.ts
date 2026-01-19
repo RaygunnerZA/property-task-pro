@@ -75,11 +75,14 @@ export const queryKeys = {
   taskLabels: (taskId?: string) => ['taskLabels', taskId] as const,
 
   // Schedule
-  schedule: (orgId?: string, startDate?: string, endDate?: string) =>
-    ['schedule', orgId, startDate, endDate] as const,
+  schedule: (orgId?: string, startDate?: string, endDate?: string, filterKey?: string) =>
+    ['schedule', orgId, startDate, endDate, filterKey] as const,
 
   // Checklist Templates
   checklistTemplates: (orgId?: string) => ['checklistTemplates', orgId] as const,
+
+  // Initial Org Data (combined query for org, member, hasProperties, hasSpaces)
+  initialOrgData: (orgId?: string) => ['initialOrgData', orgId] as const,
 } as const;
 
 /**
