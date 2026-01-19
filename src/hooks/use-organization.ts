@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import { Tables } from "../integrations/supabase/types";
+import { queryKeys } from "@/lib/queryKeys";
 
 type Organisation = Tables<"organisations">;
 
@@ -15,78 +16,77 @@ interface UseOrganizationResult {
 
 /**
  * Hook to fetch and manage the active organization.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Mutations are handled via useMutation for update operations.
  */
 export function useOrganization(): UseOrganizationResult {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [organization, setOrganization] = useState<Organisation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchOrganization = useCallback(async () => {
-    if (!orgId) {
-      setOrganization(null);
-      setLoading(false);
-      return;
-    }
+  // Query for fetching organization
+  const { data: organization = null, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.organisation(orgId ?? undefined),
+    queryFn: async (): Promise<Organisation | null> => {
+      if (!orgId) {
+        return null;
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const { data, error: fetchError } = await supabase
         .from("organisations")
         .select("*")
         .eq("id", orgId)
         .single();
 
-      if (fetchError) throw fetchError;
-      setOrganization(data);
-    } catch (err: any) {
-      console.error("Error fetching organization:", err);
-      setError(err.message || "Failed to fetch organization");
-      setOrganization(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, orgId]);
+      if (fetchError) {
+        throw fetchError;
+      }
 
-  const updateName = useCallback(
-    async (name: string) => {
+      return data as Organisation;
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 5 * 60 * 1000, // 5 minutes - organization data changes infrequently
+    retry: 1,
+  });
+
+  // Mutation for updating organization name
+  const updateNameMutation = useMutation({
+    mutationFn: async (name: string) => {
       if (!orgId) {
         throw new Error("No active organization");
       }
 
-      setError(null);
-      try {
-        const { error: updateError } = await supabase
-          .from("organisations")
-          .update({ name, updated_at: new Date().toISOString() })
-          .eq("id", orgId);
+      const { error: updateError } = await supabase
+        .from("organisations")
+        .update({ name, updated_at: new Date().toISOString() })
+        .eq("id", orgId);
 
-        if (updateError) throw updateError;
-        await fetchOrganization(); // Refresh after update
-      } catch (err: any) {
-        console.error("Error updating organization name:", err);
-        setError(err.message || "Failed to update organization name");
-        throw err;
+      if (updateError) {
+        throw updateError;
       }
     },
-    [supabase, orgId, fetchOrganization]
-  );
+    onSuccess: () => {
+      // Invalidate and refetch organization after update
+      queryClient.invalidateQueries({ queryKey: queryKeys.organisation(orgId ?? undefined) });
+    },
+  });
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchOrganization();
-    }
-  }, [fetchOrganization, orgLoading]);
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
+
+  // Backward-compatible mutation function
+  const updateName = async (name: string) => {
+    await updateNameMutation.mutateAsync(name);
+  };
 
   return {
     organization,
     loading,
-    error,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     updateName,
-    refresh: fetchOrganization,
+    refresh,
   };
 }
-

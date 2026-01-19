@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface DashboardMetrics {
   total_properties: number;
@@ -9,34 +10,28 @@ interface DashboardMetrics {
   expiring_compliance: number;
 }
 
+/**
+ * Hook to fetch dashboard metrics for the active organization.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * Fetches multiple metrics in parallel: properties count, open tasks, overdue tasks, and expiring compliance.
+ */
 export function useDashboardMetrics() {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    total_properties: 0,
-    open_tasks: 0,
-    overdue_tasks: 0,
-    expiring_compliance: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = useCallback(async () => {
-    if (!orgId) {
-      setMetrics({
-        total_properties: 0,
-        open_tasks: 0,
-        overdue_tasks: 0,
-        expiring_compliance: 0,
-      });
-      setLoading(false);
-      return;
-    }
+  const { data: metrics, isLoading: loading, error, refetch } = useQuery({
+    queryKey: queryKeys.dashboardMetrics(orgId ?? undefined),
+    queryFn: async (): Promise<DashboardMetrics> => {
+      if (!orgId) {
+        return {
+          total_properties: 0,
+          open_tasks: 0,
+          overdue_tasks: 0,
+          expiring_compliance: 0,
+        };
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const thirtyDaysFromNow = new Date();
@@ -80,31 +75,32 @@ export function useDashboardMetrics() {
         return dueDate < today;
       });
 
-      setMetrics({
+      return {
         total_properties: propertiesResult.count || 0,
         open_tasks: tasksResult.data?.length || 0,
         overdue_tasks: overdueTasks.length,
         expiring_compliance: complianceResult.data?.length || 0,
-      });
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch dashboard metrics");
-      setMetrics({
-        total_properties: 0,
-        open_tasks: 0,
-        overdue_tasks: 0,
-        expiring_compliance: 0,
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, orgId]);
+      };
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 2 * 60 * 1000, // 2 minutes - dashboard metrics should be relatively fresh
+    retry: 1,
+  });
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchMetrics();
-    }
-  }, [fetchMetrics, orgLoading]);
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
-  return { metrics, loading, error, refresh: fetchMetrics };
+  return {
+    metrics: metrics ?? {
+      total_properties: 0,
+      open_tasks: 0,
+      overdue_tasks: 0,
+      expiring_compliance: 0,
+    },
+    loading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refresh,
+  };
 }
-

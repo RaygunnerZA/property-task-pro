@@ -45,6 +45,8 @@ export const queryKeys = {
   organisation: (orgId?: string) => ['organisation', orgId] as const,
   orgMembers: (orgId?: string) => ['orgMembers', orgId] as const,
   teams: (orgId?: string) => ['teams', orgId] as const,
+  subscription: (orgId?: string) => ['subscription', orgId] as const,
+  dashboardMetrics: (orgId?: string) => ['dashboardMetrics', orgId] as const,
 
   // Categories & Themes
   categories: (orgId?: string) => ['categories', orgId] as const,

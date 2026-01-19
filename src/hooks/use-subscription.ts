@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import { Tables } from "../integrations/supabase/types";
+import { queryKeys } from "@/lib/queryKeys";
 
 type OrgSubscription = Tables<"org_subscriptions">;
 type SubscriptionTier = Tables<"subscription_tiers">;
@@ -22,27 +23,26 @@ interface UseSubscriptionResult {
 
 /**
  * Hook to fetch subscription and usage data for the active organization.
+ * 
+ * Uses TanStack Query for caching and automatic refetching.
+ * This hook fetches subscription, tier (if subscription exists), and usage in a single query.
  */
 export function useSubscription(): UseSubscriptionResult {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [subscription, setSubscription] = useState<SubscriptionWithTier | null>(null);
-  const [usage, setUsage] = useState<OrgUsage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchSubscription = useCallback(async () => {
-    if (!orgId) {
-      setSubscription(null);
-      setUsage(null);
-      setLoading(false);
-      return;
-    }
+  const { 
+    data, 
+    isLoading: loading, 
+    error, 
+    refetch 
+  } = useQuery({
+    queryKey: queryKeys.subscription(orgId ?? undefined),
+    queryFn: async (): Promise<{ subscription: SubscriptionWithTier | null; usage: OrgUsage | null }> => {
+      if (!orgId) {
+        return { subscription: null, usage: null };
+      }
 
-    setLoading(true);
-    setError(null);
-
-    try {
       // Fetch subscription
       const { data: subData, error: subError } = await supabase
         .from("org_subscriptions")
@@ -80,40 +80,38 @@ export function useSubscription(): UseSubscriptionResult {
         throw usageError;
       }
 
-      setSubscription(
-        subData
-          ? ({
-              ...subData,
-              tier,
-            } as SubscriptionWithTier)
-          : null
-      );
-      setUsage(usageData || null);
-    } catch (err: any) {
-      console.error("Error fetching subscription:", err);
-      setError(err.message || "Failed to fetch subscription");
-      setSubscription(null);
-      setUsage(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, orgId]);
+      const subscription: SubscriptionWithTier | null = subData
+        ? ({
+            ...subData,
+            tier,
+          } as SubscriptionWithTier)
+        : null;
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchSubscription();
-    }
-  }, [fetchSubscription, orgLoading]);
+      return {
+        subscription,
+        usage: usageData || null,
+      };
+    },
+    enabled: !!orgId && !orgLoading, // Only fetch when we have orgId
+    staleTime: 5 * 60 * 1000, // 5 minutes - subscription data changes infrequently
+    retry: 1,
+  });
 
+  const subscription = data?.subscription ?? null;
+  const usage = data?.usage ?? null;
   const planName = subscription?.tier?.name || "Free Tier";
+
+  // Wrapper for backward compatibility
+  const refresh = async () => {
+    await refetch();
+  };
 
   return {
     subscription,
     usage,
     loading,
-    error,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     planName,
-    refresh: fetchSubscription,
+    refresh,
   };
 }
-
