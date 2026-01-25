@@ -5,13 +5,11 @@ import { TaskList } from "@/components/tasks/TaskList";
 import MessageList from "@/components/MessageList";
 import TaskCard from "@/components/TaskCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import EmptyState from "@/components/EmptyState";
-import { useScheduleContext } from "@/contexts/ScheduleContext";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -24,6 +22,7 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  onCreateTask?: () => void;
 }
 
 /**
@@ -51,13 +50,14 @@ export function TaskPanel({
   activeTab: externalActiveTab,
   onTabChange,
   selectedDate: selectedDateProp,
-  filterToApply
+  filterToApply,
+  onCreateTask
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const [internalActiveTab, setInternalActiveTab] = useState("tasks");
-  const { selectedDate: selectedDateFromContext, isDatePinned, setSelectedDate, setSelectedDateOrToday } =
-    useScheduleContext();
-  const selectedDate = selectedDateProp ?? selectedDateFromContext;
+  const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
+  const [isDatePinned, setIsDatePinned] = useState(false);
+  const selectedDate = selectedDateProp ?? internalSelectedDate;
   
   // Use external activeTab if provided, otherwise use internal state
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
@@ -154,7 +154,7 @@ export function TaskPanel({
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[18px] pb-[18px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-start">
+        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-between items-center">
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
@@ -223,6 +223,16 @@ export function TaskPanel({
               Schedule
             </TabsTrigger>
           </TabsList>
+          {/* Create Task Button - Right aligned */}
+          {onCreateTask && (
+            <button
+              onClick={onCreateTask}
+              className="hidden md:flex items-center gap-2 px-4 h-9 rounded-lg bg-[#85BABC] text-white font-medium shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
+            >
+              <Plus className="h-4 w-4" />
+              Create Task
+            </button>
+          )}
         </div>
 
         {/* Content Area (each tab owns its own scrolling to avoid nested scroll/height collapse) */}
@@ -277,7 +287,9 @@ export function TaskPanel({
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedDateOrToday(new Date());
+                            const today = new Date();
+                            setInternalSelectedDate(today);
+                            setIsDatePinned(true);
                             setActiveTab("schedule");
                           }}
                           className={cn(
@@ -293,7 +305,9 @@ export function TaskPanel({
                           aria-label="Previous day"
                           onClick={() => {
                             if (!selectedDate) return;
-                            setSelectedDate(subDays(selectedDate, 1));
+                            const newDate = subDays(selectedDate, 1);
+                            setInternalSelectedDate(newDate);
+                            setIsDatePinned(true);
                             setActiveTab("schedule");
                           }}
                           className={cn(
@@ -309,7 +323,9 @@ export function TaskPanel({
                           aria-label="Next day"
                           onClick={() => {
                             if (!selectedDate) return;
-                            setSelectedDate(addDays(selectedDate, 1));
+                            const newDate = addDays(selectedDate, 1);
+                            setInternalSelectedDate(newDate);
+                            setIsDatePinned(true);
                             setActiveTab("schedule");
                           }}
                           className={cn(
@@ -327,16 +343,14 @@ export function TaskPanel({
                   <div className="flex-1 min-h-0 overflow-hidden">
                     {scheduleTasks.length > 0 ? (
                       <div className="h-full min-h-0">
-                        <ErrorBoundary>
-                          <ScheduleView
-                            tasks={scheduleTasks}
-                            properties={properties}
-                            selectedDate={isDatePinned ? selectedDate : undefined}
-                            onTaskClick={onTaskClick}
-                            selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
-                            showDateHeaders={false}
-                          />
-                        </ErrorBoundary>
+                        <ScheduleView
+                          tasks={scheduleTasks}
+                          properties={properties}
+                          selectedDate={isDatePinned ? selectedDate : undefined}
+                          onTaskClick={onTaskClick}
+                          selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
+                          showDateHeaders={false}
+                        />
                       </div>
                     ) : (
                       <div className="p-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center">
