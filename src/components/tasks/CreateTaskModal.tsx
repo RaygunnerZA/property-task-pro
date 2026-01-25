@@ -60,13 +60,15 @@ interface CreateTaskModalProps {
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
   defaultDueDate?: string;
+  variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
 }
 export function CreateTaskModal({
   open,
   onOpenChange,
   onTaskCreated,
   defaultPropertyId,
-  defaultDueDate
+  defaultDueDate,
+  variant = "modal"
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
   const {
@@ -160,6 +162,8 @@ export function CreateTaskModal({
   const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
   
   // Calculate fact chips (resolved context) - chips that are resolved or don't require blocking
+  // INVITE BEHAVIORAL CONTRACT: Invite chips (person with blockingRequired && !resolvedEntityId) are NOT fact chips
+  // They are action chips that must be explicitly resolved or removed - they cannot be treated as passive metadata
   const factChips = useMemo(() => {
     const chipMap = new Map<string, SuggestedChip>();
     
@@ -174,12 +178,17 @@ export function CreateTaskModal({
       .forEach(chip => chipMap.set(chip.id, chip));
     
     // Fact chips are resolved (have resolvedEntityId) OR don't require blocking
+    // INVITE BEHAVIORAL CONTRACT: Person chips without resolvedEntityId are Invite actions and must be excluded
     return Array.from(chipMap.values()).filter(chip => 
       chip.resolvedEntityId || !chip.blockingRequired
     );
   }, [chipSuggestions, appliedChips]);
   
   // Calculate verb (unresolved) chips - chips that require blocking and aren't resolved
+  // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
+  // Invite chips are NOT normal chips - they are action intent that requires explicit resolution
+  // They must be explicitly resolved to a person/team or removed - they cannot silently disappear
+  // They cannot be treated as passive metadata - they are gated actions
   const verbChips = useMemo(() => {
     const chipMap = new Map<string, SuggestedChip>();
     
@@ -194,6 +203,8 @@ export function CreateTaskModal({
       .forEach(chip => chipMap.set(chip.id, chip));
     
     // A chip is unresolved (verb) if: blockingRequired && !resolvedEntityId
+    // INVITE BEHAVIORAL CONTRACT: Person chips with this state are Invite actions (not normal chips)
+    // They represent explicit intent that must be resolved or removed before submission
     // Recurrence chips never have blockingRequired, so they're excluded from verb chips
     return Array.from(chipMap.values()).filter(chip => 
       chip.blockingRequired && !chip.resolvedEntityId
@@ -223,6 +234,8 @@ export function CreateTaskModal({
   }, [verbChips]);
   
   // Helper to generate verb label
+  // ADD RESOLUTION RULE: Space and asset chips with blockingRequired && !resolvedEntityId generate "ADD" labels
+  // These represent action intent that must trigger the add flow or be explicitly removed
   const generateVerbLabel = useCallback((chip: SuggestedChip): string => {
     const value = chip.value || chip.label;
     switch (chip.type) {
@@ -231,8 +244,10 @@ export function CreateTaskModal({
       case 'team':
         return `CHOOSE ${value.toUpperCase()}`;
       case 'space':
+        // ADD RESOLUTION RULE: "ADD {NAME} TO SPACES" must trigger space creation flow
         return `ADD ${value.toUpperCase()} TO SPACES`;
       case 'asset':
+        // ADD RESOLUTION RULE: "ADD {NAME} TO ASSETS" must trigger asset creation flow
         return `ADD ${value.toUpperCase()} TO ASSETS`;
       case 'category':
         return `CHOOSE ${value.toUpperCase()}`;
@@ -284,6 +299,8 @@ export function CreateTaskModal({
       'theme': 'category',
     };
     
+    // ADD RESOLUTION RULE: "Add" chips (space/asset with blockingRequired && !resolvedEntityId) must trigger panel opening
+    // This opens the relevant section (where/what) so user can add the entity
     // Open relevant panel when chip is clicked
     const section = chipTypeToSection[chip.type];
     if (section) {
@@ -367,6 +384,8 @@ export function CreateTaskModal({
       }
       
       // Update chip with resolution
+      // INVITE BEHAVIORAL CONTRACT: Person chips always have blockingRequired when unresolved
+      // This ensures Invite chips are gated - they cannot be treated as normal passive metadata
       // Recurrence chips never block entity resolution - only space, asset, and person do
       const resolvedChip: SuggestedChip = {
         ...chip,
@@ -376,6 +395,9 @@ export function CreateTaskModal({
         resolutionSource: resolution.resolutionSource,
         resolutionConfidence: resolution.confidence,
         // Only space, asset, and person chips block entity resolution
+        // ADD RESOLUTION RULE: Space/asset chips with blockingRequired && !resolvedEntityId are "Add" actions
+        // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
+        // Invite chips are NOT normal chips - they require explicit resolution or removal
         // Recurrence, date, priority, category, team chips never block
         blockingRequired: chip.type === 'space' || chip.type === 'asset' || chip.type === 'person',
       };
@@ -406,7 +428,8 @@ export function CreateTaskModal({
         }
       }
       
-      // Handle auto-open panels for assets
+      // ADD RESOLUTION RULE: Auto-open panels for "Add" chips when prerequisites are missing
+      // This ensures "Add" actions trigger the relevant flow
       if (chip.type === 'asset' && !propertyId) {
         setActiveSection('where');
       } else if (chip.type === 'asset' && propertyId && selectedSpaceIds.length === 0) {
@@ -428,7 +451,10 @@ export function CreateTaskModal({
         } else if (chip.type === 'asset' && !propertyId) {
           blockingIssues.push(`"${chip.label}" needs a property. Pick one to continue.`);
         } else if (chip.type === 'person') {
-          blockingIssues.push(`Filla couldn't find "${chip.label}". Choose an existing contact or invite someone new.`);
+          // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
+          // Invite chips are NOT normal chips - they are gated actions requiring explicit resolution
+          // They must be explicitly resolved - show explicit Invite intent with clear inline feedback
+          blockingIssues.push(`Invite "${chip.label}" to assign this task, or choose an existing contact.`);
         } else {
           blockingIssues.push(`"${chip.label}" needs sorting before creating this task.`);
         }
@@ -571,18 +597,50 @@ export function CreateTaskModal({
   }, [open, resetForm]);
 
   const handleSubmit = async () => {
-    // Validation: Check resolution truth (Final Pre-Build Rule)
-    const blockingChips = Array.from(appliedChips.values()).filter(
+    // SUBMISSION GUARDRAIL: Block submission if unresolved action chips exist
+    // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
+    // Invite chips are NOT normal chips - they are gated actions that require explicit resolution
+    // ADD RESOLUTION RULE: Space/asset chips with blockingRequired && !resolvedEntityId are "Add" actions
+    // Action chips (verb chips) represent unresolved intent that must be resolved or removed
+    // Detection: chips with blockingRequired && !resolvedEntityId in appliedChips
+    // These are action intents like "INVITE JAMES" or "ADD STOVE" that require user action
+    // "Add" chips must resolve into real entities (spaces/assets) or be discarded - they cannot persist as metadata
+    const unresolvedActionChips = Array.from(appliedChips.values()).filter(
       chip => chip.blockingRequired && !chip.resolvedEntityId
     );
     
-    if (blockingChips.length > 0) {
-      const firstBlocking = blockingChips[0];
+    // INVITE BEHAVIORAL CONTRACT: Explicitly check for unresolved Invite intent (person chips)
+    // Invite chips must resolve to a specific person/team or be removed - they cannot persist unresolved
+    const unresolvedInviteChips = unresolvedActionChips.filter(chip => chip.type === 'person');
+    
+    // INVITE BEHAVIORAL CONTRACT: Submission cannot proceed with unresolved Invite intent
+    if (unresolvedActionChips.length > 0) {
+      // Generate explicit action labels for inline guidance
+      const actionLabels = unresolvedActionChips.map(chip => generateVerbLabel(chip));
+      const firstAction = unresolvedActionChips[0];
+      const actionLabel = generateVerbLabel(firstAction);
+      
+      // Show explicit inline guidance explaining what must be resolved
+      // INVITE BEHAVIORAL CONTRACT: Explicitly mention Invite actions with clear feedback
+      const inviteMessage = unresolvedInviteChips.length > 0
+        ? unresolvedInviteChips.length === 1
+          ? `Invite "${unresolvedInviteChips[0].label}" to assign this task, or choose an existing contact.`
+          : `${unresolvedInviteChips.length} invites need resolution before submission.`
+        : null;
+      
       toast({
-        title: "Sort this first",
-        description: `"${firstBlocking.label}" needs sorting before creating the task.`,
+        title: "Resolve action items first",
+        description: inviteMessage || (unresolvedActionChips.length === 1
+          ? `${actionLabel} before creating this task.`
+          : `${actionLabels.length} action items need resolution: ${actionLabels.slice(0, 2).join(", ")}${actionLabels.length > 2 ? "..." : ""}`),
         variant: "destructive"
       });
+      
+      // INVITE BEHAVIORAL CONTRACT: Block submission - Invite chips must be resolved or removed
+      // Invite intent must resolve to a specific person/team or be explicitly removed
+      // Invite chips cannot persist as task metadata - they are action intent, not passive data
+      // ADD RESOLUTION RULE: "Add" chips must resolve into real entities (spaces/assets) or be explicitly removed
+      // "Add" chips must never be included in the submitted task payload - they are action intent, not metadata
       return;
     }
     
@@ -1088,19 +1146,21 @@ export function CreateTaskModal({
     }
   };
   const content = <div className="flex flex-col h-full max-h-[85vh]">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/30">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          Create Task
-        </h2>
-        <button 
-          type="button"
-          onClick={() => onOpenChange(false)} 
-          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+      {/* Header - only show for modal variant */}
+      {variant !== "column" && (
+        <div className="flex items-center justify-between p-4 border-b border-border/30">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            Create Task
+          </h2>
+          <button 
+            type="button"
+            onClick={() => onOpenChange(false)} 
+            className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
@@ -1319,16 +1379,27 @@ export function CreateTaskModal({
 
       {/* Footer */}
       <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur">
-        {/* Verb Chips Clarity Block - Shows when unresolved chips exist */}
+        {/* SUBMISSION GUARDRAIL: Verb Chips Clarity Block - Shows unresolved action intent */}
+        {/* INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions */}
+        {/* Invite chips are NOT normal chips - they are gated actions that require explicit resolution */}
+        {/* ADD RESOLUTION RULE: Space/asset chips with blockingRequired && !resolvedEntityId are "Add" actions */}
+        {/* Action chips represent unresolved intent (e.g., "INVITE JAMES", "ADD STOVE") */}
+        {/* These must be resolved into concrete entities or explicitly removed before submission */}
+        {/* INVITE BEHAVIORAL CONTRACT: Invite intent must resolve to a specific person/team or be explicitly removed */}
+        {/* Invite chips cannot silently disappear - they must be explicitly resolved or removed */}
+        {/* Invite chips cannot persist as task metadata - they are action intent, not passive data */}
+        {/* "Add" intent must resolve into real entities (spaces/assets) or be explicitly removed - it cannot persist as metadata */}
         {verbChips.length > 0 && (
           <div className="w-full px-4 py-3 rounded-[5px] bg-muted/30 border border-border/40">
             <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
               {verbChips.length === 1 
-                ? "One thing to sort before creating this task."
-                : "A few things to sort before creating this task."}
+                ? "Resolve this action before creating the task:"
+                : "Resolve these actions before creating the task:"}
             </p>
             <div className="flex flex-wrap gap-2">
               {verbChips.map((chip) => {
+                // INVITE BEHAVIORAL CONTRACT: Person chips generate "INVITE {NAME}" labels
+                // Invite chips are action chips, not normal metadata chips
                 const verbLabel = generateVerbLabel(chip);
                 return (
                   <Chip
@@ -1341,6 +1412,13 @@ export function CreateTaskModal({
                 );
               })}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {verbChips.some(chip => chip.type === 'person')
+                ? "Click an INVITE action to resolve it to a person/team, or remove it. Unresolved Invite blocks submission."
+                : verbChips.some(chip => chip.type === 'space' || chip.type === 'asset')
+                ? "Click an ADD action to open the add flow and create the entity, or remove it if not needed."
+                : "Click an action above to resolve it, or remove it if not needed."}
+            </p>
           </div>
         )}
         
@@ -1377,6 +1455,8 @@ export function CreateTaskModal({
             <Button 
               className="flex-1 shadow-primary-btn" 
               onClick={handleSubmit} 
+              // SUBMISSION GUARDRAIL: Disable if unresolved action chips exist
+              // Action chips must be resolved into entities or explicitly removed
               disabled={isSubmitting || (clarityState?.severity === 'blocking') || verbChips.length > 0}
             >
               {isSubmitting ? "Creating..." : "Create Task"}
@@ -1385,6 +1465,50 @@ export function CreateTaskModal({
         </div>
       </div>
     </div>;
+
+  // For column variant on wide screens, render inline accordion (not Dialog)
+  if (variant === "column") {
+    const accordionBodyId = "create-task-accordion-body";
+    const isExpanded = open;
+
+    return (
+      <div className="h-auto flex flex-col bg-background rounded-lg shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 relative overflow-hidden" style={{
+        backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
+        backgroundSize: '100%'
+      }}>
+        {/* Section Title - Accordion Header */}
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          aria-controls={accordionBodyId}
+          onClick={() => onOpenChange(!isExpanded)}
+          className={cn(
+            "px-4 pt-4 pb-4 border-b border-border/30 w-full text-left",
+            "flex items-center justify-between gap-3",
+            "bg-[#85BABC] transition-colors hover:bg-[#85BABC]",
+            "rounded-t-[12px] shadow-[inset_-2px_-2px_3px_-2px_rgba(0,0,0,0.3),inset_2px_3px_2.5px_0px_rgba(255,255,255,0.4)]"
+          )}
+        >
+          <h2 className="text-lg font-semibold text-white">Create Task</h2>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-white" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-white" />
+          )}
+        </button>
+
+        <div
+          id={accordionBodyId}
+          className={cn(
+            "overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out",
+            isExpanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+          )}
+        >
+          {content}
+        </div>
+      </div>
+    );
+  }
 
   // Mobile: Bottom sheet drawer, Desktop: Center dialog
   if (isMobile) {

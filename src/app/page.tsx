@@ -4,6 +4,7 @@ import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -39,6 +40,7 @@ type SelectedItem = {
 export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  const [showCreateTask, setShowCreateTask] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
@@ -131,7 +133,16 @@ export default function Dashboard() {
   }, []);
 
   const handleTaskClick = (taskId: string) => {
+    // Wide screen: selecting a task should auto-minimise the Create Task accordion
+    if (isLargeScreen) {
+      setShowCreateTask(false);
+    }
     setSelectedItem({ type: 'task', id: taskId });
+  };
+
+  const handleOpenCreateTask = () => {
+    setSelectedItem(null); // Close any open task detail
+    setShowCreateTask(true); // Open create task (draft will be restored automatically if exists)
   };
 
   const handleMessageClick = (messageId: string) => {
@@ -175,21 +186,30 @@ export default function Dashboard() {
 
   const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
 
-  // Render third column content - only when item is selected on large screens
-  const thirdColumnContent = isLargeScreen && selectedItem ? (
-    selectedItem.type === 'task' ? (
-      <TaskDetailPanel 
-        taskId={selectedItem.id} 
-        onClose={handleClosePanel}
+  // Render third column content - Create Task accordion + details below (lg+)
+  const thirdColumnContent = isLargeScreen ? (
+    <div className="flex flex-col gap-4">
+      <CreateTaskModal
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
         variant="column"
       />
-    ) : (
-      <MessageDetailPanel 
-        messageId={selectedItem.id} 
-        onClose={handleClosePanel}
-        variant="column"
-      />
-    )
+      {selectedItem ? (
+        selectedItem.type === 'task' ? (
+          <TaskDetailPanel 
+            taskId={selectedItem.id} 
+            onClose={handleClosePanel}
+            variant="column"
+          />
+        ) : (
+          <MessageDetailPanel 
+            messageId={selectedItem.id} 
+            onClose={handleClosePanel}
+            variant="column"
+          />
+        )
+      ) : null}
+    </div>
   ) : undefined;
 
   // Primary color for dashboard header (from design system: #8EC9CE)
@@ -251,11 +271,21 @@ export default function Dashboard() {
             selectedDate={selectedDate}
             filterToApply={filterToApply}
             selectedPropertyIds={selectedPropertyIds}
+            onCreateTask={handleOpenCreateTask}
           />
         }
         thirdColumn={thirdColumnContent}
       />
       
+      {/* Create Task Modal - Modal variant for smaller screens */}
+      {showCreateTask && !isLargeScreen && (
+        <CreateTaskModal
+          open={showCreateTask}
+          onOpenChange={setShowCreateTask}
+          variant="modal"
+        />
+      )}
+
       {/* Detail Panel - Modal variant for smaller screens */}
       {selectedItem && !isLargeScreen && (
         selectedItem.type === 'task' ? (
