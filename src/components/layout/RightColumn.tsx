@@ -15,7 +15,6 @@ interface RightColumnProps {
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
   selectedPropertyIds?: Set<string>;
-  onCreateTask?: () => void;
 }
 
 /**
@@ -37,8 +36,7 @@ export function RightColumn({
   onTabChange,
   selectedDate,
   filterToApply,
-  selectedPropertyIds,
-  onCreateTask
+  selectedPropertyIds
 }: RightColumnProps) {
   return (
     <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
@@ -64,7 +62,6 @@ export function RightColumn({
             onTabChange={onTabChange}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
-            onCreateTask={onCreateTask}
           />
         )}
       </div>

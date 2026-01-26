@@ -4,10 +4,9 @@
  * Design Constraints:
  * - Uses ContextResolver wrapper
  * - Chips below perforation = commitment
- * - Uses DashboardCalendar and TimeSelector for new UI
  */
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Calendar, Repeat, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,8 +15,6 @@ import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { ContextResolver } from "../ContextResolver";
-import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
-import { TimeSelector } from "@/components/dashboard/TimeSelector";
 
 interface WhenPanelProps {
   dueDate: string;
@@ -51,45 +48,12 @@ export function WhenPanel({
 }: WhenPanelProps) {
   const [enableRepeat, setEnableRepeat] = useState(!!repeatRule);
   
-  // Parse date and time from dueDate
-  const selectedDate = useMemo(() => {
-    if (!dueDate) return new Date();
-    try {
-      const dateStr = dueDate.split('T')[0];
-      return parseISO(dateStr);
-    } catch {
-      return new Date();
-    }
-  }, [dueDate]);
-
-  const dueTime = dueDate.includes('T') ? dueDate.split('T')[1]?.slice(0, 5) : '09:00';
-  const [hour, minute] = useMemo(() => {
-    if (dueTime) {
-      const [h, m] = dueTime.split(':').map(Number);
-      return [h || 9, m || 0];
-    }
-    return [9, 0];
-  }, [dueTime]);
-
-  const handleDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    onDueDateChange(`${dateStr}T${timeStr}`);
-  };
-
-  const handleTimeChange = (newHour: number, newMinute: number) => {
-    const dateStr = dueDate.split('T')[0] || format(new Date(), 'yyyy-MM-dd');
-    const timeStr = `${newHour.toString().padStart(2, '0')}:${newMinute.toString().padStart(2, '0')}`;
-    onDueDateChange(`${dateStr}T${timeStr}`);
-  };
+  const dueTime = dueDate.includes('T') ? dueDate.split('T')[1]?.slice(0, 5) : '';
 
   const setQuickDate = (days: number) => {
     const date = new Date();
     date.setDate(date.getDate() + days);
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-    onDueDateChange(`${dateStr}T${timeStr}`);
+    onDueDateChange(date.toISOString().split('T')[0]);
   };
 
   const handleRepeatToggle = (enabled: boolean) => {
@@ -144,27 +108,41 @@ export function WhenPanel({
           })}
         </div>
 
-        {/* Dashboard Calendar */}
-        <div className="space-y-3">
-          <DashboardCalendar
-            selectedDate={selectedDate}
-            onDateSelect={handleDateSelect}
-            tasks={[]}
-            className="w-full"
-          />
-        </div>
-
-        {/* Time Selector */}
-        <div className="space-y-2">
-          <label className="text-xs text-muted-foreground flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5" />
-            Time
-          </label>
-          <TimeSelector
-            hour={hour}
-            minute={minute}
-            onTimeChange={handleTimeChange}
-          />
+        {/* Due Date and Time Picker */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label htmlFor="dueDate" className="text-xs text-muted-foreground">Due Date</label>
+            <div className="relative">
+              <Input
+                id="dueDate"
+                type="date"
+                value={dueDate.split('T')[0] || dueDate}
+                onChange={(e) => {
+                  const time = dueTime || '09:00';
+                  onDueDateChange(`${e.target.value}T${time}`);
+                }}
+                className="shadow-engraved pr-20"
+              />
+              {dueDate && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                  {getWeekdayName(dueDate)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="dueTime" className="text-xs text-muted-foreground">Time</label>
+            <Input
+              id="dueTime"
+              type="time"
+              value={dueTime}
+              onChange={(e) => {
+                const date = dueDate.split('T')[0] || new Date().toISOString().split('T')[0];
+                onDueDateChange(`${date}T${e.target.value}`);
+              }}
+              className="shadow-engraved"
+            />
+          </div>
         </div>
       </ContextResolver>
 

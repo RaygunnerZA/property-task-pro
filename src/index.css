@@ -511,28 +511,4 @@
     mask-image: linear-gradient(to right, black 90%, transparent 100%);
     -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
   }
-  
-  /* Animated Icon Path Drawing Animations - Inspired by animate-ui.com */
-  /* Uses stroke-dasharray to create path drawing effect on hover */
-  .animate-icon-path-draw svg path,
-  [data-animation="path-draw"] svg path {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
-    transition: stroke-dashoffset 0.6s ease-in-out, opacity 0.3s ease-in-out;
-  }
-  
-  .animate-icon-path-draw:hover svg path,
-  [data-animation="path-draw"]:hover svg path {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  
-  /* Ensure icons have stroke for path drawing to work */
-  .animate-icon-path-draw svg,
-  [data-animation="path-draw"] svg {
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
 }

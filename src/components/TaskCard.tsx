@@ -395,14 +395,6 @@ function TaskCardComponent({
             priorityColor
           )}
         />
-        {/* Theme/Category chip - overlays the thumbnail */}
-        {themes.length > 0 && (
-          <div className="absolute bottom-2 left-2 z-10">
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
-              {themes[0].name}
-            </Badge>
-          </div>
-        )}
         {imageUrl ? (
           <>
             <img 
@@ -451,6 +443,13 @@ function TaskCardComponent({
 
       {/* Content */}
       <div className="flex-1 px-[14px] pt-[6px] pb-[14px] flex flex-col justify-center">
+        {/* Theme/Category */}
+        {themes.length > 0 && (
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+            {themes[0].name}
+          </div>
+        )}
+        
         {/* Task Title */}
         <div className="flex justify-start items-center gap-2 min-h-[44px]">
           <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">

@@ -1,14 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContents, TabsContent } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
 import MessageList from "@/components/MessageList";
 import TaskCard from "@/components/TaskCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
+import { CheckSquare, Inbox, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
+import { format, isAfter, startOfDay } from "date-fns";
 import EmptyState from "@/components/EmptyState";
 
 interface TaskPanelProps {
@@ -22,7 +21,6 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
-  onCreateTask?: () => void;
 }
 
 /**
@@ -49,15 +47,11 @@ export function TaskPanel({
   selectedItem,
   activeTab: externalActiveTab,
   onTabChange,
-  selectedDate: selectedDateProp,
-  filterToApply,
-  onCreateTask
+  selectedDate,
+  filterToApply
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const [internalActiveTab, setInternalActiveTab] = useState("tasks");
-  const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
-  const [isDatePinned, setIsDatePinned] = useState(false);
-  const selectedDate = selectedDateProp ?? internalSelectedDate;
   
   // Use external activeTab if provided, otherwise use internal state
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
@@ -79,49 +73,46 @@ export function TaskPanel({
     });
   }, [tasks]);
 
-  const scheduleStats = useMemo(() => {
-    const active = tasks.filter(
-      (t) => t.status !== "completed" && t.status !== "archived"
-    );
-    const withDueDate = active.filter((t) => !!(t.due_date || t.due_at));
-    const withId = active.filter((t) => !!t.id);
-    return {
-      total: tasks.length,
-      active: active.length,
-      withDueDate: withDueDate.length,
-      withoutDueDate: active.length - withDueDate.length,
-      withoutId: active.length - withId.length,
-    };
-  }, [tasks]);
-
   // Filter tasks for Schedule tab - by selectedDate if provided, otherwise upcoming
   const scheduleTasks = useMemo(() => {
-    if (selectedDate && isDatePinned) {
+    // #region agent log
+    const tasksWithDueDate = tasks.filter(t => t.due_date).length;
+    const tasksWithoutDueDate = tasks.length - tasksWithDueDate;
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'E',location:'TaskPanel.tsx:66',message:'scheduleTasks filter start',data:{tasksCount:tasks.length,tasksWithDueDate,tasksWithoutDueDate,selectedDate:selectedDate?.toISOString()||null,activeTab},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    if (selectedDate) {
       // Filter by selected date - normalize both dates to start of day for accurate comparison
       const selectedDateNormalized = startOfDay(selectedDate);
       const selectedDateStr = format(selectedDateNormalized, "yyyy-MM-dd");
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'E',location:'TaskPanel.tsx:72',message:'Filtering by selected date',data:{selectedDateStr,selectedDateISO:selectedDate.toISOString(),tasksWithDueDate},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return tasks
         .filter((task) => {
-          const dueValue = task.due_date || task.due_at;
-          if (!dueValue) return false;
-          if (!task.id) return false;
+          if (!task.due_date) return false;
           if (task.status === "completed" || task.status === "archived") return false;
           try {
             // Normalize task due_date to start of day for comparison
-            const taskDateNormalized = startOfDay(new Date(dueValue));
+            const taskDateNormalized = startOfDay(new Date(task.due_date));
             const taskDateStr = format(taskDateNormalized, "yyyy-MM-dd");
             const matches = taskDateStr === selectedDateStr;
+            // #region agent log
+            if (task.due_date && !matches) {
+              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'E',location:'TaskPanel.tsx:81',message:'Task date mismatch',data:{taskId:task.id,taskDueDate:task.due_date,taskDateStr,selectedDateStr},timestamp:Date.now()})}).catch(()=>{});
+            }
+            // #endregion
             return matches;
           } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'E',location:'TaskPanel.tsx:88',message:'Task date parsing error',data:{taskId:task.id,taskDueDate:task.due_date,error:error instanceof Error?error.message:String(error)},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
             return false;
           }
         })
         .sort((a, b) => {
           // Sort by time if available, otherwise by creation date
-          const aValue = a.due_date || a.due_at;
-          const bValue = b.due_date || b.due_at;
-          const aTime = aValue ? new Date(aValue).getTime() : 0;
-          const bTime = bValue ? new Date(bValue).getTime() : 0;
+          const aTime = a.due_date ? new Date(a.due_date).getTime() : 0;
+          const bTime = b.due_date ? new Date(b.due_date).getTime() : 0;
           return aTime - bTime;
         });
     } else {
@@ -129,32 +120,34 @@ export function TaskPanel({
       const today = startOfDay(new Date());
       return tasks
         .filter((task) => {
-          const dueValue = task.due_date || task.due_at;
-          if (!dueValue) return false;
-          if (!task.id) return false;
+          if (!task.due_date) return false;
           if (task.status === "completed" || task.status === "archived") return false;
           try {
-            const dueDate = startOfDay(new Date(dueValue));
+            const dueDate = startOfDay(new Date(task.due_date));
             return isAfter(dueDate, today) || dueDate.getTime() === today.getTime();
           } catch {
             return false;
           }
         })
         .sort((a, b) => {
-          const aValue = a.due_date || a.due_at;
-          const bValue = b.due_date || b.due_at;
-          if (!aValue || !bValue) return 0;
-          return new Date(aValue).getTime() - new Date(bValue).getTime();
+          if (!a.due_date || !b.due_date) return 0;
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
         })
-        .slice(0, 25); // Give the schedule tab enough to feel "alive"
+        .slice(0, 10); // Limit to 10 upcoming tasks
     }
   }, [tasks, selectedDate]);
+
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'E',location:'TaskPanel.tsx:107',message:'scheduleTasks result',data:{resultCount:scheduleTasks.length,firstTask:scheduleTasks[0]||null,selectedDate:selectedDate?.toISOString()||null},timestamp:Date.now()})}).catch(()=>{});
+  }, [scheduleTasks, selectedDate]);
+  // #endregion
 
   return (
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[18px] pb-[18px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-between items-center">
+        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-start">
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
@@ -172,14 +165,7 @@ export function TaskPanel({
               )}
               style={{ paddingLeft: '26px', paddingRight: '26px' }}
             >
-              <AnimatedIcon 
-                icon={CheckSquare} 
-                size={16} 
-                animateOnHover
-                animation="path-draw"
-                className="mr-0.5 -ml-[10px]"
-                style={{ width: '31px' }}
-              />
+              <CheckSquare className="h-4 w-4" style={{ marginRight: '2px', marginLeft: '-10px', width: '31px' }} />
               Tasks
             </TabsTrigger>
             <TabsTrigger
@@ -193,13 +179,7 @@ export function TaskPanel({
               )}
               style={{ paddingLeft: '24px', paddingRight: '24px' }}
             >
-              <AnimatedIcon 
-                icon={Inbox} 
-                size={16} 
-                animateOnHover
-                animation="shake"
-                className="mr-2"
-              />
+              <Inbox className="h-4 w-4 mr-2" />
               Inbox
             </TabsTrigger>
             <TabsTrigger
@@ -213,33 +193,17 @@ export function TaskPanel({
               )}
               style={{ paddingLeft: '24px', paddingRight: '24px' }}
             >
-              <AnimatedIcon 
-                icon={Calendar} 
-                size={16} 
-                animateOnHover
-                animation="pointing"
-                className="mr-2"
-              />
+              <Calendar className="h-4 w-4 mr-2" />
               Schedule
             </TabsTrigger>
           </TabsList>
-          {/* Create Task Button - Right aligned */}
-          {onCreateTask && (
-            <button
-              onClick={onCreateTask}
-              className="hidden md:flex items-center gap-2 px-4 h-9 rounded-lg bg-[#85BABC] text-white font-medium shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              Create Task
-            </button>
-          )}
         </div>
 
-        {/* Content Area (each tab owns its own scrolling to avoid nested scroll/height collapse) */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {/* Tasks Tab */}
-          {activeTab === "tasks" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[8px] px-4 pb-4">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <TabsContents>
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="mt-0 h-full pt-[8px] px-4 pb-4">
               <TaskList 
                 tasks={tasks}
                 properties={properties}
@@ -248,25 +212,26 @@ export function TaskPanel({
                 selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
                 filterToApply={filterToApply}
               />
-            </div>
-          )}
+            </TabsContent>
 
-          {/* Inbox Tab */}
-          {activeTab === "inbox" && (
-            <div className="h-full min-h-0 overflow-y-auto p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Inbox
-              </h3>
-              <MessageList 
-                onMessageClick={onMessageClick}
-                selectedMessageId={selectedItem?.type === 'message' ? selectedItem.id : undefined}
-              />
-            </div>
-          )}
+            {/* Inbox Tab */}
+            <TabsContent value="inbox" className="mt-0 h-full p-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Inbox
+                </h3>
+                <MessageList 
+                  onMessageClick={onMessageClick}
+                  selectedMessageId={selectedItem?.type === 'message' ? selectedItem.id : undefined}
+                />
+              </div>
+            </TabsContent>
 
-          {/* Schedule Tab */}
-          {activeTab === "schedule" && (
-            <div className="h-full min-h-0 overflow-hidden">
+            {/* Schedule Tab - Timeline View */}
+            <TabsContent value="schedule" className="mt-0 h-full p-0">
+              {/* #region agent log */}
+              {activeTab === 'schedule' && fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'TaskPanel.tsx:194',message:'Schedule tab rendering',data:{tasksLoading,scheduleTasksCount:scheduleTasks.length,selectedDate:selectedDate?.toISOString()||null},timestamp:Date.now()})}).catch(()=>{}) && null}
+              {/* #endregion */}
               {tasksLoading ? (
                 <div className="p-4 space-y-3">
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
@@ -274,112 +239,31 @@ export function TaskPanel({
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                 </div>
               ) : (
-                <div className="h-full flex flex-col min-h-0">
-                  {/* Date navigation */}
-                  <div className="px-4 pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-base font-semibold text-foreground truncate">
-                          {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Upcoming"}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const today = new Date();
-                            setInternalSelectedDate(today);
-                            setIsDatePinned(true);
-                            setActiveTab("schedule");
-                          }}
-                          className={cn(
-                            "px-3 h-9 rounded-[8px] text-sm font-medium",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
-                          )}
-                        >
-                          Today
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Previous day"
-                          onClick={() => {
-                            if (!selectedDate) return;
-                            const newDate = subDays(selectedDate, 1);
-                            setInternalSelectedDate(newDate);
-                            setIsDatePinned(true);
-                            setActiveTab("schedule");
-                          }}
-                          className={cn(
-                            "h-9 w-9 rounded-[8px] grid place-items-center",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
-                          )}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Next day"
-                          onClick={() => {
-                            if (!selectedDate) return;
-                            const newDate = addDays(selectedDate, 1);
-                            setInternalSelectedDate(newDate);
-                            setIsDatePinned(true);
-                            setActiveTab("schedule");
-                          }}
-                          className={cn(
-                            "h-9 w-9 rounded-[8px] grid place-items-center",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
-                          )}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
+                <div className="h-full flex flex-col">
+                  {scheduleTasks.length > 0 ? (
+                    <ScheduleView
+                      tasks={scheduleTasks}
+                      properties={properties}
+                      selectedDate={selectedDate}
+                      onTaskClick={onTaskClick}
+                      selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
+                    />
+                  ) : (
+                    <div className="p-4 flex flex-col items-center justify-center flex-1 min-h-[200px] text-center">
+                      <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                      <p className="text-sm font-medium text-foreground mb-1">
+                        {selectedDate 
+                          ? `No tasks scheduled for ${format(selectedDate, "EEEE, MMMM d")}`
+                          : "No upcoming tasks"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedDate 
+                          ? "Try selecting a different date or create a new task"
+                          : "Create a task with a due date to see it here"}
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    {scheduleTasks.length > 0 ? (
-                      <div className="h-full min-h-0">
-                        <ScheduleView
-                          tasks={scheduleTasks}
-                          properties={properties}
-                          selectedDate={isDatePinned ? selectedDate : undefined}
-                          onTaskClick={onTaskClick}
-                          selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
-                          showDateHeaders={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="p-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center">
-                        <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
-                        <p className="text-sm font-medium text-foreground mb-1">
-                          {selectedDate && isDatePinned
-                            ? `No tasks scheduled for ${format(selectedDate, "EEEE, MMMM d")}`
-                            : "No upcoming tasks"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedDate && isDatePinned
-                            ? "Try selecting a different date or create a new task with a due date"
-                            : "Create a task with a due date to see it here"}
-                        </p>
-                        <div className="mt-3 text-[11px] text-muted-foreground/80">
-                          {scheduleStats.withDueDate === 0 ? (
-                            <span>
-                              You currently have 0 active tasks with a due date/time. ({scheduleStats.withoutDueDate} unscheduled)
-                            </span>
-                          ) : (
-                            <span>
-                              Active: {scheduleStats.active} • With due date: {scheduleStats.withDueDate} • Unscheduled: {scheduleStats.withoutDueDate}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
+                  )}
+                  
                   {/* Unscheduled Tasks Section */}
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
@@ -421,8 +305,8 @@ export function TaskPanel({
                   )}
                 </div>
               )}
-            </div>
-          )}
+            </TabsContent>
+          </TabsContents>
         </div>
       </Tabs>
     </div>

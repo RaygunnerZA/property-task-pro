@@ -1,7 +1,6 @@
 import React from 'react';
 import { Surface, Button } from '@/components/filla';
 import { Play, CheckCircle } from 'lucide-react';
-import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 
 interface VendorTaskActionBarProps {
   status: 'Assigned' | 'In Progress' | 'Completed' | 'Waiting Review';
@@ -32,16 +31,7 @@ export const VendorTaskActionBar: React.FC<VendorTaskActionBarProps> = ({
           <Button 
             variant="primary" 
             fullWidth
-            icon={
-              <AnimatedIcon 
-                icon={CheckCircle} 
-                size={16} 
-                animateOnTap
-                animation="check"
-                initial="incomplete"
-                className="text-white"
-              />
-            }
+            icon={<CheckCircle className="w-4 h-4" />}
             onClick={onComplete}
           >
             Mark as Complete
@@ -56,13 +46,7 @@ export const VendorTaskActionBar: React.FC<VendorTaskActionBarProps> = ({
 
         {status === 'Completed' && (
           <div className="flex-1 text-center py-3 flex items-center justify-center gap-2">
-            <AnimatedIcon 
-              icon={CheckCircle} 
-              size={16} 
-              animation="check"
-              initial="complete"
-              className="text-success"
-            />
+            <CheckCircle className="h-4 w-4 text-success" />
             <span className="text-sm text-success">Task completed</span>
           </div>
         )}
