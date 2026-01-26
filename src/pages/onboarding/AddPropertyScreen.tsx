@@ -290,11 +290,10 @@ export default function AddPropertyScreen() {
                     : "inset 1px 1px 2px rgba(0,0,0,0.05)"
                 }}
               >
-                <Icon 
-                  className="w-5 h-5" 
-                  className={propertyIcon === name ? undefined : "text-muted-foreground"}
-                  style={propertyIcon === name ? { color: propertyIconColor } : undefined}
-                />
+               <Icon
+                className={`w-5 h-5 ${propertyIcon === name ? "" : "text-muted-foreground"}`}
+                style={propertyIcon === name ? { color: propertyIconColor } : undefined}
+              />
               </button>
             ))}
           </div>
