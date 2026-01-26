@@ -1,5 +1,11 @@
 /**
- * TaskContextRow - Displays resolved task context (fact chips only)
+ * TaskContextRow - Displays resolved task context (metadata chips only)
+ * 
+ * CHIP ROLE DISTINCTION (RESTORED):
+ * - Metadata chips: Resolved entities (space, theme, person, team, etc.) that persist to task metadata
+ * - Action chips: Unresolved chips requiring user action (e.g., "INVITE JAMES", "ADD STOVE")
+ *   - Action chips must NOT appear here - they belong in the verb chips clarity block
+ *   - Action chips must NOT persist to task submission
  * 
  * Design Contract:
  * - Shows resolved context chips only (what Filla already knows)
@@ -38,7 +44,7 @@ const chipTypeToIcon: Record<string, React.ElementType> = {
 };
 
 interface TaskContextRowProps {
-  factChips: SuggestedChip[]; // Resolved chips only
+  factChips: SuggestedChip[]; // Metadata chips only (resolved or non-blocking)
   onChipRemove?: (chip: SuggestedChip) => void;
   activeSection: string | null;
   onSectionClick: (section: string | null) => void;
@@ -52,8 +58,22 @@ export function TaskContextRow({
   onSectionClick,
   unresolvedSections = [],
 }: TaskContextRowProps) {
-  // Group fact chips by type for organized display
-  const factChipsByType = factChips.reduce((acc, chip) => {
+  // ROLE FILTER: Ensure only metadata chips are displayed
+  // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
+  // Invite chips are NOT normal chips - they are gated actions that cannot be treated as passive metadata
+  // Action chips (blockingRequired && !resolvedEntityId) should never reach this component
+  // They belong in the verb chips clarity block, not as task metadata
+  // INVITE BEHAVIORAL CONTRACT: Invite intent cannot persist as task metadata
+  // Invite chips must be resolved to a specific person/team or removed - they cannot appear here
+  const metadataChips = factChips.filter(chip => 
+    // Metadata chips are: resolved (have resolvedEntityId) OR don't require blocking
+    // INVITE BEHAVIORAL CONTRACT: Person chips without resolvedEntityId are Invite actions and must be excluded
+    // Invite chips are action intent, not passive metadata - they must be gated out
+    chip.resolvedEntityId || !chip.blockingRequired
+  );
+  
+  // Group metadata chips by type for organized display
+  const factChipsByType = metadataChips.reduce((acc, chip) => {
     if (!acc[chip.type]) acc[chip.type] = [];
     acc[chip.type].push(chip);
     return acc;
@@ -65,7 +85,7 @@ export function TaskContextRow({
     (a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b)
   );
 
-  const hasChips = factChips.length > 0;
+  const hasChips = metadataChips.length > 0;
 
   return (
     <div className="space-y-4">

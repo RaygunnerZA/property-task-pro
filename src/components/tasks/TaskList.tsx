@@ -52,9 +52,6 @@ export function TaskList({
   
   // Property filters start as inactive by default (no filters = show all properties)
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:54',message:'Initializing selectedFilters',data:{propertiesCount:properties.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     return new Set();
   });
   const [view, setView] = useState<'horizontal' | 'vertical'>('horizontal');
@@ -172,22 +169,11 @@ export function TaskList({
 
     // Secondary filters - Property
     const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
-    // #region agent log
-    if (propertyFilterIds.length > 0 || selectedFilters.size > 0) {
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:169',message:'Property filter check',data:{propertyFilterIdsCount:propertyFilterIds.length,selectedFiltersSize:selectedFilters.size,propertyFilterIds,allSelectedFilters:Array.from(selectedFilters),tasksBeforeFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    }
-    // #endregion
     if (propertyFilterIds.length > 0) {
       const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:172',message:'Applying property filter',data:{selectedPropertyIds,tasksBeforeFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       filtered = filtered.filter((task) => {
         return task.property_id && selectedPropertyIds.includes(task.property_id);
       });
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:175',message:'After property filter',data:{tasksAfterFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
     }
 
     // Secondary filters - Space
@@ -463,9 +449,6 @@ export function TaskList({
   ];
 
   const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:457',message:'handleFilterChange called',data:{filterId,selected},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-    // #endregion
     setSelectedFilters((prev) => {
       const next = new Set(prev);
       if (selected) {
@@ -473,9 +456,6 @@ export function TaskList({
       } else {
         next.delete(filterId);
       }
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:465',message:'Filter state updated',data:{filterId,selected,prevSize:prev.size,nextSize:next.size,allFilters:Array.from(next)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-      // #endregion
       return next;
     });
   }, []);
@@ -606,7 +586,7 @@ export function TaskList({
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
                   <div className={cn(
-                    "hidden md:grid md:grid-cols-4 gap-4 mt-[7px]",
+                    "hidden md:grid md:grid-cols-3 gap-4 mt-[7px]",
                     groupedTasks.todo.length === 1 && "md:grid-cols-1",
                     groupedTasks.todo.length === 2 && "md:grid-cols-2"
                   )}>
@@ -656,7 +636,7 @@ export function TaskList({
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
                   <div className={cn(
-                    "hidden md:grid md:grid-cols-4 gap-4 mt-[7px]",
+                    "hidden md:grid md:grid-cols-3 gap-4 mt-[7px]",
                     groupedTasks.done.length === 1 && "md:grid-cols-1",
                     groupedTasks.done.length === 2 && "md:grid-cols-2"
                   )}>
