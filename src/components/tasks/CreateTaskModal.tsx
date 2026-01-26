@@ -78,9 +78,10 @@ export function CreateTaskModal({
     orgId,
     isLoading: orgLoading
   } = useActiveOrg();
+  // Only fetch checklist templates when modal is open to avoid unnecessary queries
   const {
     templates
-  } = useChecklistTemplates();
+  } = useChecklistTemplates(open);
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
   const { members } = useOrgMembers();
   const isMobile = useIsMobile();
@@ -485,13 +486,25 @@ export function CreateTaskModal({
   }, [appliedChips, propertyId]);
   
   // Auto-update title from AI when user hasn't manually edited
+  // Enhanced: Better title quality scoring and formatting
   useEffect(() => {
     if (aiResult?.title && !userEditedTitle) {
-      // Capitalize first letter of AI title
-      const capitalizedTitle = aiResult.title.charAt(0).toUpperCase() + aiResult.title.slice(1);
-      setAiTitleGenerated(capitalizedTitle);
-      setTitle(capitalizedTitle);
-      setShowTitleField(true);
+      // Enhanced title processing:
+      // 1. Capitalize first letter
+      // 2. Trim whitespace
+      // 3. Remove trailing punctuation if present
+      // 4. Ensure minimum quality (at least 3 characters)
+      let processedTitle = aiResult.title.trim();
+      if (processedTitle.length >= 3) {
+        // Capitalize first letter, keep rest as-is (preserves AI formatting)
+        processedTitle = processedTitle.charAt(0).toUpperCase() + processedTitle.slice(1);
+        // Remove trailing periods/exclamation if AI added them
+        processedTitle = processedTitle.replace(/[.!]+$/, '');
+        
+        setAiTitleGenerated(processedTitle);
+        setTitle(processedTitle);
+        setShowTitleField(true);
+      }
     }
   }, [aiResult?.title, userEditedTitle]);
 
@@ -1162,8 +1175,8 @@ export function CreateTaskModal({
         </div>
       )}
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      {/* Scrollable Content - Vertical Layout */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Image Upload Icons */}
         <ImageUploadSection images={images} onImagesChange={setImages} taskId={undefined} />
 
@@ -1188,7 +1201,7 @@ export function CreateTaskModal({
                     setUserEditedTitle(false);
                   }
                 }}
-                className="w-full px-4 py-3 rounded-xl bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
+                className="w-full px-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
                 placeholder="Generated title…"
               />
             </div>
@@ -1216,9 +1229,9 @@ export function CreateTaskModal({
           unresolvedSections={unresolvedSections}
         />
 
-        {/* Context Panels - Only Visible When Active Section is Selected */}
+        {/* Context Panels - Only Visible When Active Section is Selected - Vertical Layout */}
         {activeSection && (
-          <div className="space-y-6">
+          <div className="space-y-6 flex flex-col">
             {/* Who Panel */}
             {activeSection === 'who' && (
               <div id="context-panel-who">
@@ -1341,7 +1354,7 @@ export function CreateTaskModal({
         </button>
 
         {/* Advanced Options */}
-        {showAdvanced && <div className="space-y-4 p-4 rounded-xl bg-muted/50 shadow-engraved">
+        {showAdvanced && <div className="space-y-4 p-4 rounded-[8px] bg-muted/50 shadow-engraved">
             {/* Compliance Toggle */}
             <div className="flex items-center justify-between">
               <div>
@@ -1390,7 +1403,7 @@ export function CreateTaskModal({
         {/* Invite chips cannot persist as task metadata - they are action intent, not passive data */}
         {/* "Add" intent must resolve into real entities (spaces/assets) or be explicitly removed - it cannot persist as metadata */}
         {verbChips.length > 0 && (
-          <div className="w-full px-4 py-3 rounded-[5px] bg-muted/30 border border-border/40">
+          <div className="w-full px-4 py-3 rounded-[8px] bg-muted/30 border border-border/40">
             <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
               {verbChips.length === 1 
                 ? "Resolve this action before creating the task:"
@@ -1472,7 +1485,7 @@ export function CreateTaskModal({
     const isExpanded = open;
 
     return (
-      <div className="h-auto flex flex-col bg-background rounded-lg shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 relative overflow-hidden" style={{
+      <div className="h-auto flex flex-col bg-background rounded-[8px] shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 relative overflow-hidden" style={{
         backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
         backgroundSize: '100%'
       }}>

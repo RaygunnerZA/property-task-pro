@@ -93,7 +93,7 @@ export function ImageUploadSection({
       {primaryImage && (
         <div className="flex gap-3 items-end">
           {/* Thumbnail - 50% width */}
-          <div className="w-1/2 relative group aspect-square rounded-lg overflow-hidden shadow-e1">
+          <div className="w-1/2 relative group aspect-square rounded-[8px] overflow-hidden shadow-e1">
             <img
               src={primaryImage.thumbnail_url}
               alt={primaryImage.display_name}
@@ -182,7 +182,7 @@ export function ImageUploadSection({
           {images.slice(1).map((image, idx) => (
             <div 
               key={image.local_id} 
-              className="relative group aspect-square rounded-lg overflow-hidden shadow-e1"
+              className="relative group aspect-square rounded-[8px] overflow-hidden shadow-e1"
             >
               <img
                 src={image.thumbnail_url}

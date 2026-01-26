@@ -10,7 +10,7 @@ export interface TemplateWithItems extends ChecklistTemplateRow {
   items: ChecklistTemplateItemRow[];
 }
 
-export function useChecklistTemplates() {
+export function useChecklistTemplates(enabled: boolean = true) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [templates, setTemplates] = useState<ChecklistTemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,17 +33,34 @@ export function useChecklistTemplates() {
       .eq("is_archived", false)
       .order("name", { ascending: true });
 
-    if (err) setError(err.message);
-    else setTemplates(data ?? []);
+    if (err) {
+      // Handle PGRST205 (table not found) gracefully - table may not exist yet if migration hasn't been run
+      // This is expected during development and should not be treated as a user-facing error
+      if (err.code === 'PGRST205') {
+        // Table doesn't exist - silently return empty array
+        setTemplates([]);
+        setError(null);
+      } else {
+        // Other errors should be reported
+        setError(err.message);
+      }
+    } else {
+      setTemplates(data ?? []);
+    }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    if (!orgLoading) {
+    if (!orgLoading && enabled) {
       fetchTemplates();
+    } else if (!enabled) {
+      // Reset state when disabled
+      setTemplates([]);
+      setLoading(false);
+      setError(null);
     }
-  }, [orgId, orgLoading]);
+  }, [orgId, orgLoading, enabled]);
 
   return { templates, loading, error, refresh: fetchTemplates };
 }
@@ -70,8 +87,17 @@ export function useChecklistTemplateItems(templateId?: string) {
       .eq("is_archived", false)
       .order("order_index", { ascending: true });
 
-    if (err) setError(err.message);
-    else setItems(data ?? []);
+    if (err) {
+      // Handle PGRST205 (table not found) gracefully
+      if (err.code === 'PGRST205') {
+        setItems([]);
+        setError(null);
+      } else {
+        setError(err.message);
+      }
+    } else {
+      setItems(data ?? []);
+    }
 
     setLoading(false);
   }
@@ -107,7 +133,13 @@ export function useTemplateWithItems(templateId?: string) {
       .single();
 
     if (templateErr) {
-      setError(templateErr.message);
+      // Handle PGRST205 (table not found) gracefully
+      if (templateErr.code === 'PGRST205') {
+        setTemplate(null);
+        setError(null);
+      } else {
+        setError(templateErr.message);
+      }
       setLoading(false);
       return;
     }
@@ -121,7 +153,16 @@ export function useTemplateWithItems(templateId?: string) {
       .order("order_index", { ascending: true });
 
     if (itemsErr) {
-      setError(itemsErr.message);
+      // Handle PGRST205 (table not found) gracefully
+      if (itemsErr.code === 'PGRST205') {
+        setTemplate({
+          ...templateData,
+          items: [],
+        });
+        setError(null);
+      } else {
+        setError(itemsErr.message);
+      }
       setLoading(false);
       return;
     }

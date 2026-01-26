@@ -56,7 +56,7 @@ export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
                 type="button"
                 onClick={() => onPriorityChange(value)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[5px]",
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px]",
                   "font-mono text-xs uppercase tracking-wide transition-all",
                   "select-none cursor-pointer",
                   isSelected
@@ -79,7 +79,7 @@ export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
         })}
       </div>
 
-      <div className="p-3 rounded-[5px] bg-muted/50 shadow-engraved">
+      <div className="p-3 rounded-[8px] bg-muted/50 shadow-engraved">
         <p className="text-xs text-muted-foreground">
           {priority === "low" && "Low priority tasks appear at the bottom of lists and calendars."}
           {priority === "medium" && "Medium priority tasks appear in standard order."}

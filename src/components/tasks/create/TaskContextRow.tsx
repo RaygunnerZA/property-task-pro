@@ -153,7 +153,7 @@ export function TaskContextRow({
               type="button"
               onClick={() => onSectionClick(isActive ? null : section.id)}
               className={cn(
-                "relative h-[35px] w-[35px] rounded-[5px] flex items-center justify-center",
+                "relative h-[35px] w-[35px] rounded-[8px] flex items-center justify-center",
                 "transition-all duration-150",
                 isActive
                   ? "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] bg-card"
