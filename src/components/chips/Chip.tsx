@@ -99,18 +99,18 @@ export function Chip({
   const isIconOnly = !label || className?.includes('w-[24px]') || className?.includes('w-[35px]') || className?.includes('px-0');
   
   // Determine height based on role and className
-  // Filter chips in FilterBar should be 35px, others default to 24px
-  const isFilterBarChip = role === 'filter' && (className?.includes('h-[35px]') || className?.includes('w-[35px]'));
-  const chipHeight = isFilterBarChip ? "h-[35px]" : "h-[24px]";
+  // Filter chips in FilterBar should be 28px, others default to 24px
+  const isFilterBarChip = role === 'filter' && (className?.includes('h-[28px]') || className?.includes('h-[35px]') || className?.includes('w-[35px]') || className?.includes('w-[28px]'));
+  const chipHeight = isFilterBarChip ? (className?.includes('h-[28px]') ? "h-[28px]" : "h-[35px]") : "h-[24px]";
   
   // Base styles - same for all roles (Level 2: Tactile), except verb (no shadow)
   const baseStyles = cn(
     "inline-flex items-center",
     isIconOnly ? "justify-center gap-0" : "gap-1.5",
-    "px-2 py-1",
+    isFilterBarChip ? "px-[7px] py-1" : "px-2 py-1",
     chipHeight,
     "rounded-[5px]",
-    "font-mono text-[13px] uppercase tracking-wide",
+    "font-mono text-[11px] uppercase tracking-wide",
     "transition-all duration-150 cursor-pointer select-none",
     role === 'verb' 
       ? "bg-white text-muted-foreground"

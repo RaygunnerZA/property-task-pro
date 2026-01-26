@@ -35,6 +35,10 @@ export function TaskList({
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:28',message:'TaskList entry',data:{tasksPropCount:tasksProp?.length||0,propertiesPropCount:propertiesProp?.length||0,hasTasksProp:!!tasksProp},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+  // #endregion
+  
   // Only fetch if props not provided (for backward compatibility)
   const { data: tasksDataFromQuery = [], isLoading: loadingFromQuery, error: errorFromQuery } = useTasksQuery();
   const { data: propertiesFromQuery = [] } = usePropertiesQuery();
@@ -44,6 +48,10 @@ export function TaskList({
   const properties = propertiesProp ?? propertiesFromQuery;
   const loading = tasksLoadingProp ?? loadingFromQuery;
   const error = errorFromQuery;
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:45',message:'TaskList after data selection',data:{tasksDataCount:tasksData.length,propertiesCount:properties.length,usingProps:!!tasksProp,sampleTaskPropertyIds:tasksData.slice(0,5).map((t:any)=>({id:t.id,property_id:t.property_id,propertyId:(t as any).propertyId}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+  // #endregion
   const { themes } = useThemes();
   const { members } = useOrgMembers();
   const { teams } = useTeams();
@@ -106,6 +114,9 @@ export function TaskList({
 
   // Filter tasks based on selected filters
   const filteredTasks = useMemo(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:107',message:'filteredTasks entry',data:{inputTasksCount:tasks.length,selectedFiltersSize:selectedFilters.size,selectedFilters:Array.from(selectedFilters),sampleTaskIds:tasks.slice(0,5).map((t:any)=>t.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+    // #endregion
     let filtered = [...tasks];
 
     // Primary filters
@@ -171,9 +182,21 @@ export function TaskList({
     const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
     if (propertyFilterIds.length > 0) {
       const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:172',message:'TaskList property filter active',data:{propertyFilterIds:propertyFilterIds,selectedPropertyIds:selectedPropertyIds,tasksBeforeFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+      // #endregion
       filtered = filtered.filter((task) => {
-        return task.property_id && selectedPropertyIds.includes(task.property_id);
+        const matches = task.property_id && selectedPropertyIds.includes(task.property_id);
+        // #region agent log
+        if (!matches && filtered.length < 20) {
+          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:175',message:'Task filtered out by property filter',data:{taskId:task.id,taskPropertyId:task.property_id,selectedPropertyIds:selectedPropertyIds,matches:matches},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+        }
+        // #endregion
+        return matches;
       });
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:177',message:'TaskList property filter applied',data:{tasksAfterFilter:filtered.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+      // #endregion
     }
 
     // Secondary filters - Space
@@ -286,6 +309,9 @@ export function TaskList({
       });
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:297',message:'filteredTasks exit',data:{inputTasksCount:tasks.length,outputTasksCount:filtered.length,selectedFiltersSize:selectedFilters.size,selectedFilters:Array.from(selectedFilters),sampleOutputTaskIds:filtered.slice(0,5).map((t:any)=>t.id),sampleOutputTaskPropertyIds:filtered.slice(0,5).map((t:any)=>({id:t.id,property_id:t.property_id}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+    // #endregion
     return filtered;
   }, [tasks, selectedFilters, userId, taskThemes]);
 
@@ -304,7 +330,7 @@ export function TaskList({
     {
       id: "filter-due",
       label: "Due",
-      icon: <Calendar className="h-4 w-4" />,
+      icon: <Calendar className="h-[14px] w-[14px]" />,
     },
     {
       id: "filter-urgent",
@@ -353,17 +379,17 @@ export function TaskList({
         {
           id: "filter-date-today",
           label: "Today",
-          icon: <Calendar className="h-4 w-4" />,
+          icon: <Calendar className="h-[14px] w-[14px]" />,
         },
         {
           id: "filter-date-tomorrow",
           label: "Tomorrow",
-          icon: <Calendar className="h-4 w-4" />,
+          icon: <Calendar className="h-[14px] w-[14px]" />,
         },
         {
           id: "filter-date-this-week",
           label: "This Week",
-          icon: <Calendar className="h-4 w-4" />,
+          icon: <Calendar className="h-[14px] w-[14px]" />,
         },
         {
           id: "filter-date-overdue",
@@ -464,6 +490,9 @@ export function TaskList({
   
   // Apply filter programmatically when filterToApply prop changes
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:492',message:'filterToApply effect',data:{filterToApply:filterToApply,isPropertyFilter:filterToApply?.startsWith('filter-property-')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+    // #endregion
     if (filterToApply) {
       setSelectedFilters((prev) => {
         const next = new Set(prev);
@@ -473,6 +502,9 @@ export function TaskList({
         } else {
           next.add(filterToApply);
         }
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskList.tsx:500',message:'filterToApply applied to selectedFilters',data:{filterToApply:filterToApply,selectedFiltersBefore:Array.from(prev),selectedFiltersAfter:Array.from(next)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
+        // #endregion
         return next;
       });
     }

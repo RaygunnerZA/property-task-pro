@@ -34,7 +34,7 @@ export function IconButton({
   disabled = false,
   'aria-label': ariaLabel,
 }: IconButtonProps) {
-  const sizeClass = size === 24 ? "h-6 w-6" : size === 35 ? "h-[35px] w-[35px]" : "h-10 w-10";
+  const sizeClass = size === 24 ? "h-6 w-6" : size === 35 ? "h-[28px] w-[28px]" : "h-10 w-10";
   
   const baseStyles = cn(
     sizeClass,

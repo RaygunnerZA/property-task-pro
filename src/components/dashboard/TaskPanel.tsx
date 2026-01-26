@@ -10,8 +10,11 @@ import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import EmptyState from "@/components/EmptyState";
-import { useScheduleContext } from "@/contexts/ScheduleContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+type PropertyFilter =
+  | { mode: "all" }
+  | { mode: "subset"; ids: Set<string> };
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -24,6 +27,8 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  propertyFilter?: PropertyFilter;
+  onCreateTaskClick?: () => void;
 }
 
 /**
@@ -51,13 +56,15 @@ export function TaskPanel({
   activeTab: externalActiveTab,
   onTabChange,
   selectedDate: selectedDateProp,
-  filterToApply
+  filterToApply,
+  propertyFilter = { mode: "all" },
+  onCreateTaskClick
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const [internalActiveTab, setInternalActiveTab] = useState("tasks");
-  const { selectedDate: selectedDateFromContext, isDatePinned, setSelectedDate, setSelectedDateOrToday } =
-    useScheduleContext();
-  const selectedDate = selectedDateProp ?? selectedDateFromContext;
+  const [localSelectedDate, setLocalSelectedDate] = useState<Date | undefined>(selectedDateProp);
+  const selectedDate = selectedDateProp ?? localSelectedDate;
+  const isDatePinned = !!selectedDateProp; // If prop is provided, consider it "pinned"
   
   // Use external activeTab if provided, otherwise use internal state
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
@@ -68,31 +75,60 @@ export function TaskPanel({
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
 
+  // Filter tasks by propertyFilter - explicit "all" mode
+  // AUTHORITATIVE: Exact UUID matching, no normalization, no coercion
+  const filteredTasksByProperty = useMemo(() => {
+    if (propertyFilter.mode === "all") {
+      return tasks;
+    }
+    
+    // Get all property IDs for comparison
+    const allPropertyIds = new Set(properties.map(p => p.id));
+    
+    // If all properties are selected, show all tasks
+    if (propertyFilter.ids.size === allPropertyIds.size && 
+        Array.from(propertyFilter.ids).every(id => allPropertyIds.has(id))) {
+      return tasks;
+    }
+    
+    // Filter to only show tasks from selected properties
+    // Exact UUID matching - property.id === task.property_id
+    return tasks.filter((task) => {
+      const taskPropertyId = task.property_id;
+      if (!taskPropertyId) {
+        return false; // Tasks without property_id are excluded when filtering
+      }
+      
+      // Direct Set.has() - no string coercion, no normalization
+      return propertyFilter.ids.has(taskPropertyId);
+    });
+  }, [tasks, propertyFilter, properties]);
+
   // Get unscheduled tasks (no due_date) for backlog section
   const unscheduledTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return filteredTasksByProperty.filter((task) => {
       if (!task.due_date && !task.due_at) {
         if (task.status === "completed" || task.status === "archived") return false;
         return true;
       }
       return false;
     });
-  }, [tasks]);
+  }, [filteredTasksByProperty]);
 
   const scheduleStats = useMemo(() => {
-    const active = tasks.filter(
+    const active = filteredTasksByProperty.filter(
       (t) => t.status !== "completed" && t.status !== "archived"
     );
     const withDueDate = active.filter((t) => !!(t.due_date || t.due_at));
     const withId = active.filter((t) => !!t.id);
     return {
-      total: tasks.length,
+      total: filteredTasksByProperty.length,
       active: active.length,
       withDueDate: withDueDate.length,
       withoutDueDate: active.length - withDueDate.length,
       withoutId: active.length - withId.length,
     };
-  }, [tasks]);
+  }, [filteredTasksByProperty]);
 
   // Filter tasks for Schedule tab - by selectedDate if provided, otherwise upcoming
   const scheduleTasks = useMemo(() => {
@@ -100,7 +136,7 @@ export function TaskPanel({
       // Filter by selected date - normalize both dates to start of day for accurate comparison
       const selectedDateNormalized = startOfDay(selectedDate);
       const selectedDateStr = format(selectedDateNormalized, "yyyy-MM-dd");
-      return tasks
+      return filteredTasksByProperty
         .filter((task) => {
           const dueValue = task.due_date || task.due_at;
           if (!dueValue) return false;
@@ -127,7 +163,7 @@ export function TaskPanel({
     } else {
       // Show upcoming tasks
       const today = startOfDay(new Date());
-      return tasks
+      return filteredTasksByProperty
         .filter((task) => {
           const dueValue = task.due_date || task.due_at;
           if (!dueValue) return false;
@@ -148,7 +184,7 @@ export function TaskPanel({
         })
         .slice(0, 25); // Give the schedule tab enough to feel "alive"
     }
-  }, [tasks, selectedDate]);
+  }, [filteredTasksByProperty, selectedDate]);
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -164,13 +200,13 @@ export function TaskPanel({
             <TabsTrigger
               value="tasks"
               className={cn(
-                "rounded-[5px] transition-all",
+                "rounded-[8px] transition-all gap-[9px]",
                 "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                 "data-[state=active]:bg-card",
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: '26px', paddingRight: '26px' }}
+              style={{ paddingLeft: '22px', paddingRight: '22px' }}
             >
               <AnimatedIcon 
                 icon={CheckSquare} 
@@ -231,7 +267,7 @@ export function TaskPanel({
           {activeTab === "tasks" && (
             <div className="h-full min-h-0 overflow-y-auto pt-[8px] px-4 pb-4">
               <TaskList 
-                tasks={tasks}
+                tasks={filteredTasksByProperty}
                 properties={properties}
                 tasksLoading={tasksLoading}
                 onTaskClick={onTaskClick}
@@ -277,7 +313,7 @@ export function TaskPanel({
                         <button
                           type="button"
                           onClick={() => {
-                            setSelectedDateOrToday(new Date());
+                            setLocalSelectedDate(new Date());
                             setActiveTab("schedule");
                           }}
                           className={cn(
@@ -293,7 +329,7 @@ export function TaskPanel({
                           aria-label="Previous day"
                           onClick={() => {
                             if (!selectedDate) return;
-                            setSelectedDate(subDays(selectedDate, 1));
+                            setLocalSelectedDate(subDays(selectedDate || new Date(), 1));
                             setActiveTab("schedule");
                           }}
                           className={cn(
@@ -309,7 +345,7 @@ export function TaskPanel({
                           aria-label="Next day"
                           onClick={() => {
                             if (!selectedDate) return;
-                            setSelectedDate(addDays(selectedDate, 1));
+                            setLocalSelectedDate(addDays(selectedDate || new Date(), 1));
                             setActiveTab("schedule");
                           }}
                           className={cn(

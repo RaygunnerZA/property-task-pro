@@ -6,6 +6,10 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type PropertyFilter =
+  | { mode: "all" }
+  | { mode: "subset"; ids: Set<string> };
+
 interface LeftColumnProps {
   tasks?: any[];
   properties?: any[];
@@ -22,8 +26,8 @@ interface LeftColumnProps {
   urgentCount?: number;
   overdueCount?: number;
   onFilterClick?: (filterId: string) => void;
-  selectedPropertyIds?: Set<string>;
-  onPropertySelectionChange?: (propertyIds: Set<string>) => void;
+  propertyFilter?: PropertyFilter;
+  onPropertyFilterChange?: (filter: PropertyFilter) => void;
 }
 
 /**
@@ -44,33 +48,50 @@ export function LeftColumn({
   urgentCount,
   overdueCount,
   onFilterClick,
-  selectedPropertyIds: externalSelectedPropertyIds,
-  onPropertySelectionChange
+  propertyFilter: externalPropertyFilter,
+  onPropertyFilterChange
 }: LeftColumnProps) {
   const { orgId } = useActiveOrg();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
-  const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
-    () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:53',message:'Initializing selectedPropertyIds',data:{propertiesCount:properties.length,propertyIds:properties.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      return new Set();
-    }
-  );
+  const [internalPropertyFilter, setInternalPropertyFilter] = useState<PropertyFilter>({ mode: "all" });
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const propertiesRef = useRef<HTMLDivElement>(null);
 
-  // Use external selectedPropertyIds if provided, otherwise use internal state
-  const selectedPropertyIds = externalSelectedPropertyIds !== undefined 
-    ? externalSelectedPropertyIds 
-    : internalSelectedPropertyIds;
+  // Use external propertyFilter if provided, otherwise use internal state
+  const propertyFilter = externalPropertyFilter !== undefined 
+    ? externalPropertyFilter 
+    : internalPropertyFilter;
   
-  const setSelectedPropertyIds = onPropertySelectionChange || setInternalSelectedPropertyIds;
+  const setPropertyFilter = onPropertyFilterChange || setInternalPropertyFilter;
 
-  // Property filters start as inactive by default (no filters = show all properties)
-  // No auto-selection - users must explicitly click property icons to filter
+  // Property button click handler
+  function onPropertyClick(propertyId: string) {
+    setPropertyFilter(prev => {
+      // ALL → single selection
+      if (prev.mode === "all") {
+        return { mode: "subset", ids: new Set([propertyId]) };
+      }
+
+      const next = new Set(prev.ids);
+
+      if (next.has(propertyId)) {
+        next.delete(propertyId);
+
+        // No properties left → ALL
+        if (next.size === 0) {
+          return { mode: "all" };
+        }
+
+        return { mode: "subset", ids: next };
+      }
+
+      // Add additional property
+      next.add(propertyId);
+      return { mode: "subset", ids: next };
+    });
+  }
 
   // Extract task counts from properties_view (properties now have open_tasks_count)
   const taskCounts = useMemo(() => {
@@ -111,11 +132,11 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto md:h-screen bg-background flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
+      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
     >
       {/* Properties Section - Fixed at top */}
-      <div className="flex-shrink-0 border-b border-border w-full">
-        <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
+      <div className="flex-shrink-0 w-full">
+        <div className="sticky top-0 z-10 bg-background p-4 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
             <div className="flex items-center gap-1.5">
@@ -137,35 +158,21 @@ export function LeftColumn({
                     const iconName = property.icon_name || "home";
                     const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
                     const iconColor = property.icon_color_hex || "#8EC9CE";
-                    const isActive = selectedPropertyIds.has(property.id);
+                    const isActive =
+                      propertyFilter.mode === "all" ||
+                      (propertyFilter.mode === "subset" &&
+                       propertyFilter.ids.has(property.id));
                     
                     return (
                       <button
                         key={property.id}
-                        onClick={() => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:144',message:'Property icon clicked',data:{propertyId:property.id,isActiveBefore:isActive,selectedPropertyIdsSize:selectedPropertyIds.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
-                          // Toggle active state
-                          const newSelection = new Set(selectedPropertyIds);
-                          if (isActive) {
-                            newSelection.delete(property.id);
-                          } else {
-                            newSelection.add(property.id);
-                          }
-                          setSelectedPropertyIds(newSelection);
-                          if (onFilterClick) {
-                            // #region agent log
-                            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:154',message:'Calling onFilterClick',data:{filterId:`filter-property-${property.id}`,propertyId:property.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                            // #endregion
-                            onFilterClick(`filter-property-${property.id}`);
-                          }
-                        }}
-                        className="flex items-center justify-center rounded-[342px] transition-all duration-200 hover:scale-110 active:scale-95"
+                        onClick={() => onPropertyClick(property.id)}
+                        className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95"
                         style={{
                           width: '35px',
                           height: '35px',
                           backgroundColor: isActive ? iconColor : 'transparent',
+                          opacity: isActive ? 1 : 0.4,
                           boxShadow: isActive 
                             ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
                             : "none",
@@ -175,7 +182,7 @@ export function LeftColumn({
                         }}
                         aria-label={`Filter by ${property.nickname || property.address}`}
                       >
-                        <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                        <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} style={{ opacity: isActive ? 1 : 0.5 }} />
                       </button>
                     );
                   })}

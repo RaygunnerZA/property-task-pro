@@ -10,6 +10,9 @@ export interface TemplateWithItems extends ChecklistTemplateRow {
   items: ChecklistTemplateItemRow[];
 }
 
+// Track if table doesn't exist to prevent repeated requests
+let tableDoesNotExist = false;
+
 export function useChecklistTemplates() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [templates, setTemplates] = useState<ChecklistTemplateRow[]>([]);
@@ -23,6 +26,14 @@ export function useChecklistTemplates() {
       return;
     }
 
+    // If we know the table doesn't exist, don't make the request
+    if (tableDoesNotExist) {
+      setTemplates([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -33,8 +44,22 @@ export function useChecklistTemplates() {
       .eq("is_archived", false)
       .order("name", { ascending: true });
 
-    if (err) setError(err.message);
-    else setTemplates(data ?? []);
+    if (err) {
+      // If table doesn't exist (404/PGRST205), mark it and stop making requests
+      if (err.code === 'PGRST116' || err.code === 'PGRST205' || err.message?.includes('404') || err.message?.includes('does not exist') || err.message?.includes('Could not find the table')) {
+        console.warn('[checklist_templates] Table does not exist, feature disabled');
+        tableDoesNotExist = true; // Mark so we don't make more requests
+        setTemplates([]);
+        setError(null); // Don't show error to user for missing table
+      } else {
+        console.error('checklist_templates query error:', err);
+        setError(err.message);
+      }
+    } else {
+      // Table exists, reset the flag in case it was set before
+      tableDoesNotExist = false;
+      setTemplates(data ?? []);
+    }
 
     setLoading(false);
   }
@@ -96,6 +121,14 @@ export function useTemplateWithItems(templateId?: string) {
       return;
     }
 
+    // If we know the table doesn't exist, don't make the request
+    if (tableDoesNotExist) {
+      setTemplate(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -107,6 +140,14 @@ export function useTemplateWithItems(templateId?: string) {
       .single();
 
     if (templateErr) {
+      // If table doesn't exist (404/PGRST205), mark it and stop making requests
+      if (templateErr.code === 'PGRST116' || templateErr.code === 'PGRST205' || templateErr.message?.includes('404') || templateErr.message?.includes('does not exist') || templateErr.message?.includes('Could not find the table')) {
+        tableDoesNotExist = true; // Mark so we don't make more requests
+        setTemplate(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
       setError(templateErr.message);
       setLoading(false);
       return;

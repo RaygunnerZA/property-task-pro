@@ -14,6 +14,7 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
+import { CreateTaskConcertina } from "@/components/tasks/CreateTaskConcertina";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCard";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
@@ -97,6 +98,11 @@ export default function PropertyDetail() {
   const { orgId } = useActiveOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showCreateTask, setShowCreateTask] = useState<boolean>(false);
+  const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  
+  // lg breakpoint is 1024px - use this for three-column layout
+  const LG_BREAKPOINT = 1024;
   
   // Use file upload hook with automatic thumbnail generation
   const { uploadFile, isUploading: isUploadingImage } = useFileUpload({
@@ -260,6 +266,26 @@ export default function PropertyDetail() {
       setEditedIconColor((property as any).icon_color_hex || "#8EC9CE");
     }
   }, [property]);
+
+  // Check screen size and auto-open Create Task when wide enough
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isLarge = window.innerWidth >= LG_BREAKPOINT;
+      setIsLargeScreen(isLarge);
+      // Automatically open Create Task when screen is wide enough
+      if (isLarge && !showCreateTask) {
+        setShowCreateTask(true);
+      }
+      // Close Create Task when screen becomes too small
+      if (!isLarge && showCreateTask) {
+        setShowCreateTask(false);
+      }
+    };
+    
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, [showCreateTask]);
 
   // Handle save name
   const handleSaveName = async () => {
@@ -602,7 +628,13 @@ export default function PropertyDetail() {
                   properties={properties}
                   tasksLoading={tasksLoading}
                   selectedSpaceId={selectedSpaceId}
-                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                  onTaskClick={(taskId) => {
+                    // If Create Task is open, close it first
+                    if (showCreateTask) {
+                      setShowCreateTask(false);
+                    }
+                    setSelectedTaskId(taskId);
+                  }}
                   selectedTaskId={selectedTaskId || undefined}
                 />
               </div>
@@ -635,14 +667,49 @@ export default function PropertyDetail() {
           </div>
         }
         thirdColumn={
-          id && (
-            <PropertyInsightsPanel
-              propertyId={id}
-              tasks={propertyTasks}
-              compliance={compliance}
-            />
-          )
+          id && isLargeScreen ? (
+            <div className="h-full flex flex-col overflow-hidden">
+              {/* Create Task Concertina - shown when open */}
+              {showCreateTask && (
+                <div className="flex-shrink-0">
+                  <CreateTaskConcertina
+                    open={showCreateTask}
+                    onOpenChange={setShowCreateTask}
+                    defaultPropertyId={id}
+                    onTaskCreated={(taskId) => {
+                      setShowCreateTask(false);
+                      // Optionally open the created task
+                      // setSelectedTaskId(taskId);
+                    }}
+                  />
+                </div>
+              )}
+              
+              {/* Task Detail Panel - shown below Create Task or alone */}
+              {selectedTaskId && (
+                <div className={showCreateTask ? "flex-1 min-h-0 border-t border-border overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
+                  <TaskDetailPanel 
+                    taskId={selectedTaskId} 
+                    onClose={() => setSelectedTaskId(null)}
+                    variant="column"
+                  />
+                </div>
+              )}
+              
+              {/* Property Insights Panel - shown when neither Create Task nor Task Detail is shown */}
+              {!showCreateTask && !selectedTaskId && (
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <PropertyInsightsPanel
+                    propertyId={id}
+                    tasks={propertyTasks}
+                    compliance={compliance}
+                  />
+                </div>
+              )}
+            </div>
+          ) : undefined
         }
+        thirdColumnWidth={500}
       />
 
       {/* Dialogs */}
@@ -819,7 +886,8 @@ export default function PropertyDetail() {
         </DialogContent>
       </Dialog>
 
-      {selectedTaskId && (
+      {/* Task Detail Modal - shown on smaller screens */}
+      {selectedTaskId && !isLargeScreen && (
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}

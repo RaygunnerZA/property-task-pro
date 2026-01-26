@@ -142,8 +142,8 @@ export function DashboardCalendar({
           table: "w-full border-collapse space-y-1",
           head_row: "flex justify-center items-center",
           head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
-          row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
-          cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
+          row: "flex w-full mt-1 mb-1 py-0 justify-center items-center font-mono",
+          cell: "h-8 w-8 text-center text-sm p-0 relative font-mono rounded-xl",
           day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
           day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
           day_today: "bg-accent/30 text-foreground font-semibold",
@@ -229,13 +229,17 @@ export function DashboardCalendar({
                 data-overdue-count={overdueCount}
                 data-date-key={dateKey}
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '32px',
+                  height: '32px',
                   backgroundColor: fillColor || undefined,
-                  borderRadius: '9999px',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  border: 'none',
+                  borderBottom: 'none',
+                  borderRight: 'none',
                   // Apply neomorphic pressed effect directly via inline style
                   ...(hasTasks ? {
-                    boxShadow: 'inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)'
+                    boxShadow: 'inset 0px -1px 1px 0px rgba(255, 255, 255, 1), inset 1px 5px 3.2px 0.1px rgba(0, 0, 0, 0.3)'
                   } : {})
                 }}
               >
@@ -252,15 +256,15 @@ export function DashboardCalendar({
         }}
       />
       <style>{`
-        /* Ensure cells are properly styled with max border radius */
+        /* Ensure cells are properly styled with rounded border radius */
         .rdp-cell {
-          border-radius: 9999px !important;
+          border-radius: 12px !important;
         }
         
-        /* Ensure day buttons maintain circular shape and proper layering */
+        /* Ensure day buttons maintain rounded shape and proper layering */
         .rdp-day,
         button.rdp-day {
-          border-radius: 9999px !important;
+          border-radius: 12px !important;
           position: relative !important;
           z-index: 1 !important;
           display: grid !important;
@@ -272,8 +276,8 @@ export function DashboardCalendar({
         /* Stronger inner shadow for pressed effect - top-left (darker), bottom-right (lighter) */
         button.rdp-day.has-tasks {
           position: relative !important;
-          box-shadow: inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), 
-                      inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17) !important;
+          box-shadow: inset 0px -1px 1px 0px rgba(255, 255, 255, 1), 
+                      inset 1px 5px 3.2px 0.1px rgba(0, 0, 0, 0.3) !important;
         }
         
         /* Add overlay pseudo-element for additional depth on pressed effect */
@@ -281,7 +285,7 @@ export function DashboardCalendar({
           content: '';
           position: absolute;
           inset: 0;
-          border-radius: 9999px;
+          border-radius: 12px;
           box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
           pointer-events: none;
           z-index: 1;
@@ -312,11 +316,32 @@ export function DashboardCalendar({
         /* Ensure proper vertical centering */
         .rdp-cell,
         td.rdp-cell,
+        td.h-8,
         td.h-9 {
           display: flex !important;
           flex-wrap: wrap !important;
           align-items: center !important;
           justify-content: center !important;
+          border: none !important;
+          border-bottom: none !important;
+          border-right: none !important;
+        }
+        
+        /* Remove borders from row elements */
+        .rdp-row,
+        tr.rdp-row,
+        tr.flex {
+          border: none !important;
+          border-bottom: none !important;
+          border-right: none !important;
+        }
+        
+        /* Remove borders from day buttons */
+        .rdp-day,
+        button.rdp-day {
+          border: none !important;
+          border-bottom: none !important;
+          border-right: none !important;
         }
         
       `}</style>

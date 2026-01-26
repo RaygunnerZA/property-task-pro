@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
+import { X, Plus, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check, Tag, Box } from "lucide-react";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -17,6 +17,7 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useTeams } from "@/hooks/useTeams";
 import { useCategories } from "@/hooks/useCategories";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -33,7 +34,6 @@ import { WherePanel } from "./create/panels/WherePanel";
 import { AssetPanel } from "./create/panels/AssetPanel";
 import { WhoPanel } from "./create/panels/WhoPanel";
 import { WhenPanel } from "./create/panels/WhenPanel";
-import { PriorityPanel } from "./create/panels/PriorityPanel";
 import { CategoryPanel } from "./create/panels/CategoryPanel";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
@@ -50,7 +50,8 @@ import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
-import { TaskContextRow } from "./create/TaskContextRow";
+import { TaskSection } from "./create/TaskSection";
+import { WhoSectionRow } from "./create/WhoSectionRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
@@ -60,13 +61,15 @@ interface CreateTaskModalProps {
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
   defaultDueDate?: string;
+  variant?: "modal" | "column"; // "modal" for dialog/drawer, "column" for third column panel
 }
 export function CreateTaskModal({
   open,
   onOpenChange,
   onTaskCreated,
   defaultPropertyId,
-  defaultDueDate
+  defaultDueDate,
+  variant = "modal"
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
   const {
@@ -87,24 +90,56 @@ export function CreateTaskModal({
   // Form state
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
+  // NO DEFAULT PROPERTY - start with empty
+  const [propertyId, setPropertyId] = useState("");
   
   // Hooks that depend on form state
   const { spaces } = useSpaces(propertyId || undefined);
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>(defaultPropertyId ? [defaultPropertyId] : []);
+  // NO DEFAULT PROPERTY - start with empty array
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
 
-  // Initialize propertyId from last used when modal opens
+  // DO NOT initialize propertyId from last used - user must explicitly select
+  
+  // Reset form state when modal opens (ensures no default property)
   useEffect(() => {
-    if (open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
-      setPropertyId(lastUsedPropertyId);
-      setSelectedPropertyIds([lastUsedPropertyId]);
+    if (open) {
+      setTitle("");
+      setDescription("");
+      setPropertyId("");
+      setSelectedPropertyIds([]);
+      setSelectedSpaceIds([]);
+      setPriority("medium");
+      setDueDate(defaultDueDate || "");
+      setRepeatRule(undefined);
+      setAssignedUserId(undefined);
+      setAssignedTeamIds([]);
+      setSelectedThemeIds([]);
+      setSelectedAssetIds([]);
+      setImages([]);
+      setSubtasks([]);
+      setTemplateId("");
+      setIsCompliance(false);
+      setComplianceLevel("");
+      setAnnotationRequired(false);
+      setExpandedSection(null);
+      setShowTitleField(false);
+      setAiTitleGenerated("");
+      setUserEditedTitle(false);
+      setAppliedChips(new Map());
+      setSelectedChipIds([]);
     }
-  }, [open, defaultPropertyId, lastUsedPropertyId]);
+  }, [open, defaultDueDate]);
 
   // Update last used when property changes
   const handlePropertyChange = (newPropertyIds: string[]) => {
     setSelectedPropertyIds(newPropertyIds);
+    // Mark as explicitly selected
+    setExplicitPropertyIds(prev => {
+      const updated = new Set(prev);
+      newPropertyIds.forEach(id => updated.add(id));
+      return updated;
+    });
     // Use first property as primary for backward compatibility
     const primaryPropertyId = newPropertyIds.length > 0 ? newPropertyIds[0] : "";
     setPropertyId(primaryPropertyId);
@@ -132,7 +167,8 @@ export function CreateTaskModal({
   const [images, setImages] = useState<TempImage[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
+  // System-level section model: Only one section expanded at a time
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   // AI Title extraction
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
@@ -149,15 +185,16 @@ export function CreateTaskModal({
     selectedSpaceIds,
     selectedPersonId: assignedUserId,
     selectedTeamIds: assignedTeamIds,
+    originalText: description, // Pass original text with capitalization for person/property detection
   });
   
   // Track applied chips and their resolution state
   const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
   const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
   
-  // Fact chips include: person, team, space, asset, category, date, recurrence
+  // Fact chips include: person, team, space, asset, category, date, recurrence, property
   // Recurrence never blocks entity resolution - only space, asset, person do
-  const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
+  const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence', 'property'];
   
   // Calculate fact chips (resolved context) - chips that are resolved or don't require blocking
   const factChips = useMemo(() => {
@@ -195,32 +232,11 @@ export function CreateTaskModal({
     
     // A chip is unresolved (verb) if: blockingRequired && !resolvedEntityId
     // Recurrence chips never have blockingRequired, so they're excluded from verb chips
+    // Invite candidate chips (isInviteCandidate) are fact chips, not verb chips
     return Array.from(chipMap.values()).filter(chip => 
-      chip.blockingRequired && !chip.resolvedEntityId
+      chip.blockingRequired && !chip.resolvedEntityId && !chip.metadata?.isInviteCandidate
     );
   }, [chipSuggestions, appliedChips]);
-  
-  // Calculate unresolved sections from verb chips
-  const unresolvedSections = useMemo(() => {
-    const unresolved: string[] = [];
-    const chipTypeToSection: Record<string, string> = {
-      'person': 'who',
-      'team': 'who',
-      'space': 'where',
-      'asset': 'what',
-      'category': 'category',
-      'date': 'when',
-    };
-    
-    verbChips.forEach(chip => {
-      const section = chipTypeToSection[chip.type];
-      if (section && !unresolved.includes(section)) {
-        unresolved.push(section);
-      }
-    });
-    
-    return unresolved;
-  }, [verbChips]);
   
   // Helper to generate verb label
   const generateVerbLabel = useCallback((chip: SuggestedChip): string => {
@@ -242,6 +258,66 @@ export function CreateTaskModal({
         return `CHOOSE ${value.toUpperCase()}`;
     }
   }, []);
+
+  // Calculate unresolved sections from verb chips
+  const unresolvedSections = useMemo(() => {
+    const unresolved: string[] = [];
+    const chipTypeToSection: Record<string, string> = {
+      'person': 'who',
+      'team': 'who',
+      'space': 'where',
+      'asset': 'what',
+      'category': 'tags',
+      'theme': 'tags',
+      'date': 'when',
+    };
+    
+    verbChips.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section && !unresolved.includes(section)) {
+        unresolved.push(section);
+      }
+    });
+    
+    return unresolved;
+  }, [verbChips]);
+
+  // Group verb chips by section for display
+  // Note: We'll create handlers after handleChipSelect is defined
+  const verbChipsBySectionBase = useMemo(() => {
+    const chipTypeToSection: Record<string, string> = {
+      'person': 'who',
+      'team': 'who',
+      'property': 'where',
+      'space': 'where',
+      'asset': 'what',
+      'category': 'tags',
+      'theme': 'tags',
+      'date': 'when',
+    };
+    
+    const grouped: Record<string, Array<{ id: string; label: string; chip: SuggestedChip }>> = {
+      'who': [],
+      'where': [],
+      'when': [],
+      'what': [],
+      'tags': [],
+      'compliance': [],
+    };
+    
+    verbChips.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section) {
+        grouped[section].push({
+          id: chip.id,
+          label: generateVerbLabel(chip),
+          chip: chip
+        });
+      }
+    });
+    
+    return grouped;
+  }, [verbChips, generateVerbLabel]);
   
   // Clarity state
   const [clarityState, setClarityState] = useState<{
@@ -259,8 +335,469 @@ export function CreateTaskModal({
   // Get teams and categories for resolution
   const { teams } = useTeams();
   const { categories } = useCategories();
+  const { data: properties = [] } = usePropertiesQuery();
   
-  // Handle chip removal (for fact chips in context row)
+  // Load assets for What section
+  const [assets, setAssets] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    // Hard guard: do not query if propertyId is missing
+    if (!propertyId) {
+      setAssets([]);
+      return;
+    }
+
+    if (!orgId) {
+      setAssets([]);
+      return;
+    }
+
+    console.log("[ASSETS QUERY]", { orgId, propertyId });
+
+    supabase
+      .from('assets')
+      .select('id, serial')
+      .eq('org_id', orgId)
+      .eq('property_id', propertyId)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[ASSETS QUERY] Error:', error);
+          setAssets([]);
+          return;
+        }
+        // Map serial to name for compatibility
+        if (data) {
+          setAssets(data.map(asset => ({ id: asset.id, name: asset.serial || 'Unnamed Asset' })));
+        } else {
+          setAssets([]);
+        }
+      });
+  }, [propertyId, orgId]);
+  
+  // Load themes for Tags section
+  const [themes, setThemes] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    if (orgId) {
+      supabase
+        .from('themes')
+        .select('id, name')
+        .eq('org_id', orgId)
+        .then(({ data }) => {
+          if (data) setThemes(data);
+        });
+    }
+  }, [orgId]);
+  
+  // Track whether properties are explicitly selected vs inferred
+  const [explicitPropertyIds, setExplicitPropertyIds] = useState<Set<string>>(new Set());
+  
+  // Mark property as explicitly selected when user changes it
+  useEffect(() => {
+    if (selectedPropertyIds.length > 0) {
+      setExplicitPropertyIds(prev => {
+        const updated = new Set(prev);
+        selectedPropertyIds.forEach(id => updated.add(id));
+        return updated;
+      });
+    }
+  }, [selectedPropertyIds]);
+
+  // HIGH-CONFIDENCE FACTS: Automatically apply resolved chips from suggestions to form state
+  // This ensures facts appear immediately in section headers without user interaction
+  useEffect(() => {
+    // Only process chips that are resolved and haven't been applied yet
+    const resolvedChips = chipSuggestions.filter(
+      chip => chip.resolvedEntityId && 
+      factChipTypes.includes(chip.type) &&
+      !appliedChips.has(chip.id)
+    );
+
+    resolvedChips.forEach(chip => {
+      if (!chip.resolvedEntityId) return;
+
+      switch (chip.type) {
+        case 'person':
+          if (chip.resolvedEntityType === 'person' && !assignedUserId && chip.resolvedEntityId) {
+            setAssignedUserId(chip.resolvedEntityId);
+            // Add to applied chips
+            const updated = new Map(appliedChips);
+            updated.set(chip.id, chip);
+            setAppliedChips(updated);
+          }
+          break;
+        case 'team':
+          if (chip.resolvedEntityType === 'team' && chip.resolvedEntityId && !assignedTeamIds.includes(chip.resolvedEntityId)) {
+            setAssignedTeamIds(prev => [...prev, chip.resolvedEntityId!]);
+            // Add to applied chips
+            const updated = new Map(appliedChips);
+            updated.set(chip.id, chip);
+            setAppliedChips(updated);
+          }
+          break;
+        case 'space':
+          if (chip.resolvedEntityType === 'space' && chip.resolvedEntityId && !selectedSpaceIds.includes(chip.resolvedEntityId)) {
+            setSelectedSpaceIds(prev => [...prev, chip.resolvedEntityId!]);
+            // Add to applied chips
+            const updated = new Map(appliedChips);
+            updated.set(chip.id, chip);
+            setAppliedChips(updated);
+          }
+          break;
+        case 'asset':
+          if (chip.resolvedEntityType === 'asset' && chip.resolvedEntityId && !selectedAssetIds.includes(chip.resolvedEntityId)) {
+            setSelectedAssetIds(prev => [...prev, chip.resolvedEntityId!]);
+            // Add to applied chips
+            const updated = new Map(appliedChips);
+            updated.set(chip.id, chip);
+            setAppliedChips(updated);
+          }
+          break;
+        case 'date':
+          if (chip.value && !dueDate) {
+            try {
+              const date = new Date(chip.value);
+              if (!isNaN(date.getTime())) {
+                // Format as ISO string for dueDate state
+                const isoDate = date.toISOString().split('T')[0] + 'T00:00:00';
+                setDueDate(isoDate);
+                // Add to applied chips
+                const updated = new Map(appliedChips);
+                updated.set(chip.id, chip);
+                setAppliedChips(updated);
+              }
+            } catch (e) {
+              // Invalid date, skip
+            }
+          }
+          break;
+        case 'property':
+          if (chip.resolvedEntityType === 'property' && chip.resolvedEntityId && !selectedPropertyIds.includes(chip.resolvedEntityId)) {
+            handlePropertyChange([...selectedPropertyIds, chip.resolvedEntityId]);
+            // Add to applied chips
+            const updated = new Map(appliedChips);
+            updated.set(chip.id, chip);
+            setAppliedChips(updated);
+          }
+          break;
+      }
+    });
+  }, [chipSuggestions, appliedChips, assignedUserId, assignedTeamIds, selectedSpaceIds, selectedAssetIds, dueDate, selectedPropertyIds, handlePropertyChange]);
+
+  // Extract fact chips for each section (collapsed state shows facts only)
+  // HIGH-CONFIDENCE FACTS: Include resolved chips from chipSuggestions and appliedChips
+  const whoFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void; isSuggested?: boolean; tooltip?: string }> = [];
+    
+    // Add resolved person/team chips from suggestions (high-confidence extracted facts)
+    const resolvedPersonChips = [
+      ...chipSuggestions.filter(c => c.type === 'person' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'person' && c.resolvedEntityId)
+    ];
+    resolvedPersonChips.forEach(chip => {
+      if (chip.resolvedEntityId && chip.resolvedEntityType === 'person') {
+        const member = members.find(m => m.user_id === chip.resolvedEntityId);
+        if (member && !chips.some(c => c.id === `person-${chip.resolvedEntityId}`)) {
+          chips.push({
+            id: `person-${chip.resolvedEntityId}`,
+            label: member.display_name.toUpperCase(),
+            onRemove: () => {
+              setAssignedUserId(undefined);
+              const updated = new Map(appliedChips);
+              updated.delete(chip.id);
+              setAppliedChips(updated);
+            }
+          });
+        }
+      }
+    });
+    
+    // Add resolved team chips
+    const resolvedTeamChips = [
+      ...chipSuggestions.filter(c => c.type === 'team' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'team' && c.resolvedEntityId)
+    ];
+    resolvedTeamChips.forEach(chip => {
+      if (chip.resolvedEntityId && chip.resolvedEntityType === 'team') {
+        const team = teams.find(t => t.id === chip.resolvedEntityId);
+        if (team && !chips.some(c => c.id === `team-${chip.resolvedEntityId}`)) {
+          chips.push({
+            id: `team-${chip.resolvedEntityId}`,
+            label: (team.name || '').toUpperCase(),
+            onRemove: () => {
+              setAssignedTeamIds(prev => prev.filter(id => id !== chip.resolvedEntityId));
+              const updated = new Map(appliedChips);
+              updated.delete(chip.id);
+              setAppliedChips(updated);
+            }
+          });
+        }
+      }
+    });
+    
+    // Add invite candidate chips (unknown persons) as fact chips
+    const inviteChips = [
+      ...chipSuggestions.filter(c => c.type === 'person' && c.metadata?.isInviteCandidate),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'person' && c.metadata?.isInviteCandidate)
+    ];
+    inviteChips.forEach(chip => {
+      if (chip.metadata?.inviteName && !chips.some(c => c.id === chip.id)) {
+        chips.push({
+          id: chip.id,
+          label: `INVITE ${chip.metadata.inviteName.toUpperCase()}`,
+          onRemove: () => {
+            const updated = new Map(appliedChips);
+            updated.delete(chip.id);
+            setAppliedChips(updated);
+            setSelectedChipIds(prev => prev.filter(id => id !== chip.id));
+          }
+        });
+      }
+    });
+    
+    // Add explicitly assigned user/teams (from form state)
+    if (assignedUserId && !chips.some(c => c.id === `person-${assignedUserId}`)) {
+      const member = members.find(m => m.user_id === assignedUserId);
+      if (member) {
+        chips.push({
+          id: `person-${assignedUserId}`,
+          label: member.display_name.toUpperCase(),
+          onRemove: () => setAssignedUserId(undefined)
+        });
+      }
+    }
+    assignedTeamIds.forEach(teamId => {
+      if (!chips.some(c => c.id === `team-${teamId}`)) {
+        const team = teams.find(t => t.id === teamId);
+        if (team) {
+          chips.push({
+            id: `team-${teamId}`,
+            label: (team.name || '').toUpperCase(),
+            onRemove: () => setAssignedTeamIds(prev => prev.filter(id => id !== teamId))
+          });
+        }
+      }
+    });
+    
+    return chips;
+  }, [assignedUserId, assignedTeamIds, members, teams, chipSuggestions, appliedChips, selectedChipIds]);
+  
+  const whereFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void; isSuggested?: boolean; tooltip?: string }> = [];
+    
+    // Add resolved property chips from suggestions (high-confidence extracted facts)
+    const resolvedPropertyChips = [
+      ...chipSuggestions.filter(c => c.type === 'property' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'property' && c.resolvedEntityId)
+    ];
+    resolvedPropertyChips.forEach(chip => {
+      if (chip.resolvedEntityId && chip.resolvedEntityType === 'property') {
+        const property = properties.find(p => p.id === chip.resolvedEntityId);
+        if (property && !chips.some(c => c.id === `property-${chip.resolvedEntityId}`)) {
+          chips.push({
+            id: `property-${chip.resolvedEntityId}`,
+            label: (property.nickname || property.address || '').toUpperCase(),
+            onRemove: () => {
+              handlePropertyChange(selectedPropertyIds.filter(id => id !== chip.resolvedEntityId));
+              const updated = new Map(appliedChips);
+              updated.delete(chip.id);
+              setAppliedChips(updated);
+            }
+          });
+        }
+      }
+    });
+    
+    // Add resolved space chips from suggestions (high-confidence extracted facts)
+    const resolvedSpaceChips = [
+      ...chipSuggestions.filter(c => c.type === 'space' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'space' && c.resolvedEntityId)
+    ];
+    resolvedSpaceChips.forEach(chip => {
+      if (chip.resolvedEntityId && chip.resolvedEntityType === 'space') {
+        const space = spaces.find(s => s.id === chip.resolvedEntityId);
+        if (space && !chips.some(c => c.id === `space-${chip.resolvedEntityId}`)) {
+          chips.push({
+            id: `space-${chip.resolvedEntityId}`,
+            label: space.name.toUpperCase(),
+            onRemove: () => {
+              setSelectedSpaceIds(prev => prev.filter(id => id !== chip.resolvedEntityId));
+              const updated = new Map(appliedChips);
+              updated.delete(chip.id);
+              setAppliedChips(updated);
+            }
+          });
+        }
+      }
+    });
+    
+    // Properties: Distinguish inferred (suggested) vs explicitly selected (fact)
+    selectedPropertyIds.forEach(propId => {
+      const property = properties.find(p => p.id === propId);
+      if (property && !chips.some(c => c.id === `property-${propId}`)) {
+        const isExplicit = explicitPropertyIds.has(propId);
+        const isInferred = !isExplicit && (propId === defaultPropertyId || propId === lastUsedPropertyId);
+        
+        chips.push({
+          id: `property-${propId}`,
+          label: (property.nickname || property.address || '').toUpperCase(),
+          isSuggested: isInferred,
+          tooltip: isInferred ? "Suggested based on recent tasks" : undefined,
+          onRemove: () => {
+            handlePropertyChange(selectedPropertyIds.filter(id => id !== propId));
+            setExplicitPropertyIds(prev => {
+              const updated = new Set(prev);
+              updated.delete(propId);
+              return updated;
+            });
+          }
+        });
+      }
+    });
+    
+    // Add explicitly selected spaces (from form state)
+    selectedSpaceIds.forEach(spaceId => {
+      if (!chips.some(c => c.id === `space-${spaceId}`)) {
+        const space = spaces.find(s => s.id === spaceId);
+        if (space) {
+          chips.push({
+            id: `space-${spaceId}`,
+            label: space.name.toUpperCase(),
+            onRemove: () => setSelectedSpaceIds(prev => prev.filter(id => id !== spaceId))
+          });
+        }
+      }
+    });
+    
+    return chips;
+  }, [selectedPropertyIds, selectedSpaceIds, properties, spaces, chipSuggestions, appliedChips, explicitPropertyIds, defaultPropertyId, lastUsedPropertyId]);
+  
+  const whenFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void; isSuggested?: boolean; tooltip?: string }> = [];
+    
+    // Add resolved date chips from suggestions (high-confidence extracted facts)
+    const resolvedDateChips = [
+      ...chipSuggestions.filter(c => c.type === 'date' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'date' && c.resolvedEntityId)
+    ];
+    resolvedDateChips.forEach(chip => {
+      if (chip.value && !chips.some(c => c.id === `date-${chip.id}`)) {
+        // Parse date from chip value
+        try {
+          const date = new Date(chip.value);
+          if (!isNaN(date.getTime())) {
+            chips.push({
+              id: `date-${chip.id}`,
+              label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase(),
+              onRemove: () => {
+                setDueDate('');
+                const updated = new Map(appliedChips);
+                updated.delete(chip.id);
+                setAppliedChips(updated);
+              }
+            });
+          }
+        } catch (e) {
+          // Invalid date, skip
+        }
+      }
+    });
+    
+    // Add explicitly set due date (from form state)
+    if (dueDate && !chips.some(c => c.id === 'due-date')) {
+      const dateStr = dueDate.split('T')[0];
+      const date = new Date(dateStr);
+      chips.push({
+        id: 'due-date',
+        label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase(),
+        onRemove: () => setDueDate('')
+      });
+    }
+    
+    if (repeatRule) {
+      chips.push({
+        id: 'repeat',
+        label: `REPEAT ${repeatRule.type.toUpperCase()}`,
+        onRemove: () => setRepeatRule(undefined)
+      });
+    }
+    return chips;
+  }, [dueDate, repeatRule, chipSuggestions, appliedChips]);
+  
+  const whatFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void; isSuggested?: boolean; tooltip?: string }> = [];
+    
+    // Add resolved asset chips from suggestions (high-confidence extracted facts)
+    const resolvedAssetChips = [
+      ...chipSuggestions.filter(c => c.type === 'asset' && c.resolvedEntityId),
+      ...Array.from(appliedChips.values()).filter(c => c.type === 'asset' && c.resolvedEntityId)
+    ];
+    resolvedAssetChips.forEach(chip => {
+      if (chip.resolvedEntityId && chip.resolvedEntityType === 'asset') {
+        const asset = assets.find(a => a.id === chip.resolvedEntityId);
+        if (asset && !chips.some(c => c.id === `asset-${chip.resolvedEntityId}`)) {
+          chips.push({
+            id: `asset-${chip.resolvedEntityId}`,
+            label: asset.name.toUpperCase(),
+            onRemove: () => {
+              setSelectedAssetIds(prev => prev.filter(id => id !== chip.resolvedEntityId));
+              const updated = new Map(appliedChips);
+              updated.delete(chip.id);
+              setAppliedChips(updated);
+            }
+          });
+        }
+      }
+    });
+    
+    // Add explicitly selected assets (from form state)
+    selectedAssetIds.forEach(assetId => {
+      if (!chips.some(c => c.id === `asset-${assetId}`)) {
+        const asset = assets.find(a => a.id === assetId);
+        if (asset) {
+          chips.push({
+            id: `asset-${assetId}`,
+            label: asset.name.toUpperCase(),
+            onRemove: () => setSelectedAssetIds(prev => prev.filter(id => id !== assetId))
+          });
+        }
+      }
+    });
+    
+    return chips;
+  }, [selectedAssetIds, assets, chipSuggestions, appliedChips]);
+  
+  const tagsFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void }> = [];
+    selectedThemeIds.forEach(themeId => {
+      const theme = themes.find(t => t.id === themeId);
+      if (theme) {
+        chips.push({
+          id: `theme-${themeId}`,
+          label: theme.name.toUpperCase(),
+          onRemove: () => setSelectedThemeIds(prev => prev.filter(id => id !== themeId))
+        });
+      }
+    });
+    return chips;
+  }, [selectedThemeIds, themes]);
+  
+  const complianceFactChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove?: () => void }> = [];
+    if (isCompliance) {
+      chips.push({
+        id: 'compliance',
+        label: complianceLevel ? `COMPLIANCE ${complianceLevel.toUpperCase()}` : 'COMPLIANCE',
+        onRemove: () => setIsCompliance(false)
+      });
+    }
+    return chips;
+  }, [isCompliance, complianceLevel]);
+  
+  // Handle section toggle (only one expanded at a time)
+  const handleSectionToggle = (sectionId: string) => {
+    setExpandedSection(expandedSection === sectionId ? null : sectionId);
+  };
+  
+  // Handle chip removal (for fact chips in sections)
   const handleChipRemove = useCallback((chip: SuggestedChip) => {
     const updated = new Map(appliedChips);
     updated.delete(chip.id);
@@ -276,23 +813,19 @@ export function CreateTaskModal({
     const chipTypeToSection: Record<string, string> = {
       'person': 'who',
       'team': 'who',
+      'property': 'where',
       'space': 'where',
       'asset': 'what',
       'date': 'when',
       'priority': 'priority',
-      'category': 'category',
-      'theme': 'category',
+      'category': 'tags',
+      'theme': 'tags',
     };
     
-    // Open relevant panel when chip is clicked
+    // Open relevant section when chip is clicked
     const section = chipTypeToSection[chip.type];
     if (section) {
-      setActiveSection(section);
-      // Scroll to panel
-      setTimeout(() => {
-        const panel = document.getElementById(`context-panel-${section}`);
-        panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
+      setExpandedSection(section);
     }
     
     if (isCurrentlySelected) {
@@ -315,12 +848,12 @@ export function CreateTaskModal({
         try {
           const { data } = await supabase
             .from('assets')
-            .select('id, name, property_id, space_id')
+            .select('id, serial, property_id, space_id')
             .eq('org_id', orgId)
             .eq('property_id', propertyId);
           assets = (data || []).map(a => ({
             id: a.id,
-            name: a.name || '',
+            name: a.serial || 'Unnamed Asset',
             property_id: a.property_id,
             space_id: a.space_id || undefined
           }));
@@ -346,15 +879,19 @@ export function CreateTaskModal({
         'asset': 'asset',
         'category': 'category',
         'theme': 'category',
+        'property': 'property',
       };
       
       const entityType = chipTypeToEntityType[chip.type] || 'category';
       
-      // Check resolution memory first
+      // PREVENT AUTO-INSERTION: Only auto-resolve on exact matches, not fuzzy matches
+      // User-typed terms should remain as primary suggestions until explicitly selected
+      // Check resolution memory first (exact matches only)
       const memoryEntityId = await queryResolutionMemory(orgId, chip.label, entityType);
       
       let resolution;
       if (memoryEntityId) {
+        // Memory match is considered exact - user has explicitly resolved this before
         resolution = {
           resolved: true,
           entityId: memoryEntityId,
@@ -363,7 +900,55 @@ export function CreateTaskModal({
           confidence: 0.9
         };
       } else {
+        // Run resolution pipeline
         resolution = await resolveChip(chip, entities, { propertyId, spaceId: selectedSpaceIds[0] });
+        
+        // PREVENT AUTO-INSERTION: Only auto-resolve if exact match (not fuzzy)
+        // If resolution is fuzzy, treat as unresolved to preserve user's typed term
+        if (resolution.resolved && resolution.resolutionSource === 'fuzzy') {
+          // Check if chip label exactly matches the resolved entity name
+          const resolvedEntity = findEntityById(resolution.entityId!, resolution.entityType!, entities);
+          const isExactMatch = resolvedEntity && chip.label.toLowerCase().trim() === resolvedEntity.label.toLowerCase().trim();
+          
+          if (!isExactMatch) {
+            // Fuzzy match - don't auto-resolve, keep as suggestion
+            // User must explicitly click a DB match suggestion to resolve
+            resolution = {
+              resolved: false,
+              requiresCreation: false,
+              candidates: [{
+                id: resolution.entityId!,
+                label: resolvedEntity!.label,
+                type: resolution.entityType!
+              }],
+              requiresUserChoice: true,
+              confidence: resolution.confidence
+            };
+          }
+        }
+      }
+      
+      // Helper to find entity by ID
+      function findEntityById(entityId: string, entityType: EntityType, entities: AvailableEntities): { id: string; label: string; type: EntityType } | null {
+        switch (entityType) {
+          case 'space':
+            const space = entities.spaces.find(s => s.id === entityId);
+            return space ? { id: space.id, label: space.name, type: 'space' } : null;
+          case 'person':
+            const member = entities.members.find(m => m.user_id === entityId || m.id === entityId);
+            return member ? { id: member.user_id, label: member.display_name, type: 'person' } : null;
+          case 'team':
+            const team = entities.teams.find(t => t.id === entityId);
+            return team ? { id: team.id, label: team.name || '', type: 'team' } : null;
+          case 'asset':
+            const asset = entities.assets.find(a => a.id === entityId);
+            return asset ? { id: asset.id, label: asset.name, type: 'asset' } : null;
+          case 'category':
+            const category = entities.categories.find(c => c.id === entityId);
+            return category ? { id: category.id, label: category.name, type: 'category' } : null;
+          default:
+            return null;
+        }
       }
       
       // Update chip with resolution
@@ -383,6 +968,52 @@ export function CreateTaskModal({
       const updated = new Map(appliedChips);
       updated.set(chip.id, resolvedChip);
       setAppliedChips(updated);
+      
+      // HIGH-CONFIDENCE FACTS: Automatically apply resolved chips to form state
+      // This ensures facts appear immediately in section headers without user interaction
+      if (resolution.resolved && resolution.entityId) {
+        switch (chip.type) {
+          case 'person':
+            if (resolution.entityType === 'person' && !assignedUserId) {
+              setAssignedUserId(resolution.entityId);
+            }
+            break;
+          case 'team':
+            if (resolution.entityType === 'team' && !assignedTeamIds.includes(resolution.entityId)) {
+              setAssignedTeamIds(prev => [...prev, resolution.entityId]);
+            }
+            break;
+          case 'space':
+            if (resolution.entityType === 'space' && !selectedSpaceIds.includes(resolution.entityId)) {
+              setSelectedSpaceIds(prev => [...prev, resolution.entityId]);
+            }
+            break;
+          case 'asset':
+            if (resolution.entityType === 'asset' && !selectedAssetIds.includes(resolution.entityId)) {
+              setSelectedAssetIds(prev => [...prev, resolution.entityId]);
+            }
+            break;
+          case 'date':
+            if (chip.value) {
+              try {
+                const date = new Date(chip.value);
+                if (!isNaN(date.getTime()) && !dueDate) {
+                  // Format as ISO string for dueDate state
+                  const isoDate = date.toISOString().split('T')[0] + 'T00:00:00';
+                  setDueDate(isoDate);
+                }
+              } catch (e) {
+                // Invalid date, skip
+              }
+            }
+            break;
+          case 'property':
+            if (resolution.entityType === 'property' && !selectedPropertyIds.includes(resolution.entityId)) {
+              handlePropertyChange([...selectedPropertyIds, resolution.entityId]);
+            }
+            break;
+        }
+      }
       
       // Store in memory if resolved
       if (resolution.resolved && resolution.entityId && orgId) {
@@ -406,14 +1037,35 @@ export function CreateTaskModal({
         }
       }
       
-      // Handle auto-open panels for assets
+      // Handle auto-open sections for assets
       if (chip.type === 'asset' && !propertyId) {
-        setActiveSection('where');
+        setExpandedSection('where');
       } else if (chip.type === 'asset' && propertyId && selectedSpaceIds.length === 0) {
-        setActiveSection('where');
+        setExpandedSection('where');
       }
     }
   }, [selectedChipIds, appliedChips, orgId, spaces, members, teams, categories, propertyId, selectedSpaceIds]);
+
+  // Create verb chips with handlers after handleChipSelect is defined
+  const verbChipsBySection = useMemo(() => {
+    const result: Record<string, Array<{ id: string; label: string; onSelect?: () => void; chip?: SuggestedChip }>> = {
+      'who': [],
+      'where': [],
+      'when': [],
+      'what': [],
+      'tags': [],
+      'compliance': [],
+    };
+    
+    Object.keys(verbChipsBySectionBase).forEach(section => {
+      result[section] = verbChipsBySectionBase[section].map(item => ({
+        ...item,
+        onSelect: () => handleChipSelect(item.chip)
+      }));
+    });
+    
+    return result;
+  }, [verbChipsBySectionBase, handleChipSelect]);
   
   // Validate resolution truth and update clarity state
   useEffect(() => {
@@ -556,7 +1208,7 @@ export function CreateTaskModal({
     setSelectedAssetIds([]);
     setImages([]);
     setShowAdvanced(false);
-    setActiveSection(null);
+    setExpandedSection(null);
     // Reset AI-related state
     setAiTitleGenerated("");
     setUserEditedTitle(false);
@@ -1138,119 +1790,146 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* Task Context Row - Resolved context chips + Section Navigation */}
-        <TaskContextRow
-          factChips={factChips}
-          onChipRemove={handleChipRemove}
-          activeSection={activeSection}
-          onSectionClick={(section) => {
-            setActiveSection(section);
-            // Scroll to panel if section is selected
-            if (section) {
-              setTimeout(() => {
-                const panel = document.getElementById(`context-panel-${section}`);
-                panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }, 100);
-            }
-          }}
-          unresolvedSections={unresolvedSections}
-        />
-
-        {/* Context Panels - Only Visible When Active Section is Selected */}
-        {activeSection && (
-          <div className="space-y-6">
-            {/* Who Panel */}
-            {activeSection === 'who' && (
-              <div id="context-panel-who">
-                <WhoPanel 
-                  assignedUserId={assignedUserId} 
-                  assignedTeamIds={assignedTeamIds} 
-                  onUserChange={setAssignedUserId} 
-                  onTeamsChange={setAssignedTeamIds}
-                  suggestedPeople={aiResult?.people?.map(p => p.name) || []}
-                  pendingInvitations={pendingInvitations}
-                  onPendingInvitationsChange={setPendingInvitations}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                  onInviteToOrg={() => {
-                    // TODO: Open invite dialog or navigate to invite page
-                    toast({ title: "Invite functionality coming soon" });
-                  }}
-                  onAddAsContractor={() => {
-                    // TODO: Open contractor creation dialog
-                    toast({ title: "Contractor creation coming soon" });
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Where Panel */}
-            {activeSection === 'where' && (
-              <div id="context-panel-where">
-                <WherePanel 
-                  propertyId={propertyId} 
-                  spaceIds={selectedSpaceIds} 
-                  onPropertyChange={handlePropertyChange} 
-                  onSpacesChange={setSelectedSpaceIds}
-                  suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
-                  defaultPropertyId={defaultPropertyId}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              </div>
-            )}
-
-            {/* When Panel */}
-            {activeSection === 'when' && (
-              <div id="context-panel-when">
-                <WhenPanel 
-                  dueDate={dueDate} 
-                  repeatRule={repeatRule} 
-                  onDueDateChange={setDueDate} 
-                  onRepeatRuleChange={setRepeatRule} 
-                />
-              </div>
-            )}
-
-            {/* Priority Panel */}
-            {activeSection === 'priority' && (
-              <div id="context-panel-priority">
-                <PriorityPanel 
-                  priority={priority} 
-                  onPriorityChange={setPriority} 
-                />
-              </div>
-            )}
-
-            {/* Category Panel */}
-            {activeSection === 'category' && (
-              <div id="context-panel-category">
-                <CategoryPanel 
-                  selectedThemeIds={selectedThemeIds} 
-                  onThemesChange={setSelectedThemeIds}
-                  suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              </div>
-            )}
-
-            {/* Asset Panel - Only show if property is selected */}
-            {activeSection === 'what' && propertyId && (
-              <div id="context-panel-what">
-                <AssetPanel
-                  propertyId={propertyId}
-                  spaceId={selectedSpaceIds[0]}
-                  selectedAssetIds={selectedAssetIds}
-                  onAssetsChange={setSelectedAssetIds}
-                  suggestedAssets={aiResult?.assets || []}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              </div>
-            )}
+        {/* Six Vertically Stacked Sections - System-level section model */}
+        <div className="space-y-1">
+          {/* 1. Who — People & Teams - Single-line stacked row */}
+          <div className="w-full flex items-center gap-2">
+            <div className="h-4 w-4 flex items-center justify-center shrink-0 text-muted-foreground">
+              <User className="h-4 w-4" />
+            </div>
+            <WhoSectionRow
+              assignedUserId={assignedUserId}
+              assignedTeamIds={assignedTeamIds}
+              onUserChange={setAssignedUserId}
+              onTeamsChange={setAssignedTeamIds}
+              pendingInvitations={pendingInvitations}
+              onPendingInvitationsChange={setPendingInvitations}
+              onInviteToOrg={() => {
+                toast({ title: "Invite functionality coming soon" });
+              }}
+              onAddAsContractor={() => {
+                toast({ title: "Contractor creation coming soon" });
+              }}
+              additionalFactChips={whoFactChips.filter(chip => chip.label.startsWith('INVITE '))}
+            />
           </div>
-        )}
+
+          {/* 2. Where — Property, Space, Subspace */}
+          <TaskSection
+            id="where"
+            icon={<MapPin className="h-4 w-4" />}
+            factChips={whereFactChips}
+            verbChips={verbChipsBySection.where}
+            isExpanded={expandedSection === 'where'}
+            onToggle={() => handleSectionToggle('where')}
+          >
+            <WherePanel 
+              propertyId={propertyId} 
+              spaceIds={selectedSpaceIds} 
+              onPropertyChange={handlePropertyChange} 
+              onSpacesChange={setSelectedSpaceIds}
+              suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
+              defaultPropertyId={defaultPropertyId}
+              instructionBlock={instructionBlock}
+              onInstructionDismiss={() => setInstructionBlock(null)}
+            />
+          </TaskSection>
+
+          {/* 3. When — Date, Time, Recurrence */}
+          <TaskSection
+            id="when"
+            icon={<Calendar className="h-4 w-4" />}
+            factChips={whenFactChips}
+            verbChips={verbChipsBySection.when}
+            isExpanded={expandedSection === 'when'}
+            onToggle={() => handleSectionToggle('when')}
+          >
+            <WhenPanel 
+              dueDate={dueDate} 
+              repeatRule={repeatRule} 
+              onDueDateChange={setDueDate} 
+              onRepeatRuleChange={setRepeatRule} 
+            />
+          </TaskSection>
+
+          {/* 4. What — Asset */}
+          <TaskSection
+            id="what"
+            icon={<Box className="h-4 w-4" />}
+            factChips={whatFactChips}
+            verbChips={verbChipsBySection.what}
+            isExpanded={expandedSection === 'what'}
+            onToggle={() => handleSectionToggle('what')}
+          >
+            {propertyId ? (
+              <AssetPanel
+                propertyId={propertyId}
+                spaceId={selectedSpaceIds[0]}
+                selectedAssetIds={selectedAssetIds}
+                onAssetsChange={setSelectedAssetIds}
+                suggestedAssets={aiResult?.assets || []}
+                instructionBlock={instructionBlock}
+                onInstructionDismiss={() => setInstructionBlock(null)}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a property first</p>
+            )}
+          </TaskSection>
+
+          {/* 5. Tags — Classification */}
+          <TaskSection
+            id="tags"
+            icon={<Tag className="h-4 w-4" />}
+            factChips={tagsFactChips}
+            verbChips={verbChipsBySection.tags}
+            isExpanded={expandedSection === 'tags'}
+            onToggle={() => handleSectionToggle('tags')}
+          >
+            <CategoryPanel 
+              selectedThemeIds={selectedThemeIds} 
+              onThemesChange={setSelectedThemeIds}
+              suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
+              instructionBlock={instructionBlock}
+              onInstructionDismiss={() => setInstructionBlock(null)}
+            />
+          </TaskSection>
+
+          {/* 6. Compliance — Statutory & Safety */}
+          <TaskSection
+            id="compliance"
+            icon={<Shield className="h-4 w-4" />}
+            factChips={complianceFactChips}
+            verbChips={verbChipsBySection.compliance}
+            isExpanded={expandedSection === 'compliance'}
+            onToggle={() => handleSectionToggle('compliance')}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>
+                  <p className="text-xs text-muted-foreground">Mark as regulatory requirement</p>
+                </div>
+                <Switch id="compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+              </div>
+              {isCompliance && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Compliance Level</Label>
+                  <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </TaskSection>
+        </div>
 
 
         {/* Checklist Template */}
@@ -1273,48 +1952,16 @@ export function CreateTaskModal({
             </Select>
           </div>}
 
-        {/* Advanced Options Toggle */}
-        <button type="button" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full" onClick={() => setShowAdvanced(!showAdvanced)}>
-          {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          <Shield className="h-4 w-4" />
-          Compliance & Advanced
-        </button>
-
         {/* Advanced Options */}
-        {showAdvanced && <div className="space-y-4 p-4 rounded-xl bg-muted/50 shadow-engraved">
-            {/* Compliance Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>
-                <p className="text-xs text-muted-foreground">Mark as regulatory requirement</p>
-              </div>
-              <Switch id="compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="annotation" className="text-sm">Requires Photo Annotation</Label>
+              <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
             </div>
-
-            {isCompliance && <div className="space-y-2">
-                <Label className="text-xs">Compliance Level</Label>
-                <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>}
-
-            {/* Annotation Required */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="annotation" className="text-sm">Requires Photo Annotation</Label>
-                <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
-              </div>
-              <Switch id="annotation" checked={annotationRequired} onCheckedChange={setAnnotationRequired} />
-            </div>
-          </div>}
+            <Switch id="annotation" checked={annotationRequired} onCheckedChange={setAnnotationRequired} />
+          </div>
+        </div>
       </div>
 
       {/* Footer */}
@@ -1386,7 +2033,17 @@ export function CreateTaskModal({
       </div>
     </div>;
 
-  // Mobile: Bottom sheet drawer, Desktop: Center dialog
+  // Column variant: render directly without Dialog/Drawer wrapper
+  if (variant === "column") {
+    if (!open) return null;
+    return (
+      <div className="h-full flex flex-col bg-background">
+        {content}
+      </div>
+    );
+  }
+
+  // Modal variant: Mobile: Bottom sheet drawer, Desktop: Center dialog
   if (isMobile) {
     return <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-h-[95vh]">

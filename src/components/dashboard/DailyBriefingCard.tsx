@@ -1,10 +1,14 @@
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { useMemo } from "react";
 
+type PropertyFilter =
+  | { mode: "all" }
+  | { mode: "subset"; ids: Set<string> };
+
 interface DailyBriefingCardProps {
   showGreeting?: boolean;
   tasks?: any[]; // Optional tasks to use instead of fetching all tasks
-  selectedPropertyIds?: Set<string>;
+  propertyFilter?: PropertyFilter;
   properties?: any[];
 }
 
@@ -14,34 +18,26 @@ interface DailyBriefingCardProps {
  * Overview of all properties with AI observations
  * Contents sit directly on background (no card styling)
  */
-export function DailyBriefingCard({ showGreeting = true, tasks, selectedPropertyIds, properties = [] }: DailyBriefingCardProps) {
-  // Filter tasks by selected properties
+export function DailyBriefingCard({ showGreeting = true, tasks, propertyFilter = { mode: "all" }, properties = [] }: DailyBriefingCardProps) {
+  // Filter tasks by propertyFilter
   const filteredTasks = useMemo(() => {
-    if (!selectedPropertyIds || selectedPropertyIds.size === 0) {
+    if (propertyFilter.mode === "all") {
       return tasks;
     }
-    // If all properties are selected, return all tasks
-    if (selectedPropertyIds.size === properties.length) {
-      return tasks;
-    }
-    return tasks?.filter(task => task.property_id && selectedPropertyIds.has(task.property_id)) || [];
-  }, [tasks, selectedPropertyIds, properties.length]);
+    return tasks?.filter(task => task.property_id && propertyFilter.ids.has(task.property_id)) || [];
+  }, [tasks, propertyFilter]);
 
   const { focus, insight, context, loading } = useDailyBriefing(filteredTasks);
 
   // Get selected property names
   const selectedPropertyNames = useMemo(() => {
-    if (!selectedPropertyIds || selectedPropertyIds.size === 0) {
-      return [];
-    }
-    // If all properties are selected, return empty array (will show "All Properties")
-    if (selectedPropertyIds.size === properties.length) {
+    if (propertyFilter.mode === "all") {
       return [];
     }
     return properties
-      .filter(p => selectedPropertyIds.has(p.id))
+      .filter(p => propertyFilter.ids.has(p.id))
       .map(p => p.nickname || p.address);
-  }, [selectedPropertyIds, properties]);
+  }, [propertyFilter, properties]);
 
   if (loading) {
     return (

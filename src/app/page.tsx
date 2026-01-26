@@ -4,6 +4,7 @@ import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
+import { CreateTaskConcertina } from "@/components/tasks/CreateTaskConcertina";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -42,19 +43,21 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+  const [showCreateTask, setShowCreateTask] = useState<boolean>(false);
+  
+  // Property filter state - explicit "all" mode instead of inferring from Set size
+  type PropertyFilter =
+    | { mode: "all" }
+    | { mode: "subset"; ids: Set<string> };
+  
+  const [propertyFilter, setPropertyFilter] = useState<PropertyFilter>({
+    mode: "all",
+  });
   
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
   const { weather } = useDailyBriefing();
-
-  // Initialize selectedPropertyIds with all properties when properties load
-  useEffect(() => {
-    if (properties.length > 0 && selectedPropertyIds.size === 0) {
-      setSelectedPropertyIds(new Set(properties.map(p => p.id)));
-    }
-  }, [properties, selectedPropertyIds.size]);
 
   // Centralized aggregation: Calculate stats once at Dashboard level
   const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
@@ -122,15 +125,28 @@ export default function Dashboard() {
 
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= LG_BREAKPOINT);
+      const isLarge = window.innerWidth >= LG_BREAKPOINT;
+      setIsLargeScreen(isLarge);
+      // Automatically open Create Task when screen is wide enough
+      if (isLarge && !showCreateTask) {
+        setShowCreateTask(true);
+      }
+      // Close Create Task when screen becomes too small
+      if (!isLarge && showCreateTask) {
+        setShowCreateTask(false);
+      }
     };
     
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
+  }, [showCreateTask]);
 
   const handleTaskClick = (taskId: string) => {
+    // If Create Task is open, close it first
+    if (showCreateTask) {
+      setShowCreateTask(false);
+    }
     setSelectedItem({ type: 'task', id: taskId });
   };
 
@@ -175,21 +191,60 @@ export default function Dashboard() {
 
   const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
 
-  // Render third column content - only when item is selected on large screens
-  const thirdColumnContent = isLargeScreen && selectedItem ? (
-    selectedItem.type === 'task' ? (
-      <TaskDetailPanel 
-        taskId={selectedItem.id} 
-        onClose={handleClosePanel}
-        variant="column"
-      />
-    ) : (
-      <MessageDetailPanel 
-        messageId={selectedItem.id} 
-        onClose={handleClosePanel}
-        variant="column"
-      />
-    )
+  // Calculate third column width and content
+  // Minimum 250px for concertina, 500px for task detail
+  const hasThirdColumnContent = isLargeScreen && (showCreateTask || selectedItem);
+  const thirdColumnWidth = useMemo(() => {
+    if (!hasThirdColumnContent) return 500; // Default
+    // If both Create Task and Task Detail are shown, need more space
+    if (showCreateTask && selectedItem) {
+      return 500; // Enough for both stacked
+    }
+    // If only Create Task (concertina), minimum 250px
+    if (showCreateTask) {
+      return 250;
+    }
+    // If only Task Detail, default 500px
+    return 500;
+  }, [showCreateTask, selectedItem, hasThirdColumnContent]);
+
+  // Render third column content - Create Task concertina and/or Task Detail
+  const thirdColumnContent = hasThirdColumnContent ? (
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Create Task Concertina - shown when open */}
+      {showCreateTask && (
+        <div className="flex-shrink-0">
+          <CreateTaskConcertina
+            open={showCreateTask}
+            onOpenChange={setShowCreateTask}
+            onTaskCreated={(taskId) => {
+              setShowCreateTask(false);
+              // Optionally open the created task
+              // setSelectedItem({ type: 'task', id: taskId });
+            }}
+          />
+        </div>
+      )}
+      
+      {/* Task Detail Panel - shown below Create Task or alone */}
+      {selectedItem && (
+        <div className={showCreateTask ? "flex-1 min-h-0 border-t border-border overflow-hidden" : "flex-1 min-h-0 overflow-hidden"}>
+          {selectedItem.type === 'task' ? (
+            <TaskDetailPanel 
+              taskId={selectedItem.id} 
+              onClose={handleClosePanel}
+              variant="column"
+            />
+          ) : (
+            <MessageDetailPanel 
+              messageId={selectedItem.id} 
+              onClose={handleClosePanel}
+              variant="column"
+            />
+          )}
+        </div>
+      )}
+    </div>
   ) : undefined;
 
   // Primary color for dashboard header (from design system: #8EC9CE)
@@ -234,8 +289,8 @@ export default function Dashboard() {
             urgentCount={urgentCount}
             overdueCount={overdueCount}
             onFilterClick={handleFilterClick}
-            selectedPropertyIds={selectedPropertyIds}
-            onPropertySelectionChange={setSelectedPropertyIds}
+            propertyFilter={propertyFilter}
+            onPropertyFilterChange={setPropertyFilter}
           />
         }
         rightColumn={
@@ -250,10 +305,12 @@ export default function Dashboard() {
             onTabChange={setActiveTab}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
-            selectedPropertyIds={selectedPropertyIds}
+            propertyFilter={propertyFilter}
+            onCreateTaskClick={() => setShowCreateTask(true)}
           />
         }
         thirdColumn={thirdColumnContent}
+        thirdColumnWidth={thirdColumnWidth}
       />
       
       {/* Detail Panel - Modal variant for smaller screens */}

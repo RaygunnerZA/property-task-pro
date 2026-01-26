@@ -31,14 +31,14 @@ function PropertyIconChip({ property }: { property: any }) {
   
   return (
     <div
-      className="inline-flex items-center justify-center rounded-[146px] border-0"
+      className="inline-flex items-center justify-center rounded-[8px] border-0"
       style={{
         backgroundColor: iconColor,
         width: '24px',
         height: '24px',
       }}
     >
-      <IconComponent className="h-4 w-4 text-white" />
+      <IconComponent className="h-3.5 w-3.5 text-white" />
     </div>
   );
 }
@@ -64,7 +64,7 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
         return (
           <div
             key={property?.id || index}
-            className="inline-flex items-center justify-center rounded-[146px] border-0 relative"
+            className="inline-flex items-center justify-center rounded-[8px] border-0 relative"
             style={{
               backgroundColor: iconColor,
               width: '24px',
@@ -73,7 +73,7 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
               zIndex,
             }}
           >
-            <IconComponent className="h-4 w-4 text-white" />
+            <IconComponent className="h-3.5 w-3.5 text-white" />
           </div>
         );
       })}
@@ -295,18 +295,18 @@ function TaskCardComponent({
               <PropertyIconChips properties={[property]} />
             )}
             {spaces.length > 0 && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+              <Badge variant="neutral" size="sm" className="font-mono uppercase h-[24px]">
                 {spaces[0].name}
               </Badge>
             )}
             {t.due_at && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
+              <Badge variant="neutral" size="sm" className="flex items-center gap-1 font-mono h-[24px]">
                 <Clock className="h-3 w-3" />
                 {formatTaskDate(t.due_at)}
               </Badge>
             )}
             {teams.length > 0 && teams.map((team: any) => (
-              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+              <Badge key={team.id} variant="neutral" size="sm" className="font-mono uppercase h-[24px]">
                 {team.name}
               </Badge>
             ))}
@@ -398,7 +398,7 @@ function TaskCardComponent({
         {/* Theme/Category chip - overlays the thumbnail */}
         {themes.length > 0 && (
           <div className="absolute bottom-2 left-2 z-10">
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+            <Badge variant="neutral" size="sm" className="font-mono uppercase h-[24px]">
               {themes[0].name}
             </Badge>
           </div>
@@ -464,18 +464,18 @@ function TaskCardComponent({
             <PropertyIconChips properties={[property]} />
           )}
           {spaces.length > 0 && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+            <Badge variant="neutral" size="sm" className="font-mono uppercase h-[24px]">
               {spaces[0].name}
             </Badge>
           )}
           {t.due_at && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
+            <Badge variant="neutral" size="sm" className="flex items-center gap-1 font-mono h-[24px]">
               <Clock className="h-3 w-3" />
               {formatTaskDate(t.due_at)}
             </Badge>
           )}
           {teams.length > 0 && teams.map((team: any) => (
-            <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+            <Badge key={team.id} variant="neutral" size="sm" className="font-mono uppercase h-[24px]">
               {team.name}
             </Badge>
           ))}

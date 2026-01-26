@@ -195,7 +195,7 @@ export function FilterBar({
       onSelect={onClick}
       icon={option.icon}
       color={option.color}
-      className="h-[35px]"
+      className="h-[28px]"
     />
   );
 
@@ -237,7 +237,7 @@ export function FilterBar({
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
-            "flex items-center gap-2 flex-nowrap min-w-max",
+            "flex items-center gap-[6px] flex-nowrap min-w-max",
             getAnimationClass()
           )}
         >
@@ -247,7 +247,7 @@ export function FilterBar({
               {/* #region agent log */}
               {(() => {
                 try {
-                  const funnelEl = <Funnel className="h-[18px] w-[18px] text-foreground" />;
+                  const funnelEl = <Funnel className="h-[14px] w-[14px] text-foreground" />;
                   debugLog({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
                   return (
                     <button
@@ -255,13 +255,13 @@ export function FilterBar({
                       onClick={handleFilterByClick}
                       className={cn(
                         "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
-                        "font-mono text-[13px] uppercase tracking-wider",
+                        "font-mono text-[11px] uppercase tracking-wider",
                         "select-none cursor-pointer transition-all duration-150",
                         "bg-background",
                         "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                         "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
                       )}
-                      style={{ paddingLeft: '9px', paddingRight: '11px' }}
+                      style={{ paddingLeft: '9px', paddingRight: '11px', height: '28px' }}
                     >
                       {funnelEl}
                       <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
@@ -296,8 +296,8 @@ export function FilterBar({
                   key={group.id}
                   onClick={() => handleCategoryClick(group.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] flex-shrink-0",
-                    "font-mono text-[13px] uppercase tracking-wide",
+                    "inline-flex items-center gap-1.5 px-2 py-2 rounded-[8px] flex-shrink-0",
+                    "font-mono text-[11px] uppercase tracking-wide",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}

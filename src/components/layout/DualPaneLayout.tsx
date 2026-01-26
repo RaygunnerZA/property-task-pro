@@ -4,6 +4,7 @@ interface DualPaneLayoutProps {
   leftColumn: ReactNode;
   rightColumn: ReactNode;
   thirdColumn?: ReactNode; // Optional third column for task details on desktop
+  thirdColumnWidth?: number; // Width of third column in pixels (default: 500px, minimum: 250px)
 }
 
 /**
@@ -17,13 +18,15 @@ interface DualPaneLayoutProps {
  * 
  * Desktop (lg+): CSS Grid with conditional columns
  *   - Without third column: [335px minmax(450px, 800px)]
- *   - With third column: [335px 799px 500px]
+ *   - With third column: [335px 799px {thirdColumnWidth}px]
  *   - Left: 335px fixed (Calendar + Properties)
  *   - Middle: Flexible width (Task Tabs)
- *   - Right: 500px fixed (Task Details) - only shown when thirdColumn prop provided
+ *   - Right: Dynamic width (Task Details/Create Task) - only shown when thirdColumn prop provided
  */
-export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPaneLayoutProps) {
+export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, thirdColumnWidth = 500 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
+  // Ensure minimum width of 250px
+  const effectiveWidth = Math.max(250, thirdColumnWidth);
 
   return (
     <div className="min-h-screen">
@@ -36,7 +39,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       {/* Desktop: Two-column layout (md+), shown when screen is md-lg */}
       <div className="hidden md:grid md:grid-cols-[335px_1fr] lg:hidden min-h-screen">
         {/* Left Column: Fixed 335px, sticky on scroll */}
-        <div className="border-r border-border h-screen sticky top-0">
+        <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 
@@ -48,14 +51,15 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
 
       {/* Desktop: Conditional three-column layout (lg+) */}
       <div 
-        className={`hidden lg:grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out ${
-          hasThirdColumn 
-            ? 'lg:grid-cols-[335px_799px_500px]' 
-            : 'lg:grid-cols-[335px_minmax(450px,_800px)]'
-        }`}
+        className="hidden lg:grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out"
+        style={{
+          gridTemplateColumns: hasThirdColumn 
+            ? `335px 799px ${effectiveWidth}px` 
+            : '335px minmax(450px, 800px)'
+        }}
       >
         {/* Left Column: Fixed 335px, sticky on scroll */}
-        <div className="border-r border-border h-screen sticky top-0">
+        <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 
@@ -64,7 +68,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
           {rightColumn}
         </div>
 
-        {/* Third Column: Fixed 500px (Task Details) - only shown when thirdColumn prop provided */}
+        {/* Third Column: Dynamic width (Task Details/Create Task) - only shown when thirdColumn prop provided */}
         {hasThirdColumn && (
           <div className="overflow-y-auto">
             {thirdColumn}

@@ -8,13 +8,15 @@ import { useSpaces } from './useSpaces';
 import { useTeams } from './useTeams';
 import { useOrgMembers } from './useOrgMembers';
 import { useCategories } from './useCategories';
+import { usePropertiesQuery } from './usePropertiesQuery';
 import { useDataContext } from '@/contexts/DataContext';
 import { generateChipSuggestions } from '@/services/ai/chipSuggestionEngine';
 import { 
   ChipSuggestionContext, 
   ChipSuggestionResult,
   SuggestedChip,
-  GhostGroup
+  GhostGroup,
+  GhostCategory
 } from '@/types/chip-suggestions';
 
 interface UseChipSuggestionsOptions {
@@ -55,6 +57,7 @@ export function useChipSuggestions(
   const { teams } = useTeams();
   const { members } = useOrgMembers();
   const { categories } = useCategories();
+  const { data: properties = [] } = usePropertiesQuery();
   
   // Track if we should process
   const shouldProcess = debouncedDescription.length >= minDescriptionLength;
@@ -88,7 +91,14 @@ export function useChipSuggestions(
         categories: categories.map(c => ({
           id: c.id,
           name: c.name
-        }))
+        })),
+        properties: properties.map(p => ({
+          id: p.id,
+          name: p.name,
+          nickname: p.nickname,
+          address: p.address
+        })),
+        assets: [] // Assets are loaded per-property in CreateTaskModal, not here
       };
       
       const suggestions = await generateChipSuggestions(
@@ -98,7 +108,8 @@ export function useChipSuggestions(
           selectedSpaceIds: context.selectedSpaceIds,
           selectedPersonId: context.selectedPersonId,
           selectedTeamIds: context.selectedTeamIds,
-          imageOcrText: context.imageOcrText
+          imageOcrText: context.imageOcrText,
+          originalText: context.description // Pass original text for person detection (capitalization preserved)
         },
         entities
       );

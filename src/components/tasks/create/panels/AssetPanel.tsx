@@ -66,7 +66,7 @@ export function AssetPanel({
     try {
       let query = supabase
         .from('assets')
-        .select('id, name')
+        .select('id, serial')
         .eq('org_id', orgId)
         .eq('property_id', propertyId);
 
@@ -77,7 +77,8 @@ export function AssetPanel({
       const { data, error } = await query;
 
       if (error) throw error;
-      setAssets(data || []);
+      // Map serial to name for compatibility
+      setAssets((data || []).map(asset => ({ id: asset.id, name: asset.serial || 'Unnamed Asset' })));
     } catch (err: any) {
       console.error('Error loading assets:', err);
       toast({

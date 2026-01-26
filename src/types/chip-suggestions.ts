@@ -3,7 +3,7 @@
  * Used by the Create Task modal's intelligent chip suggestion engine
  */
 
-export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset' | 'recurrence';
+export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset' | 'recurrence' | 'property';
 
 export type PriorityValue = 'low' | 'medium' | 'high' | 'urgent';
 
@@ -47,6 +47,7 @@ export interface ChipSuggestionContext {
   selectedPersonId?: string;
   selectedTeamIds?: string[];
   imageOcrText?: string;
+  originalText?: string; // Original text with capitalization preserved for person/property detection
 }
 
 export interface ChipSuggestionResult {
@@ -63,6 +64,7 @@ export interface ExtractionPatterns {
   complianceKeywords: string[];
   assetToSpaceMap: Record<string, string[]>;
   datePatterns: RegExp[];
+  assetKeywords: string[];
 }
 
 // Prepared types for future vector/AI integration

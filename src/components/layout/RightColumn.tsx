@@ -2,6 +2,10 @@ import { ReactNode } from "react";
 import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 
+type PropertyFilter =
+  | { mode: "all" }
+  | { mode: "subset"; ids: Set<string> };
+
 interface RightColumnProps {
   children?: ReactNode;
   tasks?: any[];
@@ -14,7 +18,8 @@ interface RightColumnProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
-  selectedPropertyIds?: Set<string>;
+  propertyFilter?: PropertyFilter;
+  onCreateTaskClick?: () => void;
 }
 
 /**
@@ -36,14 +41,15 @@ export function RightColumn({
   onTabChange,
   selectedDate,
   filterToApply,
-  selectedPropertyIds
+  propertyFilter = { mode: "all" },
+  onCreateTaskClick
 }: RightColumnProps) {
   return (
     <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
       {/* Daily Briefing Card at the top */}
       <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px] h-[152px]">
         <DailyBriefingCard 
-          selectedPropertyIds={selectedPropertyIds}
+          propertyFilter={propertyFilter}
           properties={properties}
         />
       </div>
@@ -62,6 +68,8 @@ export function RightColumn({
             onTabChange={onTabChange}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
+            propertyFilter={propertyFilter}
+            onCreateTaskClick={onCreateTaskClick}
           />
         )}
       </div>

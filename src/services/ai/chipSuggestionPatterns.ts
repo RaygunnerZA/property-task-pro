@@ -61,9 +61,23 @@ export const extractionPatterns: ExtractionPatterns = {
     /\b(tomorrow)\b/i,
     /\b(next week)\b/i,
     /\b(this week)\b/i,
+    /\b(next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i, // "next wednesday"
     /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
     /\b(\d{1,2}(?:st|nd|rd|th)?)\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
     /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2}(?:st|nd|rd|th)?)\b/i
+  ],
+
+  // Common asset names for detection
+  assetKeywords: [
+    'stove', 'oven', 'cooker', 'fridge', 'refrigerator', 'freezer',
+    'boiler', 'heater', 'radiator', 'thermostat', 'hvac',
+    'sink', 'faucet', 'tap', 'toilet', 'shower', 'bath', 'bathtub',
+    'washing machine', 'dryer', 'dishwasher',
+    'window', 'door', 'gate', 'fence',
+    'roof', 'gutter', 'chimney',
+    'light', 'lamp', 'fixture', 'socket', 'switch', 'outlet',
+    'carpet', 'floor', 'ceiling', 'wall',
+    'appliance', 'equipment', 'machine'
   ]
 };
 
