@@ -148,7 +148,7 @@ export function TaskPanel({
         })
         .slice(0, 25); // Give the schedule tab enough to feel "alive"
     }
-  }, [tasks, selectedDate]);
+  }, [tasks, selectedDate, isDatePinned]);
 
   return (
     <div className="h-full flex flex-col bg-background">
