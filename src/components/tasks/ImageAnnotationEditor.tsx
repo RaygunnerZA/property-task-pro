@@ -704,7 +704,7 @@ export function ImageAnnotationEditor({
 
       // For pin tool, create immediately (single click)
       if (currentTool === "pin") {
-        const newAnnotation: PinAnnotation = {
+        const newAnnotation: Annotation = {
           annotationId: crypto.randomUUID(),
           version: 1,
           type: "pin",
@@ -1168,18 +1168,10 @@ export function ImageAnnotationEditor({
           onTouchMove={handleCanvasTouchMove}
           onTouchEnd={handleCanvasTouchEnd}
           onTouchCancel={handleCanvasTouchEnd}
-          style={{ 
-            imageRendering: "high-quality",
-            touchAction: "none" // Prevent scrolling while drawing
-          }}
-          onClick={(e) => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:canvas-onClick',message:'canvas click event',data:{currentTool},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            e.stopPropagation();
-          }}
           className="max-w-full max-h-full cursor-crosshair"
-          style={{ imageRendering: "high-quality" }}
+          style={{
+            touchAction: "none"
+          }}
         />
       </div>
 
