@@ -36,7 +36,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       {/* Desktop: Two-column layout (md+), shown when screen is md-lg */}
       <div className="hidden md:grid md:grid-cols-[335px_1fr] lg:hidden min-h-screen">
         {/* Left Column: Fixed 335px, sticky on scroll */}
-        <div className="border-r border-border h-screen sticky top-0">
+        <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 
@@ -55,7 +55,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
         }`}
       >
         {/* Left Column: Fixed 335px, sticky on scroll */}
-        <div className="border-r border-border h-screen sticky top-0">
+        <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 

@@ -258,7 +258,7 @@ function TaskCardComponent({
       <div 
         className={cn(
           "task-card-horizontal",
-          "rounded-[8px] bg-card",
+          "rounded-[12px] bg-card",
           "shadow-e1",
           "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
           "overflow-hidden flex flex-row min-h-[80px] relative group",
@@ -378,7 +378,7 @@ function TaskCardComponent({
     <div 
       className={cn(
         "task-card-vertical",
-        "rounded-[8px] bg-card",
+        "rounded-[12px] bg-card",
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex flex-col relative group",

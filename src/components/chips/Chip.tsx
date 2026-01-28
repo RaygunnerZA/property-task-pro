@@ -162,7 +162,7 @@ export function Chip({
       : "bg-background text-muted-foreground",
     role === 'verb'
       ? "" // No shadow for verb chips
-      : "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+      : "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)]",
     className
   );
 

@@ -3,6 +3,7 @@ import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { togglePropertyFilter } from "@/utils/propertyFilter";
 import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -51,12 +52,7 @@ export function LeftColumn({
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
-    () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:53',message:'Initializing selectedPropertyIds',data:{propertiesCount:properties.length,propertyIds:properties.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      return new Set();
-    }
+    () => new Set()
   );
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -69,8 +65,18 @@ export function LeftColumn({
   
   const setSelectedPropertyIds = onPropertySelectionChange || setInternalSelectedPropertyIds;
 
-  // Property filters start as inactive by default (no filters = show all properties)
-  // No auto-selection - users must explicitly click property icons to filter
+  // ALL_PROPERTIES: full list of property IDs (N ≥ 1). Active set never empty; ALL = all active.
+  const ALL_PROPERTY_IDS = useMemo(() => properties.map((p: { id: string }) => p.id), [properties]);
+
+  // When using internal state, initialise to ALL when properties load (never empty).
+  useEffect(() => {
+    if (externalSelectedPropertyIds !== undefined) return;
+    if (properties.length > 0) {
+      setInternalSelectedPropertyIds((prev) =>
+        prev.size === 0 ? new Set(ALL_PROPERTY_IDS) : prev
+      );
+    }
+  }, [ALL_PROPERTY_IDS, properties.length, externalSelectedPropertyIds]);
 
   // Extract task counts from properties_view (properties now have open_tasks_count)
   const taskCounts = useMemo(() => {
@@ -107,15 +113,15 @@ export function LeftColumn({
     castle: Castle,
   } as const;
 
-
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto md:h-screen bg-background flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
+      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
+      style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties Section - Fixed at top */}
-      <div className="flex-shrink-0 border-b border-border w-full">
-        <div className="sticky top-0 z-10 bg-background border-b border-border p-4 pb-3">
+      <div className="flex-shrink-0 w-full">
+        <div className="sticky top-0 z-10 bg-background p-4 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
             <div className="flex items-center gap-1.5">
@@ -137,31 +143,24 @@ export function LeftColumn({
                     const iconName = property.icon_name || "home";
                     const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
                     const iconColor = property.icon_color_hex || "#8EC9CE";
-                    const isActive = selectedPropertyIds.has(property.id);
+                    const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
+                    const isActive = isAllActive || selectedPropertyIds.has(property.id);
                     
                     return (
                       <button
                         key={property.id}
                         onClick={() => {
-                          // #region agent log
-                          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:144',message:'Property icon clicked',data:{propertyId:property.id,isActiveBefore:isActive,selectedPropertyIdsSize:selectedPropertyIds.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                          // #endregion
-                          // Toggle active state
-                          const newSelection = new Set(selectedPropertyIds);
-                          if (isActive) {
-                            newSelection.delete(property.id);
-                          } else {
-                            newSelection.add(property.id);
-                          }
+                          const newSelection = togglePropertyFilter(
+                            property.id,
+                            selectedPropertyIds,
+                            ALL_PROPERTY_IDS
+                          );
                           setSelectedPropertyIds(newSelection);
                           if (onFilterClick) {
-                            // #region agent log
-                            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LeftColumn.tsx:154',message:'Calling onFilterClick',data:{filterId:`filter-property-${property.id}`,propertyId:property.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                            // #endregion
                             onFilterClick(`filter-property-${property.id}`);
                           }
                         }}
-                        className="flex items-center justify-center rounded-[342px] transition-all duration-200 hover:scale-110 active:scale-95"
+                        className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95"
                         style={{
                           width: '35px',
                           height: '35px',
@@ -240,9 +239,9 @@ export function LeftColumn({
 
       {/* Calendar Section - Scrollable */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-        <div 
+        <div
           ref={calendarRef}
-          className="flex-shrink-0 border-b border-border w-full"
+          className="flex-shrink-0 w-full"
         >
           <div className="px-4 pt-4 pb-4 w-full">
             {tasksLoading ? (

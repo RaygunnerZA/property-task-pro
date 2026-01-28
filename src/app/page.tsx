@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/design-system/PageHeader";
 import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 
@@ -45,7 +46,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
-  
+  const tabBeforeCreateTaskRef = useRef<string>("tasks");
+
+  const queryClient = useQueryClient();
+
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
@@ -141,8 +145,21 @@ export default function Dashboard() {
   };
 
   const handleOpenCreateTask = () => {
+    tabBeforeCreateTaskRef.current = activeTab; // Remember current tab so we return to it after close/create
     setSelectedItem(null); // Close any open task detail
     setShowCreateTask(true); // Open create task (draft will be restored automatically if exists)
+  };
+
+  const handleCreateTaskOpenChange = (open: boolean) => {
+    setShowCreateTask(open);
+    if (!open) {
+      setActiveTab(tabBeforeCreateTaskRef.current); // Return to the tab user was on
+    }
+  };
+
+  const handleTaskCreated = () => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    setActiveTab(tabBeforeCreateTaskRef.current); // Stay on / return to same tab after creating
   };
 
   const handleMessageClick = (messageId: string) => {
@@ -191,7 +208,8 @@ export default function Dashboard() {
     <div className="flex flex-col gap-4 p-4">
       <CreateTaskModal
         open={showCreateTask}
-        onOpenChange={setShowCreateTask}
+        onOpenChange={handleCreateTaskOpenChange}
+        onTaskCreated={handleTaskCreated}
         variant="column"
       />
       {selectedItem ? (
@@ -281,7 +299,8 @@ export default function Dashboard() {
       {showCreateTask && !isLargeScreen && (
         <CreateTaskModal
           open={showCreateTask}
-          onOpenChange={setShowCreateTask}
+          onOpenChange={handleCreateTaskOpenChange}
+          onTaskCreated={handleTaskCreated}
           variant="modal"
         />
       )}

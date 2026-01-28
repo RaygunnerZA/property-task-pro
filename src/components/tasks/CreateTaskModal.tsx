@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Plus, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Check } from "lucide-react";
+import { X, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Box, Tag, Users } from "lucide-react";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -50,7 +50,7 @@ import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
-import { TaskContextRow } from "./create/TaskContextRow";
+import { CreateTaskRow } from "./create/CreateTaskRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
@@ -221,18 +221,60 @@ export function CreateTaskModal({
       'space': 'where',
       'asset': 'what',
       'category': 'category',
+      'theme': 'category',
       'date': 'when',
+      'recurrence': 'when',
+      'priority': 'priority',
     };
-    
+
     verbChips.forEach(chip => {
       const section = chipTypeToSection[chip.type];
       if (section && !unresolved.includes(section)) {
         unresolved.push(section);
       }
     });
-    
+
     return unresolved;
   }, [verbChips]);
+
+  // Section order: Who, Where, When, Assets, Priority, Tags, Compliance (authoritative vertical stack)
+  const CREATE_TASK_SECTIONS = useMemo(() => [
+    { id: 'who', instruction: 'Add Person or Team', Icon: User },
+    { id: 'where', instruction: 'Add Property or Space', Icon: MapPin },
+    { id: 'when', instruction: 'Add Due Date', Icon: Calendar },
+    { id: 'what', instruction: 'Add Asset', Icon: Box },
+    { id: 'priority', instruction: 'Add Priority', Icon: AlertTriangle },
+    { id: 'category', instruction: 'Add Tag', Icon: Tag },
+    { id: 'compliance', instruction: 'Add Compliance Rule', Icon: Shield },
+  ] as const, []);
+
+  const chipTypeToSection: Record<string, string> = {
+    person: 'who', team: 'who', space: 'where', date: 'when', recurrence: 'when',
+    asset: 'what', priority: 'priority', category: 'category', theme: 'category', compliance: 'compliance',
+  };
+
+  // Filter fact chips by section
+  const factChipsBySection = useMemo(() => {
+    const bySection: Record<string, SuggestedChip[]> = {};
+    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
+    factChips.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section && bySection[section]) bySection[section].push(chip);
+    });
+    return bySection;
+  }, [factChips, CREATE_TASK_SECTIONS]);
+
+  // Suggested (AI) chips by section — only chips not already in fact chips for that section
+  const suggestedChipsBySection = useMemo(() => {
+    const bySection: Record<string, SuggestedChip[]> = {};
+    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
+    const factIds = new Set(factChips.map(c => c.id));
+    chipSuggestions.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section && bySection[section] && !factIds.has(chip.id)) bySection[section].push(chip);
+    });
+    return bySection;
+  }, [chipSuggestions, factChips, CREATE_TASK_SECTIONS]);
   
   // Helper to generate verb label
   // ADD RESOLUTION RULE: Space and asset chips with blockingRequired && !resolvedEntityId generate "ADD" labels
@@ -596,6 +638,8 @@ export function CreateTaskModal({
     setImages([]);
     setShowAdvanced(false);
     setActiveSection(null);
+    setAppliedChips(new Map());
+    setSelectedChipIds([]);
     // Reset AI-related state
     setAiTitleGenerated("");
     setUserEditedTitle(false);
@@ -1211,119 +1255,106 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* Task Context Row - Resolved context chips + Section Navigation */}
-        <TaskContextRow
-          factChips={factChips}
-          onChipRemove={handleChipRemove}
-          activeSection={activeSection}
-          onSectionClick={(section) => {
-            setActiveSection(section);
-            // Scroll to panel if section is selected
-            if (section) {
-              setTimeout(() => {
-                const panel = document.getElementById(`context-panel-${section}`);
-                panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              }, 100);
-            }
-          }}
-          unresolvedSections={unresolvedSections}
-        />
-
-        {/* Context Panels - Only Visible When Active Section is Selected - Vertical Layout */}
-        {activeSection && (
-          <div className="space-y-6 flex flex-col">
-            {/* Who Panel */}
-            {activeSection === 'who' && (
-              <div id="context-panel-who">
-                <WhoPanel 
-                  assignedUserId={assignedUserId} 
-                  assignedTeamIds={assignedTeamIds} 
-                  onUserChange={setAssignedUserId} 
+        {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
+        <div className="space-y-1 flex flex-col">
+          {CREATE_TASK_SECTIONS.map(({ id, instruction, Icon }) => (
+            <CreateTaskRow
+              key={id}
+              sectionId={id}
+              icon={<Icon className="h-4 w-4 text-muted-foreground" />}
+              instruction={instruction}
+              isActive={activeSection === id}
+              onActivate={() => setActiveSection(id)}
+              factChips={factChipsBySection[id] ?? []}
+              suggestedChips={suggestedChipsBySection[id] ?? []}
+              onChipRemove={handleChipRemove}
+              onSuggestionClick={handleChipSelect}
+              hasUnresolved={unresolvedSections.includes(id)}
+            >
+              {activeSection === id && id === 'who' && (
+                <WhoPanel
+                  assignedUserId={assignedUserId}
+                  assignedTeamIds={assignedTeamIds}
+                  onUserChange={setAssignedUserId}
                   onTeamsChange={setAssignedTeamIds}
                   suggestedPeople={aiResult?.people?.map(p => p.name) || []}
                   pendingInvitations={pendingInvitations}
                   onPendingInvitationsChange={setPendingInvitations}
                   instructionBlock={instructionBlock}
                   onInstructionDismiss={() => setInstructionBlock(null)}
-                  onInviteToOrg={() => {
-                    // TODO: Open invite dialog or navigate to invite page
-                    toast({ title: "Invite functionality coming soon" });
-                  }}
-                  onAddAsContractor={() => {
-                    // TODO: Open contractor creation dialog
-                    toast({ title: "Contractor creation coming soon" });
-                  }}
+                  onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
+                  onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
                 />
-              </div>
-            )}
-
-            {/* Where Panel */}
-            {activeSection === 'where' && (
-              <div id="context-panel-where">
-                <WherePanel 
-                  propertyId={propertyId} 
-                  spaceIds={selectedSpaceIds} 
-                  onPropertyChange={handlePropertyChange} 
+              )}
+              {activeSection === id && id === 'where' && (
+                <WherePanel
+                  propertyId={propertyId}
+                  spaceIds={selectedSpaceIds}
+                  onPropertyChange={handlePropertyChange}
                   onSpacesChange={setSelectedSpaceIds}
                   suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
                   defaultPropertyId={defaultPropertyId}
                   instructionBlock={instructionBlock}
                   onInstructionDismiss={() => setInstructionBlock(null)}
                 />
-              </div>
-            )}
-
-            {/* When Panel */}
-            {activeSection === 'when' && (
-              <div id="context-panel-when">
-                <WhenPanel 
-                  dueDate={dueDate} 
-                  repeatRule={repeatRule} 
-                  onDueDateChange={setDueDate} 
-                  onRepeatRuleChange={setRepeatRule} 
+              )}
+              {activeSection === id && id === 'when' && (
+                <WhenPanel
+                  dueDate={dueDate}
+                  repeatRule={repeatRule}
+                  onDueDateChange={setDueDate}
+                  onRepeatRuleChange={setRepeatRule}
                 />
-              </div>
-            )}
-
-            {/* Priority Panel */}
-            {activeSection === 'priority' && (
-              <div id="context-panel-priority">
-                <PriorityPanel 
-                  priority={priority} 
-                  onPriorityChange={setPriority} 
-                />
-              </div>
-            )}
-
-            {/* Category Panel */}
-            {activeSection === 'category' && (
-              <div id="context-panel-category">
-                <CategoryPanel 
-                  selectedThemeIds={selectedThemeIds} 
+              )}
+              {activeSection === id && id === 'priority' && (
+                <PriorityPanel priority={priority} onPriorityChange={setPriority} />
+              )}
+              {activeSection === id && id === 'category' && (
+                <CategoryPanel
+                  selectedThemeIds={selectedThemeIds}
                   onThemesChange={setSelectedThemeIds}
                   suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
                   instructionBlock={instructionBlock}
                   onInstructionDismiss={() => setInstructionBlock(null)}
                 />
-              </div>
-            )}
-
-            {/* Asset Panel - Only show if property is selected */}
-            {activeSection === 'what' && propertyId && (
-              <div id="context-panel-what">
-                <AssetPanel
-                  propertyId={propertyId}
-                  spaceId={selectedSpaceIds[0]}
-                  selectedAssetIds={selectedAssetIds}
-                  onAssetsChange={setSelectedAssetIds}
-                  suggestedAssets={aiResult?.assets || []}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              </div>
-            )}
-          </div>
-        )}
+              )}
+              {activeSection === id && id === 'what' && (
+                propertyId ? (
+                  <AssetPanel
+                    propertyId={propertyId}
+                    spaceId={selectedSpaceIds[0]}
+                    selectedAssetIds={selectedAssetIds}
+                    onAssetsChange={setSelectedAssetIds}
+                    suggestedAssets={aiResult?.assets || []}
+                    instructionBlock={instructionBlock}
+                    onInstructionDismiss={() => setInstructionBlock(null)}
+                  />
+                ) : (
+                  <span className="text-[11px] font-mono uppercase text-muted-foreground">Select a property first</span>
+                )
+              )}
+              {activeSection === id && id === 'compliance' && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                  <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+                  {isCompliance && (
+                    <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                      <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                        <SelectValue placeholder="Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              )}
+            </CreateTaskRow>
+          ))}
+        </div>
 
 
         {/* Checklist Template */}
