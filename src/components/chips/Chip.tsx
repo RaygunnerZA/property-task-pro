@@ -115,6 +115,9 @@ export function Chip({
   }
 
   const handleClick = () => {
+    // #region agent log
+    if (role === 'suggestion') { fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Chip.tsx:handleClick',message:'Chip suggestion click',data:{label,hasOnSelect:!!onSelect},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{}); }
+    // #endregion
     // Filter chips: toggle on/off
     if (canToggle && onSelect) {
       onSelect();
@@ -181,13 +184,15 @@ export function Chip({
       // AI-pre-filled fact chips: more settled and passive (reduced contrast ~15%, no inner highlight, softer text)
       aiPreFilled && "bg-card/92 text-foreground/85",
       // Fact chips are always "active" (committed data) - no hover toggle
-      "cursor-default"
+      "cursor-default",
+      // Expand right on hover to reveal X (padding animates via base transition-all)
+      "overflow-visible pr-2 hover:pr-6"
     ),
     suggestion: cn(
       hasDottedBorder && "border border-dashed border-muted-foreground/30 bg-transparent",
       selected && "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] border-transparent",
-      // Suggestion chips - lighter text weight, readable before clickable
-      !selected && "text-primary/70 font-normal opacity-85"
+      // Suggestion chips - lighter text weight, 100% opaque
+      !selected && "text-primary font-normal opacity-100"
     ),
     status: cn(
       color 
@@ -224,15 +229,17 @@ export function Chip({
         "truncate max-w-[120px] flex-1",
         role === 'suggestion' && "font-normal" // Lighter text weight for suggestions
       )}>{label}</span>
-      {/* For fact chips, show X only on hover (right aligned) */}
+      {/* For fact chips, show X only on hover; position absolute so it doesn't reserve space until chip expands on hover */}
       {canRemove && onRemove && role === 'fact' && (
-        <button
-          type="button"
-          onClick={handleRemove}
-          className="ml-0.5 text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity flex-shrink-0"
-        >
-          <X className="h-3 w-3" />
-        </button>
+        <span className="absolute right-2 top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto">
+          <button
+            type="button"
+            onClick={handleRemove}
+            className="text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 -m-0.5 inline-flex items-center justify-center"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
       )}
       {/* For filter chips, show X always when selected */}
       {canRemove && onRemove && role === 'filter' && selected && (
@@ -257,10 +264,9 @@ export function Chip({
             rx="5"
             ry="5"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+            stroke="white"
+            strokeWidth="2"
             strokeDasharray="2 2"
-            opacity="0.3"
           />
         </svg>
       )}

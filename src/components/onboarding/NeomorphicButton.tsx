@@ -11,7 +11,8 @@ export function NeomorphicButton({
   children,
   className = "",
   disabled,
-  ...props
+  style: styleProp,
+  ...rest
 }: NeomorphicButtonProps) {
   const baseStyles = "w-full px-6 py-3 rounded-[5px] font-medium transition-all duration-150 ease-out relative";
 
@@ -19,7 +20,7 @@ export function NeomorphicButton({
     primary: cn(
       "text-white",
       !disabled && "neo-surface",
-      "disabled:opacity-50 disabled:cursor-not-allowed"
+      "disabled:opacity-100 disabled:cursor-not-allowed"
     ),
     secondary: cn(
       "bg-transparent text-foreground",
@@ -53,10 +54,11 @@ export function NeomorphicButton({
       className={cn(baseStyles, variantStyles[variant], className)}
       style={{
         boxShadow: variantShadows[variant],
-        backgroundColor: variant === "primary" ? "#FF6B6B" : undefined,
+        backgroundColor: variant === "primary" ? "#8EC9CE" : undefined,
+        ...styleProp,
       }}
       disabled={disabled}
-      {...props}
+      {...rest}
     >
       {children}
     </button>

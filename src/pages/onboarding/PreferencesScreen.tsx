@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
@@ -56,13 +56,14 @@ export default function PreferencesScreen() {
   );
 
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Set your preferences"
           subtitle="Customize your Filla experience"
+          showLogout={false}
         />
 
         <div className="space-y-6">

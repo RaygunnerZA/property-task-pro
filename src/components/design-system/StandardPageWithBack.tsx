@@ -89,7 +89,7 @@ export function StandardPageWithBack({
             <div className="flex items-center gap-3 min-w-0 flex-1">
               {icon && <span className="icon-primary shrink-0">{icon}</span>}
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold text-foreground leading-tight truncate">{title}</h1>
+                <h1 className="text-2xl font-semibold text-foreground leading-tight truncate heading-l">{title}</h1>
                 {subtitle && (
                   <p className="text-sm text-muted-foreground mt-1 truncate">{subtitle}</p>
                 )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
@@ -85,12 +85,13 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Check your email"
+          showLogout={false}
           subtitle={`We sent a verification link to ${email}`}
           showBack
         />

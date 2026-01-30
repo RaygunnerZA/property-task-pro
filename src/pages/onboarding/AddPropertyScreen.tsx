@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { IconColorPicker } from "@/components/design-system/IconColorPicker";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
@@ -202,10 +203,15 @@ export default function AddPropertyScreen() {
       // Use propertyNickname as address if propertyAddress is empty
       const finalAddress = propertyAddress?.trim() || propertyNickname.trim() || "No address provided";
 
-      // Use RPC function to create property (bypasses RLS with SECURITY DEFINER)
+      // Use RPC function to create property (bypasses RLS with SECURITY DEFINER).
+      // Pass all 6 params so PostgreSQL picks the single overload (avoids ambiguity with 2-param version).
       const { data: newProperty, error } = await supabase.rpc('create_property_v2', {
         p_org_id: orgId,
-        p_address: finalAddress
+        p_address: finalAddress,
+        p_nickname: propertyNickname?.trim() || null,
+        p_icon_name: null,
+        p_icon_color_hex: null,
+        p_thumbnail_url: null,
       });
 
       if (error) {
@@ -242,139 +248,103 @@ export default function AddPropertyScreen() {
 
   const SelectedIcon = PROPERTY_ICONS.find(i => i.name === propertyIcon)?.icon || Building2;
 
+  const stepIcon = (
+    <div
+      className="p-4 rounded-2xl transition-all duration-300"
+      style={{
+        backgroundColor: propertyIconColor,
+        boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
+      }}
+    >
+      <SelectedIcon className="w-10 h-10 text-white" />
+    </div>
+  );
+
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={3} total={6} />
         
+        {/* Property icon above title, left-aligned */}
+        <div className="flex justify-center items-center mt-[33px] mb-[10px]">
+          {stepIcon}
+        </div>
+
         <OnboardingHeader
           title={hasExistingProperties ? "Add another property" : "Add your first property"}
           subtitle={hasExistingProperties 
             ? "You already have properties. Add another or skip to continue."
             : "You can always add more later"
           }
+          showLogout={false}
         />
 
-        {/* Icon Preview */}
-        <div className="mb-6 flex justify-center">
-          <div 
-            className="p-4 rounded-2xl transition-all duration-300"
-            style={{
-              backgroundColor: propertyIconColor,
-              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
+        {/* Icon + Colour selector (magnetic horizontal scroll) */}
+        <div className="mb-6">
+          <IconColorPicker
+            value={{ icon: propertyIcon, color: propertyIconColor }}
+            onChange={({ icon, color }) => {
+              setPropertyIcon(icon);
+              setPropertyIconColor(color);
             }}
-          >
-            <SelectedIcon className="w-10 h-10 text-white" />
-          </div>
-        </div>
-
-        {/* Icon Selection */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-muted-foreground mb-2">
-            Choose an icon
-          </label>
-          <div className="flex justify-center gap-3">
-            {PROPERTY_ICONS.map(({ name, icon: Icon }) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => setPropertyIcon(name)}
-                className={`p-3 rounded-xl transition-all duration-200 ${
-                  propertyIcon === name 
-                    ? "bg-white shadow-lg scale-110" 
-                    : "bg-input hover:bg-card"
-                }`}
-                style={{
-                  boxShadow: propertyIcon === name 
-                    ? "2px 2px 6px rgba(0,0,0,0.15), -1px -1px 4px rgba(255,255,255,0.5)"
-                    : "inset 1px 1px 2px rgba(0,0,0,0.05)"
-                }}
-              >
-<Icon
-  className={`w-5 h-5 ${propertyIcon === name ? "" : "text-muted-foreground"}`}
-  style={
-    propertyIcon === name
-      ? { color: propertyIconColor }
-      : undefined
-  }
-/>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Color Selection */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-muted-foreground mb-2">
-            Choose a color
-          </label>
-          <div className="flex justify-center gap-3">
-            {PROPERTY_COLORS.map((color) => (
-              <button
-                key={color}
-                type="button"
-                onClick={() => setPropertyIconColor(color)}
-                className={`w-8 h-8 rounded-full transition-all duration-200 ${
-                  propertyIconColor === color ? "scale-125 ring-2 ring-offset-2 ring-gray-400" : ""
-                }`}
-                style={{
-                  backgroundColor: color,
-                  boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 3px rgba(255,255,255,0.3)"
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Image Upload */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-muted-foreground mb-2">
-            Property photo (optional)
-          </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageSelect}
-            className="hidden"
+            icons={PROPERTY_ICONS}
+            colors={PROPERTY_COLORS}
           />
-          {imagePreview ? (
-            <div className="relative rounded-xl overflow-hidden">
-              <img 
-                src={imagePreview} 
-                alt="Property preview" 
-                className="w-full h-32 object-cover"
-              />
+        </div>
+
+        {/* Property name + Property photo (optional) on same row */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div>
+            <NeomorphicInput
+              label="Property name"
+              placeholder="The Grand Hotel"
+              value={propertyNickname}
+              onChange={(e) => setPropertyNickname(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#6D7480] mb-2 text-center">
+              Property photo (optional)
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageSelect}
+              className="hidden"
+            />
+            {imagePreview ? (
+              <div className="relative rounded-xl overflow-hidden min-h-[48px] h-[48px]">
+                <img 
+                  src={imagePreview} 
+                  alt="Property preview" 
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={removeImage}
+                  className="absolute top-1 right-1 p-1 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                >
+                  <X className="w-3 h-3 text-gray-600" />
+                </button>
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={removeImage}
-                className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-[48px] rounded-xl border-2 border-dashed border-[#D1CCC4] hover:border-[#FF6B6B] transition-colors flex items-center justify-center gap-2"
+                style={{
+                  background: "rgba(255,255,255,0.5)"
+                }}
               >
-                <X className="w-4 h-4 text-gray-600" />
+                <Upload className="w-5 h-5 text-[#6D7480]" />
+                <span className="text-sm text-[#6D7480]">Upload photo</span>
               </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-4 rounded-xl border-2 border-dashed border-[#D1CCC4] hover:border-[#FF6B6B] transition-colors flex flex-col items-center gap-2"
-              style={{
-                background: "rgba(255,255,255,0.5)"
-              }}
-            >
-              <Upload className="w-6 h-6 text-[#6D7480]" />
-              <span className="text-sm text-[#6D7480]">Tap to upload photo</span>
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">
-          <NeomorphicInput
-            label="Property name"
-            placeholder="The Grand Hotel"
-            value={propertyNickname}
-            onChange={(e) => setPropertyNickname(e.target.value)}
-          />
 
           <NeomorphicInput
             label="Address (Optional)"

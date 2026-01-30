@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
@@ -129,13 +129,14 @@ export default function InviteTeamScreen() {
   };
 
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Invite your team"
           subtitle="Collaborate with colleagues"
+          showLogout={false}
         />
 
         <div className="space-y-6">

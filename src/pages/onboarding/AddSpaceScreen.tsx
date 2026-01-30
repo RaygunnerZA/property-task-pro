@@ -1,19 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { ExpandableFactChip } from "@/components/chips/ExpandableFactChip";
+import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
+import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
-import { X, Plus, Layers } from "lucide-react";
-
-const DEFAULT_SUGGESTIONS = ["Living Room", "Kitchen", "Bedroom 1", "Bedroom 2", "Bathroom", "Office"];
+import { Plus, Layers } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function AddSpaceScreen() {
   const navigate = useNavigate();
@@ -23,10 +31,16 @@ export default function AddSpaceScreen() {
   const [loading, setLoading] = useState(false);
   const [spaceName, setSpaceName] = useState("");
   const [spaces, setSpaces] = useState<string[]>([]);
+  const [subSpacesByParent, setSubSpacesByParent] = useState<Record<string, string[]>>({});
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [propertyName, setPropertyName] = useState<string | null>(null);
   const [hasExistingSpaces, setHasExistingSpaces] = useState(false);
   const [hasProperties, setHasProperties] = useState(false);
+  const [copyModal, setCopyModal] = useState<{
+    baseName: string;
+    suggestedName: string;
+  } | null>(null);
+  const [copyModalInput, setCopyModalInput] = useState("");
 
   useEffect(() => {
     if (!orgLoading && orgId) {
@@ -148,7 +162,24 @@ export default function AddSpaceScreen() {
   };
 
   const handleRemoveSpace = (index: number) => {
+    const removed = spaces[index];
     setSpaces(spaces.filter((_, i) => i !== index));
+    if (removed) {
+      const key = removed.toLowerCase().trim();
+      setSubSpacesByParent((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  const handleAddSubSpace = (parentSpace: string, subSpaceName: string) => {
+    const key = parentSpace.toLowerCase().trim();
+    setSubSpacesByParent((prev) => ({
+      ...prev,
+      [key]: [...(prev[key] ?? []), subSpaceName],
+    }));
   };
 
   const handleAddSuggestion = (suggestion: string) => {
@@ -160,6 +191,53 @@ export default function AddSpaceScreen() {
       return;
     }
     setSpaces([...spaces, suggestion]);
+  };
+
+  const allSpaceNames = useMemo(
+    () => [...spaces, ...Object.values(subSpacesByParent).flat()],
+    [spaces, subSpacesByParent]
+  );
+
+  const getSuggestedCopyName = (baseName: string): string => {
+    const base = baseName.trim();
+    const baseLower = base.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`^${baseLower}(?:\\s+(\\d+))?$`, "i");
+    let maxNum = 0;
+    for (const name of allSpaceNames) {
+      const m = name.trim().match(re);
+      if (m) {
+        const n = m[1] ? parseInt(m[1], 10) : 1;
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    return `${base} ${maxNum + 1}`;
+  };
+
+  const openCopyModal = (name: string) => {
+    const suggested = getSuggestedCopyName(name);
+    setCopyModal({ baseName: name, suggestedName: suggested });
+    setCopyModalInput(suggested);
+  };
+
+  const closeCopyModal = () => {
+    setCopyModal(null);
+    setCopyModalInput("");
+  };
+
+  const confirmCopySpace = () => {
+    if (!copyModal) return;
+    const trimmed = copyModalInput.trim();
+    if (!trimmed) return;
+    if (allSpaceNames.some((s) => s.toLowerCase().trim() === trimmed.toLowerCase())) {
+      toast.error("Space already added");
+      return;
+    }
+    if (allSpaceNames.length >= 20) {
+      toast.error("Maximum 20 spaces allowed");
+      return;
+    }
+    setSpaces([...spaces, trimmed]);
+    closeCopyModal();
   };
 
   const handleSave = async () => {
@@ -175,11 +253,11 @@ export default function AddSpaceScreen() {
 
     setLoading(true);
     try {
-      // Insert all spaces with org_id from useActiveOrg
-      const spacesToInsert = spaces.map(name => ({
+      const allNames = [...spaces, ...Object.values(subSpacesByParent).flat()];
+      const spacesToInsert = allNames.map((name) => ({
         name,
         org_id: orgId,
-        property_id: propertyId
+        property_id: propertyId,
       }));
 
       const { error } = await supabase
@@ -188,7 +266,7 @@ export default function AddSpaceScreen() {
 
       if (error) throw error;
 
-      toast.success(`${spaces.length} space${spaces.length > 1 ? 's' : ''} added!`);
+      toast.success(`${allNames.length} space${allNames.length > 1 ? "s" : ""} added!`);
       navigate("/onboarding/invite-team");
     } catch (error: any) {
       toast.error(error.message || "Failed to add spaces");
@@ -210,13 +288,14 @@ export default function AddSpaceScreen() {
     }
   };
 
-  // Filter out already-added suggestions
-  const availableSuggestions = DEFAULT_SUGGESTIONS.filter(
-    s => !spaces.some(space => space.toLowerCase() === s.toLowerCase())
+  // Single source of truth: selected spaces. Derived set for fast lookup (card chips disable when selected).
+  const selectedSpacesSet = useMemo(
+    () => new Set(spaces.map((s) => s.toLowerCase().trim())),
+    [spaces]
   );
 
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={getCurrentStep(location.pathname)} />
         
@@ -229,16 +308,9 @@ export default function AddSpaceScreen() {
           />
         )}
         
-        <OnboardingHeader
-          title="Add spaces"
-          subtitle={hasExistingSpaces 
-            ? "You already have spaces. Add more or skip to continue."
-            : "Define areas within your property"
-          }
-        />
-
-        <div className="mb-6 flex justify-center">
-          <div 
+        {/* Spaces icon above title, left-aligned */}
+        <div className="flex justify-center items-center text-center mt-[33px] mb-[33px]">
+          <div
             className="p-4 rounded-2xl"
             style={{
               backgroundColor: "#0EA5E9",
@@ -246,6 +318,30 @@ export default function AddSpaceScreen() {
             }}
           >
             <Layers className="w-10 h-10 text-white" />
+          </div>
+        </div>
+
+        <OnboardingHeader
+          title="Add spaces"
+          subtitle={hasExistingSpaces 
+            ? "You already have spaces. Add more or skip to continue."
+            : "Define areas within your property"
+          }
+          showLogout={false}
+        />
+
+        {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
+        <div className="mb-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+            {ONBOARDING_SPACE_GROUPS.map((group) => (
+              <OnboardingSpaceGroupCard
+                key={group.id}
+                group={group}
+                selectedSpacesSet={selectedSpacesSet}
+                onAddSpace={handleAddSuggestion}
+                onCopySpace={openCopyModal}
+              />
+            ))}
           </div>
         </div>
 
@@ -264,10 +360,9 @@ export default function AddSpaceScreen() {
               type="button"
               onClick={handleAddSpace}
               disabled={!spaceName.trim()}
-              className="px-4 rounded-xl text-white transition-all disabled:opacity-50"
+              className="h-12 w-12 flex-shrink-0 flex items-center justify-center px-4 rounded-xl text-white transition-all disabled:!opacity-100"
               style={{
-                backgroundColor: "#0EA5E9",
-                boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
+                backgroundColor: "#8EC9CE"
               }}
             >
               <Plus className="w-5 h-5" />
@@ -275,51 +370,59 @@ export default function AddSpaceScreen() {
           </div>
         </div>
 
-        {/* Quick add suggestions */}
-        {availableSuggestions.length > 0 && (
-          <div className="mb-6">
-            <p className="text-xs text-[#6D7480] mb-2">Quick add:</p>
-            <div className="flex flex-wrap gap-2">
-              {availableSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => handleAddSuggestion(suggestion)}
-                  className="px-3 py-1.5 text-sm rounded-lg text-[#6D7480] hover:text-[#1C1C1C] transition-colors"
-                  style={{
-                    boxShadow: "2px 2px 4px rgba(0,0,0,0.06), -2px -2px 4px rgba(255,255,255,0.7)"
-                  }}
-                >
-                  + {suggestion}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Copy-space modal: new name (e.g. Bedroom 2), editable or accept */}
+        <Dialog open={!!copyModal} onOpenChange={(open) => !open && closeCopyModal()}>
+          <DialogContent className="max-w-sm gap-3 p-4">
+            <DialogHeader>
+              <DialogTitle className="text-base font-mono uppercase tracking-wide">
+                New space name
+              </DialogTitle>
+            </DialogHeader>
+            <input
+              type="text"
+              value={copyModalInput}
+              onChange={(e) => setCopyModalInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmCopySpace();
+                }
+                if (e.key === "Escape") closeCopyModal();
+              }}
+              placeholder="e.g. Bedroom 2"
+              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wide rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+            <DialogFooter className="gap-2 sm:gap-0">
+              <NeomorphicButton variant="ghost" onClick={closeCopyModal}>
+                Cancel
+              </NeomorphicButton>
+              <NeomorphicButton
+                variant="primary"
+                onClick={confirmCopySpace}
+                disabled={!copyModalInput.trim()}
+                style={{ backgroundColor: "#8EC9CE" }}
+              >
+                Add
+              </NeomorphicButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        {/* Added spaces list */}
+        {/* Your Spaces – expandable fact chips with chevron dropdown (sub-spaces, + Sub-space, X | More) */}
         {spaces.length > 0 && (
           <div className="mb-6">
-            <p className="text-xs text-[#6D7480] mb-2">Spaces to add ({spaces.length}):</p>
+            <p className="text-xs text-[#6D7480] mb-2 font-mono uppercase tracking-wide">Your Spaces</p>
             <div className="flex flex-wrap gap-2">
               {spaces.map((space, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[#1C1C1C] text-sm"
-                  style={{
-                    backgroundColor: "rgba(14, 165, 233, 0.1)",
-                    boxShadow: "inset 1px 1px 2px rgba(0,0,0,0.05)"
-                  }}
-                >
-                  <span>{space}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSpace(index)}
-                    className="ml-1 text-[#6D7480] hover:text-[#FF6B6B] transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <ExpandableFactChip
+                  key={`${space}-${index}`}
+                  label={space}
+                  subSpaces={subSpacesByParent[space.toLowerCase().trim()] ?? []}
+                  onRemove={() => handleRemoveSpace(index)}
+                  onAddSubSpace={(name) => handleAddSubSpace(space, name)}
+                  className="!shadow-none"
+                />
               ))}
             </div>
           </div>
@@ -330,8 +433,9 @@ export default function AddSpaceScreen() {
             variant="primary"
             onClick={handleSave}
             disabled={loading || spaces.length === 0 || !propertyId}
+            style={{ backgroundColor: "#8EC9CE" }}
           >
-            {loading ? "Saving..." : `Save ${spaces.length} Space${spaces.length !== 1 ? 's' : ''}`}
+            {loading ? "Saving..." : "Continue"}
           </NeomorphicButton>
 
           <NeomorphicButton
