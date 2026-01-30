@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Chip } from "@/components/chips/Chip";
@@ -181,6 +181,7 @@ export function FilterBar({
   }, [animationDirection, navigationLevel, selectedCategory]);
 
   // Render chip with animation - now uses unified Chip component
+  // FilterBar chips: 24px height, 11px text, 14x14px icons
   const renderChip = (
     option: FilterOption,
     index: number,
@@ -193,13 +194,14 @@ export function FilterBar({
       label={option.label}
       selected={isSelected}
       onSelect={onClick}
-      icon={option.icon}
+      icon={option.icon ? React.cloneElement(option.icon as React.ReactElement, { className: "h-[14px] w-[14px]" }) : undefined}
       color={option.color}
-      className="h-[35px]"
+      className="h-[24px]"
     />
   );
 
   // Render icon button - now uses unified IconButton component
+  // Updated to 24px to match chip height
   const renderIconButton = (
     icon: React.ReactNode,
     onClick: () => void,
@@ -211,14 +213,14 @@ export function FilterBar({
       icon={icon}
       onClick={onClick}
       active={active}
-      size={35}
+      size={24}
       className={className}
     />
   );
 
   // Render back button
   const renderBackButton = () => renderIconButton(
-    <ArrowLeftToLine className="h-5 w-5 text-foreground" />,
+    <ArrowLeftToLine className="h-[14px] w-[14px] text-foreground" />,
     handleBackClick
   );
 
@@ -231,9 +233,9 @@ export function FilterBar({
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-2 min-h-[35px]", className)}>
+    <div className={cn("flex items-center justify-between gap-2 min-h-[24px]", className)}>
       {/* Single Row Container - horizontally scrollable */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[48px] px-[5px]">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[32px] px-[5px]">
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
@@ -247,21 +249,21 @@ export function FilterBar({
               {/* #region agent log */}
               {(() => {
                 try {
-                  const funnelEl = <Funnel className="h-[18px] w-[18px] text-foreground" />;
+                  const funnelEl = <Funnel className="h-[14px] w-[14px] text-foreground" />;
                   debugLog({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
                   return (
                     <button
                       type="button"
                       onClick={handleFilterByClick}
                       className={cn(
-                        "inline-flex items-center gap-1.5 py-2 rounded-[5px] flex-shrink-0",
-                        "font-mono text-[13px] uppercase tracking-wider",
+                        "inline-flex items-center gap-1.5 py-1 rounded-[8px] flex-shrink-0",
+                        "font-mono text-[11px] uppercase tracking-wider",
                         "select-none cursor-pointer transition-all duration-150",
                         "bg-background",
                         "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                         "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
                       )}
-                      style={{ paddingLeft: '9px', paddingRight: '11px' }}
+                      style={{ paddingLeft: '8px', paddingRight: '10px', height: '24px' }}
                     >
                       {funnelEl}
                       <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
@@ -275,7 +277,7 @@ export function FilterBar({
               {/* FunnelX (Clear filters) - appears when filters are selected (excluding property filters) */}
               {hasNonPropertyFilters && (
                 renderIconButton(
-                  <FunnelX className="h-5 w-5 text-foreground" />,
+                  <FunnelX className="h-[14px] w-[14px] text-foreground" />,
                   handleClearAllFilters
                 )
               )}
@@ -296,8 +298,8 @@ export function FilterBar({
                   key={group.id}
                   onClick={() => handleCategoryClick(group.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] flex-shrink-0",
-                    "font-mono text-[13px] uppercase tracking-wide",
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] flex-shrink-0 h-[24px]",
+                    "font-mono text-[11px] uppercase tracking-wide",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
@@ -309,13 +311,13 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[35px] w-[35px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
-                  <FunnelX className="h-5 w-5" />
+                  <FunnelX className="h-[14px] w-[14px]" />
                 </button>
               )}
             </>
@@ -333,13 +335,13 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[35px] w-[35px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
-                  <FunnelX className="h-5 w-5" />
+                  <FunnelX className="h-[14px] w-[14px]" />
                 </button>
               )}
             </>

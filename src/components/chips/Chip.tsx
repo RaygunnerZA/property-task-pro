@@ -1,3 +1,4 @@
+import React from "react";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
@@ -26,17 +27,57 @@ export interface ChipProps {
 /**
  * Unified Chip Component - Enforces Semantic Roles
  * 
- * Behavior Contract:
- * - filter: Toggleable, removable, colorful (property colors OK), no AI glyph
- * - fact: Not toggleable, removable, neutral only, no AI glyph
- * - suggestion: Not toggleable, not removable, dotted border, AI glyph, lighter contrast
- * - status: Not toggleable, not removable, alert color only, no AI glyph
- * - verb: Not toggleable, not removable, dashed border, orange text, white bg, no shadow, clickable to resolve
+ * CHIP BEHAVIOR CONTRACTS (Defined):
  * 
- * Depth System:
+ * 1. FILTER CHIPS:
+ *    - Toggleable: Click to select/deselect
+ *    - Removable: Show X when selected, click X to remove
+ *    - Colorful: Property colors allowed, status colors allowed
+ *    - No AI glyph: Never show AI indicator
+ *    - Size: 24px height (FilterBar), 11px text, 14x14px icons
+ *    - Usage: FilterBar, selectable options
+ * 
+ * 2. FACT CHIPS:
+ *    - Not toggleable: Cannot be selected/deselected
+ *    - Removable: Show X on hover, click X to remove
+ *    - Neutral only: No colors, neutral styling
+ *    - No AI glyph: Never show AI indicator
+ *    - Usage: Task metadata (resolved entities), context row
+ * 
+ * 3. SUGGESTION CHIPS:
+ *    - Not toggleable: Cannot be selected
+ *    - Not removable: No X button
+ *    - Dotted border: Dashed border when not selected
+ *    - AI glyph: Can show AI indicator at row level
+ *    - Lighter contrast: Softer text for readability
+ *    - Clickable: Click to accept/apply
+ *    - Usage: AI suggestions, ghost categories
+ * 
+ * 4. STATUS CHIPS:
+ *    - Not toggleable: Cannot be selected
+ *    - Not removable: No X button
+ *    - Alert color only: Use status colors (success, warning, danger)
+ *    - No AI glyph: Never show AI indicator
+ *    - Usage: Task status, compliance status
+ * 
+ * 5. VERB CHIPS:
+ *    - Not toggleable: Cannot be selected
+ *    - Not removable: No X button
+ *    - Dashed border: Orange dashed border
+ *    - Orange text: #EB6834 color
+ *    - White bg: No shadow, flat appearance
+ *    - Clickable: Click to resolve (opens relevant panel)
+ *    - Usage: Action intent ("INVITE JAMES", "ADD STOVE")
+ * 
+ * DEPTH SYSTEM:
  * - All chips: Same tactile depth (Level 2)
  * - Selected/active: Pressed depth (Level 3) - momentary only
  * - Never use depth to indicate meaning
+ * 
+ * SIZE STANDARDS:
+ * - FilterBar chips: 24px height, 11px text, 14x14px icons
+ * - Other chips: 24px height, 11px text, 14x14px icons (standardized)
+ * - Corner radius: 8px (standardized)
  */
 export function Chip({
   role,
@@ -99,9 +140,12 @@ export function Chip({
   const isIconOnly = !label || className?.includes('w-[24px]') || className?.includes('w-[35px]') || className?.includes('px-0');
   
   // Determine height based on role and className
-  // Filter chips in FilterBar should be 35px, others default to 24px
-  const isFilterBarChip = role === 'filter' && (className?.includes('h-[35px]') || className?.includes('w-[35px]'));
-  const chipHeight = isFilterBarChip ? "h-[35px]" : "h-[24px]";
+  // Filter chips in FilterBar should be 24px (updated from 35px), others default to 24px
+  const isFilterBarChip = role === 'filter' && (className?.includes('h-[24px]') || className?.includes('h-[35px]') || className?.includes('w-[24px]') || className?.includes('w-[35px]'));
+  const chipHeight = isFilterBarChip ? "h-[24px]" : "h-[24px]"; // All chips default to 24px now
+  
+  // Text size: FilterBar chips use 11px, others use 11px for consistency
+  const textSize = isFilterBarChip ? "text-[11px]" : "text-[11px]";
   
   // Base styles - same for all roles (Level 2: Tactile), except verb (no shadow)
   const baseStyles = cn(
@@ -109,8 +153,9 @@ export function Chip({
     isIconOnly ? "justify-center gap-0" : "gap-1.5",
     "px-2 py-1",
     chipHeight,
-    "rounded-[5px]",
-    "font-mono text-[13px] uppercase tracking-wide",
+    "rounded-[8px]", // Updated from 5px to 8px
+    "font-mono uppercase tracking-wide",
+    textSize,
     "transition-all duration-150 cursor-pointer select-none",
     role === 'verb' 
       ? "bg-white text-muted-foreground"
@@ -160,10 +205,21 @@ export function Chip({
     ? { backgroundColor: color }
     : undefined;
 
+  // Icon size: FilterBar chips use 14x14px, others use default
+  const iconSize = isFilterBarChip ? "h-[14px] w-[14px]" : undefined;
+  
   const chipContent = (
     <>
       {/* No per-chip AI glyphs - only at row level */}
-      {icon && role !== 'suggestion' && role !== 'verb' && <span className="flex-shrink-0">{icon}</span>}
+      {icon && role !== 'suggestion' && role !== 'verb' && (
+        <span className="flex-shrink-0">
+          {React.isValidElement(icon) && iconSize
+            ? React.cloneElement(icon as React.ReactElement<any>, { 
+                className: cn(iconSize, (icon as React.ReactElement<any>).props?.className) 
+              })
+            : icon}
+        </span>
+      )}
       <span className={cn(
         "truncate max-w-[120px] flex-1",
         role === 'suggestion' && "font-normal" // Lighter text weight for suggestions

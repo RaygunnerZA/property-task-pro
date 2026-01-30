@@ -2,11 +2,25 @@
  * Resolution Pipeline
  * Deterministic 4-step resolution for AI-suggested entities
  * 
+ * CHIP RESOLUTION BEHAVIOR (Defined):
+ * 
  * Steps:
- * 1. Exact match - Same ID → auto-resolve
- * 2. Fuzzy match - Case, plural, nickname, alias → auto-resolve
- * 3. Ambiguous - Multiple candidates → inline ask
- * 4. Missing - Entity doesn't exist → must create
+ * 1. Exact match - Same ID → auto-resolve (confidence: 1.0)
+ * 2. Fuzzy match - Case, plural, nickname, alias → auto-resolve (confidence: 0.85)
+ * 3. Ambiguous - Multiple candidates → requires user choice (confidence: 0.7)
+ * 4. Missing - Entity doesn't exist → requires creation (confidence: 0.0)
+ * 
+ * RESOLUTION RULES:
+ * - Verb chips (blockingRequired && !resolvedEntityId) must trigger panel opening
+ * - "Add" chips (space/asset) open where/what panel for entity creation
+ * - "Invite" chips (person) open who panel for person assignment/invitation
+ * - Resolved chips become fact chips (metadata)
+ * - Unresolved chips remain verb chips until resolved or removed
+ * 
+ * ENTITY MATCHING:
+ * - Exact: ID match or exact name match (case-insensitive)
+ * - Fuzzy: Levenshtein distance < 20%, contains match, plural variations
+ * - Context-aware: Filter by property_id for spaces/assets when available
  */
 
 import { SuggestedChip, ChipType, EntityType, ResolutionSource } from '@/types/chip-suggestions';

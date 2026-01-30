@@ -78,7 +78,7 @@ export const ContextResolver: React.FC<ContextResolverProps> = ({
             type="button"
             onClick={onAdd}
             className={cn(
-              'h-5 w-5 rounded flex items-center justify-center shrink-0',
+              'h-5 w-5 rounded-[8px] flex items-center justify-center shrink-0',
               'bg-background shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]',
               'hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]',
               'transition-all duration-150'
@@ -98,7 +98,7 @@ export const ContextResolver: React.FC<ContextResolverProps> = ({
             type="button"
             onClick={item.onRemove}
             className={cn(
-              'px-2 py-0.5 rounded text-xs font-medium shrink-0',
+              'px-2 py-0.5 rounded-[8px] text-xs font-medium shrink-0',
               'bg-card shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]',
               'text-foreground hover:opacity-80',
               'transition-all duration-150'

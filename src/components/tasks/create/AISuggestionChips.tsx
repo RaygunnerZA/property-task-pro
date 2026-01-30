@@ -228,7 +228,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
               onClick={() => onGhostGroupSelect(group)}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5',
-                'text-[13px] font-medium rounded-[5px]',
+                'text-[13px] font-medium rounded-[8px]',
                 'bg-transparent border border-dashed border-accent/40',
                 'text-accent/70 hover:bg-accent/5 hover:border-accent',
                 'transition-all duration-150',

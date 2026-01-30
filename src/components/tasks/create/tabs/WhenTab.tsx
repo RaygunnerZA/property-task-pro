@@ -90,7 +90,7 @@ export function WhenTab({
                 type="button"
                 onClick={() => setQuickDate(days)}
                 className={cn(
-                  "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase tracking-wide transition-all",
+                  "px-3 py-1.5 rounded-[8px] font-mono text-xs uppercase tracking-wide transition-all",
                   "select-none cursor-pointer",
                   isActive
                     ? // Active: Pressed neumorphic with off-white fill
@@ -164,7 +164,7 @@ export function WhenTab({
         </div>
 
         {enableRepeat && (
-          <div className="grid grid-cols-2 gap-3 p-3 rounded-[5px] bg-muted/50 shadow-engraved">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-[8px] bg-muted/50 shadow-engraved">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Frequency</Label>
               <Select 

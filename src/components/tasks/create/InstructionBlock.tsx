@@ -60,7 +60,7 @@ export function InstructionBlock({
             key={idx}
             type="button"
             onClick={button.onClick}
-            className="w-full text-left px-3 py-2 rounded-[5px] bg-background hover:bg-card transition-colors shadow-sm border border-concrete/20 group"
+            className="w-full text-left px-3 py-2 rounded-[8px] bg-background hover:bg-card transition-colors shadow-sm border border-concrete/20 group"
           >
             <div className="font-medium text-sm text-foreground mb-0.5">
               {button.label}

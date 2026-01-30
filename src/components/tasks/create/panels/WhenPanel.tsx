@@ -131,7 +131,7 @@ export function WhenPanel({
                 type="button"
                 onClick={() => setQuickDate(days)}
                 className={cn(
-                  "px-3 py-1.5 rounded-[5px] font-mono text-xs uppercase tracking-wide transition-all",
+                  "px-3 py-1.5 rounded-[8px] font-mono text-xs uppercase tracking-wide transition-all",
                   "select-none cursor-pointer",
                   isActive
                     ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
@@ -183,7 +183,7 @@ export function WhenPanel({
           </div>
 
           {enableRepeat && (
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-[5px] bg-muted/50 shadow-engraved">
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-[8px] bg-muted/50 shadow-engraved">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Frequency</label>
                 <Select 

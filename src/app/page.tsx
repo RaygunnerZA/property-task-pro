@@ -188,7 +188,7 @@ export default function Dashboard() {
 
   // Render third column content - Create Task accordion + details below (lg+)
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 p-4">
       <CreateTaskModal
         open={showCreateTask}
         onOpenChange={setShowCreateTask}

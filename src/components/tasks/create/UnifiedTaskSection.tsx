@@ -155,7 +155,7 @@ export function UnifiedTaskSection({
           type="button"
           onClick={handleRowClick}
           className={cn(
-            "flex-1 h-8 flex items-center pl-1 pr-1 pt-1 pb-1 rounded-[5px]",
+            "flex-1 h-8 flex items-center pl-1 pr-1 pt-1 pb-1 rounded-[8px]",
             "transition-all duration-150",
             "bg-background text-left",
             "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
@@ -194,7 +194,7 @@ export function UnifiedTaskSection({
           type="button"
           onClick={handlePlusClick}
           className={cn(
-            "h-6 w-6 rounded-[5px] flex items-center justify-center flex-shrink-0",
+            "h-6 w-6 rounded-[8px] flex items-center justify-center flex-shrink-0",
             "bg-background text-muted-foreground",
             "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
             "hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
@@ -221,7 +221,7 @@ export function UnifiedTaskSection({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={placeholder}
-                  className="w-full px-4 py-2.5 rounded-[5px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 border-0"
+                  className="w-full px-4 py-2.5 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 border-0"
                   onFocus={() => setIsDropdownOpen(true)}
                 />
                 {isDropdownOpen && (

@@ -33,7 +33,7 @@ export const ClarityState: React.FC<ClarityStateProps> = ({
   return (
     <div
       className={cn(
-        'w-full px-4 py-3 rounded-[5px]',
+        'w-full px-4 py-3 rounded-[8px]',
         'flex items-start gap-2',
         isBlocking
           ? 'bg-amber-50/50 border border-amber-200/50'
