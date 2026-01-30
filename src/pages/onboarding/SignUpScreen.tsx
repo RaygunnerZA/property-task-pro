@@ -9,6 +9,7 @@ import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPassw
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { getCurrentStep } from "@/utils/onboardingSteps";
+import { getAppBaseUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -52,8 +53,9 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/verify`;
-      
+      // Use canonical app URL in production so confirmation email redirects to Vercel, not localhost.
+      const redirectUrl = `${getAppBaseUrl()}/verify`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
