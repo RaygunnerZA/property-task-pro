@@ -1,3 +1,8 @@
+/**
+ * AddPropertyDialog - Standalone (system-scoped) add property flow.
+ * Creates a permanent property in DB. Also used from LeftColumn / Properties page.
+ * Create Task uses WhereTab/WherePanel for property creation (same permanent entity; entry context is task-scoped).
+ */
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";

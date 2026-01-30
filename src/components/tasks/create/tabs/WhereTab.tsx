@@ -350,7 +350,7 @@ export function WhereTab({
         )}
       </div>
 
-      {/* Create Property Modal */}
+      {/* Create Property Modal: creates permanent property; only entry context is task-scoped */}
       <Dialog open={showCreateProperty} onOpenChange={setShowCreateProperty}>
         <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -428,7 +428,7 @@ export function WhereTab({
         </DialogContent>
       </Dialog>
 
-      {/* Create Space Modal */}
+      {/* Create Space Modal: creates permanent space; only entry context is task-scoped */}
       <Dialog open={showCreateSpace} onOpenChange={(open) => {
         setShowCreateSpace(open);
         if (!open) resetSpaceModal();
