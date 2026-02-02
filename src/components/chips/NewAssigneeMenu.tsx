@@ -31,8 +31,10 @@ interface NewAssigneeMenuProps {
 }
 
 /**
- * NewAssigneeMenu - Action sheet for creating new assignees
- * Options: Create Person, Create Team, Invite to Organisation
+ * NewAssigneeMenu - Action sheet for creating new assignees (UI-only, intent-light).
+ * Options: Create Person, Create Team, Invite to Organisation.
+ * Creates temporary local person only; no DB write. Full setup (team vs task-only external,
+ * permissions, roles) is handled elsewhere (e.g. Settings / Team management).
  */
 export function NewAssigneeMenu({
   open,

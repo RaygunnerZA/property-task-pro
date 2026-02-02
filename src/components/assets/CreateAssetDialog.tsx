@@ -1,3 +1,7 @@
+/**
+ * CreateAssetDialog - Standalone (system-scoped) add asset flow (Assets page, property context).
+ * Creates a permanent asset in DB. Create Task uses AssetsSection for asset creation (same permanent entity; entry context is task-scoped).
+ */
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";

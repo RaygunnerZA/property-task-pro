@@ -10,7 +10,7 @@ export const NeomorphicInput = forwardRef<HTMLInputElement, NeomorphicInputProps
     return (
       <div className="mb-6">
         {label && (
-          <label className="block text-sm font-medium text-[#6D7480] mb-2">
+          <label className="block text-sm font-medium text-[#6D7480] mb-2 text-center">
             {label}
           </label>
         )}

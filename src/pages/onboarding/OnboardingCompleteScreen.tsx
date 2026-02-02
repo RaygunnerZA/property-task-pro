@@ -1,15 +1,24 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { CheckCircle2 } from "lucide-react";
-import { useEffect } from "react";
 
 export default function OnboardingCompleteScreen() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Mark onboarding as complete
-    localStorage.setItem('filla_onboarding_complete', 'true');
+    localStorage.setItem("filla_onboarding_complete", "true");
+    const setComplete = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.auth.updateUser({
+        data: { ...user.user_metadata, onboarding_completed: true },
+      });
+      await supabase.auth.refreshSession();
+    };
+    setComplete();
   }, []);
 
   return (
@@ -26,7 +35,7 @@ export default function OnboardingCompleteScreen() {
           </div>
         </div>
 
-        <h1 className="text-4xl font-semibold text-[#1C1C1C] mb-4">
+        <h1 className="text-4xl font-semibold text-[#1C1C1C] mb-4 heading-xl">
           You're all set!
         </h1>
         

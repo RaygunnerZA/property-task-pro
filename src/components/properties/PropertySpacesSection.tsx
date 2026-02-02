@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface PropertySpacesSectionProps {
   propertyId: string;
+  /** 'grid' = property page layout; 'scroller' = horizontal scroll (e.g. onboarding) */
+  variant?: "grid" | "scroller";
 }
 
 // Space group definitions with descriptions
@@ -48,7 +50,7 @@ const SPACE_GROUPS = [
   },
 ];
 
-export function PropertySpacesSection({ propertyId }: PropertySpacesSectionProps) {
+export function PropertySpacesSection({ propertyId, variant = "grid" }: PropertySpacesSectionProps) {
   const supabase = useSupabase();
   const { orgId } = useActiveOrg();
 
@@ -104,11 +106,37 @@ export function PropertySpacesSection({ propertyId }: PropertySpacesSectionProps
 
   const isLoading = spaceTypesLoading || spacesLoading;
 
+  const cards = SPACE_GROUPS.map((group) => {
+    const spaceCount = spacesByGroup.get(group.name) || 0;
+    return (
+      <SpaceGroupCard
+        key={group.name}
+        groupName={group.name}
+        description={group.description}
+        color={group.color}
+        spaceCount={spaceCount}
+        propertyId={propertyId}
+      />
+    );
+  });
+
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className={variant === "scroller" ? "flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"}>
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Skeleton key={i} className="h-[240px] rounded-[8px]" />
+          <Skeleton key={i} className={variant === "scroller" ? "h-[260px] w-[200px] flex-shrink-0 rounded-[8px]" : "h-[240px] rounded-[8px]"} />
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === "scroller") {
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+        {cards.map((card, i) => (
+          <div key={SPACE_GROUPS[i].name} className="flex-shrink-0 w-[200px]">
+            {card}
+          </div>
         ))}
       </div>
     );
@@ -116,19 +144,7 @@ export function PropertySpacesSection({ propertyId }: PropertySpacesSectionProps
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-      {SPACE_GROUPS.map((group) => {
-        const spaceCount = spacesByGroup.get(group.name) || 0;
-        return (
-          <SpaceGroupCard
-            key={group.name}
-            groupName={group.name}
-            description={group.description}
-            color={group.color}
-            spaceCount={spaceCount}
-            propertyId={propertyId}
-          />
-        );
-      })}
+      {cards}
     </div>
   );
 }

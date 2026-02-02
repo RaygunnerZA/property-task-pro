@@ -9,39 +9,85 @@ interface ProtectedRouteProps {
   requireOrg?: boolean;
 }
 
+/** Onboarding completed is set only at /onboarding/complete (or staff /onboarding/staff). */
+function getOnboardingCompleted(
+  session: { user?: { user_metadata?: Record<string, unknown> } } | null,
+  orgId: string | null
+): boolean {
+  const completed = session?.user?.user_metadata?.onboarding_completed;
+  if (completed === true) return true;
+  // Backwards compat: existing users with org but no flag are treated as completed
+  if (completed == null && orgId) return true;
+  return false;
+}
+
+/** Invited staff/contractors: have org, role is not owner or manager. */
+function isInvitedStaffRole(role: string | null): boolean {
+  if (!role) return false;
+  return role !== "owner" && role !== "manager";
+}
+
 export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
-  const { isAuthenticated, orgId, loading } = useDataContext();
+  const { isAuthenticated, orgId, loading, session, user } = useDataContext();
+  const userId = user?.id ?? null;
+  const [memberRole, setMemberRole] = useState<string | null>(null);
+  const [memberRoleLoading, setMemberRoleLoading] = useState(false);
   const [checkingProperties, setCheckingProperties] = useState(false);
   const [hasProperties, setHasProperties] = useState<boolean | null>(null);
 
+  const onboardingCompleted = getOnboardingCompleted(session, orgId);
+  const isInvitedStaff = !!orgId && isInvitedStaffRole(memberRole);
+
+  // Fetch member role when user has an org (for role-aware onboarding)
+  useEffect(() => {
+    if (!orgId || !userId) {
+      setMemberRole(null);
+      setMemberRoleLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMemberRoleLoading(true);
+    supabase
+      .from("organisation_members")
+      .select("role")
+      .eq("org_id", orgId)
+      .eq("user_id", userId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data) setMemberRole(data.role ?? null);
+        else setMemberRole(null);
+      })
+      .finally(() => {
+        if (!cancelled) setMemberRoleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, userId]);
+
   // Check if user has properties when they have an org
   useEffect(() => {
-    async function checkProperties() {
-      if (!orgId || loading) return;
-      
-      setCheckingProperties(true);
-      try {
-        const { count, error } = await supabase
-          .from("properties")
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", orgId);
-        
-        if (!error) {
-          setHasProperties((count ?? 0) > 0);
-        }
-      } catch (err) {
-        console.error("Error checking properties:", err);
-        // Default to true to avoid false redirects
-        setHasProperties(true);
-      } finally {
-        setCheckingProperties(false);
-      }
-    }
-    
-    checkProperties();
+    if (!orgId || loading) return;
+    setCheckingProperties(true);
+    supabase
+      .from("properties")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .then(({ count, error }) => {
+        if (!error) setHasProperties((count ?? 0) > 0);
+        else setHasProperties(true);
+      })
+      .finally(() => setCheckingProperties(false));
   }, [orgId, loading]);
 
-  if (loading || checkingProperties) {
+  const needRoleForRedirect = !onboardingCompleted && !!orgId;
+  const showSkeleton =
+    loading ||
+    checkingProperties ||
+    (needRoleForRedirect && memberRoleLoading);
+
+  if (showSkeleton) {
     return <ProtectedRouteSkeleton />;
   }
 
@@ -49,15 +95,23 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     return <Navigate to="/welcome" replace />;
   }
 
-  // TEMPORARILY DISABLED: Allow access even without orgId to break redirect loop
-  // if (requireOrg && !orgId) {
-  //   return <Navigate to="/onboarding/create-organisation" replace />;
-  // }
+  // Role-aware onboarding: do not block on !orgId alone
+  if (requireOrg && !onboardingCompleted) {
+    if (isInvitedStaff) {
+      return <Navigate to="/onboarding/staff" replace />;
+    }
+    return <Navigate to="/onboarding/create-organisation" replace />;
+  }
 
-  // Only redirect to add property if we've confirmed there are no properties
-  // AND we're not already on an onboarding route
-  if (requireOrg && orgId && hasProperties === false) {
-    // Don't redirect if already on onboarding routes
+  // If onboarding complete, allow access even if org hydration is still pending
+
+  // Nudge owners/managers with org but no properties to add one (not staff)
+  if (
+    requireOrg &&
+    orgId &&
+    hasProperties === false &&
+    !isInvitedStaff
+  ) {
     const currentPath = window.location.pathname;
     if (!currentPath.startsWith("/onboarding")) {
       return <Navigate to="/onboarding/add-property" replace />;

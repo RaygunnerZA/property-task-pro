@@ -2,13 +2,14 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { getCurrentStep } from "@/utils/onboardingSteps";
+import { getAppBaseUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -52,8 +53,9 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/verify`;
-      
+      // Use canonical app URL in production so confirmation email redirects to Vercel, not localhost.
+      const redirectUrl = `${getAppBaseUrl()}/verify`;
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -107,12 +109,13 @@ export default function SignUpScreen() {
   };
 
   return (
-    <OnboardingContainer>
+    <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={getCurrentStep(location.pathname)} />
         
         <OnboardingHeader
           title="Create your account"
+          showLogout={false}
           subtitle="Start your journey with Filla"
           showBack
           onBack={() => navigate("/welcome")}

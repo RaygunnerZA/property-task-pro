@@ -23,6 +23,8 @@ interface TaskListProps {
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
   filterToApply?: string | null; // Filter ID to apply programmatically
+  /** When provided, property filter uses this set (ALL = size === properties.length → show all). */
+  selectedPropertyIds?: Set<string>;
 }
 
 export function TaskList({ 
@@ -31,7 +33,8 @@ export function TaskList({
   tasksLoading: tasksLoadingProp,
   onTaskClick, 
   selectedTaskId,
-  filterToApply
+  filterToApply,
+  selectedPropertyIds: selectedPropertyIdsProp,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -167,13 +170,22 @@ export function TaskList({
       });
     }
 
-    // Secondary filters - Property
-    const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
-    if (propertyFilterIds.length > 0) {
-      const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
-      filtered = filtered.filter((task) => {
-        return task.property_id && selectedPropertyIds.includes(task.property_id);
-      });
+    // Secondary filters - Property (use prop when provided; else FilterBar selectedFilters)
+    if (selectedPropertyIdsProp !== undefined && properties.length > 0) {
+      const isAllActive = selectedPropertyIdsProp.size === properties.length;
+      if (!isAllActive) {
+        filtered = filtered.filter((task) =>
+          task.property_id && selectedPropertyIdsProp.has(task.property_id)
+        );
+      }
+    } else {
+      const propertyFilterIds = Array.from(selectedFilters).filter(f => f.startsWith("filter-property-"));
+      if (propertyFilterIds.length > 0) {
+        const selectedPropertyIds = propertyFilterIds.map(f => f.replace("filter-property-", ""));
+        filtered = filtered.filter((task) => {
+          return task.property_id && selectedPropertyIds.includes(task.property_id);
+        });
+      }
     }
 
     // Secondary filters - Space
@@ -287,7 +299,7 @@ export function TaskList({
     }
 
     return filtered;
-  }, [tasks, selectedFilters, userId, taskThemes]);
+  }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties]);
 
   // Group filtered tasks by status
   const groupedTasks = useMemo(() => {
@@ -541,9 +553,9 @@ export function TaskList({
   const hasNoMatchingTasks = groupedTasks.todo.length === 0 && groupedTasks.done.length === 0;
 
   return (
-    <div className="space-y-6">
-      {/* Filter Bar with View Toggle on same row (desktop) */}
-      <div className="mb-[9px]" style={{ marginLeft: '-3px' }}>
+    <div className="flex flex-col h-full min-h-0">
+      {/* Filter Bar - fixed at top, does not scroll with list */}
+      <div className="flex-shrink-0 mb-2 pb-[19px]" style={{ marginLeft: '-3px' }}>
         <FilterBar
           primaryOptions={primaryOptions}
           secondaryGroups={secondaryGroups}
@@ -558,16 +570,18 @@ export function TaskList({
         </div>
       </div>
 
-      {/* Show empty state if filters are active but no tasks match */}
-      {hasActiveFilters && hasNoMatchingTasks ? (
-        <EmptyState 
-          title="No tasks match your filters" 
-          subtitle="Try adjusting your filter selections to see more tasks." 
-        />
-      ) : (
-        <>
-          {/* Todo Section */}
-          {groupedTasks.todo.length > 0 && (
+      {/* Scrollable task list area - independent of filter bar */}
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-[12px]">
+        {/* Show empty state if filters are active but no tasks match */}
+        {hasActiveFilters && hasNoMatchingTasks ? (
+          <EmptyState 
+            title="No tasks match your filters" 
+            subtitle="Try adjusting your filter selections to see more tasks." 
+          />
+        ) : (
+          <div className="space-y-6">
+            {/* Todo Section */}
+            {groupedTasks.todo.length > 0 && (
             <>
               {view === 'vertical' ? (
                 <>
@@ -586,7 +600,7 @@ export function TaskList({
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
                   <div className={cn(
-                    "hidden md:grid md:grid-cols-3 gap-4 mt-[7px]",
+                    "hidden md:grid md:grid-cols-3 gap-3 mt-0",
                     groupedTasks.todo.length === 1 && "md:grid-cols-1",
                     groupedTasks.todo.length === 2 && "md:grid-cols-2"
                   )}>
@@ -600,7 +614,7 @@ export function TaskList({
                   </div>
                 </>
               ) : (
-                <div className="space-y-3 mt-[7px]">
+                <div className="space-y-3 mt-0">
                   {memoizedTaskCards.todo.map((props) => (
                     <TaskCard
                       key={props.task.id}
@@ -636,7 +650,7 @@ export function TaskList({
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
                   <div className={cn(
-                    "hidden md:grid md:grid-cols-3 gap-4 mt-[7px]",
+                    "hidden md:grid md:grid-cols-3 gap-3 mt-0",
                     groupedTasks.done.length === 1 && "md:grid-cols-1",
                     groupedTasks.done.length === 2 && "md:grid-cols-2"
                   )}>
@@ -662,8 +676,9 @@ export function TaskList({
               )}
             </div>
           )}
-        </>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

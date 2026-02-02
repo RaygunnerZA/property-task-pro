@@ -64,7 +64,7 @@ export function StandardPage({
           <div className="flex items-center gap-3">
             {icon && <span className="icon-primary shrink-0">{icon}</span>}
             <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-foreground leading-tight">{title}</h1>
+              <h1 className="text-2xl font-semibold text-foreground leading-tight heading-l">{title}</h1>
               {subtitle && (
                 <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
               )}

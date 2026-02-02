@@ -1,3 +1,7 @@
+/**
+ * AssetsSection - Create Task asset selector and create-asset entry.
+ * Create Asset modal here creates a permanent asset; only entry context is task-scoped.
+ */
 import { useState, useRef } from "react";
 import { Box, Plus, X, ImagePlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -176,7 +180,7 @@ export function AssetsSection({
         )}
       </div>
 
-      {/* Create Asset Modal */}
+      {/* Create Asset Modal: creates permanent asset; only entry context is task-scoped */}
       <Dialog open={showCreateModal} onOpenChange={(open) => {
         setShowCreateModal(open);
         if (!open) resetModal();

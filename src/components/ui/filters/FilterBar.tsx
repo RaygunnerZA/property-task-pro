@@ -239,7 +239,7 @@ export function FilterBar({
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
-            "flex items-center gap-2 flex-nowrap min-w-max",
+            "flex items-center gap-[5px] flex-nowrap min-w-max",
             getAnimationClass()
           )}
         >
@@ -260,7 +260,7 @@ export function FilterBar({
                         "font-mono text-[11px] uppercase tracking-wider",
                         "select-none cursor-pointer transition-all duration-150",
                         "bg-background",
-                        "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+                        "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
                         "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
                       )}
                       style={{ paddingLeft: '8px', paddingRight: '10px', height: '24px' }}

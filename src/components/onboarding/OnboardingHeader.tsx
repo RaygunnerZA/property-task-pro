@@ -2,6 +2,30 @@ import { ChevronLeft, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
+/** Logout button for onboarding – use in OnboardingContainer topRight and set OnboardingHeader showLogout={false} */
+export function OnboardingLogoutButton() {
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    (window as any).__lastOnboardingNavigation = Date.now() + 5000;
+    await supabase.auth.signOut();
+    navigate("/welcome", { replace: true });
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleLogout}
+      className="p-2 rounded-lg text-[#6D7480] hover:text-[#FF6B6B] transition-colors duration-150"
+      style={{
+        boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.7)"
+      }}
+      aria-label="Log out"
+      title="Log out"
+    >
+      <LogOut className="w-5 h-5" />
+    </button>
+  );
+}
+
 interface OnboardingHeaderProps {
   title: string;
   subtitle?: string;
@@ -14,18 +38,12 @@ export function OnboardingHeader({ title, subtitle, showBack, onBack, showLogout
   const navigate = useNavigate();
 
   const handleBack = () => {
-    // Mark navigation to prevent AppInitializer interference
     (window as any).__lastOnboardingNavigation = Date.now();
-    
-    if (onBack) {
-      onBack();
-    } else {
-      navigate(-1);
-    }
+    if (onBack) onBack();
+    else navigate(-1);
   };
 
   const handleLogout = async () => {
-    // Mark that we're leaving onboarding
     (window as any).__lastOnboardingNavigation = Date.now() + 5000;
     await supabase.auth.signOut();
     navigate("/welcome", { replace: true });
@@ -64,9 +82,9 @@ export function OnboardingHeader({ title, subtitle, showBack, onBack, showLogout
         )}
       </div>
       
-      <h1 className="text-3xl font-semibold text-[#1C1C1C] mb-2">{title}</h1>
+      <h1 className="text-3xl font-semibold text-[#1C1C1C] mb-2 heading-xl text-center [background-clip:unset] [-webkit-background-clip:unset]">{title}</h1>
       {subtitle && (
-        <p className="text-base text-[#6D7480]">{subtitle}</p>
+        <p className="text-base text-[#6D7480] text-center">{subtitle}</p>
       )}
     </div>
   );

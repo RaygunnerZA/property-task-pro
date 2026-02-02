@@ -10,7 +10,7 @@ export default function WelcomeScreen() {
           <img src={fillaLogo} alt="Filla" className="h-60 w-auto object-contain" />
         </div>
 
-        <h1 className="text-4xl font-semibold mb-4 text-primary">
+        <h1 className="text-4xl font-semibold mb-4 text-primary heading-xl">
           Welcome to Filla
         </h1>
         

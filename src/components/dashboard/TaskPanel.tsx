@@ -22,6 +22,7 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  selectedPropertyIds?: Set<string>;
   onCreateTask?: () => void;
 }
 
@@ -51,6 +52,7 @@ export function TaskPanel({
   onTabChange,
   selectedDate: selectedDateProp,
   filterToApply,
+  selectedPropertyIds,
   onCreateTask
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
@@ -68,19 +70,27 @@ export function TaskPanel({
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
 
+  // Apply property filter when selectedPropertyIds provided (ALL = show all)
+  const tasksForView = useMemo(() => {
+    if (!selectedPropertyIds || selectedPropertyIds.size === 0 || selectedPropertyIds.size === properties.length) {
+      return tasks;
+    }
+    return tasks.filter((t) => t.property_id && selectedPropertyIds.has(t.property_id));
+  }, [tasks, selectedPropertyIds, properties.length]);
+
   // Get unscheduled tasks (no due_date) for backlog section
   const unscheduledTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    return tasksForView.filter((task) => {
       if (!task.due_date && !task.due_at) {
         if (task.status === "completed" || task.status === "archived") return false;
         return true;
       }
       return false;
     });
-  }, [tasks]);
+  }, [tasksForView]);
 
   const scheduleStats = useMemo(() => {
-    const active = tasks.filter(
+    const active = tasksForView.filter(
       (t) => t.status !== "completed" && t.status !== "archived"
     );
     const withDueDate = active.filter((t) => !!(t.due_date || t.due_at));
@@ -92,7 +102,7 @@ export function TaskPanel({
       withoutDueDate: active.length - withDueDate.length,
       withoutId: active.length - withId.length,
     };
-  }, [tasks]);
+  }, [tasksForView]);
 
   // Filter tasks for Schedule tab - by selectedDate if provided, otherwise upcoming
   const scheduleTasks = useMemo(() => {
@@ -100,7 +110,7 @@ export function TaskPanel({
       // Filter by selected date - normalize both dates to start of day for accurate comparison
       const selectedDateNormalized = startOfDay(selectedDate);
       const selectedDateStr = format(selectedDateNormalized, "yyyy-MM-dd");
-      return tasks
+      return tasksForView
         .filter((task) => {
           const dueValue = task.due_date || task.due_at;
           if (!dueValue) return false;
@@ -127,7 +137,7 @@ export function TaskPanel({
     } else {
       // Show upcoming tasks
       const today = startOfDay(new Date());
-      return tasks
+      return tasksForView
         .filter((task) => {
           const dueValue = task.due_date || task.due_at;
           if (!dueValue) return false;
@@ -148,23 +158,23 @@ export function TaskPanel({
         })
         .slice(0, 25); // Give the schedule tab enough to feel "alive"
     }
-  }, [tasks, selectedDate, isDatePinned]);
+  }, [tasksForView, selectedDate, isDatePinned]);
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[18px] pb-[18px]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[3px] pb-[3px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-background border-b border-border/50 ml-[14px] mr-[14px] flex md:justify-between items-center">
+        <div className="sticky top-0 z-10 bg-background ml-[14px] mr-[14px] flex md:justify-between items-center">
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
-              "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.08),inset_-2px_-2px_4px_rgba(255,255,255,0.7)]"
+              "shadow-[inset_2px_6.6px_9.4px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_5.8px_0px_rgba(255,255,255,0.62)]"
             )}
           >
             <TabsTrigger
               value="tasks"
               className={cn(
-                "rounded-[5px] transition-all",
+                "rounded-[8px] transition-all",
                 "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                 "data-[state=active]:bg-card",
                 "data-[state=inactive]:bg-transparent",
@@ -185,7 +195,7 @@ export function TaskPanel({
             <TabsTrigger
               value="inbox"
               className={cn(
-                "rounded-[5px] transition-all",
+                "rounded-[8px] transition-all",
                 "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                 "data-[state=active]:bg-card",
                 "data-[state=inactive]:bg-transparent",
@@ -205,7 +215,7 @@ export function TaskPanel({
             <TabsTrigger
               value="schedule"
               className={cn(
-                "rounded-[5px] transition-all",
+                "rounded-[8px] transition-all",
                 "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                 "data-[state=active]:bg-card",
                 "data-[state=inactive]:bg-transparent",
@@ -239,7 +249,7 @@ export function TaskPanel({
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Tasks Tab */}
           {activeTab === "tasks" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[8px] px-4 pb-4">
+            <div className="h-full flex flex-col min-h-0 pt-[8px] px-4 pb-4">
               <TaskList 
                 tasks={tasks}
                 properties={properties}
@@ -247,6 +257,7 @@ export function TaskPanel({
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
                 filterToApply={filterToApply}
+                selectedPropertyIds={selectedPropertyIds}
               />
             </div>
           )}

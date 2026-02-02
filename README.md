@@ -64,6 +64,31 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21) and click on Share -> Publish.
 
+### Auth on Vercel (production)
+
+For sign-up, email confirmation, password reset, and invites to work for users on your live Vercel app:
+
+1. **Vercel**
+   - Project → **Settings** → **Environment Variables**
+   - Add: **Name** `VITE_APP_URL`, **Value** `https://property-task-pro.vercel.app` (or your actual Vercel URL; no trailing slash)
+   - Apply to **Production** (and **Preview** if you use preview deployments)
+   - **Redeploy** the project (env vars are baked in at build time)
+
+2. **Supabase**
+   - [Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **URL Configuration**
+   - **Site URL:** `https://property-task-pro.vercel.app` (same as above)
+   - **Redirect URLs:** add these (one per line or comma-separated, depending on UI):
+     - `https://property-task-pro.vercel.app/verify`
+     - `https://property-task-pro.vercel.app/login`
+     - `https://property-task-pro.vercel.app/accept-invitation`
+     - `https://property-task-pro.vercel.app/**` (wildcard is optional but covers any path)
+   - Save
+
+3. **Invite emails (optional)**  
+   If you use the invite-team-member Edge Function: Supabase → **Project Settings** → **Edge Functions** → set secret `SITE_URL` to `https://property-task-pro.vercel.app`
+
+After this, users who sign up or reset password on the Vercel app will get email links that open on your Vercel domain, not localhost.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

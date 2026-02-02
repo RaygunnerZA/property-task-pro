@@ -1,3 +1,11 @@
+/**
+ * WhoTab - Create Task "Who" step: assign people or teams.
+ *
+ * Create Task UX: captures intent, not full configuration. Not a user-management surface.
+ * - Recognition: existing people = chips; names not in org = ghost chips ("not yet in your system").
+ * - Intent: how should this person be involved? Team Member (internal, ongoing) vs External Vendor (task-only).
+ * - Formalisation: permissions, roles, access are handled later (Settings / Team management). No DB user created here.
+ */
 import { useState, useRef } from "react";
 import { User, Users, Search, Plus, ImagePlus, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -80,7 +88,7 @@ export function WhoTab({
   const [pendingGhostPerson, setPendingGhostPerson] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Add Person Modal state
+  // Invite modal state: captures intent (pending team member or task-only external). No user row inserted.
   const [inviteTab, setInviteTab] = useState<"team" | "vendor">("team");
   const [teamMemberFirstName, setTeamMemberFirstName] = useState("");
   const [teamMemberLastName, setTeamMemberLastName] = useState("");
@@ -524,7 +532,7 @@ export function WhoTab({
               <TabsTrigger value="vendor">External Vendor</TabsTrigger>
             </TabsList>
             
-            {/* Team Member Tab */}
+            {/* Team Member (internal, ongoing): add to team for future tasks → pending team member */}
             <TabsContent value="team" className="space-y-4 mt-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -612,7 +620,7 @@ export function WhoTab({
               </div>
             </TabsContent>
             
-            {/* External Vendor Tab */}
+            {/* External Vendor (task-only): share this task only → task-only external; magic link when task is created */}
             <TabsContent value="vendor" className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label>Name</Label>
@@ -644,7 +652,7 @@ export function WhoTab({
                   className="shadow-engraved min-h-[100px]"
                 />
                 <p className="text-xs text-muted-foreground">
-                  This message will be sent with the magic link to access the task.
+                  Share this task only (task-only external). This message will be sent with the magic link to access the task.
                 </p>
               </div>
             </TabsContent>
