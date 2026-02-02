@@ -158,11 +158,6 @@ export function FilterBar({
   const hasNonPropertyFilters = Array.from(selectedFilters).some(
     filterId => !filterId.startsWith('filter-property-')
   );
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FilterBar.tsx:160',message:'hasNonPropertyFilters calculation',data:{selectedFiltersSize:selectedFilters.size,hasNonPropertyFilters,allFilters:Array.from(selectedFilters),propertyFilters:Array.from(selectedFilters).filter(f=>f.startsWith('filter-property-')),nonPropertyFilters:Array.from(selectedFilters).filter(f=>!f.startsWith('filter-property-'))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-  }, [selectedFilters, hasNonPropertyFilters]);
-  // #endregion
 
   // #region agent log
   // Verify icons are defined after fix

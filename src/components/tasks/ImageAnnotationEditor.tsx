@@ -357,18 +357,12 @@ export function ImageAnnotationEditor({
             }
             ctx.fillText(tempAnnotation.text || "Text", x, y);
           } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:draw-text-error',message:'error drawing text temp annotation',data:{error:error instanceof Error ? error.message : String(error),tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             console.error("Error drawing text annotation:", error);
           }
           break;
       }
     }
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:drawAnnotations-error',message:'error in drawAnnotations',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       console.error("Error in drawAnnotations:", error);
     }
   }, [annotations, selectedAnnotationId, imageSize, tempAnnotation]);
@@ -431,9 +425,6 @@ export function ImageAnnotationEditor({
       try {
         drawCanvas();
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:useEffect-drawCanvas-error',message:'error in drawCanvas useEffect',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         console.error("Error drawing canvas:", error);
       }
     }
@@ -468,15 +459,8 @@ export function ImageAnnotationEditor({
     const savedJson = JSON.stringify(lastSavedAnnotations);
     
     if (currentJson === savedJson || currentAnnotations.length === 0) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-skip',message:'autosave skipped',data:{reason:currentJson === savedJson ? 'no changes' : 'empty annotations'},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       return;
     }
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-start',message:'autosave starting',data:{annotationsCount:currentAnnotations.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     
     setAutosaveStatus('saving');
     try {
@@ -486,15 +470,7 @@ export function ImageAnnotationEditor({
         version: ann.version + 1,
       }));
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-calling-onSave',message:'calling onSave in autosave',data:{versionedCount:versionedAnnotations.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
       await onSave(versionedAnnotations, true); // true = autosave, don't close
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-success',message:'autosave completed',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       
       setLastSavedAnnotations(currentAnnotations);
       setAutosaveStatus('saved');
@@ -504,9 +480,6 @@ export function ImageAnnotationEditor({
         setAutosaveStatus('idle');
       }, 1000);
     } catch (error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-error',message:'autosave error',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       console.error("Autosave failed:", error);
       setAutosaveStatus('idle');
     }
@@ -516,14 +489,7 @@ export function ImageAnnotationEditor({
   useEffect(() => {
     if (!hasUnsavedChanges || annotations.length === 0 || isInitialMount.current) return;
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-timer-setup',message:'autosave timer setting up',data:{annotationsCount:annotations.length,hasUnsavedChanges},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     const timer = setTimeout(() => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:autosave-timer-trigger',message:'autosave timer triggered',data:{annotationsCount:annotations.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       handleAutosave();
     }, 2000);
     
@@ -560,10 +526,6 @@ export function ImageAnnotationEditor({
   }, [initialAnnotations]);
 
   const handleCancel = useCallback(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:427',message:'handleCancel called',data:{hasUnsavedChanges,annotationsCount:annotations.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     if (hasUnsavedChanges) {
       setShowConfirmClose(true);
     } else {
@@ -673,10 +635,6 @@ export function ImageAnnotationEditor({
     const hitArea = isMobile ? 20 : 15;
     const clickedAnnotation = getAnnotationAtPoint(clientX, clientY, hitArea);
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:536',message:'clickedAnnotation check',data:{hasClickedAnnotation:!!clickedAnnotation,clickedAnnotationId:clickedAnnotation?.annotationId,clickedAnnotationType:clickedAnnotation?.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B,C,D'})}).catch(()=>{});
-    // #endregion
-    
     if (clickedAnnotation) {
       setSelectedAnnotationId(clickedAnnotation.annotationId);
       setCurrentTool(null);
@@ -697,10 +655,6 @@ export function ImageAnnotationEditor({
     if (currentTool) {
       const coords = getRelativeCoords(clientX, clientY);
       if (!coords) return;
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:560',message:'starting draw',data:{tool:currentTool,coords},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B,C,D'})}).catch(()=>{});
-      // #endregion
 
       // For pin tool, create immediately (single click)
       if (currentTool === "pin") {
@@ -851,10 +805,6 @@ export function ImageAnnotationEditor({
   };
 
   const handlePointerEnd = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:pointer-end',message:'pointer end event',data:{wasDragging:isDragging,wasDrawing:isDrawing,selectedAnnotationId,hasTempAnnotation:!!tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run7',hypothesisId:'B,C'})}).catch(()=>{});
-    // #endregion
-    
     // Finish drawing new annotation
     if (isDrawing && tempAnnotation) {
       // Only commit if shape has meaningful size
@@ -934,9 +884,6 @@ export function ImageAnnotationEditor({
 
   // Track tool changes
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:currentTool-effect',message:'currentTool state changed',data:{currentTool,hasImageSize:!!imageSize,annotationsCount:annotations.length,isMobile},timestamp:Date.now(),sessionId:'debug-session',runId:'run8',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
   }, [currentTool, imageSize, annotations.length, isMobile]);
 
   return (
@@ -946,21 +893,12 @@ export function ImageAnnotationEditor({
         isMobile ? "fullscreen" : ""
       )}
       onClick={(e) => {
-        // #region agent log
         const targetEl = e.target as HTMLElement;
-        const currentTargetEl = e.currentTarget as HTMLElement;
-        const isButton = targetEl?.closest('button') !== null;
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:container-onClick',message:'container clicked',data:{targetTagName:targetEl?.tagName,targetClassName:targetEl?.className,currentTargetTagName:currentTargetEl?.tagName,isSameTarget:e.target === e.currentTarget,isButton,pointerEvents:window.getComputedStyle(targetEl).pointerEvents},timestamp:Date.now(),sessionId:'debug-session',runId:'run8',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
         // Don't close on overlay click - only close via Cancel button
-        // Don't interfere with button clicks
         if (targetEl?.closest('button')) {
           return; // Let button handle its own click
         }
         if (e.target === e.currentTarget) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:container-overlay-click',message:'overlay clicked - preventing close',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run8',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
           e.stopPropagation();
         }
       }}
@@ -1001,19 +939,9 @@ export function ImageAnnotationEditor({
             try {
               e.preventDefault();
               e.stopPropagation();
-              // #region agent log
               const newTool = currentTool === "pin" ? null : "pin";
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-pin-click',message:'pin tool clicked',data:{currentTool,newTool,annotationsCount:annotations.length,isDrawing,hasTempAnnotation:!!tempAnnotation,eventType:e.type},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
-              console.log('Setting tool to:', newTool);
               setCurrentTool(newTool);
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-pin-click-after',message:'after setCurrentTool call',data:{newTool},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
             } catch (error) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-pin-click-error',message:'error in pin tool click',data:{error:error instanceof Error ? error.message : String(error),stack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               console.error('Error in pin tool click:', error);
             }
           }}

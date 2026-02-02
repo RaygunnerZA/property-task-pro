@@ -196,15 +196,7 @@ export const ContextResolver: React.FC<ContextResolverProps> = ({
       
       {/* Content */}
       <div
-        ref={(el) => {
-          // #region agent log
-          if (el) {
-            const rect = el.getBoundingClientRect();
-            const computed = window.getComputedStyle(el);
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ContextResolver.tsx:246',message:'Content wrapper width measurement',data:{width:rect.width,padding:computed.padding,margin:computed.margin,parentWidth:el.parentElement?.getBoundingClientRect().width,maxWidth:computed.maxWidth},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-          }
-          // #endregion
-        }}
+        ref={(el) => {}}
       >
         {children}
       </div>

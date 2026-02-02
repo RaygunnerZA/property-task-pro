@@ -100,9 +100,6 @@ export function IconColorPicker({
   const updateIconBlur = useCallback(() => {
     const el = iconScrollRef.current;
     if (!el) return;
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'IconColorPicker.tsx:updateIconBlur',message:'blur update ran',data:{scrollLeft:el.scrollLeft,itemCount:iconItemRefs.current.filter(Boolean).length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     const scrollLeft = el.scrollLeft;
     const width = el.clientWidth;
     const stripCenter = scrollLeft + width / 2;
@@ -174,11 +171,6 @@ export function IconColorPicker({
       rafRef.current = requestAnimationFrame(() => {
         updateIconBlur();
         updateColorBlur();
-        // #region agent log
-        const sl = iconScrollRef.current?.scrollLeft ?? 0;
-        const ol = iconOverlayRef.current?.getBoundingClientRect?.()?.left ?? 0;
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'IconColorPicker.tsx:onScroll',message:'scroll vs overlay position',data:{scrollLeft:sl,overlayLeft:ol},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         rafRef.current = null;
       });
       scheduleSnap();
@@ -230,15 +222,6 @@ export function IconColorPicker({
       updateIconBlur();
       updateColorBlur();
       initialScrolledRef.current = true;
-      // #region agent log
-      const scrollEl = iconScrollRef.current;
-      const overlayEl = iconOverlayRef.current;
-      if (scrollEl && overlayEl) {
-        const sr = scrollEl.getBoundingClientRect();
-        const or = overlayEl.getBoundingClientRect();
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'IconColorPicker.tsx:mount',message:'layout after init',data:{scrollLeft:scrollEl.scrollLeft,scrollRectLeft:sr.left,overlayRectLeft:or.left,iconPad,iconStripWidth},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C,E'})}).catch(()=>{});
-      }
-      // #endregion
     });
     return () => cancelAnimationFrame(t);
   }, [icons.length, colors.length, snapIconToIndex, snapColorToIndex, updateIconBlur, updateColorBlur, value.icon, value.color]);

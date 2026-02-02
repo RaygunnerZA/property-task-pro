@@ -241,9 +241,6 @@ export function ImageUploadSection({
             setEditingImageIndex(null);
           }}
       onCancel={() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageUploadSection.tsx:onCancel',message:'TempImageAnnotationEditor onCancel called',data:{editingImageIndex},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         setShowAnnotationEditor(false);
         setEditingImageIndex(null);
       }}

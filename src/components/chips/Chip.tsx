@@ -115,9 +115,6 @@ export function Chip({
   }
 
   const handleClick = () => {
-    // #region agent log
-    if (role === 'suggestion') { fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Chip.tsx:handleClick',message:'Chip suggestion click',data:{label,hasOnSelect:!!onSelect},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{}); }
-    // #endregion
     // Filter chips: toggle on/off
     if (canToggle && onSelect) {
       onSelect();
@@ -253,16 +250,16 @@ export function Chip({
       )}
       {hasDottedBorder && (
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none rounded-[5px]"
-          style={{ borderRadius: '5px' }}
+          className="absolute inset-0 w-full h-full pointer-events-none rounded-[8px]"
+          style={{ borderRadius: '8px' }}
         >
           <rect
             x="1"
             y="1"
             width="calc(100% - 2px)"
             height="calc(100% - 2px)"
-            rx="5"
-            ry="5"
+            rx="8"
+            ry="8"
             fill="none"
             stroke="white"
             strokeWidth="2"
