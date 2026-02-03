@@ -60,6 +60,16 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+### Supabase types
+
+Frontend typing is driven by generated types from the live public schema (`src/types/supabase.ts`). To avoid schema/type drift after DB changes, regenerate with:
+
+```sh
+npm run gen:types
+```
+
+Requires the Supabase CLI and a linked project (`supabase link`), or run the generator manually with your project ID and redirect output to `src/types/supabase.ts`.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21) and click on Share -> Publish.
