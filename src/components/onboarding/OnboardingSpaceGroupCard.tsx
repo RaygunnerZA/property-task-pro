@@ -1,12 +1,33 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { Chip } from "@/components/chips/Chip";
 import { CopyPlus } from "lucide-react";
 import type { SpaceGroup } from "./onboardingSpaceGroups";
+import { shortSpaceLabel } from "./onboardingSpaceGroups";
+
+const FLIP_IN_DURATION_MS = 250;
+const FLIP_OUT_DURATION_MS = 600;
+const LEAVE_DELAY_MS = 1500;
+
+// Back card height from chip count: ~2 chips per row; one chip row of padding at bottom
+const CHIP_ROW_HEIGHT = 34;
+const COLS = 2;
+const BACK_HEADER_PX = 50;
+const CARD_HEIGHT_MIN = 140;
+const CARD_HEIGHT_MAX = 260;
+
+function cardHeightFromChipCount(count: number): number {
+  const rows = Math.ceil(count / COLS);
+  const backContent = BACK_HEADER_PX + rows * CHIP_ROW_HEIGHT + CHIP_ROW_HEIGHT; // +1 row padding at bottom
+  return Math.min(CARD_HEIGHT_MAX, Math.max(CARD_HEIGHT_MIN, backContent));
+}
 
 // Ghost chip: white dashed stroke only (no dark border), lighter fill on hover
 const GHOST_CHIP_CLASS =
   "!bg-transparent !border !border-transparent !border-dashed !opacity-100 text-[#1C1C1C] font-mono uppercase tracking-wide hover:!bg-white/25 !shadow-none !h-[28px] min-h-[28px] px-2.5 py-1.5 cursor-pointer";
+
+// Selected chip on card (e.g. ENTRANCE with copy button): same ghost style but teal text/icon to match others
+const SELECTED_CHIP_TEAL = "#85BABC";
 
 interface OnboardingSpaceGroupCardProps {
   group: SpaceGroup;
@@ -26,6 +47,36 @@ export function OnboardingSpaceGroupCard({
   className,
 }: OnboardingSpaceGroupCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [flipDurationMs, setFlipDurationMs] = useState(FLIP_IN_DURATION_MS);
+  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flipBackEndRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    if (flipBackEndRef.current) {
+      clearTimeout(flipBackEndRef.current);
+      flipBackEndRef.current = null;
+    }
+    setFlipDurationMs(FLIP_IN_DURATION_MS);
+    setIsFlipped(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    leaveTimeoutRef.current = setTimeout(() => {
+      leaveTimeoutRef.current = null;
+      setFlipDurationMs(FLIP_OUT_DURATION_MS);
+      requestAnimationFrame(() => {
+        setIsFlipped(false);
+        flipBackEndRef.current = setTimeout(() => {
+          flipBackEndRef.current = null;
+          setFlipDurationMs(FLIP_IN_DURATION_MS);
+        }, FLIP_OUT_DURATION_MS);
+      });
+    }, LEAVE_DELAY_MS);
+  }, []);
 
   const handleChipClick = (name: string) => {
     const key = name.toLowerCase().trim();
@@ -35,20 +86,22 @@ export function OnboardingSpaceGroupCard({
 
   // Slightly darker paper for flipped (back) face. Paper bg = #F1EEE8.
   const paperBackBg = "#E8E5E0";
+  const cardHeightPx = cardHeightFromChipCount(group.suggestedSpaces.length);
 
   return (
     <div
-      className={cn("w-[200px] flex-shrink-0 h-[260px] perspective-[800px]", className)}
-      style={{ perspectiveOrigin: "50% 50%" }}
-      onMouseEnter={() => setIsFlipped(true)}
-      onMouseLeave={() => setIsFlipped(false)}
+      className={cn("w-[200px] flex-shrink-0 perspective-[800px]", className)}
+      style={{ perspectiveOrigin: "50% 50%", height: `${cardHeightPx}px` }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div
-        className="relative w-full h-full transition-transform duration-[250ms] ease-out"
+        className="relative w-full h-full transition-transform ease-out"
         style={{
           transformStyle: "preserve-3d",
           transformOrigin: "50% 50%",
           transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+          transitionDuration: `${flipDurationMs}ms`,
         }}
       >
         {/* Front: title + description; pointer-events-none so the back face receives clicks when flipped */}
@@ -102,9 +155,35 @@ export function OnboardingSpaceGroupCard({
                   return (
                     <div
                       key={name}
-                      className={cn(GHOST_CHIP_CLASS, "inline-flex items-center gap-1.5 pr-0")}
+                      className={cn(
+                        GHOST_CHIP_CLASS,
+                        "relative inline-flex items-center gap-0 pr-0 text-[11px] rounded-[8px] group/chip",
+                        "hover:!bg-white/25 transition-colors duration-150",
+                        "border-0 !border-0 !shadow-none"
+                      )}
+                      style={{ color: SELECTED_CHIP_TEAL }}
                     >
-                      <span className="truncate max-w-[100px]">{name}</span>
+                      <svg
+                        className="absolute inset-0 w-full h-full pointer-events-none rounded-[8px]"
+                        style={{ borderRadius: 8 }}
+                        aria-hidden
+                      >
+                        <rect
+                          x="1"
+                          y="1"
+                          width="calc(100% - 2px)"
+                          height="calc(100% - 2px)"
+                          rx="8"
+                          ry="8"
+                          fill="none"
+                          stroke="white"
+                          strokeWidth="2"
+                          strokeDasharray="2 2"
+                        />
+                      </svg>
+                      <span className="truncate max-w-[100px] relative z-[1]" style={{ color: SELECTED_CHIP_TEAL }}>
+                        {shortSpaceLabel(name)}
+                      </span>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -112,10 +191,12 @@ export function OnboardingSpaceGroupCard({
                           onCopySpace(name);
                         }}
                         className={cn(
-                          "flex-shrink-0 inline-flex items-center justify-center",
-                          GHOST_CHIP_CLASS,
-                          "!px-2 !py-1.5"
+                          "flex-shrink-0 inline-flex items-center justify-center relative z-[1] w-[30px]",
+                          "!pl-0 !pr-2 !py-1.5 text-[11px] font-mono uppercase tracking-wide rounded-r-[8px]",
+                          "!bg-transparent hover:!bg-transparent !shadow-none outline-none",
+                          "transition-colors duration-150 appearance-none border-0"
                         )}
+                        style={{ color: SELECTED_CHIP_TEAL }}
                         title="Add another (copy)"
                         aria-label={`Add copy of ${name}`}
                       >
@@ -128,7 +209,7 @@ export function OnboardingSpaceGroupCard({
                   <Chip
                     key={name}
                     role="suggestion"
-                    label={name}
+                    label={shortSpaceLabel(name)}
                     onSelect={() => handleChipClick(name)}
                     className={GHOST_CHIP_CLASS}
                   />

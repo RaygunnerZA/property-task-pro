@@ -18,10 +18,10 @@ export interface ExpandableFactChipProps {
 }
 
 /**
- * Fact chip with down chevron (visible on hover or when open) that expands to a dropdown:
+ * Fact chip that expands right on hover to reveal a chevron; click opens dropdown:
  * - Sub-spaces list (• name) when present
  * - "+ Sub-space" to add a child
- * - "X | More" (Remove and More)
+ * - "Remove | More" in the menu
  */
 export function ExpandableFactChip({
   label,
@@ -55,11 +55,10 @@ export function ExpandableFactChip({
   };
 
   const chipStyles = cn(
-    "relative inline-flex items-center h-[28px] min-h-[28px] pl-2.5 pr-2.5 py-1 rounded-[8px]",
-    "group-hover:pr-6 data-[state=open]:pr-6",
+    "relative inline-flex items-center h-[28px] min-h-[28px] pl-2.5 pr-2 py-1 rounded-[8px]",
     "font-mono uppercase tracking-wide text-[11px]",
     "bg-white text-foreground border-0 shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)]",
-    "cursor-pointer select-none transition-all duration-150 overflow-visible",
+    "cursor-pointer select-none transition-all duration-150 overflow-hidden",
     className
   );
 
@@ -72,13 +71,21 @@ export function ExpandableFactChip({
           aria-expanded={open}
           aria-haspopup="true"
         >
-          <span className="truncate max-w-[120px]">{label}</span>
-          <ChevronDown
+          <span className="truncate max-w-[120px] flex-1 min-w-0">{label}</span>
+          {/* Expand right on hover/open to reveal chevron (trigger gets data-state=open from Radix) */}
+          <span
             className={cn(
-              "absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 flex-shrink-0 transition-all duration-150 pointer-events-none",
-              open ? "rotate-180 opacity-100" : "opacity-0 group-hover:opacity-100"
+              "flex items-center justify-end flex-shrink-0 overflow-hidden transition-[width] duration-150",
+              "w-0 group-hover:w-[20px] group-data-[state=open]:w-[20px]"
             )}
-          />
+          >
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 flex-shrink-0 transition-transform duration-150 text-muted-foreground",
+                open ? "rotate-180" : ""
+              )}
+            />
+          </span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -93,7 +100,7 @@ export function ExpandableFactChip({
       >
         {isAddingSubSpace && (
           <>
-            <div className="px-1.5 py-1 border-b border-muted/50">
+            <div className="px-1.5 py-1">
               <input
                 ref={inputRef}
                 type="text"
@@ -116,12 +123,11 @@ export function ExpandableFactChip({
                 type="button"
                 onClick={handleAddSubSpaceSubmit}
                 disabled={!newSubSpaceName.trim()}
-                className="mt-1 w-full py-0.5 text-[10px] font-mono text-primary disabled:opacity-50"
+                className="mt-1 w-full py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary opacity-100 disabled:opacity-50"
               >
                 Add
               </button>
             </div>
-            <DropdownMenuSeparator className="my-0.5" />
           </>
         )}
 
@@ -156,10 +162,10 @@ export function ExpandableFactChip({
 
         <DropdownMenuSeparator className="my-0.5" />
 
-        <div className="flex items-center gap-0.5 px-1 py-0">
+        <div className="flex items-center gap-0.5 px-0.5 py-0">
           <DropdownMenuItem
             onSelect={() => handleRemove()}
-            className="flex-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-1 min-h-0"
+            className="flex-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
           >
             <X className="h-3 w-3" />
             Remove
@@ -167,7 +173,7 @@ export function ExpandableFactChip({
           <span className="text-muted-foreground/60 font-mono text-[10px]">|</span>
           <DropdownMenuItem
             onSelect={(e) => e.preventDefault()}
-            className="flex-1 flex items-center justify-center font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-1 min-h-0"
+            className="flex-1 flex items-center justify-center font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
           >
             More
           </DropdownMenuItem>

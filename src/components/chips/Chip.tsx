@@ -150,7 +150,7 @@ export function Chip({
   // Base styles - same for all roles (Level 2: Tactile), except verb (no shadow)
   const baseStyles = cn(
     "inline-flex items-center",
-    isIconOnly ? "justify-center gap-0" : "gap-1.5",
+    isIconOnly ? "justify-center gap-0" : (role === 'suggestion' ? "gap-2" : "gap-1.5"),
     "px-2 py-1",
     chipHeight,
     "rounded-[8px]", // Updated from 5px to 8px
@@ -188,8 +188,8 @@ export function Chip({
     suggestion: cn(
       hasDottedBorder && "border border-dashed border-muted-foreground/30 bg-transparent",
       selected && "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] border-transparent",
-      // Suggestion chips - lighter text weight, 100% opaque
-      !selected && "text-primary font-normal opacity-100"
+      // Suggestion chips - lighter text weight, 100% opaque, no shadow
+      !selected && "text-primary font-normal opacity-100 !shadow-none"
     ),
     status: cn(
       color 

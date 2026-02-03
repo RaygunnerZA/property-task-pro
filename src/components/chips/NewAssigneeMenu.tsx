@@ -331,7 +331,7 @@ export function NewAssigneeMenu({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0">
+      <DialogContent className="max-w-sm p-0" aria-describedby={undefined}>
         <DialogHeader className="p-4 border-b border-border">
           <DialogTitle>{getTitle()}</DialogTitle>
         </DialogHeader>

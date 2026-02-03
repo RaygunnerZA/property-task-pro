@@ -3,6 +3,7 @@ import { format, isToday, startOfDay } from "date-fns";
 import { TaskCardActive } from "./TaskCardActive";
 import { TaskCardMinimized } from "./TaskCardMinimized";
 import { cn } from "@/lib/utils";
+import { debugLog } from "@/lib/logger";
 
 interface ScheduleViewProps {
   tasks: any[];
@@ -32,7 +33,7 @@ export function ScheduleView({
   console.log('[DEBUG] ScheduleView component executing', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
   useEffect(() => {
     console.log('[DEBUG] ScheduleView useEffect running', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:23',message:'ScheduleView render',data:{tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null,firstTask:tasks[0]||null},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] ScheduleView log failed:',e));
+    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:23',message:'ScheduleView render',data:{tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null,firstTask:tasks[0]||null},timestamp:Date.now()});
   }, [tasks, selectedDate]);
   // #endregion
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -79,7 +80,7 @@ export function ScheduleView({
     withTime.sort((a, b) => a.time.getTime() - b.time.getTime());
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:73',message:'Tasks categorized',data:{timeTasksCount:withTime.length,anyTimeTasksCount:withoutTime.length,totalTasks:tasks.length},timestamp:Date.now()})}).catch(()=>{});
+    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:73',message:'Tasks categorized',data:{timeTasksCount:withTime.length,anyTimeTasksCount:withoutTime.length,totalTasks:tasks.length},timestamp:Date.now()});
     // #endregion
     return {
       timeTasks: withTime,

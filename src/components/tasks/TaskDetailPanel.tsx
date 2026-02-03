@@ -963,15 +963,9 @@ function ImageAnnotationEditorWrapper({
       taskId={taskId}
       initialAnnotations={annotations}
       onSave={async (anns, isAutosave) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave',message:'onSave called in wrapper',data:{annotationsCount:anns.length,isAutosave},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         await saveAnnotations(anns);
         // Only close on manual save, not autosave
         if (!isAutosave) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'TaskDetailPanel.tsx:onSave-close',message:'closing editor after manual save',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           onClose();
         }
       }}

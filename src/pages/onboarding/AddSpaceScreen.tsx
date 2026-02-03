@@ -9,7 +9,7 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { ExpandableFactChip } from "@/components/chips/ExpandableFactChip";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
-import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
+import { ONBOARDING_SPACE_GROUPS, shortSpaceLabel } from "@/components/onboarding/onboardingSpaceGroups";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
@@ -372,7 +372,7 @@ export default function AddSpaceScreen() {
 
         {/* Copy-space modal: new name (e.g. Bedroom 2), editable or accept */}
         <Dialog open={!!copyModal} onOpenChange={(open) => !open && closeCopyModal()}>
-          <DialogContent className="max-w-sm gap-3 p-4">
+          <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-mono uppercase tracking-wide">
                 New space name
@@ -417,7 +417,7 @@ export default function AddSpaceScreen() {
               {spaces.map((space, index) => (
                 <ExpandableFactChip
                   key={`${space}-${index}`}
-                  label={space}
+                  label={shortSpaceLabel(space)}
                   subSpaces={subSpacesByParent[space.toLowerCase().trim()] ?? []}
                   onRemove={() => handleRemoveSpace(index)}
                   onAddSubSpace={(name) => handleAddSubSpace(space, name)}

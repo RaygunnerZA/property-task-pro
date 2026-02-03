@@ -13,6 +13,7 @@ import { StandardPage } from "@/components/design-system/StandardPage";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { Button } from "@/components/ui/button";
+import { debugLog } from "@/lib/logger";
 
 /**
  * SCHEDULE SCREEN
@@ -24,7 +25,7 @@ import { Button } from "@/components/ui/button";
 const Schedule = () => {
   // #region agent log
   console.log('[DEBUG] Schedule component rendering');
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'Schedule.tsx:24',message:'Schedule component render start',data:{timestamp:Date.now()},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] Log fetch failed:',e));
+  debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'Schedule.tsx:24',message:'Schedule component render start',data:{timestamp:Date.now()},timestamp:Date.now()});
   // #endregion
   const [viewMode, setViewMode] = useState<ScheduleViewMode>("month");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -53,7 +54,7 @@ const Schedule = () => {
   // #region agent log
   useEffect(() => {
     console.log('[DEBUG] Schedule component state', {viewMode,start,end,itemsCount:items.length,loading,error,firstItem:items[0]||null,allItemDates:items.map(i=>i.date)});
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'Schedule.tsx:48',message:'Schedule component state',data:{viewMode,start,end,itemsCount:items.length,loading,error,firstItem:items[0]||null,allItemDates:items.map(i=>i.date)},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] Log fetch failed:',e));
+    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'Schedule.tsx:48',message:'Schedule component state',data:{viewMode,start,end,itemsCount:items.length,loading,error,firstItem:items[0]||null,allItemDates:items.map(i=>i.date)},timestamp:Date.now()});
   }, [items, loading, error, viewMode, start, end]);
   // #endregion
 
@@ -78,7 +79,7 @@ const Schedule = () => {
     const filtered = items.filter((i) => i.date === selectedISO);
     // #region agent log
     console.log('[DEBUG] Schedule filtering items for selected date', {selectedISO,selectedDate:selectedDate.toISOString(),totalItems:items.length,allItemDates:items.map(i=>i.date),filteredCount:filtered.length,filteredItems:filtered.map(i=>({id:i.id,kind:i.kind,date:i.date,title:i.title}))});
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'D',location:'Schedule.tsx:76',message:'Filtering items for selected date',data:{selectedISO,selectedDate:selectedDate.toISOString(),totalItems:items.length,allItemDates:items.map(i=>i.date),filteredCount:filtered.length,filteredItems:filtered.map(i=>({id:i.id,kind:i.kind,date:i.date,title:i.title}))},timestamp:Date.now()})}).catch(()=>{});
+    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'D',location:'Schedule.tsx:76',message:'Filtering items for selected date',data:{selectedISO,selectedDate:selectedDate.toISOString(),totalItems:items.length,allItemDates:items.map(i=>i.date),filteredCount:filtered.length,filteredItems:filtered.map(i=>({id:i.id,kind:i.kind,date:i.date,title:i.title}))},timestamp:Date.now()});
     // #endregion
     return filtered;
   }, [items, selectedISO, selectedDate]);
@@ -161,7 +162,7 @@ const Schedule = () => {
 
   // #region agent log
   console.log('[DEBUG] Schedule component RETURN - about to render JSX', {itemsCount:items.length,loading,error,viewMode,selectedISO});
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'N',location:'Schedule.tsx:162',message:'Schedule component RETURN',data:{itemsCount:items.length,loading,error,viewMode,selectedISO,itemsForSelectedDateCount:itemsForSelectedDate.length},timestamp:Date.now()})}).catch((e)=>console.error('[DEBUG] Log fetch failed:',e));
+  debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'N',location:'Schedule.tsx:162',message:'Schedule component RETURN',data:{itemsCount:items.length,loading,error,viewMode,selectedISO,itemsForSelectedDateCount:itemsForSelectedDate.length},timestamp:Date.now()});
   // #endregion
   return (
     <StandardPage
@@ -193,7 +194,7 @@ const Schedule = () => {
         // #region agent log
         if (!loading && !error) {
           console.log('[DEBUG] Schedule rendering content', {itemsCount:items.length,itemsForSelectedDateCount:itemsForSelectedDate.length,viewMode,selectedISO});
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'G',location:'Schedule.tsx:185',message:'Schedule rendering content',data:{itemsCount:items.length,itemsForSelectedDateCount:itemsForSelectedDate.length,viewMode,selectedISO,loading,error},timestamp:Date.now()})}).catch(()=>{});
+          debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'G',location:'Schedule.tsx:185',message:'Schedule rendering content',data:{itemsCount:items.length,itemsForSelectedDateCount:itemsForSelectedDate.length,viewMode,selectedISO,loading,error},timestamp:Date.now()});
         }
         // #endregion
         return null;

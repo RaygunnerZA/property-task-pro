@@ -235,15 +235,17 @@ export function ImageUploadSection({
       {showAnnotationEditor && editingImageIndex !== null && images[editingImageIndex] && (
         <TempImageAnnotationEditor
           tempImage={images[editingImageIndex]}
-          onSave={(annotations) => {
+          onSave={(annotations, isAutosave) => {
             updateImageAnnotations(editingImageIndex, annotations);
+            if (!isAutosave) {
+              setShowAnnotationEditor(false);
+              setEditingImageIndex(null);
+            }
+          }}
+          onCancel={() => {
             setShowAnnotationEditor(false);
             setEditingImageIndex(null);
           }}
-      onCancel={() => {
-        setShowAnnotationEditor(false);
-        setEditingImageIndex(null);
-      }}
         />
       )}
     </div>
@@ -257,7 +259,7 @@ function TempImageAnnotationEditor({
   onCancel,
 }: {
   tempImage: TempImage;
-  onSave: (annotations: Annotation[]) => void;
+  onSave: (annotations: Annotation[], isAutosave: boolean) => void;
   onCancel: () => void;
 }) {
   return (
@@ -268,12 +270,7 @@ function TempImageAnnotationEditor({
       initialAnnotations={tempImage.annotation_json || []}
       onSave={async (annotations, isAutosave) => {
         // For temp images, always save (autosave or manual)
-        onSave(annotations);
-        // Don't close on autosave for temp images either
-        if (!isAutosave) {
-          setShowAnnotationEditor(false);
-          setEditingImageIndex(null);
-        }
+        onSave(annotations, Boolean(isAutosave));
       }}
       onCancel={onCancel}
     />

@@ -3,6 +3,11 @@
  * No DB; used only for hover-reveal suggestion chips on space group cards.
  */
 
+/** Shorten "room" to "rm" for space chip display (e.g. "Living Room" → "Living Rm"). */
+export function shortSpaceLabel(name: string): string {
+  return name.replace(/\broom\b/gi, (m) => (m[0] === "R" ? "Rm" : "rm"));
+}
+
 export type SpaceGroup = {
   id: string;
   label: string;
@@ -21,7 +26,7 @@ export const ONBOARDING_SPACE_GROUPS: SpaceGroup[] = [
     id: "habitable",
     label: "Habitable / Working",
     description: "Living, working, and activity spaces including bedrooms, offices, meeting rooms, and sales floors.",
-    suggestedSpaces: ["Living Room", "Bedroom", "Bedroom 1", "Bedroom 2", "Office", "Kitchen", "Meeting Room", "Sales Floor"],
+    suggestedSpaces: ["Living Room", "Bedroom", "Office", "Kitchen", "Meeting Room", "Sales Floor"],
   },
   {
     id: "service",

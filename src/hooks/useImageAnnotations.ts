@@ -82,16 +82,15 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         .eq("image_id", imageId)
         .maybeSingle();
 
-      // Append-only: merge with existing annotations
-      const existingAnnotations = existing?.annotations || [];
-      const mergedAnnotations = [...(existingAnnotations as Annotation[]), ...newAnnotations];
+      // Store latest annotations (editor sends full state)
+      const nextAnnotations = newAnnotations;
 
       if (existing) {
         // Update existing record (append-only)
         const { error: updateError } = await supabase
           .from("task_image_annotations")
           .update({
-            annotations: mergedAnnotations,
+            annotations: nextAnnotations,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existing.id);
@@ -105,7 +104,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
             task_id: taskId,
             image_id: imageId,
             created_by: user.id,
-            annotations: mergedAnnotations,
+            annotations: nextAnnotations,
           });
 
         if (insertError) throw insertError;

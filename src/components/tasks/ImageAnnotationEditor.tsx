@@ -959,10 +959,7 @@ export function ImageAnnotationEditor({
             try {
               e.preventDefault();
               e.stopPropagation();
-              // #region agent log
               const newTool = currentTool === "arrow" ? null : "arrow";
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-arrow-click',message:'arrow tool clicked',data:{currentTool,newTool,annotationsCount:annotations.length,isDrawing,hasTempAnnotation:!!tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               // Cancel any active drawing when switching tools
               if (isDrawing) {
                 setIsDrawing(false);
@@ -971,9 +968,6 @@ export function ImageAnnotationEditor({
               }
               setCurrentTool(newTool);
             } catch (error) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-arrow-click-error',message:'error in arrow tool click',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               console.error('Error in arrow tool click:', error);
             }
           }}
@@ -991,10 +985,7 @@ export function ImageAnnotationEditor({
             try {
               e.preventDefault();
               e.stopPropagation();
-              // #region agent log
               const newTool = currentTool === "rect" ? null : "rect";
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-rect-click',message:'rect tool clicked',data:{currentTool,newTool,annotationsCount:annotations.length,isDrawing,hasTempAnnotation:!!tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               // Cancel any active drawing when switching tools
               if (isDrawing) {
                 setIsDrawing(false);
@@ -1003,9 +994,6 @@ export function ImageAnnotationEditor({
               }
               setCurrentTool(newTool);
             } catch (error) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-rect-click-error',message:'error in rect tool click',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               console.error('Error in rect tool click:', error);
             }
           }}
@@ -1023,10 +1011,7 @@ export function ImageAnnotationEditor({
             try {
               e.preventDefault();
               e.stopPropagation();
-              // #region agent log
               const newTool = currentTool === "circle" ? null : "circle";
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-circle-click',message:'circle tool clicked',data:{currentTool,newTool,annotationsCount:annotations.length,isDrawing,hasTempAnnotation:!!tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               // Cancel any active drawing when switching tools
               if (isDrawing) {
                 setIsDrawing(false);
@@ -1035,9 +1020,6 @@ export function ImageAnnotationEditor({
               }
               setCurrentTool(newTool);
             } catch (error) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-circle-click-error',message:'error in circle tool click',data:{error:error instanceof Error ? error.message : String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               console.error('Error in circle tool click:', error);
             }
           }}
@@ -1055,10 +1037,7 @@ export function ImageAnnotationEditor({
             try {
               e.preventDefault();
               e.stopPropagation();
-              // #region agent log
               const newTool = currentTool === "text" ? null : "text";
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-text-click',message:'text tool clicked',data:{currentTool,newTool,annotationsCount:annotations.length,isDrawing,hasTempAnnotation:!!tempAnnotation},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               // Cancel any active drawing when switching tools
               if (isDrawing) {
                 setIsDrawing(false);
@@ -1067,9 +1046,6 @@ export function ImageAnnotationEditor({
               }
               setCurrentTool(newTool);
             } catch (error) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:tool-text-click-error',message:'error clicking text tool',data:{error:error instanceof Error ? error.message : String(error),stack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run9',hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               console.error("Error selecting text tool:", error);
             }
           }}
@@ -1366,9 +1342,6 @@ export function ImageAnnotationEditor({
       <AlertDialog 
         open={showConfirmClose} 
         onOpenChange={(open) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageAnnotationEditor.tsx:AlertDialog-onOpenChange',message:'AlertDialog state change',data:{open,showConfirmClose},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
           setShowConfirmClose(open);
         }}
       >
