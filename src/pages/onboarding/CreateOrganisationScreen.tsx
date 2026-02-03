@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
@@ -22,8 +22,23 @@ export default function CreateOrganisationScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Debug: Log orgId state
-  console.log('[CreateOrganisationScreen] Render', { activeOrgId, orgLoading });
+  // If user already has an org, skip this step to avoid "create org" then "you have an org" confusion
+  const hasOrgAndRedirecting = !orgLoading && !!activeOrgId;
+  useEffect(() => {
+    if (!hasOrgAndRedirecting) return;
+    navigate("/onboarding/add-property", { replace: true });
+  }, [hasOrgAndRedirecting, navigate]);
+
+  // Don't show the form until we've finished the org check – avoids showing "Create org" then redirecting
+  if (orgLoading) {
+    return (
+      <OnboardingContainer topRight={<OnboardingLogoutButton />}>
+        <div className="animate-fade-in flex min-h-[200px] items-center justify-center">
+          <p className="text-[#6D7480]">Checking your account…</p>
+        </div>
+      </OnboardingContainer>
+    );
+  }
 
   const handleCreate = async () => {
     if (!orgName.trim()) {
@@ -44,7 +59,6 @@ export default function CreateOrganisationScreen() {
       }
 
       const currentUserId = currentSession.user.id;
-      console.log("Creating org for user:", currentUserId);
 
       // Check if user already has an organisation
       // Use a direct query with explicit user_id check to ensure RLS is working
@@ -69,8 +83,7 @@ export default function CreateOrganisationScreen() {
         
         // Verify the org actually belongs to this user
         if (org && org.created_by === currentUserId) {
-          console.log("User already has an organisation:", existingOrgId);
-          toast.error("You already have an organisation. Redirecting...");
+          toast.info("You already have an organisation. Taking you to the next step.");
           // Redirect to property page instead
           setTimeout(() => {
             navigate("/onboarding/add-property", { replace: true });
@@ -105,13 +118,6 @@ export default function CreateOrganisationScreen() {
         return;
       }
 
-      console.log("About to create org with:", {
-        name: orgName,
-        org_type: 'business',
-        created_by: currentUserId,
-        auth_uid: verifyUser.id
-      });
-
       // Use SECURITY DEFINER function to bypass RLS for org creation
       const { data: orgId, error: orgError } = await supabase.rpc('create_organisation', {
         org_name: orgName,
@@ -134,7 +140,6 @@ export default function CreateOrganisationScreen() {
         throw new Error("Failed to create organisation: no ID returned");
       }
 
-      console.log("Org created with membership:", orgId);
       // Note: Membership is now created automatically by the RPC function
 
       // Store in local onboarding state
@@ -154,10 +159,7 @@ export default function CreateOrganisationScreen() {
       
       toast.success("Organisation created!");
       
-      // Mark that we're navigating from onboarding to prevent AppInitializer interference
-      (window as any).__lastOnboardingNavigation = Date.now();
-      
-      // Small delay to ensure state is updated before navigation
+      // Small delay so success toast is visible, then continue
       setTimeout(() => {
         navigate("/onboarding/add-property");
       }, 100);
@@ -168,6 +170,17 @@ export default function CreateOrganisationScreen() {
       setLoading(false);
     }
   };
+
+  // Brief message while redirecting when user already has an org
+  if (hasOrgAndRedirecting) {
+    return (
+      <OnboardingContainer topRight={<OnboardingLogoutButton />}>
+        <div className="animate-fade-in flex min-h-[200px] items-center justify-center">
+          <p className="text-[#6D7480]">Taking you to the next step…</p>
+        </div>
+      </OnboardingContainer>
+    );
+  }
 
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
@@ -183,31 +196,6 @@ export default function CreateOrganisationScreen() {
         />
 
         <div className="space-y-6">
-          {/* Organization Found Banner */}
-          {!orgLoading && activeOrgId && (
-            <div className="bg-green-50 border-2 border-green-500 rounded-lg p-6 mb-4">
-              <p className="text-green-800 font-semibold mb-4 text-center">
-                Organization Found! You already have an organization.
-              </p>
-              <p className="text-green-700 text-sm mb-4 text-center font-mono">
-                Org ID: {activeOrgId}
-              </p>
-              <a
-                href="/"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('[CreateOrganisationScreen] Skip to dashboard clicked - FORCING NAVIGATION', { activeOrgId, currentPath: location.pathname });
-                  // Force full page reload to bypass all route guards
-                  window.location.href = "/";
-                }}
-                className="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-colors duration-200 cursor-pointer block text-center"
-              >
-                Organization Found! Skip to Dashboard
-              </a>
-            </div>
-          )}
-
           <NeomorphicInput
             label="Organisation Name"
             placeholder="Acme Property Group"
@@ -229,22 +217,6 @@ export default function CreateOrganisationScreen() {
             </NeomorphicButton>
           </div>
 
-          {/* Dev Bypass Link */}
-          <div className="pt-4 text-center">
-            <a
-              href="/"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[CreateOrganisationScreen] Dev bypass clicked - FORCING NAVIGATION');
-                // Force full page reload to bypass all route guards
-                window.location.href = "/";
-              }}
-              className="text-xs text-gray-400 hover:text-gray-600 underline cursor-pointer"
-            >
-              Force Go to Dashboard (Dev Bypass)
-            </a>
-          </div>
         </div>
       </div>
     </OnboardingContainer>

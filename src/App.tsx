@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
 import { DataProvider } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
+import { AuthHashHandler } from "@/components/AuthHashHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { LoadingState } from "@/components/design-system/LoadingState";
@@ -109,6 +110,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <AuthHashHandler />
             <SystemStatusProvider>
               <StatusBanner />
               <DataProvider>

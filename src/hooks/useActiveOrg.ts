@@ -60,13 +60,7 @@ export function useActiveOrg(): UseActiveOrgResult {
     }
 
     // Auto-select the first organisation found
-    const firstOrgId = membership?.org_id || null;
-    
-    if (firstOrgId) {
-      console.log('[useActiveOrg] Found org_id:', firstOrgId);
-    }
-    
-    return firstOrgId;
+    return membership?.org_id || null;
   }, [userId]);
 
   // Listen for auth state changes to invalidate queries
