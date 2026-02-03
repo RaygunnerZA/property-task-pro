@@ -1,3 +1,12 @@
+/**
+ * Generated Supabase types from the current public schema.
+ * Regenerate with: npm run gen:types
+ * Source: supabase gen types typescript --project-id <id> --schema public
+ *
+ * IMPORTANT: After regenerating, re-add the graphql_public schema below
+ * (between __InternalSupabase and public). Codegen does not emit it; it provides
+ * GraphQL API support and is required for type correctness.
+ */
 export type Json =
   | string
   | number
@@ -11,6 +20,32 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
+  }
+  /** Preserve when regenerating types – codegen does not emit this. */
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
