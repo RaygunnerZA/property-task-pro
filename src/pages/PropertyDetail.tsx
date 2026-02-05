@@ -505,7 +505,7 @@ export default function PropertyDetail() {
     <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <PageHeader>
         <div 
-          className="mx-auto px-4 pt-[63px] pb-4 h-[115px] flex items-center justify-between max-w-full"
+          className="mx-auto px-4 pt-[63px] pb-0 h-[125px] flex items-center justify-between max-w-full rounded-bl-[12px]"
           style={gradientStyle}
         >
           <div className="flex items-center gap-3">
@@ -527,7 +527,7 @@ export default function PropertyDetail() {
                 property={propertyWithContacts}
                 onAddTask={() => {
                   // TODO: Open create task dialog
-                  navigate(`/tasks/create?propertyId=${id}`);
+                  navigate(`/add-task?propertyId=${id}`);
                 }}
                 onAddPhoto={() => fileInputRef.current?.click()}
                 onMessage={() => {

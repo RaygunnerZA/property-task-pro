@@ -17,7 +17,7 @@ export function QuickActionsSection({ propertyId }: QuickActionsSectionProps) {
 
   const handleCreateRecurringTask = () => {
     // Navigate to create task with property pre-selected
-    navigate(`/tasks/create?propertyId=${propertyId}`);
+    navigate(`/add-task?propertyId=${propertyId}`);
   };
 
   const handleRunAudit = () => {

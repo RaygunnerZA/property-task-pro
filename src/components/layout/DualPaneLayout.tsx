@@ -12,14 +12,14 @@ interface DualPaneLayoutProps {
  * Mobile: Single column stack
  * 
  * Desktop (md+): CSS Grid with 2 columns
- *   - Left: 335px fixed (Calendar + Properties)
- *   - Right: 1fr (Task Tabs) - flexible up to max width
+ *   - Left: 280px fixed (Calendar + Properties)
+ *   - Right: 1fr (Task Tabs) - flexible up to max 720px
  * 
  * Desktop (lg+): CSS Grid with conditional columns
- *   - Without third column: [335px minmax(450px, 800px)]
- *   - With third column: [335px 799px 500px]
- *   - Left: 335px fixed (Calendar + Properties)
- *   - Middle: Flexible width (Task Tabs)
+ *   - Without third column: [280px minmax(450px, 720px)]
+ *   - With third column: [280px 720px 500px]
+ *   - Left: 280px fixed (Calendar + Properties)
+ *   - Middle: Flexible width (Task Tabs) max 720px
  *   - Right: 500px fixed (Task Details) - only shown when thirdColumn prop provided
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPaneLayoutProps) {
@@ -34,14 +34,14 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       </div>
 
       {/* Desktop: Two-column layout (md+), shown when screen is md-lg */}
-      <div className="hidden md:grid md:grid-cols-[335px_1fr] lg:hidden min-h-screen">
-        {/* Left Column: Fixed 335px, sticky on scroll */}
+      <div className="hidden md:grid md:grid-cols-[272px_1fr] lg:hidden min-h-screen">
+        {/* Left Column: Fixed 272px, sticky on scroll */}
         <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 
-        {/* Right Column: Dynamic 1fr */}
-        <div className="overflow-y-auto min-w-0">
+        {/* Right Column: Dynamic 1fr, max 650px */}
+        <div className="overflow-y-auto min-w-0 max-w-[650px]">
           {rightColumn}
         </div>
       </div>
@@ -50,16 +50,16 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn }: DualPan
       <div 
         className={`hidden lg:grid min-h-screen transition-[grid-template-columns] duration-300 ease-in-out ${
           hasThirdColumn 
-            ? 'lg:grid-cols-[335px_799px_500px]' 
-            : 'lg:grid-cols-[335px_minmax(450px,_800px)]'
+            ? 'lg:grid-cols-[272px_650px_500px]' 
+            : 'lg:grid-cols-[272px_minmax(450px,_650px)]'
         }`}
       >
-        {/* Left Column: Fixed 335px, sticky on scroll */}
+        {/* Left Column: Fixed 272px, sticky on scroll */}
         <div className="h-screen sticky top-0">
           {leftColumn}
         </div>
 
-        {/* Middle Column: Flexible width (Task Tabs) */}
+        {/* Middle Column: Flexible width (Task Tabs) max 720px */}
         <div className="overflow-y-auto border-r border-border min-w-0">
           {rightColumn}
         </div>

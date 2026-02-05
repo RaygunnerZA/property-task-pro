@@ -164,7 +164,7 @@ export function TaskPanel({
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[3px] pb-[3px]">
         {/* Sticky Tab Bar */}
-        <div className="sticky top-0 z-10 bg-background ml-[14px] mr-[14px] flex md:justify-between items-center">
+        <div className="sticky top-0 z-10 bg-background ml-[8px] mr-[14px] flex md:justify-between items-center">
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
@@ -249,7 +249,7 @@ export function TaskPanel({
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Tasks Tab */}
           {activeTab === "tasks" && (
-            <div className="h-full flex flex-col min-h-0 pt-[8px] px-4 pb-4">
+            <div className="h-full flex flex-col min-h-0 pt-[8px] pl-2 pr-4 pb-4">
               <TaskList 
                 tasks={tasks}
                 properties={properties}

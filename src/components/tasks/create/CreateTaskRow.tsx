@@ -82,6 +82,36 @@ export function CreateTaskRow({
         {icon}
       </div>
 
+      {/* Fact chips + suggested chips - positioned BEFORE instruction text */}
+      {(factChips.length > 0 || suggestedChips.length > 0) && (
+        <div className="flex flex-shrink-0 items-center gap-1.5 flex-wrap">
+          {factChips.map((chip) => {
+            const isAIPreFilled = chip.resolvedEntityId && (chip.source === "rule" || chip.source === "ai" || chip.source === "fallback");
+            return (
+              <Chip
+                key={chip.id}
+                role="fact"
+                label={chip.label.toUpperCase()}
+                onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
+                aiPreFilled={isAIPreFilled}
+                animate={false}
+                className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
+              />
+            );
+          })}
+          {suggestedChips.map((chip) => (
+            <Chip
+              key={chip.id}
+              role="suggestion"
+              label={chip.label.toUpperCase()}
+              onSelect={onSuggestionClick ? () => onSuggestionClick(chip) : undefined}
+              animate={false}
+              className="font-mono text-[11px] rounded-[8px] h-[24px] border-2 border-dashed border-muted-foreground/50 bg-transparent"
+            />
+          ))}
+        </div>
+      )}
+
       {/* Hover surface: instruction visible only on hover (or when active show children) */}
       <button
         type="button"
@@ -110,34 +140,6 @@ export function CreateTaskRow({
           </span>
         )}
       </button>
-
-      {/* Fact chips + suggested chips inline to the right of instruction/input */}
-      <div className="flex flex-shrink-0 items-center gap-1.5 flex-wrap">
-        {factChips.map((chip) => {
-          const isAIPreFilled = chip.resolvedEntityId && (chip.source === "rule" || chip.source === "ai" || chip.source === "fallback");
-          return (
-            <Chip
-              key={chip.id}
-              role="fact"
-              label={chip.label.toUpperCase()}
-              onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
-              aiPreFilled={isAIPreFilled}
-              animate={false}
-              className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
-            />
-          );
-        })}
-        {suggestedChips.map((chip) => (
-          <Chip
-            key={chip.id}
-            role="suggestion"
-            label={chip.label.toUpperCase()}
-            onSelect={onSuggestionClick ? () => onSuggestionClick(chip) : undefined}
-            animate={false}
-            className="font-mono text-[11px] rounded-[8px] h-[24px] border-2 border-dashed border-muted-foreground/50 bg-transparent"
-          />
-        ))}
-      </div>
 
       {hasUnresolved && !isActive && (
         <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500 border border-background" />

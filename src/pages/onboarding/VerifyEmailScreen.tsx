@@ -34,7 +34,7 @@ export default function VerifyEmailScreen() {
             if (error) return;
             window.history.replaceState(null, "", window.location.pathname + window.location.search);
             toast.success("Email verified!");
-            navigate("/onboarding/create-organisation");
+            navigate("/auth/callback", { replace: true });
           });
       }
     } catch {
@@ -52,7 +52,7 @@ export default function VerifyEmailScreen() {
       if (session?.user) {
         // User has a session - either verified or confirmation is disabled
         toast.success("Email verified!");
-        navigate("/onboarding/create-organisation");
+        navigate("/auth/callback", { replace: true });
       } else {
         toast.info("Please verify your email first", {
           description: "Check your inbox and spam folder"

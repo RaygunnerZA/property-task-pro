@@ -187,9 +187,8 @@ export default function LoginPage() {
         // Refresh session to ensure auth state is updated
         await supabase.auth.refreshSession();
         
-        // Let AppBootLoader handle all routing decisions
-        // It will check for org, properties, spaces and route accordingly
-        navigate("/", { replace: true });
+        // Navigate to auth callback which will check org status and route accordingly
+        navigate("/auth/callback", { replace: true });
       }
     } catch (error: any) {
       console.error('[Login] Unexpected error:', error);

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   CheckSquare, 
@@ -21,7 +21,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
-import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -117,7 +116,6 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
-  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   // Detect entity context from URL
   const entityContext = useMemo(() => {
@@ -173,36 +171,24 @@ export function AppSidebar() {
   ) => {
     const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
     const isActive = currentPath === url || (isContextItem && currentPath.startsWith(url.split('?')[0]));
+    const IconComponent = item.icon;
     
     return (
-      <SidebarMenuItem 
-        key={item.title}
-        onMouseEnter={() => setHoveredItem(item.title)} 
-        onMouseLeave={() => setHoveredItem(null)}
-      >
-        <SidebarMenuButton asChild className="group relative">
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
           <NavLink 
             to={url} 
             className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-[5px] transition-all bg-transparent",
-              isActive || hoveredItem === item.title
-                ? "text-white shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
-                : "text-[#F4F3F0] hover:text-white hover:bg-transparent hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
+              "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent",
+              isActive
+                ? "text-foreground font-semibold"
+                : "text-foreground/70"
             )}
             activeClassName=""
             pendingClassName="opacity-50"
           >
-            <AnimatedIcon
-              icon={item.icon}
-              size={20}
-              animateOnHover
-              animation="path-draw"
-              className={cn(
-                "flex-shrink-0",
-                (isActive || hoveredItem === item.title) ? "text-white" : "text-[#F4F3F0]"
-              )}
-            />
-            {open && <span className="text-sm font-medium tracking-tight">{item.title}</span>}
+            <IconComponent className="h-4 w-4 flex-shrink-0" />
+            {open && <span className="text-sm tracking-tight">{item.title}</span>}
           </NavLink>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -210,38 +196,18 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-sidebar-border bg-sidebar relative overflow-hidden">
-      {/* Paper texture background */}
-      <div 
-        className="absolute inset-0 pointer-events-none" 
-        style={{
-          backgroundImage: `url("/textures/white-texture2.jpg")`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '50%'
-        }} 
-      />
-      
-      {/* Vertical gradient: dark blue-gray to teal */}
-      <div 
-        className="absolute inset-0 pointer-events-none" 
-        style={{
-          background: 'linear-gradient(to bottom, #212131 0%, #4AA7AD 100%)'
-        }} 
-      />
-      
-      {/* Noise overlay with similar grain as main paper bg */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-[0.15]" 
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat'
-        }} 
-      />
-      
+    <Sidebar 
+      className="bg-background relative overflow-hidden"
+      style={{
+        backgroundImage: `url("/textures/white-texture2.jpg")`,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '50%'
+      }}
+    >
       <SidebarContent className="px-3 py-4 relative z-10 flex flex-col h-full">
         {/* Logo & Brand */}
-        <div className="pl-[21px] pr-2 pt-[14px] pb-0 mb-[15px]">
-          <div className="flex items-center gap-3 w-[127px]">
+        <div className="pl-[16px] pr-2 pt-[15px] pb-0 mb-[15px]">
+          <div className="flex items-center gap-3 w-[121px]">
             <img src={fillaLogo} alt="Filla" className="h-28 w-auto" />
           </div>
         </div>
@@ -258,7 +224,7 @@ export function AppSidebar() {
         {/* Context Layer (Dynamic) */}
         {entityContext && contextItems.length > 0 && (
           <SidebarGroup className="mt-8">
-            <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-[#F4F3F0] mb-2">
+            <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/50 mb-2">
               {entityContext.type === 'property' ? 'Property' : 'Asset'} Context
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -278,13 +244,13 @@ export function AppSidebar() {
             <SidebarMenu className="space-y-1">
               {/* Create New Button */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button
                     onClick={handleCreateNew}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all w-full bg-transparent"
+                    className="flex items-center gap-2 px-3 py-2 rounded-[5px] text-foreground/70 w-full bg-transparent"
                   >
-                    <Plus className="h-5 w-5 flex-shrink-0 text-white" />
-                    {open && <span className="text-sm font-medium tracking-tight text-white">Create New</span>}
+                    <Plus className="h-4 w-4 flex-shrink-0" />
+                    {open && <span className="text-sm tracking-tight">Create New</span>}
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -294,12 +260,15 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <NavLink 
                     to="/settings" 
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-[#F4F3F0] hover:text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all" 
-                    activeClassName="text-white shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)]"
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent",
+                      currentPath === "/settings" ? "text-foreground font-semibold" : "text-foreground/70"
+                    )}
+                    activeClassName=""
                     pendingClassName="opacity-50"
                   >
-                    <Settings className="h-5 w-5 flex-shrink-0" />
-                    {open && <span className="text-sm font-medium tracking-tight">Settings</span>}
+                    <Settings className="h-4 w-4 flex-shrink-0" />
+                    {open && <span className="text-sm tracking-tight">Settings</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -309,10 +278,10 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button 
                     onClick={handleSignOut} 
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[5px] text-[#F4F3F0] hover:text-white hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.4),inset_-2px_-2px_4px_rgba(255,255,255,0.15)] transition-all w-full"
+                    className="flex items-center gap-2 px-3 py-2 rounded-[5px] text-foreground/70 w-full bg-transparent"
                   >
-                    <LogOut className="h-5 w-5 flex-shrink-0" />
-                    {open && <span className="text-sm font-medium tracking-tight">Sign Out</span>}
+                    <LogOut className="h-4 w-4 flex-shrink-0" />
+                    {open && <span className="text-sm tracking-tight">Sign Out</span>}
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>

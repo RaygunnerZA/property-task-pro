@@ -117,7 +117,7 @@ export function DashboardCalendar({
   // Custom CaptionLabel component that only shows month
   const CustomCaptionLabel = (props: { displayMonth: Date }) => {
     return (
-      <span className="text-2xl font-semibold text-foreground">
+      <span className="text-xl font-semibold text-foreground">
         {formatDate(props.displayMonth, "MMMM")}
       </span>
     );
@@ -134,17 +134,17 @@ export function DashboardCalendar({
           months: "flex flex-col space-y-4",
           month: "space-y-4",
           caption: "flex justify-center pt-1 relative items-center mb-2",
-          caption_label: "text-2xl font-semibold text-foreground",
+          caption_label: "text-xl font-semibold text-foreground",
           nav: "space-x-1 flex items-center",
           nav_button: cardButtonClassName,
           nav_button_previous: "absolute left-1",
           nav_button_next: "absolute right-1",
           table: "w-full border-collapse space-y-1",
           head_row: "flex justify-center items-center",
-          head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] font-mono",
+          head_cell: "text-muted-foreground rounded-md w-[30px] font-normal text-xs font-mono",
           row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
-          cell: "h-9 w-9 text-center text-sm p-0 relative font-mono",
-          day: "h-9 w-9 p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
+          cell: "h-[30px] w-[30px] text-center text-xs p-0 relative font-mono",
+          day: "h-[30px] w-[30px] p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
           day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
           day_today: "bg-accent/30 text-foreground font-semibold",
           day_outside: "text-muted-foreground opacity-50",
@@ -229,8 +229,8 @@ export function DashboardCalendar({
                 data-overdue-count={overdueCount}
                 data-date-key={dateKey}
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '30px',
+                  height: '30px',
                   backgroundColor: fillColor || undefined,
                   borderRadius: '9999px',
                   // Apply neomorphic pressed effect directly via inline style

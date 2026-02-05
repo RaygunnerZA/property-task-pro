@@ -31,7 +31,7 @@ interface LeftColumnProps {
  * Left Column Component
  * Calendar + Properties
  * 
- * Desktop: Fixed 350px width, sticky on scroll
+ * Desktop: Fixed 280px width, sticky on scroll
  * Mobile: Full width, stacked above RightColumn
  */
 export function LeftColumn({ 
@@ -116,12 +116,12 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full"
+      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background p-4 pb-3">
+        <div className="sticky top-0 z-10 bg-background py-4 px-2 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
             <div className="flex items-center gap-1.5">
@@ -184,7 +184,7 @@ export function LeftColumn({
           </div>
         </div>
         {!hideProperties && (
-        <div className="px-4 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
+        <div className="px-2 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
           {propertiesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -243,7 +243,7 @@ export function LeftColumn({
           ref={calendarRef}
           className="flex-shrink-0 w-full"
         >
-          <div className="px-4 pt-4 pb-4 w-full">
+          <div className="px-2 pt-4 pb-4 w-full">
             {tasksLoading ? (
               <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
                 <Skeleton className="h-64 w-full" />

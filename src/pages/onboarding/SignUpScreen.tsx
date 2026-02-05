@@ -88,7 +88,7 @@ export default function SignUpScreen() {
         if (sessionData.session || data.user.email_confirmed_at) {
           // Email confirmation is disabled or already confirmed - skip verification
           toast.success("Account created!");
-          navigate("/onboarding/create-organisation");
+          navigate("/auth/callback", { replace: true });
         } else if (data.user.identities && data.user.identities.length === 0) {
           // User exists but unconfirmed - this is a repeated signup
           toast.info("Account already exists but unconfirmed.", {

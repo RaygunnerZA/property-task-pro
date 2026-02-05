@@ -43,7 +43,7 @@ export function RightColumn({
   return (
     <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
       {/* Daily Briefing Card at the top */}
-      <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px] h-[181px]">
+      <div className="mb-4 flex-shrink-0 w-full min-w-0 pl-[8px] pr-[15px] pt-[15px] h-[181px]">
         <DailyBriefingCard 
           selectedPropertyIds={selectedPropertyIds}
           properties={properties}

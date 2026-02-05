@@ -36,7 +36,7 @@ export function AuthHashHandler() {
             }
             window.history.replaceState(null, "", window.location.pathname + window.location.search);
             toast.success("Email verified!");
-            navigate("/onboarding/create-organisation", { replace: true });
+            navigate("/auth/callback", { replace: true });
           });
       }
     } catch {

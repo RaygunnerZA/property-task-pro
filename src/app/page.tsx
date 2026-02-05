@@ -238,10 +238,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <PageHeader>
         <div 
-          className="mx-auto px-4 pt-[63px] pb-4 h-[115px] flex items-center justify-between max-w-full"
+          className="mx-auto px-4 pt-[63px] pb-0 h-[125px] flex items-center justify-between max-w-full rounded-bl-[12px]"
           style={headerStyle}
         >
-          <div className="flex items-center gap-3 w-[303px]">
+          <div className="flex items-center gap-3 w-[248px]">
             <span className="shrink-0">
               <CalendarIcon className="h-6 w-6 text-white" />
             </span>
