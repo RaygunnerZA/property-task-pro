@@ -13,20 +13,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 
-// Helper function to create gradient header style with paper texture
+// Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
-  // Paper background color (from design system: hsl(40, 20%, 94%) = #F1EEE8)
-  const paperBg = "#F1EEE8";
-  
-  // Paper texture pattern (from design system)
-  const paperTexture = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`;
-  
-  // Create gradient: color solid until 20%, then transition to paper bg by 70%
-  // Paper bg with texture is set as base background, gradient overlays on top
+  // Create gradient: color solid until 28%, then transition to transparent by 97%
+  // No texture overlay - allows clean blend with bg-background
   return {
-    backgroundColor: paperBg,
-    backgroundImage: `${paperTexture}, linear-gradient(to right, ${color} 0%, ${color} 20%, ${color} 20%, ${paperBg} 70%, ${paperBg} 100%)`,
-    backgroundSize: '100%, 100%'
+    backgroundImage: `linear-gradient(90deg, ${color} 0%, ${color} 28%, transparent 97%, transparent 100%)`
   };
 };
 
@@ -205,7 +197,7 @@ export default function Dashboard() {
 
   // Render third column content - Create Task accordion + details below (lg+)
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-4 pt-[41px] pr-2 pb-0 pl-2">
       <CreateTaskModal
         open={showCreateTask}
         onOpenChange={handleCreateTaskOpenChange}
@@ -234,32 +226,36 @@ export default function Dashboard() {
   const primaryColor = "#8EC9CE";
   const headerStyle = createGradientHeaderStyle(primaryColor);
 
-  return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
-      <PageHeader>
-        <div 
-          className="mx-auto px-4 pt-[63px] pb-0 h-[125px] flex items-center justify-between max-w-full rounded-bl-[12px]"
-          style={headerStyle}
-        >
-          <div className="flex items-center gap-3 w-[248px]">
-            <span className="shrink-0">
-              <CalendarIcon className="h-6 w-6 text-white" />
+  // Header element that will be passed to DualPaneLayout
+  const headerElement = (
+    <PageHeader>
+      <div 
+        className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+        style={headerStyle}
+      >
+        <div className="flex items-center gap-3 w-[248px]">
+          <span className="shrink-0">
+            <CalendarIcon className="h-6 w-6 text-white" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold text-white leading-tight">Today</h1>
+          </div>
+          <div className="h-6 w-px bg-white/30 mx-2"></div>
+          <div className="flex items-center gap-2 text-right">
+            <WeatherIcon className="h-4 w-4 text-white/90" />
+            <span className="text-sm text-white/90">
+              {weather ? `${weather.temp}°C` : "--°C"}
             </span>
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-white leading-tight">Today</h1>
-            </div>
-            <div className="h-6 w-px bg-white/30 mx-2"></div>
-            <div className="flex items-center gap-2 text-right">
-              <WeatherIcon className="h-4 w-4 text-white/90" />
-              <span className="text-sm text-white/90">
-                {weather ? `${weather.temp}°C` : "--°C"}
-              </span>
-            </div>
           </div>
         </div>
-      </PageHeader>
-      
+      </div>
+    </PageHeader>
+  );
+
+  return (
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <DualPaneLayout
+        header={headerElement}
         leftColumn={
           <LeftColumn 
             tasks={tasks}

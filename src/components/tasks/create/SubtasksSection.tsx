@@ -52,17 +52,14 @@ export function SubtasksSection({
       }}
     >
       {/* Description Area */}
-      <div className="pt-5 pb-3 bg-black/0" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+      <div className="pt-3 pb-3 bg-black/0" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
         <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-lg font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
       </div>
 
-      {/* Divider */}
-      <div className="h-px bg-border/30 mx-4" />
-
       {/* Subtasks Area */}
-      <div className="px-4 py-[14px] pt-0">
+      <div className="px-4 pb-[3px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
-      <div className="flex items-center gap-3 py-2 cursor-pointer group" onClick={handleAddFirstSubtask}>
+      <div className="flex items-center gap-2 py-1 cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
             <span className="flex-1 text-muted-foreground/50 text-sm">
               Add subtask

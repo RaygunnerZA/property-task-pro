@@ -124,27 +124,27 @@ export function DashboardCalendar({
   };
 
   return (
-    <div className={cn("w-full", className)}>
+    <div className={cn("w-full flex justify-center", className)}>
       <Calendar
         mode="single"
         selected={selectedDate}
         onSelect={onDateSelect}
-        className="w-full"
+        className="w-full max-w-[245px]"
         classNames={{
-          months: "flex flex-col space-y-4",
-          month: "space-y-4",
-          caption: "flex justify-center pt-1 relative items-center mb-2",
+          months: "flex flex-col space-y-4 w-full",
+          month: "space-y-4 w-full",
+          caption: "flex justify-center pt-1 relative items-center mb-2 -mx-2",
           caption_label: "text-xl font-semibold text-foreground",
           nav: "space-x-1 flex items-center",
           nav_button: cardButtonClassName,
-          nav_button_previous: "absolute left-1",
-          nav_button_next: "absolute right-1",
+          nav_button_previous: "absolute left-0",
+          nav_button_next: "absolute right-0",
           table: "w-full border-collapse space-y-1",
-          head_row: "flex justify-center items-center",
-          head_cell: "text-muted-foreground rounded-md w-[30px] font-normal text-xs font-mono",
-          row: "flex w-full mt-2 mb-2 py-0 justify-center items-center font-mono",
-          cell: "h-[30px] w-[30px] text-center text-xs p-0 relative font-mono",
-          day: "h-[30px] w-[30px] p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
+          head_row: "flex justify-around items-center w-full",
+          head_cell: "text-muted-foreground rounded-md flex-1 max-w-[32px] font-normal text-xs font-mono text-center",
+          row: "flex w-full mt-2 mb-2 py-0 justify-around items-center font-mono",
+          cell: "h-[28px] w-[28px] flex-1 max-w-[32px] text-center text-xs p-0 relative font-mono flex items-center justify-center",
+          day: "h-[28px] w-[28px] p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
           day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
           day_today: "bg-accent/30 text-foreground font-semibold",
           day_outside: "text-muted-foreground opacity-50",
@@ -158,8 +158,8 @@ export function DashboardCalendar({
           hasTasks: "has-tasks",
         }}
         components={{
-          IconLeft: () => <ChevronLeft className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
-          IconRight: () => <ChevronRight className="h-6 w-6 text-foreground" strokeWidth={2.5} />,
+          IconLeft: () => <ChevronLeft className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
+          IconRight: () => <ChevronRight className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
           CaptionLabel: CustomCaptionLabel,
           Day: (props: any) => {
             const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
@@ -229,8 +229,8 @@ export function DashboardCalendar({
                 data-overdue-count={overdueCount}
                 data-date-key={dateKey}
                 style={{
-                  width: '30px',
-                  height: '30px',
+                  width: '28px',
+                  height: '28px',
                   backgroundColor: fillColor || undefined,
                   borderRadius: '9999px',
                   // Apply neomorphic pressed effect directly via inline style

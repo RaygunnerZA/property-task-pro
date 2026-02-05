@@ -487,25 +487,17 @@ export default function PropertyDetail() {
   const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
   const iconColor = (property as any).icon_color_hex || "#8EC9CE";
   
-  // Paper background color (from design system: hsl(40, 20%, 94%) = #F1EEE8)
-  const paperBg = "#F1EEE8";
-  
-  // Paper texture pattern (from design system)
-  const paperTexture = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise-filter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.522' numOctaves='1' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='0.468'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='0.468'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='0.468'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.137'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncG type='linear' slope='1.323' intercept='-0.207'/%3E%3CfeFuncB type='linear' slope='1.323' intercept='-0.207'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise-filter)' opacity='0.8'%3E%3C/rect%3E%3C/svg%3E")`;
-  
-  // Create gradient: property color solid until 20%, then transition to paper bg by 70%
-  // Paper bg with texture is set as base background, gradient overlays on top
+  // Create gradient: property color solid until 20%, then transition to transparent by 70%
+  // No texture overlay - allows clean blend with bg-background
   const gradientStyle = {
-    backgroundColor: paperBg,
-    backgroundImage: `${paperTexture}, linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, ${iconColor} 20%, ${paperBg} 70%, ${paperBg} 100%)`,
-    backgroundSize: '100%, 100%'
+    backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
   return (
     <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <PageHeader>
         <div 
-          className="mx-auto px-4 pt-[63px] pb-0 h-[125px] flex items-center justify-between max-w-full rounded-bl-[12px]"
+          className="mx-auto px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between max-w-full rounded-bl-[12px]"
           style={gradientStyle}
         >
           <div className="flex items-center gap-3">

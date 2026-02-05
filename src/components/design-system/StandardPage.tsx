@@ -60,7 +60,7 @@ export function StandardPage({
   return (
     <div className={cn("min-h-screen bg-background pb-20", className)}>
       <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 pt-[63px] pb-0 h-[125px] flex items-center justify-between rounded-bl-[12px]", maxWidthClasses[maxWidth])}>
+        <div className={cn("mx-auto px-4 pt-[63px] pb-[21px] h-[100px] flex items-center justify-between rounded-bl-[12px]", maxWidthClasses[maxWidth])}>
           <div className="flex items-center gap-3">
             {icon && <span className="icon-primary shrink-0">{icon}</span>}
             <div className="min-w-0">

@@ -124,12 +124,12 @@ export function LeftColumn({
         <div className="sticky top-0 z-10 bg-background py-4 px-2 pb-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">Properties</h2>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowAddProperty(true)}
                 className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
                 style={{
-                  width: '35px',
+                  width: '20px',
                   height: '35px',
                 }}
                 aria-label="Add property"
