@@ -1,0 +1,79 @@
+---
+description: WhenPanel calendar, time selector, and repeat button styling reference
+globs: src/components/tasks/create/panels/WhenPanel.tsx
+alwaysApply: false
+---
+
+# WhenPanel Styling
+
+Preserve these exact styles when editing WhenPanel. Do not change values without explicit request.
+
+## Layout
+
+- Root: `space-y-3` container with three sections (quick dates, calendar+time, repeat)
+- Two-column layout: horizontal date scroller (left, 110px) + vertical time wheels (right)
+- Columns use `flex gap-3 items-start`
+
+## Neumorphic Capsule (shared pattern)
+
+Selected items sit inside a neumorphic "capsule" — items outside are progressively blurred + faded.
+
+- Capsule bg: `bg-[rgba(233,230,226,1)]`
+- Capsule shadow: `shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.15),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_3px_2px_-1px_rgba(0,0,0,0.2)]`
+- Capsule border-radius: `rounded-[8px]`
+- Blur/fade by distance: `d0 → opacity:1, none` / `d1 → opacity:0.4, blur(1.5px)` / `d2 → opacity:0.15, blur(3px)` / `d3+ → opacity:0, blur(4px), pointerEvents:none`
+
+## Calendar (Left Column)
+
+### Constants
+- `DATE_CELL_W = 24`, `STRIP_W = 110`, `DATE_CAPSULE_W = 32`, `LEFT_PAD = 32`
+
+### Month/Year Header
+- Month: `text-[14px] font-semibold text-foreground` (3-letter abbreviation)
+- Year: `text-[9px] text-[rgba(133,186,188,1)] font-bold leading-[9px] tracking-[0.3px]` (split across two lines)
+- Container: `flex items-center justify-center gap-1.5 mb-px`, paddingTop: 1, paddingBottom: 7
+
+### Date Strip Capsule
+- `bg-[rgba(233,230,226,1)]` with heavier shadow: `shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.18),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_4px_2px_-2px_rgba(0,0,0,0.2)]`
+- Position: `left: capsuleLeft`, `top: 4`, `height: 36`
+
+### Date Cells
+- Day abbreviation: `text-[10px] font-mono font-medium leading-tight tracking-wide text-primary`
+- Date number: `text-xs font-medium font-mono leading-tight mt-[-2px]`
+- Cell: `width: 24, height: 45`, stacked vertically (`flex-col items-center justify-center`)
+
+## Time Selector (Right Column)
+
+### Constants
+- `TIME_CELL_H = 26`, `TIME_VISIBLE = 3`
+
+### Time Header
+- `text-[14px] font-semibold text-foreground`, container: `text-center mt-0 mb-[-7px] h-6 w-[75px]`
+
+### ScrollWheel (hours, minutes)
+- Default capsule: `top: 21, height: 36`, bg `rgba(233,230,226,1)`
+- Item text: `font-mono text-xs text-foreground`
+- Default wheel width: `32px`
+
+### AM/PM Wheel
+- Teal capsule: `bg-[rgba(142,201,206,1)]` with `marginLeft: 2, marginRight: 2`
+- Text: `fontSize: 10, color: rgba(246,244,242,1)`
+- Width: `28px`
+
+### Colon Separator
+- `text-sm font-mono font-semibold text-muted-foreground`, width: 6px
+
+## Quick Date Buttons
+
+- Font: `font-mono text-[9px] uppercase tracking-wide`
+- Padding: `px-1.5 py-0.5`, border-radius: `rounded-[4px]`
+- Container: `flex flex-wrap gap-1 h-6`
+- Active state: `bg-card text-foreground` with inset shadow
+- Inactive: `bg-background text-muted-foreground` with raised shadow, hover transitions to inset
+
+## Repeat Row
+
+- Container: `flex items-center gap-2 !mt-0` (overrides parent `space-y-3` — no top margin)
+- Label: `text-[10px] text-muted-foreground`
+- Switch: `scale-75 origin-left`
+- Select trigger: `h-6 w-auto min-w-[60px] text-[9px] font-mono px-1.5`

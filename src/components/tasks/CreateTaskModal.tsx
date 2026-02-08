@@ -265,13 +265,16 @@ export function CreateTaskModal({
   }, [factChips, CREATE_TASK_SECTIONS]);
 
   // Suggested (AI) chips by section — only chips not already in fact chips for that section
+  // Excludes verb chips (blockingRequired && !resolvedEntityId) since those are handled separately
   const suggestedChipsBySection = useMemo(() => {
     const bySection: Record<string, SuggestedChip[]> = {};
     CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
     const factIds = new Set(factChips.map(c => c.id));
     chipSuggestions.forEach(chip => {
       const section = chipTypeToSection[chip.type];
-      if (section && bySection[section] && !factIds.has(chip.id)) bySection[section].push(chip);
+      // Exclude verb chips from suggested chips - they'll be shown separately with verb labels
+      const isVerbChip = chip.blockingRequired && !chip.resolvedEntityId;
+      if (section && bySection[section] && !factIds.has(chip.id) && !isVerbChip) bySection[section].push(chip);
     });
     return bySection;
   }, [chipSuggestions, factChips, CREATE_TASK_SECTIONS]);
@@ -300,6 +303,25 @@ export function CreateTaskModal({
         return `CHOOSE ${value.toUpperCase()}`;
     }
   }, []);
+  
+  // Verb chips by section — unresolved action chips (blockingRequired && !resolvedEntityId) with verb labels
+  // These appear as ghost chips in their respective rows (e.g., "INVITE FRANK" in Who row, "ADD COTTAGE" in Where row)
+  const verbChipsBySection = useMemo(() => {
+    const bySection: Record<string, SuggestedChip[]> = {};
+    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
+    verbChips.forEach(chip => {
+      const section = chipTypeToSection[chip.type];
+      if (section && bySection[section]) {
+        // Create a copy with the verb label for display
+        const verbChip: SuggestedChip = {
+          ...chip,
+          label: generateVerbLabel(chip),
+        };
+        bySection[section].push(verbChip);
+      }
+    });
+    return bySection;
+  }, [verbChips, CREATE_TASK_SECTIONS, generateVerbLabel]);
   
   // Clarity state
   const [clarityState, setClarityState] = useState<{
@@ -1267,8 +1289,10 @@ export function CreateTaskModal({
               onActivate={() => setActiveSection(id)}
               factChips={factChipsBySection[id] ?? []}
               suggestedChips={suggestedChipsBySection[id] ?? []}
+              verbChips={verbChipsBySection[id] ?? []}
               onChipRemove={handleChipRemove}
               onSuggestionClick={handleChipSelect}
+              onVerbChipClick={handleChipSelect}
               hasUnresolved={unresolvedSections.includes(id)}
             >
               {activeSection === id && id === 'who' && (
@@ -1416,49 +1440,6 @@ export function CreateTaskModal({
 
       {/* Footer */}
       <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur">
-        {/* SUBMISSION GUARDRAIL: Verb Chips Clarity Block - Shows unresolved action intent */}
-        {/* INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions */}
-        {/* Invite chips are NOT normal chips - they are gated actions that require explicit resolution */}
-        {/* ADD RESOLUTION RULE: Space/asset chips with blockingRequired && !resolvedEntityId are "Add" actions */}
-        {/* Action chips represent unresolved intent (e.g., "INVITE JAMES", "ADD STOVE") */}
-        {/* These must be resolved into concrete entities or explicitly removed before submission */}
-        {/* INVITE BEHAVIORAL CONTRACT: Invite intent must resolve to a specific person/team or be explicitly removed */}
-        {/* Invite chips cannot silently disappear - they must be explicitly resolved or removed */}
-        {/* Invite chips cannot persist as task metadata - they are action intent, not passive data */}
-        {/* "Add" intent must resolve into real entities (spaces/assets) or be explicitly removed - it cannot persist as metadata */}
-        {verbChips.length > 0 && (
-          <div className="w-full px-4 py-3 rounded-[8px] bg-muted/30 border border-border/40">
-            <p className="text-sm text-foreground/80 mb-2 leading-relaxed">
-              {verbChips.length === 1 
-                ? "Resolve this action before creating the task:"
-                : "Resolve these actions before creating the task:"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {verbChips.map((chip) => {
-                // INVITE BEHAVIORAL CONTRACT: Person chips generate "INVITE {NAME}" labels
-                // Invite chips are action chips, not normal metadata chips
-                const verbLabel = generateVerbLabel(chip);
-                return (
-                  <Chip
-                    key={chip.id}
-                    role="verb"
-                    label={verbLabel}
-                    onSelect={() => handleChipSelect(chip)}
-                    animate={false}
-                  />
-                );
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {verbChips.some(chip => chip.type === 'person')
-                ? "Click an INVITE action to resolve it to a person/team, or remove it. Unresolved Invite blocks submission."
-                : verbChips.some(chip => chip.type === 'space' || chip.type === 'asset')
-                ? "Click an ADD action to open the add flow and create the entity, or remove it if not needed."
-                : "Click an action above to resolve it, or remove it if not needed."}
-            </p>
-          </div>
-        )}
-        
         {/* Clarity State */}
         {clarityState && (
           <ClarityState
