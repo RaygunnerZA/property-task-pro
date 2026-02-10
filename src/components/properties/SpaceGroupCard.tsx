@@ -61,9 +61,9 @@ export function SpaceGroupCard({
         />
       </div>
       
-      <div className="pt-4 pb-3 pl-2.5 pr-2.5 space-y-3">
+      <div className="pt-2 pb-2 pl-2.5 pr-2.5">
         {/* Title and Button Row */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-1 h-[42px]">
           <h3 className="font-semibold text-lg text-foreground leading-tight flex-1">
             {groupName}
           </h3>
@@ -85,7 +85,7 @@ export function SpaceGroupCard({
 
         {/* Neumorphic Perforation Line */}
         <div 
-          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1"
+          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1 mt-[7px]"
           style={{
             height: '1px',
             backgroundImage: 'repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)',
@@ -96,8 +96,8 @@ export function SpaceGroupCard({
         />
 
         {/* Description */}
-        <div className="space-y-1" style={{ marginTop: '7px' }}>
-          <p className="text-xs text-muted-foreground leading-relaxed">
+        <div className="space-y-1" style={{ marginTop: '3px' }}>
+          <p className="text-xs text-muted-foreground leading-[18px]">
             {description}
           </p>
           {spaceCount > 0 && (
