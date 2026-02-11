@@ -88,33 +88,75 @@ export type Database = {
       }
       assets: {
         Row: {
-          condition_score: number | null
-          created_at: string
           id: string
           org_id: string
           property_id: string
-          serial: string | null
           space_id: string | null
+          parent_asset_id: string | null
+          name: string
+          asset_type: string | null
+          category: string | null
+          serial_number: string | null
+          manufacturer: string | null
+          model: string | null
+          install_date: string | null
+          warranty_expiry: string | null
+          compliance_required: boolean | null
+          compliance_type: string | null
+          condition_score: number | null
+          status: string | null
+          notes: string | null
+          metadata: Record<string, unknown> | null
+          created_by: string | null
+          created_at: string
           updated_at: string
         }
         Insert: {
-          condition_score?: number | null
-          created_at?: string
           id?: string
           org_id: string
           property_id: string
-          serial?: string | null
           space_id?: string | null
+          parent_asset_id?: string | null
+          name: string
+          asset_type?: string | null
+          category?: string | null
+          serial_number?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          install_date?: string | null
+          warranty_expiry?: string | null
+          compliance_required?: boolean | null
+          compliance_type?: string | null
+          condition_score?: number | null
+          status?: string | null
+          notes?: string | null
+          metadata?: Record<string, unknown> | null
+          created_by?: string | null
+          created_at?: string
           updated_at?: string
         }
         Update: {
-          condition_score?: number | null
-          created_at?: string
           id?: string
           org_id?: string
           property_id?: string
-          serial?: string | null
           space_id?: string | null
+          parent_asset_id?: string | null
+          name?: string
+          asset_type?: string | null
+          category?: string | null
+          serial_number?: string | null
+          manufacturer?: string | null
+          model?: string | null
+          install_date?: string | null
+          warranty_expiry?: string | null
+          compliance_required?: boolean | null
+          compliance_type?: string | null
+          condition_score?: number | null
+          status?: string | null
+          notes?: string | null
+          metadata?: Record<string, unknown> | null
+          created_by?: string | null
+          created_at?: string
           updated_at?: string
         }
         Relationships: [
@@ -144,6 +186,122 @@ export type Database = {
             columns: ["space_id"]
             isOneToOne: false
             referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_files: {
+        Row: {
+          id: string
+          asset_id: string
+          file_url: string
+          file_type: string | null
+          uploaded_by: string | null
+          uploaded_at: string | null
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          file_url: string
+          file_type?: string | null
+          uploaded_by?: string | null
+          uploaded_at?: string | null
+        }
+        Update: {
+          id?: string
+          asset_id?: string
+          file_url?: string
+          file_type?: string | null
+          uploaded_by?: string | null
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_files_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      asset_inspections: {
+        Row: {
+          id: string
+          asset_id: string
+          task_id: string | null
+          inspection_date: string | null
+          condition_score: number | null
+          notes: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          task_id?: string | null
+          inspection_date?: string | null
+          condition_score?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          asset_id?: string
+          task_id?: string | null
+          inspection_date?: string | null
+          condition_score?: number | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_inspections_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_inspections_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_assets: {
+        Row: {
+          task_id: string
+          asset_id: string
+          created_at: string | null
+        }
+        Insert: {
+          task_id: string
+          asset_id: string
+          created_at?: string | null
+        }
+        Update: {
+          task_id?: string
+          asset_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
             referencedColumns: ["id"]
           },
         ]
@@ -1728,18 +1886,32 @@ export type Database = {
     Views: {
       assets_view: {
         Row: {
-          condition_score: number | null
-          created_at: string | null
           id: string | null
-          open_tasks_count: number | null
           org_id: string | null
-          property_address: string | null
           property_id: string | null
-          property_name: string | null
-          serial: string | null
           space_id: string | null
-          space_name: string | null
+          parent_asset_id: string | null
+          name: string | null
+          asset_type: string | null
+          category: string | null
+          serial_number: string | null
+          manufacturer: string | null
+          model: string | null
+          install_date: string | null
+          warranty_expiry: string | null
+          compliance_required: boolean | null
+          compliance_type: string | null
+          condition_score: number | null
+          status: string | null
+          notes: string | null
+          metadata: Record<string, unknown> | null
+          created_by: string | null
+          created_at: string | null
           updated_at: string | null
+          property_name: string | null
+          property_address: string | null
+          space_name: string | null
+          open_tasks_count: number | null
         }
         Relationships: [
           {

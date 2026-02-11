@@ -2,15 +2,21 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
-import { Loader2 } from "lucide-react";
+import { NewtonsCradle } from "ldrs/react";
+import "ldrs/react/NewtonsCradle.css";
+
+/** Minimum time to show loading screen so org/property checks can complete */
+const MIN_LOADING_MS = 2500;
 
 /**
  * AuthCallback - Transition page after login
- * 
- * Shows a welcome message + spinner while checking if the user has onboarded.
+ *
+ * Shows a loading screen with NewtonsCradle while validating user has org, property, etc.
+ * Waits at least MIN_LOADING_MS so checks have time to complete before routing.
  * Routes to:
- * - /work/tasks if user has an org
+ * - /work/tasks if user has an org (and properties for owner/manager)
  * - /onboarding/create-organisation if user needs to onboard
+ * - /onboarding/add-property if user has org but no properties
  * - /welcome if not authenticated
  */
 export default function AuthCallback() {
@@ -21,16 +27,13 @@ export default function AuthCallback() {
   useEffect(() => {
     let cancelled = false;
 
-    async function checkUserStatus() {
+    async function runChecks(): Promise<string | null> {
       try {
         // 1. Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
-          if (!cancelled) {
-            navigate("/welcome", { replace: true });
-          }
-          return;
+          return "/welcome";
         }
 
         // 2. Check if user has an organisation membership
@@ -44,26 +47,21 @@ export default function AuthCallback() {
 
         if (membershipError) {
           console.error("[AuthCallback] Error checking membership:", membershipError);
-          // Don't block on error - let user proceed to onboarding
         }
 
-        if (cancelled) return;
+        if (cancelled) return null;
 
         if (membership?.org_id) {
-          // User has an org - check if they have properties (for owner/manager)
           const isStaff = membership.role !== "owner" && membership.role !== "manager";
-          
+
           if (isStaff) {
-            // Staff members go straight to dashboard
-            // Mark onboarding as complete if not already
             const onboardingCompleted = user.user_metadata?.onboarding_completed;
             if (!onboardingCompleted) {
               await supabase.auth.updateUser({
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            navigate("/work/tasks", { replace: true });
-            return;
+            return "/work/tasks";
           }
 
           // Owner/manager - check if they have properties
@@ -72,35 +70,38 @@ export default function AuthCallback() {
             .select("id", { count: "exact", head: true })
             .eq("org_id", membership.org_id);
 
-          if (cancelled) return;
+          if (cancelled) return null;
 
           if ((count ?? 0) > 0) {
-            // Has properties - go to dashboard
             const onboardingCompleted = user.user_metadata?.onboarding_completed;
             if (!onboardingCompleted) {
               await supabase.auth.updateUser({
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            navigate("/work/tasks", { replace: true });
-          } else {
-            // Has org but no properties - continue onboarding
-            navigate("/onboarding/add-property", { replace: true });
+            return "/work/tasks";
           }
-        } else {
-          // No org - needs to create one
-          navigate("/onboarding/create-organisation", { replace: true });
+          return "/onboarding/add-property";
         }
+
+        return "/onboarding/create-organisation";
       } catch (err: any) {
         console.error("[AuthCallback] Unexpected error:", err);
         if (!cancelled) {
           setStatus("error");
           setErrorMessage(err.message || "Something went wrong");
         }
+        return null;
       }
     }
 
-    checkUserStatus();
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, MIN_LOADING_MS));
+
+    Promise.all([runChecks(), minDelay]).then(([targetPath]) => {
+      if (!cancelled && targetPath) {
+        navigate(targetPath, { replace: true });
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -128,8 +129,8 @@ export default function AuthCallback() {
   return (
     <OnboardingContainer>
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-primary mb-6" />
-        <h1 className="text-2xl font-semibold text-foreground mb-2">
+        <NewtonsCradle size="78" speed="1.4" color="#8EC9CE" />
+        <h1 className="text-2xl font-semibold text-foreground mb-2 mt-6">
           Welcome back!
         </h1>
         <p className="text-muted-foreground">

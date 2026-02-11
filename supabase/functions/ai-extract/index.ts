@@ -324,11 +324,25 @@ ${description}
 // ----------------------------------------------------
 
 async function resolveEntities(ai: any, orgId: string) {
-  const [spacesRes, teamsRes, groupsRes] = await Promise.all([
+  // Fetch org entities in parallel — now includes members for person resolution
+  const [spacesRes, teamsRes, groupsRes, membersRes] = await Promise.all([
     supabase.from("spaces").select("id,name").eq("org_id", orgId),
     supabase.from("teams").select("id,name").eq("org_id", orgId),
     supabase.from("groups").select("id,name").eq("org_id", orgId),
+    supabase.from("organisation_members").select("id,user_id,role").eq("org_id", orgId),
   ]);
+
+  // Build person list: enrich member rows with display names from auth.users
+  let membersList: Array<{ id: string; name: string }> = [];
+  const memberRows = membersRes.data || [];
+  if (memberRows.length > 0) {
+    const userIds = memberRows.map((m: any) => m.user_id);
+    const { data: usersInfo } = await supabase.rpc("get_users_info", { user_ids: userIds });
+    membersList = (usersInfo || []).map((u: any) => ({
+      id: u.id,
+      name: u.nickname || u.email || u.id,
+    }));
+  }
 
   // Helper to normalize assets array (handle both string[] and object[] formats)
   const normalizeAssets = (assets: any[]): Array<{ name: string; authority?: number }> => {
@@ -350,7 +364,7 @@ async function resolveEntities(ai: any, orgId: string) {
     assets: normalizeAssets(ai.assets || []),
 
     spaces: matchWithAuthority(ai.spaces || [], spacesRes.data || []),
-    people: matchWithAuthority(ai.people || [], []), // People resolution handled in frontend
+    people: matchWithAuthority(ai.people || [], membersList),
     teams: matchWithAuthority(ai.teams || [], teamsRes.data || []),
     groups: matchWithAuthority(ai.groups || [], groupsRes.data || []),
     themes: (ai.themes || []).map((t: any) => ({

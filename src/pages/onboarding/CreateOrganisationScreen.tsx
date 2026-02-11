@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { orgName, setOrgName, setOrgId } = useOnboardingStore();
   const { refresh, session } = useDataContext();
   const { orgId: activeOrgId, isLoading: orgLoading } = useActiveOrg();
@@ -145,24 +147,25 @@ export default function CreateOrganisationScreen() {
       // Store in local onboarding state
       setOrgId(orgId);
 
-      // Wait a moment for the database to be ready, then refresh
+      // Invalidate activeOrg query so useActiveOrg refetches when AddPropertyScreen mounts
+      await queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
+
+      // Wait for DB to propagate and caches to refresh
       await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Refresh session to get fresh JWT (though org_id won't be in JWT yet)
+
       const { error: refreshError } = await supabase.auth.refreshSession();
       if (refreshError) {
         console.error("Session refresh error:", refreshError);
       }
-      
-      // Refresh DataContext (it will use useActiveOrg which fetches from DB)
+
       await refresh();
-      
+
       toast.success("Organisation created!");
-      
-      // Small delay so success toast is visible, then continue
+
+      // Delay so org is visible in DB before AddPropertyScreen mounts; pass orgId in state as fallback
       setTimeout(() => {
-        navigate("/onboarding/add-property");
-      }, 100);
+        navigate("/onboarding/add-property", { state: { orgId }, replace: true });
+      }, 800);
     } catch (err: any) {
       console.error("Create org failed:", err);
       toast.error(err.message || "Failed to create organisation");

@@ -14,7 +14,7 @@ interface AssetCardProps {
 
 export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCardProps) {
   const conditionScore = asset.condition_score ?? 100;
-  const assetName = asset.serial || "Unnamed Asset";
+  const assetName = asset.name || "Unnamed Asset";
   
   const getConditionColor = (score: number) => {
     if (score >= 80) return "bg-green-500/10 text-green-700 border-green-500/20";
@@ -60,9 +60,9 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          {asset.serial && (
+          {asset.serial_number && (
             <Badge variant="neutral" size="sm">
-              Serial: {asset.serial}
+              Serial: {asset.serial_number}
             </Badge>
           )}
           {propertyName && (

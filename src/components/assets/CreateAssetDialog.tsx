@@ -72,14 +72,14 @@ export function CreateAssetDialog({
 
     setLoading(true);
     try {
-      // Insert asset - using serial field for name temporarily (matching Assets.tsx pattern)
-      // TODO: Add name and type columns to assets table
       const { error: insertError } = await supabase.from("assets").insert({
         org_id: orgId,
         property_id: propertyId,
-        serial: name.trim(), // Storing name in serial field (matching existing pattern)
-        condition_score: 100, // Default condition score
-      } as any); // Type assertion needed until types are regenerated
+        name: name.trim(),
+        asset_type: type || null,
+        serial_number: serialNumber.trim() || null,
+        condition_score: 100,
+      });
 
       if (insertError) {
         console.error("Asset creation error:", insertError);
