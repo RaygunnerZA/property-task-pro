@@ -46,34 +46,38 @@ export default function AddPropertyScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { orgId, isLoading: orgLoading, error: orgError } = useActiveOrg();
+  const { orgId: orgIdFromQuery, isLoading: orgLoading, error: orgError } = useActiveOrg();
   const { organization } = useOrganization();
-  const { 
-    propertyNickname, 
-    propertyAddress, 
+  const {
+    propertyNickname,
+    propertyAddress,
     propertyUnits,
     propertyIcon,
     propertyIconColor,
-    setPropertyNickname, 
+    setPropertyNickname,
     setPropertyAddress,
     setPropertyIcon,
     setPropertyIconColor
   } = useOnboardingStore();
-  
+
+  // Use orgId from navigation state when coming from create-org (avoids race before DB/cache propagate)
+  const orgIdFromState = (location.state as { orgId?: string })?.orgId;
+  const orgId = orgIdFromQuery ?? orgIdFromState ?? null;
+
   const [loading, setLoading] = useState(false);
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [hasExistingProperties, setHasExistingProperties] = useState(false);
 
   useEffect(() => {
-    if (orgId && !orgLoading) {
+    if (orgId) {
       checkExistingProperties();
-    } else if (!orgLoading && !orgId) {
-      // No org found - redirect to create organisation
+    } else if (!orgLoading && !orgIdFromState) {
+      // No org found and not coming from create-org - redirect
       toast.error("Please create an organisation first");
       navigate("/onboarding/create-organisation", { replace: true });
     }
-  }, [orgId, orgLoading]);
+  }, [orgId, orgLoading, orgIdFromState, navigate]);
 
   const checkExistingProperties = async () => {
     if (!orgId) return;
@@ -99,8 +103,8 @@ export default function AddPropertyScreen() {
     }
   };
 
-  // Show loading state while org is being fetched
-  if (orgLoading) {
+  // Show loading only when we have no orgId (from query or state) and query is still loading
+  if (!orgId && orgLoading) {
     return (
       <OnboardingContainer>
         <div className="animate-fade-in">
@@ -114,8 +118,8 @@ export default function AddPropertyScreen() {
     );
   }
 
-  // Redirect if org not found
-  if (orgError || !orgId) {
+  // Redirect / org not found only when we have no orgId and we're not coming from create-org
+  if ((orgError || !orgId) && !orgIdFromState) {
     return (
       <OnboardingContainer>
         <div className="animate-fade-in">

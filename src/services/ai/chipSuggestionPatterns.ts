@@ -5,6 +5,9 @@
 
 import { ExtractionPatterns } from '@/types/chip-suggestions';
 
+// Re-export consolidated fuzzy utilities so existing imports keep working
+export { levenshteinDistance, isFuzzyMatch, extractWords } from './fuzzyMatch';
+
 export const extractionPatterns: ExtractionPatterns = {
   // Urgency detection keywords
   urgencyKeywords: [
@@ -67,57 +70,5 @@ export const extractionPatterns: ExtractionPatterns = {
   ]
 };
 
-/**
- * Levenshtein distance for fuzzy matching
- */
-export function levenshteinDistance(a: string, b: string): number {
-  const matrix: number[][] = [];
-  
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-  
-  return matrix[b.length][a.length];
-}
-
-/**
- * Check if two strings are fuzzy matches (Levenshtein distance <= threshold)
- */
-export function isFuzzyMatch(a: string, b: string, threshold = 2): boolean {
-  const normalizedA = a.toLowerCase().trim();
-  const normalizedB = b.toLowerCase().trim();
-  
-  // Exact match
-  if (normalizedA === normalizedB) return true;
-  
-  // Contains match
-  if (normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA)) return true;
-  
-  // Levenshtein distance match
-  return levenshteinDistance(normalizedA, normalizedB) <= threshold;
-}
-
-/**
- * Extract words from text for matching
- */
-export function extractWords(text: string): string[] {
-  return text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-}
+// NOTE: levenshteinDistance, isFuzzyMatch, and extractWords are now
+// consolidated in ./fuzzyMatch.ts and re-exported at the top of this file.

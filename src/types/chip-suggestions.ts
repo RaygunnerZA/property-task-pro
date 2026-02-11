@@ -11,7 +11,7 @@ export type ChipState = 'suggested' | 'applied' | 'resolved' | 'blocked';
 
 export type EntityType = 'person' | 'team' | 'space' | 'asset' | 'category' | 'subcategory' | 'property';
 
-export type ResolutionSource = 'exact' | 'fuzzy' | 'user_choice' | 'created';
+export type ResolutionSource = 'memory' | 'exact' | 'fuzzy' | 'user_choice' | 'created';
 
 export interface SuggestedChip {
   id: string;

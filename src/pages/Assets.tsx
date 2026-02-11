@@ -94,13 +94,13 @@ const Assets = () => {
     setIsSaving(true);
 
     try {
-      // Note: Currently storing name in serial field until name/type columns are added to schema
-      // TODO: Add migration for name and type columns
       const { error: insertError } = await supabase.from("assets").insert({
         org_id: orgId,
         property_id: propertyId,
         space_id: spaceId && spaceId !== "none" ? spaceId : null,
-        serial: name.trim() || serial || null, // Using name as serial for now
+        name: name.trim(),
+        asset_type: type || null,
+        serial_number: serial.trim() || null,
         condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
       });
 

@@ -53,6 +53,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.24.7",
     "input-otp": "^1.4.2",
+    "ldrs": "^1.1.9",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",

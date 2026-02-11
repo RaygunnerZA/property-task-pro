@@ -39,8 +39,6 @@ import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
-import type { EntityType } from "@/types/chip-suggestions";
-import { queryResolutionMemory, storeResolutionMemory } from "@/services/ai/resolutionMemory";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
 import { Chip } from "@/components/chips/Chip";
@@ -419,34 +417,13 @@ export function CreateTaskModal({
         categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id || undefined })),
         properties: [],
       };
-      
-      // Map ChipType to EntityType
-      const chipTypeToEntityType: Record<string, EntityType> = {
-        'person': 'person',
-        'team': 'team',
-        'space': 'space',
-        'asset': 'asset',
-        'category': 'category',
-        'theme': 'category',
-      };
-      
-      const entityType = chipTypeToEntityType[chip.type] || 'category';
-      
-      // Check resolution memory first
-      const memoryEntityId = await queryResolutionMemory(orgId, chip.label, entityType);
-      
-      let resolution;
-      if (memoryEntityId) {
-        resolution = {
-          resolved: true,
-          entityId: memoryEntityId,
-          entityType: entityType,
-          resolutionSource: 'exact' as const,
-          confidence: 0.9
-        };
-      } else {
-        resolution = await resolveChip(chip, entities, { propertyId, spaceId: selectedSpaceIds[0] });
-      }
+
+      // Resolution pipeline now handles memory lookup (Step 0) and storage internally
+      const resolution = await resolveChip(chip, entities, {
+        propertyId,
+        spaceId: selectedSpaceIds[0],
+        orgId,
+      });
       
       // Update chip with resolution
       // INVITE BEHAVIORAL CONTRACT: Person chips always have blockingRequired when unresolved
@@ -471,11 +448,8 @@ export function CreateTaskModal({
       updated.set(chip.id, resolvedChip);
       setAppliedChips(updated);
       
-      // Store in memory if resolved
-      if (resolution.resolved && resolution.entityId && orgId) {
-        await storeResolutionMemory(orgId, chip.label, resolution.entityType!, resolution.entityId, resolution.confidence || 0.5);
-      }
-      
+      // Memory storage is now handled inside resolveChip() — no duplicate call needed
+
       // Log audit
       if (orgId && resolution.resolved) {
         try {
@@ -1153,6 +1127,27 @@ export function CreateTaskModal({
           // Don't throw - task is already created, just log the error
         } else {
           console.log('[CreateTaskModal] Teams linked successfully');
+        }
+      }
+
+      // Link assets to task via task_assets junction table
+      const realAssetIds = selectedAssetIds.filter(id => !id.startsWith('ghost-'));
+      if (realAssetIds.length > 0) {
+        const assetInserts = realAssetIds.map(assetId => ({
+          task_id: taskId,
+          asset_id: assetId,
+        }));
+
+        console.log('[CreateTaskModal] Linking assets:', { taskId, assetIds: realAssetIds });
+        const { error: assetLinkError } = await supabase
+          .from("task_assets")
+          .insert(assetInserts);
+
+        if (assetLinkError) {
+          console.error("[CreateTaskModal] Error linking assets to task:", assetLinkError);
+          // Don't throw - task is already created, just log the error
+        } else {
+          console.log('[CreateTaskModal] Assets linked successfully');
         }
       }
       

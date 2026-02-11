@@ -13,6 +13,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCard";
@@ -165,10 +166,36 @@ export default function PropertyDetail() {
   const [editedIconColor, setEditedIconColor] = useState("");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
   const { documents } = usePropertyDocuments(id || "");
+
+  // Track screen size for third column create task (lg breakpoint = 1024px)
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
+
+  const handleOpenCreateTask = () => {
+    setSelectedTaskId(null);
+    setShowCreateTask(true);
+  };
+
+  const handleCreateTaskOpenChange = (open: boolean) => {
+    setShowCreateTask(open);
+  };
+
+  const handleTaskCreated = () => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks", undefined, id] });
+  };
 
   // Tasks are already filtered by property_id from the query
   const propertyTasks = tasks;
@@ -493,33 +520,60 @@ export default function PropertyDetail() {
     backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
-  return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
-      <PageHeader>
-        <div 
-          className="mx-auto px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between max-w-full rounded-bl-[12px]"
-          style={gradientStyle}
-        >
-          <div className="flex items-center gap-3">
-            <span className="shrink-0">
-              <IconComponent className="h-6 w-6 text-white" />
-            </span>
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
-            </div>
+  // Header element that will be passed to DualPaneLayout (matching dashboard pattern)
+  const headerElement = (
+    <PageHeader>
+      <div 
+        className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+        style={gradientStyle}
+      >
+        <div className="flex items-center gap-3 w-[248px]">
+          <span className="shrink-0">
+            <IconComponent className="h-6 w-6 text-white" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
           </div>
         </div>
-      </PageHeader>
+      </div>
+    </PageHeader>
+  );
+
+  // Third column content - CreateTask accordion at top + insights below (matching dashboard pattern)
+  // DualPaneLayout handles responsive visibility (only shown on lg+ via CSS)
+  const thirdColumnContent = id ? (
+    <div className="flex flex-col gap-4 pt-[41px] pr-2 pb-0 pl-2">
+      <CreateTaskModal
+        open={showCreateTask}
+        onOpenChange={handleCreateTaskOpenChange}
+        onTaskCreated={handleTaskCreated}
+        defaultPropertyId={id}
+        variant="column"
+      />
+      <PropertyInsightsPanel
+        propertyId={id}
+        tasks={propertyTasks}
+        compliance={compliance}
+      />
+    </div>
+  ) : undefined;
+
+  return (
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <DualPaneLayout
+        header={headerElement}
         leftColumn={
-          <div className="h-screen flex flex-col overflow-y-auto overflow-x-hidden w-full max-w-full">
+          <div className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0">
             {/* Contact Card - Above calendar */}
             {propertyWithContacts && id && (
               <PropertyIdentityCard
                 property={propertyWithContacts}
                 onAddTask={() => {
-                  // TODO: Open create task dialog
-                  navigate(`/add-task?propertyId=${id}`);
+                  if (isLargeScreen) {
+                    handleOpenCreateTask();
+                  } else {
+                    navigate(`/add-task?propertyId=${id}`);
+                  }
                 }}
                 onAddPhoto={() => fileInputRef.current?.click()}
                 onMessage={() => {
@@ -534,41 +588,44 @@ export default function PropertyDetail() {
               />
             )}
 
-            {/* Calendar Section - Below contact card */}
-            <div className="flex-shrink-0 border-b border-border w-full">
-              <div className="px-4 pt-4 pb-4 w-full">
-                {tasksLoading ? (
-                  <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
-                    <div className="h-64 w-full bg-muted/50 rounded-lg animate-pulse" />
-                  </div>
-                ) : (
-                  <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
-                    <DashboardCalendar
-                      tasks={propertyTasks}
-                      selectedDate={selectedDate}
-                      onDateSelect={setSelectedDate}
-                      tasksByDate={tasksByDate}
-                    />
-                  </div>
-                )}
+            {/* Calendar + Property Info - Scrollable area (matching dashboard LeftColumn) */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+              {/* Calendar Section - Below contact card */}
+              <div className="flex-shrink-0 w-full">
+                <div className="px-2 pt-4 pb-4 w-full">
+                  {tasksLoading ? (
+                    <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                      <div className="h-64 w-full bg-muted/50 rounded-lg animate-pulse" />
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+                      <DashboardCalendar
+                        tasks={propertyTasks}
+                        selectedDate={selectedDate}
+                        onDateSelect={setSelectedDate}
+                        tasksByDate={tasksByDate}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Property Info Sections - Below calendar */}
-            {id && (
-              <>
-                <PropertySpacesList
-                  propertyId={id}
-                  tasks={propertyTasks}
-                  onSpaceClick={setSelectedSpaceId}
-                  selectedSpaceId={selectedSpaceId}
-                />
-                <PropertyRelatedEntities
-                  propertyId={id}
-                  tasks={propertyTasks}
-                />
-              </>
-            )}
+              {/* Property Info Sections - Below calendar */}
+              {id && (
+                <>
+                  <PropertySpacesList
+                    propertyId={id}
+                    tasks={propertyTasks}
+                    onSpaceClick={setSelectedSpaceId}
+                    selectedSpaceId={selectedSpaceId}
+                  />
+                  <PropertyRelatedEntities
+                    propertyId={id}
+                    tasks={propertyTasks}
+                  />
+                </>
+              )}
+            </div>
           </div>
         }
         rightColumn={
@@ -626,16 +683,19 @@ export default function PropertyDetail() {
             </div>
           </div>
         }
-        thirdColumn={
-          id && (
-            <PropertyInsightsPanel
-              propertyId={id}
-              tasks={propertyTasks}
-              compliance={compliance}
-            />
-          )
-        }
+        thirdColumn={thirdColumnContent}
       />
+
+      {/* Create Task Modal - Modal variant for smaller screens */}
+      {showCreateTask && !isLargeScreen && (
+        <CreateTaskModal
+          open={showCreateTask}
+          onOpenChange={handleCreateTaskOpenChange}
+          onTaskCreated={handleTaskCreated}
+          defaultPropertyId={id}
+          variant="modal"
+        />
+      )}
 
       {/* Dialogs */}
       <CreateAssetDialog
