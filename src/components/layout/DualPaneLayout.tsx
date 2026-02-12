@@ -16,14 +16,14 @@ interface DualPaneLayoutProps {
  *   - Left: 245px fixed (Calendar + Properties)
  *   - Right: 1fr (Task Tabs) - flexible up to max 650px
  * 
- * Desktop (lg+): Flex layout with conditional third column
+ * Desktop (min-[1380px]+): Flex layout with conditional third column
  *   - Without third column: [245px minmax(450px, 650px)]
  *   - With third column: [245px 650px 1fr]
  *   - Left: 245px fixed (Calendar + Properties)
  *   - Middle: 650px fixed (Task Tabs)
  *   - Right: 1fr flexible (Task Details) - fills remaining space, extends to top
  * 
- * When header prop is provided on lg+ screens:
+ * When header prop is provided on min-[1380px]+ screens:
  *   - Header spans only the first two columns
  *   - Third column always extends to the top of the screen (not blocked by header)
  */
@@ -39,8 +39,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         <div className="w-full min-w-0 max-w-full">{rightColumn}</div>
       </div>
 
-      {/* Desktop: Two-column layout (md+), shown when screen is md-lg */}
-      <div className="hidden md:grid md:grid-cols-[245px_1fr] lg:hidden min-h-screen">
+      {/* Desktop: Two-column layout (md+), shown until third-column breakpoint */}
+      <div className="hidden md:grid md:grid-cols-[245px_1fr] min-[1380px]:hidden min-h-screen">
         {/* Header spans both columns on md screens */}
         {header && (
           <div className="col-span-2">
@@ -59,8 +59,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
       </div>
 
-      {/* Desktop: Conditional three-column layout (lg+) */}
-      <div className="hidden lg:flex min-h-screen">
+      {/* Desktop: Conditional three-column layout (min-[1380px]+) */}
+      <div className="hidden min-[1380px]:flex min-h-screen">
         {/* Left side: Header + first two columns */}
         <div className={`flex flex-col ${hasThirdColumn ? 'w-[895px]' : 'flex-1'}`}>
           {/* Header spans first two columns only */}
