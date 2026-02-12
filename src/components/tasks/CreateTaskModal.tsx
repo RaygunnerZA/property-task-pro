@@ -38,6 +38,7 @@ import { CategoryPanel } from "./create/panels/CategoryPanel";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
+import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
@@ -50,7 +51,7 @@ import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
-import type { TempImage } from "@/types/temp-image";
+import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 interface CreateTaskModalProps {
   open: boolean;
@@ -58,6 +59,8 @@ interface CreateTaskModalProps {
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
   defaultDueDate?: string;
+  defaultSpaceIds?: string[];
+  defaultAssetIds?: string[];
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
 }
 export function CreateTaskModal({
@@ -66,6 +69,8 @@ export function CreateTaskModal({
   onTaskCreated,
   defaultPropertyId,
   defaultDueDate,
+  defaultSpaceIds,
+  defaultAssetIds,
   variant = "modal"
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
@@ -103,6 +108,14 @@ export function CreateTaskModal({
     }
   }, [open, defaultPropertyId, lastUsedPropertyId]);
 
+  // Preseed space and asset when opening from "Create Task for Asset"
+  useEffect(() => {
+    if (open && (defaultSpaceIds?.length || defaultAssetIds?.length)) {
+      if (defaultSpaceIds?.length) setSelectedSpaceIds(defaultSpaceIds);
+      if (defaultAssetIds?.length) setSelectedAssetIds(defaultAssetIds);
+    }
+  }, [open, defaultSpaceIds, defaultAssetIds]);
+
   // Update last used when property changes
   const handlePropertyChange = (newPropertyIds: string[]) => {
     setSelectedPropertyIds(newPropertyIds);
@@ -139,17 +152,46 @@ export function CreateTaskModal({
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
+
+  // Image analysis (fire-and-forget, never blocks task creation)
+  const handleAnalysisComplete = useCallback((localId: string, result: ImageAnalysisResult) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.local_id === localId
+          ? {
+              ...img,
+              aiOcrText: result.ocr_text ?? "",
+              detectedLabels: result.detected_labels ?? [],
+              rawAnalysis: result,
+            }
+          : img
+      )
+    );
+  }, []);
+  const { imageOcrText, detectedLabels } = useImageAnalysis({
+    images,
+    propertyId: propertyId || undefined,
+    orgId: orgId ?? "",
+    onAnalysisComplete: handleAnalysisComplete,
+  });
+
+  // Combined text for chip suggestions (description + OCR + detected labels)
+  const combinedImageText = useMemo(() => {
+    const parts = [imageOcrText, detectedLabels.join(" ")].filter(Boolean);
+    return parts.join("\n");
+  }, [imageOcrText, detectedLabels]);
   
   // Call AI extraction hook (using the working hook)
   const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
   
-  // Chip suggestions with resolution pipeline
+  // Chip suggestions with resolution pipeline (includes image OCR when available)
   const { chips: chipSuggestions, ghostCategories, loading: chipsLoading, error: chipsError } = useChipSuggestions({
     description,
     propertyId,
     selectedSpaceIds,
     selectedPersonId: assignedUserId,
     selectedTeamIds: assignedTeamIds,
+    imageOcrText: combinedImageText,
   });
   
   // Track applied chips and their resolution state
@@ -617,7 +659,7 @@ export function CreateTaskModal({
     setDescription("");
     setPropertyId(defaultPropertyId || "");
     setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
-    setSelectedSpaceIds([]);
+    setSelectedSpaceIds(defaultSpaceIds ?? []);
     setPriority("medium");
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
@@ -630,7 +672,7 @@ export function CreateTaskModal({
     setTemplateId("");
     setSubtasks([]);
     setSelectedThemeIds([]);
-    setSelectedAssetIds([]);
+    setSelectedAssetIds(defaultAssetIds ?? []);
     setImages([]);
     setShowAdvanced(false);
     setActiveSection(null);
@@ -640,7 +682,7 @@ export function CreateTaskModal({
     setAiTitleGenerated("");
     setUserEditedTitle(false);
     setShowTitleField(false);
-  }, [defaultPropertyId, defaultDueDate]);
+  }, [defaultPropertyId, defaultDueDate, defaultSpaceIds, defaultAssetIds]);
 
   // Reset form when modal closes
   useEffect(() => {

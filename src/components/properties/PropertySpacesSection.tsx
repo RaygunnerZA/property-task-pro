@@ -132,12 +132,23 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
 
   if (variant === "scroller") {
     return (
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-        {cards.map((card, i) => (
-          <div key={SPACE_GROUPS[i].name} className="flex-shrink-0 w-[200px]">
-            {card}
-          </div>
-        ))}
+      <div className="relative w-full overflow-x-hidden overflow-y-visible">
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          {cards.map((card, i) => (
+            <div key={SPACE_GROUPS[i].name} className="flex-shrink-0 w-[200px]">
+              {card}
+            </div>
+          ))}
+        </div>
+        {/* Narrow slot gradient on right boundary - same as dashboard property slider */}
+        <div
+          className="absolute top-0 right-0 bottom-0 pointer-events-none"
+          style={{
+            width: "10px",
+            background: "linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))",
+            zIndex: 20,
+          }}
+        />
       </div>
     );
   }

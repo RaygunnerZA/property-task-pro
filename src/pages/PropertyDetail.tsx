@@ -639,7 +639,7 @@ export default function PropertyDetail() {
               {/* Spaces Section */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Spaces</h2>
-                {id && <PropertySpacesSection propertyId={id} />}
+                {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
               </div>
 
               {/* Property Tasks Section */}

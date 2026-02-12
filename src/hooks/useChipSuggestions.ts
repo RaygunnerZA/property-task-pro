@@ -14,7 +14,7 @@ import {
   ChipSuggestionContext, 
   ChipSuggestionResult,
   SuggestedChip,
-  GhostGroup
+  GhostCategory,
 } from '@/types/chip-suggestions';
 
 interface UseChipSuggestionsOptions {
@@ -49,6 +49,7 @@ export function useChipSuggestions(
   
   // Debounce description to avoid excessive processing
   const debouncedDescription = useDebounce(context.description, debounceMs);
+  const imageOcrText = context.imageOcrText ?? "";
   
   // Fetch entities
   const { spaces } = useSpaces(context.propertyId);
@@ -56,8 +57,10 @@ export function useChipSuggestions(
   const { members } = useOrgMembers();
   const { categories } = useCategories();
   
-  // Track if we should process
-  const shouldProcess = debouncedDescription.length >= minDescriptionLength;
+  // Track if we should process (description or image OCR)
+  const hasDescription = debouncedDescription.length >= minDescriptionLength;
+  const hasImageOcr = imageOcrText.trim().length >= minDescriptionLength;
+  const shouldProcess = hasDescription || hasImageOcr;
   
   // Generation function
   const generateSuggestions = useCallback(async () => {
@@ -98,7 +101,7 @@ export function useChipSuggestions(
           selectedSpaceIds: context.selectedSpaceIds,
           selectedPersonId: context.selectedPersonId,
           selectedTeamIds: context.selectedTeamIds,
-          imageOcrText: context.imageOcrText
+          imageOcrText,
         },
         entities
       );
@@ -117,7 +120,7 @@ export function useChipSuggestions(
     context.selectedSpaceIds,
     context.selectedPersonId,
     context.selectedTeamIds,
-    context.imageOcrText,
+    imageOcrText,
     spaces,
     teams,
     members,

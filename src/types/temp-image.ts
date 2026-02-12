@@ -20,6 +20,25 @@ export interface TempImage {
   optimized_url?: string;         // Blob URL for full view
   // Error state
   upload_error?: string;
+  // AI analysis results (populated by useImageAnalysis)
+  aiOcrText?: string;
+  detectedLabels?: string[];
+  rawAnalysis?: ImageAnalysisResult;
+}
+
+/** Result from ai-image-analyse edge function */
+export interface ImageAnalysisResult {
+  ocr_text?: string;
+  detected_labels?: string[];
+  detected_objects?: Array<{
+    type: string;
+    label: string;
+    confidence: number;
+    serial_number?: string;
+    expiry_date?: string;
+  }>;
+  anomalies?: unknown[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface OptimizedImageResult {

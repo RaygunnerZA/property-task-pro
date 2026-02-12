@@ -2,7 +2,7 @@
  * CreateAssetDialog - Standalone (system-scoped) add asset flow (Assets page, property context).
  * Creates a permanent asset in DB. Create Task uses AssetsSection for asset creation (same permanent entity; entry context is task-scoped).
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
@@ -29,8 +29,11 @@ interface CreateAssetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   propertyId: string;
-  onAssetCreated?: () => void;
+  spaceId?: string;
+  defaultName?: string;
+  onAssetCreated?: (assetId: string) => void;
 }
+
 
 const ASSET_TYPES = [
   "Boiler",
@@ -46,10 +49,15 @@ export function CreateAssetDialog({
   open,
   onOpenChange,
   propertyId,
+  spaceId,
+  defaultName,
   onAssetCreated,
 }: CreateAssetDialogProps) {
   const { orgId } = useActiveOrg();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(defaultName || "");
+  useEffect(() => {
+    if (open && defaultName) setName(defaultName);
+  }, [open, defaultName]);
   const [type, setType] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,14 +80,20 @@ export function CreateAssetDialog({
 
     setLoading(true);
     try {
-      const { error: insertError } = await supabase.from("assets").insert({
-        org_id: orgId,
-        property_id: propertyId,
-        name: name.trim(),
-        asset_type: type || null,
-        serial_number: serialNumber.trim() || null,
-        condition_score: 100,
-      });
+      const { data: inserted, error: insertError } = await supabase
+        .from("assets")
+        .insert({
+          org_id: orgId,
+          property_id: propertyId,
+          space_id: spaceId || null,
+          name: name.trim(),
+          asset_type: type || null,
+          serial_number: serialNumber.trim() || null,
+          condition_score: 100,
+          status: "active",
+        })
+        .select("id")
+        .single();
 
       if (insertError) {
         console.error("Asset creation error:", insertError);
@@ -87,15 +101,15 @@ export function CreateAssetDialog({
       }
 
       toast.success("Asset created!");
-      
+
       // Reset form
       setName("");
       setType("");
       setSerialNumber("");
       onOpenChange(false);
-      
-      // Refresh assets list
-      onAssetCreated?.();
+
+      // Refresh assets list and/or auto-select new asset
+      if (inserted?.id) onAssetCreated?.(inserted.id);
     } catch (err: any) {
       console.error("Create asset failed:", err);
       toast.error(err.message || "Failed to create asset");

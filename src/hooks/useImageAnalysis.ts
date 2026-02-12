@@ -1,0 +1,120 @@
+/**
+ * useImageAnalysis — Lightweight orchestrator for AI image analysis
+ * Watches TempImage[] and sends each image's optimized_blob to ai-image-analyse edge function.
+ * Fire-and-forget: never blocks task creation.
+ */
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
+
+export interface UseImageAnalysisOptions {
+  images: TempImage[];
+  propertyId?: string;
+  orgId: string;
+  onAnalysisComplete?: (localId: string, result: ImageAnalysisResult) => void;
+}
+
+export interface UseImageAnalysisReturn {
+  imageOcrText: string;
+  detectedLabels: string[];
+  status: "idle" | "loading" | "error";
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // Strip data URL prefix if present
+      const base64 = result.includes(",") ? result.split(",")[1]! : result;
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export function useImageAnalysis({
+  images,
+  propertyId,
+  orgId,
+  onAnalysisComplete,
+}: UseImageAnalysisOptions): UseImageAnalysisReturn {
+  const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+  const inProgressRef = useRef<Set<string>>(new Set());
+
+  const analyzeImage = useCallback(
+    async (img: TempImage) => {
+      if (!img.optimized_blob || img.rawAnalysis || inProgressRef.current.has(img.local_id)) {
+        return;
+      }
+      inProgressRef.current.add(img.local_id);
+      setStatus((s) => (s === "idle" ? "loading" : s));
+
+      try {
+        const imageBase64 = await blobToBase64(img.optimized_blob);
+        const { data, error } = await supabase.functions.invoke("ai-image-analyse", {
+          body: {
+            image: imageBase64,
+            org_id: orgId,
+            property_id: propertyId || null,
+          },
+        });
+
+        if (error) {
+          console.warn("[useImageAnalysis] Edge function error:", error);
+          return;
+        }
+
+        const result = (data as ImageAnalysisResult) || {};
+        onAnalysisComplete?.(img.local_id, result);
+      } catch (err) {
+        console.warn("[useImageAnalysis] Analysis failed:", err);
+      } finally {
+        inProgressRef.current.delete(img.local_id);
+        if (inProgressRef.current.size === 0) {
+          setStatus("idle");
+        }
+      }
+    },
+    [orgId, propertyId, onAnalysisComplete]
+  );
+
+  useEffect(() => {
+    if (!orgId || images.length === 0) {
+      setStatus("idle");
+      return;
+    }
+
+    for (const img of images) {
+      if (img.optimized_blob && !img.rawAnalysis) {
+        analyzeImage(img);
+      }
+    }
+
+    // If all images already have results, ensure status is idle
+    const pending = images.filter((i) => i.optimized_blob && !i.rawAnalysis);
+    if (pending.length === 0 && inProgressRef.current.size === 0) {
+      setStatus("idle");
+    }
+  }, [images, orgId, analyzeImage]);
+
+  // Aggregate results from images
+  const imageOcrText = images
+    .map((i) => i.aiOcrText)
+    .filter((s): s is string => Boolean(s))
+    .join("\n");
+
+  const detectedLabels = Array.from(
+    new Set(
+      images.flatMap((i) => i.detectedLabels || [])
+    )
+  );
+
+  return {
+    imageOcrText,
+    detectedLabels,
+    status,
+  };
+}

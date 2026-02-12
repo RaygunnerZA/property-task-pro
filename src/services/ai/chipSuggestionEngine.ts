@@ -49,8 +49,10 @@ export async function generateChipSuggestions(
 ): Promise<ChipSuggestionResult> {
   const mergedConfig = { ...defaultConfig, ...config };
   
-  // Skip if no description
-  if (!context.description || context.description.trim().length < 3) {
+  // Skip if no text to process (description or image OCR)
+  const hasDescription = context.description && context.description.trim().length >= 3;
+  const hasImageOcr = context.imageOcrText && context.imageOcrText.trim().length >= 3;
+  if (!hasDescription && !hasImageOcr) {
     return {
       chips: [],
       ghostCategories: [],
