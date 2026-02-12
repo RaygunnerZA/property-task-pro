@@ -22,7 +22,7 @@ interface ComplianceCardProps {
  * Shows: Certificate name → Expiry date → Status (Red/Green/Amber)
  */
 export function ComplianceCard({ compliance, onClick }: ComplianceCardProps) {
-  const name = compliance.certificate_name || compliance.document_name || compliance.name || "Unknown";
+  const name = compliance.certificate_name || compliance.document_name || compliance.name || compliance.title || "Unknown";
   const expiryStatus = compliance.expiry_status || "none";
   const daysUntilExpiry = compliance.days_until_expiry;
 

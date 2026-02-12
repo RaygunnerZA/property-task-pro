@@ -80,8 +80,10 @@ Deno.serve(async (req) => {
       .from("compliance_documents")
       .insert({
         org_id,
+        property_id: body.property_id || null,
         title: displayTitle,
         expiry_date: expiry_date || null,
+        next_due_date: expiry_date || null,
         status,
       })
       .select()

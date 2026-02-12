@@ -3,9 +3,10 @@ import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
-import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon } from 'lucide-react';
+import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon, Shield, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
+import { useCompliancePortfolioQuery } from '@/hooks/useCompliancePortfolioQuery';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import DashboardSection from '@/components/dashboard/DashboardSection';
 
@@ -13,6 +14,7 @@ const Home = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();
+  const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
 
   // Parse tasks from view (handles JSON arrays and assignee mapping)
   const tasks = useMemo(() => {
@@ -31,6 +33,13 @@ const Home = () => {
   // Stats derived from real data
   const activeTasks = tasks.filter(t => t.status !== 'completed').length;
   const urgentTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
+
+  const complianceSummary = useMemo(() => {
+    const expired = compliancePortfolio.filter((c: any) => c.expiry_state === 'expired').length;
+    const expiring = compliancePortfolio.filter((c: any) => c.expiry_state === 'expiring').length;
+    const valid = compliancePortfolio.filter((c: any) => c.expiry_state === 'valid').length;
+    return { expired, expiring, valid };
+  }, [compliancePortfolio]);
 
   const stats = [
     { label: 'Active Tasks', value: activeTasks, icon: CheckSquare, colorClass: 'text-primary', link: '/work/tasks' },
@@ -66,6 +75,39 @@ const Home = () => {
             onDateSelect={(date) => setSelectedDate(date || new Date())}
           />
         </div>
+
+        {/* Compliance Health Today */}
+        <button
+          type="button"
+          onClick={() => navigate('/record/compliance/portfolio')}
+          className="w-full p-4 rounded-lg text-left bg-card shadow-e1 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] border border-border/50"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-surface-gradient shadow-engraved">
+                <Shield className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-foreground">Your Compliance Health Today</div>
+                <div className="flex items-center gap-3 mt-1 text-xs">
+                  {complianceSummary.expired > 0 && (
+                    <span className="text-destructive font-medium">{complianceSummary.expired} expired</span>
+                  )}
+                  {complianceSummary.expiring > 0 && (
+                    <span className="text-amber-600 font-medium">{complianceSummary.expiring} expiring</span>
+                  )}
+                  {complianceSummary.valid > 0 && (
+                    <span className="text-success">{complianceSummary.valid} valid</span>
+                  )}
+                  {complianceSummary.expired === 0 && complianceSummary.expiring === 0 && complianceSummary.valid === 0 && (
+                    <span className="text-muted-foreground">No compliance items</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </button>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-4">

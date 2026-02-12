@@ -1,15 +1,24 @@
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import { FileText, AlertCircle, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, Link2 } from "lucide-react";
+import { FileText, AlertCircle, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, Link2, Sparkles, ChevronDown, Shield } from "lucide-react";
 import { Chip } from "@/components/chips/Chip";
-import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import type { PropertyDocument, DocMetadata } from "@/hooks/property/usePropertyDocuments";
 
 interface DocumentCardProps {
   document: PropertyDocument;
+  propertyId?: string;
+  suggestedSpaces?: { id: string; name: string }[];
+  suggestedAssets?: { id: string; name: string }[];
+  suggestedCompliance?: { id: string; title: string }[];
   onClick?: () => void;
   onOpen?: () => void;
   onReplace?: () => void;
   onLinkItems?: () => void;
+  onLinkSpace?: (spaceId: string) => void;
+  onLinkAsset?: (assetId: string) => void;
+  onLinkCompliance?: (complianceId: string) => void;
 }
 
 function getStatusConfig(status: string | null) {
@@ -35,12 +44,40 @@ function getFileIcon(fileType: string | null) {
   return FileText;
 }
 
-export function DocumentCard({ document, onClick, onOpen, onReplace, onLinkItems }: DocumentCardProps) {
+export function DocumentCard({
+  document,
+  propertyId,
+  suggestedSpaces = [],
+  suggestedAssets = [],
+  suggestedCompliance = [],
+  onClick,
+  onOpen,
+  onReplace,
+  onLinkItems,
+  onLinkSpace,
+  onLinkAsset,
+  onLinkCompliance,
+}: DocumentCardProps) {
   const rawName = document.title || document.file_name || document.document_type || "Unknown Document";
   const name = rawName.replace(/\.[^/.]+$/, "");
   const statusConfig = getStatusConfig(document.status);
   const StatusIcon = statusConfig.icon;
   const FileIcon = getFileIcon(document.file_type);
+
+  const meta = (document.metadata || {}) as DocMetadata;
+  const detectedSpaces = meta.detected_spaces || [];
+  const detectedAssets = meta.detected_assets || [];
+  const hazards = meta.hazards || [];
+  const complianceRecs = meta.compliance_recommendations || [];
+  const hasAiInsights =
+    document.document_type ||
+    document.category ||
+    document.expiry_date ||
+    document.renewal_frequency ||
+    detectedSpaces.length > 0 ||
+    detectedAssets.length > 0 ||
+    hazards.length > 0 ||
+    complianceRecs.length > 0;
 
   const linkedCount =
     (document.linked_spaces?.length || 0) +
@@ -105,6 +142,142 @@ export function DocumentCard({ document, onClick, onOpen, onReplace, onLinkItems
             <span className="text-[10px] text-muted-foreground">+{linkedCount - 4}</span>
           )}
         </div>
+      )}
+
+      {/* AI Insights - Collapsible */}
+      {hasAiInsights && (
+        <Collapsible defaultOpen={false} className="group/ai">
+          <CollapsibleTrigger
+            className="flex items-center gap-1.5 w-full px-3 py-1.5 text-left text-[11px] font-medium text-primary/90 hover:text-primary border-t border-border/30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Sparkles className="h-3 w-3" />
+            AI Insight
+            <ChevronDown className="h-3 w-3 ml-auto transition-transform group-data-[state=open]/ai:rotate-180" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-3 pb-2 pt-1 space-y-2 text-[11px] border-t border-border/20" onClick={(e) => e.stopPropagation()}>
+              {document.document_type && (
+                <p><span className="text-muted-foreground">Type:</span> {document.document_type}</p>
+              )}
+              {document.category && (
+                <p><span className="text-muted-foreground">Category:</span> {document.category}</p>
+              )}
+              {(document.expiry_date || document.renewal_frequency) && (
+                <p>
+                  <span className="text-muted-foreground">Expiry:</span> {document.expiry_date || "—"}
+                  {document.renewal_frequency && ` · ${document.renewal_frequency}`}
+                </p>
+              )}
+              {document.status && (
+                <Chip
+                  role="status"
+                  label={getStatusConfig(document.status).label}
+                  color={getStatusConfig(document.status).color}
+                  className="h-[18px] text-[10px] px-1.5"
+                />
+              )}
+              {hazards.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground">Hazards:</span>{" "}
+                  <span className="text-amber-600 font-medium">{hazards.join(", ")}</span>
+                </div>
+              )}
+              {detectedSpaces.length > 0 && (
+                <p className="text-muted-foreground">
+                  Belongs to: {detectedSpaces.slice(0, 3).join(", ")}
+                </p>
+              )}
+              {detectedAssets.length > 0 && (
+                <p className="text-muted-foreground">
+                  Relates to: {detectedAssets.slice(0, 2).map((a) => a.name || a.serial_number || a.model).filter(Boolean).join(", ") || "—"}
+                </p>
+              )}
+
+              {/* Link Suggestions */}
+              {(suggestedSpaces.length > 0 || suggestedAssets.length > 0 || suggestedCompliance.length > 0) && (
+                <div className="pt-2 space-y-2">
+                  {suggestedSpaces.length > 0 && onLinkSpace && (
+                    <div>
+                      <span className="text-muted-foreground text-[10px] uppercase">Spaces</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {suggestedSpaces.slice(0, 4).map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLinkSpace(s.id);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                          >
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {suggestedAssets.length > 0 && onLinkAsset && (
+                    <div>
+                      <span className="text-muted-foreground text-[10px] uppercase">Assets</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {suggestedAssets.slice(0, 4).map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLinkAsset(a.id);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                          >
+                            {a.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {suggestedCompliance.length > 0 && onLinkCompliance && (
+                    <div>
+                      <span className="text-muted-foreground text-[10px] uppercase flex items-center gap-1">
+                        <Shield className="h-2.5 w-2.5" /> Compliance
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {suggestedCompliance.slice(0, 4).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onLinkCompliance(c.id);
+                            }}
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                          >
+                            {c.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {onLinkItems && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-[10px] mt-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLinkItems();
+                  }}
+                >
+                  Review AI suggestions
+                </Button>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* Timestamp */}

@@ -3,7 +3,7 @@
  * Same pattern as TaskDetailPanel: Dialog + tabs (Overview, Linked Tasks, Inspections, Files).
  */
 import { useState, useEffect, useCallback } from "react";
-import { X, Package, ListTodo, ClipboardCheck, FileText, Plus } from "lucide-react";
+import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ import { useAssetDetail } from "@/hooks/useAssetDetail";
 import { useAssetInspections } from "@/hooks/useAssetInspections";
 import { useAssetFiles } from "@/hooks/useAssetFiles";
 import { useLinkedTasks } from "@/hooks/useLinkedTasks";
+import { useAssetComplianceQuery } from "@/hooks/useAssetComplianceQuery";
+import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,12 +50,15 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const { inspections, loading: inspectionsLoading, refresh: refreshInspections } = useAssetInspections(assetId ?? undefined);
   const { files, loading: filesLoading, refresh: refreshFiles } = useAssetFiles(assetId ?? undefined);
   const { tasks, loading: tasksLoading, refresh: refreshTasks } = useLinkedTasks(assetId ?? undefined);
+  const { data: linkedCompliance = [], isLoading: complianceLoading, refetch: refreshCompliance } = useAssetComplianceQuery(assetId ?? undefined);
+  const { data: complianceOptions = [] } = useComplianceQuery();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showLogInspection, setShowLogInspection] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
+  const [showLinkCompliance, setShowLinkCompliance] = useState(false);
 
   // Editable Overview fields (local state)
   const [name, setName] = useState("");
@@ -216,7 +221,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
             <div className="flex-1 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                 <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
-                  <TabsList className="w-full grid grid-cols-4 h-12 bg-transparent p-1">
+                  <TabsList className="w-full grid grid-cols-5 h-12 bg-transparent p-1">
                     <TabsTrigger
                       value="overview"
                       className={cn(
@@ -256,6 +261,16 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     >
                       <FileText className="h-4 w-4 mr-2" />
                       Files
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="compliance"
+                      className={cn(
+                        "rounded-lg data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                      )}
+                    >
+                      <Shield className="h-4 w-4 mr-2" />
+                      Compliance
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -474,6 +489,45 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                       )}
                     </div>
                   </TabsContent>
+
+                  <TabsContent value="compliance" className="mt-0 flex-1 overflow-y-auto">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-muted-foreground">Compliance related to this asset</h3>
+                        <Button size="sm" variant="outline" onClick={() => setShowLinkCompliance(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Link compliance item
+                        </Button>
+                      </div>
+                      {complianceLoading ? (
+                        <Skeleton className="h-24 w-full" />
+                      ) : linkedCompliance.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No compliance items linked yet.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {linkedCompliance.map((c) => (
+                            <li
+                              key={c.id}
+                              className="p-3 rounded-[8px] bg-card shadow-e1 flex items-center justify-between"
+                            >
+                              <span className="font-medium">{c.title || "Untitled"}</span>
+                              <Badge
+                                variant={
+                                  c.expiry_state === "expired"
+                                    ? "destructive"
+                                    : c.expiry_state === "expiring"
+                                    ? "warning"
+                                    : "success"
+                                }
+                              >
+                                {c.expiry_state || "valid"}
+                              </Badge>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </TabsContent>
                 </div>
               </Tabs>
             </div>
@@ -513,6 +567,20 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
           onClose={() => setShowAddFile(false)}
           onSaved={() => {
             refreshFiles();
+            refresh();
+          }}
+        />
+      )}
+
+      {/* Link Compliance Modal */}
+      {showLinkCompliance && assetId && (
+        <LinkComplianceModal
+          assetId={assetId}
+          complianceOptions={complianceOptions}
+          linkedIds={linkedCompliance.map((c) => c.id)}
+          onClose={() => setShowLinkCompliance(false)}
+          onSaved={() => {
+            refreshCompliance();
             refresh();
           }}
         />
@@ -675,6 +743,106 @@ function AddFileModal({
           </Button>
           <Button onClick={handleSave} disabled={saving || !fileUrl.trim()} className="btn-accent-vibrant">
             {saving ? "Saving..." : "Add"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LinkComplianceModal({
+  assetId,
+  complianceOptions,
+  linkedIds,
+  onClose,
+  onSaved,
+}: {
+  assetId: string;
+  complianceOptions: Array<{ id: string; title?: string | null }>;
+  linkedIds: string[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const available = complianceOptions.filter((c) => !linkedIds.includes(c.id));
+
+  const handleSave = async () => {
+    if (!selectedId) {
+      toast({ title: "Select a compliance item", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from("compliance_documents")
+        .select("linked_asset_ids")
+        .eq("id", selectedId)
+        .single();
+      if (fetchError) throw fetchError;
+      const current = (existing?.linked_asset_ids as string[]) || [];
+      const updated = current.includes(assetId) ? current : [...current, assetId];
+      const { error: updateError } = await supabase
+        .from("compliance_documents")
+        .update({ linked_asset_ids: updated })
+        .eq("id", selectedId);
+      if (updateError) throw updateError;
+      toast({ title: "Compliance item linked" });
+      onSaved();
+      onClose();
+    } catch (e: unknown) {
+      toast({
+        title: "Failed to link",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link compliance item</DialogTitle>
+          <DialogDescription>Add this asset to a compliance document&apos;s linked assets</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Compliance item</Label>
+            <Select value={selectedId} onValueChange={setSelectedId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select..." />
+              </SelectTrigger>
+              <SelectContent>
+                {available.length === 0 ? (
+                  <SelectItem value="_none" disabled>
+                    No compliance items available
+                  </SelectItem>
+                ) : (
+                  available.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.title || "Untitled"}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || !selectedId || available.length === 0}
+            className="btn-accent-vibrant"
+          >
+            {saving ? "Linking..." : "Link"}
           </Button>
         </div>
       </DialogContent>

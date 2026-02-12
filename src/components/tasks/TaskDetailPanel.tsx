@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
+import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
+import { RelatedComplianceSection } from "@/components/compliance/RelatedComplianceSection";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
@@ -60,6 +62,36 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const propertyId = (task as any)?.property_id;
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
+  const { data: portfolioCompliance = [], isLoading: portfolioLoading } = useCompliancePortfolioQuery();
+
+  const propertyComplianceItems = useMemo(() => {
+    if (!propertyId) return [];
+    return portfolioCompliance.filter((p: any) => p.property_id === propertyId);
+  }, [portfolioCompliance, propertyId]);
+
+  const imageHazards = useMemo(() => {
+    const hazards = new Set<string>();
+    for (const img of (task as any)?.images ?? []) {
+      const meta = (img?.metadata || {}) as Record<string, unknown>;
+      const h = meta.hazards;
+      if (Array.isArray(h)) h.forEach((x: string) => hazards.add(x));
+      const objs = meta.detected_objects as Array<{ type?: string; label?: string }> | undefined;
+      if (Array.isArray(objs)) {
+        for (const o of objs) {
+          const t = (o.type || o.label || "").toLowerCase();
+          if (t.includes("fire")) hazards.add("fire");
+          if (t.includes("electrical") || t.includes("electric")) hazards.add("electrical");
+          if (t.includes("slip") || t.includes("trip")) hazards.add("slip");
+          if (t.includes("water") || t.includes("leak")) hazards.add("water");
+          if (t.includes("structural")) hazards.add("structural");
+          if (t.includes("obstruction")) hazards.add("obstruction");
+          if (t.includes("hygiene")) hazards.add("hygiene");
+          if (t.includes("ventilation")) hazards.add("ventilation");
+        }
+      }
+    }
+    return Array.from(hazards);
+  }, [task]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
@@ -568,6 +600,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     </p>
                   </div>
                 )}
+
+                <RelatedComplianceSection
+                  items={propertyComplianceItems}
+                  imageHazards={imageHazards}
+                  isLoading={portfolioLoading}
+                />
                 {(task as any).due_date && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Due Date</h3>

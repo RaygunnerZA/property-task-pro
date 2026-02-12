@@ -10,10 +10,14 @@ interface DocumentSearchFiltersProps {
   expired: boolean;
   missing: boolean;
   recentlyAdded: boolean;
+  hazards?: boolean;
+  unlinked?: boolean;
   onExpiringSoonToggle: () => void;
   onExpiredToggle: () => void;
   onMissingToggle: () => void;
   onRecentlyAddedToggle: () => void;
+  onHazardsToggle?: () => void;
+  onUnlinkedToggle?: () => void;
   className?: string;
 }
 
@@ -24,10 +28,14 @@ export function DocumentSearchFilters({
   expired,
   missing,
   recentlyAdded,
+  hazards,
+  unlinked,
   onExpiringSoonToggle,
   onExpiredToggle,
   onMissingToggle,
   onRecentlyAddedToggle,
+  onHazardsToggle,
+  onUnlinkedToggle,
   className,
 }: DocumentSearchFiltersProps) {
   return (
@@ -67,6 +75,23 @@ export function DocumentSearchFilters({
           selected={recentlyAdded}
           onSelect={onRecentlyAddedToggle}
         />
+        {onHazardsToggle && (
+          <Chip
+            role="filter"
+            label="Hazards"
+            selected={!!hazards}
+            onSelect={onHazardsToggle}
+            color={hazards ? "hsl(var(--warning))" : undefined}
+          />
+        )}
+        {onUnlinkedToggle && (
+          <Chip
+            role="filter"
+            label="Unlinked"
+            selected={!!unlinked}
+            onSelect={onUnlinkedToggle}
+          />
+        )}
       </div>
     </div>
   );

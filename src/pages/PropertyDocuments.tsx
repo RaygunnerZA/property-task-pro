@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { FileText } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
@@ -17,12 +17,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
+import { useSpaces } from "@/hooks/useSpaces";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import { useComplianceQuery } from "@/hooks/useComplianceQuery";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PropertyDocuments() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const propertyId = id || "";
   const queryClient = useQueryClient();
+  const { orgId } = useActiveOrg();
+  const { toast } = useToast();
 
   const [category, setCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -30,29 +39,141 @@ export default function PropertyDocuments() {
   const [expired, setExpired] = useState(false);
   const [missing, setMissing] = useState(false);
   const [recentlyAdded, setRecentlyAdded] = useState(false);
+  const [hazards, setHazards] = useState(false);
+  const [unlinked, setUnlinked] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showReanalyseModal, setShowReanalyseModal] = useState(false);
+  const [reanalyseLoading, setReanalyseLoading] = useState(false);
+  const [reanalyseResult, setReanalyseResult] = useState<{
+    total: number;
+    completed: number;
+    skipped: number;
+    errors: number;
+  } | null>(null);
 
-  const { documents, isLoading } = usePropertyDocuments(propertyId, {
-    category: category || undefined,
-    search: search || undefined,
-    expiringSoon,
-    expired,
-    missing,
-    recentlyAdded,
-  });
+  // URL filter: ?filter=expired | expiring | hazards | unlinked
+  useEffect(() => {
+    const filter = searchParams.get("filter");
+    if (filter === "expired") setExpired(true);
+    if (filter === "expiring") setExpiringSoon(true);
+    if (filter === "hazards") setHazards(true);
+    if (filter === "unlinked") setUnlinked(true);
+  }, [searchParams]);
+
+  const { documents, isLoading } = usePropertyDocuments(
+    propertyId,
+    {
+      category: category || undefined,
+      search: search || undefined,
+      expiringSoon,
+      expired,
+      missing,
+      recentlyAdded,
+      hazards,
+      unlinked,
+    }
+  );
+
+  const { spaces } = useSpaces(propertyId);
+  const { data: assets = [] } = useAssetsQuery(propertyId);
+  const { data: complianceItems = [] } = useComplianceQuery();
 
   const lastUpdated = documents[0]?.updated_at ?? null;
-  const missingCount = 0; // Placeholder: "3 important documents missing"
+  const missingCount = 0;
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["property-documents"] });
+    queryClient.invalidateQueries({ queryKey: ["document-detail"] });
   };
 
   const handleUploadComplete = () => {
     setShowUpload(false);
     handleRefresh();
   };
+
+  const handleReanalyse = async () => {
+    if (!orgId || !propertyId) return;
+    setShowReanalyseModal(true);
+    setReanalyseLoading(true);
+    setReanalyseResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-doc-reanalyse", {
+        body: { org_id: orgId, property_id: propertyId, overwrite: false },
+      });
+      if (error) throw error;
+      setReanalyseResult({
+        total: data?.total ?? 0,
+        completed: data?.completed ?? 0,
+        skipped: data?.skipped ?? 0,
+        errors: data?.errors ?? 0,
+      });
+      handleRefresh();
+      toast({ title: "Re-analysis complete", description: `${data?.completed ?? 0} processed` });
+    } catch (e: unknown) {
+      toast({ title: "Re-analysis failed", description: String(e), variant: "destructive" });
+    } finally {
+      setReanalyseLoading(false);
+    }
+  };
+
+  const handleLinkSpace = async (docId: string, spaceId: string) => {
+    if (!orgId) return;
+    try {
+      const { error } = await supabase.from("attachment_spaces").insert({
+        attachment_id: docId,
+        space_id: spaceId,
+        org_id: orgId,
+      });
+      if (error) throw error;
+      toast({ title: "Linked to space" });
+      handleRefresh();
+    } catch (e: unknown) {
+      toast({ title: "Link failed", description: String(e), variant: "destructive" });
+    }
+  };
+
+  const handleLinkAsset = async (docId: string, assetId: string) => {
+    if (!orgId) return;
+    try {
+      const { error } = await supabase.from("attachment_assets").insert({
+        attachment_id: docId,
+        asset_id: assetId,
+        org_id: orgId,
+      });
+      if (error) throw error;
+      toast({ title: "Linked to asset" });
+      handleRefresh();
+    } catch (e: unknown) {
+      toast({ title: "Link failed", description: String(e), variant: "destructive" });
+    }
+  };
+
+  const handleLinkCompliance = async (docId: string, complianceId: string) => {
+    if (!orgId) return;
+    try {
+      const { error } = await supabase.from("attachment_compliance").insert({
+        attachment_id: docId,
+        compliance_document_id: complianceId,
+        org_id: orgId,
+      });
+      if (error) throw error;
+      toast({ title: "Linked to compliance" });
+      handleRefresh();
+    } catch (e: unknown) {
+      toast({ title: "Link failed", description: String(e), variant: "destructive" });
+    }
+  };
+
+  const spaceOptions = spaces.map((s) => ({ id: s.id, name: s.name }));
+  const assetOptions = assets.map((a: { id: string; name?: string }) => ({
+    id: a.id,
+    name: a.name || "Unnamed",
+  }));
+  const complianceOptions = complianceItems.map((c: { id: string; title?: string }) => ({
+    id: c.id,
+    title: c.title || "Untitled",
+  }));
 
   return (
     <StandardPageWithBack
@@ -63,22 +184,19 @@ export default function PropertyDocuments() {
       maxWidth="lg"
     >
       <div className="flex flex-col gap-6 max-w-[650px]">
-        {/* (A) Header Section */}
         <PropertyDocumentsHeader
           propertyId={propertyId}
           onUpload={() => setShowUpload(true)}
+          onReanalyse={handleReanalyse}
+          reanalyseLoading={reanalyseLoading}
           missingCount={missingCount}
           lastUpdated={lastUpdated}
         />
 
-        {/* (B) Filter Section */}
         <div className="flex flex-col gap-4">
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Category</h3>
-            <DocumentCategoryChips
-              selected={category}
-              onSelect={setCategory}
-            />
+            <DocumentCategoryChips selected={category} onSelect={setCategory} />
           </div>
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">Search & filters</h3>
@@ -89,15 +207,18 @@ export default function PropertyDocuments() {
               expired={expired}
               missing={missing}
               recentlyAdded={recentlyAdded}
+              hazards={hazards}
+              unlinked={unlinked}
               onExpiringSoonToggle={() => setExpiringSoon((s) => !s)}
               onExpiredToggle={() => setExpired((s) => !s)}
               onMissingToggle={() => setMissing((s) => !s)}
               onRecentlyAddedToggle={() => setRecentlyAdded((s) => !s)}
+              onHazardsToggle={() => setHazards((s) => !s)}
+              onUnlinkedToggle={() => setUnlinked((s) => !s)}
             />
           </div>
         </div>
 
-        {/* (C) Document Grid */}
         <div>
           {isLoading ? (
             <LoadingState message="Loading documents..." />
@@ -114,16 +235,22 @@ export default function PropertyDocuments() {
           ) : (
             <DocumentGrid
               documents={documents}
+              propertyId={propertyId}
+              spaces={spaceOptions}
+              assets={assetOptions}
+              compliance={complianceOptions}
               onDocumentClick={(doc) => setSelectedDocId(doc.id)}
               onOpen={(doc) => window.open(doc.file_url, "_blank")}
               onReplace={() => {}}
               onLinkItems={(doc) => setSelectedDocId(doc.id)}
+              onLinkSpace={handleLinkSpace}
+              onLinkAsset={handleLinkAsset}
+              onLinkCompliance={handleLinkCompliance}
             />
           )}
         </div>
       </div>
 
-      {/* Document Detail Drawer */}
       <DocumentDetailDrawer
         documentId={selectedDocId}
         propertyId={propertyId}
@@ -131,7 +258,6 @@ export default function PropertyDocuments() {
         onRefresh={handleRefresh}
       />
 
-      {/* Upload Dialog */}
       <Dialog open={showUpload} onOpenChange={setShowUpload}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -141,6 +267,26 @@ export default function PropertyDocuments() {
             propertyId={propertyId}
             onUploadComplete={handleUploadComplete}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showReanalyseModal} onOpenChange={setShowReanalyseModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Re-run AI Analysis</DialogTitle>
+          </DialogHeader>
+          {reanalyseLoading ? (
+            <p className="text-sm text-muted-foreground">Processing documents…</p>
+          ) : reanalyseResult ? (
+            <div className="space-y-2 text-sm">
+              <p>Total: {reanalyseResult.total}</p>
+              <p className="text-success">Completed: {reanalyseResult.completed}</p>
+              <p className="text-muted-foreground">Skipped (recent): {reanalyseResult.skipped}</p>
+              {reanalyseResult.errors > 0 && (
+                <p className="text-destructive">Errors: {reanalyseResult.errors}</p>
+              )}
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </StandardPageWithBack>

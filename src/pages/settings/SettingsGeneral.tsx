@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { useOrganization } from "@/hooks/use-organization";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Save, Plus, User as UserIcon, Edit, Upload, X } from "lucide-react";
+import { Loader2, Save, Plus, User as UserIcon, Edit, Upload, X, Shield, Calendar } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useOrgSettings } from "@/hooks/useOrgSettings";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +24,7 @@ import {
 export default function SettingsGeneral() {
   const { organization, loading, error, updateName, refresh } = useOrganization();
   const { orgId, isLoading: orgLoading, error: orgError, refresh: refreshActiveOrg } = useActiveOrg();
+  const { settings: orgSettings, updateSettings: updateOrgSettings, isUpdating: orgSettingsUpdating } = useOrgSettings();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -562,6 +565,42 @@ export default function SettingsGeneral() {
               </>
             )}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Compliance Settings Section */}
+      <Card className="shadow-e1">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Compliance
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="auto-schedule" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                Auto-schedule compliance tasks
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, the daily scheduler will create tasks for compliance items with auto_schedule on.
+              </p>
+            </div>
+            <Switch
+              id="auto-schedule"
+              checked={orgSettings?.auto_schedule_compliance ?? false}
+              disabled={orgSettingsUpdating}
+              onCheckedChange={async (checked) => {
+                try {
+                  await updateOrgSettings({ auto_schedule_compliance: checked });
+                  toast.success(checked ? "Auto-schedule enabled" : "Auto-schedule disabled");
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to update setting");
+                }
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
       </div>

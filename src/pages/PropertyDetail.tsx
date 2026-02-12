@@ -23,6 +23,7 @@ import { PropertyTasksSection } from "@/components/properties/PropertyTasksSecti
 import { PropertySpacesSection } from "@/components/properties/PropertySpacesSection";
 import { ComplianceOverviewSection } from "@/components/properties/ComplianceOverviewSection";
 import { DocumentsSection } from "@/components/properties/DocumentsSection";
+import { DocumentHealthSummary } from "@/components/properties/DocumentHealthSummary";
 import { MediaGallerySection } from "@/components/properties/MediaGallerySection";
 import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsPanel";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
@@ -171,7 +172,7 @@ export default function PropertyDetail() {
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
-  const { documents } = usePropertyDocuments(id || "");
+  const { documents, isLoading: documentsLoading } = usePropertyDocuments(id || "");
 
   // Track screen size for third column create task (lg breakpoint = 1024px)
   useEffect(() => {
@@ -665,7 +666,10 @@ export default function PropertyDetail() {
               {/* Documents Section */}
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Documents</h2>
-                <DocumentsSection documents={documents} />
+                {id && (
+                  <DocumentHealthSummary propertyId={id} documents={documents} />
+                )}
+                <DocumentsSection documents={documents} loading={documentsLoading} />
               </div>
 
               {/* Media Gallery Section */}

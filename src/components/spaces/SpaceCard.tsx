@@ -27,7 +27,9 @@ export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
 
   const handleTopSectionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (space.property_id) {
+    if (space.property_id && space.id) {
+      navigate(`/properties/${space.property_id}/spaces/${space.id}`);
+    } else if (space.property_id) {
       navigate(`/properties/${space.property_id}`);
     }
   };
