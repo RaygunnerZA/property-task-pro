@@ -4,12 +4,16 @@ import { EmptyState } from "@/components/design-system/EmptyState";
 import { CompliancePortfolioSummary } from "@/components/compliance/CompliancePortfolioSummary";
 import { CompliancePropertyRow } from "@/components/compliance/CompliancePropertyRow";
 import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
+import { ComplianceRecommendationCard } from "@/components/compliance/ComplianceRecommendationCard";
+import { ComplianceRecommendationDrawer } from "@/components/compliance/ComplianceRecommendationDrawer";
 import { HazardBadge } from "@/components/compliance/HazardBadge";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
+import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useContractorComplianceQuery } from "@/hooks/useContractorComplianceQuery";
-import { Building2, Network, ChevronDown, ChevronUp } from "lucide-react";
+import { Building2, Network, ChevronDown, ChevronUp, Zap, Bot } from "lucide-react";
 import { HAZARD_CATEGORIES, getHazardLabel } from "@/lib/hazards";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -23,13 +27,35 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useOrgAutoTasksStats } from "@/hooks/useOrgAutoTasksStats";
 
 export default function PortfolioCompliance() {
   const [hazardFilter, setHazardFilter] = useState<string>("all");
   const [contractorFilter, setContractorFilter] = useState<string>("all");
   const [aiConfidenceFilter, setAiConfidenceFilter] = useState<string>("all");
+  const { orgId } = useActiveOrg();
   const { data: portfolio = [], isLoading } = useCompliancePortfolioQuery();
   const { data: contractorItems = [] } = useContractorComplianceQuery();
+  const { data: autoStats } = useOrgAutoTasksStats(orgId);
+  const { data: recommendations = [] } = useComplianceRecommendations();
+  const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
+
+  const selectedRec = useMemo(
+    () => recommendations.find((r) => r.id === selectedRecId) ?? null,
+    [recommendations, selectedRecId]
+  );
+
+  const recommendationsByProperty = useMemo(() => {
+    const map = new Map<string, typeof recommendations>();
+    for (const r of recommendations) {
+      const pid = r.property_id || "__unassigned__";
+      if (!map.has(pid)) map.set(pid, []);
+      map.get(pid)!.push(r);
+    }
+    return map;
+  }, [recommendations]);
 
   const contractorIds = useMemo(() => {
     const ids = new Set(contractorItems.map((c) => c.contractor_org_id));
@@ -136,6 +162,51 @@ export default function PortfolioCompliance() {
     <div className="space-y-6">
       <CompliancePortfolioSummary items={filteredPortfolio} />
 
+      {autoStats && (
+        <div className="rounded-lg p-4 shadow-e1 bg-card border border-border/50">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Bot className="h-4 w-4 text-primary" />
+            Automation
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-lg p-3 bg-muted/30 flex items-center gap-2">
+              <span className="text-2xl font-bold text-foreground">{autoStats.today}</span>
+              <span className="text-xs text-muted-foreground">Auto-tasks today</span>
+            </div>
+            <div className="rounded-lg p-3 bg-muted/30 flex items-center gap-2">
+              <span className="text-2xl font-bold text-foreground">{autoStats.week}</span>
+              <span className="text-xs text-muted-foreground">This week</span>
+            </div>
+            <div className="rounded-lg p-3 bg-muted/30 flex items-center gap-2">
+              <span className="text-2xl font-bold text-foreground">{autoStats.month}</span>
+              <span className="text-xs text-muted-foreground">This month</span>
+            </div>
+            <div className={cn(
+              "rounded-lg p-3 flex items-center gap-2",
+              autoStats.overdueWithoutTask > 0 ? "bg-destructive/10" : "bg-muted/30"
+            )}>
+              <span className="text-2xl font-bold text-foreground">{autoStats.overdueWithoutTask}</span>
+              <span className="text-xs text-muted-foreground">Overdue, no auto-task</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="properties" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="properties">By Property</TabsTrigger>
+          <TabsTrigger value="recommendations" className="flex items-center gap-1.5">
+            <Zap className="h-4 w-4" />
+            Recommended Actions
+            {recommendations.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-primary/20 text-primary">
+                {recommendations.length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="properties" className="mt-0 space-y-6">
       <div className="flex flex-wrap gap-3">
         <Select value={hazardFilter} onValueChange={setHazardFilter}>
           <SelectTrigger className="w-[160px]">
@@ -280,10 +351,96 @@ export default function PortfolioCompliance() {
         </Collapsible>
       )}
 
+        </TabsContent>
+
+        <TabsContent value="recommendations" className="mt-0">
+          {recommendations.length === 0 ? (
+            <EmptyState
+              icon={Zap}
+              title="No pending recommendations"
+              description="AI-generated recommendations will appear here when documents are analysed"
+            />
+          ) : (
+            <div className="space-y-4">
+              {properties
+                .filter((p) => recommendationsByProperty.has(p.id))
+                .sort((a, b) => {
+                  const aRecs = recommendationsByProperty.get(a.id) ?? [];
+                  const bRecs = recommendationsByProperty.get(b.id) ?? [];
+                  const aHigh = aRecs.some((r) => r.risk_level === "critical" || r.risk_level === "high");
+                  const bHigh = bRecs.some((r) => r.risk_level === "critical" || r.risk_level === "high");
+                  if (aHigh && !bHigh) return -1;
+                  if (!aHigh && bHigh) return 1;
+                  return bRecs.length - aRecs.length;
+                })
+                .map((p) => (
+                  <div key={p.id}>
+                    <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      {p.nickname || p.address || "Unnamed"}
+                    </h3>
+                    <div className="space-y-2">
+                      {(recommendationsByProperty.get(p.id) ?? [])
+                        .sort((a, b) => {
+                          const order = { critical: 0, high: 1, medium: 2, low: 3 };
+                          return (order[a.risk_level as keyof typeof order] ?? 4) - (order[b.risk_level as keyof typeof order] ?? 4);
+                        })
+                        .map((rec) => (
+                          <ComplianceRecommendationCard
+                            key={rec.id}
+                            recommendation={rec}
+                            documentTitle={(rec as any)._doc?.title}
+                            propertyName={(rec as any)._doc?.property_name}
+                            expiryDate={(rec as any)._doc?.expiry_date}
+                            nextDueDate={(rec as any)._doc?.next_due_date}
+                            spaceCount={(rec as any)._doc?.space_ids?.length ?? 0}
+                            assetCount={(rec as any)._doc?.linked_asset_ids?.length ?? 0}
+                            onClick={() => setSelectedRecId(rec.id)}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              {recommendationsByProperty.has("__unassigned__") && (
+                <div>
+                  <h3 className="font-semibold text-foreground mb-2">Unassigned</h3>
+                  <div className="space-y-2">
+                    {(recommendationsByProperty.get("__unassigned__") ?? []).map((rec) => (
+                      <ComplianceRecommendationCard
+                        key={rec.id}
+                        recommendation={rec}
+                        documentTitle={(rec as any)._doc?.title}
+                        propertyName={(rec as any)._doc?.property_name}
+                        expiryDate={(rec as any)._doc?.expiry_date}
+                        nextDueDate={(rec as any)._doc?.next_due_date}
+                        spaceCount={(rec as any)._doc?.space_ids?.length ?? 0}
+                        assetCount={(rec as any)._doc?.linked_asset_ids?.length ?? 0}
+                        onClick={() => setSelectedRecId(rec.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
       <ComplianceDetailDrawer
         open={!!drawerCompliance}
         onOpenChange={(open) => !open && setDrawerCompliance(null)}
         compliance={drawerCompliance}
+      />
+
+      <ComplianceRecommendationDrawer
+        open={!!selectedRec}
+        onOpenChange={(o) => !o && setSelectedRecId(null)}
+        recommendation={selectedRec}
+        documentTitle={selectedRec ? (selectedRec as any)._doc?.title : undefined}
+        propertyName={selectedRec ? (selectedRec as any)._doc?.property_name : undefined}
+        propertyId={selectedRec?.property_id ?? undefined}
+        expiryDate={selectedRec ? (selectedRec as any)._doc?.expiry_date : undefined}
+        nextDueDate={selectedRec ? (selectedRec as any)._doc?.next_due_date : undefined}
       />
     </div>
   );

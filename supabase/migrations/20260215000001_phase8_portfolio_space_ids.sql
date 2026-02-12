@@ -1,5 +1,7 @@
 -- Phase 8: Add space_ids to compliance_portfolio_view for space link counts
 
+DROP VIEW IF EXISTS compliance_portfolio_view CASCADE;
+
 CREATE OR REPLACE VIEW compliance_portfolio_view
 WITH (security_invoker = true)
 AS

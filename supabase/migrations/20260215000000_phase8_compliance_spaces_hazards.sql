@@ -36,6 +36,8 @@ COMMENT ON COLUMN compliance_documents.hazards IS 'Hazard categories: fire, elec
 -- ============================================================================
 -- 3. Recreate compliance_portfolio_view with hazards
 -- ============================================================================
+DROP VIEW IF EXISTS compliance_portfolio_view CASCADE;
+
 CREATE OR REPLACE VIEW compliance_portfolio_view
 WITH (security_invoker = true)
 AS

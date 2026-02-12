@@ -15,7 +15,7 @@ import type { DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
@@ -63,6 +63,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
   const { data: portfolioCompliance = [], isLoading: portfolioLoading } = useCompliancePortfolioQuery();
+  const { data: autoTaskRecord } = useQuery({
+    queryKey: ["compliance_auto_tasks", taskId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("compliance_auto_tasks")
+        .select("id, compliance_document_id, auto_task_type")
+        .eq("task_id", taskId)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!taskId,
+  });
 
   const propertyComplianceItems = useMemo(() => {
     if (!propertyId) return [];
@@ -507,6 +519,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               ))}
             </SelectContent>
           </Select>
+          {autoTaskRecord && (
+            <Badge variant="secondary" className="text-xs font-normal">
+              Auto-generated
+            </Badge>
+          )}
         </div>
       </div>
 

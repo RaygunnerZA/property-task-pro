@@ -1,15 +1,29 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { EmptyState } from "@/components/design-system/EmptyState";
 import { ContractorComplianceRow } from "@/components/compliance/ContractorComplianceRow";
 import { ContractorHazardChart } from "@/components/compliance/ContractorHazardChart";
+import { ComplianceRecommendationCard } from "@/components/compliance/ComplianceRecommendationCard";
+import { ComplianceRecommendationDrawer } from "@/components/compliance/ComplianceRecommendationDrawer";
 import { useContractorComplianceQuery } from "@/hooks/useContractorComplianceQuery";
-import { User, AlertTriangle, Calendar, Zap } from "lucide-react";
+import { useContractorRecommendations, useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
+import { User, AlertTriangle, Calendar, Zap, ListTodo } from "lucide-react";
 import { addDays, isWithinInterval, differenceInCalendarDays } from "date-fns";
 import { HAZARD_CATEGORIES, getHazardLabel } from "@/lib/hazards";
 
 export default function ContractorCompliance() {
   const { data: items = [], isLoading } = useContractorComplianceQuery();
+  const { data: contractorRecData } = useContractorRecommendations();
+  const { data: allRecommendations = [] } = useComplianceRecommendations();
+  const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
+
+  const contractorRecs = contractorRecData?.contractorRecs ?? new Map();
+  const docMap = contractorRecData?.docMap ?? new Map();
+
+  const selectedRec = useMemo(
+    () => allRecommendations.find((r) => r.id === selectedRecId) ?? null,
+    [allRecommendations, selectedRecId]
+  );
 
   const { byContractor, hazardSummary, avgDaysOverdueByContractor } = useMemo(() => {
     const map = new Map<
@@ -147,6 +161,63 @@ export default function ContractorCompliance() {
           </div>
         )}
 
+        {contractorRecs.size > 0 && (
+          <div className="rounded-lg bg-card shadow-e1 border border-border/50 p-4">
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <ListTodo className="h-4 w-4" />
+              Actions Required of Contractor
+            </h3>
+            <div className="space-y-4">
+              {byContractor
+                .filter((c) => contractorRecs.has(c.contractorOrgId))
+                .sort((a, b) => {
+                  const aRecs = contractorRecs.get(a.contractorOrgId) ?? [];
+                  const bRecs = contractorRecs.get(b.contractorOrgId) ?? [];
+                  const aHigh = aRecs.some((r: any) => r.risk_level === "critical" || r.risk_level === "high");
+                  const bHigh = bRecs.some((r: any) => r.risk_level === "critical" || r.risk_level === "high");
+                  if (aHigh && !bHigh) return -1;
+                  if (!aHigh && bHigh) return 1;
+                  return bRecs.length - aRecs.length;
+                })
+                .map((c) => {
+                  const recs = contractorRecs.get(c.contractorOrgId) ?? [];
+                  return (
+                    <div key={c.contractorOrgId}>
+                      <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {c.name}
+                        <span className="text-xs text-muted-foreground">({recs.length} recommendation{recs.length !== 1 ? "s" : ""})</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {recs
+                          .sort((a: any, b: any) => {
+                            const order = { critical: 0, high: 1, medium: 2, low: 3 };
+                            return (order[a.risk_level] ?? 4) - (order[b.risk_level] ?? 4);
+                          })
+                          .map((rec: any) => {
+                            const doc = docMap.get(rec.compliance_document_id);
+                            return (
+                              <ComplianceRecommendationCard
+                                key={rec.id}
+                                recommendation={{ ...rec, asset_ids: rec.asset_ids ?? [], space_ids: rec.space_ids ?? [], hazards: rec.hazards ?? [], recommended_tasks: rec.recommended_tasks ?? [] }}
+                                documentTitle={doc?.title}
+                                propertyName={doc?.property_name}
+                                expiryDate={doc?.expiry_date}
+                                nextDueDate={doc?.next_due_date}
+                                spaceCount={doc?.space_ids?.length ?? 0}
+                                assetCount={doc?.linked_asset_ids?.length ?? 0}
+                                onClick={() => setSelectedRecId(rec.id)}
+                              />
+                            );
+                          })}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-3">By Contractor</h2>
           {byContractor.length === 0 ? (
@@ -173,6 +244,17 @@ export default function ContractorCompliance() {
             </div>
           )}
         </div>
+
+        <ComplianceRecommendationDrawer
+          open={!!selectedRec}
+          onOpenChange={(o) => !o && setSelectedRecId(null)}
+          recommendation={selectedRec}
+          documentTitle={selectedRec ? (selectedRec as any)._doc?.title : undefined}
+          propertyName={selectedRec ? (selectedRec as any)._doc?.property_name : undefined}
+          propertyId={selectedRec?.property_id ?? undefined}
+          expiryDate={selectedRec ? (selectedRec as any)._doc?.expiry_date : undefined}
+          nextDueDate={selectedRec ? (selectedRec as any)._doc?.next_due_date : undefined}
+        />
       </div>
   );
 }

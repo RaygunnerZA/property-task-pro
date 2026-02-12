@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { FileText } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import { EmptyState } from "@/components/design-system/EmptyState";
-import { PropertyDocumentsHeader } from "@/components/properties/PropertyDocumentsHeader";
+import { DocumentsSummaryRow } from "@/components/properties/DocumentsSummaryRow";
 import { DocumentCategoryChips } from "@/components/properties/DocumentCategoryChips";
 import { DocumentSearchFilters } from "@/components/properties/DocumentSearchFilters";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
+import { TintedSectionCard, FrameworkEmptyState } from "@/components/property-framework";
+import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
+import type { TintedSectionColor } from "@/components/property-framework";
 import {
   Dialog,
   DialogContent,
@@ -78,9 +80,6 @@ export default function PropertyDocuments() {
   const { spaces } = useSpaces(propertyId);
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
-
-  const lastUpdated = documents[0]?.updated_at ?? null;
-  const missingCount = 0;
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["property-documents"] });
@@ -175,6 +174,31 @@ export default function PropertyDocuments() {
     title: c.title || "Untitled",
   }));
 
+  // Category → colour mapping (Framework V2)
+  const categoryColor: Record<string, TintedSectionColor> = {
+    "Fire Safety": "red",
+    Electrical: "amber",
+    Mechanical: "amber",
+    Water: "teal",
+    Insurance: "teal",
+    Legal: "slate",
+    Contractors: "mint",
+    Plans: "slate",
+    Warranties: "mint",
+    "O&M Manuals": "slate",
+    Misc: "slate",
+  };
+
+  const documentsByCategory = useMemo(() => {
+    const map = new Map<string, typeof documents>();
+    for (const doc of documents) {
+      const cat = doc.category || "Misc";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(doc);
+    }
+    return map;
+  }, [documents]);
+
   return (
     <StandardPageWithBack
       title="Property Documents"
@@ -184,14 +208,8 @@ export default function PropertyDocuments() {
       maxWidth="lg"
     >
       <div className="flex flex-col gap-6 max-w-[650px]">
-        <PropertyDocumentsHeader
-          propertyId={propertyId}
-          onUpload={() => setShowUpload(true)}
-          onReanalyse={handleReanalyse}
-          reanalyseLoading={reanalyseLoading}
-          missingCount={missingCount}
-          lastUpdated={lastUpdated}
-        />
+        {/* Summary Row - Framework V2 */}
+        <DocumentsSummaryRow propertyId={propertyId} />
 
         <div className="flex flex-col gap-4">
           <div>
@@ -219,11 +237,11 @@ export default function PropertyDocuments() {
           </div>
         </div>
 
-        <div>
+        <div className="space-y-4">
           {isLoading ? (
             <LoadingState message="Loading documents..." />
           ) : documents.length === 0 ? (
-            <EmptyState
+            <FrameworkEmptyState
               icon={FileText}
               title="No documents"
               description="Upload your first document or adjust filters"
@@ -232,21 +250,66 @@ export default function PropertyDocuments() {
                 onClick: () => setShowUpload(true),
               }}
             />
+          ) : category ? (
+            <TintedSectionCard
+              title={category}
+              color={categoryColor[category] ?? "slate"}
+              count={documentsByCategory.get(category)?.length ?? 0}
+              collapsible
+              defaultExpanded
+            >
+              <DocumentGrid
+                documents={documentsByCategory.get(category) ?? documents}
+                propertyId={propertyId}
+                spaces={spaceOptions}
+                assets={assetOptions}
+                compliance={complianceOptions}
+                onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+                onOpen={(doc) => window.open(doc.file_url, "_blank")}
+                onReplace={() => {}}
+                onLinkItems={(doc) => setSelectedDocId(doc.id)}
+                onLinkSpace={handleLinkSpace}
+                onLinkAsset={handleLinkAsset}
+                onLinkCompliance={handleLinkCompliance}
+              />
+            </TintedSectionCard>
           ) : (
-            <DocumentGrid
-              documents={documents}
-              propertyId={propertyId}
-              spaces={spaceOptions}
-              assets={assetOptions}
-              compliance={complianceOptions}
-              onDocumentClick={(doc) => setSelectedDocId(doc.id)}
-              onOpen={(doc) => window.open(doc.file_url, "_blank")}
-              onReplace={() => {}}
-              onLinkItems={(doc) => setSelectedDocId(doc.id)}
-              onLinkSpace={handleLinkSpace}
-              onLinkAsset={handleLinkAsset}
-              onLinkCompliance={handleLinkCompliance}
-            />
+            <div className="space-y-4">
+              {Array.from(documentsByCategory.entries())
+                .sort(([a], [b]) => {
+                  const ai = DOCUMENT_CATEGORIES.indexOf(a as any);
+                  const bi = DOCUMENT_CATEGORIES.indexOf(b as any);
+                  if (ai >= 0 && bi >= 0) return ai - bi;
+                  if (ai >= 0) return -1;
+                  if (bi >= 0) return 1;
+                  return a.localeCompare(b);
+                })
+                .map(([cat, docs]) => (
+                  <TintedSectionCard
+                    key={cat}
+                    title={cat}
+                    color={categoryColor[cat] ?? "slate"}
+                    count={docs.length}
+                    collapsible
+                    defaultExpanded
+                  >
+                    <DocumentGrid
+                      documents={docs}
+                      propertyId={propertyId}
+                      spaces={spaceOptions}
+                      assets={assetOptions}
+                      compliance={complianceOptions}
+                      onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+                      onOpen={(doc) => window.open(doc.file_url, "_blank")}
+                      onReplace={() => {}}
+                      onLinkItems={(doc) => setSelectedDocId(doc.id)}
+                      onLinkSpace={handleLinkSpace}
+                      onLinkAsset={handleLinkAsset}
+                      onLinkCompliance={handleLinkCompliance}
+                    />
+                  </TintedSectionCard>
+                ))}
+            </div>
           )}
         </div>
       </div>

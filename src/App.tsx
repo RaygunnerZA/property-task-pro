@@ -94,6 +94,7 @@ const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
 // Settings pages
 const SettingsLayout = lazy(() => import("./pages/settings/SettingsLayout").then(module => ({ default: module.SettingsLayout })));
 const SettingsGeneral = lazy(() => import("./pages/settings/SettingsGeneral"));
+const SettingsAutomationPanel = lazy(() => import("./pages/settings/SettingsAutomationPanel"));
 const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
 const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
 const DebugData = lazy(() => import("./pages/DebugData"));
@@ -179,6 +180,7 @@ const App = () => {
                                 {/* Settings routes */}
                                 <Route path="/settings" element={<SettingsLayout />}>
                                   <Route index element={<SettingsGeneral />} />
+                                  <Route path="automation" element={<SettingsAutomationPanel />} />
                                   <Route path="team" element={<SettingsTeam />} />
                                   <Route path="billing" element={<SettingsBilling />} />
                                 </Route>

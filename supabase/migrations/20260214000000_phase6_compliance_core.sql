@@ -89,6 +89,8 @@ CREATE POLICY "org_settings_update" ON org_settings FOR UPDATE
 -- ============================================================================
 -- 5. Recreate compliance_view with new columns
 -- ============================================================================
+DROP VIEW IF EXISTS compliance_view CASCADE;
+
 CREATE OR REPLACE VIEW compliance_view
 WITH (security_invoker = true)
 AS

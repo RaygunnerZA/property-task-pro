@@ -53,6 +53,16 @@ import { CreateTaskRow } from "./create/CreateTaskRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
+export interface CreateTaskPrefill {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  propertyId?: string;
+  spaceIds?: string[];
+  assetIds?: string[];
+  category?: string;
+}
+
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -61,6 +71,7 @@ interface CreateTaskModalProps {
   defaultDueDate?: string;
   defaultSpaceIds?: string[];
   defaultAssetIds?: string[];
+  prefill?: CreateTaskPrefill | null;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
 }
 export function CreateTaskModal({
@@ -71,6 +82,7 @@ export function CreateTaskModal({
   defaultDueDate,
   defaultSpaceIds,
   defaultAssetIds,
+  prefill,
   variant = "modal"
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
@@ -115,6 +127,21 @@ export function CreateTaskModal({
       if (defaultAssetIds?.length) setSelectedAssetIds(defaultAssetIds);
     }
   }, [open, defaultSpaceIds, defaultAssetIds]);
+
+  // Phase 9: Prefill from compliance recommendation or other sources
+  useEffect(() => {
+    if (open && prefill) {
+      if (prefill.title != null) setTitle(prefill.title);
+      if (prefill.description != null) setDescription(prefill.description);
+      if (prefill.dueDate != null) setDueDate(prefill.dueDate);
+      if (prefill.propertyId) {
+        setPropertyId(prefill.propertyId);
+        setSelectedPropertyIds([prefill.propertyId]);
+      }
+      if (prefill.spaceIds?.length) setSelectedSpaceIds(prefill.spaceIds);
+      if (prefill.assetIds?.length) setSelectedAssetIds(prefill.assetIds);
+    }
+  }, [open, prefill]);
 
   // Update last used when property changes
   const handlePropertyChange = (newPropertyIds: string[]) => {

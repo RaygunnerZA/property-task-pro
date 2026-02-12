@@ -7,6 +7,7 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { AssetCard } from "@/components/assets/AssetCard";
 import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
+import { AssetsSummaryRow } from "@/components/assets/AssetsSummaryRow";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,7 +33,7 @@ import { toast } from "sonner";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
-import { EmptyState } from "@/components/design-system/EmptyState";
+import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { Chip } from "@/components/chips/Chip";
@@ -59,6 +60,7 @@ const Assets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [complianceOnly, setComplianceOnly] = useState(false);
+  const [needsInspectionOnly, setNeedsInspectionOnly] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -72,6 +74,14 @@ const Assets = () => {
       navigate("/assets", { replace: true });
     }
   }, [searchParams, navigate]);
+
+  // Pre-filter by property when navigating from property context (?property=id)
+  useEffect(() => {
+    const propertyParam = searchParams.get("property");
+    if (propertyParam) {
+      setFilterPropertyId(propertyParam);
+    }
+  }, [searchParams]);
 
   // Form state for create
   const [name, setName] = useState("");
@@ -159,8 +169,11 @@ const Assets = () => {
     if (complianceOnly) {
       list = list.filter((a) => a.compliance_required === true);
     }
+    if (needsInspectionOnly) {
+      list = list.filter((a) => (a.condition_score ?? 100) < 60);
+    }
     return list;
-  }, [assets, searchQuery, filterPropertyId, filterSpaceId, statusFilters, complianceOnly]);
+  }, [assets, searchQuery, filterPropertyId, filterSpaceId, statusFilters, complianceOnly, needsInspectionOnly]);
 
   const propertyMap = useMemo(() => {
     const map = new Map(properties.map((p) => [p.id, p.address]));
@@ -304,6 +317,33 @@ const Assets = () => {
       }
       maxWidth="md"
     >
+      {/* Health Snapshot Row - Framework V2 */}
+      <AssetsSummaryRow
+        assets={assets as AssetViewRow[]}
+        onFilterClick={(filter) => {
+          if (filter === "active") {
+            setStatusFilters([]);
+            setComplianceOnly(false);
+            setNeedsInspectionOnly(false);
+          }
+          if (filter === "retired") {
+            setStatusFilters(["retired"]);
+            setComplianceOnly(false);
+            setNeedsInspectionOnly(false);
+          }
+          if (filter === "needsInspection") {
+            setStatusFilters(["active"]);
+            setComplianceOnly(false);
+            setNeedsInspectionOnly(true);
+          }
+          if (filter === "nonCompliant") {
+            setStatusFilters(["active"]);
+            setComplianceOnly(true);
+            setNeedsInspectionOnly(false);
+          }
+        }}
+      />
+
       {/* Filters row */}
       <div className="space-y-4 mb-6">
         <div className="flex flex-wrap gap-3 items-center">
@@ -365,11 +405,11 @@ const Assets = () => {
       </div>
 
       {assets.length === 0 ? (
-        <EmptyState
+        <FrameworkEmptyState
           icon={Package}
           title="No assets yet"
           description="Add your first asset to get started"
-          action={{ label: "Add Asset", onClick: () => setIsDialogOpen(true), icon: Plus }}
+          action={{ label: "Add Asset", onClick: () => setIsDialogOpen(true) }}
         />
       ) : (
         <div className="space-y-4">

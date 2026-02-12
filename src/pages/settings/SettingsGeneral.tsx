@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { useOrganization } from "@/hooks/use-organization";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
@@ -576,7 +577,7 @@ export default function SettingsGeneral() {
             Compliance
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="auto-schedule" className="flex items-center gap-2">
@@ -600,6 +601,16 @@ export default function SettingsGeneral() {
                 }
               }}
             />
+          </div>
+
+          <div className="border-t pt-6">
+            <p className="text-sm text-muted-foreground mb-2">
+              For auto-task creation, contractor assignment, and AI preferences, use the{" "}
+              <Link to="/settings/automation" className="text-primary hover:underline font-medium">
+                Automation & AI
+              </Link>{" "}
+              panel.
+            </p>
           </div>
         </CardContent>
       </Card>

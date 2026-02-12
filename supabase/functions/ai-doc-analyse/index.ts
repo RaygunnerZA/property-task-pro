@@ -64,11 +64,11 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
     }
   ],
   "compliance_recommendations": ["Link to Fire Documentation", "Link to EICR record", etc - suggestions based on document type],
-  "hazards": ["asbestos", "fault", "risk", "defect", "urgent", etc - safety keywords found],
+  "hazards": ["fire", "electrical", "slip", "water", "structural", "obstruction", "hygiene", "ventilation", "unknown" - use if applicable, else generic keywords],
   "metadata": {}
 }
 
-Focus on: certificates, expiry dates, space references, serial/model numbers, safety warnings. Use snake_case for hazards.`;
+Focus on: certificates, expiry dates, space references, serial/model numbers, safety warnings. Use snake_case for hazards. Preferred hazard categories: fire, electrical, slip, water, structural, obstruction, hygiene, ventilation, unknown.`;
 
 function getGeminiKey(): string | undefined {
   return Deno.env.get("GEMINI_API_KEY");
@@ -279,6 +279,101 @@ function inferDocTypeFromFilename(fileName: string): string | null {
   return null;
 }
 
+const HAZARD_TO_ACTION: Record<string, { risk: "low" | "medium" | "high" | "critical"; action: string }> = {
+  fire: { risk: "high", action: "Fire Extinguisher Service" },
+  electrical: { risk: "high", action: "Schedule EICR" },
+  slip: { risk: "medium", action: "Review slip/trip hazards" },
+  water: { risk: "medium", action: "Review Legionella Report" },
+  structural: { risk: "critical", action: "Immediate assessment recommended" },
+  obstruction: { risk: "medium", action: "Clear obstruction and reassess" },
+  hygiene: { risk: "medium", action: "Hygiene inspection recommended" },
+  ventilation: { risk: "medium", action: "Ventilation assessment" },
+  unknown: { risk: "low", action: "Further investigation recommended" },
+};
+
+const DOC_TYPE_TO_ACTION: Record<string, string> = {
+  EICR: "Book EICR test with contractor",
+  "Gas Safety Certificate": "Renew Gas Safety Certificate",
+  "Fire Risk Assessment": "Schedule Fire Risk Assessment",
+  "Fire Certificate": "Renew Fire Certificate",
+  "PAT Test": "Schedule PAT testing",
+  "Legionella Risk Assessment": "Review Legionella Report",
+  "Asbestos Register": "Review Asbestos Register",
+};
+
+function buildInterpretation(
+  result: ResponseBody,
+  complianceDocumentId: string,
+  propertyId: string | null | undefined,
+  orgId: string
+): { interpretation: boolean; rec: Record<string, unknown> } {
+  const hazards = Array.isArray(result.hazards) ? result.hazards : [];
+  const expiryDate = result.expiry_date ? new Date(result.expiry_date) : null;
+  const now = new Date();
+  const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+
+  let riskLevel: "low" | "medium" | "high" | "critical" = "low";
+  let recommendedAction = "Review document status";
+
+  if (hazards.length > 0) {
+    const hazardMap = hazards.map((h) => {
+      const key = h.toLowerCase().replace(/\s/g, "_");
+      return HAZARD_TO_ACTION[key] || HAZARD_TO_ACTION[h] || HAZARD_TO_ACTION.unknown;
+    });
+    const critical = hazardMap.find((x) => x?.risk === "critical");
+    const high = hazardMap.find((x) => x?.risk === "high");
+    if (critical) {
+      riskLevel = "critical";
+      recommendedAction = critical.action;
+    } else if (high) {
+      riskLevel = "high";
+      recommendedAction = high.action;
+    } else if (hazardMap[0]) {
+      riskLevel = hazardMap[0].risk as "low" | "medium" | "high" | "critical";
+      recommendedAction = hazardMap[0].action;
+    }
+  }
+
+  if (daysLeft !== null) {
+    if (daysLeft < 0) {
+      if (riskLevel === "low") riskLevel = "medium";
+      if (riskLevel === "medium") riskLevel = "high";
+    } else if (daysLeft <= 30) {
+      if (riskLevel === "low") riskLevel = "medium";
+    }
+  }
+
+  const docType = result.document_type;
+  if (docType && DOC_TYPE_TO_ACTION[docType]) {
+    recommendedAction = DOC_TYPE_TO_ACTION[docType];
+  }
+
+  const suggestedTasks = [
+    {
+      title: recommendedAction,
+      description: `${result.title || "Compliance item"} - ${docType || "Document"}`,
+      dueDate: result.expiry_date || undefined,
+      propertyId: propertyId || undefined,
+    },
+  ];
+
+  return {
+    interpretation: true,
+    rec: {
+      org_id: orgId,
+      compliance_document_id: complianceDocumentId,
+      property_id: propertyId || null,
+      asset_ids: [],
+      space_ids: [],
+      risk_level: riskLevel,
+      recommended_action: recommendedAction,
+      recommended_tasks: suggestedTasks,
+      hazards: hazards.length > 0 ? hazards : [],
+      status: "pending",
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method === "OPTIONS") {
@@ -391,6 +486,7 @@ Deno.serve(async (req) => {
                 next_due_date: result.expiry_date,
                 expiry_date: result.expiry_date,
                 status,
+                hazards: result.hazards?.length ? result.hazards : [],
                 updated_at: new Date().toISOString(),
               })
               .eq("id", complianceIds[0])
@@ -401,6 +497,41 @@ Deno.serve(async (req) => {
               data: { source: "ai-doc-analyse", expiry_date: result.expiry_date, attachment_id },
               org_id,
             });
+
+            // Phase 9: Write compliance_recommendations (interpretation layer)
+            const { interpretation, rec } = buildInterpretation(
+              result,
+              complianceIds[0],
+              property_id,
+              org_id
+            );
+            if (interpretation) {
+              const { data: existing } = await admin
+                .from("compliance_recommendations")
+                .select("id")
+                .eq("compliance_document_id", complianceIds[0])
+                .eq("org_id", org_id)
+                .maybeSingle();
+              if (!existing || overwrite) {
+                if (existing) {
+                  await admin
+                    .from("compliance_recommendations")
+                    .update({
+                      risk_level: rec.risk_level,
+                      recommended_action: rec.recommended_action,
+                      recommended_tasks: rec.recommended_tasks || [],
+                      hazards: rec.hazards || [],
+                      property_id: rec.property_id || null,
+                      updated_at: new Date().toISOString(),
+                      status: overwrite ? "pending" : undefined,
+                    })
+                    .eq("id", existing.id)
+                    .eq("org_id", org_id);
+                } else {
+                  await admin.from("compliance_recommendations").insert(rec);
+                }
+              }
+            }
           }
         }
       }

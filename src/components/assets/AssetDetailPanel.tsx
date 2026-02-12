@@ -3,7 +3,7 @@
  * Same pattern as TaskDetailPanel: Dialog + tabs (Overview, Linked Tasks, Inspections, Files).
  */
 import { useState, useEffect, useCallback } from "react";
-import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield } from "lucide-react";
+import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield, Brain } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { AssetIntelligenceTab } from "./AssetIntelligenceTab";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -221,7 +222,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
             <div className="flex-1 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                 <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
-                  <TabsList className="w-full grid grid-cols-5 h-12 bg-transparent p-1">
+                  <TabsList className="w-full grid grid-cols-6 h-12 bg-transparent p-1">
                     <TabsTrigger
                       value="overview"
                       className={cn(
@@ -271,6 +272,16 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     >
                       <Shield className="h-4 w-4 mr-2" />
                       Compliance
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="intelligence"
+                      className={cn(
+                        "rounded-lg data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                      )}
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Intelligence
                     </TabsTrigger>
                   </TabsList>
                 </div>
@@ -527,6 +538,10 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                         </ul>
                       )}
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="intelligence" className="mt-0 flex-1 overflow-y-auto">
+                    <AssetIntelligenceTab asset={asset} />
                   </TabsContent>
                 </div>
               </Tabs>
