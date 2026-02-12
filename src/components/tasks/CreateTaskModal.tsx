@@ -153,7 +153,9 @@ export function CreateTaskModal({
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
 
-  // Image analysis (fire-and-forget, never blocks task creation)
+  // Phase 1: Image analysis (fire-and-forget, never blocks task creation)
+  // TempImage.aiOcrText used ONLY for chip suggestions – never written to attachments.
+  // Phase 2 edge function ai-image-analyse is the source of truth for DB writes.
   const handleAnalysisComplete = useCallback((localId: string, result: ImageAnalysisResult) => {
     setImages((prev) =>
       prev.map((img) =>
@@ -175,16 +177,27 @@ export function CreateTaskModal({
     onAnalysisComplete: handleAnalysisComplete,
   });
 
-  // Combined text for chip suggestions (description + OCR + detected labels)
-  const combinedImageText = useMemo(() => {
+  // Combined text + detected objects for chip suggestions
+  const { combinedImageText, detectedObjects } = useMemo(() => {
     const parts = [imageOcrText, detectedLabels.join(" ")].filter(Boolean);
-    return parts.join("\n");
-  }, [imageOcrText, detectedLabels]);
+    const text = parts.join("\n");
+    const objects = images.flatMap(
+      (img) =>
+        (img.rawAnalysis?.detected_objects || []).map((o) => ({
+          type: o.type,
+          label: o.label,
+          confidence: o.confidence,
+          serial_number: o.serial_number,
+          expiry_date: o.expiry_date,
+        }))
+    );
+    return { combinedImageText: text, detectedObjects: objects };
+  }, [imageOcrText, detectedLabels, images]);
   
   // Call AI extraction hook (using the working hook)
   const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
   
-  // Chip suggestions with resolution pipeline (includes image OCR when available)
+  // Chip suggestions with resolution pipeline (includes image OCR + detected objects)
   const { chips: chipSuggestions, ghostCategories, loading: chipsLoading, error: chipsError } = useChipSuggestions({
     description,
     propertyId,
@@ -192,6 +205,8 @@ export function CreateTaskModal({
     selectedPersonId: assignedUserId,
     selectedTeamIds: assignedTeamIds,
     imageOcrText: combinedImageText,
+    detectedLabels,
+    detectedObjects,
   });
   
   // Track applied chips and their resolution state
@@ -1028,7 +1043,8 @@ export function CreateTaskModal({
               .from("task-images")
               .getPublicUrl(optimizedPath);
 
-            // Create attachment record with annotations
+            // Create attachment record with annotations only (Phase 3: no AI metadata here)
+            // Phase 2 edge function ai-image-analyse writes ocr_text, document_type, expiry_date, metadata
             const { data: attachment, error: attachError } = await supabase
               .from("attachments")
               .insert({
@@ -1081,6 +1097,26 @@ export function CreateTaskModal({
 
             // Cleanup blob URLs
             cleanupTempImage(tempImage);
+
+            // Phase 2: Fire-and-forget post-upload AI analysis (never blocks)
+            if (attachment?.id && orgId) {
+              supabase.functions
+                .invoke("ai-image-analyse", {
+                  body: {
+                    attachment_id: attachment.id,
+                    file_url: optUrl.publicUrl,
+                    org_id: orgId,
+                    property_id: propertyId || null,
+                    task_id: taskId,
+                  },
+                })
+                .then(({ error }) => {
+                  if (error) {
+                    console.warn("[CreateTaskModal] Post-upload analysis failed:", error);
+                  }
+                })
+                .catch(() => {});
+            }
 
             return attachment;
           } catch (error: any) {

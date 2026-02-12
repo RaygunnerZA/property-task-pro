@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { QuickActionsSection } from "./QuickActionsSection";
 
 interface PropertyInsightsPanelProps {
@@ -10,15 +9,15 @@ interface PropertyInsightsPanelProps {
 
 /**
  * Property Insights Panel
- * Reuses DailyBriefingCard component with property-specific data
- * Shows auto-generated insights, environmental widgets, and quick actions
+ * Shows quick actions for the property context.
+ * Overview/Daily Briefing is shown in the right column to avoid duplication.
  */
 export function PropertyInsightsPanel({
   propertyId,
   tasks = [],
   compliance = [],
 }: PropertyInsightsPanelProps) {
-  // Calculate insights from property data
+  // Calculate insights from property data (retained for potential future use)
   const insights = useMemo(() => {
     const openTasks = tasks.filter(
       (t) => t.status === "open" || t.status === "in_progress"
@@ -72,10 +71,6 @@ export function PropertyInsightsPanel({
 
   return (
     <div className="space-y-4 p-[15px]">
-      {/* Daily Briefing Card - Property-specific insights will be shown via the hook */}
-      <DailyBriefingCard showGreeting={false} />
-
-      {/* Quick Actions */}
       <QuickActionsSection propertyId={propertyId} />
     </div>
   );

@@ -1,7 +1,10 @@
 /**
- * useImageAnalysis — Lightweight orchestrator for AI image analysis
+ * useImageAnalysis — Lightweight orchestrator for AI image analysis (Phase 1)
  * Watches TempImage[] and sends each image's optimized_blob to ai-image-analyse edge function.
  * Fire-and-forget: never blocks task creation.
+ *
+ * Phase 3 merge rule: Results here are for chip suggestions ONLY.
+ * Never written to attachments. Phase 2 post-upload analysis is the source of truth.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";

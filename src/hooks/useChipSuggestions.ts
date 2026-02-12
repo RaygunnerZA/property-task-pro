@@ -50,6 +50,8 @@ export function useChipSuggestions(
   // Debounce description to avoid excessive processing
   const debouncedDescription = useDebounce(context.description, debounceMs);
   const imageOcrText = context.imageOcrText ?? "";
+  const detectedLabels = context.detectedLabels ?? [];
+  const detectedObjects = context.detectedObjects ?? [];
   
   // Fetch entities
   const { spaces } = useSpaces(context.propertyId);
@@ -57,10 +59,11 @@ export function useChipSuggestions(
   const { members } = useOrgMembers();
   const { categories } = useCategories();
   
-  // Track if we should process (description or image OCR)
+  // Track if we should process (description, image OCR, or detected objects)
   const hasDescription = debouncedDescription.length >= minDescriptionLength;
   const hasImageOcr = imageOcrText.trim().length >= minDescriptionLength;
-  const shouldProcess = hasDescription || hasImageOcr;
+  const hasDetected = detectedLabels.length > 0 || detectedObjects.length > 0;
+  const shouldProcess = hasDescription || hasImageOcr || hasDetected;
   
   // Generation function
   const generateSuggestions = useCallback(async () => {
@@ -102,6 +105,8 @@ export function useChipSuggestions(
           selectedPersonId: context.selectedPersonId,
           selectedTeamIds: context.selectedTeamIds,
           imageOcrText,
+          detectedLabels,
+          detectedObjects,
         },
         entities
       );
@@ -121,6 +126,8 @@ export function useChipSuggestions(
     context.selectedPersonId,
     context.selectedTeamIds,
     imageOcrText,
+    detectedLabels,
+    detectedObjects,
     spaces,
     teams,
     members,

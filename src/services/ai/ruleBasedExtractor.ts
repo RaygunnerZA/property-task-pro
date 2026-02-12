@@ -34,8 +34,17 @@ export function extractChipsFromText(
   const ghostCategories: GhostCategory[] = [];
   let complianceMode = false;
 
-  // Combine description + image OCR for extraction (both feed chip suggestions)
-  const combinedText = [context.description, context.imageOcrText].filter(Boolean).join(" ");
+  // Combine description + image OCR + detected labels/objects for extraction
+  const labelParts = (context.detectedLabels || []).concat(
+    (context.detectedObjects || []).map((o) => o.label)
+  );
+  const combinedText = [
+    context.description,
+    context.imageOcrText,
+    ...labelParts,
+  ]
+    .filter(Boolean)
+    .join(" ");
   const text = combinedText.toLowerCase();
   const words = extractWords(combinedText);
   

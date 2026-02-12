@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
 import { ImageAnnotationEditor } from "./ImageAnnotationEditor";
+import type { DetectionOverlay } from "./ImageAnnotationEditor";
+import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +28,15 @@ import { Chip } from "@/components/chips/Chip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
+  const exp = img?.expiry_date;
+  if (!exp) return null;
+  const expDate = new Date(exp);
+  const now = new Date();
+  const days = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return days < 0 ? "red" : days < 60 ? "amber" : "green";
+}
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface TaskDetailPanelProps {
@@ -44,6 +57,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { members, loading: membersLoading } = useOrgMembers();
   const { teams, loading: teamsLoading } = useTeams();
+  const propertyId = (task as any)?.property_id;
+  const { data: assets = [] } = useAssetsQuery(propertyId);
+  const { data: complianceItems = [] } = useComplianceQuery();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
@@ -58,6 +74,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
+  const [detectionOverlays, setDetectionOverlays] = useState<DetectionOverlay[]>([]);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -777,6 +794,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                           onClick={() => {
                             const image = task.images[selectedImageIndex ?? 0];
                             if (image?.id) {
+                              setDetectionOverlays([]);
                               setEditingImageId(image.id);
                               setShowAnnotationEditor(true);
                             }
@@ -809,12 +827,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                           ref={thumbnailScrollRef}
                           className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                         >
-                          {task.images.map((image: any, index: number) => (
+                          {task.images.map((image: any, index: number) => {
+                            const hasAi = image?.ocr_text?.trim() || (image?.metadata as any)?.detected_objects?.length;
+                            const expiryStatus = getImageExpiryStatus(image);
+                            return (
                             <div
                               key={image.id}
                               className={cn(
                                 "aspect-square w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group border-2",
-                                selectedImageIndex === index ? "border-primary" : "border-transparent"
+                                selectedImageIndex === index ? "border-primary" : "border-transparent",
+                                hasAi && expiryStatus === "green" && "ring-1 ring-green-500/50 ring-inset",
+                                hasAi && expiryStatus === "amber" && "ring-1 ring-amber-500/50 ring-inset",
+                                hasAi && expiryStatus === "red" && "ring-1 ring-red-500/50 ring-inset"
                               )}
                               onClick={() => setSelectedImageIndex(index)}
                             >
@@ -834,6 +858,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (image.id) {
+                                      setDetectionOverlays([]);
                                       setEditingImageId(image.id);
                                       setShowAnnotationEditor(true);
                                     }
@@ -852,8 +877,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                                   <X className="h-2.5 w-2.5" />
                                 </button>
                               </div>
+                              {hasAi && (
+                                <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-center py-0.5 text-white font-medium">
+                                  🔎 AI
+                                </span>
+                              )}
                             </div>
-                          ))}
+                          );})}
                         </div>
                       </div>
                       {/* Navigation arrows - only show if more than 3 images */}
@@ -908,6 +938,49 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     accept="image/*"
                   />
                 </div>
+
+                {/* AI Actions - Phase 4 (link assets, create assets, compliance, overlays) */}
+                {task.images && task.images.length > 0 && (() => {
+                  const img = task.images[selectedImageIndex ?? 0] as any;
+                  const orgId = (task as any)?.org_id;
+                  if (!orgId) return null;
+                  return (
+                    <ImageAiActions
+                      attachment={img}
+                      assets={assets}
+                      complianceItems={complianceItems.map((c: any) => ({
+                        id: c.id,
+                        title: c.title,
+                        expiry_date: c.expiry_date,
+                      }))}
+                      orgId={orgId}
+                      propertyId={propertyId}
+                      taskId={taskId}
+                      onRefresh={() => {
+                        refreshTask();
+                        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+                        queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
+                        queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
+                      }}
+                      onShowOverlays={() => {
+                        const meta = (img?.metadata || {}) as Record<string, unknown>;
+                        const detected = (meta.detected_objects as Array<{ type?: string; label?: string; confidence?: number; x?: number; y?: number; width?: number; height?: number }>) || [];
+                        const overlays: DetectionOverlay[] = detected.map((obj, i) => ({
+                          type: obj.type || "object",
+                          label: obj.label || obj.type || "Detected",
+                          x: obj.x ?? 0.1,
+                          y: obj.y ?? 0.1 + i * 0.2,
+                          width: obj.width ?? 0.3,
+                          height: obj.height ?? 0.15,
+                          confidence: obj.confidence,
+                        }));
+                        setDetectionOverlays(overlays);
+                        setEditingImageId(img.id);
+                        setShowAnnotationEditor(true);
+                      }}
+                    />
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -931,9 +1004,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
           ""
         }
+        detectionOverlays={detectionOverlays}
         onClose={() => {
           setShowAnnotationEditor(false);
           setEditingImageId(null);
+          setDetectionOverlays([]);
         }}
       />,
       document.body
@@ -947,11 +1022,13 @@ function ImageAnnotationEditorWrapper({
   taskId,
   imageId,
   imageUrl,
+  detectionOverlays = [],
   onClose,
 }: {
   taskId: string;
   imageId: string;
   imageUrl: string;
+  detectionOverlays?: DetectionOverlay[];
   onClose: () => void;
 }) {
   const { annotations, saveAnnotations } = useImageAnnotations(taskId, imageId);
@@ -962,6 +1039,7 @@ function ImageAnnotationEditorWrapper({
       imageId={imageId}
       taskId={taskId}
       initialAnnotations={annotations}
+      detectionOverlays={detectionOverlays}
       onSave={async (anns, isAutosave) => {
         await saveAnnotations(anns);
         // Only close on manual save, not autosave
