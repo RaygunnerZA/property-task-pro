@@ -282,7 +282,10 @@ CREATE POLICY "asset_files_delete" ON asset_files
 -- 8. RECREATE assets_view (includes new columns, renamed serial_number)
 -- ============================================================================
 
-CREATE OR REPLACE VIEW assets_view
+-- Must DROP first because CREATE OR REPLACE cannot change column names/order
+DROP VIEW IF EXISTS assets_view;
+
+CREATE VIEW assets_view
 WITH (security_invoker = true)
 AS
 SELECT
