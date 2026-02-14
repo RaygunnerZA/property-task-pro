@@ -12,10 +12,12 @@ export function useComplianceQuery(propertyId?: string) {
         .from("compliance_view")
         .select("*")
         .eq("org_id", orgId)
+        .order("next_due_date", { ascending: true, nullsFirst: false })
         .order("expiry_date", { ascending: true, nullsFirst: false });
 
-      // Note: compliance_documents doesn't have property_id, so propertyId filter is not applied
-      // if (propertyId) query = query.eq("property_id", propertyId);
+      if (propertyId) {
+        query = query.or(`property_id.eq.${propertyId},property_id.is.null`);
+      }
 
       const { data, error } = await query;
       if (error) throw error;

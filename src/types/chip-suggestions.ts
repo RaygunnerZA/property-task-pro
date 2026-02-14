@@ -40,6 +40,14 @@ export interface GhostCategory {
 // Alias for backward compatibility
 export type GhostGroup = GhostCategory;
 
+export interface DetectedObjectForChips {
+  type: string;
+  label: string;
+  confidence?: number;
+  serial_number?: string;
+  expiry_date?: string;
+}
+
 export interface ChipSuggestionContext {
   description: string;
   propertyId?: string;
@@ -47,6 +55,8 @@ export interface ChipSuggestionContext {
   selectedPersonId?: string;
   selectedTeamIds?: string[];
   imageOcrText?: string;
+  detectedLabels?: string[];
+  detectedObjects?: DetectedObjectForChips[];
 }
 
 export interface ChipSuggestionResult {

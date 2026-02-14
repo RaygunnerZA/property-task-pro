@@ -12,6 +12,7 @@ import { Package, Plus } from "lucide-react";
 import { Chip } from "@/components/chips/Chip";
 import { ContextResolver } from "../ContextResolver";
 import { InstructionBlock } from "../InstructionBlock";
+import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -40,6 +41,8 @@ export function AssetPanel({
   const { toast } = useToast();
   const [assets, setAssets] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(false);
+  const [showCreateAsset, setShowCreateAsset] = useState(false);
+  const [createAssetDefaultName, setCreateAssetDefaultName] = useState("");
   
   // Check if instruction block should be shown (only for 'what' section and 'asset' type)
   const showInstruction = instructionBlock?.section === 'what' && instructionBlock?.entityType === 'asset';
@@ -124,6 +127,17 @@ export function AssetPanel({
 
   return (
     <div className="space-y-6">
+      <CreateAssetDialog
+        open={showCreateAsset}
+        onOpenChange={setShowCreateAsset}
+        propertyId={propertyId}
+        spaceId={spaceId}
+        defaultName={createAssetDefaultName}
+        onAssetCreated={(assetId) => {
+          onAssetsChange([...selectedAssetIds, assetId]);
+          loadAssets();
+        }}
+      />
       {/* Instruction Block - Show when asset is not in system */}
       {showInstruction && !isResolved && assetName && propertyId && (
         <InstructionBlock
@@ -133,8 +147,8 @@ export function AssetPanel({
               label: "Create asset",
               helperText: "Add this asset to the selected property or space",
               onClick: () => {
-                // TODO: Open asset creation dialog
-                toast({ title: "Asset creation coming soon", description: `Would create "${assetName}"` });
+                setCreateAssetDefaultName(assetName);
+                setShowCreateAsset(true);
               },
             },
           ]}
@@ -151,6 +165,10 @@ export function AssetPanel({
           <button
             type="button"
             className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[29px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+            onClick={() => {
+              setCreateAssetDefaultName("");
+              setShowCreateAsset(true);
+            }}
           >
             <span className="text-[12px] uppercase leading-[16px]">ASSETS</span>
             <Plus className="h-3.5 w-3.5" />

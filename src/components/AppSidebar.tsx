@@ -48,7 +48,7 @@ const propertyContextItems = [
   {
     title: 'Assets',
     icon: Package,
-    getUrl: (id: string) => `/properties/${id}`, // Assets shown in overview for now
+    getUrl: (id: string) => `/assets?property=${id}`,
   },
   {
     title: 'Tasks',

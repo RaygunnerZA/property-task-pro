@@ -1,12 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, Wrench, TrendingDown } from "lucide-react";
+import { Package, Wrench, ListTodo } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
-type AssetRow = Tables<"assets">;
+type AssetViewRow = Tables<"assets_view">;
 
 interface AssetCardProps {
-  asset: AssetRow;
+  asset: AssetViewRow;
   propertyName?: string;
   spaceName?: string;
   onClick?: () => void;
@@ -14,39 +14,33 @@ interface AssetCardProps {
 
 export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCardProps) {
   const conditionScore = asset.condition_score ?? 100;
-  const assetName = asset.name || "Unnamed Asset";
+
+  const assetName = asset.name || asset.serial || "Unnamed Asset";
+  
+  const propName =
+    propertyName ?? asset.property_address ?? asset.property_name ?? "";
+  
+  const spName =
+    spaceName ?? asset.space_name ?? "";
+  
+  const openTasksCount =
+    asset.open_tasks_count ?? 0;
   
   const getConditionColor = (score: number) => {
     if (score >= 80) return "bg-green-500/10 text-green-700 border-green-500/20";
     if (score >= 60) return "bg-yellow-500/10 text-yellow-700 border-yellow-500/20";
     return "bg-red-500/10 text-red-700 border-red-500/20";
   };
-
+  
   const getConditionBadge = (score: number) => {
-    if (score >= 80) {
-      return (
-        <Badge variant="success">
-          Good
-        </Badge>
-      );
-    }
-    if (score >= 60) {
-      return (
-        <Badge variant="warning">
-          Fair
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="danger">
-        Poor
-      </Badge>
-    );
+    if (score >= 80) return <Badge variant="success">Good</Badge>;
+    if (score >= 60) return <Badge variant="warning">Fair</Badge>;
+    return <Badge variant="danger">Poor</Badge>;
   };
 
   return (
     <Card
-      className="hover:shadow-md transition-shadow cursor-pointer"
+      className="rounded-[8px] shadow-e1 hover:shadow-e2 transition-all cursor-pointer active:scale-[0.99]"
       onClick={onClick}
     >
       <CardHeader>
@@ -55,7 +49,13 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
             <Package className="h-5 w-5 text-muted-foreground" />
             <span>{assetName}</span>
           </div>
-          {getConditionBadge(conditionScore)}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {asset.status && asset.status !== "active" && (
+              <Badge variant={asset.status === "retired" ? "neutral" : "warning"}>{asset.status}</Badge>
+            )}
+            {asset.compliance_required && <Badge variant="warning">Compliance</Badge>}
+            {getConditionBadge(conditionScore)}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -65,15 +65,21 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
               Serial: {asset.serial_number}
             </Badge>
           )}
-          {propertyName && (
+          {propName && (
             <Badge variant="neutral" size="sm" className="flex items-center gap-1">
               <Wrench className="h-3 w-3" />
-              {propertyName}
+              {propName}
             </Badge>
           )}
-          {spaceName && (
+          {spName && (
             <Badge variant="neutral" size="sm">
-              {spaceName}
+              {spName}
+            </Badge>
+          )}
+          {openTasksCount > 0 && (
+            <Badge variant="neutral" size="sm" className="flex items-center gap-1">
+              <ListTodo className="h-3 w-3" />
+              {openTasksCount} open
             </Badge>
           )}
         </div>
@@ -86,11 +92,7 @@ export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCard
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all ${
-                  conditionScore >= 80
-                    ? "bg-green-500"
-                    : conditionScore >= 60
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
+                  conditionScore >= 80 ? "bg-green-500" : conditionScore >= 60 ? "bg-yellow-500" : "bg-red-500"
                 }`}
                 style={{ width: `${conditionScore}%` }}
               />

@@ -33,9 +33,20 @@ export function extractChipsFromText(
   const chips: SuggestedChip[] = [];
   const ghostCategories: GhostCategory[] = [];
   let complianceMode = false;
-  
-  const text = context.description.toLowerCase();
-  const words = extractWords(context.description);
+
+  // Combine description + image OCR + detected labels/objects for extraction
+  const labelParts = (context.detectedLabels || []).concat(
+    (context.detectedObjects || []).map((o) => o.label)
+  );
+  const combinedText = [
+    context.description,
+    context.imageOcrText,
+    ...labelParts,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const text = combinedText.toLowerCase();
+  const words = extractWords(combinedText);
   
   // 1. Priority detection
   const priorityChip = detectPriority(text);

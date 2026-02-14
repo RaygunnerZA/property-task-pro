@@ -38,6 +38,7 @@ import { CategoryPanel } from "./create/panels/CategoryPanel";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
+import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
@@ -50,14 +51,27 @@ import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
-import type { TempImage } from "@/types/temp-image";
+import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
+export interface CreateTaskPrefill {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  propertyId?: string;
+  spaceIds?: string[];
+  assetIds?: string[];
+  category?: string;
+}
+
 interface CreateTaskModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
   defaultDueDate?: string;
+  defaultSpaceIds?: string[];
+  defaultAssetIds?: string[];
+  prefill?: CreateTaskPrefill | null;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
 }
 export function CreateTaskModal({
@@ -66,6 +80,9 @@ export function CreateTaskModal({
   onTaskCreated,
   defaultPropertyId,
   defaultDueDate,
+  defaultSpaceIds,
+  defaultAssetIds,
+  prefill,
   variant = "modal"
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
@@ -103,6 +120,29 @@ export function CreateTaskModal({
     }
   }, [open, defaultPropertyId, lastUsedPropertyId]);
 
+  // Preseed space and asset when opening from "Create Task for Asset"
+  useEffect(() => {
+    if (open && (defaultSpaceIds?.length || defaultAssetIds?.length)) {
+      if (defaultSpaceIds?.length) setSelectedSpaceIds(defaultSpaceIds);
+      if (defaultAssetIds?.length) setSelectedAssetIds(defaultAssetIds);
+    }
+  }, [open, defaultSpaceIds, defaultAssetIds]);
+
+  // Phase 9: Prefill from compliance recommendation or other sources
+  useEffect(() => {
+    if (open && prefill) {
+      if (prefill.title != null) setTitle(prefill.title);
+      if (prefill.description != null) setDescription(prefill.description);
+      if (prefill.dueDate != null) setDueDate(prefill.dueDate);
+      if (prefill.propertyId) {
+        setPropertyId(prefill.propertyId);
+        setSelectedPropertyIds([prefill.propertyId]);
+      }
+      if (prefill.spaceIds?.length) setSelectedSpaceIds(prefill.spaceIds);
+      if (prefill.assetIds?.length) setSelectedAssetIds(prefill.assetIds);
+    }
+  }, [open, prefill]);
+
   // Update last used when property changes
   const handlePropertyChange = (newPropertyIds: string[]) => {
     setSelectedPropertyIds(newPropertyIds);
@@ -139,17 +179,61 @@ export function CreateTaskModal({
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
+
+  // Phase 1: Image analysis (fire-and-forget, never blocks task creation)
+  // TempImage.aiOcrText used ONLY for chip suggestions – never written to attachments.
+  // Phase 2 edge function ai-image-analyse is the source of truth for DB writes.
+  const handleAnalysisComplete = useCallback((localId: string, result: ImageAnalysisResult) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.local_id === localId
+          ? {
+              ...img,
+              aiOcrText: result.ocr_text ?? "",
+              detectedLabels: result.detected_labels ?? [],
+              rawAnalysis: result,
+            }
+          : img
+      )
+    );
+  }, []);
+  const { imageOcrText, detectedLabels } = useImageAnalysis({
+    images,
+    propertyId: propertyId || undefined,
+    orgId: orgId ?? "",
+    onAnalysisComplete: handleAnalysisComplete,
+  });
+
+  // Combined text + detected objects for chip suggestions
+  const { combinedImageText, detectedObjects } = useMemo(() => {
+    const parts = [imageOcrText, detectedLabels.join(" ")].filter(Boolean);
+    const text = parts.join("\n");
+    const objects = images.flatMap(
+      (img) =>
+        (img.rawAnalysis?.detected_objects || []).map((o) => ({
+          type: o.type,
+          label: o.label,
+          confidence: o.confidence,
+          serial_number: o.serial_number,
+          expiry_date: o.expiry_date,
+        }))
+    );
+    return { combinedImageText: text, detectedObjects: objects };
+  }, [imageOcrText, detectedLabels, images]);
   
   // Call AI extraction hook (using the working hook)
   const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
   
-  // Chip suggestions with resolution pipeline
+  // Chip suggestions with resolution pipeline (includes image OCR + detected objects)
   const { chips: chipSuggestions, ghostCategories, loading: chipsLoading, error: chipsError } = useChipSuggestions({
     description,
     propertyId,
     selectedSpaceIds,
     selectedPersonId: assignedUserId,
     selectedTeamIds: assignedTeamIds,
+    imageOcrText: combinedImageText,
+    detectedLabels,
+    detectedObjects,
   });
   
   // Track applied chips and their resolution state
@@ -617,7 +701,7 @@ export function CreateTaskModal({
     setDescription("");
     setPropertyId(defaultPropertyId || "");
     setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
-    setSelectedSpaceIds([]);
+    setSelectedSpaceIds(defaultSpaceIds ?? []);
     setPriority("medium");
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
@@ -630,7 +714,7 @@ export function CreateTaskModal({
     setTemplateId("");
     setSubtasks([]);
     setSelectedThemeIds([]);
-    setSelectedAssetIds([]);
+    setSelectedAssetIds(defaultAssetIds ?? []);
     setImages([]);
     setShowAdvanced(false);
     setActiveSection(null);
@@ -640,7 +724,7 @@ export function CreateTaskModal({
     setAiTitleGenerated("");
     setUserEditedTitle(false);
     setShowTitleField(false);
-  }, [defaultPropertyId, defaultDueDate]);
+  }, [defaultPropertyId, defaultDueDate, defaultSpaceIds, defaultAssetIds]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -986,7 +1070,8 @@ export function CreateTaskModal({
               .from("task-images")
               .getPublicUrl(optimizedPath);
 
-            // Create attachment record with annotations
+            // Create attachment record with annotations only (Phase 3: no AI metadata here)
+            // Phase 2 edge function ai-image-analyse writes ocr_text, document_type, expiry_date, metadata
             const { data: attachment, error: attachError } = await supabase
               .from("attachments")
               .insert({
@@ -1039,6 +1124,26 @@ export function CreateTaskModal({
 
             // Cleanup blob URLs
             cleanupTempImage(tempImage);
+
+            // Phase 2: Fire-and-forget post-upload AI analysis (never blocks)
+            if (attachment?.id && orgId) {
+              supabase.functions
+                .invoke("ai-image-analyse", {
+                  body: {
+                    attachment_id: attachment.id,
+                    file_url: optUrl.publicUrl,
+                    org_id: orgId,
+                    property_id: propertyId || null,
+                    task_id: taskId,
+                  },
+                })
+                .then(({ error }) => {
+                  if (error) {
+                    console.warn("[CreateTaskModal] Post-upload analysis failed:", error);
+                  }
+                })
+                .catch(() => {});
+            }
 
             return attachment;
           } catch (error: any) {

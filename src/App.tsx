@@ -50,6 +50,10 @@ const Assets = lazy(() => import("./pages/Assets"));
 // RECORD pillar
 const RecordDocuments = lazy(() => import("./pages/record/RecordDocuments"));
 const RecordCompliance = lazy(() => import("./pages/record/RecordCompliance"));
+const ComplianceDashboard = lazy(() => import("./pages/ComplianceDashboard"));
+const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompliance"));
+const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
+const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
 const RecordLibrary = lazy(() => import("./pages/record/RecordLibrary"));
@@ -62,6 +66,7 @@ const PropertyCompliance = lazy(() => import("./pages/PropertyCompliance"));
 const PropertyTasks = lazy(() => import("./pages/PropertyTasks"));
 const PropertyPhotos = lazy(() => import("./pages/PropertyPhotos"));
 const PropertyDocuments = lazy(() => import("./pages/PropertyDocuments"));
+const SpaceDetailPage = lazy(() => import("./pages/spaces/SpaceDetailPage"));
 const ComplianceReviews = lazy(() => import("./pages/ComplianceReviews"));
 const ReviewWorkspace = lazy(() => import("./pages/ReviewWorkspace"));
 const ReviewSummary = lazy(() => import("./pages/ReviewSummary"));
@@ -89,6 +94,7 @@ const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
 // Settings pages
 const SettingsLayout = lazy(() => import("./pages/settings/SettingsLayout").then(module => ({ default: module.SettingsLayout })));
 const SettingsGeneral = lazy(() => import("./pages/settings/SettingsGeneral"));
+const SettingsAutomationPanel = lazy(() => import("./pages/settings/SettingsAutomationPanel"));
 const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
 const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
 const DebugData = lazy(() => import("./pages/DebugData"));
@@ -174,13 +180,19 @@ const App = () => {
                                 {/* Settings routes */}
                                 <Route path="/settings" element={<SettingsLayout />}>
                                   <Route index element={<SettingsGeneral />} />
+                                  <Route path="automation" element={<SettingsAutomationPanel />} />
                                   <Route path="team" element={<SettingsTeam />} />
                                   <Route path="billing" element={<SettingsBilling />} />
                                 </Route>
                                 
                                 {/* RECORD pillar */}
                                 <Route path="/record/documents" element={<RecordDocuments />} />
-                                <Route path="/record/compliance" element={<RecordCompliance />} />
+                                <Route path="/record/compliance" element={<RecordCompliance />}>
+                                  <Route index element={<ComplianceDashboard />} />
+                                  <Route path="portfolio" element={<PortfolioCompliance />} />
+                                  <Route path="contractors" element={<ContractorCompliance />} />
+                                  <Route path="calendar" element={<ComplianceCalendar />} />
+                                </Route>
                                 <Route path="/record/history" element={<RecordHistory />} />
                                 <Route path="/record/reports" element={<RecordReports />} />
                                 <Route path="/record/library" element={<RecordLibrary />} />
@@ -190,6 +202,7 @@ const App = () => {
                                 <Route path="/add-task" element={<AddTask />} />
                                 <Route path="/properties/:id" element={<PropertyDetail />} />
                                 <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
+                                <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
                                 <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
                                 <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
                                 <Route path="/properties/:id/documents" element={<PropertyDocuments />} />

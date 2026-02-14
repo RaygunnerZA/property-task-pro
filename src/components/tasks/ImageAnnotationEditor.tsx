@@ -17,11 +17,23 @@ import {
 import type { Annotation, AnnotationColor, AnnotationStrokeWidth } from "@/types/image-annotations";
 import { getColorHex, getStrokeWidthPx, ANNOTATION_COLORS } from "@/utils/annotation-colors";
 
+/** Passive overlay for AI-detected objects (read-only, dashed boxes) */
+export interface DetectionOverlay {
+  type: string;
+  label: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  confidence?: number;
+}
+
 interface ImageAnnotationEditorProps {
   imageUrl: string;
   imageId: string;
   taskId: string; // Can be empty string for temp images
   initialAnnotations?: Annotation[];
+  detectionOverlays?: DetectionOverlay[];
   onSave: (annotations: Annotation[], isAutosave?: boolean) => Promise<void>;
   onCancel: () => void;
 }
@@ -42,6 +54,7 @@ export function ImageAnnotationEditor({
   imageId,
   taskId,
   initialAnnotations = [],
+  detectionOverlays = [],
   onSave,
   onCancel,
 }: ImageAnnotationEditorProps) {
@@ -367,7 +380,39 @@ export function ImageAnnotationEditor({
     }
   }, [annotations, selectedAnnotationId, imageSize, tempAnnotation]);
 
-  // Define drawCanvas (uses drawAnnotations)
+  // Draw detection overlays (read-only, dashed boxes) — separate from user annotations
+  const drawDetectionOverlays = useCallback(
+    (ctx: CanvasRenderingContext2D) => {
+      if (!imageSize || detectionOverlays.length === 0) return;
+
+      ctx.save();
+      ctx.strokeStyle = "#8EC9CE"; // Primary teal from design system
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.font = "12px Inter Tight, sans-serif";
+      ctx.fillStyle = "rgba(142, 201, 206, 0.9)";
+
+      for (const overlay of detectionOverlays) {
+        const x = overlay.x * imageSize.width;
+        const y = overlay.y * imageSize.height;
+        const w = (overlay.width ?? 0.15) * imageSize.width;
+        const h = (overlay.height ?? 0.1) * imageSize.height;
+
+        ctx.strokeRect(x, y, w, h);
+        if (overlay.label) {
+          ctx.fillRect(x, y - 18, Math.min(ctx.measureText(overlay.label).width + 8, w), 18);
+          ctx.fillStyle = "#1a1a1a";
+          ctx.fillText(overlay.label, x + 4, y - 4);
+          ctx.fillStyle = "rgba(142, 201, 206, 0.9)";
+        }
+      }
+
+      ctx.restore();
+    },
+    [imageSize, detectionOverlays]
+  );
+
+  // Define drawCanvas (uses drawAnnotations + drawDetectionOverlays)
   const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !imageSize) return;
@@ -384,12 +429,13 @@ export function ImageAnnotationEditor({
     img.onload = () => {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       drawAnnotations(ctx);
+      drawDetectionOverlays(ctx);
     };
     img.onerror = () => {
       console.error("Failed to load image for annotation editor");
     };
     img.src = imageUrl;
-  }, [imageUrl, imageSize, drawAnnotations]);
+  }, [imageUrl, imageSize, drawAnnotations, drawDetectionOverlays]);
 
   // Load image and set up canvas
   useEffect(() => {
@@ -428,7 +474,7 @@ export function ImageAnnotationEditor({
         console.error("Error drawing canvas:", error);
       }
     }
-  }, [annotations, selectedAnnotationId, imageSize, tempAnnotation, drawCanvas]);
+  }, [annotations, selectedAnnotationId, imageSize, tempAnnotation, detectionOverlays, drawCanvas]);
 
   // Add to history when annotations change (for undo/redo)
   // Skip initial render and only track user changes
