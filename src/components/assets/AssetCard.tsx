@@ -14,11 +14,24 @@ interface AssetCardProps {
 
 export function AssetCard({ asset, propertyName, spaceName, onClick }: AssetCardProps) {
   const conditionScore = asset.condition_score ?? 100;
-  const assetName = asset.name || "Unnamed Asset";
-  const propName = propertyName ?? asset.property_address ?? asset.property_name ?? "";
-  const spName = spaceName ?? asset.space_name ?? "";
-  const openTasksCount = asset.open_tasks_count ?? 0;
 
+  const assetName = asset.name || asset.serial || "Unnamed Asset";
+  
+  const propName =
+    propertyName ?? asset.property_address ?? asset.property_name ?? "";
+  
+  const spName =
+    spaceName ?? asset.space_name ?? "";
+  
+  const openTasksCount =
+    asset.open_tasks_count ?? 0;
+  
+  const getConditionColor = (score: number) => {
+    if (score >= 80) return "bg-green-500/10 text-green-700 border-green-500/20";
+    if (score >= 60) return "bg-yellow-500/10 text-yellow-700 border-yellow-500/20";
+    return "bg-red-500/10 text-red-700 border-red-500/20";
+  };
+  
   const getConditionBadge = (score: number) => {
     if (score >= 80) return <Badge variant="success">Good</Badge>;
     if (score >= 60) return <Badge variant="warning">Fair</Badge>;

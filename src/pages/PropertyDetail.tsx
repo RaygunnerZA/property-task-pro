@@ -198,6 +198,30 @@ export default function PropertyDetail() {
     queryClient.invalidateQueries({ queryKey: ["tasks", undefined, id] });
   };
 
+  // Track screen size for third column create task (lg breakpoint = 1024px)
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, []);
+
+  const handleOpenCreateTask = () => {
+    setSelectedTaskId(null);
+    setShowCreateTask(true);
+  };
+
+  const handleCreateTaskOpenChange = (open: boolean) => {
+    setShowCreateTask(open);
+  };
+
+  const handleTaskCreated = () => {
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks", undefined, id] });
+  };
+
   // Tasks are already filtered by property_id from the query
   const propertyTasks = tasks;
 

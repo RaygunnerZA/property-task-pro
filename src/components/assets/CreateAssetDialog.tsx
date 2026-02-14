@@ -80,27 +80,28 @@ export function CreateAssetDialog({
 
     setLoading(true);
     try {
+
       const { data: inserted, error: insertError } = await supabase
-        .from("assets")
-        .insert({
-          org_id: orgId,
-          property_id: propertyId,
-          space_id: spaceId || null,
-          name: name.trim(),
-          asset_type: type || null,
-          serial_number: serialNumber.trim() || null,
-          condition_score: 100,
-          status: "active",
-        })
-        .select("id")
-        .single();
-
-      if (insertError) {
-        console.error("Asset creation error:", insertError);
-        throw insertError;
-      }
-
-      toast.success("Asset created!");
+      .from("assets")
+      .insert({
+        org_id: orgId,
+        property_id: propertyId,
+        space_id: spaceId || null,
+        name: name.trim(),
+        asset_type: type || null,
+        serial_number: serialNumber.trim() || null,
+        condition_score: 100,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    
+    if (insertError) {
+      console.error("Asset creation error:", insertError);
+      throw insertError;
+    }
+    
+    toast.success("Asset created!");
 
       // Reset form
       setName("");
