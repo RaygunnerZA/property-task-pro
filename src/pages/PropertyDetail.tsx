@@ -464,13 +464,14 @@ export default function PropertyDetail() {
     if (!id) return;
     setIsDeleting(true);
     try {
-      const result = await propertiesService.deleteProperty(id);
-      if (result.success) {
-        navigate("/properties");
-      } else {
-        console.error("Failed to delete property:", result.error);
-        alert("Failed to delete property. Please try again.");
-      }
+      const { error } = await propertiesService.deleteProperty(id);
+
+if (!error) {
+  navigate("/properties");
+} else {
+  console.error("Failed to delete property:", error);
+  alert("Failed to delete property. Please try again.");
+}
     } catch (error) {
       console.error("Error deleting property:", error);
       alert("Failed to delete property. Please try again.");
@@ -484,12 +485,13 @@ export default function PropertyDetail() {
     if (!id) return;
     setIsArchiving(true);
     try {
-      const result = await propertiesService.archiveProperty(id);
-      if (result.success) {
+      const { error } = await propertiesService.archiveProperty(id);
+
+      if (!error) {
         queryClient.invalidateQueries({ queryKey: ["properties"] });
         navigate("/properties");
       } else {
-        console.error("Failed to archive property:", result.error);
+        console.error("Failed to archive property:", error);
         alert("Failed to archive property. Please try again.");
       }
     } catch (error) {
