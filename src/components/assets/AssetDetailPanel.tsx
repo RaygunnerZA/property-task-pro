@@ -3,7 +3,7 @@
  * Same pattern as TaskDetailPanel: Dialog + tabs (Overview, Linked Tasks, Inspections, Files).
  */
 import { useState, useEffect, useCallback } from "react";
-import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield, Brain } from "lucide-react";
+import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield, Brain, Copy, Trash2, Archive, ImagePlus, Upload, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
+import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { useAssetDetail } from "@/hooks/useAssetDetail";
 import { useAssetInspections } from "@/hooks/useAssetInspections";
 import { useAssetFiles } from "@/hooks/useAssetFiles";
@@ -28,6 +29,18 @@ import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
@@ -54,8 +67,16 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const { data: linkedCompliance = [], isLoading: complianceLoading, refetch: refreshCompliance } = useAssetComplianceQuery(assetId ?? undefined);
   const { data: complianceOptions = [] } = useComplianceQuery();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { orgId } = useActiveOrg();
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [filesSliderIndex, setFilesSliderIndex] = useState(0);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showLogInspection, setShowLogInspection] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
@@ -114,6 +135,86 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     },
     [assetId, refresh, toast]
   );
+
+  const handleDuplicate = useCallback(async () => {
+    if (!asset || !orgId) return;
+    setIsDuplicating(true);
+    try {
+      const { data: newAsset, error } = await supabase
+        .from("assets")
+        .insert({
+          org_id: orgId,
+          property_id: asset.property_id,
+          space_id: asset.space_id,
+          name: `${asset.name || "Unnamed Asset"} (Copy)`,
+          asset_type: asset.asset_type || null,
+          serial_number: null,
+          condition_score: asset.condition_score ?? 100,
+          status: "active",
+          manufacturer: asset.manufacturer || null,
+          model: asset.model || null,
+          notes: asset.notes || null,
+          compliance_required: asset.compliance_required ?? false,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      toast({ title: "Asset duplicated", description: "A copy has been created." });
+      onClose();
+    } catch (e: unknown) {
+      toast({
+        title: "Couldn't duplicate asset",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
+  }, [asset, orgId, queryClient, toast, onClose]);
+
+  const handleDelete = useCallback(async () => {
+    if (!assetId) return;
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.from("assets").delete().eq("id", assetId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-detail"] });
+      toast({ title: "Asset deleted" });
+      setShowDeleteDialog(false);
+      onClose();
+    } catch (e: unknown) {
+      toast({
+        title: "Couldn't delete asset",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [assetId, queryClient, toast, onClose]);
+
+  const handleArchive = useCallback(async () => {
+    if (!assetId) return;
+    setIsArchiving(true);
+    try {
+      const { error } = await supabase.from("assets").update({ status: "retired" }).eq("id", assetId);
+      if (error) throw error;
+      refresh();
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      toast({ title: "Asset archived", description: "Status set to retired." });
+      setShowArchiveDialog(false);
+    } catch (e: unknown) {
+      toast({
+        title: "Couldn't archive asset",
+        description: e instanceof Error ? e.message : "Try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchiving(false);
+    }
+  }, [assetId, refresh, queryClient, toast]);
 
   useEffect(() => {
     if (!assetId || !asset) return;
@@ -199,22 +300,55 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                   <X className="h-5 w-5 text-muted-foreground" />
                 </button>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Package className="h-6 w-6 text-primary" />
-                <h1 className="text-2xl font-semibold text-foreground">{asset.name || "Unnamed Asset"}</h1>
-                {asset.status && (
-                  <Badge
-                    variant={asset.status === "active" ? "success" : asset.status === "retired" ? "neutral" : "warning"}
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Package className="h-6 w-6 text-primary shrink-0" />
+                  <h1 className="text-2xl font-semibold text-foreground">{asset.name || "Unnamed Asset"}</h1>
+                  {asset.status && (
+                    <Badge
+                      variant={asset.status === "active" ? "success" : asset.status === "retired" ? "neutral" : "warning"}
+                    >
+                      {asset.status}
+                    </Badge>
+                  )}
+                  {asset.compliance_required && (
+                    <Badge variant="warning">Compliance</Badge>
+                  )}
+                  {(asset.open_tasks_count ?? 0) > 0 && (
+                    <Badge variant="neutral">{asset.open_tasks_count} open tasks</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <NeomorphicButton
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={handleDuplicate}
+                    disabled={isDuplicating}
+                    aria-label="Duplicate asset"
                   >
-                    {asset.status}
-                  </Badge>
-                )}
-                {asset.compliance_required && (
-                  <Badge variant="warning">Compliance</Badge>
-                )}
-                {(asset.open_tasks_count ?? 0) > 0 && (
-                  <Badge variant="neutral">{asset.open_tasks_count} open tasks</Badge>
-                )}
+                    <Copy className="h-4 w-4 mr-1.5" />
+                    Duplicate
+                  </NeomorphicButton>
+                  <NeomorphicButton
+                    size="sm"
+                    className="h-8 px-3"
+                    onClick={() => setShowArchiveDialog(true)}
+                    disabled={asset.status === "retired"}
+                    aria-label="Archive asset"
+                  >
+                    <Archive className="h-4 w-4 mr-1.5" />
+                    Archive
+                  </NeomorphicButton>
+                  <NeomorphicButton
+                    size="sm"
+                    className="h-8 px-3 btn-neomorphic-destructive"
+                    onClick={() => setShowDeleteDialog(true)}
+                    aria-label="Delete asset"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Delete
+                  </NeomorphicButton>
+                </div>
               </div>
             </div>
 
@@ -222,12 +356,13 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
             <div className="flex-1 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
                 <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
-                  <TabsList className="w-full grid grid-cols-6 h-12 bg-transparent p-1">
+                  <TabsList className="w-full grid grid-cols-6 h-12 bg-transparent p-1 rounded-xl shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]">
                     <TabsTrigger
                       value="overview"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <Package className="h-4 w-4 mr-2" />
@@ -236,8 +371,9 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="tasks"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <ListTodo className="h-4 w-4 mr-2" />
@@ -246,8 +382,9 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="inspections"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <ClipboardCheck className="h-4 w-4 mr-2" />
@@ -256,8 +393,9 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="files"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <FileText className="h-4 w-4 mr-2" />
@@ -266,8 +404,9 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="compliance"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <Shield className="h-4 w-4 mr-2" />
@@ -276,8 +415,9 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="intelligence"
                       className={cn(
-                        "rounded-lg data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=inactive]:hover:bg-muted/30"
                       )}
                     >
                       <Brain className="h-4 w-4 mr-2" />
@@ -289,6 +429,36 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                 <div className="flex-1 overflow-hidden flex flex-col p-6">
                   <TabsContent value="overview" className="mt-0 flex-1 overflow-y-auto">
                     <div className="grid gap-6 max-w-2xl">
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-neomorphic h-8 px-3"
+                            onClick={() => setShowAddFile(true)}
+                          >
+                            <ImagePlus className="h-4 w-4 mr-1.5" />
+                            Add Image
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-neomorphic h-8 px-3"
+                            onClick={() => setShowAddFile(true)}
+                          >
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            Upload File
+                          </Button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("files")}
+                          className="text-sm text-primary hover:underline flex items-center gap-1"
+                        >
+                          See more
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
                       <div className="space-y-2">
                         <Label>Name</Label>
                         <NeomorphicInput
@@ -473,31 +643,89 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-muted-foreground">Files</h3>
-                        <Button size="sm" variant="outline" onClick={() => setShowAddFile(true)}>
+                        <Button size="sm" variant="outline" className="btn-neomorphic" onClick={() => setShowAddFile(true)}>
                           <Plus className="h-4 w-4 mr-2" />
                           Add File
                         </Button>
                       </div>
-                      {filesLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                      ) : files.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No files yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {files.map((f) => (
-                            <li key={f.id} className="p-3 rounded-[8px] bg-card shadow-e1">
-                              <a
-                                href={f.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline"
-                              >
-                                {f.file_type || "File"}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                      {(() => {
+                        const imageFiles = files.filter((f) => {
+                          const t = (f.file_type || "").toLowerCase();
+                          const url = f.file_url || "";
+                          const ext = url.split(".").pop()?.toLowerCase();
+                          return (
+                            ["photo", "image", "certificate"].some((x) => t.includes(x)) ||
+                            ["jpg", "jpeg", "png", "gif", "webp"].includes(ext || "")
+                          );
+                        });
+                        const idx = Math.min(filesSliderIndex, Math.max(0, imageFiles.length - 1));
+                        return (
+                          <>
+                            {imageFiles.length > 0 && (
+                              <div className="rounded-xl overflow-hidden bg-muted/30 shadow-e1">
+                                <div className="relative aspect-video w-full">
+                                  <img
+                                    src={imageFiles[idx]?.file_url}
+                                    alt=""
+                                    className="w-full h-full object-contain"
+                                  />
+                                  {imageFiles.length > 1 && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setFilesSliderIndex((i) => (i - 1 + imageFiles.length) % imageFiles.length)}
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                                      >
+                                        ‹
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setFilesSliderIndex((i) => (i + 1) % imageFiles.length)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+                                      >
+                                        ›
+                                      </button>
+                                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                                        {imageFiles.map((_, i) => (
+                                          <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => setFilesSliderIndex(i)}
+                                            className={cn(
+                                              "w-2 h-2 rounded-full transition-colors",
+                                              i === idx ? "bg-white" : "bg-white/50"
+                                            )}
+                                          />
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            {filesLoading ? (
+                              <Skeleton className="h-24 w-full" />
+                            ) : files.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No files yet.</p>
+                            ) : (
+                              <ul className="space-y-2">
+                                {files.map((f) => (
+                                  <li key={f.id} className="p-3 rounded-[8px] bg-card shadow-e1">
+                                    <a
+                                      href={f.file_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline"
+                                    >
+                                      {f.file_type || "File"}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </TabsContent>
 
@@ -562,6 +790,46 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
           refresh();
         }}
       />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Asset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{asset.name || "Unnamed Asset"}&quot;? This action cannot be undone and will permanently remove the asset and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive Confirmation */}
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Asset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive &quot;{asset.name || "Unnamed Asset"}&quot;? The asset status will be set to retired. You can change it back to active later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleArchive} disabled={isArchiving}>
+              {isArchiving ? "Archiving..." : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Log Inspection Modal */}
       {showLogInspection && (

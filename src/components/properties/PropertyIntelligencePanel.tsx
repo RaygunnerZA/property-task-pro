@@ -90,9 +90,14 @@ export function PropertyIntelligencePanel({
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Failure prediction</p>
               {assetPreds.slice(0, 3).map((p, i) => (
-                <div key={i} className="text-sm flex justify-between">
+                <div key={i} className="text-sm flex justify-between items-center gap-2">
                   <span>Asset type pattern</span>
-                  <span>{p.predicted_failure_days ?? 365} days</span>
+                  <span className="flex items-center gap-2">
+                    {p.predicted_failure_days ?? 365} days
+                    {p.benchmark_percentile != null && (
+                      <span className="text-xs text-muted-foreground">({p.benchmark_percentile}th %ile)</span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>

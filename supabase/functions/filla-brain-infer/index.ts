@@ -77,12 +77,21 @@ Deno.serve(async (req) => {
       const { data: assetInfer } = await admin.rpc("brain_infer_asset", { p_vector: vec });
       const failProb = assetInfer?.failure_probability ?? 0.1;
       const mttf = assetInfer?.mean_time_to_failure_days ?? 365;
+      const { data: benchmark } = await admin.rpc("brain_compute_benchmark", { p_asset_vector: vec });
+      const assetType = (vec.asset_type as string) || "";
+      const { data: iconInfer } = await admin.rpc("brain_infer_icon", { p_entity_type: "asset", p_category: assetType });
       predictions.assets.push({
         asset_vector: vec,
         risk_score: Math.round(failProb * 100),
         predicted_failure_days: mttf,
         hazard_multiplier: 1.0,
         recommended_action: mttf < 90 ? "Schedule inspection within 30 days" : mttf < 180 ? "Monitor condition" : "Routine maintenance",
+        benchmark_percentile: benchmark?.benchmark_percentile ?? 50,
+        global_mean_time_to_failure: benchmark?.global_mean_time_to_failure ?? 365,
+        global_failure_probability_range: benchmark?.global_failure_probability_range ?? "0.05 – 0.20",
+        predicted_icon: iconInfer?.predicted_icon ?? "package",
+        icon_confidence: iconInfer?.confidence ?? 0,
+        global_reason: iconInfer?.global_reason ?? "HVAC maintenance pattern cluster",
       });
     }
 
@@ -91,11 +100,15 @@ Deno.serve(async (req) => {
       const check = validateNoPrivateData({ document_type: docType });
       if (!check.valid) continue;
       const { data: compInfer } = await admin.rpc("brain_infer_compliance", { p_document_type: docType });
+      const { data: iconInfer } = await admin.rpc("brain_infer_icon", { p_entity_type: "compliance", p_category: docType });
       predictions.compliance.push({
         document_type: docType,
         recommended_frequency: compInfer?.recommended_frequency ?? "annual",
         risk_level: compInfer?.risk_level ?? "low",
         probability_of_incident: compInfer?.probability_of_incident ?? 0.05,
+        predicted_icon: iconInfer?.predicted_icon ?? "file-text",
+        icon_confidence: iconInfer?.confidence ?? 0,
+        global_reason: iconInfer?.global_reason ?? "Compliance document pattern",
       });
     }
 

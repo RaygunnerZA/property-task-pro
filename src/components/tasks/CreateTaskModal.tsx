@@ -225,7 +225,7 @@ export function CreateTaskModal({
   const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
   
   // Chip suggestions with resolution pipeline (includes image OCR + detected objects)
-  const { chips: chipSuggestions, ghostCategories, loading: chipsLoading, error: chipsError } = useChipSuggestions({
+  const { chips: chipSuggestions, ghostCategories, suggestedIcon: chipSuggestedIcon, loading: chipsLoading, error: chipsError } = useChipSuggestions({
     description,
     propertyId,
     selectedSpaceIds,
@@ -1007,6 +1007,7 @@ export function CreateTaskModal({
           description: description.trim() || null,
           assigned_user_id: finalAssignedUserId,
           status: 'open',
+          icon_name: chipSuggestedIcon || null,
         })
         .select()
         .single();

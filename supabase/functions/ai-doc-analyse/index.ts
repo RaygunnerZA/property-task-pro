@@ -39,6 +39,7 @@ interface ResponseBody {
   detected_assets: DetectedAsset[];
   compliance_recommendations: string[];
   hazards: string[];
+  suggested_icon?: string | null;
   metadata: Record<string, unknown>;
 }
 
@@ -219,6 +220,7 @@ function normalizeDocResponse(parsed: Record<string, unknown>, fileName: string)
     detected_assets,
     compliance_recommendations,
     hazards,
+    suggested_icon: (metadata.suggested_icon as string) || null,
     metadata: { ...metadata, raw: parsed },
   };
 }
@@ -249,6 +251,7 @@ function stubResponse(fileName: string): ResponseBody {
     detected_assets: [],
     compliance_recommendations: [],
     hazards: [],
+    suggested_icon: null,
     metadata: { stub: true },
   };
 }
@@ -534,6 +537,26 @@ Deno.serve(async (req) => {
             }
           }
         }
+      }
+    }
+
+    // Phase 12B: Icon suggestion from document type (do not auto-apply)
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (result.document_type && serviceRoleKey) {
+      try {
+        const admin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const searchTerms = `${result.document_type} ${result.category || ""} certificate document`.trim();
+        const { data: icons } = await admin.rpc("ai_icon_search", { query_text: searchTerms });
+        if (icons && Array.isArray(icons) && icons.length > 0) {
+          const first = icons[0] as { name?: string };
+          result.suggested_icon = first.name ?? null;
+          result.metadata = { ...result.metadata, suggested_icon: result.suggested_icon };
+        }
+      } catch {
+        // Non-fatal; icon suggestion is optional
       }
     }
 

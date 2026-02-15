@@ -27,6 +27,8 @@ interface UseChipSuggestionsReturn {
   ghostCategories: GhostCategory[];
   complianceMode: boolean;
   suggestedTitle?: string;
+  suggestedIcon?: string;
+  suggestedIconAlternatives?: string[];
   loading: boolean;
   error: string | null;
   refresh: () => void;
@@ -144,6 +146,8 @@ export function useChipSuggestions(
     ghostCategories: result.ghostCategories,
     complianceMode: result.complianceMode,
     suggestedTitle: result.suggestedTitle,
+    suggestedIcon: result.suggestedIcon,
+    suggestedIconAlternatives: result.suggestedIconAlternatives,
     loading,
     error,
     refresh: generateSuggestions

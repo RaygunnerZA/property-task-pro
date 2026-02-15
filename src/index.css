@@ -292,6 +292,13 @@
     @apply shadow-[3px_5px_5px_2px_rgba(0,0,0,0.13),-3px_-3px_5px_0px_rgba(255,255,255,0.48),inset_1px_1px_2px_0px_rgba(255,255,255,0.5),inset_-1px_-2px_2px_0px_rgba(0,0,0,0.27)];
     @apply bg-accent hover:bg-accent/90;
   }
+
+  /* Neomorphic Destructive Button - same tactile style as btn-neomorphic, destructive tint */
+  .btn-neomorphic-destructive {
+    @apply rounded-xl bg-destructive/10 text-destructive border-0;
+    @apply shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7),inset_1px_1px_1px_rgba(255,255,255,0.6)];
+    @apply hover:bg-destructive/20 hover:text-destructive active:scale-[0.99] transition-all duration-150;
+  }
   
   /* Page Header Style */
   .page-header {

@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -27,7 +28,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Package, Plus, Search } from "lucide-react";
+import { Package, Plus, Search, ImagePlus, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { StandardPage } from "@/components/design-system/StandardPage";
@@ -90,10 +91,55 @@ const Assets = () => {
   const [propertyId, setPropertyId] = useState("");
   const [spaceId, setSpaceId] = useState("none");
   const [conditionScore, setConditionScore] = useState<string>("100");
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; file_url: string; file_type: string; displayName: string; isImage: boolean }[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePropertyChange = (value: string) => {
     setPropertyId(value);
     setSpaceId("none");
+  };
+
+  const isImageFile = (file: File) => {
+    const t = file.type?.toLowerCase() || "";
+    return t.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp"].includes(file.name.split(".").pop()?.toLowerCase() || "");
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>, asImage: boolean) => {
+    const files = e.target.files;
+    if (!files?.length || !orgId) return;
+    setIsUploadingFile(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop() || "bin";
+        const path = `org/${orgId}/assets/pending/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("task-images")
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+        setPendingFiles((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            file_url: urlData.publicUrl,
+            file_type: asImage ? "photo" : (file.type || ext),
+            displayName: file.name,
+            isImage: asImage || isImageFile(file),
+          },
+        ]);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setIsUploadingFile(false);
+      e.target.value = "";
+    }
+  };
+
+  const removePendingFile = (id: string) => {
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const toggleStatusFilter = (value: string) => {
@@ -114,18 +160,32 @@ const Assets = () => {
 
     setIsSaving(true);
     try {
-      const { error: insertError } = await supabase.from("assets").insert({
-        org_id: orgId,
-        property_id: propertyId,
-        space_id: spaceId && spaceId !== "none" ? spaceId : null,
-        name: name.trim(),
-        asset_type: type || null,
-        serial_number: serial.trim() || null,
-        condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
-        status: "active",
-      });
+      const { data: newAsset, error: insertError } = await supabase
+        .from("assets")
+        .insert({
+          org_id: orgId,
+          property_id: propertyId,
+          space_id: spaceId && spaceId !== "none" ? spaceId : null,
+          name: name.trim(),
+          asset_type: type || null,
+          serial_number: serial.trim() || null,
+          condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
+          status: "active",
+        })
+        .select("id")
+        .single();
 
       if (insertError) throw insertError;
+      if (!newAsset?.id) throw new Error("Asset created but no ID returned");
+
+      for (const f of pendingFiles) {
+        const { error: fileErr } = await supabase.from("asset_files").insert({
+          asset_id: newAsset.id,
+          file_url: f.file_url,
+          file_type: f.file_type,
+        });
+        if (fileErr) console.warn("Failed to link file:", fileErr);
+      }
 
       toast.success("Asset added successfully");
       setIsDialogOpen(false);
@@ -135,6 +195,7 @@ const Assets = () => {
       setPropertyId("");
       setSpaceId("none");
       setConditionScore("100");
+      setPendingFiles([]);
       queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (err: unknown) {
       console.error("Error saving asset:", err);
@@ -184,7 +245,14 @@ const Assets = () => {
     });
     return map;
   }, [properties, assets]);
+  const propertyObjMap = useMemo(() => new Map(properties.map((p: any) => [p.id, p])), [properties]);
   const spaceMap = new Map(spaces.map((s) => [s.id, s.name]));
+
+  const filteredAssetIds = useMemo(
+    () => filteredAssets.filter((a) => a.id).map((a) => a.id!),
+    [filteredAssets]
+  );
+  const { imageMap } = useAssetFilesForAssets(filteredAssetIds);
 
   if (loading) {
     return (
@@ -211,7 +279,13 @@ const Assets = () => {
       subtitle={`${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
       icon={<Package className="h-6 w-6" />}
       action={
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) setPendingFiles([]);
+          }}
+        >
           <DialogTrigger asChild>
             <NeomorphicButton>
               <Plus className="h-4 w-4 mr-2" />
@@ -220,8 +294,80 @@ const Assets = () => {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Asset</DialogTitle>
-              <DialogDescription>Register a new asset in your property registry</DialogDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <DialogTitle>Add Asset</DialogTitle>
+                  <DialogDescription>Register a new asset in your property registry</DialogDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, true)}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={(e) => handleFileSelect(e, false)}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-neomorphic h-8 px-3"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isUploadingFile}
+                  >
+                    <ImagePlus className="h-4 w-4 mr-1.5" />
+                    Add Image
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-neomorphic h-8 px-3"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingFile}
+                  >
+                    <Upload className="h-4 w-4 mr-1.5" />
+                    Upload
+                  </Button>
+                </div>
+              </div>
+              {pendingFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {pendingFiles.map((f) => (
+                    <div
+                      key={f.id}
+                      className="relative group rounded-lg overflow-hidden bg-muted/50 border border-border/50"
+                    >
+                      {f.isImage ? (
+                        <img
+                          src={f.file_url}
+                          alt={f.displayName}
+                          className="w-14 h-14 object-cover"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 flex items-center justify-center p-1">
+                          <span className="text-[10px] text-muted-foreground truncate text-center">
+                            {f.displayName}
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePendingFile(f.id)}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                        aria-label="Remove"
+                      >
+                        <X className="h-5 w-5 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -345,7 +491,7 @@ const Assets = () => {
       />
 
       {/* Filters row */}
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-6 pt-5">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -412,7 +558,7 @@ const Assets = () => {
           action={{ label: "Add Asset", onClick: () => setIsDialogOpen(true) }}
         />
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredAssets
             .filter((a) => a.id)
             .map((asset) => (
@@ -420,12 +566,14 @@ const Assets = () => {
                 key={asset.id!}
                 asset={asset}
                 propertyName={propertyMap.get(asset.property_id ?? "")}
+                property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
                 spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
+                imageUrl={imageMap.get(asset.id!)}
                 onClick={() => setSelectedAssetId(asset.id!)}
               />
             ))}
           {filteredAssets.length === 0 && assets.length > 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No assets match your filters.</p>
+            <p className="text-sm text-muted-foreground text-center py-8 col-span-full">No assets match your filters.</p>
           )}
         </div>
       )}

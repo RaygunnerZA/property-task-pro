@@ -4,7 +4,7 @@
  * Triggered: nightly, on asset/compliance change, or when hazards detected.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +53,84 @@ function toAssetVector(asset: { asset_type?: string; condition_score?: number; i
   return vec;
 }
 
+async function extractForOrg(admin: SupabaseClient, orgId: string): Promise<{ assets: number; compliance: number; hazards: number }> {
+  const { data: orgSettings } = await admin.from("org_settings").select("data_sharing_level").eq("org_id", orgId).maybeSingle();
+  const sharingLevel = orgSettings?.data_sharing_level ?? "standard";
+  if (sharingLevel === "minimal") return { assets: 0, compliance: 0, hazards: 0 };
+
+  let assetCount = 0;
+  let complianceCount = 0;
+  let hazardCount = 0;
+
+  if (sharingLevel !== "minimal") {
+    const { data: assets } = await admin.from("assets").select("asset_type, condition_score, install_date").eq("org_id", orgId);
+    if (assets) {
+      for (const a of assets) {
+        const vec = toAssetVector(a);
+        if (Object.keys(vec).length === 0) continue;
+        const check = validateNoPrivateData(vec);
+        if (!check.valid) continue;
+        await admin.rpc("brain_ingest_asset_pattern", { p_vector: vec });
+        assetCount++;
+      }
+    }
+  }
+
+  if (sharingLevel === "standard" || sharingLevel === "full_anonymised") {
+    const { data: docs } = await admin.from("compliance_documents").select("document_type, hazards, expiry_date, next_due_date").eq("org_id", orgId);
+    if (docs) {
+      for (const d of docs) {
+        const due = d.next_due_date || d.expiry_date;
+        const driftDays = due ? Math.floor((new Date(due).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
+        const vec = {
+          document_type: (d.document_type || "unknown").toLowerCase().replace(/\s+/g, "_"),
+          expiry_state: driftDays === null ? "unknown" : driftDays < 0 ? "expired" : driftDays <= 30 ? "expiring" : "valid",
+          drift_days: driftDays,
+          hazards: Array.isArray(d.hazards) ? d.hazards : [],
+        };
+        const check = validateNoPrivateData(vec);
+        if (!check.valid) continue;
+        await admin.rpc("brain_ingest_compliance_pattern", {
+          p_document_type: vec.document_type,
+          p_hazard_profile: { hazards: vec.hazards },
+          p_expiry_drift_days: vec.drift_days,
+          p_risk_level: vec.expiry_state === "expired" ? "critical" : vec.expiry_state === "expiring" ? "high" : "low",
+        });
+        complianceCount++;
+      }
+    }
+  }
+
+  if (sharingLevel === "full_anonymised") {
+    const { data: recs } = await admin.from("compliance_recommendations").select("hazards").eq("org_id", orgId);
+    if (recs) {
+      for (const r of recs) {
+        const hazards = Array.isArray(r.hazards) ? r.hazards : [];
+        for (const h of hazards) {
+          const hazardType = String(h).toLowerCase().replace(/\s+/g, "_");
+          const vec = { hazard_type: hazardType };
+          const check = validateNoPrivateData(vec);
+          if (!check.valid) continue;
+          await admin.rpc("brain_ingest_hazard_signal", { p_hazard_type: hazardType });
+          hazardCount++;
+        }
+      }
+    }
+  }
+
+  const total = assetCount + complianceCount + hazardCount;
+  if (total > 0) {
+    await admin.rpc("brain_ingest_learning_log", {
+      p_event_type: "extract",
+      p_table_name: "local_to_global",
+      p_record_count: total,
+      p_metadata: { sharing_level: sharingLevel },
+    });
+  }
+
+  return { assets: assetCount, compliance: complianceCount, hazards: hazardCount };
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -69,86 +147,56 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
     const body = await req.json().catch(() => ({}));
     const orgId = body.org_id as string | undefined;
+    const mode = body.mode as string | undefined;
+
+    // Mode: all_orgs — nightly cron processes all orgs with data sharing enabled
+    if (mode === "all_orgs") {
+      const { data: orgs } = await admin.from("org_settings").select("org_id").neq("data_sharing_level", "minimal");
+      const orgIds = (orgs ?? []).map((o) => o.org_id).filter(Boolean);
+      let totalAssets = 0;
+      let totalCompliance = 0;
+      let totalHazards = 0;
+      for (const oid of orgIds) {
+        const r = await extractForOrg(admin, oid);
+        totalAssets += r.assets;
+        totalCompliance += r.compliance;
+        totalHazards += r.hazards;
+      }
+      return new Response(
+        JSON.stringify({ ok: true, mode: "all_orgs", org_count: orgIds.length, extracted: { assets: totalAssets, compliance: totalCompliance, hazards: totalHazards } }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Mode: process_queue — cron processes orgs queued by event triggers
+    if (mode === "process_queue") {
+      const { data: pending } = await admin.from("brain_extract_pending").select("org_id");
+      const orgIds = (pending ?? []).map((p) => p.org_id);
+      let totalAssets = 0;
+      let totalCompliance = 0;
+      let totalHazards = 0;
+      for (const oid of orgIds) {
+        const r = await extractForOrg(admin, oid);
+        totalAssets += r.assets;
+        totalCompliance += r.compliance;
+        totalHazards += r.hazards;
+      }
+      if (orgIds.length > 0) {
+        await admin.from("brain_extract_pending").delete().in("org_id", orgIds);
+      }
+      return new Response(
+        JSON.stringify({ ok: true, mode: "process_queue", org_count: orgIds.length, extracted: { assets: totalAssets, compliance: totalCompliance, hazards: totalHazards } }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!orgId) {
-      return new Response(JSON.stringify({ error: "org_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "org_id or mode (all_orgs|process_queue) required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: orgSettings } = await admin.from("org_settings").select("data_sharing_level").eq("org_id", orgId).maybeSingle();
-    const sharingLevel = orgSettings?.data_sharing_level ?? "standard";
-    if (sharingLevel === "minimal") {
-      return new Response(JSON.stringify({ ok: true, extracted: 0, message: "Minimal sharing - no signals sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    let assetCount = 0;
-    let complianceCount = 0;
-    let hazardCount = 0;
-
-    if (sharingLevel !== "minimal") {
-      const { data: assets } = await admin.from("assets").select("asset_type, condition_score, install_date").eq("org_id", orgId);
-      if (assets) {
-        for (const a of assets) {
-          const vec = toAssetVector(a);
-          if (Object.keys(vec).length === 0) continue;
-          const check = validateNoPrivateData(vec);
-          if (!check.valid) continue;
-          await admin.rpc("brain_ingest_asset_pattern", { p_vector: vec });
-          assetCount++;
-        }
-      }
-    }
-
-    if (sharingLevel === "standard" || sharingLevel === "full_anonymised") {
-      const { data: docs } = await admin.from("compliance_documents").select("document_type, hazards, expiry_date, next_due_date").eq("org_id", orgId);
-      if (docs) {
-        const today = new Date().toISOString().split("T")[0];
-        for (const d of docs) {
-          const due = d.next_due_date || d.expiry_date;
-          const driftDays = due ? Math.floor((new Date(due).getTime() - Date.now()) / (24 * 60 * 60 * 1000)) : null;
-          const vec = {
-            document_type: (d.document_type || "unknown").toLowerCase().replace(/\s+/g, "_"),
-            expiry_state: driftDays === null ? "unknown" : driftDays < 0 ? "expired" : driftDays <= 30 ? "expiring" : "valid",
-            drift_days: driftDays,
-            hazards: Array.isArray(d.hazards) ? d.hazards : [],
-          };
-          const check = validateNoPrivateData(vec);
-          if (!check.valid) continue;
-          await admin.rpc("brain_ingest_compliance_pattern", {
-            p_document_type: vec.document_type,
-            p_hazard_profile: { hazards: vec.hazards },
-            p_expiry_drift_days: vec.drift_days,
-            p_risk_level: vec.expiry_state === "expired" ? "critical" : vec.expiry_state === "expiring" ? "high" : "low",
-          });
-          complianceCount++;
-        }
-      }
-    }
-
-    if (sharingLevel === "full_anonymised") {
-      const { data: recs } = await admin.from("compliance_recommendations").select("hazards").eq("org_id", orgId);
-      if (recs) {
-        for (const r of recs) {
-          const hazards = Array.isArray(r.hazards) ? r.hazards : [];
-          for (const h of hazards) {
-            const hazardType = String(h).toLowerCase().replace(/\s+/g, "_");
-            const vec = { hazard_type: hazardType };
-            const check = validateNoPrivateData(vec);
-            if (!check.valid) continue;
-            await admin.rpc("brain_ingest_hazard_signal", { p_hazard_type: hazardType });
-            hazardCount++;
-          }
-        }
-      }
-    }
-
-    await admin.rpc("brain_ingest_learning_log", {
-      p_event_type: "extract",
-      p_table_name: "local_to_global",
-      p_record_count: assetCount + complianceCount + hazardCount,
-      p_metadata: { sharing_level: sharingLevel },
-    });
-
+    const r = await extractForOrg(admin, orgId);
     return new Response(
-      JSON.stringify({ ok: true, extracted: { assets: assetCount, compliance: complianceCount, hazards: hazardCount } }),
+      JSON.stringify({ ok: true, extracted: { assets: r.assets, compliance: r.compliance, hazards: r.hazards } }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

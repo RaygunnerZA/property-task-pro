@@ -4,6 +4,7 @@
  * 
  * Current implementation: Rule-based only
  * Future: Will add vector similarity and AI model extraction
+ * Phase 12B: Icon inference from description, hazards, detected objects
  */
 
 import { 
@@ -13,6 +14,7 @@ import {
   GhostCategory
 } from '@/types/chip-suggestions';
 import { extractChipsFromText } from './ruleBasedExtractor';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AvailableEntities {
   spaces: Array<{ id: string; name: string; property_id: string }>;
@@ -60,10 +62,29 @@ export async function generateChipSuggestions(
       complianceMode: false
     };
   }
-  
+
   // 1. Rule-based extraction (primary layer)
   const ruleResult = extractChipsFromText(context, entities);
-  
+
+  // Phase 12B: Icon inference from description + detected objects + compliance
+  let suggestedIcon: string | undefined;
+  let suggestedIconAlternatives: string[] = [];
+  try {
+    const searchTerms = [
+      context.description,
+      context.detectedObjects?.map(o => o.label || o.type).join(' ') || '',
+      ruleResult.complianceMode ? 'compliance inspection' : ''
+    ].filter(Boolean).join(' ') || 'maintenance task';
+    const { data: icons } = await supabase.rpc('ai_icon_search', { query_text: searchTerms });
+    if (icons && Array.isArray(icons) && icons.length > 0) {
+      const iconRows = icons as { name?: string }[];
+      suggestedIcon = iconRows[0]?.name;
+      suggestedIconAlternatives = iconRows.slice(1, 3).map(i => i.name).filter(Boolean) as string[];
+    }
+  } catch {
+    // Non-fatal
+  }
+
   // 2. Vector-based similarity (future implementation)
   // const vectorResult = await getVectorSimilarChips(context);
   
@@ -88,6 +109,8 @@ export async function generateChipSuggestions(
     chips: finalChips.filter(c => c.score >= mergedConfig.minScore),
     ghostCategories: ruleResult.ghostCategories.filter(c => c.score >= mergedConfig.minScore),
     suggestedTitle: ruleResult.suggestedTitle,
+    suggestedIcon,
+    suggestedIconAlternatives,
     complianceMode: ruleResult.complianceMode
   };
 }

@@ -31,6 +31,12 @@ export interface OrgSettings {
   prediction_aggressiveness?: "conservative" | "recommended" | "aggressive";
   hazard_sensitivity?: "low" | "medium" | "high";
   data_sharing_level?: "minimal" | "standard" | "full_anonymised";
+  // Phase 12F: Icon automation
+  ai_icon_suggestions?: boolean;
+  ai_icon_override?: boolean;
+  ai_icon_mode?: "conservative" | "recommended" | "aggressive";
+  ai_icon_prefer?: "global" | "local" | "fallback";
+  ai_icon_fallback?: "wrench" | "file-text" | "circle" | "empty";
 }
 
 export function useOrgSettings() {

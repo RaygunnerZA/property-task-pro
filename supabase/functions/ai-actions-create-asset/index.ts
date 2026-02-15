@@ -80,6 +80,16 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    // AI icon search: use name + category for semantic match
+    let icon_name = "package";
+    const searchTerms = [name.trim(), category].filter(Boolean).join(" ");
+    if (searchTerms) {
+      const { data: icons } = await admin.rpc("ai_icon_search", { query_text: searchTerms });
+      if (icons && icons.length > 0) {
+        icon_name = (icons[0] as { name: string }).name;
+      }
+    }
+
     const { data: asset, error: assetError } = await admin
       .from("assets")
       .insert({
@@ -95,6 +105,7 @@ Deno.serve(async (req) => {
         warranty_expiry: warranty_expiry || null,
         condition_score: 100,
         status: "active",
+        icon_name,
       })
       .select()
       .single();
@@ -113,6 +124,17 @@ Deno.serve(async (req) => {
         asset_id: asset.id,
         org_id,
       });
+    }
+
+    // Phase 12E: Privacy-safe icon sharing to Brain (type + category + icon only)
+    try {
+      await admin.rpc("brain_ingest_icon_pattern", {
+        p_entity_type: "asset",
+        p_category: category || null,
+        p_icon_name: icon_name,
+      });
+    } catch {
+      // Non-fatal
     }
 
     return new Response(JSON.stringify(asset), {

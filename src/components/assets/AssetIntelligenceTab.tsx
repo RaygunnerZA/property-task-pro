@@ -61,6 +61,10 @@ export function AssetIntelligenceTab({ asset }: AssetIntelligenceTabProps) {
   const riskScore = pred.risk_score ?? 0;
   const predictedDays = pred.predicted_failure_days ?? 365;
   const recommendedAction = pred.recommended_action ?? "Routine maintenance";
+  const benchmarkPercentile = pred.benchmark_percentile ?? 50;
+  const globalMttf = pred.global_mean_time_to_failure ?? 365;
+  const globalFpRange = pred.global_failure_probability_range ?? "0.05 – 0.20";
+  const assetTypeLabel = (asset.asset_type ?? "asset").replace(/_/g, " ");
 
   return (
     <div className="space-y-4">
@@ -84,7 +88,18 @@ export function AssetIntelligenceTab({ asset }: AssetIntelligenceTabProps) {
             <span className="text-sm text-muted-foreground">Predicted failure window</span>
             <span className="text-sm font-medium">{predictedDays} days</span>
           </div>
-          <div className=" rounded-lg bg-muted/30 p-3">
+          {benchmarkPercentile != null && (
+            <div className="rounded-lg bg-primary/5 p-3 border border-primary/20">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Global benchmark</p>
+              <p className="text-sm">
+                Your {assetTypeLabel} risk is in the <strong>{benchmarkPercentile}th percentile</strong> compared to similar assets across Filla.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Global mean time to failure: {globalMttf} days · Failure probability range: {globalFpRange}
+              </p>
+            </div>
+          )}
+          <div className="rounded-lg bg-muted/30 p-3">
             <p className="text-xs font-medium text-muted-foreground mb-1">Recommended action</p>
             <p className="text-sm">{recommendedAction}</p>
           </div>

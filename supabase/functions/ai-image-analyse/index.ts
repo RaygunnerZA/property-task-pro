@@ -41,6 +41,7 @@ interface ResponseBody {
   detected_objects: DetectedObject[];
   document_classification?: DocumentClassification;
   anomalies: unknown[];
+  suggested_icon?: string | null;
   metadata: Record<string, unknown>;
 }
 
@@ -181,6 +182,30 @@ const ASSET_TYPE_MAP: Record<string, string> = {
   appliance: "Appliance",
 };
 
+// Phase 12B: Hazard/detected object → Lucide icon mapping
+const HAZARD_OBJECT_TO_ICON: Record<string, string> = {
+  corrosion: "alert-triangle",
+  "water leak": "droplet",
+  "water_leak": "droplet",
+  leak: "droplet",
+  electrical: "zap",
+  "electrical panel": "zap",
+  "electrical_panel": "zap",
+  "fire extinguisher": "fire-extinguisher",
+  fire_extinguisher: "fire-extinguisher",
+  extinguisher: "fire-extinguisher",
+  fire: "flame",
+  boiler: "flame",
+  pump: "droplet",
+  hvac: "fan",
+  db_board: "zap",
+  hazard: "alert-triangle",
+  warning: "alert-triangle",
+  slip: "alert-triangle",
+  structural: "alert-triangle",
+  obstruction: "alert-triangle",
+};
+
 function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
   const docClass = parsed.document_classification;
   const docTypeRaw = docClass?.type?.toLowerCase().replace(/\s+/g, "_") ?? "";
@@ -201,6 +226,23 @@ function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
     ? (ASSET_TYPE_MAP[firstObj.type] ?? firstObj.label ?? null)
     : null;
 
+  // Phase 12B: Suggest icon from detected objects + anomalies
+  let suggestedIcon: string | null = null;
+  const terms = [
+    ...detectedObjects.map((o) => (o.type || o.label || "").toLowerCase().replace(/\s+/g, "_")),
+    ...(Array.isArray(parsed.anomalies) ? parsed.anomalies.map((a: unknown) => String(a).toLowerCase()) : []),
+  ];
+  for (const term of terms) {
+    const icon = HAZARD_OBJECT_TO_ICON[term] || HAZARD_OBJECT_TO_ICON[term.replace(/_/g, " ")];
+    if (icon) {
+      suggestedIcon = icon;
+      break;
+    }
+  }
+  if (!suggestedIcon && detectedObjects[0]) {
+    suggestedIcon = HAZARD_OBJECT_TO_ICON[detectedObjects[0].type] ?? HAZARD_OBJECT_TO_ICON[detectedObjects[0].label?.toLowerCase()] ?? "alert-triangle";
+  }
+
   const metadata: Record<string, unknown> = {
     ...(parsed.metadata ?? {}),
     normalized_document_type: normalizedDocType,
@@ -208,6 +250,7 @@ function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
     normalized_expiry: normalizedExpiry,
     confidence_map: confidenceMap,
     raw_ocr: rawOcr,
+    suggested_icon: suggestedIcon,
   };
 
   return {
@@ -216,6 +259,7 @@ function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
     detected_objects: detectedObjects,
     document_classification: docClass,
     anomalies: Array.isArray(parsed.anomalies) ? parsed.anomalies : [],
+    suggested_icon: suggestedIcon,
     metadata,
   };
 }
@@ -226,6 +270,7 @@ function stubResponse(): ResponseBody {
     detected_labels: [],
     detected_objects: [],
     anomalies: [],
+    suggested_icon: null,
     metadata: { stub: true },
   };
 }

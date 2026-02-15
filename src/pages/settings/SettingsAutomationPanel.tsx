@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Zap, ChevronDown, ChevronUp, HelpCircle, Brain, Shield } from "lucide-react";
+import { Loader2, Zap, ChevronDown, ChevronUp, HelpCircle, Brain, Shield, Sparkles } from "lucide-react";
 import { useOrgSettings, type AutomationMode, type AutoTaskLevel } from "@/hooks/useOrgSettings";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
@@ -427,6 +427,88 @@ export default function SettingsAutomationPanel() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Never shares private data. Only anonymised signals.</p>
+            </div>
+
+            {/* Phase 12F: Icon Automation Options */}
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <Label className="text-base font-medium">Icon Automation</Label>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Enable AI icon suggestions</Label>
+                <Switch
+                  checked={settings?.ai_icon_suggestions ?? true}
+                  disabled={isUpdating}
+                  onCheckedChange={async (c) => updateSettings({ ai_icon_suggestions: c })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Allow AI to override icons</Label>
+                <Switch
+                  checked={settings?.ai_icon_override ?? false}
+                  disabled={isUpdating}
+                  onCheckedChange={async (c) => updateSettings({ ai_icon_override: c })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mode</Label>
+                <Select
+                  value={settings?.ai_icon_mode ?? "recommended"}
+                  onValueChange={async (v: "conservative" | "recommended" | "aggressive") =>
+                    updateSettings({ ai_icon_mode: v })
+                  }
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="conservative">Conservative — manual unless certain</SelectItem>
+                    <SelectItem value="recommended">Recommended — balanced</SelectItem>
+                    <SelectItem value="aggressive">Aggressive — auto-apply for high confidence</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Prefer</Label>
+                <Select
+                  value={settings?.ai_icon_prefer ?? "global"}
+                  onValueChange={async (v: "global" | "local" | "fallback") =>
+                    updateSettings({ ai_icon_prefer: v })
+                  }
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="global">Learned global patterns</SelectItem>
+                    <SelectItem value="local">Local org defaults</SelectItem>
+                    <SelectItem value="fallback">Fallback when unsure</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fallback when unsure</Label>
+                <Select
+                  value={settings?.ai_icon_fallback ?? "wrench"}
+                  onValueChange={async (v: "wrench" | "file-text" | "circle" | "empty") =>
+                    updateSettings({ ai_icon_fallback: v })
+                  }
+                  disabled={isUpdating}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="wrench">Generic tool (wrench)</SelectItem>
+                    <SelectItem value="file-text">Generic document (file-text)</SelectItem>
+                    <SelectItem value="circle">Circle</SelectItem>
+                    <SelectItem value="empty">Empty</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>

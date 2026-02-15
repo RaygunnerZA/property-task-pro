@@ -63,6 +63,8 @@ export interface ChipSuggestionResult {
   chips: SuggestedChip[];
   ghostCategories: GhostCategory[];
   suggestedTitle?: string;
+  suggestedIcon?: string;
+  suggestedIconAlternatives?: string[];
   complianceMode: boolean;
 }
 

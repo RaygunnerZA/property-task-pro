@@ -12,10 +12,11 @@ interface PropertySpacesListProps {
   selectedSpaceId?: string | null;
 }
 
+const MAX_RECENT_CARDS = 8;
+
 /**
- * Property Spaces List
- * Mirrors dashboard "Spaces" section exactly
- * Shows spaces for the property with task counts
+ * Recent Spaces
+ * Shows recently modified/created spaces for the property with task counts (max 8)
  */
 export function PropertySpacesList({
   propertyId,
@@ -60,11 +61,22 @@ export function PropertySpacesList({
     }
   };
 
+  // Sort by most recently modified/created, limit to 8
+  const recentSpaces = useMemo(() => {
+    return [...spaces]
+      .sort((a, b) => {
+        const aDate = new Date(a.updated_at || a.created_at || 0).getTime();
+        const bDate = new Date(b.updated_at || b.created_at || 0).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, MAX_RECENT_CARDS);
+  }, [spaces]);
+
   return (
     <>
       <div className="border-b border-border p-4 pb-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Spaces</h2>
+          <h2 className="text-base font-semibold text-foreground">Recent Spaces</h2>
           <button
             onClick={() => setShowAddSpace(true)}
             className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
@@ -80,7 +92,7 @@ export function PropertySpacesList({
             <Skeleton className="h-20 w-full rounded-lg" />
             <Skeleton className="h-20 w-full rounded-lg" />
           </div>
-        ) : spaces.length === 0 ? (
+        ) : recentSpaces.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-xs text-muted-foreground">No spaces yet</p>
           </div>
@@ -91,7 +103,7 @@ export function PropertySpacesList({
           >
             <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ width: 'calc(100% + 15px)' }}>
               <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
-                {spaces.map((space) => (
+                {recentSpaces.map((space) => (
                   <div 
                     key={space.id} 
                     className="w-[120px] flex-shrink-0 rounded-[5px]"

@@ -1,0 +1,219 @@
+import { useMemo } from "react";
+import { CheckSquare } from "lucide-react";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
+import { getAssetIcon } from "@/lib/icon-resolver";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { Tables } from "@/integrations/supabase/types";
+
+type AssetViewRow = Tables<"assets_view">;
+
+const MAX_RECENT_CARDS = 8;
+const iconColor = "#8EC9CE";
+
+interface RecentAssetCardProps {
+  asset: AssetViewRow;
+  imageUrl?: string;
+  onAssetClick?: (assetId: string) => void;
+}
+
+function RecentAssetCard({ asset, imageUrl, onAssetClick }: RecentAssetCardProps) {
+  const assetName = asset.name || asset.serial_number || "Unnamed Asset";
+  const taskCount = asset.open_tasks_count ?? 0;
+  const conditionScore = asset.condition_score ?? 100;
+  const AssetIcon = getAssetIcon(asset.icon_name);
+
+  const getConditionLabel = (score: number) => {
+    if (score >= 80) return "Good";
+    if (score >= 60) return "Fair";
+    return "Poor";
+  };
+
+  const getConditionVariant = (score: number): "success" | "warning" | "danger" => {
+    if (score >= 80) return "success";
+    if (score >= 60) return "warning";
+    return "danger";
+  };
+
+  const handleClick = () => {
+    if (asset.id) {
+      onAssetClick?.(asset.id);
+    }
+  };
+
+  return (
+    <div
+      className={cn(
+        "bg-card rounded-[8px] overflow-hidden shadow-e1 h-[155px] w-[120px] flex-shrink-0",
+        "transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99]"
+      )}
+      onClick={handleClick}
+    >
+      {/* Thumbnail / Icon zone */}
+      <div
+        className="w-full h-[63px] overflow-hidden relative"
+        style={{ backgroundColor: iconColor }}
+      >
+        {imageUrl ? (
+          <>
+            <img
+              src={imageUrl}
+              alt={assetName}
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                boxShadow:
+                  "inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1)",
+              }}
+            />
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <AssetIcon className="h-8 w-8 text-white/80" />
+          </div>
+        )}
+        <div
+          className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10"
+          style={{
+            backgroundColor: iconColor,
+            width: "24px",
+            height: "24px",
+            boxShadow:
+              "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+          }}
+        >
+          <AssetIcon className="h-4 w-4 text-white" />
+        </div>
+      </div>
+
+      <div className="pt-2.5 pb-2.5 pl-2.5 pr-2.5 space-y-2 h-[96px]">
+        <div className="mb-[22px] mt-[4px] h-[15px] flex flex-col justify-center items-start">
+          <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
+            {assetName}
+          </h3>
+        </div>
+
+        {/* Perforation line */}
+        <div
+          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1"
+          style={{
+            height: "1px",
+            backgroundImage:
+              "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+            backgroundSize: "7px 1px",
+            backgroundRepeat: "repeat-x",
+            boxShadow:
+              "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
+          }}
+        />
+
+        {/* Task count + Condition */}
+        <div className="flex items-center gap-2 flex-wrap mt-0">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <CheckSquare className="h-3 w-3" />
+            {taskCount} Task{taskCount !== 1 ? "s" : ""}
+          </span>
+          <Badge
+            variant={getConditionVariant(conditionScore)}
+            size="sm"
+            className="text-[10px] px-[5px] h-[20px]"
+          >
+            {getConditionLabel(conditionScore)}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface PropertyRecentAssetsListProps {
+  propertyId: string;
+  onAssetClick?: (assetId: string) => void;
+}
+
+/**
+ * Recent Assets
+ * Shows recently modified/created assets for the property (max 8)
+ * Same format as Recent Spaces, with task count and condition
+ */
+export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyRecentAssetsListProps) {
+  const { data: assets = [], isLoading: assetsLoading } = useAssetsQuery(propertyId);
+
+  const recentAssets = useMemo(() => {
+    return [...assets]
+      .sort((a, b) => {
+        const aDate = new Date(
+          (a as any).updated_at || (a as any).created_at || 0
+        ).getTime();
+        const bDate = new Date(
+          (b as any).updated_at || (b as any).created_at || 0
+        ).getTime();
+        return bDate - aDate;
+      })
+      .slice(0, MAX_RECENT_CARDS) as AssetViewRow[];
+  }, [assets]);
+
+  const assetIds = useMemo(
+    () => recentAssets.map((a) => a.id).filter(Boolean) as string[],
+    [recentAssets]
+  );
+  const { imageMap } = useAssetFilesForAssets(assetIds);
+
+  return (
+    <div className="border-t border-border p-4 pb-3">
+      <h2 className="text-base font-semibold text-foreground mb-3">
+        Recent Assets
+      </h2>
+      <div className="pt-[2px] w-full max-w-full overflow-x-hidden">
+        {assetsLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-20 w-full rounded-lg" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+          </div>
+        ) : recentAssets.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-xs text-muted-foreground">No assets yet</p>
+          </div>
+        ) : (
+          <div className="relative w-full max-w-full overflow-hidden">
+            <div
+              className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0"
+              style={{ width: "calc(100% + 15px)" }}
+            >
+              <div
+                className="flex gap-2.5 h-[165px]"
+                style={{ width: "max-content" }}
+              >
+                {recentAssets.map((asset) => (
+                  <RecentAssetCard
+                    key={asset.id}
+                    asset={asset}
+                    imageUrl={asset.id ? imageMap.get(asset.id) : undefined}
+                    onAssetClick={onAssetClick}
+                  />
+                ))}
+              </div>
+            </div>
+            <div
+              className="absolute top-0 right-0 bottom-0 pointer-events-none"
+              style={{
+                width: "10px",
+                height: "155px",
+                background:
+                  "linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))",
+                zIndex: 20,
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

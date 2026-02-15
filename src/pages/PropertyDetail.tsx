@@ -15,9 +15,11 @@ import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
+import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { PropertyIdentityCard } from "@/components/properties/PropertyIdentityCard";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
+import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
 import { PropertyRelatedEntities } from "@/components/properties/PropertyRelatedEntities";
 import { PropertyTasksSection } from "@/components/properties/PropertyTasksSection";
 import { PropertySpacesSection } from "@/components/properties/PropertySpacesSection";
@@ -99,6 +101,7 @@ export default function PropertyDetail() {
   const { orgId } = useActiveOrg();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   
   // Use file upload hook with automatic thumbnail generation
   const { uploadFile, isUploading: isUploadingImage } = useFileUpload({
@@ -623,6 +626,10 @@ if (!error) {
                     onSpaceClick={setSelectedSpaceId}
                     selectedSpaceId={selectedSpaceId}
                   />
+                  <PropertyRecentAssetsList
+                    propertyId={id}
+                    onAssetClick={(assetId) => setSelectedAssetId(assetId)}
+                  />
                   <PropertyRelatedEntities
                     propertyId={id}
                     tasks={propertyTasks}
@@ -710,7 +717,7 @@ if (!error) {
         onOpenChange={setShowCreateAsset}
         propertyId={id || ""}
         onAssetCreated={() => {
-          queryClient.invalidateQueries({ queryKey: ["assets", undefined, id] });
+          queryClient.invalidateQueries({ queryKey: ["assets"] });
         }}
       />
 
@@ -883,6 +890,13 @@ if (!error) {
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           variant="modal"
+        />
+      )}
+
+      {selectedAssetId && (
+        <AssetDetailPanel
+          assetId={selectedAssetId}
+          onClose={() => setSelectedAssetId(null)}
         />
       )}
     </div>
