@@ -19,9 +19,11 @@ import {
   Sparkles,
   ExternalLink,
   CheckSquare,
+  Bot,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAssistantContext } from "@/contexts/AssistantContext";
 import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
 
 interface DocumentDetailDrawerProps {
@@ -44,6 +46,7 @@ export function DocumentDetailDrawer({
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
+  const { openAssistant } = useAssistantContext();
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
@@ -146,7 +149,18 @@ export function DocumentDetailDrawer({
         className={cn("w-[420px] max-w-[480px] overflow-y-auto p-0 flex flex-col")}
       >
         <SheetHeader className="p-4 border-b border-border/20 shrink-0">
-          <SheetTitle className="text-lg">Document Details</SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-lg">Document Details</SheetTitle>
+            {documentId && (
+              <button
+                onClick={() => openAssistant({ type: "document", id: documentId, name: document?.title })}
+                className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                aria-label="Open Assistant"
+              >
+                <Bot className="h-5 w-5 text-primary" />
+              </button>
+            )}
+          </div>
         </SheetHeader>
 
         {isLoading ? (

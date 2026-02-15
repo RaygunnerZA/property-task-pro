@@ -15,7 +15,8 @@ import {
   FileCheck,
   Plus,
   Settings,
-  LogOut
+  LogOut,
+  Bot
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
@@ -23,6 +24,7 @@ import fillaLogo from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { useAssistantContext } from '@/contexts/AssistantContext';
 
 // Global navigation items (always visible)
 const globalNavItems = [
@@ -116,6 +118,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const { openAssistant } = useAssistantContext();
 
   // Detect entity context from URL
   const entityContext = useMemo(() => {
@@ -242,6 +245,19 @@ export function AppSidebar() {
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
+              {/* Assistant */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
+                  <button
+                    onClick={() => openAssistant(entityContext ? { type: entityContext.type, id: entityContext.id } : undefined)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-[5px] text-foreground/70 w-full bg-transparent"
+                  >
+                    <Bot className="h-4 w-4 flex-shrink-0" />
+                    {open && <span className="text-sm tracking-tight">Assistant</span>}
+                  </button>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {/* Create New Button */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">

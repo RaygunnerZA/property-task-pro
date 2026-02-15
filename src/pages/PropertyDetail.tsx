@@ -31,9 +31,10 @@ import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsP
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
-import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle, Bot } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { useAssistantContext } from "@/contexts/AssistantContext";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
@@ -529,6 +530,8 @@ if (!error) {
     backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
+  const { openAssistant } = useAssistantContext();
+
   // Header element that will be passed to DualPaneLayout (matching dashboard pattern)
   const headerElement = (
     <PageHeader>
@@ -544,6 +547,15 @@ if (!error) {
             <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
           </div>
         </div>
+        {id && (
+          <button
+            onClick={() => openAssistant({ type: "property", id, name: displayName })}
+            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            aria-label="Open Assistant"
+          >
+            <Bot className="h-5 w-5 text-white" />
+          </button>
+        )}
       </div>
     </PageHeader>
   );

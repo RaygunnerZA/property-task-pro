@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen } from "lucide-react";
+import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen, Bot } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { useAssistantContext } from "@/contexts/AssistantContext";
 
 function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
   const exp = img?.expiry_date;
@@ -332,6 +333,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const selectedUser = members.find(m => m.user_id === selectedUserId);
   const isUnconfirmedUser = selectedUserId && selectedUserId.startsWith("pending-");
+  const { openAssistant } = useAssistantContext();
 
   // Loading state - show skeleton but keep left panel structure
   if (loading) {
@@ -415,6 +417,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             <X className="h-5 w-5 text-muted-foreground" />
           </button>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => taskId && openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+              className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+              aria-label="Open Assistant"
+            >
+              <Bot className="h-5 w-5 text-primary" />
+            </button>
             <button
               onClick={handleUpdateTask}
               disabled={isUpdating}

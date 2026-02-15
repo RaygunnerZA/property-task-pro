@@ -36,9 +36,11 @@ export function useAssetDetail(assetId: string | undefined) {
     asset: data ?? null,
     loading: isLoading || orgLoading,
     error: error ? (error as Error).message : null,
-    refresh: () => {
-      queryClient.invalidateQueries({ queryKey: ["asset-detail", orgId, assetId] });
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    refresh: async () => {
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["asset-detail", orgId, assetId] }),
+        queryClient.invalidateQueries({ queryKey: ["assets"] }),
+      ]);
     },
   };
 }
