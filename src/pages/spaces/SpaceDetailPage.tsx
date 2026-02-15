@@ -9,10 +9,11 @@ import { useSpaceComplianceQuery } from "@/hooks/useSpaceComplianceQuery";
 import { useSpaceDocumentsQuery } from "@/hooks/useSpaceDocumentsQuery";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
-import { FolderOpen, Package, Shield, FileText, Network, Sparkles, Bot } from "lucide-react";
+import { FolderOpen, Package, Shield, FileText, Network, Sparkles } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
 
 export default function SpaceDetailPage() {
@@ -67,7 +68,7 @@ export default function SpaceDetailPage() {
             className="p-2 rounded-lg bg-card shadow-e1 hover:shadow-e2 transition-shadow"
             aria-label="Open Assistant"
           >
-            <Bot className="h-5 w-5 text-primary" />
+            <FillaIcon size={20} />
           </button>
         )
       }

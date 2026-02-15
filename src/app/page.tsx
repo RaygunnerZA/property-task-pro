@@ -22,8 +22,8 @@ const createGradientHeaderStyle = (color: string) => {
   };
 };
 
-// lg breakpoint is 1024px - use this for three-column layout
-const LG_BREAKPOINT = 1024;
+// Match DualPaneLayout third-column breakpoint (min-1380px)
+const LG_BREAKPOINT = 1380;
 
 type SelectedItem = {
   type: 'task' | 'message';
@@ -195,9 +195,10 @@ export default function Dashboard() {
 
   const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
 
-  // Render third column content - Create Task accordion + details below (lg+)
+  // Render third column content - Create Task under header, TaskDetailPanel below when task selected
+  // Create Task minimises when task is clicked (handleTaskClick sets showCreateTask false)
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col gap-4 pt-[41px] pr-2 pb-0 pl-2">
+    <div className="flex flex-col gap-4 pt-[100px] pr-2 pb-0 pl-2 min-h-0">
       <CreateTaskModal
         open={showCreateTask}
         onOpenChange={handleCreateTaskOpenChange}

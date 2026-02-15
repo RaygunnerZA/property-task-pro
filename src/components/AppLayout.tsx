@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Menu, Bot } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +17,7 @@ function MobileAssistantButton() {
       )}
       aria-label="Open Assistant"
     >
-      <Bot className="h-4 w-4 text-primary" />
+      <FillaIcon size={16} />
     </button>
   );
 }

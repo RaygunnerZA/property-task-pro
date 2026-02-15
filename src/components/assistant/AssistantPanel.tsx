@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Send, Check, X } from "lucide-react";
+import { Send, Check, X } from "lucide-react";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
 
 export type AssistantContextType = "property" | "space" | "asset" | "task" | "document" | null;
@@ -87,7 +88,7 @@ export function AssistantPanel({
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b border-border/20 shrink-0">
           <SheetTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <FillaIcon size={20} className="text-primary" />
             Assistant
           </SheetTitle>
           {context?.type && context?.name && (

@@ -3,7 +3,7 @@
  * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Bot, Target, AlertTriangle, Zap } from "lucide-react";
+import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Target, AlertTriangle, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -54,6 +54,7 @@ import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { useGraphInsight } from "@/hooks/useGraphInsight";
 import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -419,7 +420,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
                     aria-label="Open Assistant"
                   >
-                    <Bot className="h-4 w-4 text-primary" />
+                    <FillaIcon size={16} />
                   </button>
                   <button onClick={handleDuplicate} disabled={isDuplicating} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
                     Duplicate

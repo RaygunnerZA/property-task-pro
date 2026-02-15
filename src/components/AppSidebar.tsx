@@ -15,9 +15,9 @@ import {
   FileCheck,
   Plus,
   Settings,
-  LogOut,
-  Bot
+  LogOut
 } from 'lucide-react';
+import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo-teal-2.svg';
@@ -252,7 +252,7 @@ export function AppSidebar() {
                     onClick={() => openAssistant(entityContext ? { type: entityContext.type, id: entityContext.id } : undefined)}
                     className="flex items-center gap-2 px-3 py-2 rounded-[5px] text-foreground/70 w-full bg-transparent"
                   >
-                    <Bot className="h-4 w-4 flex-shrink-0" />
+                    <FillaIcon size={16} className="flex-shrink-0" />
                     {open && <span className="text-sm tracking-tight">Assistant</span>}
                   </button>
                 </SidebarMenuButton>

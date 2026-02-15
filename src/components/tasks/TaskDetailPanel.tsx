@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, ChevronLeft, ChevronRight, Edit, Upload, Save, SquarePen, Bot } from "lucide-react";
+import { X, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, MapPin, Calendar, ChevronLeft, ChevronRight, Save, SquarePen } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/chips/Chip";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 
 function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
   const exp = img?.expiry_date;
@@ -52,10 +53,9 @@ interface TaskDetailPanelProps {
 /**
  * Task Detail Panel
  * 
- * Modal dialog for viewing and editing task details
- * - Editable title, status, priority
+ * Modal/column panel for viewing and editing task details.
+ * Create Task aesthetic: image slider, description 18pt, multi-column metadata, CTA at bottom.
  * - Tabs: Summary, Messaging, Files, Logs
- * - Can be closed by clicking outside or the X button
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
@@ -112,7 +112,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
   const [activeTab, setActiveTab] = useState("summary");
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -335,213 +334,305 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const isUnconfirmedUser = selectedUserId && selectedUserId.startsWith("pending-");
   const { openAssistant } = useAssistantContext();
 
-  // Loading state - show skeleton but keep left panel structure
+  const paperBg = "bg-background bg-paper-texture";
+  const panelWrapper = (content: ReactNode, title?: string) => {
+    if (variant === "column") {
+      return (
+        <div className={cn("flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-e1 border border-border/20", paperBg)}>
+          {content}
+        </div>
+      );
+    }
+    return (
+      <Dialog open={true} onOpenChange={onClose}>
+        <DialogContent className={cn("max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0", paperBg)}>
+          {title && (
+            <DialogHeader className="sr-only">
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>{title}</DialogDescription>
+            </DialogHeader>
+          )}
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Loading state - single column skeleton
   if (loading) {
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Loading Task</DialogTitle>
-            <DialogDescription>Loading task details...</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left Image Panel Skeleton */}
-            <div className="w-64 border-r border-border/20 bg-muted/20 flex flex-col">
-              <div className="p-4 border-b border-border/20">
-                <Skeleton className="h-4 w-20 mb-2" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <Skeleton className="h-32 w-full mb-3" />
-              </div>
-            </div>
-            {/* Main Content Skeleton */}
-            <div className="flex-1 p-6 space-y-4">
-              <Skeleton className="h-8 w-3/4" />
-              <Skeleton className="h-6 w-1/2" />
-              <Skeleton className="h-32 w-full" />
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+    return panelWrapper(
+          <div className="flex flex-1 flex-col overflow-y-auto p-6 space-y-4">
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-32 w-full" />
+          </div>,
+      "Loading Task"
     );
   }
 
-  // Error state - show error but keep left panel structure
+  // Error state - single column
   if (error || !task) {
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Task Error</DialogTitle>
-            <DialogDescription>An error occurred while loading the task.</DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left Image Panel - Empty state */}
-            <div className="w-64 border-r border-border/20 bg-muted/20 flex flex-col">
-              <div className="p-4 border-b border-border/20">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Images</h3>
-                <div className="text-xs text-muted-foreground">Task not loaded</div>
-              </div>
+    return panelWrapper(
+          <div className="flex flex-1 flex-col overflow-y-auto p-6">
+            <div className="text-center py-12">
+              <p className="text-destructive mb-4">{error || "Couldn't find this task"}</p>
+              <button
+                onClick={onClose}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Close
+              </button>
             </div>
-            {/* Main Content Error */}
-            <div className="flex-1 p-6">
-              <div className="text-center py-12">
-                <p className="text-destructive mb-4">{error || "Couldn't find this task"}</p>
-                <button
-                  onClick={onClose}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </div>,
+      "Task Error"
     );
   }
 
-  // Shared panel content - extracted to avoid duplication
+  // Shared panel content - Create Task aesthetic: p-4, image slider top, description 18pt, multi-column, CTA bottom
   const panelContent = (
     <>
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-card border-b border-border/20 p-6 space-y-4">
-        {/* Close Button & Actions */}
-        <div className="flex items-center justify-between">
+      {/* Image thumbnail slider at top - with Close (left), Filla AI + Options (right) */}
+      <div className="relative p-4 pb-0">
+        <button
+          onClick={onClose}
+          className="absolute top-6 left-6 z-20 p-2 rounded-lg bg-black/30 hover:bg-black/50 text-white transition-colors"
+          aria-label="Close panel"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-            aria-label="Close panel"
+            onClick={() => taskId && openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+            className="p-2 rounded-lg bg-black/30 hover:bg-black/50 text-white transition-colors"
+            aria-label="Filla AI"
           >
-            <X className="h-5 w-5 text-muted-foreground" />
+            <FillaIcon size={20} />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => taskId && openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-              className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-              aria-label="Open Assistant"
-            >
-              <Bot className="h-5 w-5 text-primary" />
-            </button>
-            <button
-              onClick={handleUpdateTask}
-              disabled={isUpdating}
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium text-sm transition-all",
-                "bg-primary text-primary-foreground hover:bg-primary/90",
-                "shadow-e1 hover:shadow-e2 active:scale-[0.98]",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                "flex items-center gap-2"
-              )}
-            >
-              <Save className="h-4 w-4" />
-              {isUpdating ? "Updating..." : "Update"}
-            </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                  aria-label="More options"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="p-2 rounded-lg bg-black/30 hover:bg-black/50 text-white transition-colors"
+                aria-label="Options"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Duplicate Task</DropdownMenuItem>
+              <DropdownMenuItem>Archive Task</DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">Delete Task</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {task && task.images && task.images.length > 0 ? (
+          <>
+            <div className="aspect-video w-full bg-muted rounded-[8px] overflow-hidden shadow-e1 relative group">
+              <img
+                src={task.images[selectedImageIndex ?? 0]?.thumbnail_url || task.images[selectedImageIndex ?? 0]?.file_url}
+                alt={task.images[selectedImageIndex ?? 0]?.file_name || "Task image"}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const image = task.images[selectedImageIndex ?? 0];
+                  if (image?.thumbnail_url && image?.file_url) {
+                    (e.target as HTMLImageElement).src = image.file_url;
+                  }
+                }}
+              />
+              <button
+                className="absolute bottom-2 right-2 p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => {
+                  const image = task.images[selectedImageIndex ?? 0];
+                  if (image?.id) {
+                    setDetectionOverlays([]);
+                    setEditingImageId(image.id);
+                    setShowAnnotationEditor(true);
+                  }
+                }}
+                title="Annotate image"
+              >
+                <SquarePen className="h-3 w-3" />
+              </button>
+            </div>
+            {task.images.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden" ref={thumbnailScrollRef}>
+                {task.images.map((image: any, index: number) => {
+                  const hasAi = image?.ocr_text?.trim() || (image?.metadata as any)?.detected_objects?.length;
+                  const expiryStatus = getImageExpiryStatus(image);
+                  return (
+                    <button
+                      key={image.id}
+                      type="button"
+                      className={cn(
+                        "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
+                        selectedImageIndex === index ? "border-primary" : "border-transparent",
+                        hasAi && expiryStatus === "green" && "ring-1 ring-green-500/50 ring-inset",
+                        hasAi && expiryStatus === "amber" && "ring-1 ring-amber-500/50 ring-inset",
+                        hasAi && expiryStatus === "red" && "ring-1 ring-red-500/50 ring-inset"
+                      )}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <img
+                        src={image.thumbnail_url || image.file_url}
+                        alt={image.file_name || "Task image"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          if (image.thumbnail_url && image.file_url) {
+                            (e.target as HTMLImageElement).src = image.file_url;
+                          }
+                        }}
+                      />
+                      {hasAi && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[9px] text-center py-0.5 text-white font-medium">🔎</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="aspect-video w-full bg-muted rounded-[8px] overflow-hidden shadow-e1 flex items-center justify-center text-muted-foreground text-sm">
+            No images
+          </div>
+        )}
+      </div>
+
+      {/* Content - p-4 matching Create Task */}
+      <div className="p-4 space-y-6 flex-1 overflow-y-auto min-h-0">
+        {/* Description 18pt - replaces title */}
+        <p className="text-[18px] text-foreground leading-relaxed">
+          {(task as any)?.description || "No description provided"}
+        </p>
+
+        {/* Multi-column: Property | Due Date | Assignee | Teams - Create Task icons + fact chips */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center gap-2 min-h-[32px]">
+            <div className="flex-shrink-0 w-[32px] h-8 flex items-center justify-center rounded-[8px] bg-background shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Chip
+              role="fact"
+              label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
+              className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
+            />
+          </div>
+          <div className="flex items-center gap-2 min-h-[32px]">
+            <div className="flex-shrink-0 w-[32px] h-8 flex items-center justify-center rounded-[8px] bg-background shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Chip
+              role="fact"
+              label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
+              className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
+            />
+          </div>
+          <div className="flex items-center gap-2 min-h-[32px]">
+            <div className="flex-shrink-0 w-[32px] h-8 flex items-center justify-center rounded-[8px] bg-background shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]">
+              <User className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {selectedUser ? (
+                <Chip
+                  role="fact"
+                  label={selectedUser.display_name.toUpperCase()}
+                  onRemove={() => handleUserChange(undefined)}
+                  className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
+                />
+              ) : isUnconfirmedUser ? (
+                <Chip
+                  role="fact"
+                  label={(selectedUserId?.replace("pending-", "") || "Unconfirmed").toUpperCase()}
+                  onRemove={() => handleUserChange(undefined)}
+                  className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white opacity-50"
+                />
+              ) : (
+                <Select
+                  value=""
+                  onValueChange={(v) => v && handleUserChange(v)}
+                  disabled={isUpdating || membersLoading}
                 >
-                  <MoreVertical className="h-5 w-5 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>Duplicate Task</DropdownMenuItem>
-                <DropdownMenuItem>Archive Task</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Delete Task</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <SelectTrigger className="h-[24px] w-auto min-w-[100px] shadow-engraved text-[11px] font-mono rounded-[8px]">
+                    <SelectValue placeholder="Assign..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members.map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>
+                        {m.display_name}
+                      </SelectItem>
+                    ))}
+                    {members.length === 0 && <SelectItem value="__none__" disabled>No members</SelectItem>}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 min-h-[32px]">
+            <div className="flex-shrink-0 w-[32px] h-8 flex items-center justify-center rounded-[8px] bg-background shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]">
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {selectedTeamIds.map((tid) => {
+                const team = teams.find((t) => t.id === tid);
+                return team ? (
+                  <Chip
+                    key={tid}
+                    role="fact"
+                    label={team.name.toUpperCase()}
+                    onRemove={() => toggleTeam(tid)}
+                    className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
+                  />
+                ) : null;
+              })}
+              {teams.length > 0 && teams.some((t) => !selectedTeamIds.includes(t.id)) && (
+                <Select
+                  value=""
+                  onValueChange={(v) => v && !selectedTeamIds.includes(v) && toggleTeam(v)}
+                  disabled={isUpdating || teamsLoading}
+                >
+                  <SelectTrigger className="h-[24px] w-auto min-w-[80px] shadow-engraved text-[11px] font-mono rounded-[8px]">
+                    <SelectValue placeholder="Add..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.filter((t) => !selectedTeamIds.includes(t.id)).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {teams.length === 0 && selectedTeamIds.length === 0 && (
+                <Chip role="fact" label="—" className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white opacity-50" />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Editable Title */}
-        <div>
-          {isEditingTitle ? (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => setIsEditingTitle(false)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setIsEditingTitle(false);
-                  // TODO: Save title
-                }
-                if (e.key === "Escape") {
-                  setIsEditingTitle(false);
-                  setTitle((task as any).title || "");
-                }
-              }}
-              className={cn(
-                "text-2xl font-semibold border-0 bg-transparent p-0",
-                "focus-visible:ring-0 focus-visible:ring-offset-0",
-                "shadow-none"
-              )}
-              autoFocus
-            />
-          ) : (
-            <h1
-              onClick={() => setIsEditingTitle(true)}
-              className="text-2xl font-semibold text-foreground cursor-text hover:bg-muted/30 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-            >
-              {title || (task as any).title || "Untitled Task"}
-            </h1>
-          )}
-        </div>
-
-        {/* Status & Priority Chips */}
+        {/* Status & Priority - compact */}
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger
-              className={cn(
-                "h-8 border rounded-lg font-medium text-xs",
-                getStatusColor(status),
-                "w-auto min-w-[120px]"
-              )}
-            >
+            <SelectTrigger className={cn("h-8 border rounded-[8px] font-medium text-xs w-auto min-w-[100px]", getStatusColor(status))}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {statusOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              {statusOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-
           <Select value={priority} onValueChange={setPriority}>
-            <SelectTrigger
-              className={cn(
-                "h-8 border rounded-lg font-medium text-xs",
-                getPriorityColor(priority),
-                "w-auto min-w-[100px]"
-              )}
-            >
+            <SelectTrigger className={cn("h-8 border rounded-[8px] font-medium text-xs w-auto min-w-[90px]", getPriorityColor(priority))}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {priorityOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              {priorityOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
-          {autoTaskRecord && (
-            <Badge variant="secondary" className="text-xs font-normal">
-              Auto-generated
-            </Badge>
-          )}
+          {autoTaskRecord && <Badge variant="secondary" className="text-xs font-normal">Auto-generated</Badge>}
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex-1 overflow-y-auto">
+        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
-            <TabsList className="w-full grid grid-cols-4 h-12 bg-transparent p-1">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0">
+            <TabsList className="w-full grid grid-cols-4 h-11 bg-transparent p-1 gap-1">
               <TabsTrigger
                 value="summary"
                 className={cn(
@@ -586,48 +677,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex flex-col p-6">
+          <div className="flex-1 overflow-hidden flex flex-col p-4">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-6">
-                {/* Task Images - Show in Summary tab too */}
-                {task.images && task.images.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Images</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {task.images.map((image: any) => (
-                        <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group">
-                          <img
-                            src={image.thumbnail_url || image.file_url}
-                            alt={image.file_name || "Task image"}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback to file_url if thumbnail fails
-                              if (image.thumbnail_url && image.file_url) {
-                                (e.target as HTMLImageElement).src = image.file_url;
-                              }
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Description</h3>
-                  <p className="text-foreground">
-                    {(task as any).description || "No description provided"}
-                  </p>
-                </div>
-                {task.property && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Property</h3>
-                    <p className="text-foreground">
-                      {task.property.nickname || task.property.address}
-                    </p>
-                  </div>
-                )}
-
                 <RelatedComplianceSection
                   items={propertyComplianceItems}
                   imageHazards={imageHazards}
@@ -640,131 +692,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     variant="minimal"
                   />
                 )}
-                {(task as any).due_date && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Due Date</h3>
-                    <p className="text-foreground">
-                      {new Date((task as any).due_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-
-                {/* Assignee Section */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-semibold text-muted-foreground">Assignee</h3>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2 min-h-[32px]">
-                      {selectedUser ? (
-                        <Chip
-                          role="fact"
-                          label={selectedUser.display_name.toUpperCase()}
-                          onRemove={() => handleUserChange(undefined)}
-                        />
-                      ) : isUnconfirmedUser ? (
-                        <Chip
-                          role="fact"
-                          label={(selectedUserId?.replace("pending-", "") || "Unconfirmed user").toUpperCase()}
-                          onRemove={() => handleUserChange(undefined)}
-                          className="opacity-50"
-                        />
-                      ) : (
-                        <Select
-                          value=""
-                          onValueChange={(value) => {
-                            if (value) handleUserChange(value);
-                          }}
-                          disabled={isUpdating || membersLoading}
-                        >
-                          <SelectTrigger className="h-8 w-full max-w-[200px] shadow-engraved">
-                            <SelectValue placeholder="Select assignee..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {members.map((member) => (
-                              <SelectItem key={member.user_id} value={member.user_id}>
-                                {member.display_name}
-                              </SelectItem>
-                            ))}
-                            {members.length === 0 && (
-                              <SelectItem value="__no_members__" disabled>
-                                No members available
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                    {isUnconfirmedUser && (
-                      <p className="text-xs text-muted-foreground">User unconfirmed</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Teams Section */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-semibold text-muted-foreground">Teams</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2 min-h-[32px]">
-                    {selectedTeamIds.length > 0 && (
-                      <>
-                        {selectedTeamIds.map((teamId) => {
-                          const team = teams.find(t => t.id === teamId);
-                          return team ? (
-                            <Chip
-                              key={teamId}
-                              role="fact"
-                              label={team.name.toUpperCase()}
-                              onRemove={() => toggleTeam(teamId)}
-                            />
-                          ) : null;
-                        })}
-                      </>
-                    )}
-                    {teams.length > 0 && (
-                      <Select
-                        value=""
-                        onValueChange={(value) => {
-                          if (value && !selectedTeamIds.includes(value)) {
-                            toggleTeam(value);
-                          }
-                        }}
-                        disabled={isUpdating || teamsLoading}
-                      >
-                        <SelectTrigger className="h-8 w-full max-w-[200px] shadow-engraved">
-                          <SelectValue placeholder="Add team..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teams
-                            .filter(team => !selectedTeamIds.includes(team.id))
-                            .map((team) => (
-                              <SelectItem key={team.id} value={team.id}>
-                                {team.name}
-                              </SelectItem>
-                            ))}
-                          {teams.filter(team => !selectedTeamIds.includes(team.id)).length === 0 && (
-                            <SelectItem value="__all_assigned__" disabled>
-                              All teams assigned
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {teams.length === 0 && (
-                      <p className="text-xs text-muted-foreground py-2">
-                        No teams available
-                      </p>
-                    )}
-                    {selectedTeamIds.length === 0 && teams.length > 0 && (
-                      <p className="text-xs text-muted-foreground py-2">
-                        No teams assigned
-                      </p>
-                    )}
-                  </div>
-                </div>
               </div>
             </TabsContent>
 
@@ -773,245 +700,21 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </TabsContent>
 
             <TabsContent value="files" className="mt-0 flex-1 overflow-y-auto">
-              <div className="space-y-4 p-6">
-                <p className="text-muted-foreground text-sm">
-                  Images are displayed in the left panel. Use the upload zone there to add new images.
-                </p>
-                {/* Image Grid for larger view */}
-                {task.images && task.images.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                      All Images ({task.images.length})
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {task.images.map((image: any) => (
-                        <div
-                          key={image.id}
-                          className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group"
-                        >
-                          <img
-                            src={image.thumbnail_url || image.file_url}
-                            alt={image.file_name || "Task image"}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback to file_url if thumbnail fails
-                              if (image.thumbnail_url && image.file_url) {
-                                (e.target as HTMLImageElement).src = image.file_url;
-                              }
-                            }}
-                          />
-                          {/* Overlay on hover */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <button className="opacity-0 group-hover:opacity-100 p-2 rounded-full bg-black/50 text-white transition-opacity">
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="logs" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-4">
-                <p className="text-muted-foreground text-sm">
-                  Audit logs and activity history will appear here
-                </p>
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
-    </>
-  );
-
-  // Always render as modal dialog
-  return (
-    <>
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="sr-only">
-          <DialogTitle>Task Details</DialogTitle>
-          <DialogDescription>View and edit task details</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Column: Primary Image + Media Gallery - Always show if task exists, even if loading */}
-          {(task || loading) && (
-            <div className="w-80 border-r border-border/20 bg-muted/20 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Primary Image Display */}
-                <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden shadow-e1 relative group">
-                  {loading ? (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      <div className="text-sm">Loading...</div>
-                    </div>
-                  ) : task && task.images && task.images.length > 0 ? (
-                    <>
-                      <img
-                        src={task.images[selectedImageIndex ?? 0]?.thumbnail_url || task.images[selectedImageIndex ?? 0]?.file_url}
-                        alt={task.images[selectedImageIndex ?? 0]?.file_name || "Task image"}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const image = task.images[selectedImageIndex ?? 0];
-                          if (image?.thumbnail_url && image?.file_url) {
-                            (e.target as HTMLImageElement).src = image.file_url;
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          className="p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
-                          onClick={() => {
-                            const image = task.images[selectedImageIndex ?? 0];
-                            if (image?.id) {
-                              setDetectionOverlays([]);
-                              setEditingImageId(image.id);
-                              setShowAnnotationEditor(true);
-                            }
-                          }}
-                          title="Annotate image"
-                        >
-                          <SquarePen className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                      <CheckSquare className="h-16 w-16 mb-2" />
-                      <span className="text-sm">No image</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Media Gallery Thumbnails - Only show when 2+ images exist */}
-                {!loading && task && task.images && task.images.length > 1 && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      Media Gallery
-                    </h3>
-                    <div className="relative">
-                      {/* Container with overflow hidden to show only 3 thumbnails */}
-                      <div className="overflow-hidden" style={{ width: 'calc(3 * 6rem + 2 * 0.5rem)' }}>
-                        {/* Scrollable thumbnail container */}
-                        <div
-                          ref={thumbnailScrollRef}
-                          className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                        >
-                          {task.images.map((image: any, index: number) => {
-                            const hasAi = image?.ocr_text?.trim() || (image?.metadata as any)?.detected_objects?.length;
-                            const expiryStatus = getImageExpiryStatus(image);
-                            return (
-                            <div
-                              key={image.id}
-                              className={cn(
-                                "aspect-square w-24 h-24 flex-shrink-0 bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative group border-2",
-                                selectedImageIndex === index ? "border-primary" : "border-transparent",
-                                hasAi && expiryStatus === "green" && "ring-1 ring-green-500/50 ring-inset",
-                                hasAi && expiryStatus === "amber" && "ring-1 ring-amber-500/50 ring-inset",
-                                hasAi && expiryStatus === "red" && "ring-1 ring-red-500/50 ring-inset"
-                              )}
-                              onClick={() => setSelectedImageIndex(index)}
-                            >
-                              <img
-                                src={image.thumbnail_url || image.file_url}
-                                alt={image.file_name || "Task image"}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  if (image.thumbnail_url && image.file_url) {
-                                    (e.target as HTMLImageElement).src = image.file_url;
-                                  }
-                                }}
-                              />
-                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                                <button
-                                  className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (image.id) {
-                                      setDetectionOverlays([]);
-                                      setEditingImageId(image.id);
-                                      setShowAnnotationEditor(true);
-                                    }
-                                  }}
-                                  title="Annotate image"
-                                >
-                                  <SquarePen className="h-2.5 w-2.5" />
-                                </button>
-                                <button
-                                  className="p-1 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: Delete image
-                                  }}
-                                >
-                                  <X className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                              {hasAi && (
-                                <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-center py-0.5 text-white font-medium">
-                                  🔎 AI
-                                </span>
-                              )}
-                            </div>
-                          );})}
-                        </div>
-                      </div>
-                      {/* Navigation arrows - only show if more than 3 images */}
-                      {task.images.length > 3 && (
-                        <>
-                          <button
-                            onClick={() => {
-                              if (thumbnailScrollRef.current) {
-                                const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
-                                thumbnailScrollRef.current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-                              }
-                            }}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-e1 hover:shadow-e2 transition-all z-10"
-                            aria-label="Scroll left"
-                          >
-                            <ChevronLeft className="h-4 w-4 text-foreground" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (thumbnailScrollRef.current) {
-                                const scrollAmount = 104; // 96px (w-24) + 8px (gap-2)
-                                thumbnailScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                              }
-                            }}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 p-1.5 bg-background/90 backdrop-blur-sm rounded-full shadow-e1 hover:shadow-e2 transition-all z-10"
-                            aria-label="Scroll right"
-                          >
-                            <ChevronRight className="h-4 w-4 text-foreground" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Upload Zone - Always visible */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Upload Images
-                  </h3>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
                   <FileUploadZone
                     taskId={taskId}
                     onUploadComplete={() => {
-                      // Invalidate React Query cache to refetch attachments
                       queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
                       queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
                       queryClient.invalidateQueries({ queryKey: ["tasks"] });
                       refreshTask();
-                      // Reset to first image after upload
                       setSelectedImageIndex(0);
                     }}
                     accept="image/*"
                   />
                 </div>
-
-                {/* AI Actions - Phase 4 (link assets, create assets, compliance, overlays) */}
                 {task.images && task.images.length > 0 && (() => {
                   const img = task.images[selectedImageIndex ?? 0] as any;
                   const orgId = (task as any)?.org_id;
@@ -1053,18 +756,68 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     />
                   );
                 })()}
+                {task.images && task.images.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({task.images.length})</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {task.images.map((image: any) => (
+                        <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group">
+                          <img
+                            src={image.thumbnail_url || image.file_url}
+                            alt={image.file_name || "Task image"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              if (image.thumbnail_url && image.file_url) {
+                                (e.target as HTMLImageElement).src = image.file_url;
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
-          
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {panelContent}
+            </TabsContent>
+
+            <TabsContent value="logs" className="mt-0 flex-1 overflow-y-auto">
+              <div className="space-y-4">
+                <p className="text-muted-foreground text-sm">
+                  Audit logs and activity history will appear here
+                </p>
+              </div>
+            </TabsContent>
           </div>
+        </Tabs>
+      </div>
+
+      {/* Create Task-style CTA panel */}
+      <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur flex-shrink-0">
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 shadow-e1" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            className="flex-1 shadow-primary-btn"
+            onClick={handleUpdateTask}
+            disabled={isUpdating}
+          >
+            {isUpdating ? "Updating..." : "Update Task"}
+          </Button>
         </div>
-      </DialogContent>
-      
-    </Dialog>
+      </div>
+    </>
+  );
+
+  // Single column: Header, primary image, gallery, then tabs (all in panelContent)
+  return (
+    <>
+    {panelWrapper(
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {panelContent}
+        </div>,
+      "Task Details"
+    )}
     
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {showAnnotationEditor && editingImageId && task && createPortal(

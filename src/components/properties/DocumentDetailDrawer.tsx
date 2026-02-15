@@ -19,11 +19,11 @@ import {
   Sparkles,
   ExternalLink,
   CheckSquare,
-  Bot,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
 
 interface DocumentDetailDrawerProps {
@@ -157,7 +157,7 @@ export function DocumentDetailDrawer({
                 className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
                 aria-label="Open Assistant"
               >
-                <Bot className="h-5 w-5 text-primary" />
+                <FillaIcon size={20} />
               </button>
             )}
           </div>
