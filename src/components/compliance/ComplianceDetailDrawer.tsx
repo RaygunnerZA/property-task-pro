@@ -11,6 +11,7 @@ import { AlertTriangle, CheckCircle2, Clock, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HazardBadge } from "./HazardBadge";
 import { ComplianceGraphMini } from "./ComplianceGraphMini";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 
 interface ComplianceDetailDrawerProps {
   open: boolean;
@@ -106,6 +107,14 @@ export function ComplianceDetailDrawer({
             </div>
           )}
           <ComplianceGraphMini complianceDocumentId={compliance.id} />
+          <div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Graph Impact</div>
+            <GraphInsightPanel
+              start={{ type: "compliance", id: compliance.id }}
+              depth={2}
+              variant="compact"
+            />
+          </div>
           {compliance.property_id && (
             <Button variant="outline" className="w-full" onClick={handleViewProperty}>
               View property compliance

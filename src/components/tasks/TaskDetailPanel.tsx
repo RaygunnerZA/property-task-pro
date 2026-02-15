@@ -30,6 +30,7 @@ import { Chip } from "@/components/chips/Chip";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 
 function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
   const exp = img?.expiry_date;
@@ -623,6 +624,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   imageHazards={imageHazards}
                   isLoading={portfolioLoading}
                 />
+                {taskId && (
+                  <GraphInsightPanel
+                    start={{ type: "task", id: taskId }}
+                    depth={2}
+                    variant="minimal"
+                  />
+                )}
                 {(task as any).due_date && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Due Date</h3>

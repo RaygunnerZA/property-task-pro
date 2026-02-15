@@ -3,7 +3,7 @@
  * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
+import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -52,6 +52,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -467,6 +468,19 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                       Compliance
                     </TabsTrigger>
                     <TabsTrigger
+                      value="insights"
+                      className={cn(
+                        "rounded-[8px] transition-all text-sm font-medium",
+                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                        "data-[state=active]:bg-card",
+                        "data-[state=inactive]:bg-transparent",
+                        "data-[state=inactive]:hover:bg-muted/20"
+                      )}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Insights
+                    </TabsTrigger>
+                    <TabsTrigger
                       value="graph"
                       className={cn(
                         "rounded-[8px] transition-all text-sm font-medium",
@@ -871,6 +885,11 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                         )}
                       </div>
                     </div>
+                  </TabsContent>
+                  <TabsContent value="insights" className="mt-0 flex-1 overflow-y-auto">
+                    {assetId && (
+                      <GraphInsightPanel start={{ type: "asset", id: assetId }} depth={3} variant="full" />
+                    )}
                   </TabsContent>
                   <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
                     {assetId && (

@@ -33,6 +33,7 @@ import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
@@ -693,6 +694,14 @@ if (!error) {
                       queryClient.invalidateQueries({ queryKey: ["properties"] });
                     }}
                   />
+                )}
+              </div>
+
+              {/* Property Insights (Graph-derived) */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">Property Insights</h2>
+                {id && (
+                  <GraphInsightPanel start={{ type: "property", id }} depth={3} variant="full" />
                 )}
               </div>
 

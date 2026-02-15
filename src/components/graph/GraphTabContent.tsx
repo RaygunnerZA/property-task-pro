@@ -33,9 +33,6 @@ export function GraphTabContent({ start, depth = 3, className }: GraphTabContent
     }
     setSyncing(true);
     try {
-        toast({ title: "Organisation not found", variant: "destructive" });
-        return;
-      }
       const { data: res, error } = await supabase.functions.invoke("graph-sync", {
         body: { org_id: orgId!, full_rebuild: true },
       });

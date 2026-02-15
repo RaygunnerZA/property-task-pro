@@ -9,8 +9,9 @@ import { useSpaceComplianceQuery } from "@/hooks/useSpaceComplianceQuery";
 import { useSpaceDocumentsQuery } from "@/hooks/useSpaceDocumentsQuery";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
-import { FolderOpen, Package, Shield, FileText, Network } from "lucide-react";
+import { FolderOpen, Package, Shield, FileText, Network, Sparkles } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { cn } from "@/lib/utils";
 
 export default function SpaceDetailPage() {
@@ -59,11 +60,15 @@ export default function SpaceDetailPage() {
       maxWidth="lg"
     >
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-6 w-full grid grid-cols-5">
+        <TabsList className="mb-6 w-full grid grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="insights">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Insights
+          </TabsTrigger>
           <TabsTrigger value="graph">
             <Network className="h-4 w-4 mr-2" />
             Graph
@@ -190,6 +195,12 @@ export default function SpaceDetailPage() {
                 </a>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="insights" className="mt-0">
+          {spaceId && (
+            <GraphInsightPanel start={{ type: "space", id: spaceId }} depth={3} variant="full" />
           )}
         </TabsContent>
 
