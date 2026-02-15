@@ -1,11 +1,17 @@
 /**
- * AssetDetailPanel - Dialog for viewing and editing asset details.
- * Same pattern as TaskDetailPanel: Dialog + tabs (Overview, Linked Tasks, Inspections, Files).
+ * AssetDetailPanel - Asset health dashboard with Overview, Activity, Compliance.
+ * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield, Brain, Copy, Trash2, Archive, ImagePlus, Upload, ChevronRight } from "lucide-react";
+import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -19,14 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
-import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { useAssetDetail } from "@/hooks/useAssetDetail";
 import { useAssetInspections } from "@/hooks/useAssetInspections";
 import { useAssetFiles } from "@/hooks/useAssetFiles";
 import { useLinkedTasks } from "@/hooks/useLinkedTasks";
 import { useAssetComplianceQuery } from "@/hooks/useAssetComplianceQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
-import { useDebounce } from "@/hooks/useDebounce";
+import { useBrainInference } from "@/hooks/useBrainInference";
+import { useOrgSettings } from "@/hooks/useOrgSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
-import { AssetIntelligenceTab } from "./AssetIntelligenceTab";
+import { GraphTabContent } from "@/components/graph/GraphTabContent";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -70,6 +76,11 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
+  const { settings } = useOrgSettings();
+  const automatedIntelligence = settings?.automated_intelligence ?? "suggestions_only";
+  const assetVector = { asset_type: asset?.asset_type, condition_score: asset?.condition_score, install_date: (asset as { install_date?: string })?.install_date };
+  const { data: brainData } = useBrainInference(asset ? [assetVector] : [], [], automatedIntelligence !== "off");
+  const brainPred = brainData?.predictions?.assets?.[0];
 
   const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -77,13 +88,16 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const [filesSliderIndex, setFilesSliderIndex] = useState(0);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<"all" | "tasks" | "inspections" | "files">("all");
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [showLogInspection, setShowLogInspection] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
   const [showLinkCompliance, setShowLinkCompliance] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
   const fileUploadInputRef = useRef<HTMLInputElement>(null);
+  const imageUploadInputRef = useRef<HTMLInputElement>(null);
 
   // Editable Overview fields (local state)
   const [name, setName] = useState("");
@@ -111,29 +125,21 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     }
   }, [asset]);
 
-  const debouncedName = useDebounce(name, 300);
-  const debouncedNotes = useDebounce(notes, 300);
-  const debouncedConditionScore = useDebounce(conditionScore, 300);
-  const debouncedStatus = useDebounce(status, 300);
-  const debouncedAssetType = useDebounce(assetType, 300);
-  const debouncedSerialNumber = useDebounce(serialNumber, 300);
-  const debouncedManufacturer = useDebounce(manufacturer, 300);
-  const debouncedModel = useDebounce(model, 300);
-  const debouncedComplianceRequired = useDebounce(complianceRequired, 300);
-
   const saveAsset = useCallback(
-    async (updates: Record<string, unknown>) => {
-      if (!assetId || Object.keys(updates).length === 0) return;
+    async (updates: Record<string, unknown>): Promise<boolean> => {
+      if (!assetId || Object.keys(updates).length === 0) return false;
       try {
         const { error: err } = await supabase.from("assets").update(updates).eq("id", assetId);
         if (err) throw err;
         refresh();
+        return true;
       } catch (e: unknown) {
         toast({
           title: "Couldn't update asset",
           description: e instanceof Error ? e.message : "Failed to save",
           variant: "destructive",
         });
+        return false;
       }
     },
     [assetId, refresh, toast]
@@ -294,34 +300,31 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     [assetId, orgId, refreshFiles, queryClient, toast]
   );
 
-  useEffect(() => {
+  const handleSaveDetails = useCallback(async () => {
     if (!assetId || !asset) return;
     const updates: Record<string, unknown> = {};
-    if (debouncedName !== (asset.name || "")) updates.name = debouncedName;
-    if (debouncedNotes !== (asset.notes || "")) updates.notes = debouncedNotes;
-    const score = parseInt(debouncedConditionScore, 10);
+    if (name !== (asset.name || "")) updates.name = name;
+    if (notes !== (asset.notes || "")) updates.notes = notes;
+    const score = parseInt(conditionScore, 10);
     if (!isNaN(score) && score !== (asset.condition_score ?? 100)) updates.condition_score = score;
-    if (debouncedStatus !== (asset.status || "active")) updates.status = debouncedStatus;
-    if (debouncedAssetType !== (asset.asset_type || "")) updates.asset_type = debouncedAssetType || null;
-    if (debouncedSerialNumber !== (asset.serial_number || "")) updates.serial_number = debouncedSerialNumber || null;
-    if (debouncedManufacturer !== (asset.manufacturer || "")) updates.manufacturer = debouncedManufacturer || null;
-    if (debouncedModel !== (asset.model || "")) updates.model = debouncedModel || null;
-    if (debouncedComplianceRequired !== (asset.compliance_required ?? false)) updates.compliance_required = debouncedComplianceRequired;
-    if (Object.keys(updates).length > 0) saveAsset(updates);
-  }, [
-    assetId,
-    asset,
-    debouncedName,
-    debouncedNotes,
-    debouncedConditionScore,
-    debouncedStatus,
-    debouncedAssetType,
-    debouncedSerialNumber,
-    debouncedManufacturer,
-    debouncedModel,
-    debouncedComplianceRequired,
-    saveAsset,
-  ]);
+    if (status !== (asset.status || "active")) updates.status = status;
+    if (assetType !== (asset.asset_type || "")) updates.asset_type = assetType || null;
+    if (serialNumber !== (asset.serial_number || "")) updates.serial_number = serialNumber || null;
+    if (manufacturer !== (asset.manufacturer || "")) updates.manufacturer = manufacturer || null;
+    if (model !== (asset.model || "")) updates.model = model || null;
+    if (complianceRequired !== (asset.compliance_required ?? false)) updates.compliance_required = complianceRequired;
+    if (Object.keys(updates).length === 0) {
+      toast({ title: "No changes to save" });
+      return;
+    }
+    setIsSavingDetails(true);
+    try {
+      const ok = await saveAsset(updates);
+      if (ok) toast({ title: "Details saved" });
+    } finally {
+      setIsSavingDetails(false);
+    }
+  }, [assetId, asset, name, notes, conditionScore, status, assetType, serialNumber, manufacturer, model, complianceRequired, saveAsset, toast]);
 
   if (!assetId) return null;
 
@@ -358,470 +361,431 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     );
   }
 
+  const conditionScoreNum = parseInt(conditionScore, 10) || 0;
+  const riskScore = brainPred?.risk_score ?? Math.max(0, 100 - conditionScoreNum);
+  const riskLevel = riskScore >= 70 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
+  const nextAttentionDays = brainPred?.predicted_failure_days ?? 365;
+  const recommendedAction = brainPred?.recommended_action ?? "Schedule routine inspection within 90 days.";
+
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture">
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Details</DialogTitle>
             <DialogDescription>View and edit asset details</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-1 overflow-hidden flex-col">
+          <div className="flex flex-1 overflow-hidden flex-col bg-background bg-paper-texture">
+            {/* Hidden file inputs */}
+            <input ref={imageUploadInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileUpload} />
+            <input ref={fileUploadInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-card border-b border-border/20 p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                  aria-label="Close panel"
-                >
-                  <X className="h-5 w-5 text-muted-foreground" />
-                </button>
-              </div>
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <Package className="h-6 w-6 text-primary shrink-0" />
-                  <h1 className="text-2xl font-semibold text-foreground">{asset.name || "Unnamed Asset"}</h1>
-                  {asset.status && (
-                    <Badge
-                      variant={asset.status === "active" ? "success" : asset.status === "retired" ? "neutral" : "warning"}
-                    >
-                      {asset.status}
-                    </Badge>
-                  )}
-                  {asset.compliance_required && (
-                    <Badge variant="warning">Compliance</Badge>
-                  )}
-                  {(asset.open_tasks_count ?? 0) > 0 && (
-                    <Badge variant="neutral">{asset.open_tasks_count} open tasks</Badge>
-                  )}
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-5 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <button onClick={onClose} className="p-2 rounded-lg hover:bg-muted/50 transition-colors shrink-0" aria-label="Close">
+                    <X className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Package className="h-5 w-5 text-primary shrink-0" />
+                      <h1 className="text-xl font-semibold text-foreground truncate">{asset.name || "Unnamed Asset"}</h1>
+                      <Badge variant={asset.status === "active" ? "success" : asset.status === "retired" ? "neutral" : "warning"}>
+                        {asset.status?.toUpperCase() ?? "ACTIVE"}
+                      </Badge>
+                    </div>
+                    {(asset.property_name || asset.space_name) && (
+                      <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                        {[asset.property_name, asset.space_name].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <NeomorphicButton
-                    size="sm"
-                    className="h-8 px-3"
-                    onClick={handleDuplicate}
-                    disabled={isDuplicating}
-                    aria-label="Duplicate asset"
-                  >
-                    <Copy className="h-4 w-4 mr-1.5" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={handleDuplicate} disabled={isDuplicating} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
                     Duplicate
-                  </NeomorphicButton>
-                  <NeomorphicButton
-                    size="sm"
-                    className="h-8 px-3"
-                    onClick={() => setShowArchiveDialog(true)}
-                    disabled={asset.status === "retired"}
-                    aria-label="Archive asset"
-                  >
-                    <Archive className="h-4 w-4 mr-1.5" />
+                  </button>
+                  <span className="text-muted-foreground/50">·</span>
+                  <button onClick={() => setShowArchiveDialog(true)} disabled={asset.status === "retired"} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
                     Archive
-                  </NeomorphicButton>
-                  <NeomorphicButton
-                    size="sm"
-                    className="h-8 px-3 btn-neomorphic-destructive"
-                    onClick={() => setShowDeleteDialog(true)}
-                    aria-label="Delete asset"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1.5" />
+                  </button>
+                  <span className="text-muted-foreground/50">·</span>
+                  <button onClick={() => setShowDeleteDialog(true)} className="text-xs text-destructive hover:text-destructive/90 px-2 py-1 rounded transition-colors">
                     Delete
-                  </NeomorphicButton>
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs - Neumorphic like TaskPanel */}
             <div className="flex-1 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                <div className="sticky top-0 z-10 bg-card border-b border-border/20 px-6">
-                  <TabsList className="w-full grid grid-cols-6 h-12 bg-transparent p-1 rounded-xl shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]">
+                <div className="sticky top-0 z-10 bg-background/95 px-5 py-3">
+                  <TabsList
+                    className={cn(
+                      "w-full grid grid-cols-4 h-12 py-1 gap-1.5 rounded-[15px] bg-transparent",
+                      "shadow-[inset_2px_6.6px_9.4px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_5.8px_0px_rgba(255,255,255,0.62)]"
+                    )}
+                  >
                     <TabsTrigger
                       value="overview"
                       className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "rounded-[8px] transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
+                        "data-[state=active]:bg-card",
+                        "data-[state=inactive]:bg-transparent",
+                        "data-[state=inactive]:hover:bg-muted/20"
                       )}
                     >
                       <Package className="h-4 w-4 mr-2" />
                       Overview
                     </TabsTrigger>
                     <TabsTrigger
-                      value="tasks"
+                      value="activity"
                       className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "rounded-[8px] transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
+                        "data-[state=active]:bg-card",
+                        "data-[state=inactive]:bg-transparent",
+                        "data-[state=inactive]:hover:bg-muted/20"
                       )}
                     >
-                      <ListTodo className="h-4 w-4 mr-2" />
-                      Linked Tasks
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="inspections"
-                      className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
-                      )}
-                    >
-                      <ClipboardCheck className="h-4 w-4 mr-2" />
-                      Inspections
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="files"
-                      className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
-                      )}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Files
+                      <Activity className="h-4 w-4 mr-2" />
+                      Activity
                     </TabsTrigger>
                     <TabsTrigger
                       value="compliance"
                       className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "rounded-[8px] transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
+                        "data-[state=active]:bg-card",
+                        "data-[state=inactive]:bg-transparent",
+                        "data-[state=inactive]:hover:bg-muted/20"
                       )}
                     >
                       <Shield className="h-4 w-4 mr-2" />
                       Compliance
                     </TabsTrigger>
                     <TabsTrigger
-                      value="intelligence"
+                      value="graph"
                       className={cn(
-                        "rounded-lg bg-transparent data-[state=active]:bg-card",
+                        "rounded-[8px] transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=inactive]:hover:bg-muted/30"
+                        "data-[state=active]:bg-card",
+                        "data-[state=inactive]:bg-transparent",
+                        "data-[state=inactive]:hover:bg-muted/20"
                       )}
                     >
-                      <Brain className="h-4 w-4 mr-2" />
-                      Intelligence
+                      <Network className="h-4 w-4 mr-2" />
+                      Graph
                     </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <div className="flex-1 overflow-hidden flex flex-col p-6">
+                <div className="flex-1 overflow-hidden flex flex-col p-5">
                   <TabsContent value="overview" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="grid gap-6 max-w-2xl">
-                      <div className="flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="btn-neomorphic h-8 px-3"
-                            onClick={() => setShowAddFile(true)}
+                    <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5">
+                      {/* Left: Details + Timeline preview */}
+                      <div className="space-y-4">
+                        {/* Critical Info Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div
+                            className="rounded-lg p-3 shadow-e1 bg-card cursor-pointer hover:shadow-e2 transition-shadow"
+                            onClick={() => setDetailsExpanded(true)}
                           >
-                            <ImagePlus className="h-4 w-4 mr-1.5" />
-                            Add Image
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="btn-neomorphic h-8 px-3"
-                            onClick={() => setShowAddFile(true)}
-                          >
-                            <Upload className="h-4 w-4 mr-1.5" />
-                            Upload File
-                          </Button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab("files")}
-                          className="text-sm text-primary hover:underline flex items-center gap-1"
-                        >
-                          See more
-                          <ChevronRight className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Name</Label>
-                        <NeomorphicInput
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          placeholder="Asset name"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Type</Label>
-                          <Select value={assetType || "none"} onValueChange={(v) => setAssetType(v === "none" ? "" : v)}>
-                            <SelectTrigger className="input-neomorphic">
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">None</SelectItem>
-                              {ASSET_TYPES.map((t) => (
-                                <SelectItem key={t} value={t}>
-                                  {t}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Status</Label>
-                          <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="input-neomorphic">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STATUS_OPTIONS.map((o) => (
-                                <SelectItem key={o.value} value={o.value}>
-                                  {o.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Serial Number</Label>
-                          <NeomorphicInput
-                            value={serialNumber}
-                            onChange={(e) => setSerialNumber(e.target.value)}
-                            placeholder="e.g. ABC123"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Condition Score (0-100)</Label>
-                          <NeomorphicInput
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={conditionScore}
-                            onChange={(e) => setConditionScore(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Manufacturer</Label>
-                          <NeomorphicInput
-                            value={manufacturer}
-                            onChange={(e) => setManufacturer(e.target.value)}
-                            placeholder="Manufacturer"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Model</Label>
-                          <NeomorphicInput
-                            value={model}
-                            onChange={(e) => setModel(e.target.value)}
-                            placeholder="Model"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="compliance"
-                          checked={complianceRequired}
-                          onChange={(e) => setComplianceRequired(e.target.checked)}
-                          className="rounded"
-                        />
-                        <Label htmlFor="compliance">Compliance required</Label>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Notes</Label>
-                        <Textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Notes"
-                          className="input-neomorphic min-h-[80px]"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="tasks" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Tasks linked to this asset</h3>
-                        <Button
-                          size="sm"
-                          className="btn-accent-vibrant"
-                          onClick={() => {
-                            setShowCreateTask(true);
-                            onCreateTaskClick?.();
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create Task for this Asset
-                        </Button>
-                      </div>
-                      {tasksLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                      ) : tasks.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No tasks linked yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {tasks.map((t) => (
-                            <li
-                              key={t.id}
-                              className="p-3 rounded-[8px] bg-card shadow-e1 flex items-center justify-between"
-                            >
-                              <span className="font-medium">{t.title || "Untitled"}</span>
-                              <Badge variant={t.status === "completed" ? "success" : "neutral"}>{t.status}</Badge>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="inspections" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Inspection history</h3>
-                        <Button size="sm" variant="outline" onClick={() => setShowLogInspection(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Log Inspection
-                        </Button>
-                      </div>
-                      {inspectionsLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                      ) : inspections.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No inspections yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {inspections.map((i) => (
-                            <li
-                              key={i.id}
-                              className="p-3 rounded-[8px] bg-card shadow-e1 flex items-center justify-between"
-                            >
-                              <div>
-                                <span className="text-sm">
-                                  {i.inspection_date
-                                    ? new Date(i.inspection_date).toLocaleDateString()
-                                    : "—"}
-                                </span>
-                                {i.notes && (
-                                  <p className="text-xs text-muted-foreground mt-1">{i.notes}</p>
-                                )}
-                              </div>
-                              {i.condition_score != null && (
-                                <Badge variant={i.condition_score >= 80 ? "success" : i.condition_score >= 60 ? "warning" : "danger"}>
-                                  {i.condition_score}
-                                </Badge>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="files" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Files</h3>
-                        <div className="flex items-center gap-2">
-                          <input
-                            ref={fileUploadInputRef}
-                            type="file"
-                            multiple
-                            accept="image/*,.pdf,.doc,.docx"
-                            className="hidden"
-                            onChange={handleFileUpload}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="btn-neomorphic"
-                            onClick={() => fileUploadInputRef.current?.click()}
-                            disabled={isUploadingFile}
-                          >
-                            <Upload className="h-4 w-4 mr-2" />
-                            {isUploadingFile ? "Uploading..." : "Upload"}
-                          </Button>
-                          <Button size="sm" variant="outline" className="btn-neomorphic" onClick={() => setShowAddFile(true)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add URL
-                          </Button>
-                        </div>
-                      </div>
-                      {(() => {
-                        const imageFiles = files.filter((f) => {
-                          const t = (f.file_type || "").toLowerCase();
-                          const url = f.file_url || "";
-                          const ext = url.split(".").pop()?.toLowerCase();
-                          return (
-                            ["photo", "image", "certificate"].some((x) => t.includes(x)) ||
-                            ["jpg", "jpeg", "png", "gif", "webp"].includes(ext || "")
-                          );
-                        });
-                        const idx = Math.min(filesSliderIndex, Math.max(0, imageFiles.length - 1));
-                        return (
-                          <>
-                            {imageFiles.length > 0 && (
-                              <div className="rounded-xl overflow-hidden bg-muted/30 shadow-e1">
-                                <div className="relative aspect-video w-full">
-                                  <img
-                                    src={imageFiles[idx]?.file_url}
-                                    alt=""
-                                    className="w-full h-full object-contain"
-                                  />
-                                  {imageFiles.length > 1 && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => setFilesSliderIndex((i) => (i - 1 + imageFiles.length) % imageFiles.length)}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
-                                      >
-                                        ‹
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setFilesSliderIndex((i) => (i + 1) % imageFiles.length)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
-                                      >
-                                        ›
-                                      </button>
-                                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                                        {imageFiles.map((_, i) => (
-                                          <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => setFilesSliderIndex(i)}
-                                            className={cn(
-                                              "w-2 h-2 rounded-full transition-colors",
-                                              i === idx ? "bg-white" : "bg-white/50"
-                                            )}
-                                          />
-                                        ))}
-                                      </div>
-                                    </>
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Condition</p>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    conditionScoreNum >= 80 ? "bg-green-500" : conditionScoreNum >= 60 ? "bg-amber-500" : "bg-red-500"
                                   )}
+                                  style={{ width: `${conditionScoreNum}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold">{conditionScoreNum}%</span>
+                            </div>
+                          </div>
+                          <div className="rounded-lg p-3 shadow-e1 bg-card">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Risk</p>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={riskLevel === "HIGH" ? "destructive" : riskLevel === "MEDIUM" ? "warning" : "success"}>
+                                {riskLevel}
+                              </Badge>
+                              <span className="text-sm font-medium">({riskScore}%)</span>
+                            </div>
+                            <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  riskLevel === "HIGH" ? "bg-red-500" : riskLevel === "MEDIUM" ? "bg-amber-500" : "bg-green-500"
+                                )}
+                                style={{ width: `${riskScore}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="rounded-lg p-3 shadow-e1 bg-card">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">Next Attention</p>
+                            <span className="text-sm font-semibold">{nextAttentionDays}d</span>
+                          </div>
+                        </div>
+
+                        {/* Recommended Action Card */}
+                        <div className="rounded-lg p-4 shadow-e1 bg-card">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">Recommended next step</p>
+                          <p className="text-sm mb-3">{recommendedAction}</p>
+                          <Button size="sm" className="btn-accent-vibrant" onClick={() => setShowLogInspection(true)}>
+                            Log Inspection
+                          </Button>
+                        </div>
+
+                        {/* Collapsed Details */}
+                        <div className="rounded-lg shadow-e1 bg-card overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setDetailsExpanded(!detailsExpanded)}
+                            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                          >
+                            <span className="font-medium">Details</span>
+                            {detailsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
+                          {detailsExpanded && (
+                            <div className="px-4 pb-4 space-y-3 border-t border-border/20 pt-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Name</Label>
+                                  <NeomorphicInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Asset name" className="h-8" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Type</Label>
+                                  <Select value={assetType || "none"} onValueChange={(v) => setAssetType(v === "none" ? "" : v)}>
+                                    <SelectTrigger className="input-neomorphic h-8"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">None</SelectItem>
+                                      {ASSET_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Status</Label>
+                                  <Select value={status} onValueChange={setStatus}>
+                                    <SelectTrigger className="input-neomorphic h-8"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Condition (0-100)</Label>
+                                  <NeomorphicInput type="number" min="0" max="100" value={conditionScore} onChange={(e) => setConditionScore(e.target.value)} className="h-8" />
                                 </div>
                               </div>
-                            )}
-                            {filesLoading ? (
-                              <Skeleton className="h-24 w-full" />
-                            ) : files.length === 0 ? (
-                              <p className="text-sm text-muted-foreground">No files yet.</p>
-                            ) : (
-                              <ul className="space-y-2">
-                                {files.map((f) => (
-                                  <li key={f.id} className="p-3 rounded-[8px] bg-card shadow-e1">
-                                    <a
-                                      href={f.file_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-primary hover:underline"
-                                    >
-                                      {f.file_type || "File"}
-                                    </a>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Serial</Label>
+                                  <NeomorphicInput value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="e.g. ABC123" className="h-8" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Manufacturer</Label>
+                                  <NeomorphicInput value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} placeholder="Manufacturer" className="h-8" />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Model</Label>
+                                  <NeomorphicInput value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" className="h-8" />
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" id="compliance" checked={complianceRequired} onChange={(e) => setComplianceRequired(e.target.checked)} className="rounded" />
+                                <Label htmlFor="compliance" className="text-xs">Compliance required</Label>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Notes</Label>
+                                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="input-neomorphic min-h-[60px] text-sm" rows={2} />
+                              </div>
+                              <div className="pt-2">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveDetails}
+                                  disabled={isSavingDetails}
+                                  className="btn-accent-vibrant"
+                                >
+                                  {isSavingDetails ? "Saving..." : "Save"}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Risk & Forecast */}
+                      <div className="space-y-4">
+                        <div className="rounded-lg p-4 shadow-e1 bg-card">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Risk & Forecast</p>
+                          <p className="text-sm font-medium">Risk Level: {riskLevel}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Failure window: ~{nextAttentionDays} days</p>
+                          {brainPred?.benchmark_percentile != null && (
+                            <p className="text-xs text-muted-foreground mt-1">Compared to similar assets: {brainPred.benchmark_percentile}th percentile</p>
+                          )}
+                          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                riskLevel === "HIGH" ? "bg-red-500" : riskLevel === "MEDIUM" ? "bg-amber-500" : "bg-green-500"
+                              )}
+                              style={{ width: `${riskScore}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-2">Based on anonymised condition patterns across Filla.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex gap-1.5 p-1 rounded-lg bg-muted/30 shadow-e1">
+                          {(["all", "tasks", "inspections", "files"] as const).map((f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              onClick={() => setActivityFilter(f)}
+                              className={cn(
+                                "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                activityFilter === f ? "bg-card shadow-e1" : "text-muted-foreground hover:text-foreground"
+                              )}
+                            >
+                              {f === "all" ? "All" : f === "tasks" ? "Tasks" : f === "inspections" ? "Inspections" : "Files"}
+                            </button>
+                          ))}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" className="btn-accent-vibrant">
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Activity
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setShowLogInspection(true)}>
+                              <ClipboardCheck className="h-4 w-4 mr-2" />
+                              Log Inspection
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setShowCreateTask(true);
+                                onCreateTaskClick?.();
+                              }}
+                            >
+                              <ListTodo className="h-4 w-4 mr-2" />
+                              Create Task
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => fileUploadInputRef.current?.click()}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Upload File
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setShowAddFile(true)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Add URL
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Unified Timeline */}
+                      {(() => {
+                        type TimelineItem = { type: "inspection" | "task" | "file"; date: string; id: string; data: unknown };
+                        const items: TimelineItem[] = [];
+                        inspections.forEach((i) => {
+                          items.push({
+                            type: "inspection",
+                            date: i.inspection_date || "",
+                            id: i.id,
+                            data: i,
+                          });
+                        });
+                        tasks.forEach((t) => {
+                          items.push({
+                            type: "task",
+                            date: t.due_date || "",
+                            id: t.id,
+                            data: t,
+                          });
+                        });
+                        files.forEach((f) => {
+                          items.push({ type: "file", date: "", id: f.id, data: f });
+                        });
+                        items.sort((a, b) => {
+                          const da = a.date ? new Date(a.date).getTime() : 0;
+                          const db = b.date ? new Date(b.date).getTime() : 0;
+                          return db - da;
+                        });
+
+                        const filtered = items.filter((i) => {
+                          if (activityFilter === "all") return true;
+                          if (activityFilter === "tasks") return i.type === "task";
+                          if (activityFilter === "inspections") return i.type === "inspection";
+                          if (activityFilter === "files") return i.type === "file";
+                          return true;
+                        });
+
+                        if (inspectionsLoading || tasksLoading || filesLoading) {
+                          return <Skeleton className="h-32 w-full" />;
+                        }
+                        if (filtered.length === 0) {
+                          return <p className="text-sm text-muted-foreground py-4">No activity yet.</p>;
+                        }
+                        return (
+                          <ul className="space-y-2">
+                            {filtered.map((item) => (
+                              <li key={`${item.type}-${item.id}`} className="p-3 rounded-lg bg-card shadow-e1">
+                                {item.type === "inspection" && (
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <span className="text-sm font-medium">Inspection logged</span>
+                                      <span className="text-xs text-muted-foreground ml-2">
+                                        {(item.data as { inspection_date?: string }).inspection_date
+                                          ? new Date((item.data as { inspection_date: string }).inspection_date).toLocaleDateString()
+                                          : "—"}
+                                      </span>
+                                    </div>
+                                    {(item.data as { condition_score?: number }).condition_score != null && (
+                                      <Badge
+                                        variant={
+                                          (item.data as { condition_score: number }).condition_score >= 80
+                                            ? "success"
+                                            : (item.data as { condition_score: number }).condition_score >= 60
+                                            ? "warning"
+                                            : "danger"
+                                        }
+                                      >
+                                        {(item.data as { condition_score: number }).condition_score}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
+                                {item.type === "task" && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-medium">{(item.data as { title?: string }).title || "Untitled"}</span>
+                                    <Badge variant={(item.data as { status?: string }).status === "completed" ? "success" : "neutral"}>
+                                      {(item.data as { status?: string }).status}
+                                    </Badge>
+                                  </div>
+                                )}
+                                {item.type === "file" && (
+                                  <a
+                                    href={(item.data as { file_url?: string }).file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-primary hover:underline"
+                                  >
+                                    Document uploaded ({(item.data as { file_type?: string }).file_type || "File"})
+                                  </a>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
                         );
                       })()}
                     </div>
@@ -829,45 +793,89 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
 
                   <TabsContent value="compliance" className="mt-0 flex-1 overflow-y-auto">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Compliance related to this asset</h3>
-                        <Button size="sm" variant="outline" onClick={() => setShowLinkCompliance(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Link compliance item
-                        </Button>
+                      {/* Compliance Status Card */}
+                      <div className="rounded-lg p-4 shadow-e1 bg-card overflow-hidden">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="font-medium">Compliance Required: {complianceRequired ? "YES" : "NO"}</span>
+                        </div>
+                        {linkedCompliance.length > 0 ? (
+                          <>
+                            {(() => {
+                              const withDue = linkedCompliance
+                                .map((c) => (c as { next_due_date?: string }).next_due_date)
+                                .filter(Boolean) as string[];
+                              const soonest = withDue.sort()[0];
+                              return soonest ? (
+                                <p className="text-sm text-muted-foreground">
+                                  Next Due: {new Date(soonest).toLocaleDateString()}
+                                </p>
+                              ) : null;
+                            })()}
+                            <div
+                              className={cn(
+                                "h-1.5 rounded-full mt-2",
+                                linkedCompliance.some((c) => c.expiry_state === "expired")
+                                  ? "bg-red-500"
+                                  : linkedCompliance.some((c) => c.expiry_state === "expiring")
+                                  ? "bg-amber-500"
+                                  : "bg-green-500"
+                              )}
+                            />
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Status:{" "}
+                              {linkedCompliance.some((c) => c.expiry_state === "expired")
+                                ? "Needs attention"
+                                : linkedCompliance.some((c) => c.expiry_state === "expiring")
+                                ? "Expiring soon"
+                                : "On Track"}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No compliance schedule set.</p>
+                        )}
                       </div>
-                      {complianceLoading ? (
-                        <Skeleton className="h-24 w-full" />
-                      ) : linkedCompliance.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No compliance items linked yet.</p>
-                      ) : (
-                        <ul className="space-y-2">
-                          {linkedCompliance.map((c) => (
-                            <li
-                              key={c.id}
-                              className="p-3 rounded-[8px] bg-card shadow-e1 flex items-center justify-between"
-                            >
-                              <span className="font-medium">{c.title || "Untitled"}</span>
-                              <Badge
-                                variant={
-                                  c.expiry_state === "expired"
-                                    ? "destructive"
-                                    : c.expiry_state === "expiring"
-                                    ? "warning"
-                                    : "success"
-                                }
-                              >
-                                {c.expiry_state || "valid"}
-                              </Badge>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+
+                      {/* Recurring Checks */}
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Recurring Checks</h3>
+                        {complianceLoading ? (
+                          <Skeleton className="h-24 w-full" />
+                        ) : linkedCompliance.length === 0 ? (
+                          <div className="rounded-lg p-4 shadow-e1 bg-card text-center">
+                            <p className="text-sm text-muted-foreground mb-3">No compliance schedule set.</p>
+                            <Button size="sm" variant="outline" onClick={() => setShowLinkCompliance(true)}>
+                              Set up recurring check
+                            </Button>
+                          </div>
+                        ) : (
+                          <ul className="space-y-2">
+                            {linkedCompliance.map((c) => (
+                              <li key={c.id} className="p-3 rounded-lg bg-card shadow-e1 flex items-center justify-between">
+                                <span className="font-medium">{c.title || "Untitled"}</span>
+                                <Badge
+                                  variant={
+                                    c.expiry_state === "expired" ? "destructive" : c.expiry_state === "expiring" ? "warning" : "success"
+                                  }
+                                >
+                                  {c.expiry_state || "valid"}
+                                </Badge>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {linkedCompliance.length > 0 && (
+                          <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowLinkCompliance(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Link compliance item
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
-
-                  <TabsContent value="intelligence" className="mt-0 flex-1 overflow-y-auto">
-                    <AssetIntelligenceTab asset={asset} />
+                  <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
+                    {assetId && (
+                      <GraphTabContent start={{ type: "asset", id: assetId }} depth={3} />
+                    )}
                   </TabsContent>
                 </div>
               </Tabs>

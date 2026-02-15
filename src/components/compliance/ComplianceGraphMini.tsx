@@ -1,6 +1,6 @@
-import { useComplianceGraph } from "@/hooks/useComplianceGraph";
+import { useGraphQuery } from "@/hooks/useGraphQuery";
 import { cn } from "@/lib/utils";
-import { Shield, Building2, Package, User, FolderOpen } from "lucide-react";
+import { Shield, Building2, Package, User, FolderOpen, Flame } from "lucide-react";
 
 interface ComplianceGraphMiniProps {
   complianceDocumentId: string;
@@ -14,10 +14,14 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
   compliance: Shield,
   contractor: User,
   document: Shield,
+  hazard: Flame,
 };
 
 export function ComplianceGraphMini({ complianceDocumentId, className }: ComplianceGraphMiniProps) {
-  const { data: graph, isLoading } = useComplianceGraph(complianceDocumentId);
+  const { data: graph, isLoading } = useGraphQuery({
+    start: { type: "compliance", id: complianceDocumentId },
+    depth: 2,
+  });
 
   if (isLoading || !graph) return null;
   if (graph.nodes.length <= 1) return null;
@@ -36,7 +40,7 @@ export function ComplianceGraphMini({ complianceDocumentId, className }: Complia
                 className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-card shadow-e1 text-xs"
               >
                 <Icon className="h-3 w-3 text-muted-foreground" />
-                <span className="truncate max-w-[120px]">{node.label}</span>
+                <span className="truncate max-w-[120px]">{node.name ?? node.type}</span>
               </div>
             );
           })}

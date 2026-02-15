@@ -9,7 +9,8 @@ import { useSpaceComplianceQuery } from "@/hooks/useSpaceComplianceQuery";
 import { useSpaceDocumentsQuery } from "@/hooks/useSpaceDocumentsQuery";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
-import { FolderOpen, Package, Shield, FileText } from "lucide-react";
+import { FolderOpen, Package, Shield, FileText, Network } from "lucide-react";
+import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { cn } from "@/lib/utils";
 
 export default function SpaceDetailPage() {
@@ -58,11 +59,15 @@ export default function SpaceDetailPage() {
       maxWidth="lg"
     >
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-6 w-full grid grid-cols-4">
+        <TabsList className="mb-6 w-full grid grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="graph">
+            <Network className="h-4 w-4 mr-2" />
+            Graph
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 space-y-4">
@@ -185,6 +190,12 @@ export default function SpaceDetailPage() {
                 </a>
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="graph" className="mt-0">
+          {spaceId && (
+            <GraphTabContent start={{ type: "space", id: spaceId }} depth={3} />
           )}
         </TabsContent>
       </Tabs>
