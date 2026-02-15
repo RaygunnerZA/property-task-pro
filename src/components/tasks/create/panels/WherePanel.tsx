@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Chip } from "@/components/chips/Chip";
 import { IconPicker } from "@/components/ui/IconPicker";
+import { getAssetIcon } from "@/lib/icon-resolver";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
@@ -206,6 +207,13 @@ export function WherePanel({
     setCreating(true);
     try {
       await supabase.auth.refreshSession();
+      let iconName = propertyIcon || "home";
+      if (!propertyIcon) {
+        const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newPropertyName.trim() });
+        if (icons?.length && (icons[0] as { name?: string })?.name) {
+          iconName = (icons[0] as { name: string }).name;
+        }
+      }
       
       const { data, error } = await supabase
         .from("properties")
@@ -213,6 +221,7 @@ export function WherePanel({
           org_id: orgId,
           address: newPropertyName.trim(),
           nickname: newPropertyName.trim(),
+          icon_name: iconName,
         })
         .select("id")
         .single();
@@ -243,6 +252,13 @@ export function WherePanel({
     setCreating(true);
     try {
       await supabase.auth.refreshSession();
+      let iconName = spaceIcon || "home";
+      if (!spaceIcon) {
+        const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newSpaceName.trim() });
+        if (icons?.length && (icons[0] as { name?: string })?.name) {
+          iconName = (icons[0] as { name: string }).name;
+        }
+      }
       
       const { data, error } = await supabase
         .from("spaces")
@@ -250,6 +266,7 @@ export function WherePanel({
           org_id: orgId,
           property_id: primaryPropertyId,
           name: newSpaceName.trim(),
+          icon_name: iconName,
         })
         .select("id")
         .single();
@@ -419,17 +436,19 @@ export function WherePanel({
                   <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces...</p>
                 ) : filteredSpaces.length > 0 || ghostSpaces.length > 0 ? (
                   <>
-                    {filteredSpaces.map(space => (
+                    {filteredSpaces.map(space => {
+                      const SpaceIcon = getAssetIcon((space as { icon_name?: string }).icon_name);
+                      return (
                       <Chip
                         key={space.id}
                         role="filter"
                         label={space.name.toUpperCase()}
                         selected={spaceIds.includes(space.id)}
                         onSelect={() => toggleSpace(space.id)}
-                        icon={space.icon ? <span>{space.icon}</span> : undefined}
+                        icon={<SpaceIcon className="h-3.5 w-3.5" />}
                         className="shrink-0"
                       />
-                    ))}
+                    );})}
                     
                     {ghostSpaces.map((ghostName, idx) => {
                       const ghostId = `ghost-space-${ghostName}`;

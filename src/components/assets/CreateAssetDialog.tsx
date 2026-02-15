@@ -1,10 +1,12 @@
 /**
  * CreateAssetDialog - Standalone (system-scoped) add asset flow (Assets page, property context).
  * Creates a permanent asset in DB. Create Task uses AssetsSection for asset creation (same permanent entity; entry context is task-scoped).
+ * Uses ai_icon_search to infer icon from name + type.
  */
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +62,26 @@ export function CreateAssetDialog({
   }, [open, defaultName]);
   const [type, setType] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
+  const [iconName, setIconName] = useState("package");
   const [loading, setLoading] = useState(false);
+
+  const debouncedName = useDebounce(name, 400);
+  const debouncedType = useDebounce(type, 400);
+
+  useEffect(() => {
+    const terms = [debouncedName, debouncedType].filter(Boolean).join(" ");
+    if (!terms.trim()) {
+      setIconName("package");
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("ai_icon_search", { query_text: terms }).then(({ data }) => {
+      if (cancelled || !data?.length) return;
+      const first = data[0] as { name?: string };
+      if (first?.name) setIconName(first.name);
+    });
+    return () => { cancelled = true; };
+  }, [debouncedName, debouncedType]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -92,6 +113,7 @@ export function CreateAssetDialog({
         serial_number: serialNumber.trim() || null,
         condition_score: 100,
         status: "active",
+        icon_name: iconName || "package",
       })
       .select("id")
       .single();
@@ -107,6 +129,7 @@ export function CreateAssetDialog({
       setName("");
       setType("");
       setSerialNumber("");
+      setIconName("package");
       onOpenChange(false);
 
       // Refresh assets list and/or auto-select new asset
@@ -121,10 +144,10 @@ export function CreateAssetDialog({
 
   const handleClose = () => {
     if (!loading) {
-      // Reset form when closing
       setName("");
       setType("");
       setSerialNumber("");
+      setIconName("package");
       onOpenChange(false);
     }
   };

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { FolderOpen, CheckSquare, AlertTriangle } from "lucide-react";
+import { CheckSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAssetIcon } from "@/lib/icon-resolver";
 
 interface SpaceCardProps {
   space: {
@@ -8,6 +9,7 @@ interface SpaceCardProps {
     name?: string | null;
     type?: string | null;
     property_id?: string | null;
+    icon_name?: string | null;
     taskCount?: number;
     urgentTaskCount?: number;
   };
@@ -66,7 +68,10 @@ export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
             boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
           }}
         >
-          <FolderOpen className="h-4 w-4 text-white" />
+          {(() => {
+            const SpaceIcon = getAssetIcon(space.icon_name);
+            return <SpaceIcon className="h-4 w-4 text-white" />;
+          })()}
         </div>
         {/* Neumorphic overlay */}
         <div 

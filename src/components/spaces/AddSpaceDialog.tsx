@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -64,6 +65,22 @@ export function AddSpaceDialog({
   const [iconColor, setIconColor] = useState("#8EC9CE");
   const [loading, setLoading] = useState(false);
 
+  const debouncedName = useDebounce(name, 400);
+
+  useEffect(() => {
+    if (!debouncedName.trim()) {
+      setIconName("home");
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("ai_icon_search", { query_text: debouncedName }).then(({ data }) => {
+      if (cancelled || !data?.length) return;
+      const first = data[0] as { name?: string };
+      if (first?.name) setIconName(first.name);
+    });
+    return () => { cancelled = true; };
+  }, [debouncedName]);
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Space name is required");
@@ -105,6 +122,7 @@ export function AddSpaceDialog({
           org_id: orgId,
           property_id: propertyId,
           name: name.trim(),
+          icon_name: iconName || "home",
         })
         .select()
         .single();
