@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { CheckSquare } from "lucide-react";
+import { CheckSquare, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -13,17 +14,30 @@ type AssetViewRow = Tables<"assets_view">;
 const MAX_RECENT_CARDS = 8;
 const iconColor = "#8EC9CE";
 
+const PROPERTY_ICONS = {
+  home: Home,
+  building: Building2,
+  hotel: Hotel,
+  warehouse: Warehouse,
+  store: Store,
+  castle: Castle,
+} as const;
+
 interface RecentAssetCardProps {
   asset: AssetViewRow;
   imageUrl?: string;
+  property?: { icon_name?: string | null; icon_color_hex?: string | null } | null;
   onAssetClick?: (assetId: string) => void;
 }
 
-function RecentAssetCard({ asset, imageUrl, onAssetClick }: RecentAssetCardProps) {
+function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAssetCardProps) {
   const assetName = asset.name || asset.serial_number || "Unnamed Asset";
   const taskCount = asset.open_tasks_count ?? 0;
   const conditionScore = asset.condition_score ?? 100;
   const AssetIcon = getAssetIcon(asset.icon_name);
+  const propertyIconName = property?.icon_name || "home";
+  const PropertyIcon = PROPERTY_ICONS[propertyIconName as keyof typeof PROPERTY_ICONS] || Home;
+  const propColor = property?.icon_color_hex || iconColor;
 
   const getConditionLabel = (score: number) => {
     if (score >= 80) return "Good";
@@ -79,10 +93,11 @@ function RecentAssetCard({ asset, imageUrl, onAssetClick }: RecentAssetCardProps
             <AssetIcon className="h-8 w-8 text-white/80" />
           </div>
         )}
+        {/* Asset icon - circle top left of image thumbnail panel */}
         <div
-          className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10"
+          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10"
           style={{
-            backgroundColor: iconColor,
+            backgroundColor: propColor,
             width: "24px",
             height: "24px",
             boxShadow:
@@ -114,8 +129,19 @@ function RecentAssetCard({ asset, imageUrl, onAssetClick }: RecentAssetCardProps
           }}
         />
 
-        {/* Task count + Condition */}
+        {/* Property icon (left) + Task count + Condition */}
         <div className="flex items-center gap-2 flex-wrap mt-0">
+          <div
+            className="rounded-full flex items-center justify-center flex-shrink-0"
+            style={{
+              backgroundColor: propColor,
+              width: "20px",
+              height: "20px",
+              boxShadow: "2px 2px 4px rgba(0,0,0,0.08), -1px -1px 2px rgba(255,255,255,0.4)",
+            }}
+          >
+            <PropertyIcon className="h-3 w-3 text-white" />
+          </div>
           <span className="text-xs text-muted-foreground flex items-center gap-1">
             <CheckSquare className="h-3 w-3" />
             {taskCount} Task{taskCount !== 1 ? "s" : ""}
@@ -145,6 +171,8 @@ interface PropertyRecentAssetsListProps {
  */
 export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyRecentAssetsListProps) {
   const { data: assets = [], isLoading: assetsLoading } = useAssetsQuery(propertyId);
+  const { data: properties = [] } = usePropertiesQuery();
+  const property = useMemo(() => properties.find((p: any) => p.id === propertyId), [properties, propertyId]);
 
   const recentAssets = useMemo(() => {
     return [...assets]
@@ -196,6 +224,7 @@ export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyR
                     key={asset.id}
                     asset={asset}
                     imageUrl={asset.id ? imageMap.get(asset.id) : undefined}
+                    property={property}
                     onAssetClick={onAssetClick}
                   />
                 ))}

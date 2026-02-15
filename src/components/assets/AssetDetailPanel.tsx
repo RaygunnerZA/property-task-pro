@@ -2,7 +2,7 @@
  * AssetDetailPanel - Dialog for viewing and editing asset details.
  * Same pattern as TaskDetailPanel: Dialog + tabs (Overview, Linked Tasks, Inspections, Files).
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Package, ListTodo, ClipboardCheck, FileText, Plus, Shield, Brain, Copy, Trash2, Archive, ImagePlus, Upload, ChevronRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -28,6 +28,7 @@ import { useAssetComplianceQuery } from "@/hooks/useAssetComplianceQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
+import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -81,6 +82,8 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const [showLogInspection, setShowLogInspection] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
   const [showLinkCompliance, setShowLinkCompliance] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const fileUploadInputRef = useRef<HTMLInputElement>(null);
 
   // Editable Overview fields (local state)
   const [name, setName] = useState("");
@@ -177,8 +180,15 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     if (!assetId) return;
     setIsDeleting(true);
     try {
-      const { error } = await supabase.from("assets").delete().eq("id", assetId);
+      const { data, error } = await supabase
+        .from("assets")
+        .delete()
+        .eq("id", assetId)
+        .select("id");
       if (error) throw error;
+      if (!data?.length) {
+        throw new Error("Asset could not be deleted. You may not have permission.");
+      }
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["asset-detail"] });
       toast({ title: "Asset deleted" });
@@ -215,6 +225,74 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
       setIsArchiving(false);
     }
   }, [assetId, refresh, queryClient, toast]);
+
+  const isImageFile = (file: File) => {
+    const t = file.type?.toLowerCase() || "";
+    return t.startsWith("image/") || ["jpg", "jpeg", "png", "gif", "webp"].includes(file.name.split(".").pop()?.toLowerCase() || "");
+  };
+
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length || !assetId || !orgId) return;
+      setIsUploadingFile(true);
+      try {
+        for (const file of Array.from(files)) {
+          if (isImageFile(file)) {
+            const tempImage = await createTempImage(file);
+            const uuid = crypto.randomUUID();
+            const basePath = `org/${orgId}/assets/${assetId}/${uuid}`;
+            const thumbPath = `${basePath}/thumb.webp`;
+            const optPath = `${basePath}/optimized.webp`;
+            const { error: thumbError } = await supabase.storage
+              .from("task-images")
+              .upload(thumbPath, tempImage.thumbnail_blob, { contentType: "image/webp", cacheControl: "31536000" });
+            if (thumbError) throw thumbError;
+            const { error: optError } = await supabase.storage
+              .from("task-images")
+              .upload(optPath, tempImage.optimized_blob, { contentType: "image/webp", cacheControl: "31536000" });
+            if (optError) throw optError;
+            const { data: thumbUrl } = supabase.storage.from("task-images").getPublicUrl(thumbPath);
+            const { data: optUrl } = supabase.storage.from("task-images").getPublicUrl(optPath);
+            cleanupTempImage(tempImage);
+            const { error: insertErr } = await supabase.from("asset_files").insert({
+              asset_id: assetId,
+              file_url: optUrl.publicUrl,
+              thumbnail_url: thumbUrl.publicUrl,
+              file_type: "photo",
+            });
+            if (insertErr) throw insertErr;
+          } else {
+            const ext = file.name.split(".").pop() || "bin";
+            const path = `org/${orgId}/assets/${assetId}/${crypto.randomUUID()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from("task-images").upload(path, file, { cacheControl: "3600" });
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+            const { error: insertErr } = await supabase.from("asset_files").insert({
+              asset_id: assetId,
+              file_url: urlData.publicUrl,
+              file_type: file.type || ext,
+            });
+            if (insertErr) throw insertErr;
+          }
+        }
+        toast({ title: "File uploaded" });
+        refreshFiles();
+        queryClient.invalidateQueries({ queryKey: ["asset-files-for-list"] });
+        queryClient.invalidateQueries({ queryKey: ["assets"] });
+      } catch (err: unknown) {
+        toast({
+          title: "Upload failed",
+          description: err instanceof Error ? err.message : "Try again",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploadingFile(false);
+        e.target.value = "";
+      }
+    },
+    [assetId, orgId, refreshFiles, queryClient, toast]
+  );
 
   useEffect(() => {
     if (!assetId || !asset) return;
@@ -641,12 +719,32 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
 
                   <TabsContent value="files" className="mt-0 flex-1 overflow-y-auto">
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <h3 className="text-sm font-semibold text-muted-foreground">Files</h3>
-                        <Button size="sm" variant="outline" className="btn-neomorphic" onClick={() => setShowAddFile(true)}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add File
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <input
+                            ref={fileUploadInputRef}
+                            type="file"
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx"
+                            className="hidden"
+                            onChange={handleFileUpload}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-neomorphic"
+                            onClick={() => fileUploadInputRef.current?.click()}
+                            disabled={isUploadingFile}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            {isUploadingFile ? "Uploading..." : "Upload"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="btn-neomorphic" onClick={() => setShowAddFile(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add URL
+                          </Button>
+                        </div>
                       </div>
                       {(() => {
                         const imageFiles = files.filter((f) => {

@@ -82,9 +82,9 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
             <AssetIcon className="h-10 w-10 text-white/80" />
           </div>
         )}
-        {/* Property Icon - top left overlay */}
+        {/* Asset Icon - circle top left of image thumbnail panel */}
         <div
-          className="absolute top-2 left-2 rounded-[151px] flex items-center justify-center z-10"
+          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10"
           style={{
             backgroundColor: iconColor,
             width: "24px",
@@ -93,7 +93,7 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
               "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
           }}
         >
-          <PropertyIcon className="h-4 w-4 text-white" />
+          <AssetIcon className="h-4 w-4 text-white" />
         </div>
       </div>
 
@@ -103,8 +103,20 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
           {assetName}
         </h3>
 
-        {/* Chips: Space, Date added, Condition */}
+        {/* Chips: Property icon (left), Space, Date added, Condition */}
         <div className="mt-3 flex gap-2 flex-wrap items-center">
+          {/* Property icon - left on chip line */}
+          <div
+            className="rounded-full flex items-center justify-center flex-shrink-0"
+            style={{
+              backgroundColor: iconColor,
+              width: "24px",
+              height: "24px",
+              boxShadow: "2px 2px 4px rgba(0,0,0,0.08), -1px -1px 2px rgba(255,255,255,0.4)",
+            }}
+          >
+            <PropertyIcon className="h-3.5 w-3.5 text-white" />
+          </div>
           {spaceName && (
             <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
               {spaceName}

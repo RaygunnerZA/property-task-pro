@@ -3,7 +3,7 @@ import { useThemes } from "@/hooks/useThemes";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
-import { useSpaces } from "@/hooks/useSpaces";
+import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
 import { supabase } from "@/integrations/supabase/client";
 import { AssetCard } from "./AssetCard";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
@@ -71,6 +71,9 @@ export function AssetList({ propertyId }: AssetListProps = {}) {
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p.nickname || p.address]));
   }, [properties]);
+
+  const assetIds = useMemo(() => propertyAssets.map((a) => a.id).filter(Boolean) as string[], [propertyAssets]);
+  const { imageMap } = useAssetFilesForAssets(assetIds);
 
   // Filter assets based on selected filters
   const filteredAssets = useMemo(() => {
@@ -223,12 +226,15 @@ export function AssetList({ propertyId }: AssetListProps = {}) {
               : undefined);
             const spaceName = (asset as any).space_name;
 
+            const property = asset.property_id ? properties.find((p: any) => p.id === asset.property_id) : null;
             return (
               <AssetCard
                 key={asset.id}
                 asset={asset}
+                property={property}
                 propertyName={propertyName}
                 spaceName={spaceName}
+                imageUrl={asset.id ? imageMap.get(asset.id) : undefined}
                 onClick={() => {
                   // Navigate to asset detail when implemented
                   // navigate(`/assets/${asset.id}`);

@@ -23,7 +23,7 @@ export function useAssetFilesForAssets(assetIds: string[]) {
       if (assetIds.length === 0) return new Map<string, string>();
       const { data: rows, error } = await supabase
         .from("asset_files")
-        .select("asset_id, file_url, file_type")
+        .select("asset_id, file_url, thumbnail_url, file_type")
         .in("asset_id", assetIds)
         .order("uploaded_at", { ascending: false });
 
@@ -34,7 +34,9 @@ export function useAssetFilesForAssets(assetIds: string[]) {
       for (const row of rows ?? []) {
         if (seen.has(row.asset_id)) continue;
         if (isImageUrl(row.file_url, row.file_type)) {
-          map.set(row.asset_id, row.file_url);
+          // Prefer thumbnail for fast card display; fallback to file_url
+          const url = (row as { thumbnail_url?: string | null }).thumbnail_url || row.file_url;
+          map.set(row.asset_id, url);
           seen.add(row.asset_id);
         }
       }

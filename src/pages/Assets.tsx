@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Package, Plus, Search, ImagePlus, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
@@ -93,7 +94,7 @@ const Assets = () => {
   const [spaceId, setSpaceId] = useState("none");
   const [conditionScore, setConditionScore] = useState<string>("100");
   const [iconName, setIconName] = useState("package");
-  const [pendingFiles, setPendingFiles] = useState<{ id: string; file_url: string; file_type: string; displayName: string; isImage: boolean }[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<{ id: string; file_url: string; thumbnail_url?: string; file_type: string; displayName: string; isImage: boolean }[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -132,23 +133,55 @@ const Assets = () => {
     setIsUploadingFile(true);
     try {
       for (const file of Array.from(files)) {
-        const ext = file.name.split(".").pop() || "bin";
-        const path = `org/${orgId}/assets/pending/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("task-images")
-          .upload(path, file, { cacheControl: "3600", upsert: false });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
-        setPendingFiles((prev) => [
-          ...prev,
-          {
-            id: crypto.randomUUID(),
-            file_url: urlData.publicUrl,
-            file_type: asImage ? "photo" : (file.type || ext),
-            displayName: file.name,
-            isImage: asImage || isImageFile(file),
-          },
-        ]);
+        const isImg = asImage || isImageFile(file);
+        if (isImg) {
+          // Same fast process as task creation: generate thumb + optimized client-side, upload both
+          const tempImage = await createTempImage(file);
+          const uuid = crypto.randomUUID();
+          const basePath = `org/${orgId}/assets/pending/${uuid}`;
+          const thumbPath = `${basePath}/thumb.webp`;
+          const optPath = `${basePath}/optimized.webp`;
+          const { error: thumbError } = await supabase.storage
+            .from("task-images")
+            .upload(thumbPath, tempImage.thumbnail_blob, { contentType: "image/webp", cacheControl: "31536000" });
+          if (thumbError) throw thumbError;
+          const { error: optError } = await supabase.storage
+            .from("task-images")
+            .upload(optPath, tempImage.optimized_blob, { contentType: "image/webp", cacheControl: "31536000" });
+          if (optError) throw optError;
+          const { data: thumbUrl } = supabase.storage.from("task-images").getPublicUrl(thumbPath);
+          const { data: optUrl } = supabase.storage.from("task-images").getPublicUrl(optPath);
+          cleanupTempImage(tempImage);
+          setPendingFiles((prev) => [
+            ...prev,
+            {
+              id: uuid,
+              file_url: optUrl.publicUrl,
+              thumbnail_url: thumbUrl.publicUrl,
+              file_type: "photo",
+              displayName: file.name,
+              isImage: true,
+            },
+          ]);
+        } else {
+          const ext = file.name.split(".").pop() || "bin";
+          const path = `org/${orgId}/assets/pending/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("task-images")
+            .upload(path, file, { cacheControl: "3600", upsert: false });
+          if (uploadError) throw uploadError;
+          const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+          setPendingFiles((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              file_url: urlData.publicUrl,
+              file_type: file.type || ext,
+              displayName: file.name,
+              isImage: false,
+            },
+          ]);
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
@@ -203,6 +236,7 @@ const Assets = () => {
         const { error: fileErr } = await supabase.from("asset_files").insert({
           asset_id: newAsset.id,
           file_url: f.file_url,
+          thumbnail_url: f.thumbnail_url || null,
           file_type: f.file_type,
         });
         if (fileErr) console.warn("Failed to link file:", fileErr);
@@ -367,7 +401,7 @@ const Assets = () => {
                     >
                       {f.isImage ? (
                         <img
-                          src={f.file_url}
+                          src={f.thumbnail_url || f.file_url}
                           alt={f.displayName}
                           className="w-14 h-14 object-cover"
                         />
