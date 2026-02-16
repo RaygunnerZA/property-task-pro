@@ -231,10 +231,7 @@ export default function Dashboard() {
             id: 'create',
             title: 'Create Task',
             isExpanded: expandedSection === 'create',
-            onToggle: () => {
-              setExpandedSection((s) => (s === 'create' ? null : 'create'));
-              if (expandedSection !== 'create') setShowCreateTask(true);
-            },
+            onToggle: () => setExpandedSection((s) => (s === 'create' ? null : 'create')),
             children: (
               <CreateTaskModal
                 open={showCreateTask}
@@ -278,12 +275,13 @@ export default function Dashboard() {
             title: 'Filla AI',
             isExpanded: expandedSection === 'assistant',
             onToggle: () => {
-              if (expandedSection === 'assistant') {
-                closeAssistant();
-                setExpandedSection(null);
-              } else {
-                setExpandedSection('assistant');
-              }
+              setExpandedSection((s) => {
+                if (s === 'assistant') {
+                  closeAssistant();
+                  return null;
+                }
+                return 'assistant';
+              });
             },
             children: (
               <AssistantPanelBody

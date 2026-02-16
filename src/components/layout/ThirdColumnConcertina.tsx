@@ -5,6 +5,7 @@
  */
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 
 const PAPER_TEXTURE_STYLE = {
   backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
@@ -59,7 +60,12 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
                 !isFirst && "border-t-0"
               )}
             >
-              <h2 className="text-lg font-semibold text-[#85BABC]">{section.title}</h2>
+              <div className="flex items-center gap-2">
+                {section.id === "assistant" && (
+                  <FillaIcon size={20} className="shrink-0 text-[#85BABC]" />
+                )}
+                <h2 className="text-lg font-semibold text-[#85BABC]">{section.title}</h2>
+              </div>
               {isExpanded ? (
                 <ChevronUp className="h-5 w-5 text-[#85BABC] shrink-0" />
               ) : (

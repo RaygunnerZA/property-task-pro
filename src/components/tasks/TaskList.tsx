@@ -567,7 +567,7 @@ export function TaskList({
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}
-      <div className="flex-1 flex flex-nowrap min-h-0 max-h-[600px] overflow-y-auto rounded-[12px]">
+      <div className="flex-1 flex flex-col min-h-0 max-h-[600px] overflow-y-auto rounded-[12px]">
         {/* Show empty state if filters are active but no tasks match */}
         {hasActiveFilters && hasNoMatchingTasks ? (
           <EmptyState 
