@@ -565,11 +565,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         {/* Tabs - below description: Summary | Messaging | Activity */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
-            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0">
+            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
               <TabsTrigger
                 value="summary"
                 className={cn(
-                  "rounded-lg data-[state=active]:bg-card",
+                  "rounded-[8px] data-[state=active]:bg-card",
                   "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
                 )}
               >
@@ -579,7 +579,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <TabsTrigger
                 value="messaging"
                 className={cn(
-                  "rounded-lg data-[state=active]:bg-card",
+                  "rounded-[8px] data-[state=active]:bg-card",
                   "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
                 )}
               >
@@ -589,7 +589,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <TabsTrigger
                 value="activity"
                 className={cn(
-                  "rounded-lg data-[state=active]:bg-card",
+                  "rounded-[8px] data-[state=active]:bg-card",
                   "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
                 )}
               >

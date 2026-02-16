@@ -195,7 +195,7 @@ export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyR
   const { imageMap } = useAssetFilesForAssets(assetIds);
 
   return (
-    <div className="border-t border-border p-4 pb-3">
+    <div className="border-t border-border pt-4 px-2 pb-3">
       <h2 className="text-base font-semibold text-foreground mb-3">
         Recent Assets
       </h2>

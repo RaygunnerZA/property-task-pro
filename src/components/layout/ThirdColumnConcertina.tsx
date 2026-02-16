@@ -12,7 +12,7 @@ const PAPER_TEXTURE_STYLE = {
 };
 
 const SECTION_HEADER_CLASS = cn(
-  "px-4 pt-4 pb-4 w-full text-left",
+  "px-4 pt-3 pb-3 h-[55px] w-full text-left",
   "flex items-center justify-between gap-3",
   "bg-[linear-gradient(90deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0)_100%)] transition-colors hover:bg-[linear-gradient(90deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0)_100%)]",
   "shadow-[inset_-2px_-2px_3px_-2px_rgba(0,0,0,0.3),inset_2px_3px_2.5px_0px_rgba(255,255,255,0.4)]"

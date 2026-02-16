@@ -72,9 +72,9 @@ export function PropertyIdentityCard({
 
   return (
     <div className="sticky top-0 z-10 bg-background border-b border-border">
-      <div className="bg-card rounded-[8px] overflow-hidden shadow-e1 m-4">
+      <div className="bg-card rounded-[8px] overflow-hidden shadow-e1 my-4 mx-2">
         {/* Property Info */}
-        <div className="p-4 space-y-3">
+        <div className="px-[9px] py-4 space-y-3">
           {/* Contact Title */}
           <div>
             <h2 className="font-semibold text-lg text-foreground leading-tight">

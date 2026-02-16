@@ -699,7 +699,7 @@ if (!error) {
             <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
               {/* Calendar Section - Below contact card */}
               <div className="flex-shrink-0 w-full">
-                <div className="px-2 pt-4 pb-4 w-full">
+                <div className="px-2 pt-2 pb-2 w-full">
                   {tasksLoading ? (
                     <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
                       <div className="h-64 w-full bg-muted/50 rounded-lg animate-pulse" />
@@ -747,9 +747,9 @@ if (!error) {
             </div>
             
             <div className="p-[15px] space-y-6">
-              {/* Spaces Section */}
+              {/* Zones Section */}
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Spaces</h2>
+                <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
                 {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
               </div>
 

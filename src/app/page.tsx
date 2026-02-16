@@ -224,6 +224,7 @@ export default function Dashboard() {
 
   const thirdColumnContent = isLargeScreen ? (
     <div className="flex flex-col pt-[100px] pr-2 pb-0 pl-2 min-h-0">
+      <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-[21px]">Task Workbench</h2>
       <ThirdColumnConcertina
         sections={[
           {

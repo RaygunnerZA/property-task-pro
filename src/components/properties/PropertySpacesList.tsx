@@ -74,7 +74,7 @@ export function PropertySpacesList({
 
   return (
     <>
-      <div className="border-b border-border p-4 pb-3">
+      <div className="border-b border-border pt-4 px-2 pb-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-foreground">Recent Spaces</h2>
           <button
@@ -86,7 +86,7 @@ export function PropertySpacesList({
           </button>
         </div>
       </div>
-      <div className="pt-[2px] px-4 pb-4 w-full max-w-full overflow-x-hidden">
+      <div className="pt-[2px] px-2 pb-4 w-full max-w-full overflow-x-hidden">
         {spacesLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-20 w-full rounded-lg" />
