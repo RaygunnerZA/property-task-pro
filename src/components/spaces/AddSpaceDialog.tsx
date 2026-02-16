@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useDebounce } from "@/hooks/useDebounce";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,28 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { IconPicker } from "@/components/ui/IconPicker";
-import { ColorPicker } from "@/components/ui/ColorPicker";
+import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import { getAssetIcon } from "@/lib/icon-resolver";
 import { toast } from "sonner";
-import {
-  FolderOpen,
-  Home,
-  Building,
-  Wrench,
-  ShowerHead,
-  Bath,
-  CookingPot,
-  Bed,
-  Car,
-  Package,
-  Plug,
-  Lightbulb,
-  Flame,
-  Settings,
-  Sparkles,
-  ClipboardList,
-  Target,
-} from "lucide-react";
 
 interface AddSpaceDialogProps {
   open: boolean;
@@ -61,25 +41,9 @@ export function AddSpaceDialog({
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [propertyId, setPropertyId] = useState<string>(initialPropertyId || "");
-  const [iconName, setIconName] = useState("home");
+  const [iconName, setIconName] = useState("");
   const [iconColor, setIconColor] = useState("#8EC9CE");
   const [loading, setLoading] = useState(false);
-
-  const debouncedName = useDebounce(name, 400);
-
-  useEffect(() => {
-    if (!debouncedName.trim()) {
-      setIconName("home");
-      return;
-    }
-    let cancelled = false;
-    supabase.rpc("ai_icon_search", { query_text: debouncedName }).then(({ data }) => {
-      if (cancelled || !data?.length) return;
-      const first = data[0] as { name?: string };
-      if (first?.name) setIconName(first.name);
-    });
-    return () => { cancelled = true; };
-  }, [debouncedName]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -122,7 +86,7 @@ export function AddSpaceDialog({
           org_id: orgId,
           property_id: propertyId,
           name: name.trim(),
-          icon_name: iconName || "home",
+          icon_name: iconName || "box",
         })
         .select()
         .single();
@@ -138,7 +102,7 @@ export function AddSpaceDialog({
       if (!initialPropertyId) {
         setPropertyId("");
       }
-      setIconName("home");
+      setIconName("");
       setIconColor("#8EC9CE");
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -156,7 +120,7 @@ export function AddSpaceDialog({
       if (!initialPropertyId) {
         setPropertyId("");
       }
-      setIconName("home");
+      setIconName("");
       setIconColor("#8EC9CE");
       onOpenChange(false);
     }
@@ -169,29 +133,7 @@ export function AddSpaceDialog({
     }
   }, [initialPropertyId]);
 
-  // Get icon component for preview
-  const getIconComponent = () => {
-    const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-      home: Home,
-      building: Building,
-      wrench: Wrench,
-      shower: ShowerHead,
-      bath: Bath,
-      cooking: CookingPot,
-      bed: Bed,
-      car: Car,
-      package: Package,
-      plug: Plug,
-      lightbulb: Lightbulb,
-      flame: Flame,
-      settings: Settings,
-      sparkles: Sparkles,
-      clipboard: ClipboardList,
-      target: Target,
-    };
-    const IconComponent = iconMap[iconName] || FolderOpen;
-    return <IconComponent className="w-10 h-10 text-white" />;
-  };
+  const IconComponent = getAssetIcon(iconName || "box");
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -214,7 +156,7 @@ export function AddSpaceDialog({
                   "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
               }}
             >
-              {getIconComponent()}
+              <IconComponent className="w-10 h-10 text-white" />
             </div>
           </div>
 
@@ -254,17 +196,18 @@ export function AddSpaceDialog({
             />
           </div>
 
-          {/* Icon Selection */}
-          <div>
-            <Label className="mb-2 block">Choose an icon (optional)</Label>
-            <IconPicker value={iconName} onChange={setIconName} />
-          </div>
-
-          {/* Color Selection */}
-          <div>
-            <Label className="mb-2 block">Choose a color (optional)</Label>
-            <ColorPicker value={iconColor} onChange={setIconColor} />
-          </div>
+          {/* AI Icon + Color (5 each, empty until user types) */}
+          <AIIconColorPicker
+            searchText={name}
+            value={{ iconName, color: iconColor }}
+            onChange={(icon, color) => {
+              setIconName(icon);
+              setIconColor(color);
+            }}
+            defaultIcons={["door-open", "bed", "bath", "cooking-pot", "sofa"]}
+            fallbackSearch="room"
+            disabled={loading}
+          />
         </div>
 
         <DialogFooter>

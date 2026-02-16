@@ -73,6 +73,7 @@ interface CreateTaskModalProps {
   defaultAssetIds?: string[];
   prefill?: CreateTaskPrefill | null;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
+  headless?: boolean; // when true with variant="column", render only content (concertina provides header)
 }
 export function CreateTaskModal({
   open,
@@ -83,7 +84,8 @@ export function CreateTaskModal({
   defaultSpaceIds,
   defaultAssetIds,
   prefill,
-  variant = "modal"
+  variant = "modal",
+  headless = false,
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
   const {
@@ -1585,7 +1587,12 @@ export function CreateTaskModal({
       </div>
     </div>;
 
-  // For column variant on wide screens, render inline accordion (not Dialog)
+  // For column variant on wide screens: headless = content only (concertina provides header)
+  if (variant === "column" && headless) {
+    return <>{content}</>;
+  }
+
+  // For column variant with own accordion (standalone, not in concertina)
   if (variant === "column") {
     const accordionBodyId = "create-task-accordion-body";
     const isExpanded = open;

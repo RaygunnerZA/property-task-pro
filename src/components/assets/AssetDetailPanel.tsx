@@ -3,7 +3,7 @@
  * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Sparkles } from "lucide-react";
+import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Target, AlertTriangle, Zap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -52,7 +52,9 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
-import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { useGraphInsight } from "@/hooks/useGraphInsight";
+import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -82,6 +84,14 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const assetVector = { asset_type: asset?.asset_type, condition_score: asset?.condition_score, install_date: (asset as { install_date?: string })?.install_date };
   const { data: brainData } = useBrainInference(asset ? [assetVector] : [], [], automatedIntelligence !== "off");
   const brainPred = brainData?.predictions?.assets?.[0];
+  const {
+    centrality,
+    hazardExposure,
+    complianceInfluence,
+    taskImpact,
+    loading: graphInsightLoading,
+  } = useGraphInsight({ start: { type: "asset", id: assetId ?? "" }, depth: 3 });
+  const { openAssistant } = useAssistantContext();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -130,9 +140,15 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     async (updates: Record<string, unknown>): Promise<boolean> => {
       if (!assetId || Object.keys(updates).length === 0) return false;
       try {
-        const { error: err } = await supabase.from("assets").update(updates).eq("id", assetId);
+        const { data: updated, error: err } = await supabase
+          .from("assets")
+          .update(updates)
+          .eq("id", assetId)
+          .select("id")
+          .single();
         if (err) throw err;
-        refresh();
+        if (!updated) throw new Error("Update did not affect any rows. You may not have permission.");
+        await refresh();
         return true;
       } catch (e: unknown) {
         toast({
@@ -362,10 +378,6 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     );
   }
 
-  const conditionScoreNum = parseInt(conditionScore, 10) || 0;
-  const riskScore = brainPred?.risk_score ?? Math.max(0, 100 - conditionScoreNum);
-  const riskLevel = riskScore >= 70 ? "HIGH" : riskScore >= 40 ? "MEDIUM" : "LOW";
-  const nextAttentionDays = brainPred?.predicted_failure_days ?? 365;
   const recommendedAction = brainPred?.recommended_action ?? "Schedule routine inspection within 90 days.";
 
   return (
@@ -403,6 +415,13 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => assetId && openAssistant({ type: "asset", id: assetId, name: asset?.name })}
+                    className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                    aria-label="Open Assistant"
+                  >
+                    <FillaIcon size={16} />
+                  </button>
                   <button onClick={handleDuplicate} disabled={isDuplicating} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
                     Duplicate
                   </button>
@@ -468,19 +487,6 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                       Compliance
                     </TabsTrigger>
                     <TabsTrigger
-                      value="insights"
-                      className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=active]:bg-card",
-                        "data-[state=inactive]:bg-transparent",
-                        "data-[state=inactive]:hover:bg-muted/20"
-                      )}
-                    >
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Insights
-                    </TabsTrigger>
-                    <TabsTrigger
                       value="graph"
                       className={cn(
                         "rounded-[8px] transition-all text-sm font-medium",
@@ -498,52 +504,46 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
 
                 <div className="flex-1 overflow-hidden flex flex-col p-5">
                   <TabsContent value="overview" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-5">
-                      {/* Left: Details + Timeline preview */}
-                      <div className="space-y-4">
-                        {/* Critical Info Row */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div
-                            className="rounded-lg p-3 shadow-e1 bg-card cursor-pointer hover:shadow-e2 transition-shadow"
-                            onClick={() => setDetailsExpanded(true)}
-                          >
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Condition</p>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={cn(
-                                    "h-full rounded-full transition-all",
-                                    conditionScoreNum >= 80 ? "bg-green-500" : conditionScoreNum >= 60 ? "bg-amber-500" : "bg-red-500"
-                                  )}
-                                  style={{ width: `${conditionScoreNum}%` }}
-                                />
+                    <div className="space-y-4">
+                        {/* Graph insight blocks (Centrality, Hazard exposure, Compliance influence, Task impact) */}
+                        {graphInsightLoading ? (
+                          <Skeleton className="h-24 w-full rounded-lg" />
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="rounded-lg p-3 shadow-e1 bg-card">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Target className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-medium text-muted-foreground">Centrality</p>
                               </div>
-                              <span className="text-sm font-semibold">{conditionScoreNum}%</span>
+                              <p className="text-lg font-semibold">{(centrality * 100).toFixed(0)}%</p>
+                              <p className="text-[10px] text-muted-foreground">Operational importance</p>
+                            </div>
+                            <div className="rounded-lg p-3 shadow-e1 bg-card">
+                              <div className="flex items-center gap-2 mb-1">
+                                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                <p className="text-xs font-medium text-muted-foreground">Hazard exposure</p>
+                              </div>
+                              <p className="text-lg font-semibold">{hazardExposure.toFixed(1)}</p>
+                              <p className="text-[10px] text-muted-foreground">Weighted by distance</p>
+                            </div>
+                            <div className="rounded-lg p-3 shadow-e1 bg-card">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Shield className="h-4 w-4 text-teal-600" />
+                                <p className="text-xs font-medium text-muted-foreground">Compliance influence</p>
+                              </div>
+                              <p className="text-lg font-semibold">{complianceInfluence}</p>
+                              <p className="text-[10px] text-muted-foreground">Connected items</p>
+                            </div>
+                            <div className="rounded-lg p-3 shadow-e1 bg-card">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Zap className="h-4 w-4 text-muted-foreground" />
+                                <p className="text-xs font-medium text-muted-foreground">Task impact</p>
+                              </div>
+                              <p className="text-lg font-semibold">{taskImpact}</p>
+                              <p className="text-[10px] text-muted-foreground">Assets + compliance</p>
                             </div>
                           </div>
-                          <div className="rounded-lg p-3 shadow-e1 bg-card">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Risk</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={riskLevel === "HIGH" ? "destructive" : riskLevel === "MEDIUM" ? "warning" : "success"}>
-                                {riskLevel}
-                              </Badge>
-                              <span className="text-sm font-medium">({riskScore}%)</span>
-                            </div>
-                            <div className="mt-1 h-1 rounded-full bg-muted overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full",
-                                  riskLevel === "HIGH" ? "bg-red-500" : riskLevel === "MEDIUM" ? "bg-amber-500" : "bg-green-500"
-                                )}
-                                style={{ width: `${riskScore}%` }}
-                              />
-                            </div>
-                          </div>
-                          <div className="rounded-lg p-3 shadow-e1 bg-card">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">Next Attention</p>
-                            <span className="text-sm font-semibold">{nextAttentionDays}d</span>
-                          </div>
-                        </div>
+                        )}
 
                         {/* Recommended Action Card */}
                         <div className="rounded-lg p-4 shadow-e1 bg-card">
@@ -630,29 +630,6 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                             </div>
                           )}
                         </div>
-                      </div>
-
-                      {/* Right: Risk & Forecast */}
-                      <div className="space-y-4">
-                        <div className="rounded-lg p-4 shadow-e1 bg-card">
-                          <p className="text-xs font-medium text-muted-foreground mb-2">Risk & Forecast</p>
-                          <p className="text-sm font-medium">Risk Level: {riskLevel}</p>
-                          <p className="text-xs text-muted-foreground mt-1">Failure window: ~{nextAttentionDays} days</p>
-                          {brainPred?.benchmark_percentile != null && (
-                            <p className="text-xs text-muted-foreground mt-1">Compared to similar assets: {brainPred.benchmark_percentile}th percentile</p>
-                          )}
-                          <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                riskLevel === "HIGH" ? "bg-red-500" : riskLevel === "MEDIUM" ? "bg-amber-500" : "bg-green-500"
-                              )}
-                              style={{ width: `${riskScore}%` }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-muted-foreground mt-2">Based on anonymised condition patterns across Filla.</p>
-                        </div>
-                      </div>
                     </div>
                   </TabsContent>
 
@@ -885,11 +862,6 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                         )}
                       </div>
                     </div>
-                  </TabsContent>
-                  <TabsContent value="insights" className="mt-0 flex-1 overflow-y-auto">
-                    {assetId && (
-                      <GraphInsightPanel start={{ type: "asset", id: assetId }} depth={3} variant="full" />
-                    )}
                   </TabsContent>
                   <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
                     {assetId && (

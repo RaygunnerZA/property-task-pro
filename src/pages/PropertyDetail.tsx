@@ -14,6 +14,8 @@ import { useFileUpload } from "@/hooks/useFileUpload";
 import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
+import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
@@ -34,6 +36,8 @@ import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
@@ -174,25 +178,48 @@ export default function PropertyDetail() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  const [expandedSection, setExpandedSection] = useState<'create' | 'details' | 'assistant' | null>('create');
+  const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
   const { documents, isLoading: documentsLoading } = usePropertyDocuments(id || "");
 
 
-  // Track screen size for third column create task (lg breakpoint = 1024px)
+  // Track screen size for third column - match DualPaneLayout breakpoint (1380px)
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1024);
+      setIsLargeScreen(window.innerWidth >= 1380);
     };
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
 
+  // Sync concertina with AssistantContext: when openAssistant is called, expand assistant section
+  useEffect(() => {
+    if (assistantOpen && isLargeScreen) {
+      setExpandedSection('assistant');
+    }
+  }, [assistantOpen, isLargeScreen]);
+
+  // Keep showCreateTask in sync when Create Task section is expanded
+  useEffect(() => {
+    if (expandedSection === 'create') setShowCreateTask(true);
+  }, [expandedSection]);
+
   const handleOpenCreateTask = () => {
     setSelectedTaskId(null);
     setShowCreateTask(true);
+    if (isLargeScreen) setExpandedSection('create');
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    if (isLargeScreen) {
+      setShowCreateTask(false);
+      setExpandedSection('details');
+    }
+    setSelectedTaskId(taskId);
   };
 
   const handleCreateTaskOpenChange = (open: boolean) => {
@@ -529,6 +556,8 @@ if (!error) {
     backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
+  const { openAssistant } = useAssistantContext();
+
   // Header element that will be passed to DualPaneLayout (matching dashboard pattern)
   const headerElement = (
     <PageHeader>
@@ -544,25 +573,94 @@ if (!error) {
             <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
           </div>
         </div>
+        {id && (
+          <button
+            onClick={() => openAssistant({ type: "property", id, name: displayName })}
+            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+            aria-label="Open Assistant"
+          >
+            <FillaIcon size={20} className="brightness-0 invert" />
+          </button>
+        )}
       </div>
     </PageHeader>
   );
 
-  // Third column content - CreateTask accordion at top + insights below (matching dashboard pattern)
-  // DualPaneLayout handles responsive visibility (only shown on lg+ via CSS)
+  const detailsSectionTitle = selectedTaskId ? 'Task Details' : 'Property Insights';
+
+  // Third column content - concertina with Create Task, Details, Filla AI
   const thirdColumnContent = id ? (
-    <div className="flex flex-col gap-4 pt-[41px] pr-2 pb-0 pl-2">
-      <CreateTaskModal
-        open={showCreateTask}
-        onOpenChange={handleCreateTaskOpenChange}
-        onTaskCreated={handleTaskCreated}
-        defaultPropertyId={id}
-        variant="column"
-      />
-      <PropertyInsightsPanel
-        propertyId={id}
-        tasks={propertyTasks}
-        compliance={compliance}
+    <div className="flex flex-col pt-[100px] pr-2 pb-0 pl-2 min-h-0">
+      <ThirdColumnConcertina
+        sections={[
+          {
+            id: 'create',
+            title: 'Create Task',
+            isExpanded: expandedSection === 'create',
+            onToggle: () => {
+              setExpandedSection((s) => (s === 'create' ? null : 'create'));
+              if (expandedSection !== 'create') setShowCreateTask(true);
+            },
+            children: (
+              <CreateTaskModal
+                open={showCreateTask}
+                onOpenChange={(open) => {
+                  handleCreateTaskOpenChange(open);
+                  if (!open) setExpandedSection(null);
+                }}
+                onTaskCreated={handleTaskCreated}
+                defaultPropertyId={id}
+                variant="column"
+                headless
+              />
+            ),
+          },
+          {
+            id: 'details',
+            title: detailsSectionTitle,
+            isExpanded: expandedSection === 'details',
+            onToggle: () => setExpandedSection((s) => (s === 'details' ? null : 'details')),
+            children: selectedTaskId ? (
+              <TaskDetailPanel
+                taskId={selectedTaskId}
+                onClose={() => setSelectedTaskId(null)}
+                variant="column"
+              />
+            ) : (
+              <PropertyInsightsPanel
+                propertyId={id}
+                tasks={propertyTasks}
+                compliance={compliance}
+              />
+            ),
+          },
+          {
+            id: 'assistant',
+            title: 'Filla AI',
+            isExpanded: expandedSection === 'assistant',
+            onToggle: () => {
+              if (expandedSection === 'assistant') {
+                closeAssistant();
+                setExpandedSection(null);
+              } else {
+                setExpandedSection('assistant');
+              }
+            },
+            children: (
+              <AssistantPanelBody
+                context={assistantContext}
+                messages={messages}
+                proposedAction={proposedAction}
+                loading={loading}
+                onSendMessage={onSendMessage}
+                onConfirmAction={onConfirmAction}
+                onRejectAction={onRejectAction}
+                showContextHeader={true}
+                className="min-h-[200px]"
+              />
+            ),
+          },
+        ]}
       />
     </div>
   ) : undefined;
@@ -664,7 +762,7 @@ if (!error) {
                   properties={properties}
                   tasksLoading={tasksLoading}
                   selectedSpaceId={selectedSpaceId}
-                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+                  onTaskClick={handleTaskClick}
                   selectedTaskId={selectedTaskId || undefined}
                 />
               </div>
@@ -903,7 +1001,7 @@ if (!error) {
         </DialogContent>
       </Dialog>
 
-      {selectedTaskId && (
+      {selectedTaskId && !isLargeScreen && (
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
