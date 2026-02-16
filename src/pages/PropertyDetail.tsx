@@ -34,8 +34,6 @@ import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
-import { useAssistantContext } from "@/contexts/AssistantContext";
-import { FillaIcon } from "@/components/filla/FillaIcon";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
@@ -182,10 +180,10 @@ export default function PropertyDetail() {
   const { documents, isLoading: documentsLoading } = usePropertyDocuments(id || "");
 
 
-  // Track screen size for third column - match DualPaneLayout breakpoint (1380px)
+  // Track screen size for third column create task (lg breakpoint = 1024px)
   useEffect(() => {
     const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= 1380);
+      setIsLargeScreen(window.innerWidth >= 1024);
     };
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
@@ -195,11 +193,6 @@ export default function PropertyDetail() {
   const handleOpenCreateTask = () => {
     setSelectedTaskId(null);
     setShowCreateTask(true);
-  };
-
-  const handleTaskClick = (taskId: string) => {
-    if (isLargeScreen) setShowCreateTask(false); // Minimise Create Task when task selected
-    setSelectedTaskId(taskId);
   };
 
   const handleCreateTaskOpenChange = (open: boolean) => {
@@ -536,8 +529,6 @@ if (!error) {
     backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
-  const { openAssistant } = useAssistantContext();
-
   // Header element that will be passed to DualPaneLayout (matching dashboard pattern)
   const headerElement = (
     <PageHeader>
@@ -553,23 +544,14 @@ if (!error) {
             <h1 className="text-2xl font-semibold text-white leading-tight">{displayName}</h1>
           </div>
         </div>
-        {id && (
-          <button
-            onClick={() => openAssistant({ type: "property", id, name: displayName })}
-            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-            aria-label="Open Assistant"
-          >
-            <FillaIcon size={20} className="brightness-0 invert" />
-          </button>
-        )}
       </div>
     </PageHeader>
   );
 
-  // Third column content - Create Task under header, TaskDetailPanel below when task selected
-  // Create Task minimises when task is clicked (handleTaskClick sets showCreateTask false)
+  // Third column content - CreateTask accordion at top + insights below (matching dashboard pattern)
+  // DualPaneLayout handles responsive visibility (only shown on lg+ via CSS)
   const thirdColumnContent = id ? (
-    <div className="flex flex-col gap-4 pt-[100px] pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col gap-4 pt-[41px] pr-2 pb-0 pl-2">
       <CreateTaskModal
         open={showCreateTask}
         onOpenChange={handleCreateTaskOpenChange}
@@ -577,19 +559,11 @@ if (!error) {
         defaultPropertyId={id}
         variant="column"
       />
-      {selectedTaskId ? (
-        <TaskDetailPanel
-          taskId={selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-          variant="column"
-        />
-      ) : (
-        <PropertyInsightsPanel
-          propertyId={id}
-          tasks={propertyTasks}
-          compliance={compliance}
-        />
-      )}
+      <PropertyInsightsPanel
+        propertyId={id}
+        tasks={propertyTasks}
+        compliance={compliance}
+      />
     </div>
   ) : undefined;
 
@@ -690,7 +664,7 @@ if (!error) {
                   properties={properties}
                   tasksLoading={tasksLoading}
                   selectedSpaceId={selectedSpaceId}
-                  onTaskClick={handleTaskClick}
+                  onTaskClick={(taskId) => setSelectedTaskId(taskId)}
                   selectedTaskId={selectedTaskId || undefined}
                 />
               </div>
@@ -929,7 +903,7 @@ if (!error) {
         </DialogContent>
       </Dialog>
 
-      {selectedTaskId && !isLargeScreen && (
+      {selectedTaskId && (
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}

@@ -6,6 +6,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useFileUpload } from "@/hooks/useFileUpload";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -19,9 +20,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
-import { getAssetIcon } from "@/lib/icon-resolver";
-import { Upload, X } from "lucide-react";
+import {
+  Building2,
+  Home,
+  Hotel,
+  Warehouse,
+  Store,
+  Castle,
+  Upload,
+  X,
+} from "lucide-react";
+
+const PROPERTY_ICONS = [
+  { name: "home", icon: Home, label: "Home" },
+  { name: "building", icon: Building2, label: "Building" },
+  { name: "hotel", icon: Hotel, label: "Hotel" },
+  { name: "warehouse", icon: Warehouse, label: "Warehouse" },
+  { name: "store", icon: Store, label: "Store" },
+  { name: "castle", icon: Castle, label: "Castle" },
+];
+
+const PROPERTY_COLORS = [
+  "#FF6B6B", // Coral
+  "#4ECDC4", // Teal
+  "#45B7D1", // Sky Blue
+  "#96CEB4", // Sage
+  "#FFEAA7", // Yellow
+  "#DDA0DD", // Plum
+];
 
 interface AddPropertyDialogProps {
   open: boolean;
@@ -34,8 +60,8 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [address, setAddress] = useState("");
   const [nickname, setNickname] = useState("");
-  const [iconName, setIconName] = useState("");
-  const [iconColor, setIconColor] = useState("#8EC9CE");
+  const [iconName, setIconName] = useState("building");
+  const [iconColor, setIconColor] = useState("#FF6B6B");
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,7 +122,7 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
         p_org_id: orgId,
         p_address: finalAddress,
         p_nickname: nickname.trim() || null,
-        p_icon_name: iconName || "building",
+        p_icon_name: iconName,
         p_icon_color_hex: iconColor,
         p_thumbnail_url: null, // Will be set after thumbnail generation
       });
@@ -156,8 +182,8 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
       // Reset form
       setAddress("");
       setNickname("");
-      setIconName("");
-      setIconColor("#8EC9CE");
+      setIconName("building");
+      setIconColor("#FF6B6B");
       setPropertyImage(null);
       setImagePreview(null);
       if (fileInputRef.current) {
@@ -173,7 +199,7 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
     }
   };
 
-  const IconComponent = getAssetIcon(iconName || "building");
+  const SelectedIcon = PROPERTY_ICONS.find((i) => i.name === iconName)?.icon || Building2;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,46 +222,67 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
                   "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
               }}
             >
-              <IconComponent className="w-10 h-10 text-white" />
+              <SelectedIcon className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          {/* Property Name - first so AI can suggest icons as user types */}
-          <div className="grid gap-2">
-            <Label htmlFor="nickname">Property name *</Label>
-            <Input
-              id="nickname"
-              placeholder="The Grand Hotel"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              disabled={loading}
-            />
+          {/* Icon Selection */}
+          <div>
+            <Label className="mb-2 block">Choose an icon</Label>
+            <div className="flex justify-center gap-3 flex-wrap">
+              {PROPERTY_ICONS.map(({ name, icon: Icon }) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setIconName(name)}
+                  disabled={loading}
+                  className={`p-3 rounded-xl transition-all duration-200 ${
+                    iconName === name
+                      ? "bg-white shadow-lg scale-110"
+                      : "bg-muted hover:bg-white"
+                  }`}
+                  style={{
+                    boxShadow:
+                      iconName === name
+                        ? "2px 2px 6px rgba(0,0,0,0.15), -1px -1px 4px rgba(255,255,255,0.5)"
+                        : "inset 1px 1px 2px rgba(0,0,0,0.05)",
+                  }}
+                >
+                  <Icon
+                    className="w-5 h-5"
+                    style={{
+                      color: iconName === name ? iconColor : "#6D7480",
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Address */}
-          <div className="grid gap-2">
-            <Label htmlFor="address">Address (optional)</Label>
-            <Input
-              id="address"
-              placeholder="123 Main St, City, State ZIP"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              disabled={loading}
-            />
+          {/* Color Selection */}
+          <div>
+            <Label className="mb-2 block">Choose a color</Label>
+            <div className="flex justify-center gap-3 flex-wrap">
+              {PROPERTY_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setIconColor(color)}
+                  disabled={loading}
+                  className={`w-8 h-8 rounded-full transition-all duration-200 ${
+                    iconColor === color
+                      ? "scale-125 ring-2 ring-offset-2 ring-gray-400"
+                      : ""
+                  }`}
+                  style={{
+                    backgroundColor: color,
+                    boxShadow:
+                      "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 3px rgba(255,255,255,0.3)",
+                  }}
+                />
+              ))}
+            </div>
           </div>
-
-          {/* AI Icon + Color (5 each, empty until user types) */}
-          <AIIconColorPicker
-            searchText={nickname.trim() || address.trim()}
-            value={{ iconName, color: iconColor }}
-            onChange={(icon, color) => {
-              setIconName(icon);
-              setIconColor(color);
-            }}
-            defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
-            fallbackSearch="building"
-            disabled={loading}
-          />
 
           {/* Image Upload */}
           <div>
@@ -279,6 +326,29 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
             )}
           </div>
 
+          {/* Property Name */}
+          <div className="grid gap-2">
+            <Label htmlFor="nickname">Property name *</Label>
+            <Input
+              id="nickname"
+              placeholder="The Grand Hotel"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {/* Address */}
+          <div className="grid gap-2">
+            <Label htmlFor="address">Address (optional)</Label>
+            <Input
+              id="address"
+              placeholder="123 Main St, City, State ZIP"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              disabled={loading}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -289,8 +359,8 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
               // Reset form when closing
               setAddress("");
               setNickname("");
-              setIconName("");
-              setIconColor("#8EC9CE");
+              setIconName("building");
+              setIconColor("#FF6B6B");
               setPropertyImage(null);
               setImagePreview(null);
               if (fileInputRef.current) {

@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { toast } from "sonner";
 
 interface CreateAssetDialogProps {
@@ -62,8 +62,26 @@ export function CreateAssetDialog({
   }, [open, defaultName]);
   const [type, setType] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
-  const [iconName, setIconName] = useState("");
+  const [iconName, setIconName] = useState("package");
   const [loading, setLoading] = useState(false);
+
+  const debouncedName = useDebounce(name, 400);
+  const debouncedType = useDebounce(type, 400);
+
+  useEffect(() => {
+    const terms = [debouncedName, debouncedType].filter(Boolean).join(" ");
+    if (!terms.trim()) {
+      setIconName("package");
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("ai_icon_search", { query_text: terms }).then(({ data }) => {
+      if (cancelled || !data?.length) return;
+      const first = data[0] as { name?: string };
+      if (first?.name) setIconName(first.name);
+    });
+    return () => { cancelled = true; };
+  }, [debouncedName, debouncedType]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -95,7 +113,7 @@ export function CreateAssetDialog({
         serial_number: serialNumber.trim() || null,
         condition_score: 100,
         status: "active",
-        icon_name: iconName || "box",
+        icon_name: iconName || "package",
       })
       .select("id")
       .single();
@@ -111,7 +129,7 @@ export function CreateAssetDialog({
       setName("");
       setType("");
       setSerialNumber("");
-      setIconName("");
+      setIconName("package");
       onOpenChange(false);
 
       // Refresh assets list and/or auto-select new asset
@@ -129,12 +147,10 @@ export function CreateAssetDialog({
       setName("");
       setType("");
       setSerialNumber("");
-      setIconName("");
+      setIconName("package");
       onOpenChange(false);
     }
   };
-
-  const searchText = [name, type].filter(Boolean).join(" ").trim();
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -181,16 +197,6 @@ export function CreateAssetDialog({
               disabled={loading}
             />
           </div>
-
-          {/* AI Icon + Color (5 each, empty until user types) — assets use icon only; color for future */}
-          <AIIconColorPicker
-            searchText={searchText}
-            value={{ iconName, color: "#8EC9CE" }}
-            onChange={(icon) => setIconName(icon)}
-            defaultIcons={["package", "box", "wrench", "plug", "cpu"]}
-            fallbackSearch="asset"
-            disabled={loading}
-          />
         </div>
         <DialogFooter>
           <Button

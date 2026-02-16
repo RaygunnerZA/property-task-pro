@@ -7,14 +7,40 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
-import { getAssetIcon } from "@/lib/icon-resolver";
+import { IconColorPicker } from "@/components/design-system/IconColorPicker";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { 
+  Building2, 
+  Home, 
+  Hotel, 
+  Warehouse, 
+  Store, 
+  Castle,
+  Upload,
+  X
+} from "lucide-react";
+
+const PROPERTY_ICONS = [
+  { name: "home", icon: Home, label: "Home" },
+  { name: "building", icon: Building2, label: "Building" },
+  { name: "hotel", icon: Hotel, label: "Hotel" },
+  { name: "warehouse", icon: Warehouse, label: "Warehouse" },
+  { name: "store", icon: Store, label: "Store" },
+  { name: "castle", icon: Castle, label: "Castle" },
+];
+
+const PROPERTY_COLORS = [
+  "#FF6B6B", // Coral
+  "#4ECDC4", // Teal
+  "#45B7D1", // Sky Blue
+  "#96CEB4", // Sage
+  "#FFEAA7", // Yellow
+  "#DDA0DD", // Plum
+];
 
 export default function AddPropertyScreen() {
   const navigate = useNavigate();
@@ -187,8 +213,8 @@ export default function AddPropertyScreen() {
         p_org_id: orgId,
         p_address: finalAddress,
         p_nickname: propertyNickname?.trim() || null,
-        p_icon_name: propertyIcon || "building",
-        p_icon_color_hex: propertyIconColor || "#8EC9CE",
+        p_icon_name: null,
+        p_icon_color_hex: null,
         p_thumbnail_url: null,
       });
 
@@ -224,7 +250,7 @@ export default function AddPropertyScreen() {
     navigate("/onboarding/add-spaces");
   };
 
-  const IconComponent = getAssetIcon(propertyIcon || "building");
+  const SelectedIcon = PROPERTY_ICONS.find(i => i.name === propertyIcon)?.icon || Building2;
 
   const stepIcon = (
     <div
@@ -234,7 +260,7 @@ export default function AddPropertyScreen() {
         boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
       }}
     >
-      <IconComponent className="w-10 h-10 text-white" />
+      <SelectedIcon className="w-10 h-10 text-white" />
     </div>
   );
 
@@ -257,8 +283,21 @@ export default function AddPropertyScreen() {
           showLogout={false}
         />
 
-        {/* Property name + Property photo (optional) on same row — name first so AI suggests icons */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        {/* Icon + Colour selector (magnetic horizontal scroll) */}
+        <div className="mb-6">
+          <IconColorPicker
+            value={{ icon: propertyIcon, color: propertyIconColor }}
+            onChange={({ icon, color }) => {
+              setPropertyIcon(icon);
+              setPropertyIconColor(color);
+            }}
+            icons={PROPERTY_ICONS}
+            colors={PROPERTY_COLORS}
+          />
+        </div>
+
+        {/* Property name + Property photo (optional) on same row */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
             <NeomorphicInput
               label="Property name"
@@ -307,21 +346,6 @@ export default function AddPropertyScreen() {
               </button>
             )}
           </div>
-        </div>
-
-        {/* AI Icon + Color (5 each, empty until user types) */}
-        <div className="mb-6">
-          <AIIconColorPicker
-            searchText={propertyNickname.trim() || propertyAddress?.trim() || ""}
-            value={{ iconName: propertyIcon, color: propertyIconColor }}
-            onChange={(icon, color) => {
-              setPropertyIcon(icon);
-              setPropertyIconColor(color);
-            }}
-            defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
-            fallbackSearch="building"
-            disabled={loading}
-          />
         </div>
 
         <div className="space-y-4">

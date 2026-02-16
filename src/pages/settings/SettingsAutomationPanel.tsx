@@ -5,8 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Zap, ChevronDown, ChevronUp, HelpCircle, Brain, Shield, Sparkles, ImageIcon } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { Loader2, Zap, ChevronDown, ChevronUp, HelpCircle, Brain, Shield, Sparkles } from "lucide-react";
 import { useOrgSettings, type AutomationMode, type AutoTaskLevel } from "@/hooks/useOrgSettings";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,12 +44,10 @@ const TASK_LEVELS: { value: AutoTaskLevel; label: string }[] = [
 ];
 
 export default function SettingsAutomationPanel() {
-  const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
   const { settings, updateSettings, isUpdating } = useOrgSettings();
   const [runningAutomation, setRunningAutomation] = useState(false);
   const [extracting, setExtracting] = useState(false);
-  const [backfillingIcons, setBackfillingIcons] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     task: true,
     contractor: true,
@@ -511,41 +508,6 @@ export default function SettingsAutomationPanel() {
                     <SelectItem value="empty">Empty</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={backfillingIcons}
-                  onClick={async () => {
-                    setBackfillingIcons(true);
-                    try {
-                      const { data, error } = await supabase.rpc("backfill_entity_icons");
-                      if (error) throw error;
-                      const assets = (data as { assets_updated?: number })?.assets_updated ?? 0;
-                      const spaces = (data as { spaces_updated?: number })?.spaces_updated ?? 0;
-                      queryClient.invalidateQueries({ queryKey: ["assets"] });
-                      queryClient.invalidateQueries({ queryKey: ["spaces"] });
-                      toast.success(`Icons updated: ${assets} assets, ${spaces} spaces (e.g. toilet → toilet icon)`);
-                    } catch (err: any) {
-                      toast.error(err.message || "Failed to backfill icons");
-                    } finally {
-                      setBackfillingIcons(false);
-                    }
-                  }}
-                >
-                  {backfillingIcons ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <ImageIcon className="mr-2 h-4 w-4" />
-                      Backfill icons for assets & spaces
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
           </CardContent>

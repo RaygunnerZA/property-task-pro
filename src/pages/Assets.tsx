@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
@@ -39,7 +40,6 @@ import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { Chip } from "@/components/chips/Chip";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
@@ -93,11 +93,29 @@ const Assets = () => {
   const [propertyId, setPropertyId] = useState("");
   const [spaceId, setSpaceId] = useState("none");
   const [conditionScore, setConditionScore] = useState<string>("100");
-  const [iconName, setIconName] = useState("");
+  const [iconName, setIconName] = useState("package");
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file_url: string; thumbnail_url?: string; file_type: string; displayName: string; isImage: boolean }[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const debouncedName = useDebounce(name, 400);
+  const debouncedType = useDebounce(type, 400);
+
+  useEffect(() => {
+    const terms = [debouncedName, debouncedType].filter(Boolean).join(" ");
+    if (!terms.trim()) {
+      setIconName("package");
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("ai_icon_search", { query_text: terms }).then(({ data }) => {
+      if (cancelled || !data?.length) return;
+      const first = data[0] as { name?: string };
+      if (first?.name) setIconName(first.name);
+    });
+    return () => { cancelled = true; };
+  }, [debouncedName, debouncedType]);
 
   const handlePropertyChange = (value: string) => {
     setPropertyId(value);
@@ -206,7 +224,7 @@ const Assets = () => {
           serial_number: serial.trim() || null,
           condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
           status: "active",
-          icon_name: iconName || "box",
+          icon_name: iconName || "package",
         })
         .select("id")
         .single();
@@ -232,7 +250,7 @@ const Assets = () => {
       setPropertyId("");
       setSpaceId("none");
       setConditionScore("100");
-      setIconName("");
+      setIconName("package");
       setPendingFiles([]);
       queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (err: unknown) {
@@ -487,14 +505,6 @@ const Assets = () => {
                   onChange={(e) => setConditionScore(e.target.value)}
                 />
               </div>
-              <AIIconColorPicker
-                searchText={[name, type].filter(Boolean).join(" ").trim()}
-                value={{ iconName, color: "#8EC9CE" }}
-                onChange={(icon) => setIconName(icon)}
-                defaultIcons={["package", "box", "wrench", "plug", "cpu"]}
-                fallbackSearch="asset"
-                disabled={isSaving}
-              />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSaving} className="input-neomorphic">

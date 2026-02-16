@@ -12,14 +12,11 @@ import { ComplianceCard } from "@/components/compliance/ComplianceCard";
 import { FolderOpen, Package, Shield, FileText, Network, Sparkles } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
-import { useAssistantContext } from "@/contexts/AssistantContext";
-import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
 
 export default function SpaceDetailPage() {
   const { propertyId, spaceId } = useParams<{ propertyId: string; spaceId: string }>();
   const navigate = useNavigate();
-  const { openAssistant } = useAssistantContext();
   const { data: space, isLoading: spaceLoading } = useSpaceDetail(spaceId);
   const { data: compliance = [], isLoading: complianceLoading } = useSpaceComplianceQuery(spaceId);
   const { data: documents = [], isLoading: documentsLoading } = useSpaceDocumentsQuery(spaceId, propertyId);
@@ -61,17 +58,6 @@ export default function SpaceDetailPage() {
       backTo={`/properties/${propertyId}`}
       icon={<FolderOpen className="h-6 w-6" />}
       maxWidth="lg"
-      action={
-        spaceId && (
-          <button
-            onClick={() => openAssistant({ type: "space", id: spaceId, name: spaceName })}
-            className="p-2 rounded-lg bg-card shadow-e1 hover:shadow-e2 transition-shadow"
-            aria-label="Open Assistant"
-          >
-            <FillaIcon size={20} />
-          </button>
-        )
-      }
     >
       <Tabs defaultValue="overview" className="w-full">
         <TabsList className="mb-6 w-full grid grid-cols-6">
