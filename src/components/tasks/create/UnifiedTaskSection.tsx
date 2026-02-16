@@ -24,7 +24,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/chips/Chip";
+import { FactChipView } from "@/components/chips/FactChipView";
+import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
 import { Input } from "@/components/ui/input";
 
 interface DropdownItem {
@@ -161,29 +162,24 @@ export function UnifiedTaskSection({
             "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
           )}
         >
-          {/* Metadata Chips (fact role) - Only resolved entities that persist to task metadata */}
-          {/* ADD RESOLUTION RULE: "Add" chips (space/asset with blockingRequired && !resolvedEntityId) must NOT appear here */}
-          {/* Action chips must NOT appear here - they belong in verb chips clarity block */}
+          {/* Fact + Interactive chips only (no ghost style) */}
           <div className="flex items-center gap-1.5 flex-nowrap justify-center min-w-0 text-sm">
             {hasChips && activeChips.map(chip => (
-              <Chip
+              <FactChipView
                 key={chip.id}
-                role="fact"
                 label={chip.label}
-                icon={chip.icon}
                 onRemove={chip.onRemove}
+                onPress={undefined}
                 className="shrink-0"
               />
             ))}
-            {/* Suggestion chips for unresolved entities (action chips appear here or in verb clarity block) */}
             {suggestionChips.map(chip => (
-              <Chip
+              <InteractiveChipView
                 key={chip.id}
-                role="suggestion"
                 label={`Add ${chip.label}`}
-                onSelect={chip.onSelect}
+                kind="suggestion"
+                onPress={chip.onSelect ?? (() => {})}
                 className="shrink-0"
-                animate={true}
               />
             ))}
           </div>

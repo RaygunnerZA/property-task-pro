@@ -13,7 +13,8 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { SuggestedChip, GhostGroup, ChipState, ChipType } from '@/types/chip-suggestions';
 import { FillaIcon } from '@/components/filla/FillaIcon';
-import { Chip } from '@/components/chips/Chip';
+import { FactChipView } from '@/components/chips/FactChipView';
+import { InteractiveChipView } from '@/components/chips/InteractiveChipView';
 import { 
   MapPin, 
   User, 
@@ -168,20 +169,14 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
                 
                 // Render as fact chip (AI-pre-filled have subtle styling to reduce visual dominance)
                 return (
-                  <Chip
+                  <FactChipView
                     key={chip.id}
-                    role="fact"
                     label={chip.label.toUpperCase()}
+                    pending={isAIPreFilled}
                     onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
-                    aiPreFilled={isAIPreFilled}
-                    animate={true}
                     className={cn(
                       'animate-in fade-in slide-in-from-bottom-1'
                     )}
-                    style={{
-                      animationDelay: `${index * 20}ms`,
-                      animationDuration: '120ms'
-                    }}
                   />
                 );
               })}
@@ -197,19 +192,15 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
             // Render as verb chip (white bg, dashed border, orange text, no shadow, no removal)
             const verbLabel = generateVerbLabel(chip);
             return (
-              <Chip
+              <InteractiveChipView
                 key={chip.id}
-                role="verb"
                 label={verbLabel}
-                onSelect={() => onChipSelect(chip)}
-                animate={true}
+                kind="action"
+                blocking
+                onPress={() => onChipSelect(chip)}
                 className={cn(
                   'animate-in fade-in slide-in-from-bottom-1'
                 )}
-                style={{
-                  animationDelay: `${(factChips.length + index) * 20}ms`,
-                  animationDuration: '120ms'
-                }}
               />
             );
           })}

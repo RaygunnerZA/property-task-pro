@@ -8,9 +8,11 @@
  * - Vertical expansion downward, not centered
  */
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/chips/Chip";
+import { ChipStrip } from "@/components/chips/ChipStrip";
+import { suggestedChipToChipData } from "@/lib/task-chip-utils";
+import type { ChipData } from "@/types/task-chip";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 
 export interface CreateTaskRowProps {
@@ -96,6 +98,39 @@ export function CreateTaskRow({
 
   const showInstruction = isActive || isHovered;
 
+  // Convert to ChipData and merge for ChipStrip (contract: fact, interactive only)
+  const chipData = useMemo((): ChipData[] => {
+    const facts: ChipData[] = factChips.map((c) =>
+      suggestedChipToChipData(c)
+    );
+    const verbs: ChipData[] = verbChips.map((c) =>
+      suggestedChipToChipData(c, { verbLabel: c.label })
+    );
+    const suggested: ChipData[] = suggestedChips.map((c) =>
+      suggestedChipToChipData(c)
+    );
+    return [...facts, ...verbs, ...suggested];
+  }, [factChips, verbChips, suggestedChips]);
+
+  const handleChipPress = (chip: ChipData) => {
+    if (chip.variant === "fact") {
+      onActivate();
+      return;
+    }
+    const original = [...verbChips, ...suggestedChips].find((c) => c.id === chip.id);
+    if (!original) return;
+    if (chip.variant === "interactive" && chip.blocking) {
+      onVerbChipClick?.(original);
+    } else {
+      onSuggestionClick?.(original);
+    }
+  };
+
+  const handleChipRemove = (chip: ChipData) => {
+    const original = factChips.find((c) => c.id === chip.id);
+    if (original && onChipRemove) onChipRemove(original);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -118,44 +153,15 @@ export function CreateTaskRow({
           {icon}
         </div>
 
-        {/* Fact chips + verb chips + suggested chips - positioned BEFORE instruction text */}
-        {(factChips.length > 0 || verbChips.length > 0 || suggestedChips.length > 0) && (
-          <div className="flex flex-shrink-0 items-center gap-1.5 flex-wrap">
-            {factChips.map((chip) => {
-              const isAIPreFilled = chip.resolvedEntityId && (chip.source === "rule" || chip.source === "ai" || chip.source === "fallback");
-              return (
-                <Chip
-                  key={chip.id}
-                  role="fact"
-                  label={chip.label.toUpperCase()}
-                  onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
-                  aiPreFilled={isAIPreFilled}
-                  animate={false}
-                  className="font-mono text-[11px] rounded-[8px] h-[24px] bg-white"
-                />
-              );
-            })}
-            {/* Verb chips - unresolved action chips (e.g., "INVITE FRANK", "ADD COTTAGE") */}
-            {verbChips.map((chip) => (
-              <Chip
-                key={chip.id}
-                role="verb"
-                label={chip.label}
-                onSelect={onVerbChipClick ? () => onVerbChipClick(chip) : undefined}
-                animate={false}
-                className="font-mono text-[11px] rounded-[8px] h-[24px] border-2 border-dashed border-amber-500/70 bg-transparent text-amber-700"
-              />
-            ))}
-            {suggestedChips.map((chip) => (
-              <Chip
-                key={chip.id}
-                role="suggestion"
-                label={chip.label.toUpperCase()}
-                onSelect={onSuggestionClick ? () => onSuggestionClick(chip) : undefined}
-                animate={false}
-                className="font-mono text-[11px] rounded-[8px] h-[24px] border-2 border-dashed border-muted-foreground/50 bg-transparent"
-              />
-            ))}
+        {/* ChipStrip: fact + interactive only (no ghost, no third surface) */}
+        {chipData.length > 0 && (
+          <div className="flex flex-shrink-0 items-center min-w-0">
+            <ChipStrip
+              chips={chipData}
+              onChipPress={handleChipPress}
+              onChipRemove={handleChipRemove}
+              className="shrink-0"
+            />
           </div>
         )}
 

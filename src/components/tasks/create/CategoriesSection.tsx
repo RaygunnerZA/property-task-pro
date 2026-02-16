@@ -11,7 +11,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Chip } from "@/components/chips/Chip";
+import { FactChipView } from "@/components/chips/FactChipView";
+import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useCategories } from "@/hooks/useCategories";
@@ -185,31 +186,28 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
       </div>
 
       <div className="space-y-2">
-        {/* Row 1: AI Suggestions (if any) */}
+        {/* Row 1: Interactive chips (suggested categories - no ghost style) */}
         {ghostCategories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {ghostCategories.map((ghostName, idx) => (
-              <Chip
-                key={`ghost-${idx}`}
-                role="suggestion"
-                label={`+ ${ghostName.toUpperCase()}`}
-                onSelect={() => handleGhostCategoryClick(ghostName)}
-                animate={true}
+              <InteractiveChipView
+                key={`suggest-${idx}`}
+                label={`Add ${ghostName}`.toUpperCase()}
+                kind="create"
+                onPress={() => handleGhostCategoryClick(ghostName)}
               />
             ))}
           </div>
         )}
 
-        {/* Row 2: Fact Chips (committed categories) */}
+        {/* Row 2: Fact chips (committed categories) */}
         {categories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {categories.map(category => (
-              <Chip
+              <FactChipView
                 key={category.id}
-                role="fact"
                 label={category.name.toUpperCase()}
                 onRemove={() => toggleCategory(category.id)}
-                icon={category.icon ? <span>{category.icon}</span> : undefined}
               />
             ))}
           </div>

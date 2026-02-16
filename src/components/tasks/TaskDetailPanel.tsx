@@ -26,7 +26,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Chip } from "@/components/chips/Chip";
+import { FactChipView } from "@/components/chips/FactChipView";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -568,18 +568,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex flex-wrap gap-1.5 items-center">
                     {selectedUser ? (
-                      <Chip
-                        role="fact"
+                      <FactChipView
                         label={selectedUser.display_name.toUpperCase()}
                         onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved"
+                        className="font-mono text-[11px] rounded-[8px] h-[24px]"
                       />
                     ) : isUnconfirmedUser ? (
-                      <Chip
-                        role="fact"
+                      <FactChipView
                         label={(selectedUserId?.replace("pending-", "") || "Unconfirmed").toUpperCase()}
+                        pending
                         onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved opacity-50"
+                        className="font-mono text-[11px] rounded-[8px] h-[24px]"
                       />
                     ) : (
                       <Select
@@ -606,12 +605,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     {selectedTeamIds.map((tid) => {
                       const team = teams.find((t) => t.id === tid);
                       return team ? (
-                        <Chip
+                        <FactChipView
                           key={tid}
-                          role="fact"
                           label={team.name.toUpperCase()}
                           onRemove={() => toggleTeam(tid)}
-                          className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved"
+                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
                         />
                       ) : null;
                     })}
@@ -632,7 +630,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       </Select>
                     )}
                     {teams.length === 0 && selectedTeamIds.length === 0 && (
-                      <Chip role="fact" label="—" className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved opacity-50" />
+                      <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
                     )}
                   </div>
                 </div>
@@ -640,10 +638,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 {/* Where - property + spaces */}
                 <div className="flex items-center gap-2 min-h-[24px]">
                   <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Chip
-                    role="fact"
+                  <FactChipView
                     label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
-                    className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved"
+                    className="font-mono text-[11px] rounded-[8px] h-[24px]"
                   />
                   {task?.spaces && (task.spaces as any[]).length > 0 && (
                     <span className="text-muted-foreground text-xs">·</span>
@@ -658,17 +655,16 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 {/* When */}
                 <div className="flex items-center gap-2 min-h-[24px]">
                   <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Chip
-                    role="fact"
+                  <FactChipView
                     label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
-                    className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved"
+                    className="font-mono text-[11px] rounded-[8px] h-[24px]"
                   />
                 </div>
 
                 {/* What - placeholder */}
                 <div className="flex items-center gap-2 min-h-[24px]">
                   <Box className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Chip role="fact" label="—" className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved opacity-50" />
+                  <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
                 </div>
 
                 {/* Priority + Status - unified chip style */}
@@ -699,15 +695,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex flex-wrap gap-1.5 items-center">
                     {(task?.categories ?? []).length > 0 ? (
                       (task?.categories ?? []).map((c: any) => (
-                        <Chip
+                        <FactChipView
                           key={c.id}
-                          role="fact"
                           label={(c.name || c.label || "—").toString().toUpperCase()}
-                          className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved"
+                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
                         />
                       ))
                     ) : (
-                      <Chip role="fact" label="—" className="font-mono text-[11px] rounded-[8px] h-[24px] shadow-engraved opacity-50" />
+                      <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
                     )}
                   </div>
                 </div>

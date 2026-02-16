@@ -15,7 +15,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/chips/Chip";
+import { FactChipView } from "@/components/chips/FactChipView";
+import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
@@ -139,33 +140,26 @@ export function AssetsSection({
       </div>
 
       <div className="space-y-2">
-        {/* Row 1: AI Suggestions (if any) */}
+        {/* Row 1: Interactive chips (suggested assets - no ghost style) */}
         {ghostAssets.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {ghostAssets.map((ghostName, idx) => {
-              const ghostId = `ghost-asset-${ghostName}`;
-              const isSelected = selectedAssetIds.includes(ghostId);
-              return (
-                <Chip
-                  key={`ghost-${idx}`}
-                  role="suggestion"
-                  label={isSelected ? ghostName.toUpperCase() : `+ ${ghostName.toUpperCase()}`}
-                  selected={isSelected}
-                  onSelect={() => handleGhostAssetClick(ghostName)}
-                  animate={true}
-                />
-              );
-            })}
+            {ghostAssets.map((ghostName, idx) => (
+              <InteractiveChipView
+                key={`suggest-${idx}`}
+                label={`Add ${ghostName}`.toUpperCase()}
+                kind="create"
+                onPress={() => handleGhostAssetClick(ghostName)}
+              />
+            ))}
           </div>
         )}
 
-        {/* Row 2: Fact Chips (committed assets) */}
+        {/* Row 2: Fact chips (committed assets) */}
         {assets.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {assets.map(asset => (
-              <Chip
+              <FactChipView
                 key={asset.id}
-                role="fact"
                 label={asset.name.toUpperCase()}
                 onRemove={() => toggleAsset(asset.id)}
               />

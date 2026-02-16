@@ -11,7 +11,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Chip } from "@/components/chips/Chip";
+import { FactChipView } from "@/components/chips/FactChipView";
+import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
 import { IconPicker, getIconByName } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useThemes } from "@/hooks/useThemes";
@@ -192,37 +193,28 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
       </div>
 
       <div className="space-y-2">
-        {/* Row 1: AI Suggestions (if any) */}
+        {/* Row 1: Interactive chips (suggested themes - no ghost style) */}
         {ghostThemes.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {ghostThemes.map((ghost, idx) => {
-              const themeTypeValue = ghost.type || 'category';
-              const ghostId = `ghost-theme-${ghost.name}-${themeTypeValue}`;
-              const isSelected = selectedThemeIds.includes(ghostId);
-              return (
-                  <Chip
-                    key={`ghost-${idx}`}
-                    role="suggestion"
-                    label={isSelected ? ghost.name.toUpperCase() : `+ ${ghost.name.toUpperCase()}`}
-                    selected={isSelected}
-                    onSelect={() => handleGhostThemeClick(ghost.name, ghost.type)}
-                    animate={true}
-                  />
-              );
-            })}
+            {ghostThemes.map((ghost, idx) => (
+              <InteractiveChipView
+                key={`suggest-${idx}`}
+                label={`Add ${ghost.name}`.toUpperCase()}
+                kind="create"
+                onPress={() => handleGhostThemeClick(ghost.name, ghost.type)}
+              />
+            ))}
           </div>
         )}
 
-        {/* Row 2: Fact Chips (committed themes) */}
+        {/* Row 2: Fact chips (committed themes) */}
         {themes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {themes.map(theme => (
-              <Chip
+              <FactChipView
                 key={theme.id}
-                role="fact"
                 label={theme.name.toUpperCase()}
                 onRemove={() => toggleTheme(theme.id)}
-                icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
               />
             ))}
           </div>
