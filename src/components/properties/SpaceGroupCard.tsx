@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { groupLabelToSlug } from "@/components/onboarding/onboardingSpaceGroups";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 
@@ -24,8 +25,8 @@ export function SpaceGroupCard({
   const navigate = useNavigate();
 
   const handleClick = () => {
-    // Navigate to spaces filtered by this group
-    navigate(`/properties/${propertyId}/spaces?group=${encodeURIComponent(groupName)}`);
+    const slug = groupLabelToSlug(groupName);
+    navigate(`/properties/${propertyId}/spaces/organise/${slug}`);
   };
 
   return (

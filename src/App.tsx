@@ -69,6 +69,8 @@ const PropertyTasks = lazy(() => import("./pages/PropertyTasks"));
 const PropertyPhotos = lazy(() => import("./pages/PropertyPhotos"));
 const PropertyDocuments = lazy(() => import("./pages/PropertyDocuments"));
 const SpaceDetailPage = lazy(() => import("./pages/spaces/SpaceDetailPage"));
+const SpaceOrganisationScreen = lazy(() => import("./pages/spaces/SpaceOrganisationScreen"));
+const SpaceGroupScreen = lazy(() => import("./pages/spaces/SpaceGroupScreen"));
 const ComplianceReviews = lazy(() => import("./pages/ComplianceReviews"));
 const ReviewWorkspace = lazy(() => import("./pages/ReviewWorkspace"));
 const ReviewSummary = lazy(() => import("./pages/ReviewSummary"));
@@ -207,6 +209,8 @@ const App = () => {
                                 <Route path="/properties/:id" element={<PropertyDetail />} />
                                 <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
                                 <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
+                                <Route path="/properties/:id/spaces/organise" element={<SpaceOrganisationScreen />} />
+                                <Route path="/properties/:id/spaces/organise/:groupSlug" element={<SpaceGroupScreen />} />
                                 <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
                                 <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
                                 <Route path="/properties/:id/documents" element={<PropertyDocuments />} />

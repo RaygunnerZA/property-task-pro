@@ -15,6 +15,19 @@ export type SpaceGroup = {
   suggestedSpaces: string[];
 };
 
+/** Get a space group by id (for routing). */
+export function getSpaceGroupById(id: string): SpaceGroup | undefined {
+  return ONBOARDING_SPACE_GROUPS.find((g) => g.id === id);
+}
+
+/** Map group label/name to URL slug (e.g. "Circulation" -> "circulation"). */
+export function groupLabelToSlug(label: string): string {
+  const group = ONBOARDING_SPACE_GROUPS.find(
+    (g) => g.label.toLowerCase() === label.toLowerCase()
+  );
+  return group?.id ?? label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+}
+
 export const ONBOARDING_SPACE_GROUPS: SpaceGroup[] = [
   {
     id: "circulation",
