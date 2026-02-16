@@ -23,10 +23,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FactChipView } from "@/components/chips/FactChipView";
+import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { InstructionField } from "./InstructionField";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -78,6 +85,25 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     enabled: !!taskId,
   });
 
+  const { data: taskAssets = [] } = useQuery({
+    queryKey: ["task-assets", taskId],
+    queryFn: async () => {
+      if (!taskId) return [];
+      const { data: links } = await supabase
+        .from("task_assets")
+        .select("asset_id")
+        .eq("task_id", taskId);
+      if (!links || links.length === 0) return [];
+      const assetIds = links.map((l: any) => l.asset_id);
+      const { data: assetRows } = await supabase
+        .from("assets_view")
+        .select("id, name")
+        .in("id", assetIds);
+      return (assetRows || []).map((a: any) => ({ id: a.id, name: a.name ?? "Unnamed" }));
+    },
+    enabled: !!taskId,
+  });
+
   const propertyComplianceItems = useMemo(() => {
     if (!propertyId) return [];
     return portfolioCompliance.filter((p: any) => p.property_id === propertyId);
@@ -120,6 +146,20 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [detectionOverlays, setDetectionOverlays] = useState<DetectionOverlay[]>([]);
+  const [showPeoplePopover, setShowPeoplePopover] = useState(false);
+  const [showPriorityPopover, setShowPriorityPopover] = useState(false);
+  const [showStatusPopover, setShowStatusPopover] = useState(false);
+  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [sectionInstructions, setSectionInstructions] = useState<Record<string, string>>({
+    who: "Add Person or Team",
+    where: "Add Property or Space",
+    when: "Add Due Date",
+    what: "Add Asset",
+    priority: "Add Priority",
+    category: "Add Tag",
+    compliance: "Add Compliance Rule",
+  });
 
   // Update local state when task data loads
   useEffect(() => {
@@ -164,14 +204,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       case "archived":
         return "bg-gray-500/10 text-gray-700 border-gray-500/20";
       default:
-        return "bg-primary/10 text-primary border-primary/20";
+        return "bg-white text-primary border-primary/20";
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "urgent":
-        return "bg-red-500/10 text-red-700 border-red-500/20";
+        return "bg-white text-red-700 border-red-500/20";
       case "high":
         return "bg-orange-500/10 text-orange-700 border-orange-500/20";
       case "low":
@@ -524,8 +564,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
         {/* Tabs - below description: Summary | Messaging | Activity */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0">
-            <TabsList className="w-full grid grid-cols-3 h-11 bg-transparent p-1 gap-1">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
+            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0">
               <TabsTrigger
                 value="summary"
                 className={cn(
@@ -560,13 +600,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex flex-col p-4">
+          <div className="flex-1 overflow-hidden flex flex-col py-4 px-1">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-3">
-                {/* Who - assignee + teams, no icon boxes */}
-                <div className="flex items-center gap-2 min-h-[24px]">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center">
+                {/* People + Teams - same row, one icon, fact chips left, Add Person or Team opens popover */}
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("who")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
+                  <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     {selectedUser ? (
                       <FactChipView
                         label={selectedUser.display_name.toUpperCase()}
@@ -580,28 +624,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         onRemove={() => handleUserChange(undefined)}
                         className="font-mono text-[11px] rounded-[8px] h-[24px]"
                       />
-                    ) : (
-                      <Select
-                        value=""
-                        onValueChange={(v) => v && handleUserChange(v)}
-                        disabled={isUpdating || membersLoading}
-                      >
-                        <SelectTrigger className="h-[24px] w-auto min-w-[100px] shadow-engraved text-[11px] font-mono rounded-[8px]">
-                          <SelectValue placeholder="Assign..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {members.map((m) => (
-                            <SelectItem key={m.user_id} value={m.user_id}>
-                              {m.display_name}
-                            </SelectItem>
-                          ))}
-                          {members.length === 0 && <SelectItem value="__none__" disabled>No members</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <Users className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
-                  <div className="flex flex-wrap gap-1.5 items-center">
+                    ) : null}
                     {selectedTeamIds.map((tid) => {
                       const team = teams.find((t) => t.id === tid);
                       return team ? (
@@ -613,109 +636,294 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         />
                       ) : null;
                     })}
-                    {teams.length > 0 && teams.some((t) => !selectedTeamIds.includes(t.id)) && (
-                      <Select
-                        value=""
-                        onValueChange={(v) => v && !selectedTeamIds.includes(v) && toggleTeam(v)}
-                        disabled={isUpdating || teamsLoading}
-                      >
-                        <SelectTrigger className="h-[24px] w-auto min-w-[80px] shadow-engraved text-[11px] font-mono rounded-[8px]">
-                          <SelectValue placeholder="Add..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teams.filter((t) => !selectedTeamIds.includes(t.id)).map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {teams.length === 0 && selectedTeamIds.length === 0 && (
-                      <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
+                    {(hoveredSection === "who" || showPeoplePopover) && (
+                    <Popover open={showPeoplePopover} onOpenChange={setShowPeoplePopover}>
+                      <PopoverTrigger asChild>
+                        <div>
+                          <InstructionField
+                            value={sectionInstructions.who}
+                            onChange={(v) => setSectionInstructions((s) => ({ ...s, who: v }))}
+                            onPress={() => setShowPeoplePopover(true)}
+                          />
+                        </div>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64 p-3 space-y-3">
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Person</label>
+                          <Select
+                            value={selectedUserId || ""}
+                            onValueChange={(v) => {
+                              handleUserChange(v || undefined);
+                              setShowPeoplePopover(false);
+                            }}
+                            disabled={isUpdating || membersLoading}
+                          >
+                            <SelectTrigger className="h-[24px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
+                              <SelectValue placeholder="Assign..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {members.map((m) => (
+                                <SelectItem key={m.user_id} value={m.user_id}>
+                                  {m.display_name}
+                                </SelectItem>
+                              ))}
+                              {members.length === 0 && <SelectItem value="__none__" disabled>No members</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Teams</label>
+                          <Select
+                            value=""
+                            onValueChange={(v) => {
+                              if (v && !selectedTeamIds.includes(v)) toggleTeam(v);
+                              setShowPeoplePopover(false);
+                            }}
+                            disabled={isUpdating || teamsLoading}
+                          >
+                            <SelectTrigger className="h-[24px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
+                              <SelectValue placeholder="Add team..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teams.filter((t) => !selectedTeamIds.includes(t.id)).map((t) => (
+                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                              ))}
+                              {teams.length === 0 && <SelectItem value="__none__" disabled>No teams</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                     )}
                   </div>
                 </div>
 
                 {/* Where - property + spaces */}
-                <div className="flex items-center gap-2 min-h-[24px]">
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("where")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
                   <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <FactChipView
-                    label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
-                    className="font-mono text-[11px] rounded-[8px] h-[24px]"
-                  />
-                  {task?.spaces && (task.spaces as any[]).length > 0 && (
-                    <span className="text-muted-foreground text-xs">·</span>
-                  )}
-                  {(task?.spaces as any[])?.length > 0 ? (
-                    <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                      {(task.spaces as any[]).map((s: any) => s.name || s.label).join(", ")}
-                    </span>
-                  ) : null}
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                    <FactChipView
+                      label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
+                      className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                    />
+                    {task?.spaces && (task.spaces as any[]).length > 0 && (
+                      <span className="text-muted-foreground text-xs">·</span>
+                    )}
+                    {(task?.spaces as any[])?.length > 0 ? (
+                      <span className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        {(task.spaces as any[]).map((s: any) => s.name || s.label).join(", ")}
+                      </span>
+                    ) : null}
+                    {(hoveredSection === "where" || editingSection === "where") && (
+                      <InstructionField
+                        value={sectionInstructions.where}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, where: v }))}
+                        onEditStart={() => setEditingSection("where")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* When */}
-                <div className="flex items-center gap-2 min-h-[24px]">
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("when")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
                   <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <FactChipView
-                    label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
-                    className="font-mono text-[11px] rounded-[8px] h-[24px]"
-                  />
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                    <FactChipView
+                      label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
+                      className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                    />
+                    {(hoveredSection === "when" || editingSection === "when") && (
+                      <InstructionField
+                        value={sectionInstructions.when}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, when: v }))}
+                        onEditStart={() => setEditingSection("when")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
+                    )}
+                  </div>
                 </div>
 
-                {/* What - placeholder */}
-                <div className="flex items-center gap-2 min-h-[24px]">
+                {/* What (Assets) */}
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("what")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
                   <Box className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                    {taskAssets.length > 0 &&
+                      taskAssets.map((a) => (
+                        <FactChipView
+                          key={a.id}
+                          label={(a.name || "—").toUpperCase()}
+                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                        />
+                      ))}
+                    {(hoveredSection === "what" || editingSection === "what") && (
+                      <InstructionField
+                        value={sectionInstructions.what}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, what: v }))}
+                        onEditStart={() => setEditingSection("what")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* Priority + Status - unified chip style */}
-                <div className="flex items-center gap-2 flex-wrap min-h-[24px]">
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("priority")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
                   <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger className={cn("h-[24px] w-auto min-w-[80px] shadow-engraved text-[11px] font-mono rounded-[8px]", getPriorityColor(priority))}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {priorityOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger className={cn("h-[24px] w-auto min-w-[90px] shadow-engraved text-[11px] font-mono rounded-[8px]", getStatusColor(status))}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <Popover open={showPriorityPopover} onOpenChange={setShowPriorityPopover}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+                          "font-mono text-[11px] uppercase tracking-wide",
+                          "bg-card text-foreground shadow-e2",
+                          "transition-all duration-150 cursor-pointer",
+                          "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+                          getPriorityColor(priority)
+                        )}
+                      >
+                        <span>{(priorityOptions.find((o) => o.value === priority)?.label || priority).toUpperCase()}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-40 p-1">
+                      {priorityOptions.map((o) => (
+                        <button
+                          key={o.value}
+                          type="button"
+                          onClick={() => {
+                            setPriority(o.value);
+                            setShowPriorityPopover(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 rounded-[5px] text-[11px] font-mono uppercase",
+                            "hover:bg-muted/50 transition-colors",
+                            priority === o.value && "bg-muted/50"
+                          )}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                  <Popover open={showStatusPopover} onOpenChange={setShowStatusPopover}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+                          "font-mono text-[11px] uppercase tracking-wide",
+                          "bg-card text-foreground shadow-e2",
+                          "transition-all duration-150 cursor-pointer",
+                          "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+                          getStatusColor(status)
+                        )}
+                      >
+                        <span>{(statusOptions.find((o) => o.value === status)?.label || status).toUpperCase()}</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-40 p-1">
+                      {statusOptions.map((o) => (
+                        <button
+                          key={o.value}
+                          type="button"
+                          onClick={() => {
+                            setStatus(o.value);
+                            setShowStatusPopover(false);
+                          }}
+                          className={cn(
+                            "w-full text-left px-2 py-1.5 rounded-[5px] text-[11px] font-mono uppercase",
+                            "hover:bg-muted/50 transition-colors",
+                            status === o.value && "bg-muted/50"
+                          )}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
                   {autoTaskRecord && <Badge variant="secondary" className="text-[10px] h-[24px] font-normal rounded-[8px]">Auto-generated</Badge>}
+                    {(hoveredSection === "priority" || showPriorityPopover || showStatusPopover || editingSection === "priority") && (
+                      <InstructionField
+                        value={sectionInstructions.priority}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, priority: v }))}
+                        onEditStart={() => setEditingSection("priority")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
+                    )}
+                  </div>
                 </div>
 
                 {/* Tags */}
-                <div className="flex items-center gap-2 min-h-[24px]">
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("category")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
                   <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center">
-                    {(task?.categories ?? []).length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                    {(task?.categories ?? []).length > 0 &&
                       (task?.categories ?? []).map((c: any) => (
                         <FactChipView
                           key={c.id}
                           label={(c.name || c.label || "—").toString().toUpperCase()}
                           className="font-mono text-[11px] rounded-[8px] h-[24px]"
                         />
-                      ))
-                    ) : (
-                      <FactChipView label="—" pending className="font-mono text-[11px] rounded-[8px] h-[24px]" />
+                      ))}
+                    {(hoveredSection === "category" || editingSection === "category") && (
+                      <InstructionField
+                        value={sectionInstructions.category}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, category: v }))}
+                        onEditStart={() => setEditingSection("category")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
                     )}
                   </div>
                 </div>
 
                 {/* Compliance */}
-                <div className="flex items-start gap-2">
-                  <Shield className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <RelatedComplianceSection
-                      items={propertyComplianceItems}
-                      imageHazards={imageHazards}
-                      isLoading={portfolioLoading}
-                    />
+                <div
+                  className="flex items-center gap-2 min-h-[24px]"
+                  onMouseEnter={() => setHoveredSection("compliance")}
+                  onMouseLeave={() => setHoveredSection(null)}
+                >
+                  <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
+                    {portfolioLoading ? (
+                      <span className="text-xs text-muted-foreground">Loading...</span>
+                    ) : propertyComplianceItems.length > 0 || imageHazards.length > 0 ? (
+                      <RelatedComplianceSection
+                        items={propertyComplianceItems}
+                        imageHazards={imageHazards}
+                        isLoading={false}
+                        hideHeader
+                      />
+                    ) : null}
+                    {(hoveredSection === "compliance" || editingSection === "compliance") && (
+                      <InstructionField
+                        value={sectionInstructions.compliance}
+                        onChange={(v) => setSectionInstructions((s) => ({ ...s, compliance: v }))}
+                        onEditStart={() => setEditingSection("compliance")}
+                        onEditEnd={() => setEditingSection(null)}
+                      />
+                    )}
                   </div>
                 </div>
 

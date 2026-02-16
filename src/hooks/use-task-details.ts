@@ -171,8 +171,19 @@ export function useTaskDetails(taskId: string | undefined) {
     } : null;
 
     // Get primary image URL (first image, prefer thumbnail)
-    const primaryImageUrl = imagesData && imagesData.length > 0 
-      ? (imagesData[0].thumbnail_url || imagesData[0].file_url)
+    const resolvedImages = (() => {
+      if (imagesData && imagesData.length > 0) return imagesData;
+      const fromView = taskData.images;
+      if (!fromView) return [];
+      try {
+        const parsed = typeof fromView === 'string' ? JSON.parse(fromView) : fromView;
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })();
+    const primaryImageUrl = resolvedImages.length > 0
+      ? (resolvedImages[0].thumbnail_url || resolvedImages[0].file_url)
       : null;
 
     return {
@@ -181,7 +192,7 @@ export function useTaskDetails(taskId: string | undefined) {
       spaces,
       teams,
       categories: categoriesData || [],
-      images: imagesData || [],
+      images: resolvedImages,
       primary_image_url: primaryImageUrl,
       assigned_user_id: taskData.assignee_user_id,
       // Ensure due_date is included from taskData

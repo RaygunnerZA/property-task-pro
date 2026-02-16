@@ -21,7 +21,7 @@ export function sortChipsForStrip(chips: ChipData[]): ChipData[] {
   return [...facts, ...blocking, ...other, ...instruction];
 }
 
-/** Overflow: remove instruction first, then non-blocking interactive. Fact chips never removed. */
+/** Overflow: remove non-blocking interactive first (excluding instruction). Instruction and fact chips never removed. */
 export function applyOverflow(chips: ChipData[], maxVisible: number): ChipData[] {
   const sorted = sortChipsForStrip(chips);
   if (sorted.length <= maxVisible) return sorted;
@@ -29,19 +29,10 @@ export function applyOverflow(chips: ChipData[], maxVisible: number): ChipData[]
   let remaining = sorted.length;
   const result = [...sorted];
 
-  // Remove instruction chips first
+  // Remove non-blocking interactive (except instruction - instruction always stays visible)
   for (let i = result.length - 1; i >= 0 && remaining > maxVisible; i--) {
     const c = result[i];
-    if (c.variant === "interactive" && c.kind === "instruction") {
-      result.splice(i, 1);
-      remaining--;
-    }
-  }
-
-  // Then non-blocking interactive
-  for (let i = result.length - 1; i >= 0 && remaining > maxVisible; i--) {
-    const c = result[i];
-    if (c.variant === "interactive" && !c.blocking) {
+    if (c.variant === "interactive" && !c.blocking && c.kind !== "instruction") {
       result.splice(i, 1);
       remaining--;
     }

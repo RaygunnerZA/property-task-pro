@@ -53,6 +53,7 @@ export function InteractiveChipView({
       onPointerLeave={() => setIsPressed(false)}
       className={cn(
         "inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+        kind === "instruction" ? "ml-[2px]" : "ml-1",
         "font-mono text-[11px] uppercase tracking-wide",
         "bg-background text-muted-foreground",
         "shadow-e1 opacity-75",

@@ -57,7 +57,7 @@ export function TaskList({
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(() => {
     return new Set();
   });
-  const [view, setView] = useState<'horizontal' | 'vertical'>('horizontal');
+  const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
   const tasks = useMemo(() => {
@@ -555,7 +555,7 @@ export function TaskList({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Filter Bar - fixed at top, does not scroll with list */}
-      <div className="flex-shrink-0 mb-2 pb-[19px]" style={{ marginLeft: '-3px' }}>
+      <div className="flex-shrink-0 mt-0 mb-[18px] pb-0" style={{ marginLeft: '-3px' }}>
         <FilterBar
           primaryOptions={primaryOptions}
           secondaryGroups={secondaryGroups}
@@ -564,14 +564,10 @@ export function TaskList({
           rightElement={<ViewToggle view={view} onViewChange={setView} />}
         />
         
-        {/* View Toggle - Mobile: below filter bar */}
-        <div className="flex justify-end mt-[6px] -mb-2 lg:hidden">
-          <ViewToggle view={view} onViewChange={setView} />
-        </div>
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}
-      <div className="flex-1 min-h-0 overflow-y-auto rounded-[12px]">
+      <div className="flex-1 flex flex-nowrap min-h-0 max-h-[600px] overflow-y-auto rounded-[12px]">
         {/* Show empty state if filters are active but no tasks match */}
         {hasActiveFilters && hasNoMatchingTasks ? (
           <EmptyState 
@@ -580,9 +576,9 @@ export function TaskList({
           />
         ) : (
           <div className="space-y-6">
-            {/* Todo Section */}
+            {/* Todo Section - wrapped so space-y-6 doesn't add margin above desktop grid (mobile div is first sibling) */}
             {groupedTasks.todo.length > 0 && (
-            <>
+            <div>
               {view === 'vertical' ? (
                 <>
                   {/* Mobile: Horizontal scroll */}
@@ -624,7 +620,7 @@ export function TaskList({
                   ))}
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* Done Section */}

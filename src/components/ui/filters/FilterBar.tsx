@@ -344,9 +344,9 @@ export function FilterBar({
         </div>
       </div>
 
-      {/* Right element (e.g., View Toggle) - Desktop only */}
+      {/* Right element (e.g., View Toggle) */}
       {rightElement && (
-        <div className="hidden lg:flex items-center flex-shrink-0">
+        <div className="flex items-center flex-shrink-0">
           {rightElement}
         </div>
       )}

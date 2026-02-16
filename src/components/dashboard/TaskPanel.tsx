@@ -168,7 +168,7 @@ export function TaskPanel({
           <TabsList
             className={cn(
               "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
-              "shadow-[inset_2px_6.6px_9.4px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_5.8px_0px_rgba(255,255,255,0.62)]"
+              "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
             )}
           >
             <TabsTrigger
@@ -249,7 +249,7 @@ export function TaskPanel({
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Tasks Tab */}
           {activeTab === "tasks" && (
-            <div className="h-full flex flex-col min-h-0 pt-[8px] pl-2 pr-2 pb-4">
+            <div className="h-full flex flex-col min-h-0 pt-[8px] pl-2 pr-2 pb-0">
               <TaskList 
                 tasks={tasks}
                 properties={properties}

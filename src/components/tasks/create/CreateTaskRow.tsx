@@ -63,13 +63,6 @@ export function CreateTaskRow({
   const [isInlineEditing, setIsInlineEditing] = useState(false);
   const [inlineValue, setInlineValue] = useState("");
 
-  // When clicking the instruction, enter inline-editing mode and activate the section
-  const handleInstructionClick = () => {
-    if (!isActive) onActivate();
-    setIsInlineEditing(true);
-    setInlineValue("");
-  };
-
   // Focus the inline input when entering edit mode
   useEffect(() => {
     if (isInlineEditing && inlineInputRef.current) {
@@ -96,9 +89,8 @@ export function CreateTaskRow({
     }
   }, [isActive, isInlineEditing]);
 
-  const showInstruction = isActive || isHovered;
-
   // Convert to ChipData and merge for ChipStrip (contract: fact, interactive only)
+  // Instruction chip appears only on hover, to the right of any tags
   const chipData = useMemo((): ChipData[] => {
     const facts: ChipData[] = factChips.map((c) =>
       suggestedChipToChipData(c)
@@ -109,12 +101,27 @@ export function CreateTaskRow({
     const suggested: ChipData[] = suggestedChips.map((c) =>
       suggestedChipToChipData(c)
     );
-    return [...facts, ...verbs, ...suggested];
-  }, [factChips, verbChips, suggestedChips]);
+    const instructionChip: ChipData = {
+      id: `instruction-${sectionId}`,
+      label: instruction.toUpperCase(),
+      variant: "interactive",
+      kind: "instruction",
+    };
+    return isHovered
+      ? [...facts, ...verbs, ...suggested, instructionChip]
+      : [...facts, ...verbs, ...suggested];
+  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered]);
 
   const handleChipPress = (chip: ChipData) => {
     if (chip.variant === "fact") {
       onActivate();
+      return;
+    }
+    // Instruction chip: enter inline editing (click → becomes text field)
+    if (chip.variant === "interactive" && chip.kind === "instruction") {
+      if (!isActive) onActivate();
+      setIsInlineEditing(true);
+      setInlineValue("");
       return;
     }
     const original = [...verbChips, ...suggestedChips].find((c) => c.id === chip.id);
@@ -153,21 +160,9 @@ export function CreateTaskRow({
           {icon}
         </div>
 
-        {/* ChipStrip: fact + interactive only (no ghost, no third surface) */}
-        {chipData.length > 0 && (
-          <div className="flex flex-shrink-0 items-center min-w-0">
-            <ChipStrip
-              chips={chipData}
-              onChipPress={handleChipPress}
-              onChipRemove={handleChipRemove}
-              className="shrink-0"
-            />
-          </div>
-        )}
-
-        {/* Instruction text / inline input - clickable to activate and become an input */}
+        {/* ChipStrip: fact + interactive chips; instruction chip on hover, to the right of tags */}
         {isInlineEditing ? (
-          <div className="flex-1 min-w-0 px-1">
+          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
             <input
               ref={inlineInputRef}
               data-inline-instruction
@@ -182,37 +177,37 @@ export function CreateTaskRow({
                   setIsInlineEditing(false);
                   setInlineValue("");
                 }
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onInlineSearch?.(inlineValue);
+                }
               }}
               onBlur={() => {
-                // Small delay so click events on children can fire first
                 setTimeout(() => {
                   setIsInlineEditing(false);
                   setInlineValue("");
                 }, 200);
               }}
               placeholder={instruction}
-              className="w-full bg-transparent text-[12px] font-mono uppercase tracking-wider text-foreground placeholder:text-muted-foreground/50 outline-none border-b border-muted-foreground/30 focus:border-primary py-1"
+              className={cn(
+                "h-[24px] min-w-[80px] flex-1 rounded-[8px] px-2 py-1",
+                "font-mono text-[11px] uppercase tracking-wide",
+                "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
+                "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+                "outline-none cursor-text",
+                "transition-[min-width] duration-300 ease-out"
+              )}
             />
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={handleInstructionClick}
-            className={cn(
-              "flex-1 min-w-0 flex items-center gap-2 text-left rounded-[8px] px-2 py-1.5",
-              "transition-all duration-200",
-              "cursor-pointer"
-            )}
-          >
-            <span
-              className={cn(
-                "text-[12px] font-mono uppercase tracking-normal text-muted-foreground truncate transition-opacity duration-200",
-                showInstruction ? "opacity-100" : "opacity-0"
-              )}
-            >
-              {instruction}
-            </span>
-          </button>
+          <div className="flex flex-shrink-0 items-center min-w-0 flex-1 pl-1">
+            <ChipStrip
+              chips={chipData}
+              onChipPress={handleChipPress}
+              onChipRemove={handleChipRemove}
+              className="shrink-0"
+            />
+          </div>
         )}
 
         {hasUnresolved && !isActive && (

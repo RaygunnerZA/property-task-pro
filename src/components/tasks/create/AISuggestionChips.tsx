@@ -50,7 +50,7 @@ function getChipState(chip: SuggestedChip, isSelected: boolean): ChipState {
 
 /**
  * Generate verb label for unresolved/ambiguous entities
- * Examples: "INVITE FRANK", "ADD GARDEN TO SPACES", "CHOOSE ALEX"
+ * Examples: "INVITE FRANK", "ADD GARDEN", "CHOOSE ALEX"
  */
 function generateVerbLabel(chip: SuggestedChip): string {
   const value = chip.value || chip.label;
@@ -61,9 +61,9 @@ function generateVerbLabel(chip: SuggestedChip): string {
     case 'team':
       return `CHOOSE ${value.toUpperCase()}`;
     case 'space':
-      return `ADD ${value.toUpperCase()} TO SPACES`;
+      return `ADD ${value.toUpperCase()}`;
     case 'asset':
-      return `ADD ${value.toUpperCase()} TO ASSETS`;
+      return `ADD ${value.toUpperCase()}`;
     case 'category':
       return `CHOOSE ${value.toUpperCase()}`;
     case 'date':

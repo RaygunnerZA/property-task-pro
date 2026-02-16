@@ -19,6 +19,7 @@ interface RelatedComplianceSectionProps {
   items: RelatedComplianceItem[];
   imageHazards?: string[];
   isLoading?: boolean;
+  hideHeader?: boolean;
 }
 
 function getExpiryColor(expiryState?: string) {
@@ -31,15 +32,18 @@ export function RelatedComplianceSection({
   items,
   imageHazards = [],
   isLoading,
+  hideHeader = false,
 }: RelatedComplianceSectionProps) {
   const navigate = useNavigate();
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
-        <Shield className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold text-muted-foreground">Related Compliance Items</h3>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-muted-foreground">Related Compliance Items</h3>
+        </div>
+      )}
       {isLoading ? (
         <div className="text-xs text-muted-foreground">Loading...</div>
       ) : items.length === 0 && imageHazards.length === 0 ? (

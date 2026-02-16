@@ -374,11 +374,9 @@ export function CreateTaskModal({
       case 'team':
         return `CHOOSE ${value.toUpperCase()}`;
       case 'space':
-        // ADD RESOLUTION RULE: "ADD {NAME} TO SPACES" must trigger space creation flow
-        return `ADD ${value.toUpperCase()} TO SPACES`;
+        return `ADD ${value.toUpperCase()}`;
       case 'asset':
-        // ADD RESOLUTION RULE: "ADD {NAME} TO ASSETS" must trigger asset creation flow
-        return `ADD ${value.toUpperCase()} TO ASSETS`;
+        return `ADD ${value.toUpperCase()}`;
       case 'category':
         return `CHOOSE ${value.toUpperCase()}`;
       case 'date':
@@ -1542,7 +1540,7 @@ export function CreateTaskModal({
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col gap-3 p-4 border-t border-border/30 bg-card/80 backdrop-blur">
+      <div className="flex flex-col gap-3 p-4 pb-6 border-t border-transparent bg-transparent backdrop-blur text-foreground">
         {/* Clarity State */}
         {clarityState && (
           <ClarityState

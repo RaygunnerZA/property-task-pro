@@ -262,7 +262,7 @@ function TaskCardComponent({
           "shadow-e1",
           "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
           "overflow-hidden flex flex-row min-h-[80px] relative group",
-          isSelected && "border-2 border-primary shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] bg-primary/5"
+          isSelected && "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
         )}
         onClick={onClick}
       >
@@ -382,7 +382,7 @@ function TaskCardComponent({
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex flex-col relative group",
-        isSelected && "border-2 border-primary shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] bg-primary/5"
+        isSelected && "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
       )}
       onClick={onClick}
     >
