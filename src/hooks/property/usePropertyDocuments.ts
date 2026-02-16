@@ -165,7 +165,41 @@ export function usePropertyDocuments(
         );
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
+
+      // #region agent log
+      if (error) fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePropertyDocuments.ts:attachments',message:'attachments query error',data:{propertyId,orgId,errorMessage:error.message,errorCode:error.code,errorDetails:error.details},timestamp:Date.now(),hypothesisId:'attachments'})}).catch(()=>{});
+      // #endregion
+
+      // Fallback: on any error, retry with base schema only (migrations may not be applied; extended columns missing)
+      if (error) {
+        const baseQuery = supabase
+          .from("attachments")
+          .select("id, file_url, file_name, file_type, file_size, thumbnail_url, created_at, updated_at")
+          .eq("org_id", orgId)
+          .eq("parent_type", "property")
+          .eq("parent_id", propertyId)
+          .order("updated_at", { ascending: false })
+          .range(offset, offset + limit - 1);
+        const baseRes = await baseQuery;
+        data = baseRes.data;
+        error = baseRes.error;
+        if (!error && data) {
+          data = data.map((row: Record<string, unknown>) => ({
+            ...row,
+            title: null,
+            category: null,
+            document_type: null,
+            expiry_date: null,
+            renewal_frequency: null,
+            status: null,
+            notes: null,
+            ocr_text: null,
+            metadata: null,
+            ai_confidence: null,
+          }));
+        }
+      }
 
       if (error) throw error;
       let docs = (data || []) as PropertyDocument[];

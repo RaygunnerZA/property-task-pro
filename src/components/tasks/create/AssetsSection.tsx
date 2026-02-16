@@ -17,8 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FactChipView } from "@/components/chips/FactChipView";
 import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
-import { IconPicker } from "@/components/ui/IconPicker";
-import { ColorPicker } from "@/components/ui/ColorPicker";
+import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useDataContext } from "@/contexts/DataContext";
 import { useToast } from "@/hooks/use-toast";
@@ -227,15 +226,17 @@ export function AssetsSection({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
-              <IconPicker value={selectedIcon} onChange={setSelectedIcon} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Color</Label>
-              <ColorPicker value={selectedColor} onChange={setSelectedColor} />
-            </div>
+            <AIIconColorPicker
+              searchText={newAssetName.trim()}
+              value={{ iconName: selectedIcon, color: selectedColor || "#8EC9CE" }}
+              onChange={(icon, color) => {
+                setSelectedIcon(icon);
+                setSelectedColor(color);
+              }}
+              defaultIcons={["package", "box", "wrench", "plug", "cpu"]}
+              fallbackSearch="asset"
+              disabled={creating}
+            />
           </div>
           <DialogFooter>
             <Button

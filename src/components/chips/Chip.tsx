@@ -34,7 +34,7 @@ export interface ChipProps {
  *    - Removable: Show X when selected, click X to remove
  *    - Colorful: Property colors allowed, status colors allowed
  *    - No AI glyph: Never show AI indicator
- *    - Size: 24px height (FilterBar), 11px text, 14x14px icons
+ *    - Size: 28px height (FilterBar), 11px text, 14x14px icons
  *    - Usage: FilterBar, selectable options
  * 
  * 2. FACT CHIPS:
@@ -75,8 +75,8 @@ export interface ChipProps {
  * - Never use depth to indicate meaning
  * 
  * SIZE STANDARDS:
- * - FilterBar chips: 24px height, 11px text, 14x14px icons
- * - Other chips: 24px height, 11px text, 14x14px icons (standardized)
+ * - FilterBar chips: 28px height, 11px text, 14x14px icons
+ * - Other chips: 28px height, 11px text, 14x14px icons (standardized)
  * - Corner radius: 8px (standardized)
  */
 export function Chip({
@@ -140,9 +140,9 @@ export function Chip({
   const isIconOnly = !label || className?.includes('w-[24px]') || className?.includes('w-[35px]') || className?.includes('px-0');
   
   // Determine height based on role and className
-  // Filter chips in FilterBar should be 24px (updated from 35px), others default to 24px
-  const isFilterBarChip = role === 'filter' && (className?.includes('h-[24px]') || className?.includes('h-[35px]') || className?.includes('w-[24px]') || className?.includes('w-[35px]'));
-  const chipHeight = isFilterBarChip ? "h-[24px]" : "h-[24px]"; // All chips default to 24px now
+  // Filter chips in FilterBar should be 28px (updated from 24px), others default to 28px
+  const isFilterBarChip = role === 'filter' && (className?.includes('h-[28px]') || className?.includes('h-[24px]') || className?.includes('h-[35px]') || className?.includes('w-[24px]') || className?.includes('w-[35px]'));
+  const chipHeight = isFilterBarChip ? "h-[28px]" : "h-[28px]"; // All chips default to 28px now
   
   // Text size: FilterBar chips use 11px, others use 11px for consistency
   const textSize = isFilterBarChip ? "text-[11px]" : "text-[11px]";

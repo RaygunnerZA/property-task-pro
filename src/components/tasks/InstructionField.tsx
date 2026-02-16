@@ -81,7 +81,7 @@ export function InstructionField({
           onKeyDown={handleKeyDown}
           placeholder="Add instruction…"
           className={cn(
-            "h-[24px] min-w-[100px] max-w-[180px] rounded-[8px] px-2 py-1",
+            "h-[28px] min-w-[100px] max-w-[180px] rounded-[8px] px-2 py-1",
             "font-mono text-[11px] uppercase tracking-wide",
             "bg-background text-muted-foreground/80 placeholder:text-muted-foreground/50",
             "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
@@ -101,7 +101,7 @@ export function InstructionField({
             }
           }}
           className={cn(
-            "h-[24px] px-2 py-1 rounded-[8px] text-left truncate max-w-[180px]",
+            "h-[28px] px-2 py-1 rounded-[8px] text-left truncate max-w-[180px]",
             "font-mono text-[11px] uppercase tracking-wide",
             "text-muted-foreground/80 hover:text-muted-foreground",
             "bg-background/60 hover:bg-background/80 shadow-e1",

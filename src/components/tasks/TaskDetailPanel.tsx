@@ -605,7 +605,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <div className="space-y-3">
                 {/* People + Teams - same row, one icon, fact chips left, Add Person or Team opens popover */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("who")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -615,14 +615,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       <FactChipView
                         label={selectedUser.display_name.toUpperCase()}
                         onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                        className="font-mono text-[11px] rounded-[8px] h-[28px]"
                       />
                     ) : isUnconfirmedUser ? (
                       <FactChipView
                         label={(selectedUserId?.replace("pending-", "") || "Unconfirmed").toUpperCase()}
                         pending
                         onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                        className="font-mono text-[11px] rounded-[8px] h-[28px]"
                       />
                     ) : null}
                     {selectedTeamIds.map((tid) => {
@@ -632,7 +632,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                           key={tid}
                           label={team.name.toUpperCase()}
                           onRemove={() => toggleTeam(tid)}
-                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />
                       ) : null;
                     })}
@@ -658,7 +658,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                             }}
                             disabled={isUpdating || membersLoading}
                           >
-                            <SelectTrigger className="h-[24px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
+                            <SelectTrigger className="h-[28px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
                               <SelectValue placeholder="Assign..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -681,7 +681,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                             }}
                             disabled={isUpdating || teamsLoading}
                           >
-                            <SelectTrigger className="h-[24px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
+                            <SelectTrigger className="h-[28px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
                               <SelectValue placeholder="Add team..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -700,7 +700,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* Where - property + spaces */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("where")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -708,7 +708,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     <FactChipView
                       label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
-                      className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                      className="font-mono text-[11px] rounded-[8px] h-[28px]"
                     />
                     {task?.spaces && (task.spaces as any[]).length > 0 && (
                       <span className="text-muted-foreground text-xs">·</span>
@@ -731,7 +731,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* When */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("when")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -739,7 +739,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     <FactChipView
                       label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
-                      className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                      className="font-mono text-[11px] rounded-[8px] h-[28px]"
                     />
                     {(hoveredSection === "when" || editingSection === "when") && (
                       <InstructionField
@@ -754,7 +754,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* What (Assets) */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("what")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -765,7 +765,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         <FactChipView
                           key={a.id}
                           label={(a.name || "—").toUpperCase()}
-                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />
                       ))}
                     {(hoveredSection === "what" || editingSection === "what") && (
@@ -781,7 +781,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* Priority + Status - unified chip style */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("priority")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -792,7 +792,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       <button
                         type="button"
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+                          "inline-flex items-center gap-1.5 px-2 py-1 h-[28px] rounded-[8px]",
                           "font-mono text-[11px] uppercase tracking-wide",
                           "bg-card text-foreground shadow-e2",
                           "transition-all duration-150 cursor-pointer",
@@ -828,7 +828,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       <button
                         type="button"
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+                          "inline-flex items-center gap-1.5 px-2 py-1 h-[28px] rounded-[8px]",
                           "font-mono text-[11px] uppercase tracking-wide",
                           "bg-card text-foreground shadow-e2",
                           "transition-all duration-150 cursor-pointer",
@@ -859,7 +859,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       ))}
                     </PopoverContent>
                   </Popover>
-                  {autoTaskRecord && <Badge variant="secondary" className="text-[10px] h-[24px] font-normal rounded-[8px]">Auto-generated</Badge>}
+                  {autoTaskRecord && <Badge variant="secondary" className="text-[10px] h-[28px] font-normal rounded-[8px]">Auto-generated</Badge>}
                     {(hoveredSection === "priority" || showPriorityPopover || showStatusPopover || editingSection === "priority") && (
                       <InstructionField
                         value={sectionInstructions.priority}
@@ -873,7 +873,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* Tags */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("category")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >
@@ -884,7 +884,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         <FactChipView
                           key={c.id}
                           label={(c.name || c.label || "—").toString().toUpperCase()}
-                          className="font-mono text-[11px] rounded-[8px] h-[24px]"
+                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />
                       ))}
                     {(hoveredSection === "category" || editingSection === "category") && (
@@ -900,7 +900,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
                 {/* Compliance */}
                 <div
-                  className="flex items-center gap-2 min-h-[24px]"
+                  className="flex items-center gap-2 min-h-[28px]"
                   onMouseEnter={() => setHoveredSection("compliance")}
                   onMouseLeave={() => setHoveredSection(null)}
                 >

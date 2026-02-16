@@ -179,7 +179,7 @@ export default function PropertyDetail() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [expandedSection, setExpandedSection] = useState<'create' | 'details' | 'assistant' | null>('create');
-  const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
+  const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   
   // Additional data hooks
   const { data: compliance = [] } = useComplianceQuery(id);
@@ -556,8 +556,6 @@ if (!error) {
     backgroundImage: `linear-gradient(to right, ${iconColor} 0%, ${iconColor} 20%, transparent 70%, transparent 100%)`
   };
 
-  const { openAssistant } = useAssistantContext();
-
   // Header element that will be passed to DualPaneLayout (matching dashboard pattern)
   const headerElement = (
     <PageHeader>
@@ -597,10 +595,7 @@ if (!error) {
             id: 'create',
             title: 'Create Task',
             isExpanded: expandedSection === 'create',
-            onToggle: () => {
-              setExpandedSection((s) => (s === 'create' ? null : 'create'));
-              if (expandedSection !== 'create') setShowCreateTask(true);
-            },
+            onToggle: () => setExpandedSection((s) => (s === 'create' ? null : 'create')),
             children: (
               <CreateTaskModal
                 open={showCreateTask}

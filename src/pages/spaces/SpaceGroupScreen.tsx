@@ -213,16 +213,17 @@ export default function SpaceGroupScreen() {
     navigate(`/properties/${propertyId}/spaces/organise`);
   };
 
-  if (propertyLoading || !propertyId) {
-    return <LoadingState />;
-  }
-
+  // Must be before any early returns (Rules of Hooks)
   useEffect(() => {
     if (!propertyLoading && propertyId && groupSlug && !group) {
       toast.error("Space group not found");
       navigate(`/properties/${propertyId}/spaces/organise`);
     }
   }, [group, groupSlug, propertyId, propertyLoading, navigate]);
+
+  if (propertyLoading || !propertyId) {
+    return <LoadingState />;
+  }
 
   if (!group) {
     return <LoadingState />;

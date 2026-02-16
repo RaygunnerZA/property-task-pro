@@ -41,20 +41,20 @@ export function AIIconColorPicker({
   disabled = false,
   className,
 }: AIIconColorPickerProps) {
-  const [aiFirstIcon, setAiFirstIcon] = useState<string | null>(null);
+  const [aiIcons, setAiIcons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const debouncedSearch = useDebounce(searchText.trim(), 400);
 
   const themeIcons = defaultIcons.slice(0, 5);
-  // When user types: replace first slot with AI result if found; otherwise show thematic defaults
+  // When user types: show 5 AI results (lateral: stove->pot,pan,heat); else thematic defaults
   const displayIcons =
-    aiFirstIcon !== null
-      ? [aiFirstIcon, ...themeIcons.slice(1)]
+    aiIcons.length > 0
+      ? aiIcons
       : themeIcons;
 
   useEffect(() => {
     if (!debouncedSearch) {
-      setAiFirstIcon(null);
+      setAiIcons([]);
       setLoading(false);
       if (!value.iconName || !themeIcons.includes(value.iconName)) {
         onChange(themeIcons[0], value.color);
@@ -68,23 +68,23 @@ export function AIIconColorPicker({
       .then(({ data }) => {
         if (cancelled) return;
         const names = (data ?? [])
-          .slice(0, 1)
+          .slice(0, 5)
           .map((r: { name?: string }) => r?.name)
           .filter(Boolean) as string[];
         if (names.length > 0) {
-          setAiFirstIcon(names[0]);
-          if (!value.iconName || value.iconName === themeIcons[0]) {
+          setAiIcons(names);
+          if (!value.iconName || !names.includes(value.iconName)) {
             onChange(names[0], value.color);
           }
         } else {
-          setAiFirstIcon(null);
+          setAiIcons([]);
           if (!value.iconName || !themeIcons.includes(value.iconName)) {
             onChange(themeIcons[0], value.color);
           }
         }
       })
       .catch(() => {
-        if (!cancelled) setAiFirstIcon(null);
+        if (!cancelled) setAiIcons([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

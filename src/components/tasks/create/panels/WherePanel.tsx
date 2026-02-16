@@ -23,9 +23,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Chip } from "@/components/chips/Chip";
-import { IconPicker } from "@/components/ui/IconPicker";
+import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -222,6 +221,7 @@ export function WherePanel({
           address: newPropertyName.trim(),
           nickname: newPropertyName.trim(),
           icon_name: iconName,
+          icon_color_hex: propertyColor || null,
         })
         .select("id")
         .single();
@@ -339,7 +339,7 @@ export function WherePanel({
               resetPropertyModal();
               setShowCreateProperty(true);
             }}
-            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[24px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
           >
             <span className="text-[12px] uppercase leading-[16px]">PROPERTY</span>
             <Plus className="h-3.5 w-3.5" />
@@ -423,7 +423,7 @@ export function WherePanel({
                 resetSpaceModal();
                 setShowCreateSpace(true);
               }}
-              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[24px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
             >
               <span className="text-[12px] uppercase leading-[16px]">SPACES</span>
               <Plus className="h-3.5 w-3.5" />
@@ -526,15 +526,17 @@ export function WherePanel({
               )}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Choose Icon</label>
-              <IconPicker value={propertyIcon} onChange={setPropertyIcon} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Choose Color</label>
-              <ColorPicker value={propertyColor} onChange={setPropertyColor} />
-            </div>
+            <AIIconColorPicker
+              searchText={newPropertyName.trim()}
+              value={{ iconName: propertyIcon, color: propertyColor }}
+              onChange={(icon, color) => {
+                setPropertyIcon(icon);
+                setPropertyColor(color);
+              }}
+              defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+              fallbackSearch="building"
+              disabled={creating}
+            />
           </div>
           <DialogFooter>
             <Button
@@ -583,15 +585,17 @@ export function WherePanel({
               </p>
             )}
 
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Choose Icon</label>
-              <IconPicker value={spaceIcon} onChange={setSpaceIcon} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground">Choose Color</label>
-              <ColorPicker value={spaceColor} onChange={setSpaceColor} />
-            </div>
+            <AIIconColorPicker
+              searchText={newSpaceName.trim()}
+              value={{ iconName: spaceIcon, color: spaceColor }}
+              onChange={(icon, color) => {
+                setSpaceIcon(icon);
+                setSpaceColor(color);
+              }}
+              defaultIcons={["door-open", "bed", "bath", "sofa", "utensils-crossed"]}
+              fallbackSearch="room"
+              disabled={creating}
+            />
           </div>
           <DialogFooter>
             <Button

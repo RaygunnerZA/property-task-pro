@@ -31,7 +31,7 @@ export function PriorityPanel({
     >
         <div className="flex items-center gap-2 w-full min-w-0">
           {/* PRIORITY chip - Fixed on left */}
-          <div className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[24px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] shrink-0 font-mono">
+          <div className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] shrink-0 font-mono">
             <span className="text-[12px] uppercase leading-[16px]">PRIORITY</span>
             <AlertTriangle className="h-3.5 w-3.5" />
           </div>

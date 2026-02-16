@@ -47,7 +47,7 @@ export function FactChipView({
       type={onPress ? "button" : undefined}
       onClick={onPress ? handleClick : undefined}
       className={cn(
-        "relative inline-flex items-center gap-1.5 px-2 py-1 h-[24px] rounded-[8px]",
+        "relative inline-flex items-center gap-1.5 px-2 py-1 h-[28px] rounded-[8px]",
         "font-mono text-[11px] uppercase tracking-wide",
         "bg-card text-foreground",
         "shadow-e2",

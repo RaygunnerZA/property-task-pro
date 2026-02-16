@@ -7,7 +7,7 @@
  * Never written to attachments. Phase 2 post-upload analysis is the source of truth.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 
@@ -103,16 +103,20 @@ export function useImageAnalysis({
     }
   }, [images, orgId, analyzeImage]);
 
-  // Aggregate results from images
-  const imageOcrText = images
-    .map((i) => i.aiOcrText)
-    .filter((s): s is string => Boolean(s))
-    .join("\n");
+  // Aggregate results from images (memoize to avoid infinite loop in useChipSuggestions)
+  const imageOcrText = useMemo(
+    () =>
+      images
+        .map((i) => i.aiOcrText)
+        .filter((s): s is string => Boolean(s))
+        .join("\n"),
+    [images]
+  );
 
-  const detectedLabels = Array.from(
-    new Set(
-      images.flatMap((i) => i.detectedLabels || [])
-    )
+  const detectedLabels = useMemo(
+    () =>
+      Array.from(new Set(images.flatMap((i) => i.detectedLabels || []))),
+    [images]
   );
 
   return {

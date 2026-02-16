@@ -12,9 +12,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Chip } from "@/components/chips/Chip";
-import { IconPicker } from "@/components/ui/IconPicker";
+import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import { ColorPicker } from "@/components/ui/ColorPicker";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -145,10 +144,12 @@ export function WhereTab({
     setCreating(true);
     try {
       await supabase.auth.refreshSession();
-      let iconName = "home";
-      const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newPropertyName.trim() });
-      if (icons?.length && (icons[0] as { name?: string })?.name) {
-        iconName = (icons[0] as { name: string }).name;
+      let iconName = propertyIcon || "home";
+      if (!propertyIcon) {
+        const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newPropertyName.trim() });
+        if (icons?.length && (icons[0] as { name?: string })?.name) {
+          iconName = (icons[0] as { name: string }).name;
+        }
       }
       
       const { data, error } = await supabase
@@ -158,6 +159,7 @@ export function WhereTab({
           address: newPropertyName.trim(),
           nickname: newPropertyName.trim(),
           icon_name: iconName,
+          icon_color_hex: propertyColor || null,
         })
         .select("id")
         .single();
@@ -189,10 +191,12 @@ export function WhereTab({
     setCreating(true);
     try {
       await supabase.auth.refreshSession();
-      let iconName = "home";
-      const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newSpaceName.trim() });
-      if (icons?.length && (icons[0] as { name?: string })?.name) {
-        iconName = (icons[0] as { name: string }).name;
+      let iconName = spaceIcon || "home";
+      if (!spaceIcon) {
+        const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newSpaceName.trim() });
+        if (icons?.length && (icons[0] as { name?: string })?.name) {
+          iconName = (icons[0] as { name: string }).name;
+        }
       }
       
       const { data, error } = await supabase
@@ -415,15 +419,17 @@ export function WhereTab({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
-              <IconPicker value={propertyIcon} onChange={setPropertyIcon} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Color</Label>
-              <ColorPicker value={propertyColor} onChange={setPropertyColor} />
-            </div>
+            <AIIconColorPicker
+              searchText={newPropertyName.trim()}
+              value={{ iconName: propertyIcon, color: propertyColor }}
+              onChange={(icon, color) => {
+                setPropertyIcon(icon);
+                setPropertyColor(color);
+              }}
+              defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+              fallbackSearch="building"
+              disabled={creating}
+            />
           </div>
           <DialogFooter>
             <Button
@@ -472,15 +478,17 @@ export function WhereTab({
               </p>
             )}
 
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Icon</Label>
-              <IconPicker value={spaceIcon} onChange={setSpaceIcon} />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Choose Color</Label>
-              <ColorPicker value={spaceColor} onChange={setSpaceColor} />
-            </div>
+            <AIIconColorPicker
+              searchText={newSpaceName.trim()}
+              value={{ iconName: spaceIcon, color: spaceColor }}
+              onChange={(icon, color) => {
+                setSpaceIcon(icon);
+                setSpaceColor(color);
+              }}
+              defaultIcons={["door-open", "bed", "bath", "sofa", "utensils-crossed"]}
+              fallbackSearch="room"
+              disabled={creating}
+            />
           </div>
           <DialogFooter>
             <Button
