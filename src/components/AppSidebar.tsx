@@ -30,7 +30,7 @@ import { APP_VERSION } from '@/config/version';
 // Global navigation items (always visible)
 const globalNavItems = [
   {
-    title: 'Dashboard',
+    title: 'Hub',
     url: '/',
     icon: LayoutDashboard,
   },

@@ -121,14 +121,15 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     return `${timeGreeting}, ${userFirstName}`;
   }, [userFirstName]);
 
-  // Count tasks due today (Focus)
+  // Count tasks due today (Focus) - only open/in_progress, exclude completed/archived
   const focus = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    return tasks.filter(task => {
+
+    return tasks.filter((task) => {
+      if (task.status === "completed" || task.status === "archived") return false;
       if (!task.due_date) return false;
       const dueDate = new Date(task.due_date);
       dueDate.setHours(0, 0, 0, 0);
@@ -136,24 +137,32 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     }).length;
   }, [tasks]);
 
-  // Count urgent tasks (Insight)
+  // Count urgent tasks (Insight) - only open/in_progress, exclude completed/archived
   const insight = useMemo(() => {
-    const urgentCount = tasks.filter(task => task.priority === 'urgent').length;
+    const urgentCount = tasks.filter(
+      (task) =>
+        task.priority === "urgent" &&
+        task.status !== "completed" &&
+        task.status !== "archived"
+    ).length;
     if (urgentCount > 0) {
       return `${urgentCount} urgent ${urgentCount === 1 ? 'item' : 'items'} need action.`;
     }
     return null;
   }, [tasks]);
 
-  // Find most frequent property (Context)
+  // Find most frequent property (Context) - among active tasks only
   const context = useMemo(() => {
-    if (tasks.length === 0) return null;
-    
+    const activeTasks = tasks.filter(
+      (t) => t.status !== "completed" && t.status !== "archived"
+    );
+    if (activeTasks.length === 0) return null;
+
     // Group tasks by property_id
     const propertyCounts = new Map<string, number>();
     const propertyNames = new Map<string, string>();
-    
-    tasks.forEach(task => {
+
+    activeTasks.forEach((task) => {
       if (task.property_id) {
         const count = propertyCounts.get(task.property_id) || 0;
         propertyCounts.set(task.property_id, count + 1);

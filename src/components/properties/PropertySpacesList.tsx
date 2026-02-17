@@ -3,6 +3,7 @@ import { SpaceCard } from "@/components/spaces/SpaceCard";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useSpacesWithTypes } from "@/hooks/useSpacesWithTypes";
+import { useProperty } from "@/hooks/property/useProperty";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +36,7 @@ export function PropertySpacesList({
 }: PropertySpacesListProps) {
   const { spaces: spacesAll, loading: loadingAll, refresh: refreshAll } = useSpaces(propertyId);
   const { spaces: spacesFiltered, loading: loadingFiltered, refresh: refreshFiltered } = useSpacesWithTypes(propertyId, groupSlug);
+  const { property } = useProperty(propertyId);
 
   const spaces = groupSlug ? spacesFiltered : spacesAll;
   const spacesLoading = groupSlug ? loadingFiltered : loadingAll;
@@ -165,7 +167,8 @@ export function PropertySpacesList({
             refreshSpaces();
           }
         }}
-        properties={[{ id: propertyId } as any]}
+        properties={property ? [property] : []}
+        propertyId={propertyId}
       />
     </>
   );

@@ -35,7 +35,6 @@ import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
-import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 // Lazy load PropertyImageDialog to isolate any import errors
@@ -737,8 +736,13 @@ if (!error) {
         rightColumn={
           <div className="min-h-screen bg-background overflow-y-auto">
             {/* Daily Briefing Card at the top (same position as dashboard) - Property-specific */}
-            <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px]">
-              <DailyBriefingCard showGreeting={false} tasks={propertyTasks} />
+            <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[15px] pt-[15px] h-[166px] max-h-[166px]">
+              <DailyBriefingCard
+                showGreeting={false}
+                tasks={propertyTasks}
+                propertyId={id}
+                scopeLabel={property?.nickname || property?.address || (id ? "Property" : undefined)}
+              />
             </div>
             
             <div className="p-[15px] space-y-6">
@@ -799,14 +803,6 @@ if (!error) {
                       queryClient.invalidateQueries({ queryKey: ["properties"] });
                     }}
                   />
-                )}
-              </div>
-
-              {/* Property Insights (Graph-derived) */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Property Insights</h2>
-                {id && (
-                  <GraphInsightPanel start={{ type: "property", id }} depth={3} variant="full" />
                 )}
               </div>
 

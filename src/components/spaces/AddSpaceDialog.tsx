@@ -32,13 +32,19 @@ interface AddSpaceDialogProps {
   onOpenChange: (open: boolean) => void;
   properties?: any[];
   propertyId?: string; // Optional: pre-select a property
+  /** "modal" = dialog overlay; "column" = inline in third column concertina */
+  variant?: "modal" | "column";
+  /** When true with variant="column", render only content (concertina provides header) */
+  headless?: boolean;
 }
 
 export function AddSpaceDialog({ 
   open, 
   onOpenChange,
   properties = [],
-  propertyId: initialPropertyId
+  propertyId: initialPropertyId,
+  variant = "modal",
+  headless = false,
 }: AddSpaceDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
@@ -64,7 +70,7 @@ export function AddSpaceDialog({
       if (error) return null;
       return data;
     },
-    enabled: !!canonicalName && open,
+    enabled: !!canonicalName && (open || variant === "column"),
   });
 
   const suggestedIcon = spaceTypeMatch?.default_icon ?? null;
@@ -160,6 +166,96 @@ export function AddSpaceDialog({
 
   const IconComponent = getAssetIcon(iconName || "box");
 
+  const formContent = (
+    <div className="space-y-6 p-4">
+      {/* Icon Preview */}
+      <div className="flex justify-center">
+        <div
+          className="p-4 rounded-2xl transition-all duration-300"
+          style={{
+            backgroundColor: iconColor,
+            boxShadow:
+              "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
+          }}
+        >
+          <IconComponent className="w-10 h-10 text-white" />
+        </div>
+      </div>
+
+      {/* Property Selection - Hide if propertyId is pre-selected */}
+      {!initialPropertyId && (
+        <div className="grid gap-2">
+          <Label htmlFor="property">Property *</Label>
+          <Select value={propertyId} onValueChange={setPropertyId} disabled={loading}>
+            <SelectTrigger id="property">
+              <SelectValue placeholder="Select a property" />
+            </SelectTrigger>
+            <SelectContent>
+              {properties.map((property) => (
+                <SelectItem key={property.id} value={property.id}>
+                  {property.nickname || property.address || "Unnamed Property"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {properties.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No properties available. Please create a property first.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Space Name */}
+      <div className="grid gap-2">
+        <Label htmlFor="name">Space name *</Label>
+        <Input
+          id="name"
+          placeholder="e.g. Kitchen, Bedroom, Office"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={loading}
+        />
+      </div>
+
+      {/* AI Icon + Color */}
+      <AIIconColorPicker
+        searchText={name}
+        value={{ iconName, color: iconColor }}
+        onChange={(icon, color) => {
+          setIconName(icon);
+          setIconColor(color);
+        }}
+        suggestedIcon={suggestedIcon}
+        defaultIcons={["door-open", "bed", "bath", "cooking-pot", "sofa"]}
+        fallbackSearch="room"
+        disabled={loading}
+      />
+
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          onClick={handleClose}
+          disabled={loading}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSave}
+          disabled={loading || !name.trim() || !propertyId || (!initialPropertyId && properties.length === 0)}
+          className="flex-1"
+        >
+          {loading ? "Creating..." : "Create Space"}
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (variant === "column" && headless) {
+    return <>{formContent}</>;
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -169,88 +265,7 @@ export function AddSpaceDialog({
             Enter the space details below. Spaces help organize tasks within properties.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6 py-4">
-          {/* Icon Preview */}
-          <div className="flex justify-center">
-            <div
-              className="p-4 rounded-2xl transition-all duration-300"
-              style={{
-                backgroundColor: iconColor,
-                boxShadow:
-                  "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-              }}
-            >
-              <IconComponent className="w-10 h-10 text-white" />
-            </div>
-          </div>
-
-          {/* Property Selection - Hide if propertyId is pre-selected */}
-          {!initialPropertyId && (
-            <div className="grid gap-2">
-              <Label htmlFor="property">Property *</Label>
-              <Select value={propertyId} onValueChange={setPropertyId} disabled={loading}>
-                <SelectTrigger id="property">
-                  <SelectValue placeholder="Select a property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties.map((property) => (
-                    <SelectItem key={property.id} value={property.id}>
-                      {property.nickname || property.address || "Unnamed Property"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {properties.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No properties available. Please create a property first.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Space Name */}
-          <div className="grid gap-2">
-            <Label htmlFor="name">Space name *</Label>
-            <Input
-              id="name"
-              placeholder="e.g. Kitchen, Bedroom, Office"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          {/* AI Icon + Color (5 each, empty until user types) */}
-          <AIIconColorPicker
-            searchText={name}
-            value={{ iconName, color: iconColor }}
-            onChange={(icon, color) => {
-              setIconName(icon);
-              setIconColor(color);
-            }}
-            suggestedIcon={suggestedIcon}
-            defaultIcons={["door-open", "bed", "bath", "cooking-pot", "sofa"]}
-            fallbackSearch="room"
-            disabled={loading}
-          />
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={loading || !name.trim() || !propertyId || (!initialPropertyId && properties.length === 0)}
-          >
-            {loading ? "Creating..." : "Create Space"}
-          </Button>
-        </DialogFooter>
+        {formContent}
       </DialogContent>
     </Dialog>
   );
