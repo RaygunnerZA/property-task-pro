@@ -4,6 +4,7 @@ import { useActiveOrg } from "./useActiveOrg";
 
 interface UseFileUploadOptions {
   taskId?: string;
+  propertyId?: string | null;
   onUploadComplete?: (attachmentId: string, fileUrl: string) => void;
   onError?: (error: Error) => void;
 }
@@ -19,7 +20,7 @@ interface UploadProgress {
  * Hook for uploading files to tasks
  * Uploads to task-images bucket and creates attachment records
  */
-export function useFileUpload({ taskId, onUploadComplete, onError }: UseFileUploadOptions = {}) {
+export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }: UseFileUploadOptions = {}) {
   const { orgId } = useActiveOrg();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
@@ -85,57 +86,10 @@ export function useFileUpload({ taskId, onUploadComplete, onError }: UseFileUplo
         .getPublicUrl(fileName);
 
       // Step 3: Create attachment record
-      // Verify orgId is set before attempting insert
       if (!orgId) {
         throw new Error("Organization ID is required but not available");
       }
-      
-      // #region agent log
-      // Check auth state before insert
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'use-file-upload.ts:95',message:'Auth state before insert',data:{authUserId:authUser?.id,authError:authError?.message,orgId,taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-insert',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
-      // #region agent log
-      // Verify user membership in org - check all memberships for this user
-      const { data: allMemberships, error: allMembershipsError } = await supabase
-        .from("organisation_members")
-        .select("org_id, user_id")
-        .eq("user_id", authUser?.id || '');
-      const { data: specificMembership, error: membershipError } = await supabase
-        .from("organisation_members")
-        .select("org_id, user_id")
-        .eq("org_id", orgId)
-        .eq("user_id", authUser?.id || '')
-        .maybeSingle();
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'use-file-upload.ts:105',message:'Membership check result',data:{allMemberships,allMembershipsError:allMembershipsError?.message,specificMembership,membershipError:membershipError?.message,orgId,authUserId:authUser?.id,orgIdMatches:allMemberships?.some(m=>m.org_id===orgId)},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-insert',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      
-      const attachmentPayload = {
-        org_id: orgId,
-        parent_type: "task",
-        parent_id: taskId,
-        file_url: urlData.publicUrl,
-        file_name: file.name,
-        file_type: file.type,
-        file_size: file.size,
-      };
-      
-      // #region agent log
-      console.log('[use-file-upload] Creating attachment record:', {
-        orgId,
-        taskId,
-        fileName: file.name,
-        payload: { ...attachmentPayload, file_size: file.size },
-      });
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'use-file-upload.ts:118',message:'Attachment payload before insert',data:{payload:attachmentPayload,authUserId:authUser?.id,orgId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-insert',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      
-      // #region agent log
-      // Use RPC function to bypass RLS
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'use-file-upload.ts:135',message:'Calling create_attachment_record RPC',data:{orgId,fileUrl:urlData.publicUrl,fileName:file.name,fileType:file.type,fileSize:file.size,parentType:'task',parentId:taskId},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-insert',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-      
+
       // Use RPC function to create attachment (bypasses RLS)
       const { data: attachmentData, error: attachError } = await supabase.rpc('create_attachment_record', {
         p_org_id: orgId,
@@ -147,21 +101,11 @@ export function useFileUpload({ taskId, onUploadComplete, onError }: UseFileUplo
         p_file_size: file.size,
         p_thumbnail_url: null
       });
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'use-file-upload.ts:145',message:'RPC result',data:{success:!!attachmentData,error:attachError?.message,errorCode:attachError?.code,errorDetails:attachError?.details,errorHint:attachError?.hint,orgId,authUserId:authUser?.id,attachmentId:attachmentData?.[0]?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'post-insert',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
-      // #endregion
 
       if (attachError) {
-        console.error('[use-file-upload] Attachment RPC error:', {
-          error: attachError,
-          code: attachError.code,
-          message: attachError.message,
-          details: attachError.details,
-          hint: attachError.hint,
-          orgId,
-          taskId,
-        });
+        if (import.meta.env.DEV) {
+          console.warn("[use-file-upload] Attachment RPC error:", attachError.message);
+        }
         throw new Error(`Failed to create attachment: ${attachError.message}`);
       }
       
@@ -185,9 +129,30 @@ export function useFileUpload({ taskId, onUploadComplete, onError }: UseFileUplo
             },
           })
           .catch((err) => {
-            console.error("Thumbnail generation failed (non-critical):", err);
-            // Don't throw - thumbnail generation is optional
+            if (import.meta.env.DEV) {
+              console.warn("Thumbnail generation failed (non-critical):", err);
+            }
           });
+
+        // Step 5: Fire-and-forget AI image analysis (never blocks upload UX)
+        if (orgId && attachment.id) {
+          supabase.functions
+            .invoke("ai-image-analyse", {
+              body: {
+                attachment_id: attachment.id,
+                file_url: urlData.publicUrl,
+                org_id: orgId,
+                property_id: propertyId ?? null,
+                task_id: taskId ?? null,
+              },
+            })
+            .then(({ error }) => {
+              if (error && import.meta.env.DEV) {
+                console.warn("[use-file-upload] AI image analysis failed:", error);
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       // Update progress to complete

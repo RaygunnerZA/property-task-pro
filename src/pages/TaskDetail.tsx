@@ -307,6 +307,7 @@ const TaskDetail = () => {
             {/* #endregion */}
             <FileUploadZone
               taskId={id!}
+              propertyId={task?.property_id}
               onUploadComplete={() => {
                 // Invalidate React Query cache to refetch task data
                 queryClient.invalidateQueries({ queryKey: ["task", orgId, id] });

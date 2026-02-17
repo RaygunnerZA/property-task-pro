@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { Sparkles, Link2, Plus, Shield, Layers, Search, ChevronDown, RefreshCw } from "lucide-react";
+import { Sparkles, Link2, Plus, Shield, Search, ChevronDown, RefreshCw } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,7 +48,6 @@ interface ImageAiActionsProps {
   taskId?: string | null;
   onLinkAsset?: (assetId: string) => void;
   onRefresh?: () => void;
-  onShowOverlays?: () => void;
 }
 
 export function ImageAiActions({
@@ -59,7 +58,6 @@ export function ImageAiActions({
   propertyId,
   onLinkAsset,
   onRefresh,
-  onShowOverlays,
   taskId,
 }: ImageAiActionsProps) {
   const { toast } = useToast();
@@ -301,21 +299,6 @@ export function ImageAiActions({
                 prefilled={prefilledCompliance}
                 onComplianceCreated={handleComplianceCreated}
               />
-            </div>
-          )}
-
-          {/* E. Show AI Regions in Editor */}
-          {hasDetected && onShowOverlays && (
-            <div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-8 text-xs shadow-e1"
-                onClick={onShowOverlays}
-              >
-                <Layers className="h-3.5 w-3.5 mr-1.5" />
-                Show AI Regions in Editor
-              </Button>
             </div>
           )}
 

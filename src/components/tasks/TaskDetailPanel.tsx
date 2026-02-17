@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, MapPin, Calendar, Save, SquarePen, Upload, Box, Tag, Shield, AlertTriangle } from "lucide-react";
+import { Camera, Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, MapPin, Calendar, Save, SquarePen, Upload, Box, Tag, Shield, AlertTriangle, Network } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -10,8 +10,7 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
-import { ImageAnnotationEditor } from "./ImageAnnotationEditor";
-import type { DetectionOverlay } from "./ImageAnnotationEditor";
+import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -37,8 +36,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { useAssistantContext } from "@/contexts/AssistantContext";
+import { FillaIcon } from "@/components/filla/FillaIcon";
 
 function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
   const exp = img?.expiry_date;
@@ -144,7 +146,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
-  const [detectionOverlays, setDetectionOverlays] = useState<DetectionOverlay[]>([]);
   const [showPeoplePopover, setShowPeoplePopover] = useState(false);
   const [showPriorityPopover, setShowPriorityPopover] = useState(false);
   const [showStatusPopover, setShowStatusPopover] = useState(false);
@@ -395,8 +396,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }, [task, status, priority, selectedUserId, selectedTeamIds]);
 
+  const { openAssistant } = useAssistantContext();
   const { uploadFile, uploading: isUploadingImage } = useFileUpload({
     taskId,
+    propertyId: propertyId ?? undefined,
     onUploadComplete: () => {
       refreshTask();
       queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
@@ -497,6 +500,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             <div className="flex gap-2 items-end shrink-0">
               <button
                 type="button"
+                onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                title="Ask FILLA"
+                aria-label="Open Assistant"
+              >
+                <FillaIcon size={18} />
+              </button>
+              <button
+                type="button"
                 onClick={() => taskImageInputRef.current?.click()}
                 disabled={isUploadingImage}
                 className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
@@ -517,6 +529,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </div>
         ) : (
           <div className="flex gap-2 justify-end items-end">
+            <button
+              type="button"
+              onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+              title="Ask FILLA"
+              aria-label="Open Assistant"
+            >
+              <FillaIcon size={18} />
+            </button>
             <button
               type="button"
               onClick={() => taskImageInputRef.current?.click()}
@@ -564,7 +585,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         {/* Tabs - below description: Summary | Messaging | Activity */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
-            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
+            <TabsList className="w-full grid grid-cols-4 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
               <TabsTrigger
                 value="summary"
                 className={cn(
@@ -594,6 +615,16 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               >
                 <FileText className="h-4 w-4 mr-2" />
                 Activity
+              </TabsTrigger>
+              <TabsTrigger
+                value="graph"
+                className={cn(
+                  "rounded-[8px] data-[state=active]:bg-card",
+                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                )}
+              >
+                <Network className="h-4 w-4 mr-2" />
+                Graph
               </TabsTrigger>
             </TabsList>
           </div>
@@ -950,12 +981,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <TaskMessaging taskId={taskId} />
             </TabsContent>
 
+            <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
+              {taskId && <GraphTabContent start={{ type: "task", id: taskId }} depth={3} />}
+            </TabsContent>
+
             <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
                   <FileUploadZone
                     taskId={taskId}
+                    propertyId={propertyId}
                     onUploadComplete={() => {
                       queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
                       queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
@@ -987,22 +1023,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
                         queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
                         queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
-                      }}
-                      onShowOverlays={() => {
-                        const meta = (img?.metadata || {}) as Record<string, unknown>;
-                        const detected = (meta.detected_objects as Array<{ type?: string; label?: string; confidence?: number; x?: number; y?: number; width?: number; height?: number }>) || [];
-                        const overlays: DetectionOverlay[] = detected.map((obj, i) => ({
-                          type: obj.type || "object",
-                          label: obj.label || obj.type || "Detected",
-                          x: obj.x ?? 0.1,
-                          y: obj.y ?? 0.1 + i * 0.2,
-                          width: obj.width ?? 0.3,
-                          height: obj.height ?? 0.15,
-                          confidence: obj.confidence,
-                        }));
-                        setDetectionOverlays(overlays);
-                        setEditingImageId(img.id);
-                        setShowAnnotationEditor(true);
                       }}
                     />
                   );
@@ -1137,11 +1157,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
           ""
         }
-        detectionOverlays={detectionOverlays}
+        detectionOverlays={[]}
         onClose={() => {
           setShowAnnotationEditor(false);
           setEditingImageId(null);
-          setDetectionOverlays([]);
         }}
       />,
       document.body

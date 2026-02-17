@@ -116,7 +116,7 @@ export function DocumentUploadDialog({
       const fileUrl = urlData.publicUrl;
 
       // Insert document record
-      const { error: insertError } = await supabase
+      const { data: insertedDoc, error: insertError } = await supabase
         .from("compliance_documents")
         .insert({
           org_id: orgId,
@@ -124,12 +124,33 @@ export function DocumentUploadDialog({
           expiry_date: expiryDate ? format(expiryDate, "yyyy-MM-dd") : null,
           status: status,
           file_url: fileUrl,
-        } as any); // Type assertion needed until types are regenerated
+        } as any) // Type assertion needed until types are regenerated
+        .select("id")
+        .single();
 
       if (insertError) {
         // If insert fails, try to delete the uploaded file
         await supabase.storage.from("compliance-docs").remove([fileName]);
         throw insertError;
+      }
+
+      // Fire-and-forget AI analysis (unified with property document behavior)
+      if (insertedDoc?.id) {
+        supabase.functions
+          .invoke("ai-doc-analyse", {
+            body: {
+              file_url: fileUrl,
+              file_name: selectedFile.name,
+              org_id: orgId,
+              compliance_document_id: insertedDoc.id,
+            },
+          })
+          .then(({ error }) => {
+            if (error && import.meta.env.DEV) {
+              console.warn("[DocumentUploadDialog] AI doc analysis failed:", error);
+            }
+          })
+          .catch(() => {});
       }
 
       toast.success("Document uploaded successfully");

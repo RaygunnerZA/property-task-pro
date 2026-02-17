@@ -28,6 +28,8 @@ interface AIIconColorPickerProps {
   defaultIcons?: string[];
   /** Entity type for fallback when AI returns nothing */
   fallbackSearch?: string;
+  /** When provided (e.g. from space_types lookup), takes precedence over ai_icon_search */
+  suggestedIcon?: string | null;
   disabled?: boolean;
   className?: string;
 }
@@ -38,6 +40,7 @@ export function AIIconColorPicker({
   onChange,
   defaultIcons = DEFAULT_FALLBACK,
   fallbackSearch = "room",
+  suggestedIcon,
   disabled = false,
   className,
 }: AIIconColorPickerProps) {
@@ -46,13 +49,23 @@ export function AIIconColorPicker({
   const debouncedSearch = useDebounce(searchText.trim(), 400);
 
   const themeIcons = defaultIcons.slice(0, 5);
-  // When user types: show 5 AI results (lateral: stove->pot,pan,heat); else thematic defaults
+  // When suggestedIcon provided: use it as primary (from space_types); else AI results or thematic defaults
   const displayIcons =
-    aiIcons.length > 0
-      ? aiIcons
-      : themeIcons;
+    suggestedIcon
+      ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
+      : aiIcons.length > 0
+        ? aiIcons
+        : themeIcons;
 
   useEffect(() => {
+    if (suggestedIcon) {
+      setAiIcons([]);
+      setLoading(false);
+      if (!value.iconName || value.iconName !== suggestedIcon) {
+        onChange(suggestedIcon, value.color);
+      }
+      return;
+    }
     if (!debouncedSearch) {
       setAiIcons([]);
       setLoading(false);
@@ -92,7 +105,7 @@ export function AIIconColorPicker({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch]);
+  }, [debouncedSearch, suggestedIcon]);
 
   return (
     <div className={cn("space-y-4", className)}>

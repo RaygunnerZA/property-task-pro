@@ -4,51 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { SpaceGroupCard } from "./SpaceGroupCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
 
 interface PropertySpacesSectionProps {
   propertyId: string;
   /** 'grid' = property page layout; 'scroller' = horizontal scroll (e.g. onboarding) */
   variant?: "grid" | "scroller";
 }
-
-// Space group definitions with descriptions
-const SPACE_GROUPS = [
-  {
-    name: "Circulation",
-    description: "Corridors, hallways, staircases, and other movement areas that connect spaces throughout the property.",
-    color: "#8EC9CE",
-  },
-  {
-    name: "Habitable / Working",
-    description: "Living, working, and activity spaces including bedrooms, offices, meeting rooms, and sales floors.",
-    color: "#A8D5BA",
-  },
-  {
-    name: "Service Areas",
-    description: "Support spaces like kitchens, break areas, utility rooms, and staff facilities.",
-    color: "#F4A261",
-  },
-  {
-    name: "Sanitary Spaces",
-    description: "Bathrooms, WCs, showers, changing rooms, and other hygiene facilities.",
-    color: "#E76F51",
-  },
-  {
-    name: "Storage",
-    description: "Storage rooms, stock rooms, archives, cupboards, and other spaces for keeping items.",
-    color: "#D4A574",
-  },
-  {
-    name: "Technical / Plant",
-    description: "Plant rooms, server rooms, electrical rooms, boiler rooms, and mechanical infrastructure spaces.",
-    color: "#6C757D",
-  },
-  {
-    name: "External Areas",
-    description: "Outdoor spaces including gardens, terraces, car parks, loading bays, yards, and roof areas.",
-    color: "#95A5A6",
-  },
-];
 
 export function PropertySpacesSection({ propertyId, variant = "grid" }: PropertySpacesSectionProps) {
   const supabase = useSupabase();
@@ -106,12 +68,12 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
 
   const isLoading = spaceTypesLoading || spacesLoading;
 
-  const cards = SPACE_GROUPS.map((group) => {
-    const spaceCount = spacesByGroup.get(group.name) || 0;
+  const cards = ONBOARDING_SPACE_GROUPS.map((group) => {
+    const spaceCount = spacesByGroup.get(group.label) || 0;
     return (
       <SpaceGroupCard
-        key={group.name}
-        groupName={group.name}
+        key={group.id}
+        groupName={group.label}
         description={group.description}
         color={group.color}
         spaceCount={spaceCount}
@@ -135,7 +97,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
       <div className="relative w-full overflow-x-hidden overflow-y-visible">
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
           {cards.map((card, i) => (
-            <div key={SPACE_GROUPS[i].name} className="flex-shrink-0 w-[200px]">
+            <div key={ONBOARDING_SPACE_GROUPS[i].id} className="flex-shrink-0 w-[200px]">
               {card}
             </div>
           ))}

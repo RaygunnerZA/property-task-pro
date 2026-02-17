@@ -2,6 +2,8 @@ import { useState, useMemo, useRef } from "react";
 import { SpaceCard } from "@/components/spaces/SpaceCard";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { useSpaces } from "@/hooks/useSpaces";
+import { useSpacesWithTypes } from "@/hooks/useSpacesWithTypes";
+import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,23 +12,39 @@ interface PropertySpacesListProps {
   tasks?: any[];
   onSpaceClick?: (spaceId: string) => void;
   selectedSpaceId?: string | null;
+  /** When set, filter spaces by this group and use group color for cards */
+  groupSlug?: string;
+  /** Group color for mini cards (from getSpaceGroupById) */
+  groupColor?: string;
 }
 
 const MAX_RECENT_CARDS = 8;
 
 /**
- * Recent Spaces
- * Shows recently modified/created spaces for the property with task counts (max 8)
+ * Recent Spaces (default) or Spaces in Group
+ * When groupSlug is set: shows spaces filtered by group with group color on cards.
+ * Otherwise: shows recently modified/created spaces (max 8).
  */
 export function PropertySpacesList({
   propertyId,
   tasks = [],
   onSpaceClick,
   selectedSpaceId,
+  groupSlug,
+  groupColor,
 }: PropertySpacesListProps) {
-  const { spaces, loading: spacesLoading, refresh: refreshSpaces } = useSpaces(propertyId);
+  const { spaces: spacesAll, loading: loadingAll, refresh: refreshAll } = useSpaces(propertyId);
+  const { spaces: spacesFiltered, loading: loadingFiltered, refresh: refreshFiltered } = useSpacesWithTypes(propertyId, groupSlug);
+
+  const spaces = groupSlug ? spacesFiltered : spacesAll;
+  const spacesLoading = groupSlug ? loadingFiltered : loadingAll;
+  const refreshSpaces = groupSlug ? refreshFiltered : refreshAll;
+
   const [showAddSpace, setShowAddSpace] = useState(false);
   const spacesRef = useRef<HTMLDivElement>(null);
+
+  const group = groupSlug ? getSpaceGroupById(groupSlug) : undefined;
+  const sectionTitle = group ? group.label : "Recent Spaces";
 
   // Calculate task counts per space
   const spaceTaskCounts = useMemo(() => {
@@ -61,22 +79,21 @@ export function PropertySpacesList({
     }
   };
 
-  // Sort by most recently modified/created, limit to 8
-  const recentSpaces = useMemo(() => {
-    return [...spaces]
-      .sort((a, b) => {
-        const aDate = new Date(a.updated_at || a.created_at || 0).getTime();
-        const bDate = new Date(b.updated_at || b.created_at || 0).getTime();
-        return bDate - aDate;
-      })
-      .slice(0, MAX_RECENT_CARDS);
-  }, [spaces]);
+  // Sort by most recently modified/created. When filtering by group: show all; otherwise limit to 8
+  const displaySpaces = useMemo(() => {
+    const sorted = [...spaces].sort((a, b) => {
+      const aDate = new Date(a.updated_at || a.created_at || 0).getTime();
+      const bDate = new Date(b.updated_at || b.created_at || 0).getTime();
+      return bDate - aDate;
+    });
+    return groupSlug ? sorted : sorted.slice(0, MAX_RECENT_CARDS);
+  }, [spaces, groupSlug]);
 
   return (
     <>
       <div className="border-b border-border pt-4 px-2 pb-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">Recent Spaces</h2>
+          <h2 className="text-base font-semibold text-foreground">{sectionTitle}</h2>
           <button
             onClick={() => setShowAddSpace(true)}
             className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
@@ -92,7 +109,7 @@ export function PropertySpacesList({
             <Skeleton className="h-20 w-full rounded-lg" />
             <Skeleton className="h-20 w-full rounded-lg" />
           </div>
-        ) : recentSpaces.length === 0 ? (
+        ) : displaySpaces.length === 0 ? (
           <div className="text-center py-6">
             <p className="text-xs text-muted-foreground">No spaces yet</p>
           </div>
@@ -103,21 +120,27 @@ export function PropertySpacesList({
           >
             <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ width: 'calc(100% + 15px)' }}>
               <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
-                {recentSpaces.map((space) => (
-                  <div 
-                    key={space.id} 
-                    className="w-[120px] flex-shrink-0 rounded-[5px]"
-                    onClick={() => handleSpaceClick(space)}
-                  >
-                    <SpaceCard
-                      space={{
-                        ...space,
-                        taskCount: spaceTaskCounts.counts[space.id] || 0,
-                        urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
-                      }}
-                    />
-                  </div>
-                ))}
+                {displaySpaces.map((space) => {
+                  const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };
+                  const effectiveIcon = space.icon_name ?? spaceWithTypes?.space_types?.default_icon ?? null;
+                  return (
+                    <div 
+                      key={space.id} 
+                      className="w-[120px] flex-shrink-0 rounded-[5px]"
+                      onClick={() => handleSpaceClick(space)}
+                    >
+                      <SpaceCard
+                        space={{
+                          ...space,
+                          icon_name: effectiveIcon,
+                          taskCount: spaceTaskCounts.counts[space.id] || 0,
+                          urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
+                        }}
+                        groupColor={groupColor}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
             {/* Gradient overlay - right side fade, aligned to right edge of mask */}

@@ -13,19 +13,20 @@ interface SpaceCardProps {
     taskCount?: number;
     urgentTaskCount?: number;
   };
+  /** Group color for mini card (from space group). Falls back to primary teal. */
+  groupColor?: string;
   className?: string;
   onFilterClick?: (spaceId: string) => void;
 }
 
-export function SpaceCard({ space, className, onFilterClick }: SpaceCardProps) {
+export function SpaceCard({ space, groupColor, className, onFilterClick }: SpaceCardProps) {
   const navigate = useNavigate();
   
   const displayName = space.name || space.type || 'Unnamed Space';
   const taskCount = space.taskCount ?? 0;
   const urgentCount = space.urgentTaskCount ?? 0;
   
-  // Use a simple color for spaces (lighter teal)
-  const iconColor = "#8EC9CE";
+  const iconColor = groupColor ?? "#8EC9CE";
 
   const handleTopSectionClick = (e: React.MouseEvent) => {
     e.stopPropagation();

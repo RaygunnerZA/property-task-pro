@@ -2303,22 +2303,28 @@ export type Database = {
       space_types: {
         Row: {
           created_at: string
+          default_icon: string | null
           default_ui_group: string
           functional_class: Database["public"]["Enums"]["functional_class"]
+          icon_alternates: Json | null
           id: string
           name: string
         }
         Insert: {
           created_at?: string
+          default_icon?: string | null
           default_ui_group: string
           functional_class: Database["public"]["Enums"]["functional_class"]
+          icon_alternates?: Json | null
           id?: string
           name: string
         }
         Update: {
           created_at?: string
+          default_icon?: string | null
           default_ui_group?: string
           functional_class?: Database["public"]["Enums"]["functional_class"]
+          icon_alternates?: Json | null
           id?: string
           name?: string
         }

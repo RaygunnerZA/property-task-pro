@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useDebounce } from "@/hooks/useDebounce";
+import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +48,27 @@ export function AddSpaceDialog({
   const [iconColor, setIconColor] = useState("#8EC9CE");
   const [loading, setLoading] = useState(false);
 
+  const debouncedName = useDebounce(name.trim(), 400);
+  const canonicalName = resolveToCanonicalSpaceType(name) ?? debouncedName;
+
+  const { data: spaceTypeMatch } = useQuery({
+    queryKey: ["space-types", "icon-lookup", canonicalName],
+    queryFn: async () => {
+      if (!canonicalName) return null;
+      const { data, error } = await supabase
+        .from("space_types")
+        .select("default_icon")
+        .ilike("name", canonicalName)
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!canonicalName && open,
+  });
+
+  const suggestedIcon = spaceTypeMatch?.default_icon ?? null;
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Space name is required");
@@ -79,14 +103,15 @@ export function AddSpaceDialog({
         return;
       }
 
-      // Create space
+      // Create space - use icon from space_types match if no icon selected
+      const effectiveIcon = iconName || suggestedIcon || "box";
       const { data: newSpace, error: createError } = await supabase
         .from("spaces")
         .insert({
           org_id: orgId,
           property_id: propertyId,
           name: name.trim(),
-          icon_name: iconName || "box",
+          icon_name: effectiveIcon,
         })
         .select()
         .single();
@@ -204,6 +229,7 @@ export function AddSpaceDialog({
               setIconName(icon);
               setIconColor(color);
             }}
+            suggestedIcon={suggestedIcon}
             defaultIcons={["door-open", "bed", "bath", "cooking-pot", "sofa"]}
             fallbackSearch="room"
             disabled={loading}

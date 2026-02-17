@@ -16,6 +16,7 @@ interface RequestBody {
   property_id?: string | null;
   org_id: string;
   attachment_id?: string | null; // if provided, we update the attachment
+  compliance_document_id?: string | null; // if provided (e.g. compliance upload), we update compliance_documents directly
   overwrite?: boolean;
 }
 
@@ -400,7 +401,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { file_url, file_name, property_id, org_id, attachment_id, overwrite = false } = body;
+    const { file_url, file_name, property_id, org_id, attachment_id, compliance_document_id, overwrite = false } = body;
 
     if (!file_url || !file_name || !org_id) {
       return new Response(
@@ -556,6 +557,82 @@ Deno.serve(async (req) => {
                   await admin.from("compliance_recommendations").insert(rec);
                 }
               }
+            }
+          }
+        }
+      }
+    } else if (compliance_document_id) {
+      // Compliance document upload path: update compliance_documents directly
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (serviceRoleKey) {
+        const admin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const expiryStatus = result.expiry_date
+          ? (() => {
+              const exp = new Date(result.expiry_date);
+              const now = new Date();
+              const days = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              return days < 0 ? "red" : days < 60 ? "amber" : "green";
+            })()
+          : "unknown";
+
+        const cdUpdate: Record<string, unknown> = {
+          document_type: result.document_type,
+          next_due_date: result.expiry_date,
+          status: expiryStatus,
+          hazards: result.hazards?.length ? result.hazards : [],
+          ai_confidence: result.confidence,
+          updated_at: new Date().toISOString(),
+        };
+        if (result.title) cdUpdate.title = result.title;
+        if (result.expiry_date) cdUpdate.expiry_date = result.expiry_date;
+
+        await admin
+          .from("compliance_documents")
+          .update(cdUpdate)
+          .eq("id", compliance_document_id)
+          .eq("org_id", org_id);
+
+        await admin.from("compliance_history").insert({
+          compliance_document_id,
+          event: "ai-analysed",
+          data: { source: "ai-doc-analyse", document_type: result.document_type, expiry_date: result.expiry_date },
+          org_id,
+        });
+
+        const { interpretation, rec } = buildInterpretation(
+          result,
+          compliance_document_id,
+          property_id,
+          org_id
+        );
+        if (interpretation) {
+          const { data: existing } = await admin
+            .from("compliance_recommendations")
+            .select("id")
+            .eq("compliance_document_id", compliance_document_id)
+            .eq("org_id", org_id)
+            .maybeSingle();
+          if (!existing || overwrite) {
+            if (existing) {
+              await admin
+                .from("compliance_recommendations")
+                .update({
+                  risk_level: rec.risk_level,
+                  recommended_action: rec.recommended_action,
+                  recommended_tasks: rec.recommended_tasks || [],
+                  hazards: rec.hazards || [],
+                  property_id: rec.property_id || null,
+                  updated_at: new Date().toISOString(),
+                  status: overwrite ? "pending" : undefined,
+                })
+                .eq("id", existing.id)
+                .eq("org_id", org_id);
+            } else {
+              await admin.from("compliance_recommendations").insert(rec);
             }
           }
         }

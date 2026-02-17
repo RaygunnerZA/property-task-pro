@@ -269,6 +269,8 @@ export default function SpaceGroupScreen() {
                 tasks={tasks}
                 onSpaceClick={setSelectedSpaceId}
                 selectedSpaceId={selectedSpaceId}
+                groupSlug={groupSlug}
+                groupColor={group?.color}
               />
             )}
           </div>

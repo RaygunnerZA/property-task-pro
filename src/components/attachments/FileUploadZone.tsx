@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface FileUploadZoneProps {
   taskId: string;
+  propertyId?: string | null;
   onUploadComplete?: () => void;
   accept?: string;
   className?: string;
@@ -13,6 +14,7 @@ interface FileUploadZoneProps {
 
 export function FileUploadZone({
   taskId,
+  propertyId,
   onUploadComplete,
   accept = "image/*",
   className,
@@ -23,6 +25,7 @@ export function FileUploadZone({
   
   const { uploadFiles, uploading, progress } = useFileUpload({
     taskId,
+    propertyId,
     onUploadComplete: () => {
       onUploadComplete?.();
       toast({

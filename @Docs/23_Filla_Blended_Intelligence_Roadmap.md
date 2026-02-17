@@ -29,7 +29,7 @@ Users can ask:
 - "List assets older than 10 years."
 - "Which tasks block Apartment 5?"
 
-**Backend:** assistant-intent, assistant-reasoner, graph-query, compliance_portfolio_view, assets_view.
+**Backend:** assistant-reasoner (intent classification merged), graph-query, compliance_portfolio_view, assets_view.
 
 ---
 
