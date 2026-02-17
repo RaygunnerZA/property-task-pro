@@ -38,7 +38,7 @@ import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
-import { Chip } from "@/components/chips/Chip";
+import { FilterChip } from "@/components/chips/filter";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -579,16 +579,14 @@ const Assets = () => {
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           {STATUS_FILTERS.map((s) => (
-            <Chip
+            <FilterChip
               key={s.value}
-              role="filter"
               label={s.label}
               selected={statusFilters.includes(s.value)}
               onSelect={() => toggleStatusFilter(s.value)}
             />
           ))}
-          <Chip
-            role="filter"
+          <FilterChip
             label="Compliance"
             selected={complianceOnly}
             onSelect={() => setComplianceOnly((prev) => !prev)}

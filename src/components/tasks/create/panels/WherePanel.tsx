@@ -22,7 +22,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
@@ -350,12 +350,10 @@ export function WherePanel({
             <div className="flex items-center gap-2 h-[40px]">
               {/* Step 3: Composite property+space chip when space is selected */}
               {selectedSpace && selectedProperty ? (
-                <Chip
+                <SemanticChip
                   key={`composite-${selectedProperty.id}-${selectedSpace.id}`}
-                  role="filter"
+                  epistemic="fact"
                   label={`${selectedProperty.nickname || selectedProperty.address} – ${selectedSpace.name}`.toUpperCase()}
-                  selected={true}
-                  onSelect={() => {}}
                   color={selectedProperty.icon_color_hex || undefined}
                   icon={(() => {
                     const iconName = selectedProperty.icon_name || "home";
@@ -380,12 +378,11 @@ export function WherePanel({
                   }
                   
                   return (
-                    <Chip
+                    <SemanticChip
                       key={property.id}
-                      role="filter"
+                      epistemic={isSelected ? "fact" : "proposal"}
                       label={(property.nickname || property.address).toUpperCase()}
-                      selected={isSelected}
-                      onSelect={() => handlePropertySelect(property.id)}
+                      onPress={() => handlePropertySelect(property.id)}
                       color={property.icon_color_hex || undefined}
                       icon={(() => {
                         const iconName = property.icon_name || "home";
@@ -439,12 +436,11 @@ export function WherePanel({
                     {filteredSpaces.map(space => {
                       const SpaceIcon = getAssetIcon((space as { icon_name?: string }).icon_name);
                       return (
-                      <Chip
+                      <SemanticChip
                         key={space.id}
-                        role="filter"
+                        epistemic={spaceIds.includes(space.id) ? "fact" : "proposal"}
                         label={space.name.toUpperCase()}
-                        selected={spaceIds.includes(space.id)}
-                        onSelect={() => toggleSpace(space.id)}
+                        onPress={() => toggleSpace(space.id)}
                         icon={<SpaceIcon className="h-3.5 w-3.5" />}
                         className="shrink-0"
                       />
@@ -454,13 +450,12 @@ export function WherePanel({
                       const ghostId = `ghost-space-${ghostName}`;
                       const isSelected = spaceIds.includes(ghostId);
                       return (
-                      <Chip
+                      <SemanticChip
                         key={`ghost-${idx}`}
-                        role="suggestion"
+                        epistemic={isSelected ? "fact" : "proposal"}
                         label={isSelected ? ghostName.toUpperCase() : `+ ${ghostName.toUpperCase()}`}
-                        selected={isSelected}
-                        onSelect={() => handleGhostSpaceClick(ghostName)}
-                        animate={true}
+                        onPress={() => handleGhostSpaceClick(ghostName)}
+                        animateIn
                         className="shrink-0"
                       />
                       );

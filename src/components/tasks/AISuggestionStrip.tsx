@@ -2,7 +2,7 @@ import { useState } from "react";
 import { User, MapPin, Calendar, Tag, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIExtractResponse } from "@/hooks/useAIExtract";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import fillaAI from "@/assets/filla-ai.svg";
 
 interface AISuggestionStripProps {
@@ -146,14 +146,13 @@ export function AISuggestionStrip({
             const chipId = `person-${person.name}`;
             const applied = isApplied(person.name, appliedPeople) || clickedChips.has(chipId);
             return (
-              <Chip
+              <SemanticChip
                 key={chipId}
-                role="suggestion"
+                epistemic={applied ? "fact" : "proposal"}
                 label={person.name.toUpperCase()}
-                selected={applied}
-                onSelect={() => handleChipClick(chipId, () => onPersonClick?.(person))}
+                onPress={() => handleChipClick(chipId, () => onPersonClick?.(person))}
                 color={applied ? "#8EC9CE" : undefined}
-                animate={true}
+                animateIn
                 className="shrink-0"
               />
             );
@@ -164,14 +163,13 @@ export function AISuggestionStrip({
             const chipId = `space-${space.name}`;
             const applied = isApplied(space.name, appliedSpaces) || clickedChips.has(chipId);
             return (
-              <Chip
+              <SemanticChip
                 key={chipId}
-                role="suggestion"
+                epistemic={applied ? "fact" : "proposal"}
                 label={formatSpaceName(space.name)}
-                selected={applied}
-                onSelect={() => handleChipClick(chipId, () => onSpaceClick?.(space))}
+                onPress={() => handleChipClick(chipId, () => onSpaceClick?.(space))}
                 color={applied ? "#8EC9CE" : undefined}
-                animate={true}
+                animateIn
                 className="shrink-0"
               />
             );
@@ -183,14 +181,13 @@ export function AISuggestionStrip({
               const chipId = `date-${aiResult.date}`;
               const applied = isApplied(aiResult.date, appliedDate) || clickedChips.has(chipId);
               return (
-                <Chip
+                <SemanticChip
                   key={chipId}
-                  role="suggestion"
+                  epistemic={applied ? "fact" : "proposal"}
                   label={formatDateForChip(aiResult.date)}
-                  selected={applied}
-                  onSelect={() => handleChipClick(chipId, () => onDateClick?.(aiResult.date!))}
+                  onPress={() => handleChipClick(chipId, () => onDateClick?.(aiResult.date!))}
                   color={applied ? "#8EC9CE" : undefined}
-                  animate={true}
+                  animateIn
                   className="shrink-0"
                 />
               );
@@ -202,14 +199,13 @@ export function AISuggestionStrip({
             const chipId = `theme-${theme.name}`;
             const applied = isApplied(theme.name, appliedThemes) || clickedChips.has(chipId);
             return (
-              <Chip
+              <SemanticChip
                 key={chipId}
-                role="suggestion"
+                epistemic={applied ? "fact" : "proposal"}
                 label={theme.name.toUpperCase()}
-                selected={applied}
-                onSelect={() => handleChipClick(chipId, () => onThemeClick?.(theme))}
+                onPress={() => handleChipClick(chipId, () => onThemeClick?.(theme))}
                 color={applied ? "#8EC9CE" : undefined}
-                animate={true}
+                animateIn
                 className="shrink-0"
               />
             );
@@ -222,14 +218,13 @@ export function AISuggestionStrip({
               const chipId = `priority-${priorityUpper}`;
               const applied = isApplied(priorityUpper, appliedPriority) || clickedChips.has(chipId);
               return (
-                <Chip
+                <SemanticChip
                   key={chipId}
-                  role="suggestion"
+                  epistemic={applied ? "fact" : "proposal"}
                   label={priorityUpper}
-                  selected={applied}
-                  onSelect={() => handleChipClick(chipId, () => onPriorityClick?.(aiResult.priority!))}
+                  onPress={() => handleChipClick(chipId, () => onPriorityClick?.(aiResult.priority!))}
                   color={applied ? "#8EC9CE" : undefined}
-                  animate={true}
+                  animateIn
                   className="shrink-0"
                 />
               );

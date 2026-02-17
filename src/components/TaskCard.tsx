@@ -163,7 +163,7 @@ function TaskCardComponent({
     }
     
     // Get assigned user ID (check both field names)
-    const assignedUserId = task?.assigned_user_id || task?.assignee_user_id;
+    const assignedUserId = task?.assigned_user_id;
     
     // Get assigned users (check both field names for user ID)
     const assignedUsersArray: any[] = [];
@@ -197,7 +197,6 @@ function TaskCardComponent({
     task?.spaces,
     task?.teams,
     task?.assigned_user_id,
-    task?.assignee_user_id,
     task?.assigned_user_name,
     task?.assignee_name,
     task?.assigned_user_display_name,

@@ -34,7 +34,7 @@ interface TaskDetails extends TaskRow {
   teams?: Team[] | string; // Can be JSON string or array
   themes?: any[] | string; // Can be JSON string or array
   images?: any[] | string; // Can be JSON string or array
-  assignee_user_id?: string | null;
+  assigned_user_id?: string | null;
   // Parsed/computed fields
   property?: {
     id: string;
@@ -194,7 +194,7 @@ export function useTaskDetails(taskId: string | undefined) {
       categories: categoriesData || [],
       images: resolvedImages,
       primary_image_url: primaryImageUrl,
-      assigned_user_id: taskData.assignee_user_id,
+      assigned_user_id: taskData.assigned_user_id,
       // Ensure due_date is included from taskData
       due_date: (taskData as any).due_date || null,
       title: (taskData as any).title || null,

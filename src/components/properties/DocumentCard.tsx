@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { FileText, AlertCircle, CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, Link2, Sparkles, ChevronDown, Shield } from "lucide-react";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import type { PropertyDocument, DocMetadata } from "@/hooks/property/usePropertyDocuments";
@@ -113,13 +113,14 @@ export function DocumentCard({
           <h3 className="font-semibold text-foreground text-sm line-clamp-2">{name}</h3>
           <div className="flex flex-wrap gap-1.5 mt-1.5">
             {document.category && (
-              <Chip role="filter" label={document.category} className="h-[20px] text-[10px] px-1.5" />
+              <SemanticChip epistemic="fact" label={document.category} size="compact" className="px-1.5" />
             )}
-            <Chip
-              role="status"
+            <SemanticChip
+              epistemic="fact"
               label={statusConfig.label}
               color={statusConfig.color}
-              className="h-[20px] text-[10px] px-1.5"
+              size="compact"
+              className="px-1.5"
             />
           </div>
         </div>
@@ -170,11 +171,12 @@ export function DocumentCard({
                 </p>
               )}
               {document.status && (
-                <Chip
-                  role="status"
+                <SemanticChip
+                  epistemic="fact"
                   label={getStatusConfig(document.status).label}
                   color={getStatusConfig(document.status).color}
-                  className="h-[18px] text-[10px] px-1.5"
+                  size="compact"
+                  className="h-[18px] px-1.5"
                 />
               )}
               {hazards.length > 0 && (

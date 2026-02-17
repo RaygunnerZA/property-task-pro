@@ -13,7 +13,7 @@ import {
 } from "@/components/onboarding/onboardingSpaceGroups";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { ExpandableFactChip } from "@/components/chips/ExpandableFactChip";
+import { ExpandableSpaceChip } from "@/components/chips/semantic";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -328,7 +328,7 @@ export default function SpaceGroupScreen() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {spaces.map((space, index) => (
-                      <ExpandableFactChip
+                      <ExpandableSpaceChip
                         key={`${space}-${index}`}
                         label={shortSpaceLabel(space)}
                         subSpaces={

@@ -24,8 +24,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { FactChipView } from "@/components/chips/FactChipView";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 import { Input } from "@/components/ui/input";
 
 interface DropdownItem {
@@ -159,25 +158,26 @@ export function UnifiedTaskSection({
             "flex-1 h-8 flex items-center pl-1 pr-1 pt-1 pb-1 rounded-[8px]",
             "transition-all duration-150",
             "bg-background text-left",
-            "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+            "hover:shadow-inset"
           )}
         >
           {/* Fact + Interactive chips only (no ghost style) */}
           <div className="flex items-center gap-1.5 flex-nowrap justify-center min-w-0 text-sm">
             {hasChips && activeChips.map(chip => (
-              <FactChipView
+              <SemanticChip
                 key={chip.id}
+                epistemic="fact"
                 label={chip.label}
+                removable={!!chip.onRemove}
                 onRemove={chip.onRemove}
-                onPress={undefined}
                 className="shrink-0"
               />
             ))}
             {suggestionChips.map(chip => (
-              <InteractiveChipView
+              <SemanticChip
                 key={chip.id}
+                epistemic="proposal"
                 label={`Add ${chip.label}`}
-                kind="suggestion"
                 onPress={chip.onSelect ?? (() => {})}
                 className="shrink-0"
               />
@@ -193,7 +193,7 @@ export function UnifiedTaskSection({
             "h-6 w-6 rounded-[8px] flex items-center justify-center flex-shrink-0",
             "bg-background text-muted-foreground",
             "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-            "hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+            "hover:bg-card hover:shadow-inset",
             "transition-all duration-150"
           )}
         >

@@ -20,7 +20,6 @@
  */
 
 // Still-used components
-export * from './AIChip';
 export * from './SegmentedControl';
 export * from './SegmentControl';
 export * from './FilterRow';

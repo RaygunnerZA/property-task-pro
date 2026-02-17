@@ -30,7 +30,7 @@ export function useCalendarEvents(selectedMonth?: Date): CalendarEvent[] {
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      assigned_user_id: task.assignee_user_id,
+      assigned_user_id: task.assigned_user_id,
       // Map due_date to due_at for backward compatibility
       due_at: task.due_date,
     }));
@@ -89,7 +89,7 @@ export function useTasksForDateRange(startDate: Date, endDate: Date) {
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      assigned_user_id: task.assignee_user_id,
+      assigned_user_id: task.assigned_user_id,
       due_at: task.due_date,
     }));
   }, [tasksData]);
@@ -118,7 +118,7 @@ export function useTasksForDate(date: Date) {
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      assigned_user_id: task.assignee_user_id,
+      assigned_user_id: task.assigned_user_id,
       due_at: task.due_date,
     }));
   }, [tasksData]);

@@ -106,6 +106,7 @@ export default {
         'primary-btn': '3px 5px 5px 2px rgba(0, 0, 0, 0.13), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 1px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.27)',
         'btn-pressed': '0px 0px 7px 2px rgba(0, 0, 0, 0), inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)',
         'fab': '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
+        'inset': 'inset 2px 2px 4px rgba(0,0,0,0.15), inset -1px -1px 2px rgba(255,255,255,0.3)',
       },
       keyframes: {
         "accordion-down": {
@@ -130,6 +131,16 @@ export default {
           },
           to: {
             opacity: "1",
+          },
+        },
+        "fade-slide-in": {
+          from: {
+            opacity: "0",
+            transform: "translateY(2px)",
+          },
+          to: {
+            opacity: "1",
+            transform: "translateY(0)",
           },
         },
         "slide-out-left": {
@@ -237,6 +248,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.2s ease-out",
+        "fade-slide-in": "fade-slide-in 120ms ease-out",
         "slide-out-left": "slide-out-left 0.15s ease-out",
         "slide-out-right": "slide-out-right 0.15s ease-out",
         "chip-slide-in": "chip-slide-in 0.2s ease-out",

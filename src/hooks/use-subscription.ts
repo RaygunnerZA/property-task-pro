@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import { Tables } from "../integrations/supabase/types";
@@ -26,24 +26,12 @@ interface UseSubscriptionResult {
 export function useSubscription(): UseSubscriptionResult {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [subscription, setSubscription] = useState<SubscriptionWithTier | null>(null);
-  const [usage, setUsage] = useState<OrgUsage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchSubscription = useCallback(async () => {
-    if (!orgId) {
-      setSubscription(null);
-      setUsage(null);
-      setLoading(false);
-      return;
-    }
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["subscription", orgId],
+    queryFn: async () => {
+      if (!orgId) return { subscription: null, usage: null };
 
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch subscription
       const { data: subData, error: subError } = await supabase
         .from("org_subscriptions")
         .select("*")
@@ -51,11 +39,9 @@ export function useSubscription(): UseSubscriptionResult {
         .maybeSingle();
 
       if (subError && subError.code !== "PGRST116") {
-        // PGRST116 is "not found" which is fine (no subscription = free tier)
         throw subError;
       }
 
-      // Fetch tier if subscription exists and has plan_id
       let tier: SubscriptionTier | null = null;
       if (subData?.plan_id) {
         const { data: tierData, error: tierError } = await supabase
@@ -69,7 +55,6 @@ export function useSubscription(): UseSubscriptionResult {
         }
       }
 
-      // Fetch usage
       const { data: usageData, error: usageError } = await supabase
         .from("org_usage")
         .select("*")
@@ -80,40 +65,29 @@ export function useSubscription(): UseSubscriptionResult {
         throw usageError;
       }
 
-      setSubscription(
-        subData
-          ? ({
-              ...subData,
-              tier,
-            } as SubscriptionWithTier)
-          : null
-      );
-      setUsage(usageData || null);
-    } catch (err: any) {
-      console.error("Error fetching subscription:", err);
-      setError(err.message || "Failed to fetch subscription");
-      setSubscription(null);
-      setUsage(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, orgId]);
+      const subscription: SubscriptionWithTier | null = subData
+        ? ({ ...subData, tier } as SubscriptionWithTier)
+        : null;
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchSubscription();
-    }
-  }, [fetchSubscription, orgLoading]);
+      return {
+        subscription,
+        usage: usageData || null,
+      };
+    },
+    enabled: !!orgId && !orgLoading,
+    staleTime: 300000,
+  });
 
+  const subscription = data?.subscription ?? null;
+  const usage = data?.usage ?? null;
   const planName = subscription?.tier?.name || "Free Tier";
 
   return {
     subscription,
     usage,
-    loading,
-    error,
+    loading: isLoading,
+    error: error ? (error as Error).message : null,
     planName,
-    refresh: fetchSubscription,
+    refresh: () => refetch(),
   };
 }
-

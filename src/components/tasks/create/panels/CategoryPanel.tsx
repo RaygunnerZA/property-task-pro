@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { Tag, Plus } from 'lucide-react';
 import { ContextResolver } from '../ContextResolver';
 import { InstructionBlock } from '../InstructionBlock';
-import { Chip } from '@/components/chips/Chip';
+import { SemanticChip } from '@/components/chips/semantic';
 import { useCategories } from '@/hooks/useCategories';
 import { cn } from '@/lib/utils';
 
@@ -98,12 +98,11 @@ export function CategoryPanel({
             <div className="flex items-center gap-2 h-[40px]">
               {filteredCategories.length > 0 ? (
                 filteredCategories.map(category => (
-                  <Chip
+                  <SemanticChip
                     key={category.id}
-                    role="filter"
+                    epistemic={selectedThemeIds.includes(category.id) ? "fact" : "proposal"}
                     label={category.name.toUpperCase()}
-                    selected={selectedThemeIds.includes(category.id)}
-                    onSelect={() => toggleCategory(category.id)}
+                    onPress={() => toggleCategory(category.id)}
                     className="shrink-0"
                   />
                 ))

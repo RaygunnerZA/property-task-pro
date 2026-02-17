@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { usePropertyThemes } from "@/hooks/use-property-themes";
 import { useThemes } from "@/hooks/useThemes";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { Button } from "@/components/ui/button";
 import { Plus, Tag, X } from "lucide-react";
 import { getIconByName } from "@/components/ui/IconPicker";
@@ -87,9 +87,10 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
           {Object.values(groupedThemes).map((group) => (
             <div key={group.parent.id} className="space-y-2">
               <div className="flex items-center gap-2">
-                <Chip
-                  role="fact"
+                <SemanticChip
+                  epistemic="fact"
                   label={group.parent.name.toUpperCase()}
+                  removable
                   onRemove={() => handleRemoveTheme(group.parent.id)}
                   icon={group.parent.icon ? getIconByName(group.parent.icon) : <Tag className="h-3 w-3" />}
                 />
@@ -97,10 +98,11 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
               {group.children.length > 0 && (
                 <div className="flex flex-wrap gap-2 pl-4">
                   {group.children.map((child) => (
-                    <Chip
+                    <SemanticChip
                       key={child.id}
-                      role="fact"
+                      epistemic="fact"
                       label={child.name.toUpperCase()}
+                      removable
                       onRemove={() => handleRemoveTheme(child.id)}
                       icon={child.icon ? getIconByName(child.icon) : <Tag className="h-3 w-3" />}
                     />
@@ -114,10 +116,11 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
           {standaloneThemes.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {standaloneThemes.map((theme) => (
-                <Chip
+                <SemanticChip
                   key={theme.id}
-                  role="fact"
+                  epistemic="fact"
                   label={theme.name.toUpperCase()}
+                  removable
                   onRemove={() => handleRemoveTheme(theme.id)}
                   icon={theme.icon ? getIconByName(theme.icon) : <Tag className="h-3 w-3" />}
                 />

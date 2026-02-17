@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useDataContext } from "@/contexts/DataContext";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -28,7 +29,8 @@ function isInvitedStaffRole(role: string | null): boolean {
 }
 
 export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
-  const { isAuthenticated, orgId, loading, session, user } = useDataContext();
+  const { isAuthenticated, loading, session, user } = useDataContext();
+  const { orgId, orgLoading } = useOrgScope();
   const userId = user?.id ?? null;
   const [memberRole, setMemberRole] = useState<string | null>(null);
   const [memberRoleLoading, setMemberRoleLoading] = useState(false);
@@ -68,7 +70,7 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
 
   // Check if user has properties when they have an org
   useEffect(() => {
-    if (!orgId || loading) return;
+    if (!orgId || loading || orgLoading) return;
     setCheckingProperties(true);
     supabase
       .from("properties")
@@ -79,11 +81,12 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
         else setHasProperties(true);
       })
       .finally(() => setCheckingProperties(false));
-  }, [orgId, loading]);
+  }, [orgId, loading, orgLoading]);
 
   const needRoleForRedirect = !onboardingCompleted && !!orgId;
   const showSkeleton =
     loading ||
+    orgLoading ||
     checkingProperties ||
     (needRoleForRedirect && memberRoleLoading);
 

@@ -94,7 +94,7 @@ const TaskDetail = () => {
       themes: typeof taskData.themes === 'string' ? JSON.parse(taskData.themes) : (taskData.themes || []),
       teams: typeof taskData.teams === 'string' ? JSON.parse(taskData.teams) : (taskData.teams || []),
       images: typeof taskData.images === 'string' ? JSON.parse(taskData.images) : (taskData.images || []),
-      assigned_user_id: taskData.assignee_user_id,
+      assigned_user_id: taskData.assigned_user_id,
     };
   }, [taskData]);
 

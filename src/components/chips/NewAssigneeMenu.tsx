@@ -16,7 +16,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useDataContext } from "@/contexts/DataContext";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export function NewAssigneeMenu({
   onTeamCreated,
 }: NewAssigneeMenuProps) {
   const isMobile = useIsMobile();
-  const { orgId } = useDataContext();
+  const { orgId, orgLoading } = useOrgScope();
   const supabase = useSupabase();
   const { toast } = useToast();
 
@@ -99,10 +99,10 @@ export function NewAssigneeMenu({
       return;
     }
 
-    if (!orgId) {
+    if (!orgId || orgLoading) {
       toast({
         title: "Not authenticated",
-        description: "Please log in.",
+        description: "Please log in and complete onboarding.",
         variant: "destructive",
       });
       return;

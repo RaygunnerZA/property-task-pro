@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 
 export type BlockingReason = 
   | 'missing_property'
@@ -89,19 +89,19 @@ export function BlockingClarity({
       {hasOptions ? (
         <div className="flex flex-wrap gap-2">
           {options.map(option => (
-            <InteractiveChipView
+            <SemanticChip
               key={option.id}
-              label={option.label}
-              kind="action"
+              epistemic="proposal"
+              label={option.label.toUpperCase()}
               onPress={() => onResolve?.(option.id)}
             />
           ))}
         </div>
       ) : (
         /* Single action button */
-        <InteractiveChipView
-          label={action}
-          kind="action"
+        <SemanticChip
+          epistemic="proposal"
+          label={action.toUpperCase()}
           onPress={onOpenSection ?? (() => {})}
         />
       )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/chips/Chip";
+import { FilterChip } from "@/components/chips/filter";
 import { IconButton } from "@/components/ui/IconButton";
 import { debugLog } from "@/lib/logger";
 
@@ -183,9 +183,8 @@ export function FilterBar({
     isSelected: boolean,
     onClick: () => void
   ) => (
-    <Chip
+    <FilterChip
       key={option.id}
-      role="filter"
       label={option.label}
       selected={isSelected}
       onSelect={onClick}

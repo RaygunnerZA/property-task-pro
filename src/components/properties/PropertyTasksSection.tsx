@@ -1,33 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Filter, AlertTriangle, CircleDot, CalendarClock } from "lucide-react";
 import TaskCard from "@/components/TaskCard";
 import { Button } from "@/components/ui/button";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import EmptyState from "@/components/EmptyState";
-
-// Custom FunnelX icon component (not available in lucide-react)
-const FunnelX = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={cn("lucide lucide-funnel-x", className)}
-    style={{ width: '24px', height: '24px', ...style }}
-    {...props}
-  >
-    <path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473"/>
-    <path d="m16.5 3.5 5 5"/>
-    <path d="m21.5 3.5-5 5"/>
-  </svg>
-);
+import { FilterChip } from "@/components/chips/filter";
 
 interface PropertyTasksSectionProps {
   propertyId: string;
@@ -165,10 +143,11 @@ export function PropertyTasksSection({
     navigate(`/work/tasks?propertyId=${propertyId}`);
   };
 
-  const filters: { id: FilterType; label: string }[] = [
-    { id: 'urgent', label: 'Urgent' },
-    { id: 'open', label: 'Open' },
-    { id: 'overdue', label: 'Overdue' },
+  const filterOptions: { id: FilterType | null; label: string; icon: ReactNode }[] = [
+    { id: null, label: 'FILTER', icon: <Filter className="h-[14px] w-[14px]" /> },
+    { id: 'urgent', label: 'URGENT', icon: <AlertTriangle className="h-[14px] w-[14px]" /> },
+    { id: 'open', label: 'OPEN', icon: <CircleDot className="h-[14px] w-[14px]" /> },
+    { id: 'overdue', label: 'OVERDUE', icon: <CalendarClock className="h-[14px] w-[14px]" /> },
   ];
 
   if (tasksLoading) {
@@ -189,39 +168,21 @@ export function PropertyTasksSection({
 
   return (
     <div className="w-full space-y-4">
-      {/* Filter Chips */}
+      {/* Filter Chips - FilterChip for consistency with FilterBar */}
       <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar items-center">
-        {filters.map((filter) => {
+        {filterOptions.map((filter) => {
           const isActive = selectedFilter === filter.id;
           return (
-            <button
-              key={filter.id}
-              onClick={() => setSelectedFilter(filter.id)}
-              className={cn(
-                'px-3 py-1.5 rounded-[5px] font-mono text-[13px] uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
-                isActive
-                  ? 'bg-primary text-white'
-                  : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
-              )}
-            >
-              {filter.label}
-            </button>
+            <FilterChip
+              key={filter.id ?? 'filter'}
+              label={filter.label}
+              selected={isActive}
+              onSelect={() => setSelectedFilter(filter.id)}
+              icon={filter.icon}
+              className="h-[28px] flex-shrink-0 whitespace-nowrap"
+            />
           );
         })}
-        {/* Filter Button */}
-        <button
-          onClick={() => setSelectedFilter(null)}
-          className={cn(
-            "inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] flex-shrink-0",
-            "select-none cursor-pointer transition-all",
-            "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-            "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-          )}
-          title="Filter"
-        >
-          <FunnelX className="h-6 w-6" style={{ width: '24px', height: '24px' }} />
-          <span className="font-mono text-[13px] uppercase tracking-wider">FILTER</span>
-        </button>
       </div>
 
       {/* Task List - One row, horizontal scroll */}

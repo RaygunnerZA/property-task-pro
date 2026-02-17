@@ -1,4 +1,4 @@
-import { Chip } from "@/components/chips/Chip";
+import { FilterChip } from "@/components/chips/filter";
 import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
 import { cn } from "@/lib/utils";
 
@@ -16,9 +16,8 @@ export function DocumentCategoryChips({
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
       {DOCUMENT_CATEGORIES.map((cat) => (
-        <Chip
+        <FilterChip
           key={cat}
-          role="filter"
           label={cat}
           selected={selected === cat}
           onSelect={() => onSelect(selected === cat ? null : cat)}

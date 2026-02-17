@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,8 +54,9 @@ export function useAuth() {
 }
 
 export function useOrg() {
-  const { orgId, organisation, loading } = useDataContext();
-  return { orgId, organisation, loading };
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const { loading } = useDataContext();
+  return { orgId, organisation: null, loading: loading || orgLoading };
 }
 
 export function useCurrentUser() {

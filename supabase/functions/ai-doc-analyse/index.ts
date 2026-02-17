@@ -411,17 +411,39 @@ Deno.serve(async (req) => {
 
     let result: ResponseBody;
 
+    const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
+    const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
+
     try {
       const { base64, mimeType } = await fetchFileAsBase64(file_url);
       const effectiveMime = mimeType !== "application/octet-stream" ? mimeType : getMimeForFile(file_name);
 
-      if (getGeminiKey()) {
-        result = await callGeminiDoc(base64, effectiveMime, file_name);
-      } else if (getOpenAIApiKey()) {
+      const preferGemini = aiProvider === "gemini" || (!aiProvider && getGeminiKey());
+      const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
+
+      if (preferGemini && getGeminiKey()) {
+        try {
+          result = await callGeminiDoc(base64, effectiveMime, file_name);
+        } catch (err) {
+          if (fallbackEnabled && getOpenAIApiKey() && effectiveMime !== "application/pdf") {
+            result = await callOpenAIDoc(base64, effectiveMime, file_name);
+          } else {
+            throw err;
+          }
+        }
+      } else if (preferOpenAI && getOpenAIApiKey()) {
         if (effectiveMime === "application/pdf") {
           result = stubResponse(file_name);
         } else {
-          result = await callOpenAIDoc(base64, effectiveMime, file_name);
+          try {
+            result = await callOpenAIDoc(base64, effectiveMime, file_name);
+          } catch (err) {
+            if (fallbackEnabled && getGeminiKey()) {
+              result = await callGeminiDoc(base64, effectiveMime, file_name);
+            } else {
+              throw err;
+            }
+          }
         }
       } else {
         result = stubResponse(file_name);

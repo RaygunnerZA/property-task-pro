@@ -12,7 +12,7 @@ export type AnnotationBackground = "none" | "soft";
 export interface AnnotationBase {
   annotationId: string;
   version: number;
-  type: "pin" | "arrow" | "rect" | "circle" | "text";
+  type: "pin" | "arrow" | "rect" | "circle" | "text" | "freedraw";
   x: number; // 0-1 relative
   y: number; // 0-1 relative
   strokeColor: AnnotationColor;
@@ -50,12 +50,18 @@ export interface TextAnnotation extends AnnotationBase {
   background: AnnotationBackground;
 }
 
+export interface FreedrawAnnotation extends AnnotationBase {
+  type: "freedraw";
+  points: Array<{ x: number; y: number }>; // 0-1 relative
+}
+
 export type Annotation = 
   | PinAnnotation 
   | ArrowAnnotation 
   | RectAnnotation 
   | CircleAnnotation 
-  | TextAnnotation;
+  | TextAnnotation
+  | FreedrawAnnotation;
 
 export interface TaskImageAnnotationRecord {
   id: string;

@@ -13,8 +13,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { SuggestedChip, GhostGroup, ChipState, ChipType } from '@/types/chip-suggestions';
 import { FillaIcon } from '@/components/filla/FillaIcon';
-import { FactChipView } from '@/components/chips/FactChipView';
-import { InteractiveChipView } from '@/components/chips/InteractiveChipView';
+import { SemanticChip } from '@/components/chips/semantic';
 import { 
   MapPin, 
   User, 
@@ -169,11 +168,14 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
                 
                 // Render as fact chip (AI-pre-filled have subtle styling to reduce visual dominance)
                 return (
-                  <FactChipView
+                  <SemanticChip
                     key={chip.id}
+                    epistemic="fact"
                     label={chip.label.toUpperCase()}
                     pending={isAIPreFilled}
+                    removable={!!onChipRemove}
                     onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
+                    animateIn
                     className={cn(
                       'animate-in fade-in slide-in-from-bottom-1'
                     )}
@@ -192,12 +194,12 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
             // Render as verb chip (white bg, dashed border, orange text, no shadow, no removal)
             const verbLabel = generateVerbLabel(chip);
             return (
-              <InteractiveChipView
+              <SemanticChip
                 key={chip.id}
+                epistemic="proposal"
                 label={verbLabel}
-                kind="action"
-                blocking
                 onPress={() => onChipSelect(chip)}
+                animateIn
                 className={cn(
                   'animate-in fade-in slide-in-from-bottom-1'
                 )}
@@ -207,32 +209,29 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
         </div>
       )}
 
-      {/* Ghost groups */}
+      {/* Ghost groups - semantic suggestions */}
       {ghostGroups.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/20">
           <span className="text-[10px] text-muted-foreground font-mono mr-1 self-center">
             Quick groups:
           </span>
           {ghostGroups.map((group, index) => (
-            <button
+            <div
               key={group.id}
-              onClick={() => onGhostGroupSelect(group)}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1.5',
-                'text-[13px] font-medium rounded-[8px]',
-                'bg-transparent border border-dashed border-accent/40',
-                'text-accent/70 hover:bg-accent/5 hover:border-accent',
-                'transition-all duration-150',
-                'animate-in fade-in slide-in-from-bottom-1'
-              )}
+              className="animate-in fade-in slide-in-from-bottom-1"
               style={{
                 animationDelay: `${(chips.length + index) * 20}ms`,
-                animationDuration: '120ms'
+                animationDuration: '120ms',
               }}
             >
-              <Folder className="w-3 h-3" />
-              <span className="font-mono">{group.name}</span>
-            </button>
+              <SemanticChip
+                epistemic="proposal"
+                label={group.name}
+                icon={<Folder className="w-3 h-3" />}
+                onPress={() => onGhostGroupSelect(group)}
+                animateIn={false}
+              />
+            </div>
           ))}
         </div>
       )}

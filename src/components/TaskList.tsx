@@ -7,14 +7,13 @@ import { useTasksQuery } from "@/hooks/useTasksQuery";
 export default function TaskList() {
   const { data: tasksData = [], isLoading: loading, error } = useTasksQuery();
 
-  // Parse tasks from view (handles JSON arrays and assignee mapping)
+  // Parse tasks from view (handles JSON arrays)
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
       ...task,
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      assigned_user_id: task.assignee_user_id,
     }));
   }, [tasksData]);
 

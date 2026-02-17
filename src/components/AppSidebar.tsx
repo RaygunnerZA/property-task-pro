@@ -25,6 +25,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGrou
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAssistantContext } from '@/contexts/AssistantContext';
+import { APP_VERSION } from '@/config/version';
 
 // Global navigation items (always visible)
 const globalNavItems = [
@@ -301,6 +302,15 @@ export function AppSidebar() {
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Version - only when sidebar expanded */}
+              {open && (
+                <SidebarMenuItem>
+                  <div className="px-3 py-2 text-[10px] text-foreground/40 font-mono">
+                    v{APP_VERSION}
+                  </div>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

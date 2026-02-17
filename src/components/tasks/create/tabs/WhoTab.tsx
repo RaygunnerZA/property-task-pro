@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { Textarea } from "@/components/ui/textarea";
@@ -335,10 +335,12 @@ export function WhoTab({
             }
             
             return (
-              <Chip
+              <SemanticChip
                 key={`person-${assignedUserId}`}
-                role="fact"
+                epistemic="fact"
                 label={displayName.toUpperCase()}
+                removable
+                pending={isPendingInvitation}
                 onRemove={() => {
                   handleSelectPerson(null);
                   // Also remove from pending invitations if it was pending
@@ -357,19 +359,21 @@ export function WhoTab({
             if (!team) {
               // Team might not be loaded yet, show placeholder
               return (
-                <Chip
+                <SemanticChip
                   key={`team-${teamId}`}
-                  role="fact"
+                  epistemic="fact"
                   label={`TEAM ${teamId.slice(0, 8).toUpperCase()}`}
+                  removable
                   onRemove={() => toggleTeam(teamId)}
                 />
               );
             }
             return (
-              <Chip
+              <SemanticChip
                 key={`team-${teamId}`}
-                role="fact"
+                epistemic="fact"
                 label={team.name.toUpperCase()}
+                removable
                 onRemove={() => toggleTeam(teamId)}
               />
             );
@@ -421,12 +425,11 @@ export function WhoTab({
           {filteredPeople.map((person) => {
             const isSelected = assignedUserId === person.user_id;
             return (
-              <Chip
+              <SemanticChip
                 key={person.id}
-                role="filter"
+                epistemic={isSelected ? "fact" : "proposal"}
                 label={person.display_name.toUpperCase()}
-                selected={isSelected}
-                onSelect={() => {
+                onPress={() => {
                   if (isSelected) {
                     handleSelectPerson(null);
                   } else {
@@ -439,12 +442,12 @@ export function WhoTab({
           
           {/* Ghost chips for AI suggestions */}
           {ghostPeople.map((ghostName, idx) => (
-            <Chip
+            <SemanticChip
               key={`ghost-${idx}`}
-              role="suggestion"
+              epistemic="proposal"
               label={`+ ${ghostName.toUpperCase()}`}
-              onSelect={() => handleGhostPersonClick(ghostName)}
-              animate={true}
+              onPress={() => handleGhostPersonClick(ghostName)}
+              animateIn
             />
           ))}
           
@@ -481,12 +484,11 @@ export function WhoTab({
         
         <div className="flex flex-wrap gap-2">
           {filteredTeams.map((team) => (
-            <Chip
+            <SemanticChip
               key={team.id}
-              role="filter"
+              epistemic={assignedTeamIds.includes(team.id) ? "fact" : "proposal"}
               label={team.name.toUpperCase()}
-              selected={assignedTeamIds.includes(team.id)}
-              onSelect={() => toggleTeam(team.id)}
+              onPress={() => toggleTeam(team.id)}
             />
           ))}
           
@@ -584,10 +586,11 @@ export function WhoTab({
                   {selectedTeamIds.map((teamId) => {
                     const team = allTeams.find(t => t.id === teamId);
                     return team ? (
-                      <Chip
+                      <SemanticChip
                         key={teamId}
-                        role="fact"
+                        epistemic="fact"
                         label={team.name.toUpperCase()}
+                        removable
                         onRemove={() => setSelectedTeamIds(prev => prev.filter(id => id !== teamId))}
                       />
                     ) : null;

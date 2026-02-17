@@ -8,7 +8,7 @@ import { useSpaces } from './useSpaces';
 import { useTeams } from './useTeams';
 import { useOrgMembers } from './useOrgMembers';
 import { useCategories } from './useCategories';
-import { useDataContext } from '@/contexts/DataContext';
+import { useOrgScope } from '@/hooks/useOrgScope';
 import { generateChipSuggestions } from '@/services/ai/chipSuggestionEngine';
 import { 
   ChipSuggestionContext, 
@@ -39,7 +39,7 @@ export function useChipSuggestions(
   options: UseChipSuggestionsOptions = {}
 ): UseChipSuggestionsReturn {
   const { debounceMs = 300, minDescriptionLength = 3 } = options;
-  const { orgId } = useDataContext();
+  const { orgId, orgLoading } = useOrgScope();
   
   const [result, setResult] = useState<ChipSuggestionResult>({
     chips: [],
@@ -69,7 +69,7 @@ export function useChipSuggestions(
   
   // Generation function
   const generateSuggestions = useCallback(async () => {
-    if (!shouldProcess) {
+    if (!orgId || orgLoading || !shouldProcess) {
       setResult({ chips: [], ghostCategories: [], complianceMode: false });
       return;
     }
@@ -121,6 +121,8 @@ export function useChipSuggestions(
       setLoading(false);
     }
   }, [
+    orgId,
+    orgLoading,
     shouldProcess,
     debouncedDescription,
     context.propertyId,

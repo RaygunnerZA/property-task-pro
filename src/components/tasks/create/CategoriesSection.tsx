@@ -11,13 +11,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FactChipView } from "@/components/chips/FactChipView";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 import { IconPicker } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useCategories } from "@/hooks/useCategories";
 import { supabase } from "@/integrations/supabase/client";
-import { useDataContext } from "@/contexts/DataContext";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { useToast } from "@/hooks/use-toast";
 
 interface CategoriesSectionProps {
@@ -28,7 +27,7 @@ interface CategoriesSectionProps {
 
 export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, suggestedCategories = [] }: CategoriesSectionProps) {
   const { categories, refresh } = useCategories();
-  const { orgId } = useDataContext();
+  const { orgId, orgLoading } = useOrgScope();
   const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -85,23 +84,8 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
       });
       return;
     }
-    
-    // Refresh session to ensure JWT has latest org_id claim
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError) {
-      toast({ 
-        title: "Sign in issue", 
-        description: "Log out and back in to continue.",
-        variant: "destructive" 
-      });
-      return;
-    }
 
-    // Get org_id from refreshed JWT claims
-    const jwtOrgId = refreshData.session?.user?.app_metadata?.org_id;
-    
-    if (!jwtOrgId) {
+    if (!orgId || orgLoading) {
       toast({ 
         title: "Organization not found", 
         description: "Your account is not linked to an organization. Please complete onboarding.",
@@ -117,7 +101,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
       // Upload image to task-images bucket under categories/ folder
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
-        const fileName = `categories/${jwtOrgId}/${crypto.randomUUID()}.${fileExt}`;
+        const fileName = `categories/${orgId}/${crypto.randomUUID()}.${fileExt}`;
         const { error: uploadError } = await supabase.storage
           .from("task-images")
           .upload(fileName, imageFile, { upsert: true });
@@ -133,7 +117,7 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
       const { error } = await supabase
         .from("themes")
         .insert({
-          org_id: jwtOrgId,
+          org_id: orgId,
           name: newCategoryName.trim(),
           type: "category",
           ...(imageUrl && { metadata: { image_url: imageUrl } }),
@@ -190,10 +174,10 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
         {ghostCategories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {ghostCategories.map((ghostName, idx) => (
-              <InteractiveChipView
+              <SemanticChip
                 key={`suggest-${idx}`}
+                epistemic="proposal"
                 label={`Add ${ghostName}`.toUpperCase()}
-                kind="create"
                 onPress={() => handleGhostCategoryClick(ghostName)}
               />
             ))}
@@ -204,9 +188,11 @@ export function CategoriesSection({ selectedCategoryIds, onCategoriesChange, sug
         {categories.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {categories.map(category => (
-              <FactChipView
+              <SemanticChip
                 key={category.id}
+                epistemic="fact"
                 label={category.name.toUpperCase()}
+                removable
                 onRemove={() => toggleCategory(category.id)}
               />
             ))}

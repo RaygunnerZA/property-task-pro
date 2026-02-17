@@ -1,8 +1,8 @@
-// Thin wrapper around DataContext for organisation ID
+// Thin wrapper around useActiveOrg for organisation ID
 // Maintains backward compatibility with existing imports
-import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 
 export function useOrganisationId() {
-  const { orgId } = useDataContext();
+  const { orgId } = useActiveOrg();
   return orgId;
 }

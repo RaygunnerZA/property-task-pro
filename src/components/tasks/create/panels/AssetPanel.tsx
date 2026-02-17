@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Package, Plus } from "lucide-react";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { ContextResolver } from "../ContextResolver";
 import { InstructionBlock } from "../InstructionBlock";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
@@ -181,12 +181,11 @@ export function AssetPanel({
                 <p className="text-xs text-muted-foreground whitespace-nowrap">Loading assets...</p>
               ) : filteredAssets.length > 0 ? (
                 filteredAssets.map(asset => (
-                  <Chip
+                  <SemanticChip
                     key={asset.id}
-                    role="filter"
+                    epistemic={selectedAssetIds.includes(asset.id) ? "fact" : "proposal"}
                     label={asset.name.toUpperCase()}
-                    selected={selectedAssetIds.includes(asset.id)}
-                    onSelect={() => toggleAsset(asset.id)}
+                    onPress={() => toggleAsset(asset.id)}
                     className="shrink-0"
                   />
                 ))

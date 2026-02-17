@@ -392,12 +392,34 @@ Deno.serve(async (req) => {
       );
     }
 
+    const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
+    const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
+
     let result: ResponseBody;
     try {
-      if (getGeminiKey()) {
-        result = await callGeminiVision(imageBase64);
-      } else if (getOpenAIApiKey()) {
-        result = await callOpenAIVision(imageBase64);
+      const preferGemini = aiProvider === "gemini" || (!aiProvider && getGeminiKey());
+      const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
+
+      if (preferGemini && getGeminiKey()) {
+        try {
+          result = await callGeminiVision(imageBase64);
+        } catch (err) {
+          if (fallbackEnabled && getOpenAIApiKey()) {
+            result = await callOpenAIVision(imageBase64);
+          } else {
+            throw err;
+          }
+        }
+      } else if (preferOpenAI && getOpenAIApiKey()) {
+        try {
+          result = await callOpenAIVision(imageBase64);
+        } catch (err) {
+          if (fallbackEnabled && getGeminiKey()) {
+            result = await callGeminiVision(imageBase64);
+          } else {
+            throw err;
+          }
+        }
       } else {
         result = stubResponse();
       }

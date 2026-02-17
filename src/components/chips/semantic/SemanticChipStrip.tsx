@@ -1,5 +1,5 @@
 /**
- * ChipStrip - Compact chip row for task sections
+ * SemanticChipStrip - Chip row for task sections using SemanticChip.
  *
  * Renders chips in contract order:
  * 1. Fact chips
@@ -7,30 +7,32 @@
  * 3. Other interactive chips
  * 4. Instruction chip last
  *
- * Overflow: instruction first, then non-blocking interactive. Fact chips never removed.
+ * Maps ChipData variant to epistemic: fact → fact, interactive → proposal.
  */
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { TaskChip } from "./TaskChip";
+import { SemanticChip } from "./SemanticChip";
 import { sortChipsForStrip, applyOverflow } from "@/lib/task-chip-utils";
 import type { ChipData } from "@/types/task-chip";
 
-export interface ChipStripProps {
+export interface SemanticChipStripProps {
   chips: ChipData[];
   onChipPress?: (chip: ChipData) => void;
   onChipRemove?: (chip: ChipData) => void;
   maxVisible?: number;
+  size?: "default" | "compact";
   className?: string;
 }
 
-export function ChipStrip({
+export function SemanticChipStrip({
   chips,
   onChipPress,
   onChipRemove,
   maxVisible = 20,
+  size = "default",
   className,
-}: ChipStripProps) {
+}: SemanticChipStripProps) {
   const sorted = React.useMemo(
     () => applyOverflow(sortChipsForStrip(chips), maxVisible),
     [chips, maxVisible]
@@ -39,9 +41,13 @@ export function ChipStrip({
   return (
     <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
       {sorted.map((chip) => (
-        <TaskChip
+        <SemanticChip
           key={chip.id}
-          chip={chip}
+          epistemic={chip.variant === "fact" ? "fact" : "proposal"}
+          label={chip.label}
+          size={size}
+          removable={chip.variant === "fact" && !!onChipRemove}
+          pending={chip.variant === "fact" && "pending" in chip && chip.pending}
           onPress={onChipPress ? () => onChipPress(chip) : undefined}
           onRemove={
             chip.variant === "fact" && onChipRemove

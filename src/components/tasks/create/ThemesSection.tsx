@@ -11,8 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { FactChipView } from "@/components/chips/FactChipView";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 import { IconPicker, getIconByName } from "@/components/ui/IconPicker";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { useThemes } from "@/hooks/useThemes";
@@ -197,10 +196,10 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
         {ghostThemes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {ghostThemes.map((ghost, idx) => (
-              <InteractiveChipView
+              <SemanticChip
                 key={`suggest-${idx}`}
+                epistemic="proposal"
                 label={`Add ${ghost.name}`.toUpperCase()}
-                kind="create"
                 onPress={() => handleGhostThemeClick(ghost.name, ghost.type)}
               />
             ))}
@@ -211,9 +210,11 @@ export function ThemesSection({ selectedThemeIds, onThemesChange, suggestedTheme
         {themes.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {themes.map(theme => (
-              <FactChipView
+              <SemanticChip
                 key={theme.id}
+                epistemic="fact"
                 label={theme.name.toUpperCase()}
+                removable
                 onRemove={() => toggleTheme(theme.id)}
               />
             ))}

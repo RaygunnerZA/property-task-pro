@@ -1,7 +1,7 @@
 /**
  * assistant-reasoner — Phase 14 FILLA Assistant Mode
- * Read-only orchestration. Only calls minimal required backends per intent.
- * Never writes. Returns proposals only for create_task/link.
+ * Handles intent classification + reasoning in one function.
+ * Accepts { query, context?, org_id }; computes intent internally.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -22,13 +22,47 @@ const intentToCalls: Record<string, string[]> = {
   unknown: ["compliance"],
 };
 
+type Intent =
+  | "query"
+  | "summarise"
+  | "risk"
+  | "graph"
+  | "recommend"
+  | "predictive"
+  | "create_task"
+  | "link"
+  | "unknown";
+
+function classifyIntent(query: string): Intent {
+  const q = query.toLowerCase().trim();
+  if (!q) return "unknown";
+
+  const patterns: Array<{ re: RegExp; intent: Intent }> = [
+    { re: /\b(create|add|new)\s+(a\s+)?task\b/i, intent: "create_task" },
+    { re: /\blink\b|\bconnect\b|\battach\b.*\b(compliance|document)\b/i, intent: "link" },
+    { re: /\brisk\b|\bexposure\b|\bhazard\b|\bdanger\b/i, intent: "risk" },
+    { re: /\bsummarise\b|\bsummary\b|\bsummarize\b|\boverview\b|\bwhat('s| is)\s+here\b/i, intent: "summarise" },
+    { re: /\bgraph\b|\bconnected\b|\bshow\s+me\s+(everything\s+)?(connected|linked)\b|\bconnections\b/i, intent: "graph" },
+    { re: /\brecommend\b|\bwhat\s+should\b|\bsuggest\b|\badvice\b/i, intent: "recommend" },
+    { re: /\bpredictive\b|\bfail\s+soon\b|\bmight\s+fail\b|\bwhat\s+might\s+fail\b/i, intent: "predictive" },
+    { re: /\bquery\b|\bwhat\b|\bwhere\b|\bwhich\b|\bhow\s+many\b/i, intent: "query" },
+  ];
+
+  for (const { re, intent } of patterns) {
+    if (re.test(q)) return intent;
+  }
+
+  return "unknown";
+}
+
 interface ReasonerInput {
-  intent: string;
-  target: { type: string; id: string } | null;
-  filters: Record<string, unknown>;
+  query: string;
+  context?: { type: string | null; id: string | null } | null;
   org_id: string;
-  context: { type: string; id: string } | null;
-  query?: string;
+  /** Legacy: if provided, use instead of classifying from query */
+  intent?: string;
+  target?: { type: string; id: string } | null;
+  filters?: Record<string, unknown>;
 }
 
 function jsonResponse(data: unknown, status = 200) {
@@ -70,10 +104,14 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
   }
 
-  const { intent, target, org_id: orgId, context, query = "" } = body;
-  if (!orgId || !intent) {
-    return jsonResponse({ ok: false, error: "org_id and intent required" }, 400);
+  const { query, context, org_id: orgId, intent: intentOverride, target: targetOverride, filters: filtersOverride } = body;
+  if (!orgId || typeof query !== "string") {
+    return jsonResponse({ ok: false, error: "org_id and query required" }, 400);
   }
+
+  const intent = (intentOverride as Intent) ?? classifyIntent(query);
+  const target = targetOverride ?? (context?.type && context?.id ? { type: context.type, id: context.id } : null);
+  const filters = filtersOverride ?? {};
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

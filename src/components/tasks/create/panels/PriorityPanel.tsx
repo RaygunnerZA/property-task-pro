@@ -5,7 +5,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { ContextResolver } from '../ContextResolver';
-import { Chip } from '@/components/chips/Chip';
+import { SemanticChip } from '@/components/chips/semantic';
 import type { TaskPriority } from '@/types/database';
 
 interface PriorityPanelProps {
@@ -40,12 +40,11 @@ export function PriorityPanel({
         <div className="flex-1 overflow-x-auto overflow-y-hidden min-w-0 no-scrollbar">
           <div className="flex items-center gap-2 h-[40px]">
             {priorities.map(p => (
-              <Chip
+              <SemanticChip
                 key={p.value}
-                role="filter"
+                epistemic={priority === p.value ? "fact" : "proposal"}
                 label={p.label.toUpperCase()}
-                selected={priority === p.value}
-                onSelect={() => onPriorityChange(p.value)}
+                onPress={() => onPriorityChange(p.value)}
                 className="shrink-0"
               />
             ))}

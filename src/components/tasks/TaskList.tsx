@@ -67,8 +67,6 @@ export function TaskList({
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      // Map assignee_user_id to assigned_user_id for backward compatibility
-      assigned_user_id: task.assignee_user_id,
     }));
   }, [tasksData]);
 
@@ -128,7 +126,7 @@ export function TaskList({
     }
 
     if (selectedFilters.has("filter-assigned-me")) {
-      filtered = filtered.filter((task) => (task as any).assigned_user_id === userId);
+      filtered = filtered.filter((task) => task.assigned_user_id === userId);
     }
 
     // Secondary filters - Status
@@ -149,12 +147,9 @@ export function TaskList({
     const hasResponsibilityFilter = responsibilityFilters.some(f => selectedFilters.has(f));
     if (hasResponsibilityFilter) {
       filtered = filtered.filter((task) => {
-        if (selectedFilters.has("filter-responsibility-unassigned") && !(task as any).assigned_user_id) return true;
+        if (selectedFilters.has("filter-responsibility-unassigned") && !task.assigned_user_id) return true;
         if (selectedFilters.has("filter-responsibility-external")) {
-          // External tasks - check if assigned to external user or has external flag
-          // For now, we'll check if assigned_user_id exists but is not in org members
-          // This is a simplified check - you may need to enhance this
-          return (task as any).assigned_user_id && (task as any).assigned_user_id !== userId;
+          return task.assigned_user_id && task.assigned_user_id !== userId;
         }
         return false;
       });
@@ -204,7 +199,7 @@ export function TaskList({
     if (personFilterIds.length > 0) {
       const selectedPersonIds = personFilterIds.map(f => f.replace("filter-assigned-person-", ""));
       filtered = filtered.filter((task) => {
-        return (task as any).assigned_user_id && selectedPersonIds.includes((task as any).assigned_user_id);
+        return task.assigned_user_id && selectedPersonIds.includes(task.assigned_user_id);
       });
     }
 

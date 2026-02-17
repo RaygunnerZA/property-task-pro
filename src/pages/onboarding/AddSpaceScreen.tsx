@@ -7,7 +7,7 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { ExpandableFactChip } from "@/components/chips/ExpandableFactChip";
+import { ExpandableSpaceChip } from "@/components/chips/semantic";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
 import { ONBOARDING_SPACE_GROUPS, shortSpaceLabel } from "@/components/onboarding/onboardingSpaceGroups";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -415,7 +415,7 @@ export default function AddSpaceScreen() {
             <p className="text-xs text-[#6D7480] mb-2 font-mono uppercase tracking-wide">Your Spaces</p>
             <div className="flex flex-wrap gap-2">
               {spaces.map((space, index) => (
-                <ExpandableFactChip
+                <ExpandableSpaceChip
                   key={`${space}-${index}`}
                   label={shortSpaceLabel(space)}
                   subSpaces={subSpacesByParent[space.toLowerCase().trim()] ?? []}

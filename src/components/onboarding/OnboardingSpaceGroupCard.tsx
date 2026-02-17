@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { CopyPlus } from "lucide-react";
 import type { SpaceGroup } from "./onboardingSpaceGroups";
 import { shortSpaceLabel } from "./onboardingSpaceGroups";
@@ -22,11 +23,7 @@ function cardHeightFromChipCount(count: number): number {
   return Math.min(CARD_HEIGHT_MAX, Math.max(CARD_HEIGHT_MIN, backContent));
 }
 
-// Ghost chip: white dashed stroke only (no dark border), lighter fill on hover
-const GHOST_CHIP_CLASS =
-  "!bg-transparent !border !border-transparent !border-dashed !opacity-100 text-[#1C1C1C] font-mono uppercase tracking-wide hover:!bg-white/25 !shadow-none !h-[28px] min-h-[28px] px-2.5 py-1.5 cursor-pointer";
-
-// Selected chip on card (e.g. ENTRANCE with copy button): same ghost style but teal text/icon to match others
+// Selected chip teal for copy action
 const SELECTED_CHIP_TEAL = "#85BABC";
 
 interface OnboardingSpaceGroupCardProps {
@@ -153,65 +150,33 @@ export function OnboardingSpaceGroupCard({
                 const isSelected = selectedSpacesSet.has(key);
                 if (isSelected && onCopySpace) {
                   return (
-                    <div
+                    <SemanticChip
                       key={name}
-                      className={cn(
-                        GHOST_CHIP_CLASS,
-                        "relative inline-flex items-center gap-0 pr-0 text-[11px] rounded-[8px] group/chip",
-                        "hover:!bg-white/25 transition-colors duration-150",
-                        "border-0 !border-0 !shadow-none"
-                      )}
-                      style={{ color: SELECTED_CHIP_TEAL }}
-                    >
-                      <svg
-                        className="absolute inset-0 w-full h-full pointer-events-none rounded-[8px]"
-                        style={{ borderRadius: 8 }}
-                        aria-hidden
-                      >
-                        <rect
-                          x="1"
-                          y="1"
-                          width="calc(100% - 2px)"
-                          height="calc(100% - 2px)"
-                          rx="8"
-                          ry="8"
-                          fill="none"
-                          stroke="white"
-                          strokeWidth="2"
-                          strokeDasharray="2 2"
-                        />
-                      </svg>
-                      <span className="truncate max-w-[100px] relative z-[1]" style={{ color: SELECTED_CHIP_TEAL }}>
-                        {shortSpaceLabel(name)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onCopySpace(name);
-                        }}
-                        className={cn(
-                          "flex-shrink-0 inline-flex items-center justify-center relative z-[1] w-[30px]",
-                          "!pl-0 !pr-2 !py-1.5 text-[11px] font-mono uppercase tracking-wide rounded-r-[8px]",
-                          "!bg-transparent hover:!bg-transparent !shadow-none outline-none",
-                          "transition-colors duration-150 appearance-none border-0"
-                        )}
-                        style={{ color: SELECTED_CHIP_TEAL }}
-                        title="Add another (copy)"
-                        aria-label={`Add copy of ${name}`}
-                      >
-                        <CopyPlus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                      epistemic="fact"
+                      label={shortSpaceLabel(name)}
+                      color={SELECTED_CHIP_TEAL}
+                      dropdown
+                      dropdownContent={
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            onCopySpace(name);
+                          }}
+                          className="font-mono text-[10px] uppercase tracking-wide py-1 px-1.5 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <CopyPlus className="h-3.5 w-3.5" />
+                          Add copy
+                        </DropdownMenuItem>
+                      }
+                    />
                   );
                 }
                 return (
-                  <Chip
+                  <SemanticChip
                     key={name}
-                    role="suggestion"
+                    epistemic="proposal"
                     label={shortSpaceLabel(name)}
-                    onSelect={() => handleChipClick(name)}
-                    className={GHOST_CHIP_CLASS}
+                    onPress={() => handleChipClick(name)}
                   />
                 );
               })}

@@ -31,8 +31,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FactChipView } from "@/components/chips/FactChipView";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 import { InstructionField } from "./InstructionField";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -168,7 +167,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setStatus((task as any).status || "open");
       setPriority((task as any).priority || "normal");
       // Set assigned user from task (if assigned_user_id exists)
-      setSelectedUserId((task as any).assigned_user_id || undefined);
+      setSelectedUserId(task.assigned_user_id || undefined);
       // Set selected teams from task.teams (handle both string and array)
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
       setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
@@ -375,7 +374,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const { userId } = useDataContext();
   const taskImages = (task as any)?.images ?? [];
   const createdBy = (task as any)?.created_by ?? null;
-  const assignedUserId = (task as any)?.assigned_user_id ?? null;
+  const assignedUserId = task?.assigned_user_id ?? null;
   const isAssigner = !!userId && createdBy === userId;
   const isAssignee = !!userId && assignedUserId === userId;
   // Show CTA to any authenticated user who can view the task (fallback when created_by not in view)
@@ -384,7 +383,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const hasEdits = useMemo(() => {
     const initialStatus = (task as any)?.status || "open";
     const initialPriority = (task as any)?.priority || "normal";
-    const initialUserId = (task as any)?.assigned_user_id || undefined;
+    const initialUserId = task?.assigned_user_id || undefined;
     const initialTeamIds = Array.isArray((task as any)?.teams)
       ? ((task as any).teams as any[]).map((t: any) => t.id)
       : [];
@@ -612,15 +611,19 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <Users className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     {selectedUser ? (
-                      <FactChipView
+                      <SemanticChip
+                        epistemic="fact"
                         label={selectedUser.display_name.toUpperCase()}
+                        removable
                         onRemove={() => handleUserChange(undefined)}
                         className="font-mono text-[11px] rounded-[8px] h-[28px]"
                       />
                     ) : isUnconfirmedUser ? (
-                      <FactChipView
+                      <SemanticChip
+                        epistemic="fact"
                         label={(selectedUserId?.replace("pending-", "") || "Unconfirmed").toUpperCase()}
                         pending
+                        removable
                         onRemove={() => handleUserChange(undefined)}
                         className="font-mono text-[11px] rounded-[8px] h-[28px]"
                       />
@@ -628,9 +631,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     {selectedTeamIds.map((tid) => {
                       const team = teams.find((t) => t.id === tid);
                       return team ? (
-                        <FactChipView
+                        <SemanticChip
                           key={tid}
+                          epistemic="fact"
                           label={team.name.toUpperCase()}
+                          removable
                           onRemove={() => toggleTeam(tid)}
                           className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />
@@ -706,7 +711,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 >
                   <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    <FactChipView
+                    <SemanticChip
+                      epistemic="fact"
                       label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
                       className="font-mono text-[11px] rounded-[8px] h-[28px]"
                     />
@@ -737,7 +743,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 >
                   <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    <FactChipView
+                    <SemanticChip
+                      epistemic="fact"
                       label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
                       className="font-mono text-[11px] rounded-[8px] h-[28px]"
                     />
@@ -762,8 +769,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     {taskAssets.length > 0 &&
                       taskAssets.map((a) => (
-                        <FactChipView
+                        <SemanticChip
                           key={a.id}
+                          epistemic="fact"
                           label={(a.name || "—").toUpperCase()}
                           className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />
@@ -881,8 +889,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     {(task?.categories ?? []).length > 0 &&
                       (task?.categories ?? []).map((c: any) => (
-                        <FactChipView
+                        <SemanticChip
                           key={c.id}
+                          epistemic="fact"
                           label={(c.name || c.label || "—").toString().toUpperCase()}
                           className="font-mono text-[11px] rounded-[8px] h-[28px]"
                         />

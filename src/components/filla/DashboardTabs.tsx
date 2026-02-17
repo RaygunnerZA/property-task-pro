@@ -2,10 +2,11 @@
  * DashboardTabs Component - matches Design Library TabsSection specification
  * Segment control with filter chips and mini card lists
  */
-import { useState, ReactNode } from 'react';
-import { CheckSquare, Inbox, Bell, Clock, AlertTriangle, MessageSquare, Mail, User } from 'lucide-react';
+import { useState } from 'react';
+import { CheckSquare, Inbox, Bell, Calendar, CalendarDays, AlertTriangle, CalendarClock, MessageSquare, Mail, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskCard, TaskCardProps } from './TaskCard';
+import { FilterChip } from '@/components/chips/filter';
 
 export interface DashboardTabsProps {
   tasks?: TaskCardProps[];
@@ -40,7 +41,13 @@ const tabs = [
   { id: 'reminders', label: 'Reminders', icon: Bell },
 ];
 
-const filters = ['All', 'Today', 'This Week', 'High Priority', 'Overdue'];
+const filterOptions = [
+  { id: 'All', label: 'ALL', icon: <CheckSquare className="h-[14px] w-[14px]" /> },
+  { id: 'Today', label: 'TODAY', icon: <Calendar className="h-[14px] w-[14px]" /> },
+  { id: 'This Week', label: 'THIS WEEK', icon: <CalendarDays className="h-[14px] w-[14px]" /> },
+  { id: 'High Priority', label: 'HIGH PRIORITY', icon: <AlertTriangle className="h-[14px] w-[14px]" /> },
+  { id: 'Overdue', label: 'OVERDUE', icon: <CalendarClock className="h-[14px] w-[14px]" /> },
+];
 
 function InboxIcon({ type }: { type: string }) {
   switch (type) {
@@ -112,21 +119,17 @@ export function DashboardTabs({
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <div className="space-y-4">
-            {/* Filter Chips */}
+            {/* Filter Chips - FilterChip for consistency with FilterBar */}
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-4">
-              {filters.map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => setSelectedFilter(filter)}
-                  className={cn(
-                    'px-3 py-1.5 rounded-[5px] font-mono text-[13px] uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
-                    selectedFilter === filter
-                      ? 'bg-primary text-white'
-                      : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
-                  )}
-                >
-                  {filter}
-                </button>
+              {filterOptions.map((filter) => (
+                <FilterChip
+                  key={filter.id}
+                  label={filter.label}
+                  selected={selectedFilter === filter.id}
+                  onSelect={() => setSelectedFilter(filter.id)}
+                  icon={filter.icon}
+                  className="h-[28px] flex-shrink-0 whitespace-nowrap"
+                />
               ))}
             </div>
 

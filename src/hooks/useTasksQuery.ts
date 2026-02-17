@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
-import { debugLog } from "@/lib/logger";
 
 export function useTasksQuery(propertyId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
@@ -24,10 +23,6 @@ export function useTasksQuery(propertyId?: string) {
       }
 
       const { data, error } = await query;
-      // #region agent log
-      console.log('[DEBUG] useTasksQuery result', {dataCount:data?.length||0,error:error?.message||null,orgId});
-      debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'useTasksQuery.ts:25',message:'Tasks query result',data:{dataCount:data?.length||0,error:error?.message||null,orgId,firstTask:data?.[0]||null},timestamp:Date.now()});
-      // #endregion
       if (error) throw error;
       
       // Images are already included in tasks_view as a JSON array

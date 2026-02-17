@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { debounce } from "@/lib/debounce";
 import {
   X,
@@ -274,10 +274,11 @@ export function DocumentDetailDrawer({
               <h3 className="text-sm font-semibold mb-2">Linked items</h3>
               <div className="flex flex-wrap gap-2">
                 {document.linked_spaces?.map((s) => (
-                  <Chip
+                  <SemanticChip
                     key={s.id}
-                    role="fact"
+                    epistemic="fact"
                     label={s.name}
+                    removable
                     onRemove={() =>
                       updateLinks({
                         spaces: document.linked_spaces!.filter((x) => x.id !== s.id).map((x) => x.id),
@@ -286,10 +287,11 @@ export function DocumentDetailDrawer({
                   />
                 ))}
                 {document.linked_assets?.map((a) => (
-                  <Chip
+                  <SemanticChip
                     key={a.id}
-                    role="fact"
+                    epistemic="fact"
                     label={a.name}
+                    removable
                     onRemove={() =>
                       updateLinks({
                         assets: document.linked_assets!.filter((x) => x.id !== a.id).map((x) => x.id),
@@ -298,10 +300,11 @@ export function DocumentDetailDrawer({
                   />
                 ))}
                 {document.linked_contractors?.map((c) => (
-                  <Chip
+                  <SemanticChip
                     key={c.id}
-                    role="fact"
+                    epistemic="fact"
                     label={c.name}
+                    removable
                     onRemove={() =>
                       updateLinks({
                         contractors: document.linked_contractors!.filter((x) => x.id !== c.id).map((x) => x.id),
@@ -310,10 +313,11 @@ export function DocumentDetailDrawer({
                   />
                 ))}
                 {document.linked_compliance?.map((c) => (
-                  <Chip
+                  <SemanticChip
                     key={c.id}
-                    role="fact"
+                    epistemic="fact"
                     label={c.title}
+                    removable
                     onRemove={() =>
                       updateLinks({
                         compliance: document.linked_compliance!.filter((x) => x.id !== c.id).map((x) => x.id),

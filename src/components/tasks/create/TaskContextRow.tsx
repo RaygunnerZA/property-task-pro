@@ -18,7 +18,7 @@
 import React from 'react';
 import { User, MapPin, Calendar, Box, AlertTriangle, Tag, Users } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { PerforationLine } from "./PerforationLine";
 import type { SuggestedChip, ChipType } from '@/types/chip-suggestions';
 import fillaAISrc from "@/assets/filla-ai.svg";
@@ -116,14 +116,14 @@ export function TaskContextRow({
                   const icon = IconComponent ? <IconComponent className="h-3 w-3" /> : undefined;
                   
                   return (
-                    <Chip
+                    <SemanticChip
                       key={chip.id}
-                      role="fact"
+                      epistemic="fact"
                       label={chip.label.toUpperCase()}
                       icon={icon}
+                      removable={!!onChipRemove}
+                      pending={isAIPreFilled}
                       onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
-                      aiPreFilled={isAIPreFilled}
-                      animate={false}
                     />
                   );
                 })}
@@ -156,8 +156,8 @@ export function TaskContextRow({
                 "relative h-[35px] w-[35px] rounded-[8px] flex items-center justify-center",
                 "transition-all duration-150",
                 isActive
-                  ? "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] bg-card"
-                  : "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] bg-background hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
+                  ? "shadow-inset bg-card"
+                  : "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] bg-background hover:shadow-inset hover:bg-card"
               )}
             >
               <Icon className={cn(

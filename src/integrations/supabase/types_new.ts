@@ -1599,7 +1599,6 @@ export type Database = {
       tasks_view: {
         Row: {
           assigned_user_id: string | null
-          assignee_user_id: string | null
           created_at: string | null
           description: string | null
           due_date: string | null

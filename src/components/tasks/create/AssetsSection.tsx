@@ -15,11 +15,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FactChipView } from "@/components/chips/FactChipView";
-import { InteractiveChipView } from "@/components/chips/InteractiveChipView";
+import { SemanticChip } from "@/components/chips/semantic";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { supabase } from "@/integrations/supabase/client";
-import { useDataContext } from "@/contexts/DataContext";
+import { useOrgScope } from "@/hooks/useOrgScope";
 import { useToast } from "@/hooks/use-toast";
 
 interface Asset {
@@ -42,7 +41,7 @@ export function AssetsSection({
   assets = [],
   suggestedAssets = []
 }: AssetsSectionProps) {
-  const { orgId } = useDataContext();
+  const { orgId, orgLoading } = useOrgScope();
   const { toast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newAssetName, setNewAssetName] = useState("");
@@ -143,10 +142,10 @@ export function AssetsSection({
         {ghostAssets.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {ghostAssets.map((ghostName, idx) => (
-              <InteractiveChipView
+              <SemanticChip
                 key={`suggest-${idx}`}
+                epistemic="proposal"
                 label={`Add ${ghostName}`.toUpperCase()}
-                kind="create"
                 onPress={() => handleGhostAssetClick(ghostName)}
               />
             ))}
@@ -157,9 +156,11 @@ export function AssetsSection({
         {assets.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {assets.map(asset => (
-              <FactChipView
+              <SemanticChip
                 key={asset.id}
+                epistemic="fact"
                 label={asset.name.toUpperCase()}
+                removable
                 onRemove={() => toggleAsset(asset.id)}
               />
             ))}

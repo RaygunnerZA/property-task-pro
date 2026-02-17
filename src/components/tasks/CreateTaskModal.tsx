@@ -42,8 +42,6 @@ import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
-import { Chip } from "@/components/chips/Chip";
-
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";

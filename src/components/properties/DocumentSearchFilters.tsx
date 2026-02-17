@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Chip } from "@/components/chips/Chip";
+import { FilterChip } from "@/components/chips/filter";
 import { cn } from "@/lib/utils";
 
 interface DocumentSearchFiltersProps {
@@ -50,34 +50,29 @@ export function DocumentSearchFilters({
         />
       </div>
       <div className="flex flex-wrap gap-2">
-        <Chip
-          role="filter"
+        <FilterChip
           label="Expiring soon"
           selected={expiringSoon}
           onSelect={onExpiringSoonToggle}
         />
-        <Chip
-          role="filter"
+        <FilterChip
           label="Expired"
           selected={expired}
           onSelect={onExpiredToggle}
           color={expired ? "hsl(var(--destructive))" : undefined}
         />
-        <Chip
-          role="filter"
+        <FilterChip
           label="Missing"
           selected={missing}
           onSelect={onMissingToggle}
         />
-        <Chip
-          role="filter"
+        <FilterChip
           label="Recently added"
           selected={recentlyAdded}
           onSelect={onRecentlyAddedToggle}
         />
         {onHazardsToggle && (
-          <Chip
-            role="filter"
+          <FilterChip
             label="Hazards"
             selected={!!hazards}
             onSelect={onHazardsToggle}
@@ -85,8 +80,7 @@ export function DocumentSearchFilters({
           />
         )}
         {onUnlinkedToggle && (
-          <Chip
-            role="filter"
+          <FilterChip
             label="Unlinked"
             selected={!!unlinked}
             onSelect={onUnlinkedToggle}

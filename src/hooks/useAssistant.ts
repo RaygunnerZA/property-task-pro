@@ -1,6 +1,6 @@
 /**
  * useAssistant — Phase 14 FILLA Assistant Mode
- * Orchestrates assistant-intent → assistant-reasoner, handles proposed actions.
+ * Calls assistant-reasoner (classification + reasoning in one). Handles proposed actions.
  */
 import { useState, useCallback } from "react";
 import { useActiveOrg } from "./useActiveOrg";
@@ -26,30 +26,13 @@ export function useAssistant() {
       setMessages((prev) => [...prev, { role: "user", content: query }]);
 
       try {
-        const { data: intentData, error: intentErr } = await supabase.functions.invoke(
-          "assistant-intent",
-          {
-            body: {
-              query,
-              context: context ? { type: context.type, id: context.id } : null,
-              org_id: orgId,
-            },
-          }
-        );
-
-        if (intentErr) throw intentErr;
-        if (!intentData?.ok) throw new Error(intentData?.error ?? "Intent classification failed");
-
         const { data: reasonerData, error: reasonerErr } = await supabase.functions.invoke(
           "assistant-reasoner",
           {
             body: {
-              intent: intentData.intent,
-              target: intentData.target,
-              filters: intentData.filters ?? {},
-              org_id: orgId,
-              context: context ? { type: context.type, id: context.id } : null,
               query,
+              context: context ? { type: context.type, id: context.id } : null,
+              org_id: orgId,
             },
           }
         );

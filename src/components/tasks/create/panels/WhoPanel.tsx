@@ -9,7 +9,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { User, Users, Plus } from "lucide-react";
-import { Chip } from "@/components/chips/Chip";
+import { SemanticChip } from "@/components/chips/semantic";
 import { useTeams } from "@/hooks/useTeams";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { ContextResolver } from "../ContextResolver";
@@ -139,23 +139,21 @@ export function WhoPanel({
               {filteredMembers.length > 0 || pendingInvitations.length > 0 ? (
                 <>
                   {filteredMembers.map(member => (
-                    <Chip
+                    <SemanticChip
                       key={member.user_id}
-                      role="filter"
+                      epistemic={assignedUserId === member.user_id ? "fact" : "proposal"}
                       label={member.display_name.toUpperCase()}
-                      selected={assignedUserId === member.user_id}
-                      onSelect={() => handlePersonSelect(member.user_id)}
+                      onPress={() => handlePersonSelect(member.user_id)}
                       className="shrink-0"
                     />
                   ))}
                   
                   {pendingInvitations.map(inv => (
-                    <Chip
+                    <SemanticChip
                       key={inv.id}
-                      role="filter"
+                      epistemic={assignedUserId === inv.id ? "fact" : "proposal"}
                       label={inv.displayName.toUpperCase()}
-                      selected={assignedUserId === inv.id}
-                      onSelect={() => handlePersonSelect(inv.id)}
+                      onPress={() => handlePersonSelect(inv.id)}
                       className="shrink-0"
                     />
                   ))}
@@ -190,12 +188,11 @@ export function WhoPanel({
             <div className="flex items-center gap-2 h-[40px]">
               {filteredTeams.length > 0 ? (
                 filteredTeams.map(team => (
-                  <Chip
+                  <SemanticChip
                     key={team.id}
-                    role="filter"
+                    epistemic={assignedTeamIds.includes(team.id) ? "fact" : "proposal"}
                     label={(team.name || 'Unnamed Team').toUpperCase()}
-                    selected={assignedTeamIds.includes(team.id)}
-                    onSelect={() => handleTeamSelect(team.id)}
+                    onPress={() => handleTeamSelect(team.id)}
                     className="shrink-0"
                   />
                 ))

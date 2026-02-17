@@ -66,7 +66,7 @@ const Schedule = () => {
       spaces: typeof task.spaces === 'string' ? JSON.parse(task.spaces) : (task.spaces || []),
       themes: typeof task.themes === 'string' ? JSON.parse(task.themes) : (task.themes || []),
       teams: typeof task.teams === 'string' ? JSON.parse(task.teams) : (task.teams || []),
-      assigned_user_id: task.assignee_user_id,
+      assigned_user_id: task.assigned_user_id,
     }));
   }, [tasksData]);
 

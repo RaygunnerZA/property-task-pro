@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Chip } from "./Chip";
+import { SemanticChip } from "./semantic";
 import { Input } from "@/components/ui/input";
 import { GripVertical, X, Loader2, Sparkles, MapPin, User, Users, Folder, AlertTriangle, Package, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,24 +89,24 @@ function SortableChipItem({ chip, isDragging, onRemove, isNested = false, chips,
       >
         <GripVertical className="h-3 w-3 text-muted-foreground/40" />
       </div>
-      <Chip
-        role={chip.ghost ? "suggestion" : "fact"}
+      <SemanticChip
+        epistemic={chip.ghost ? "proposal" : "fact"}
         label={chip.label.toUpperCase()}
-        selected={!chip.ghost}
+        removable={!chip.ghost && !!onRemove}
         onRemove={onRemove}
-        icon={chip.ghost ? undefined : chip.icon} // No icons for suggestions
+        icon={chip.ghost ? undefined : chip.icon}
         color={chip.color}
-        animate={chip.ghost}
+        animateIn={chip.ghost}
         className="flex-shrink-0"
       />
       {chip.children && chip.children.length > 0 && (
             <div className="ml-2 flex flex-wrap gap-1 pl-4 border-l-2 border-border/30">
               {chip.children.map((child) => (
-                <Chip
+                <SemanticChip
                   key={child.id}
-                  role={child.ghost ? "suggestion" : "fact"}
+                  epistemic={child.ghost ? "proposal" : "fact"}
                   label={child.label.toUpperCase()}
-                  selected={!child.ghost}
+                  removable={!child.ghost}
                   onRemove={() => {
                     // Remove nested chip
                     const updatedChip = {
@@ -523,13 +523,13 @@ export function ChipInput({
                             onClick={() => handleFilteredChipClick(chip)}
                             className="inline-block"
                           >
-                            <Chip
-                              role={chip.ghost ? "suggestion" : "filter"}
+                            <SemanticChip
+                              epistemic={chip.ghost ? "proposal" : "fact"}
                               label={chip.label.toUpperCase()}
-                              icon={chip.ghost ? undefined : chip.icon} // No icons for suggestions
+                              icon={chip.ghost ? undefined : chip.icon}
                               color={chip.color}
-                              animate={chip.ghost}
-                              className="cursor-pointer hover:scale-105 transition-transform"
+                              animateIn={chip.ghost}
+                              className="cursor-pointer"
                             />
                           </button>
                         ))}
@@ -570,10 +570,10 @@ export function ChipInput({
                 <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-e3 p-2">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Press Enter to create:</span>
-                    <Chip
-                      role="suggestion"
+                    <SemanticChip
+                      epistemic="proposal"
                       label={inputValue.trim().toUpperCase()}
-                      animate={true}
+                      animateIn
                       className="flex-shrink-0"
                     />
                   </div>

@@ -1,21 +1,8 @@
-export type TaskStatus = 'pending' | 'in-progress' | 'completed';
-export type TaskPriority = 'low' | 'medium' | 'high';
-
-export interface Property {
+/**
+ * Shared task types. Use assigned_user_id as canonical field for assignee.
+ */
+export interface TaskWithAssignee {
   id: string;
-  name: string;
-  address: string;
-  type: string;
-}
-
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  propertyId: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  dueDate: Date;
-  assignedTo?: string;
-  createdAt: Date;
+  assigned_user_id: string | null;
+  [key: string]: unknown;
 }
