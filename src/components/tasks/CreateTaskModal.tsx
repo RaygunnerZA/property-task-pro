@@ -30,7 +30,6 @@ import { PriorityTab } from "./create/tabs/PriorityTab";
 
 // New Panel Components
 import { WhoPanel } from "./create/panels/WhoPanel";
-import { WhenPanel } from "./create/panels/WhenPanel";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
@@ -1449,22 +1448,13 @@ export function CreateTaskModal({
                 key={id}
                 isActive={activeSection === id}
                 onActivate={() => setActiveSection(id)}
+                onDeactivate={() => setActiveSection(null)}
                 dueDate={dueDate}
                 repeatRule={repeatRule}
                 onDueDateChange={setDueDate}
                 onRepeatRuleChange={setRepeatRule}
                 hasUnresolved={unresolvedSections.includes(id)}
-              >
-                {activeSection === id && (
-                  <WhenPanel
-                    dueDate={dueDate}
-                    repeatRule={repeatRule}
-                    onDueDateChange={setDueDate}
-                    onRepeatRuleChange={setRepeatRule}
-                    showQuickDates={false}
-                  />
-                )}
-              </WhenSection>
+              />
             ) : id === "what" ? (
               <AssetSection
                 key={id}
