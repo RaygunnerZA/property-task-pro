@@ -4,13 +4,13 @@
  * Contract:
  * - Single-line row (no wrapping), horizontal scroll on overflow.
  * - Date/time selector opens ONLY when editing due date (Custom / clicking due chip) or milestones.
- * - Adding/editing milestone dims other date chips 25% while editing.
+ * - Adding/editing milestone dims other date chips 35% while editing.
  * - New milestone starts at TODAY; scrolling applies live to the active milestone draft.
  * - Clicking outside the selector saves the milestone draft and closes the selector; all chips return to 100% opacity.
  * - Clicking existing due date or milestone edits it.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, Repeat, Waypoints } from "lucide-react";
 import { format, addDays, startOfDay, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,8 @@ const REPEAT_OPTIONS = [
   { id: "custom", label: "Custom", type: "weekly" as const },
 ];
 
+export type MilestoneItem = { id: string; dateTime: string; label?: string };
+
 interface WhenSectionProps {
   isActive: boolean;
   onActivate: () => void;
@@ -41,6 +43,9 @@ interface WhenSectionProps {
   onDueDateChange: (date: string) => void;
   onRepeatRuleChange: (rule: RepeatRule | undefined) => void;
   hasUnresolved?: boolean;
+  /** When provided, milestone state is owned by the parent (lifted state). */
+  milestones?: MilestoneItem[];
+  onMilestonesChange?: (milestones: MilestoneItem[]) => void;
 }
 
 export function WhenSection({
@@ -52,11 +57,30 @@ export function WhenSection({
   onDueDateChange,
   onRepeatRuleChange,
   hasUnresolved = false,
+  milestones: externalMilestones,
+  onMilestonesChange,
 }: WhenSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showRepeatOptions, setShowRepeatOptions] = useState(false);
-  const [milestones, setMilestones] = useState<Array<{ id: string; dateTime: string }>>([]);
-  const [draftMilestone, setDraftMilestone] = useState<{ id: string; dateTime: string } | null>(null);
+
+  const [_internalMs, _setInternalMs] = useState<MilestoneItem[]>([]);
+  const milestones = externalMilestones ?? _internalMs;
+  const msRef = useRef(milestones);
+  msRef.current = milestones;
+
+  const setMilestones = useCallback(
+    (action: MilestoneItem[] | ((prev: MilestoneItem[]) => MilestoneItem[])) => {
+      const resolved = typeof action === "function" ? action(msRef.current) : action;
+      if (onMilestonesChange) {
+        onMilestonesChange(resolved);
+      } else {
+        _setInternalMs(resolved);
+      }
+    },
+    [onMilestonesChange],
+  );
+
+  const [draftMilestone, setDraftMilestone] = useState<MilestoneItem | null>(null);
   const [editing, setEditing] = useState<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,13 +105,14 @@ export function WhenSection({
     return timePart ? `${dateStr} | ${timePart}` : dateStr.toUpperCase();
   };
 
-  const formatDateTimeLabel = (dateTime: string) => {
-    if (!dateTime) return "";
+  const formatDateTimeLabel = (dateTime: string, label?: string) => {
+    if (!dateTime) return label || "";
     const d = dateTime.split("T")[0];
     const dateObj = d ? new Date(d + "T00:00:00") : new Date();
     const timePart = dateTime.includes("T") ? dateTime.split("T")[1]?.slice(0, 5) : null;
     const dateStr = format(dateObj, "EEE d MMM").toUpperCase();
-    return timePart ? `${dateStr} | ${timePart}` : dateStr;
+    const timePartStr = timePart ? `${dateStr} | ${timePart}` : dateStr;
+    return label ? `${label} | ${timePartStr}` : timePartStr;
   };
 
   const handleQuickDate = (days: number) => {
@@ -129,7 +154,7 @@ export function WhenSection({
     setShowRepeatOptions(false);
     const id = `milestone-${Date.now()}`;
     const initial = `${format(today, "yyyy-MM-dd")}T${timePartForDefault}`;
-    setDraftMilestone({ id, dateTime: initial });
+    setDraftMilestone({ id, dateTime: initial, label: "" });
     setEditing({ kind: "milestone", id });
   };
 
@@ -160,6 +185,21 @@ export function WhenSection({
     }
     setMilestones((prev) => prev.map((m) => (m.id === editing.id ? { ...m, dateTime: next } : m)));
   };
+
+  const handleMilestoneLabelChange = (label: string) => {
+    if (!editing || editing.kind !== "milestone") return;
+    if (draftMilestone && draftMilestone.id === editing.id) {
+      setDraftMilestone({ ...draftMilestone, label: label.trim() || undefined });
+      return;
+    }
+    setMilestones((prev) => prev.map((m) => (m.id === editing.id ? { ...m, label: label.trim() || undefined } : m)));
+  };
+
+  const editingMilestoneLabel = useMemo(() => {
+    if (!editing || editing.kind !== "milestone") return "";
+    if (draftMilestone && draftMilestone.id === editing.id) return draftMilestone.label ?? "";
+    return milestones.find((m) => m.id === editing.id)?.label ?? "";
+  }, [editing, draftMilestone, milestones]);
 
   const isDimmed = (kind: "due" | "milestone", id?: string) => {
     if (!editing) return false;
@@ -200,24 +240,16 @@ export function WhenSection({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Main row: [ICON] Fact chips | hover chips — strict single-line */}
-      <div
-        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        <div
-          className={cn(
-            "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
-            isActive && "shadow-inset bg-card"
-          )}
-        >
+      <div className="flex items-center gap-2 h-[36px] min-w-0">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <Calendar className="h-4 w-4 text-muted-foreground" />
         </div>
 
         <div
-          className="flex shrink-0 items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
+          <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
           {/* Fact chips: date, recurrence */}
           {dateFactLabel && (
             <span data-when-action="true" className="shrink-0">
@@ -236,7 +268,7 @@ export function WhenSection({
                   setShowRepeatOptions(false);
                   onDeactivate?.();
                 }}
-                className={cn("shrink-0 max-w-none", isDimmed("due") && "opacity-75")}
+                className={cn("shrink-0 max-w-none", isDimmed("due") && "opacity-65")}
               />
             </span>
           )}
@@ -257,7 +289,7 @@ export function WhenSection({
             <span key={m.id} data-when-action="true" className="shrink-0">
               <SemanticChip
                 epistemic="fact"
-                label={formatDateTimeLabel(m.dateTime)}
+                label={formatDateTimeLabel(m.dateTime, m.label)}
                 icon={<Waypoints className="h-3 w-3" />}
                 truncate={false}
                 onPress={() => {
@@ -270,7 +302,7 @@ export function WhenSection({
                   setMilestones((prev) => prev.filter((x) => x.id !== m.id));
                   if (editing?.kind === "milestone" && editing.id === m.id) closeEditor();
                 }}
-                className={cn("shrink-0 max-w-none", isDimmed("milestone", m.id) && "opacity-75")}
+                className={cn("shrink-0 max-w-none", isDimmed("milestone", m.id) && "opacity-65")}
               />
             </span>
           ))}
@@ -279,7 +311,7 @@ export function WhenSection({
             <span data-when-action="true" className="shrink-0">
               <SemanticChip
                 epistemic="fact"
-                label={formatDateTimeLabel(draftMilestone.dateTime)}
+                label={formatDateTimeLabel(draftMilestone.dateTime, draftMilestone.label)}
                 icon={<Waypoints className="h-3 w-3" />}
                 truncate={false}
                 onPress={() => {
@@ -356,6 +388,7 @@ export function WhenSection({
               )}
             </>
           )}
+          </div>
         </div>
 
         {hasUnresolved && !isActive && (
@@ -365,7 +398,19 @@ export function WhenSection({
 
       {/* Date/time selector (only when editing due date / milestone) */}
       {editing && (
-        <div ref={panelRef} className="pl-[22px] pt-2 pb-2">
+        <div ref={panelRef} className="pl-[22px] pt-2 pb-2 space-y-2">
+          {editing.kind === "milestone" && (
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] font-mono uppercase text-muted-foreground shrink-0">Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Alert, Launch"
+                value={editingMilestoneLabel}
+                onChange={(e) => handleMilestoneLabelChange(e.target.value)}
+                className="h-7 w-24 px-2 rounded-[6px] text-xs font-mono bg-background shadow-e1 border-0 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          )}
           <WhenPanel
             dueDate={editingValue}
             repeatRule={repeatRule}

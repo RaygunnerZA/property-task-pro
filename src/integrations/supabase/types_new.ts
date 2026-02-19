@@ -1326,6 +1326,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          milestones: Record<string, unknown>[] | null
           org_id: string
           priority: string | null
           property_id: string | null
@@ -1339,6 +1340,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          milestones?: Record<string, unknown>[] | null
           org_id: string
           priority?: string | null
           property_id?: string | null
@@ -1352,6 +1354,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          milestones?: Record<string, unknown>[] | null
           org_id?: string
           priority?: string | null
           property_id?: string | null
@@ -1604,6 +1607,7 @@ export type Database = {
           due_date: string | null
           id: string | null
           images: Json | null
+          milestones: Json | null
           org_id: string | null
           priority: string | null
           property_address: string | null

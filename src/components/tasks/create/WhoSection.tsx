@@ -352,24 +352,16 @@ export function WhoSection({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Main row: [ICON] Fact Chips | +Value | Suggestion Chips — strict single-line */}
-      <div
-        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        <div
-          className={cn(
-            "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
-            isActive && "shadow-inset bg-card"
-          )}
-        >
+      <div className="flex items-center gap-2 h-[36px] min-w-0">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <User className="h-4 w-4 text-muted-foreground" />
         </div>
 
         <div
-          className="flex shrink-0 items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
+          <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
           {factChips.map((chip) => {
             const isTeamChip = chip.id.startsWith("team-");
             const teamId = isTeamChip ? chip.id.replace("team-", "") : null;
@@ -470,6 +462,7 @@ export function WhoSection({
               className="shrink-0"
             />
           ))}
+          </div>
         </div>
 
         {hasUnresolved && !isActive && (
@@ -481,11 +474,11 @@ export function WhoSection({
       {showSecondaryRow && secondaryRowTeamName && (
         <div
           className={cn(
-            "pl-[38px] pt-1 pb-2 overflow-hidden",
+            "pl-[38px] pt-1 pb-2",
             "transition-all duration-150 ease-out"
           )}
         >
-          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar">
+          <div className="flex items-center gap-1.5 h-[36px] flex-nowrap whitespace-nowrap min-w-0 no-scrollbar pr-[6px]">
             {isAddingMembers ? (
               <input
                 ref={addMembersInputRef}

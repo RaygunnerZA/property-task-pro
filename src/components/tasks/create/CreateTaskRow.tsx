@@ -171,73 +171,64 @@ export function CreateTaskRow({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Primary row: [ICON] Fact Chips | +Value | Suggestion Chips — strict single-line, horizontal scroll */}
-      <div
-        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        {/* Icon: fixed 24px */}
-        <div
-          className={cn(
-            "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
-            isActive && "shadow-inset bg-card"
-          )}
-        >
+      <div className="flex items-center gap-2 h-[36px] min-w-0">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           {icon}
         </div>
 
-        {/* ChipStrip: fact | input or +Value | suggestion chips */}
-        {isInlineEditing ? (
-          <div className="flex items-center gap-2 shrink-0">
-            <input
-              ref={inlineInputRef}
-              data-inline-instruction
-              type="text"
-              value={inlineValue}
-              onChange={(e) => {
-                setInlineValue(e.target.value);
-                onInlineSearch?.(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setIsInlineEditing(false);
-                  setInlineValue("");
-                }
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onInlineSearch?.(inlineValue);
-                }
-              }}
-              onBlur={() => {
-                setTimeout(() => {
-                  setIsInlineEditing(false);
-                  setInlineValue("");
-                }, 200);
-              }}
-              placeholder={instruction}
-              className={cn(
-                "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
-                "font-mono text-[11px] uppercase tracking-wide",
-                "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
-                "shadow-inset outline-none cursor-text",
-                "transition-[width] duration-150 ease-out"
-              )}
-              style={{ width: inlineValue.length > 0 ? Math.min(240, Math.max(100, (inlineValue.length + 2) * 8)) : 100 }}
-            />
-          </div>
-        ) : (
-          <div
-            className="flex shrink-0 items-center min-w-0 gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar"
-            style={{ WebkitOverflowScrolling: "touch" }}
-          >
-            <SemanticChipStrip
-              chips={chipData}
-              onChipPress={handleChipPress}
-              onChipRemove={handleChipRemove}
-              className="shrink-0 gap-2"
-            />
-          </div>
-        )}
+        <div
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {isInlineEditing ? (
+            <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
+              <input
+                ref={inlineInputRef}
+                data-inline-instruction
+                type="text"
+                value={inlineValue}
+                onChange={(e) => {
+                  setInlineValue(e.target.value);
+                  onInlineSearch?.(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsInlineEditing(false);
+                    setInlineValue("");
+                  }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onInlineSearch?.(inlineValue);
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    setIsInlineEditing(false);
+                    setInlineValue("");
+                  }, 200);
+                }}
+                placeholder={instruction}
+                className={cn(
+                  "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
+                  "font-mono text-[11px] uppercase tracking-wide",
+                  "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
+                  "shadow-inset outline-none cursor-text",
+                  "transition-[width] duration-150 ease-out"
+                )}
+                style={{ width: inlineValue.length > 0 ? Math.min(240, Math.max(100, (inlineValue.length + 2) * 8)) : 100 }}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center min-w-0 gap-2 flex-nowrap whitespace-nowrap no-scrollbar pr-[6px]">
+              <SemanticChipStrip
+                chips={chipData}
+                onChipPress={handleChipPress}
+                onChipRemove={handleChipRemove}
+                className="shrink-0 gap-2"
+              />
+            </div>
+          )}
+        </div>
 
         {hasUnresolved && !isActive && (
           <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500 border border-background" />

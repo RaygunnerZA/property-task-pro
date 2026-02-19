@@ -44,10 +44,11 @@ import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import { WhoSection } from "./create/WhoSection";
-import { WhenSection } from "./create/WhenSection";
+import { WhenSection, type MilestoneItem } from "./create/WhenSection";
 import { WhereSection } from "./create/WhereSection";
 import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
+import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
@@ -164,6 +165,7 @@ export function CreateTaskModal({
   const [priorityTouched, setPriorityTouched] = useState(false);
   const [dueDate, setDueDate] = useState(defaultDueDate || "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
+  const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
@@ -178,6 +180,8 @@ export function CreateTaskModal({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [invitePrefillName, setInvitePrefillName] = useState("");
 
   // AI Title extraction
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
@@ -279,24 +283,17 @@ export function CreateTaskModal({
   const verbChips = useMemo(() => {
     const chipMap = new Map<string, SuggestedChip>();
     
-    // Add suggestions first
-    chipSuggestions
-      .filter(chip => factChipTypes.includes(chip.type))
-      .forEach(chip => chipMap.set(chip.id, chip));
-    
-    // Override with applied chips (more current state)
+    // Only applied chips (user-committed) can block submission.
+    // AI suggestions are advisory — they show verb labels for context but
+    // must not gate the Create button since the user may not want them.
     Array.from(appliedChips.values())
       .filter(chip => factChipTypes.includes(chip.type))
       .forEach(chip => chipMap.set(chip.id, chip));
     
-    // A chip is unresolved (verb) if: blockingRequired && !resolvedEntityId
-    // INVITE BEHAVIORAL CONTRACT: Person chips with this state are Invite actions (not normal chips)
-    // They represent explicit intent that must be resolved or removed before submission
-    // Recurrence chips never have blockingRequired, so they're excluded from verb chips
     return Array.from(chipMap.values()).filter(chip => 
       chip.blockingRequired && !chip.resolvedEntityId
     );
-  }, [chipSuggestions, appliedChips]);
+  }, [appliedChips]);
   
   // Calculate unresolved sections from verb chips
   const unresolvedSections = useMemo(() => {
@@ -359,20 +356,18 @@ export function CreateTaskModal({
     return bySection;
   }, [factChips, CREATE_TASK_SECTIONS, priority, priorityTouched]);
 
-  // Suggested (AI) chips by section — only chips not already in fact chips for that section
-  // Excludes verb chips (blockingRequired && !resolvedEntityId) since those are handled separately
+  // Suggested (AI) chips by section — only chips not already in fact chips or applied verb chips
   const suggestedChipsBySection = useMemo(() => {
     const bySection: Record<string, SuggestedChip[]> = {};
     CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
     const factIds = new Set(factChips.map(c => c.id));
+    const verbIds = new Set(verbChips.map(c => c.id));
     chipSuggestions.forEach(chip => {
       const section = chipTypeToSection[chip.type];
-      // Exclude verb chips from suggested chips - they'll be shown separately with verb labels
-      const isVerbChip = chip.blockingRequired && !chip.resolvedEntityId;
-      if (section && bySection[section] && !factIds.has(chip.id) && !isVerbChip) bySection[section].push(chip);
+      if (section && bySection[section] && !factIds.has(chip.id) && !verbIds.has(chip.id)) bySection[section].push(chip);
     });
     return bySection;
-  }, [chipSuggestions, factChips, CREATE_TASK_SECTIONS]);
+  }, [chipSuggestions, factChips, verbChips, CREATE_TASK_SECTIONS]);
   
   // Helper to generate verb label
   // ADD RESOLUTION RULE: Space and asset chips with blockingRequired && !resolvedEntityId generate "ADD" labels
@@ -726,6 +721,7 @@ export function CreateTaskModal({
     setPriorityTouched(false);
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
+    setMilestones([]);
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
     setPendingInvitations([]);
@@ -1025,6 +1021,7 @@ export function CreateTaskModal({
           property_id: propertyId || null,
           priority: dbPriority,
           due_date: dueDateValue,
+          milestones: milestones.length > 0 ? milestones : [],
           description: description.trim() || null,
           assigned_user_id: finalAssignedUserId,
           status: 'open',
@@ -1413,8 +1410,8 @@ export function CreateTaskModal({
                 onTeamsChange={setAssignedTeamIds}
                 pendingInvitations={pendingInvitations}
                 onPendingInvitationsChange={setPendingInvitations}
-                onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
-                onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
+                onInviteToOrg={() => setInviteModalOpen(true)}
+                onAddAsContractor={() => { setInviteModalOpen(true); }}
                 hasUnresolved={unresolvedSections.includes(id)}
               >
                 {activeSection === id && (
@@ -1428,8 +1425,8 @@ export function CreateTaskModal({
                     onPendingInvitationsChange={setPendingInvitations}
                     instructionBlock={instructionBlock}
                     onInstructionDismiss={() => setInstructionBlock(null)}
-                    onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
-                    onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
+                    onInviteToOrg={() => setInviteModalOpen(true)}
+                    onAddAsContractor={() => { setInviteModalOpen(true); }}
                   />
                 )}
               </WhoSection>
@@ -1453,6 +1450,8 @@ export function CreateTaskModal({
                 repeatRule={repeatRule}
                 onDueDateChange={setDueDate}
                 onRepeatRuleChange={setRepeatRule}
+                milestones={milestones}
+                onMilestonesChange={setMilestones}
                 hasUnresolved={unresolvedSections.includes(id)}
               />
             ) : id === "what" ? (
@@ -1679,14 +1678,33 @@ export function CreateTaskModal({
   }
 
   // Mobile: Bottom sheet drawer, Desktop: Center dialog
+  const inviteModal = (
+    <InviteUserModal
+      open={inviteModalOpen}
+      onOpenChange={setInviteModalOpen}
+      prefillFirstName={invitePrefillName}
+      onInviteSent={(inv) => {
+        setPendingInvitations((prev) => [
+          ...prev,
+          { id: `pending-${inv.email}`, email: inv.email, displayName: `${inv.firstName} ${inv.lastName}` },
+        ]);
+        setInvitePrefillName("");
+      }}
+    />
+  );
+
   if (isMobile) {
-    return <Drawer open={open} onOpenChange={onOpenChange}>
+    return <>
+      <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="max-h-[95vh]">
           {content}
         </DrawerContent>
-      </Drawer>;
+      </Drawer>
+      {inviteModal}
+    </>;
   }
-  return <Dialog open={open} onOpenChange={onOpenChange}>
+  return <>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 gap-0 overflow-hidden">
         <DialogHeader className="sr-only">
           <DialogTitle>Create Task</DialogTitle>
@@ -1694,5 +1712,7 @@ export function CreateTaskModal({
         </DialogHeader>
         {content}
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+    {inviteModal}
+  </>;
 }

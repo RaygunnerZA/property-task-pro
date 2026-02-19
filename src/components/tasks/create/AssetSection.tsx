@@ -165,23 +165,16 @@ export function AssetSection({
         }}
       />
 
-      <div
-        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
-        style={{ WebkitOverflowScrolling: "touch" }}
-      >
-        <div
-          className={cn(
-            "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
-            isActive && "shadow-inset bg-card"
-          )}
-        >
+      <div className="flex items-center gap-2 h-[36px] min-w-0">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <Box className="h-4 w-4 text-muted-foreground" />
         </div>
 
         <div
-          className="flex shrink-0 items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+          className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
+          <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
           {/* Fact chips */}
           {selectedAssets.map((a) => (
             <SemanticChip
@@ -283,6 +276,7 @@ export function AssetSection({
               Loading…
             </span>
           )}
+          </div>
         </div>
       </div>
     </div>

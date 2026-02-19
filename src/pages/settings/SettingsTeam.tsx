@@ -5,94 +5,12 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { Loader2, UserPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { toast } from "sonner";
-import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { supabase } from "@/integrations/supabase/client";
+import { InviteUserModal } from "@/components/invite/InviteUserModal";
 
 export default function SettingsTeam() {
-  const { members, loading, error, refresh } = useOrgMembers();
-  const { orgId } = useActiveOrg();
+  const { members, loading, error } = useOrgMembers();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-
-  const handleInviteMember = () => {
-    setInviteModalOpen(true);
-  };
-
-  const handleSendInvite = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    if (!orgId) {
-      toast.error("Organization not found");
-      return;
-    }
-
-    setInviteLoading(true);
-    try {
-      // Get the current session token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error("You must be logged in to send invitations");
-      }
-
-      // Call the invitation edge function
-      const { data, error } = await supabase.functions.invoke("invite-team-member", {
-        body: {
-          email: email.trim(),
-          org_id: orgId,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          role: "member", // Default role - can be made configurable later
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      toast.success(`Invitation sent to ${email}`);
-      setInviteModalOpen(false);
-      setFirstName("");
-      setLastName("");
-      setEmail("");
-      // Refresh members list after invite
-      await refresh();
-    } catch (err: any) {
-      console.error("Error sending invitation:", err);
-      toast.error(err.message || "Failed to send invitation");
-    } finally {
-      setInviteLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -118,7 +36,7 @@ export default function SettingsTeam() {
         <Card className="shadow-e1">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Team Members</CardTitle>
-            <Button onClick={handleInviteMember} size="sm">
+            <Button onClick={() => setInviteModalOpen(true)} size="sm">
               <UserPlus className="mr-2 h-4 w-4" />
               Invite Member
             </Button>
@@ -174,74 +92,10 @@ export default function SettingsTeam() {
         </Card>
       </div>
 
-      {/* Invite Member Modal */}
-      <Dialog open={inviteModalOpen} onOpenChange={setInviteModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Invite Team Member</DialogTitle>
-            <DialogDescription>
-              Send an invitation to add a new member to your organization.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                placeholder="John"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                disabled={inviteLoading}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                placeholder="Doe"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                disabled={inviteLoading}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john.doe@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={inviteLoading}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setInviteModalOpen(false);
-                setFirstName("");
-                setLastName("");
-                setEmail("");
-              }}
-              disabled={inviteLoading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSendInvite} disabled={inviteLoading}>
-              {inviteLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Invitation"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <InviteUserModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+      />
     </>
   );
 }

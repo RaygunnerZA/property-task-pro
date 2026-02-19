@@ -17,10 +17,11 @@ Canonical reference for database tables, relationships, and naming conventions.
 - `org_id`, `user_id`, `role` — junction for user-org membership. Use for RLS and `useActiveOrg()`.
 
 ### tasks
-- `id`, `org_id`, `title`, `description`, `status`, `priority`, `due_date`, `property_id`, `assigned_user_id`, `created_at`, `updated_at`
+- `id`, `org_id`, `title`, `description`, `status`, `priority`, `due_date`, `milestones` (JSONB, default `[]`), `property_id`, `assigned_user_id`, `created_at`, `updated_at`
+- `milestones`: Array of `{id, dateTime, label?}` objects. Each milestone date appears on the calendar alongside `due_date`.
 
 ### tasks_view
-- Optimized view with pre-joined property, spaces, themes, teams, images. Exposes `assigned_user_id` (no alias).
+- Optimized view with pre-joined property, spaces, themes, teams, images, milestones. Exposes `assigned_user_id` (no alias).
 
 ### properties
 - `id`, `org_id`, `nickname`, `address`, `thumbnail_url`, etc.

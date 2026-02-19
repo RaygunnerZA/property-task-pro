@@ -1,13 +1,9 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, User, Users, MapPin, Calendar, Save, SquarePen, Upload, Box, Tag, Shield, AlertTriangle, Network } from "lucide-react";
+import { Camera, Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
-import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
-import { RelatedComplianceSection } from "@/components/compliance/RelatedComplianceSection";
-import { useOrgMembers } from "@/hooks/useOrgMembers";
-import { useTeams } from "@/hooks/useTeams";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
@@ -22,34 +18,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { SemanticChip } from "@/components/chips/semantic";
-import { InstructionField } from "./InstructionField";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
-import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
+import { InviteUserModal } from "@/components/invite/InviteUserModal";
+import { WhoSection } from "./create/WhoSection";
+import type { PendingInvitation } from "./create/tabs/WhoTab";
+import { WhenSection, type MilestoneItem } from "./create/WhenSection";
+import { WhereSection } from "./create/WhereSection";
+import { AssetSection } from "./create/AssetSection";
+import { CategorySection } from "./create/CategorySection";
+import { CreateTaskRow } from "./create/CreateTaskRow";
+import type { RepeatRule } from "@/types/database";
+import type { SuggestedChip } from "@/types/chip-suggestions";
 
-function getImageExpiryStatus(img: { expiry_date?: string | null } | null): "green" | "amber" | "red" | null {
-  const exp = img?.expiry_date;
-  if (!exp) return null;
-  const expDate = new Date(exp);
-  const now = new Date();
-  const days = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  return days < 0 ? "red" : days < 60 ? "amber" : "green";
-}
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface TaskDetailPanelProps {
@@ -67,25 +56,9 @@ interface TaskDetailPanelProps {
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
-  const { members, loading: membersLoading } = useOrgMembers();
-  const { teams, loading: teamsLoading } = useTeams();
   const propertyId = (task as any)?.property_id;
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
-  const { data: portfolioCompliance = [], isLoading: portfolioLoading } = useCompliancePortfolioQuery();
-  const { data: autoTaskRecord } = useQuery({
-    queryKey: ["compliance_auto_tasks", taskId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("compliance_auto_tasks")
-        .select("id, compliance_document_id, auto_task_type")
-        .eq("task_id", taskId)
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!taskId,
-  });
-
   const { data: taskAssets = [] } = useQuery({
     queryKey: ["task-assets", taskId],
     queryFn: async () => {
@@ -105,34 +78,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     enabled: !!taskId,
   });
 
-  const propertyComplianceItems = useMemo(() => {
-    if (!propertyId) return [];
-    return portfolioCompliance.filter((p: any) => p.property_id === propertyId);
-  }, [portfolioCompliance, propertyId]);
-
-  const imageHazards = useMemo(() => {
-    const hazards = new Set<string>();
-    for (const img of (task as any)?.images ?? []) {
-      const meta = (img?.metadata || {}) as Record<string, unknown>;
-      const h = meta.hazards;
-      if (Array.isArray(h)) h.forEach((x: string) => hazards.add(x));
-      const objs = meta.detected_objects as Array<{ type?: string; label?: string }> | undefined;
-      if (Array.isArray(objs)) {
-        for (const o of objs) {
-          const t = (o.type || o.label || "").toLowerCase();
-          if (t.includes("fire")) hazards.add("fire");
-          if (t.includes("electrical") || t.includes("electric")) hazards.add("electrical");
-          if (t.includes("slip") || t.includes("trip")) hazards.add("slip");
-          if (t.includes("water") || t.includes("leak")) hazards.add("water");
-          if (t.includes("structural")) hazards.add("structural");
-          if (t.includes("obstruction")) hazards.add("obstruction");
-          if (t.includes("hygiene")) hazards.add("hygiene");
-          if (t.includes("ventilation")) hazards.add("ventilation");
-        }
-      }
-    }
-    return Array.from(hazards);
-  }, [task]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
@@ -146,20 +91,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
-  const [showPeoplePopover, setShowPeoplePopover] = useState(false);
-  const [showPriorityPopover, setShowPriorityPopover] = useState(false);
-  const [showStatusPopover, setShowStatusPopover] = useState(false);
-  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [sectionInstructions, setSectionInstructions] = useState<Record<string, string>>({
-    who: "Add Person or Team",
-    where: "Add Property or Space",
-    when: "Add Due Date",
-    what: "Add Asset",
-    priority: "Add Priority",
-    category: "Add Tag",
-    compliance: "Add Compliance Rule",
-  });
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [dueDate, setDueDate] = useState("");
+  const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
+  const [localPropertyId, setLocalPropertyId] = useState("");
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
+  const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
+  const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
+  const [isCompliance, setIsCompliance] = useState(false);
+  const [complianceLevel, setComplianceLevel] = useState("");
 
   // Update local state when task data loads
   useEffect(() => {
@@ -167,12 +110,16 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setTitle((task as any).title || "");
       setStatus((task as any).status || "open");
       setPriority((task as any).priority || "normal");
-      // Set assigned user from task (if assigned_user_id exists)
       setSelectedUserId(task.assigned_user_id || undefined);
-      // Set selected teams from task.teams (handle both string and array)
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
       setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
-      // Reset selected image index when task changes
+      setDueDate((task as any)?.due_date || "");
+      setLocalPropertyId((task as any)?.property_id || "");
+      setSelectedPropertyIds((task as any)?.property_id ? [(task as any).property_id] : []);
+      setSelectedSpaceIds((task.spaces as any[])?.map((s: any) => s.id) || []);
+      setSelectedThemeIds((task.categories ?? []).map((c: any) => c.id));
+      const rawMs = (task as any)?.milestones;
+      setMilestones(Array.isArray(rawMs) ? rawMs : (typeof rawMs === 'string' ? JSON.parse(rawMs) : []));
       if (task.images && task.images.length > 0) {
         setSelectedImageIndex(0);
       } else {
@@ -181,45 +128,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   }, [task]);
 
-  const statusOptions = [
-    { value: "open", label: "Open" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "completed", label: "Done" },
-    { value: "archived", label: "Archived" },
-  ];
-
-  const priorityOptions = [
-    { value: "low", label: "Low" },
-    { value: "normal", label: "Normal" },
-    { value: "high", label: "High" },
-    { value: "urgent", label: "Urgent" },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500/10 text-green-700 border-green-500/20";
-      case "in_progress":
-        return "bg-blue-500/10 text-blue-700 border-blue-500/20";
-      case "archived":
-        return "bg-gray-500/10 text-gray-700 border-gray-500/20";
-      default:
-        return "bg-white text-primary border-primary/20";
+  // Initialize asset IDs from separate query
+  useEffect(() => {
+    if (taskAssets.length > 0) {
+      setSelectedAssetIds(taskAssets.map(a => a.id));
     }
-  };
+  }, [taskAssets]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "urgent":
-        return "bg-white text-red-700 border-red-500/20";
-      case "high":
-        return "bg-orange-500/10 text-orange-700 border-orange-500/20";
-      case "low":
-        return "bg-gray-500/10 text-gray-700 border-gray-500/20";
-      default:
-        return "bg-primary/10 text-primary border-primary/20";
-    }
-  };
 
   // Update assigned user
   const handleUserChange = async (userId: string | undefined) => {
@@ -314,50 +229,33 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   };
 
-  const toggleTeam = (teamId: string) => {
-    if (selectedTeamIds.includes(teamId)) {
-      handleTeamsChange(selectedTeamIds.filter(id => id !== teamId));
-    } else {
-      handleTeamsChange([...selectedTeamIds, teamId]);
-    }
-  };
-
-  // Update task fields (title, status, priority)
   const handleUpdateTask = async () => {
     if (isUpdating) return;
     setIsUpdating(true);
 
     try {
-      const updates: any = {};
+      const updates: Record<string, unknown> = {
+        title,
+        status,
+        priority,
+        due_date: dueDate || null,
+        milestones: milestones.length > 0 ? milestones : [],
+      };
+
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update(updates)
+        .eq("id", taskId);
+
+      if (updateError) throw updateError;
+
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       
-      // Only update fields that have changed
-      if (title !== ((task as any)?.title || "")) {
-        updates.title = title;
-      }
-      if (status !== ((task as any)?.status || "open")) {
-        updates.status = status;
-      }
-      if (priority !== ((task as any)?.priority || "normal")) {
-        updates.priority = priority;
-      }
-
-      // Only make API call if there are changes
-      if (Object.keys(updates).length > 0) {
-        const { error: updateError } = await supabase
-          .from("tasks")
-          .update(updates)
-          .eq("id", taskId);
-
-        if (updateError) throw updateError;
-
-        await refreshTask();
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        
-        toast({
-          title: "Task updated",
-          description: "Changes saved successfully",
-        });
-      }
+      toast({
+        title: "Task updated",
+        description: "Changes saved successfully",
+      });
     } catch (err: any) {
       console.error("Error updating task:", err);
       toast({
@@ -370,8 +268,82 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   };
 
-  const selectedUser = members.find(m => m.user_id === selectedUserId);
-  const isUnconfirmedUser = selectedUserId && selectedUserId.startsWith("pending-");
+  // Section persistence handlers for the Create Task-style summary sections
+  const handlePropertyChangeSection = async (propertyIds: string[]) => {
+    const newPropId = propertyIds[0] || "";
+    setLocalPropertyId(newPropId);
+    setSelectedPropertyIds(propertyIds);
+    setSelectedSpaceIds([]);
+    setSelectedAssetIds([]);
+    try {
+      await supabase.from("tasks").update({ property_id: newPropId || null }).eq("id", taskId);
+      await supabase.from("task_spaces").delete().eq("task_id", taskId);
+      await supabase.from("task_assets").delete().eq("task_id", taskId);
+      queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
+      refreshTask();
+    } catch (err: any) {
+      toast({ title: "Couldn't update property", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSpacesChange = async (spaceIds: string[]) => {
+    setSelectedSpaceIds(spaceIds);
+    try {
+      await supabase.from("task_spaces").delete().eq("task_id", taskId);
+      if (spaceIds.length > 0) {
+        await supabase.from("task_spaces").insert(spaceIds.map(id => ({ task_id: taskId, space_id: id })));
+      }
+      refreshTask();
+    } catch (err: any) {
+      toast({ title: "Couldn't update spaces", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDueDateChange = (date: string) => {
+    setDueDate(date);
+  };
+
+  const handleAssetsChange = async (assetIds: string[]) => {
+    setSelectedAssetIds(assetIds);
+    try {
+      await supabase.from("task_assets").delete().eq("task_id", taskId);
+      const realIds = assetIds.filter(id => !id.startsWith("ghost-"));
+      if (realIds.length > 0) {
+        await supabase.from("task_assets").insert(realIds.map(id => ({ task_id: taskId, asset_id: id })));
+      }
+      queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
+      refreshTask();
+    } catch (err: any) {
+      toast({ title: "Couldn't update assets", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleThemesChange = async (themeIds: string[]) => {
+    setSelectedThemeIds(themeIds);
+    try {
+      await supabase.from("task_themes").delete().eq("task_id", taskId);
+      const realIds = themeIds.filter(id => !id.startsWith("ghost-"));
+      if (realIds.length > 0) {
+        await supabase.from("task_themes").insert(realIds.map(id => ({ task_id: taskId, theme_id: id })));
+      }
+      queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
+      refreshTask();
+    } catch (err: any) {
+      toast({ title: "Couldn't update tags", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Fact chips for CreateTaskRow-based priority and status sections
+  const priorityFactChips: SuggestedChip[] = useMemo(() => {
+    const label = ({ low: "LOW", normal: "NORMAL", high: "HIGH", urgent: "URGENT" } as Record<string, string>)[priority] || priority.toUpperCase();
+    return [{ id: `priority-${priority}`, type: "priority" as const, value: priority, label, score: 1, source: "rule" as const, resolvedEntityId: priority }];
+  }, [priority]);
+
+  const statusFactChips: SuggestedChip[] = useMemo(() => {
+    const label = ({ open: "OPEN", in_progress: "IN PROGRESS", completed: "DONE", archived: "ARCHIVED" } as Record<string, string>)[status] || status.toUpperCase();
+    return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
+  }, [status]);
+
   const { userId } = useDataContext();
   const taskImages = (task as any)?.images ?? [];
   const createdBy = (task as any)?.created_by ?? null;
@@ -382,19 +354,16 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const canManageTask = !!userId && (isAssigner || isAssignee || !createdBy);
 
   const hasEdits = useMemo(() => {
-    const initialStatus = (task as any)?.status || "open";
-    const initialPriority = (task as any)?.priority || "normal";
-    const initialUserId = task?.assigned_user_id || undefined;
-    const initialTeamIds = Array.isArray((task as any)?.teams)
-      ? ((task as any).teams as any[]).map((t: any) => t.id)
-      : [];
+    const origMs = (task as any)?.milestones;
+    const origMsJson = JSON.stringify(Array.isArray(origMs) ? origMs : []);
     return (
-      status !== initialStatus ||
-      priority !== initialPriority ||
-      selectedUserId !== initialUserId ||
-      JSON.stringify([...selectedTeamIds].sort()) !== JSON.stringify([...initialTeamIds].sort())
+      title !== ((task as any)?.title || "") ||
+      status !== ((task as any)?.status || "open") ||
+      priority !== ((task as any)?.priority || "normal") ||
+      dueDate !== ((task as any)?.due_date || "") ||
+      JSON.stringify(milestones) !== origMsJson
     );
-  }, [task, status, priority, selectedUserId, selectedTeamIds]);
+  }, [task, title, status, priority, dueDate, milestones]);
 
   const { openAssistant } = useAssistantContext();
   const { uploadFile, uploading: isUploadingImage } = useFileUpload({
@@ -411,18 +380,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   });
   const taskImageInputRef = useRef<HTMLInputElement>(null);
 
-  const paperBg = "bg-background bg-paper-texture";
   const panelWrapper = (content: ReactNode, title?: string) => {
     if (variant === "column") {
       return (
-        <div className={cn("flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-e1 border border-border/20", paperBg)}>
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 bg-background">
           {content}
         </div>
       );
     }
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className={cn("max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0", paperBg)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
           {title && (
             <DialogHeader className="sr-only">
               <DialogTitle>{title}</DialogTitle>
@@ -472,59 +440,82 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       {/* Image section - thumbnails at top + Camera/Upload buttons (Create Task style) */}
       <div className="p-4 pb-0 space-y-3">
         {taskImages.length > 0 ? (
-          <div className="flex gap-3 items-end">
-            <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
-              {taskImages.map((image: any, index: number) => (
+          <div className="space-y-2">
+            {/* Full-width selected image preview */}
+            {selectedImageIndex !== null && taskImages[selectedImageIndex] && (
+              <button
+                type="button"
+                className="w-full rounded-[10px] overflow-hidden bg-muted shadow-e1 cursor-pointer hover:shadow-e2 transition-shadow"
+                onClick={() => setLightboxOpen(true)}
+              >
+                <img
+                  src={taskImages[selectedImageIndex].optimized_url || taskImages[selectedImageIndex].file_url || taskImages[selectedImageIndex].thumbnail_url}
+                  alt={taskImages[selectedImageIndex].file_name || "Task image"}
+                  className="w-full max-h-[300px] object-cover"
+                  onError={(e) => {
+                    const img = taskImages[selectedImageIndex];
+                    if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
+                      (e.target as HTMLImageElement).src = img.file_url;
+                    }
+                  }}
+                />
+              </button>
+            )}
+            {/* Thumbnail strip + action buttons */}
+            <div className="flex gap-3 items-end">
+              <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
+                {taskImages.map((image: any, index: number) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    className={cn(
+                      "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
+                      selectedImageIndex === index ? "border-primary" : "border-transparent"
+                    )}
+                    onClick={() => setSelectedImageIndex(index)}
+                  >
+                    <img
+                      src={image.thumbnail_url || image.file_url}
+                      alt={image.file_name || "Task image"}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        if (image.thumbnail_url && image.file_url) {
+                          (e.target as HTMLImageElement).src = image.file_url;
+                        }
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 items-end shrink-0">
                 <button
-                  key={image.id}
                   type="button"
-                  className={cn(
-                    "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
-                    selectedImageIndex === index ? "border-primary" : "border-transparent"
-                  )}
-                  onClick={() => setSelectedImageIndex(index)}
+                  onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                  title="Ask FILLA"
+                  aria-label="Open Assistant"
                 >
-                  <img
-                    src={image.thumbnail_url || image.file_url}
-                    alt={image.file_name || "Task image"}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      if (image.thumbnail_url && image.file_url) {
-                        (e.target as HTMLImageElement).src = image.file_url;
-                      }
-                    }}
-                  />
+                  <FillaIcon size={18} />
                 </button>
-              ))}
-            </div>
-            <div className="flex gap-2 items-end shrink-0">
-              <button
-                type="button"
-                onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-                title="Ask FILLA"
-                aria-label="Open Assistant"
-              >
-                <FillaIcon size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => taskImageInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                title="Take photo"
-              >
-                <Camera className="h-5 w-5 text-muted-foreground" />
-              </button>
-              <button
-                type="button"
-                onClick={() => taskImageInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                title="Upload image"
-              >
-                <Upload className="h-5 w-5 text-muted-foreground" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => taskImageInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                  title="Take photo"
+                >
+                  <Camera className="h-5 w-5 text-muted-foreground" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => taskImageInputRef.current?.click()}
+                  disabled={isUploadingImage}
+                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                  title="Upload image"
+                >
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -585,7 +576,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         {/* Tabs - below description: Summary | Messaging | Activity */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
-            <TabsList className="w-full grid grid-cols-4 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
+            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
               <TabsTrigger
                 value="summary"
                 className={cn(
@@ -616,373 +607,125 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 <FileText className="h-4 w-4 mr-2" />
                 Activity
               </TabsTrigger>
-              <TabsTrigger
-                value="graph"
-                className={cn(
-                  "rounded-[8px] data-[state=active]:bg-card",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                )}
-              >
-                <Network className="h-4 w-4 mr-2" />
-                Graph
-              </TabsTrigger>
             </TabsList>
           </div>
 
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden flex flex-col py-4 px-1">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
-              <div className="space-y-3">
-                {/* People + Teams - same row, one icon, fact chips left, Add Person or Team opens popover */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("who")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    {selectedUser ? (
-                      <SemanticChip
-                        epistemic="fact"
-                        label={selectedUser.display_name.toUpperCase()}
-                        removable
-                        onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                      />
-                    ) : isUnconfirmedUser ? (
-                      <SemanticChip
-                        epistemic="fact"
-                        label={(selectedUserId?.replace("pending-", "") || "Unconfirmed").toUpperCase()}
-                        pending
-                        removable
-                        onRemove={() => handleUserChange(undefined)}
-                        className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                      />
-                    ) : null}
-                    {selectedTeamIds.map((tid) => {
-                      const team = teams.find((t) => t.id === tid);
-                      return team ? (
-                        <SemanticChip
-                          key={tid}
-                          epistemic="fact"
-                          label={team.name.toUpperCase()}
-                          removable
-                          onRemove={() => toggleTeam(tid)}
-                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                        />
-                      ) : null;
-                    })}
-                    {(hoveredSection === "who" || showPeoplePopover) && (
-                    <Popover open={showPeoplePopover} onOpenChange={setShowPeoplePopover}>
-                      <PopoverTrigger asChild>
-                        <div>
-                          <InstructionField
-                            value={sectionInstructions.who}
-                            onChange={(v) => setSectionInstructions((s) => ({ ...s, who: v }))}
-                            onPress={() => setShowPeoplePopover(true)}
-                          />
-                        </div>
-                      </PopoverTrigger>
-                      <PopoverContent align="end" className="w-64 p-3 space-y-3">
-                        <div>
-                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Person</label>
-                          <Select
-                            value={selectedUserId || ""}
-                            onValueChange={(v) => {
-                              handleUserChange(v || undefined);
-                              setShowPeoplePopover(false);
-                            }}
-                            disabled={isUpdating || membersLoading}
-                          >
-                            <SelectTrigger className="h-[28px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
-                              <SelectValue placeholder="Assign..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {members.map((m) => (
-                                <SelectItem key={m.user_id} value={m.user_id}>
-                                  {m.display_name}
-                                </SelectItem>
-                              ))}
-                              {members.length === 0 && <SelectItem value="__none__" disabled>No members</SelectItem>}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">Teams</label>
-                          <Select
-                            value=""
-                            onValueChange={(v) => {
-                              if (v && !selectedTeamIds.includes(v)) toggleTeam(v);
-                              setShowPeoplePopover(false);
-                            }}
-                            disabled={isUpdating || teamsLoading}
-                          >
-                            <SelectTrigger className="h-[28px] w-full shadow-engraved text-[11px] font-mono rounded-[8px]">
-                              <SelectValue placeholder="Add team..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {teams.filter((t) => !selectedTeamIds.includes(t.id)).map((t) => (
-                                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                              ))}
-                              {teams.length === 0 && <SelectItem value="__none__" disabled>No teams</SelectItem>}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    )}
-                  </div>
-                </div>
+              <div className="space-y-0 flex flex-col mt-[15px]">
+                <WhoSection
+                  isActive={activeSection === "who"}
+                  onActivate={() => setActiveSection("who")}
+                  assignedUserId={selectedUserId}
+                  assignedTeamIds={selectedTeamIds}
+                  onUserChange={(userId) => handleUserChange(userId)}
+                  onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
+                />
 
-                {/* Where - property + spaces */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("where")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    <SemanticChip
-                      epistemic="fact"
-                      label={(task?.property?.nickname || task?.property?.address || "—").toString().toUpperCase()}
-                      className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                    />
-                    {task?.spaces && (task.spaces as any[]).length > 0 && (
-                      <span className="text-muted-foreground text-xs">·</span>
-                    )}
-                    {(task?.spaces as any[])?.length > 0 ? (
-                      <span className="text-xs text-muted-foreground truncate max-w-[180px]">
-                        {(task.spaces as any[]).map((s: any) => s.name || s.label).join(", ")}
-                      </span>
-                    ) : null}
-                    {(hoveredSection === "where" || editingSection === "where") && (
-                      <InstructionField
-                        value={sectionInstructions.where}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, where: v }))}
-                        onEditStart={() => setEditingSection("where")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <WhereSection
+                  propertyId={localPropertyId}
+                  selectedPropertyIds={selectedPropertyIds}
+                  selectedSpaceIds={selectedSpaceIds}
+                  onPropertyChange={handlePropertyChangeSection}
+                  onSpacesChange={handleSpacesChange}
+                  showFactsByDefault
+                />
 
-                {/* When */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("when")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    <SemanticChip
-                      epistemic="fact"
-                      label={((task as any)?.due_date ? new Date((task as any).due_date).toLocaleDateString() : "—").toUpperCase()}
-                      className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                    />
-                    {(hoveredSection === "when" || editingSection === "when") && (
-                      <InstructionField
-                        value={sectionInstructions.when}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, when: v }))}
-                        onEditStart={() => setEditingSection("when")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <WhenSection
+                  isActive={activeSection === "when"}
+                  onActivate={() => setActiveSection("when")}
+                  onDeactivate={() => setActiveSection(null)}
+                  dueDate={dueDate}
+                  repeatRule={repeatRule}
+                  onDueDateChange={handleDueDateChange}
+                  onRepeatRuleChange={setRepeatRule}
+                  milestones={milestones}
+                  onMilestonesChange={setMilestones}
+                />
 
-                {/* What (Assets) */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("what")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <Box className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    {taskAssets.length > 0 &&
-                      taskAssets.map((a) => (
-                        <SemanticChip
-                          key={a.id}
-                          epistemic="fact"
-                          label={(a.name || "—").toUpperCase()}
-                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                        />
-                      ))}
-                    {(hoveredSection === "what" || editingSection === "what") && (
-                      <InstructionField
-                        value={sectionInstructions.what}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, what: v }))}
-                        onEditStart={() => setEditingSection("what")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <AssetSection
+                  isActive={activeSection === "what"}
+                  onActivate={() => setActiveSection("what")}
+                  propertyId={localPropertyId || undefined}
+                  spaceId={selectedSpaceIds[0]}
+                  selectedAssetIds={selectedAssetIds}
+                  onAssetsChange={handleAssetsChange}
+                />
 
-                {/* Priority + Status - unified chip style */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("priority")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <Popover open={showPriorityPopover} onOpenChange={setShowPriorityPopover}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-1 h-[28px] rounded-[8px]",
-                          "font-mono text-[11px] uppercase tracking-wide",
-                          "bg-card text-foreground shadow-e2",
-                          "transition-all duration-150 cursor-pointer",
-                          "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
-                          getPriorityColor(priority)
-                        )}
-                      >
-                        <span>{(priorityOptions.find((o) => o.value === priority)?.label || priority).toUpperCase()}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-40 p-1">
-                      {priorityOptions.map((o) => (
-                        <button
-                          key={o.value}
-                          type="button"
-                          onClick={() => {
-                            setPriority(o.value);
-                            setShowPriorityPopover(false);
-                          }}
-                          className={cn(
-                            "w-full text-left px-2 py-1.5 rounded-[5px] text-[11px] font-mono uppercase",
-                            "hover:bg-muted/50 transition-colors",
-                            priority === o.value && "bg-muted/50"
-                          )}
-                        >
-                          {o.label}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                  <Popover open={showStatusPopover} onOpenChange={setShowStatusPopover}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2 py-1 h-[28px] rounded-[8px]",
-                          "font-mono text-[11px] uppercase tracking-wide",
-                          "bg-card text-foreground shadow-e2",
-                          "transition-all duration-150 cursor-pointer",
-                          "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
-                          getStatusColor(status)
-                        )}
-                      >
-                        <span>{(statusOptions.find((o) => o.value === status)?.label || status).toUpperCase()}</span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-40 p-1">
-                      {statusOptions.map((o) => (
-                        <button
-                          key={o.value}
-                          type="button"
-                          onClick={() => {
-                            setStatus(o.value);
-                            setShowStatusPopover(false);
-                          }}
-                          className={cn(
-                            "w-full text-left px-2 py-1.5 rounded-[5px] text-[11px] font-mono uppercase",
-                            "hover:bg-muted/50 transition-colors",
-                            status === o.value && "bg-muted/50"
-                          )}
-                        >
-                          {o.label}
-                        </button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                  {autoTaskRecord && <Badge variant="secondary" className="text-[10px] h-[28px] font-normal rounded-[8px]">Auto-generated</Badge>}
-                    {(hoveredSection === "priority" || showPriorityPopover || showStatusPopover || editingSection === "priority") && (
-                      <InstructionField
-                        value={sectionInstructions.priority}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, priority: v }))}
-                        onEditStart={() => setEditingSection("priority")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <CreateTaskRow
+                  sectionId="priority"
+                  icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+                  instruction="Add Priority"
+                  valueLabel="+Priority"
+                  isActive={activeSection === "priority"}
+                  onActivate={() => setActiveSection("priority")}
+                  factChips={priorityFactChips}
+                  hoverChips={[
+                    { id: "low", label: "LOW", onPress: () => setPriority("low") },
+                    { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
+                    { id: "high", label: "HIGH", onPress: () => setPriority("high") },
+                    { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
+                  ]}
+                />
 
-                {/* Tags */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("category")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <Tag className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    {(task?.categories ?? []).length > 0 &&
-                      (task?.categories ?? []).map((c: any) => (
-                        <SemanticChip
-                          key={c.id}
-                          epistemic="fact"
-                          label={(c.name || c.label || "—").toString().toUpperCase()}
-                          className="font-mono text-[11px] rounded-[8px] h-[28px]"
-                        />
-                      ))}
-                    {(hoveredSection === "category" || editingSection === "category") && (
-                      <InstructionField
-                        value={sectionInstructions.category}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, category: v }))}
-                        onEditStart={() => setEditingSection("category")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <CreateTaskRow
+                  sectionId="status"
+                  icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
+                  instruction="Set Status"
+                  valueLabel="+Status"
+                  isActive={activeSection === "status"}
+                  onActivate={() => setActiveSection("status")}
+                  factChips={statusFactChips}
+                  hoverChips={[
+                    { id: "open", label: "OPEN", onPress: () => setStatus("open") },
+                    { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
+                    { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
+                    { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
+                  ]}
+                />
 
-                {/* Compliance */}
-                <div
-                  className="flex items-center gap-2 min-h-[28px]"
-                  onMouseEnter={() => setHoveredSection("compliance")}
-                  onMouseLeave={() => setHoveredSection(null)}
-                >
-                  <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
-                    {portfolioLoading ? (
-                      <span className="text-xs text-muted-foreground">Loading...</span>
-                    ) : propertyComplianceItems.length > 0 || imageHazards.length > 0 ? (
-                      <RelatedComplianceSection
-                        items={propertyComplianceItems}
-                        imageHazards={imageHazards}
-                        isLoading={false}
-                        hideHeader
-                      />
-                    ) : null}
-                    {(hoveredSection === "compliance" || editingSection === "compliance") && (
-                      <InstructionField
-                        value={sectionInstructions.compliance}
-                        onChange={(v) => setSectionInstructions((s) => ({ ...s, compliance: v }))}
-                        onEditStart={() => setEditingSection("compliance")}
-                        onEditEnd={() => setEditingSection(null)}
-                      />
-                    )}
-                  </div>
-                </div>
+                <CategorySection
+                  isActive={activeSection === "category"}
+                  onActivate={() => setActiveSection("category")}
+                  selectedThemeIds={selectedThemeIds}
+                  onThemesChange={handleThemesChange}
+                />
 
-                {taskId && (
-                  <GraphInsightPanel
-                    start={{ type: "task", id: taskId }}
-                    depth={2}
-                    variant="minimal"
-                  />
-                )}
+                <CreateTaskRow
+                  sectionId="compliance"
+                  icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+                  instruction="Add Compliance Rule"
+                  valueLabel="+Rule"
+                  isActive={activeSection === "compliance"}
+                  onActivate={() => setActiveSection("compliance")}
+                  factChips={[]}
+                >
+                  {activeSection === "compliance" && (
+                    <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
+                      <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                      <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+                      {isCompliance && (
+                        <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                          <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                            <SelectValue placeholder="Level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">Low</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="high">High</SelectItem>
+                            <SelectItem value="critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </CreateTaskRow>
               </div>
             </TabsContent>
 
             <TabsContent value="messaging" className="mt-0 flex-1 flex flex-col min-h-0">
               <TaskMessaging taskId={taskId} />
-            </TabsContent>
-
-            <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
-              {taskId && <GraphTabContent start={{ type: "task", id: taskId }} depth={3} />}
             </TabsContent>
 
             <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
@@ -1064,49 +807,23 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         </Tabs>
       </div>
 
-      {/* CTA panel - paper bg, [Options][Update Task][Mark Complete] - sticky at bottom */}
-      <div className="flex flex-col gap-3 p-4 border-t border-border/30 flex-shrink-0 bg-background bg-paper-texture sticky bottom-0">
-        <div className="flex gap-2 items-center flex-wrap">
-          {canManageTask && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="shadow-e1 h-9 gap-1.5">
-                  <MoreVertical className="h-4 w-4 sm:mr-0" />
-                  <span className="hidden sm:inline">Options</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+      {/* CTA panel - [Update][Mark Complete][Options] */}
+      <div className="flex flex-col gap-3 p-4 border-t border-transparent flex-shrink-0 bg-transparent backdrop-blur text-foreground sticky bottom-0">
+        <div className="flex gap-3 items-center">
           {hasEdits && canManageTask && (
             <Button
-              size="sm"
-              className="shadow-primary-btn h-9 flex-1 min-w-0"
+              className="flex-1 shadow-primary-btn"
               onClick={handleUpdateTask}
               disabled={isUpdating}
             >
-              {isUpdating ? "Updating..." : "Update Task"}
+              {isUpdating ? "Updating..." : "Update"}
             </Button>
           )}
           {canManageTask && (
             <Button
-              size="sm"
               variant={status === "completed" ? "secondary" : "default"}
               className={cn(
-                "h-9 flex-1 min-w-0",
+                "flex-1",
                 status !== "completed" && "shadow-primary-btn"
               )}
               onClick={async () => {
@@ -1132,6 +849,29 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               {status === "completed" ? "Completed" : "Mark Complete"}
             </Button>
           )}
+          {canManageTask && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="shadow-e1 gap-1.5">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
     </>
@@ -1147,6 +887,68 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       "Task Details"
     )}
     
+    {/* Image lightbox modal */}
+    {lightboxOpen && taskImages.length > 0 && selectedImageIndex !== null && createPortal(
+      <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+        onClick={() => setLightboxOpen(false)}
+      >
+        <button
+          type="button"
+          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+          onClick={() => setLightboxOpen(false)}
+          aria-label="Close lightbox"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
+        {taskImages.length > 1 && (
+          <>
+            <button
+              type="button"
+              className="absolute left-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedImageIndex((selectedImageIndex - 1 + taskImages.length) % taskImages.length);
+              }}
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              className="absolute right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedImageIndex((selectedImageIndex + 1) % taskImages.length);
+              }}
+              aria-label="Next image"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </>
+        )}
+
+        <img
+          src={taskImages[selectedImageIndex].file_url || taskImages[selectedImageIndex].optimized_url}
+          alt={taskImages[selectedImageIndex].file_name || "Task image"}
+          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+          onError={(e) => {
+            const img = taskImages[selectedImageIndex];
+            if (img.optimized_url && (e.target as HTMLImageElement).src !== img.optimized_url) {
+              (e.target as HTMLImageElement).src = img.optimized_url;
+            }
+          }}
+        />
+
+        <div className="absolute bottom-4 text-white/70 text-sm">
+          {selectedImageIndex + 1} / {taskImages.length}
+        </div>
+      </div>,
+      document.body
+    )}
+
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {/* detectionOverlays={[]}: ai-image-analyse does not return bounding boxes (x,y,width,height).
         Overlays disabled until true bounding box support is implemented. */}

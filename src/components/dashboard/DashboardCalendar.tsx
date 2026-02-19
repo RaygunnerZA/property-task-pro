@@ -63,38 +63,34 @@ export function DashboardCalendar({
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    const addDateEntry = (dateValue: string, priority: string | null | undefined) => {
+      try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return;
+        const dateKey = format(date, "yyyy-MM-dd");
+        const current = map.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
+        current.total += 1;
+        const norm = normalizePriority(priority);
+        if (norm === 'high') current.high += 1;
+        else if (norm === 'urgent') current.urgent += 1;
+        date.setHours(0, 0, 0, 0);
+        if (date < today) current.overdue += 1;
+        map.set(dateKey, current);
+      } catch { /* skip invalid */ }
+    };
+
     tasks.forEach((task) => {
+      if (task.status === 'completed' || task.status === 'archived') return;
+
       const dueDateValue = task.due_date || task.due_at;
-      if (dueDateValue && task.status !== 'completed' && task.status !== 'archived') {
-        try {
-          const date = new Date(dueDateValue);
-          const isValidDate = !isNaN(date.getTime());
-          if (!isValidDate) {
-            return;
-          }
-          const dateKey = format(date, "yyyy-MM-dd");
-          const current = map.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
-          
-          current.total += 1;
-          
-          const priority = normalizePriority(task.priority);
-          
-          if (priority === 'high') {
-            current.high += 1;
-          } else if (priority === 'urgent') {
-            current.urgent += 1;
-          }
-          
-          // Check if overdue
-          date.setHours(0, 0, 0, 0);
-          if (date < today) {
-            current.overdue += 1;
-          }
-          
-          map.set(dateKey, current);
-        } catch {
-          // Skip invalid dates
-        }
+      if (dueDateValue) addDateEntry(dueDateValue, task.priority);
+
+      // Include milestone dates on the calendar
+      const milestones = task.milestones;
+      if (Array.isArray(milestones)) {
+        milestones.forEach((m: any) => {
+          if (m?.dateTime) addDateEntry(m.dateTime, task.priority);
+        });
       }
     });
 
