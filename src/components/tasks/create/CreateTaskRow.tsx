@@ -19,6 +19,8 @@ export interface CreateTaskRowProps {
   sectionId: string;
   icon: React.ReactNode;
   instruction: string;
+  /** Short label for +Value chip (e.g. "+Person", "+Property"). Defaults to instruction. */
+  valueLabel?: string;
   isActive: boolean;
   onActivate: () => void;
   onDeactivate?: () => void;
@@ -44,6 +46,7 @@ export function CreateTaskRow({
   sectionId,
   icon,
   instruction,
+  valueLabel,
   isActive,
   onActivate,
   onDeactivate,
@@ -103,7 +106,7 @@ export function CreateTaskRow({
     );
     const instructionChip: ChipData = {
       id: `instruction-${sectionId}`,
-      label: instruction.toUpperCase(),
+      label: (valueLabel ?? instruction).toUpperCase(),
       variant: "interactive",
       kind: "instruction",
     };
@@ -148,21 +151,21 @@ export function CreateTaskRow({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Primary row: Icon + Chips + Instruction (always at top) */}
-      <div className="flex items-center gap-0 min-h-[32px]">
-        {/* Icon on far left - outside hover/click surface */}
+      {/* Primary row: [ICON] Fact Chips | +Value | Suggestion Chips — gap 8px, h 32px, flex-nowrap, overflow-x auto */}
+      <div className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar min-w-0">
+        {/* Icon: fixed 24px */}
         <div
           className={cn(
-            "flex-shrink-0 flex items-center justify-center w-[32px] h-8 -ml-[1px] rounded-[8px] bg-background",
+            "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
             isActive && "shadow-inset bg-card"
           )}
         >
           {icon}
         </div>
 
-        {/* ChipStrip: fact + interactive chips; instruction chip on hover, to the right of tags */}
+        {/* ChipStrip: fact | input or +Value | suggestion chips */}
         {isInlineEditing ? (
-          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
+          <div className="flex items-center gap-2 shrink-0">
             <input
               ref={inlineInputRef}
               data-inline-instruction
@@ -190,22 +193,22 @@ export function CreateTaskRow({
               }}
               placeholder={instruction}
               className={cn(
-                "h-[28px] min-w-[80px] flex-1 rounded-[8px] px-2 py-1",
+                "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
                 "font-mono text-[11px] uppercase tracking-wide",
                 "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
-                "shadow-inset",
-                "outline-none cursor-text",
-                "transition-[min-width] duration-300 ease-out"
+                "shadow-inset outline-none cursor-text",
+                "transition-[width] duration-150 ease-out"
               )}
+              style={{ width: inlineValue.length > 0 ? Math.min(240, Math.max(100, (inlineValue.length + 2) * 8)) : 100 }}
             />
           </div>
         ) : (
-          <div className="flex flex-shrink-0 items-center min-w-0 flex-1 pl-1">
+          <div className="flex shrink-0 items-center min-w-0 overflow-x-auto overflow-y-hidden flex-nowrap">
             <SemanticChipStrip
               chips={chipData}
               onChipPress={handleChipPress}
               onChipRemove={handleChipRemove}
-              className="shrink-0"
+              className="shrink-0 gap-2"
             />
           </div>
         )}

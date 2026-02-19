@@ -48,6 +48,7 @@ import { ImageUploadSection } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
+import { WhoSection } from "./create/WhoSection";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
@@ -321,13 +322,13 @@ export function CreateTaskModal({
 
   // Section order: Who, Where, When, Assets, Priority, Tags, Compliance (authoritative vertical stack)
   const CREATE_TASK_SECTIONS = useMemo(() => [
-    { id: 'who', instruction: 'Add Person or Team', Icon: User },
-    { id: 'where', instruction: 'Add Property or Space', Icon: MapPin },
-    { id: 'when', instruction: 'Add Due Date', Icon: Calendar },
-    { id: 'what', instruction: 'Add Asset', Icon: Box },
-    { id: 'priority', instruction: 'Add Priority', Icon: AlertTriangle },
-    { id: 'category', instruction: 'Add Tag', Icon: Tag },
-    { id: 'compliance', instruction: 'Add Compliance Rule', Icon: Shield },
+    { id: 'who', instruction: 'Add Person or Team', valueLabel: '+Person', Icon: User },
+    { id: 'where', instruction: 'Add Property or Space', valueLabel: '+Property', Icon: MapPin },
+    { id: 'when', instruction: 'Add Due Date', valueLabel: '+Date', Icon: Calendar },
+    { id: 'what', instruction: 'Add Asset', valueLabel: '+Asset', Icon: Box },
+    { id: 'priority', instruction: 'Add Priority', valueLabel: '+Priority', Icon: AlertTriangle },
+    { id: 'category', instruction: 'Add Tag', valueLabel: '+Tag', Icon: Tag },
+    { id: 'compliance', instruction: 'Add Compliance Rule', valueLabel: '+Rule', Icon: Shield },
   ] as const, []);
 
   const chipTypeToSection: Record<string, string> = {
@@ -1378,12 +1379,45 @@ export function CreateTaskModal({
 
         {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
         <div className="space-y-0 flex flex-col mt-[15px]">
-          {CREATE_TASK_SECTIONS.map(({ id, instruction, Icon }) => (
+          {CREATE_TASK_SECTIONS.map(({ id, instruction, valueLabel, Icon }) =>
+            id === "who" ? (
+              <WhoSection
+                key={id}
+                isActive={activeSection === id}
+                onActivate={() => setActiveSection(id)}
+                assignedUserId={assignedUserId}
+                assignedTeamIds={assignedTeamIds}
+                onUserChange={setAssignedUserId}
+                onTeamsChange={setAssignedTeamIds}
+                pendingInvitations={pendingInvitations}
+                onPendingInvitationsChange={setPendingInvitations}
+                onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
+                onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
+                hasUnresolved={unresolvedSections.includes(id)}
+              >
+                {activeSection === id && (
+                  <WhoPanel
+                    assignedUserId={assignedUserId}
+                    assignedTeamIds={assignedTeamIds}
+                    onUserChange={setAssignedUserId}
+                    onTeamsChange={setAssignedTeamIds}
+                    suggestedPeople={aiResult?.people?.map(p => p.name) || []}
+                    pendingInvitations={pendingInvitations}
+                    onPendingInvitationsChange={setPendingInvitations}
+                    instructionBlock={instructionBlock}
+                    onInstructionDismiss={() => setInstructionBlock(null)}
+                    onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
+                    onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
+                  />
+                )}
+              </WhoSection>
+            ) : (
             <CreateTaskRow
               key={id}
               sectionId={id}
               icon={<Icon className="h-4 w-4 text-muted-foreground" />}
               instruction={instruction}
+              valueLabel={valueLabel}
               isActive={activeSection === id}
               onActivate={() => setActiveSection(id)}
               factChips={factChipsBySection[id] ?? []}
@@ -1394,22 +1428,7 @@ export function CreateTaskModal({
               onVerbChipClick={handleChipSelect}
               hasUnresolved={unresolvedSections.includes(id)}
             >
-              {activeSection === id && id === 'who' && (
-                <WhoPanel
-                  assignedUserId={assignedUserId}
-                  assignedTeamIds={assignedTeamIds}
-                  onUserChange={setAssignedUserId}
-                  onTeamsChange={setAssignedTeamIds}
-                  suggestedPeople={aiResult?.people?.map(p => p.name) || []}
-                  pendingInvitations={pendingInvitations}
-                  onPendingInvitationsChange={setPendingInvitations}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                  onInviteToOrg={() => toast({ title: "Invite functionality coming soon" })}
-                  onAddAsContractor={() => toast({ title: "Contractor creation coming soon" })}
-                />
-              )}
-              {activeSection === id && id === 'where' && (
+              {activeSection === id && id === "where" && (
                 <WherePanel
                   propertyId={propertyId}
                   spaceIds={selectedSpaceIds}
@@ -1421,7 +1440,7 @@ export function CreateTaskModal({
                   onInstructionDismiss={() => setInstructionBlock(null)}
                 />
               )}
-              {activeSection === id && id === 'when' && (
+              {activeSection === id && id === "when" && (
                 <WhenPanel
                   dueDate={dueDate}
                   repeatRule={repeatRule}
@@ -1429,10 +1448,10 @@ export function CreateTaskModal({
                   onRepeatRuleChange={setRepeatRule}
                 />
               )}
-              {activeSection === id && id === 'priority' && (
+              {activeSection === id && id === "priority" && (
                 <PriorityPanel priority={priority} onPriorityChange={setPriority} />
               )}
-              {activeSection === id && id === 'category' && (
+              {activeSection === id && id === "category" && (
                 <CategoryPanel
                   selectedThemeIds={selectedThemeIds}
                   onThemesChange={setSelectedThemeIds}
@@ -1441,7 +1460,7 @@ export function CreateTaskModal({
                   onInstructionDismiss={() => setInstructionBlock(null)}
                 />
               )}
-              {activeSection === id && id === 'what' && (
+              {activeSection === id && id === "what" && (
                 propertyId ? (
                   <AssetPanel
                     propertyId={propertyId}
@@ -1456,7 +1475,7 @@ export function CreateTaskModal({
                   <span className="text-[11px] font-mono uppercase text-muted-foreground">Select a property first</span>
                 )
               )}
-              {activeSection === id && id === 'compliance' && (
+              {activeSection === id && id === "compliance" && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
                   <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
@@ -1476,7 +1495,8 @@ export function CreateTaskModal({
                 </div>
               )}
             </CreateTaskRow>
-          ))}
+            )
+          )}
         </div>
 
 

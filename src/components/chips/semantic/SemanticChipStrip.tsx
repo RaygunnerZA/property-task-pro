@@ -22,6 +22,8 @@ export interface SemanticChipStripProps {
   onChipRemove?: (chip: ChipData) => void;
   maxVisible?: number;
   size?: "default" | "compact";
+  /** When true, all chips use natural width (no truncation). */
+  noTruncate?: boolean;
   className?: string;
 }
 
@@ -31,6 +33,7 @@ export function SemanticChipStrip({
   onChipRemove,
   maxVisible = 20,
   size = "default",
+  noTruncate = false,
   className,
 }: SemanticChipStripProps) {
   const sorted = React.useMemo(
@@ -39,23 +42,33 @@ export function SemanticChipStrip({
   );
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
-      {sorted.map((chip) => (
-        <SemanticChip
-          key={chip.id}
-          epistemic={chip.variant === "fact" ? "fact" : "proposal"}
-          label={chip.label}
-          size={size}
-          removable={chip.variant === "fact" && !!onChipRemove}
-          pending={chip.variant === "fact" && "pending" in chip && chip.pending}
-          onPress={onChipPress ? () => onChipPress(chip) : undefined}
-          onRemove={
-            chip.variant === "fact" && onChipRemove
-              ? () => onChipRemove(chip)
-              : undefined
-          }
-        />
-      ))}
+    <div
+      className={cn(
+        "flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar min-w-0",
+        className
+      )}
+    >
+      {sorted.map((chip) => {
+        const isValueChip = "kind" in chip && chip.kind === "instruction";
+        return (
+          <SemanticChip
+            key={chip.id}
+            epistemic={chip.variant === "fact" ? "fact" : "proposal"}
+            label={chip.label}
+            size={size}
+            truncate={!isValueChip}
+            removable={chip.variant === "fact" && !!onChipRemove}
+            pending={chip.variant === "fact" && "pending" in chip && chip.pending}
+            onPress={onChipPress ? () => onChipPress(chip) : undefined}
+            onRemove={
+              chip.variant === "fact" && onChipRemove
+                ? () => onChipRemove(chip)
+                : undefined
+            }
+            className={isValueChip ? "px-2.5 py-1.5 bg-background shadow-e1 max-w-none min-w-0" : undefined}
+          />
+        );
+      })}
     </div>
   );
 }

@@ -1148,6 +1148,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     )}
     
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
+    {/* detectionOverlays={[]}: ai-image-analyse does not return bounding boxes (x,y,width,height).
+        Overlays disabled until true bounding box support is implemented. */}
     {showAnnotationEditor && editingImageId && task && createPortal(
       <ImageAnnotationEditorWrapper
         taskId={taskId}

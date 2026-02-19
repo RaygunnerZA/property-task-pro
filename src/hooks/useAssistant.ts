@@ -1,6 +1,9 @@
 /**
  * useAssistant — Phase 14 FILLA Assistant Mode
  * Calls assistant-reasoner (classification + reasoning in one). Handles proposed actions.
+ *
+ * @deprecated assistant-intent — Removed. Only assistant-reasoner is used.
+ * No references to assistant-intent remain in the codebase.
  */
 import { useState, useCallback } from "react";
 import { useActiveOrg } from "./useActiveOrg";

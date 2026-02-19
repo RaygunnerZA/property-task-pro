@@ -38,6 +38,8 @@ export interface SemanticChipProps {
   animateIn?: boolean;
   icon?: React.ReactNode;
   color?: string;
+  /** When false, label uses natural width (no truncation). Use for instruction chips. */
+  truncate?: boolean;
   className?: string;
 }
 
@@ -58,6 +60,7 @@ export function SemanticChip({
   animateIn = false,
   icon,
   color,
+  truncate = true,
   className,
 }: SemanticChipProps) {
   const [isPressed, setIsPressed] = useState(false);
@@ -91,7 +94,7 @@ export function SemanticChip({
 
   const epistemicStyles =
     epistemic === "fact"
-      ? "bg-card text-foreground shadow-e2"
+      ? "bg-card text-foreground"
       : "bg-background text-muted-foreground shadow-e1 opacity-75";
 
   const interactionStyles =
@@ -102,14 +105,17 @@ export function SemanticChip({
         : "";
 
   const baseStyles = cn(
-    "relative inline-flex items-center gap-1.5 px-2 py-1 rounded-[8px]",
-    "font-mono uppercase tracking-wide",
-    "transition-all duration-75",
+    "relative inline-flex items-center gap-1.5 rounded-[8px] flex-shrink-0",
+    "font-mono uppercase tracking-wide whitespace-nowrap",
+    "transition-[padding] duration-[120ms] ease-out",
     heightClass,
     textClass,
     epistemicStyles,
     interactionStyles,
-    epistemic === "fact" && !onPress && !dropdown && "cursor-default overflow-visible pr-2 hover:pr-6",
+    epistemic === "fact" && "px-[10px] min-w-[40px] max-w-[160px]",
+    epistemic === "proposal" && "px-2 py-1 max-w-[180px]",
+    epistemic === "fact" && !onPress && !dropdown && "cursor-default",
+    epistemic === "fact" && removable && !dropdown && "overflow-visible pr-[10px] hover:pr-[35px]",
     (onPress || dropdown) && "cursor-pointer select-none",
     onPress && !isPressed && "hover:opacity-90",
     pending && "opacity-75 text-muted-foreground",
@@ -124,12 +130,12 @@ export function SemanticChip({
       {pending && (
         <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 flex-shrink-0" />
       )}
-      <span className="truncate max-w-[120px] flex-1">{label}</span>
+      <span className={cn(truncate && "min-w-0 truncate flex-1", !truncate && "flex-1")}>{label}</span>
       {removable && onRemove && epistemic === "fact" && (
         <button
           type="button"
           onClick={handleRemove}
-          className="absolute right-2 top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity flex-shrink-0 p-0.5 -m-0.5 inline-flex items-center justify-center"
+          className="absolute right-[15px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-[120ms] flex-shrink-0 w-3 inline-flex items-center justify-center"
         >
           <X className="h-3 w-3" />
         </button>

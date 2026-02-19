@@ -19,6 +19,9 @@ interface UploadProgress {
 /**
  * Hook for uploading files to tasks
  * Uploads to task-images bucket and creates attachment records
+ *
+ * Debug logging: All console output is wrapped in import.meta.env.DEV.
+ * No debug code (e.g. fetch to localhost) should run in production.
  */
 export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }: UseFileUploadOptions = {}) {
   const { orgId } = useActiveOrg();
