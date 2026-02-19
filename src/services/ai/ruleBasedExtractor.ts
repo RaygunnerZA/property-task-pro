@@ -95,8 +95,8 @@ export function extractChipsFromText(
   const assetChips = detectAssets(text, words);
   chips.push(...assetChips);
   
-  // 4. Person detection
-  const personChips = detectPersons(text, words, entities.members);
+  // 4. Person detection — pass combinedText (original casing) for proper-noun detection
+  const personChips = detectPersons(combinedText, words, entities.members);
   chips.push(...personChips);
   
   // Ghost groups for frequent assignees
@@ -364,90 +364,113 @@ function detectAssets(
   return chips;
 }
 
-/**
- * Common words to exclude from name detection
- */
-const commonWords = new Set([
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
-  'from', 'up', 'about', 'into', 'over', 'after', 'is', 'are', 'was', 'were', 'be', 'been',
-  'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should',
-  'may', 'might', 'must', 'can', 'need', 'needs', 'fix', 'repair', 'replace', 'check',
-  'clean', 'paint', 'install', 'remove', 'update', 'change', 'add', 'get', 'set', 'put',
-  'make', 'take', 'give', 'help', 'call', 'contact', 'send', 'next', 'this', 'that',
-  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-  'today', 'tomorrow', 'week', 'month', 'year', 'urgent', 'asap', 'important'
+// Words that are never person names
+const NON_NAME_WORDS = new Set([
+  'fix', 'check', 'clean', 'repair', 'install', 'replace', 'inspect', 'review',
+  'update', 'remove', 'add', 'call', 'book', 'schedule', 'contact', 'order',
+  'buy', 'get', 'test', 'paint', 'seal', 'drain', 'flush', 'reset',
+  'the', 'this', 'that', 'and', 'for', 'not', 'but', 'from', 'with', 'into',
+  'must', 'should', 'needs', 'will', 'can', 'may', 'please', 'urgent',
+  'today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday',
+  'friday', 'saturday', 'sunday', 'next', 'last', 'asap',
+  'kitchen', 'bathroom', 'bedroom', 'living', 'garden', 'garage', 'office',
+  'hall', 'entrance', 'cottage', 'house', 'flat', 'apartment', 'room',
+  'boiler', 'toilet', 'shower', 'window', 'door', 'pipe', 'roof', 'floor',
+  'wall', 'ceiling', 'stove', 'oven', 'fridge', 'sink', 'tap', 'lock',
+  'new', 'old', 'broken', 'leaking', 'blocked', 'damaged', 'urgent',
+  'high', 'low', 'medium', 'normal',
 ]);
 
+// Subject-indicating verbs: "X must/should/needs to/will/has to [verb]"
+const SUBJECT_PATTERNS = [
+  /^([a-zA-Z]{3,})\s+(?:must|should|needs?\s+to|will|has\s+to|is\s+to|to)\b/i,
+  /^([a-zA-Z]{3,})\s+(?:please|can|could)\b/i,
+];
+
 /**
- * Detect persons from text using fuzzy matching
- * Also detects potential person names that don't match existing members (creates verb/ghost chips)
+ * Detect persons from text using fuzzy matching against org members,
+ * plus heuristic detection of potential person names (sentence subjects,
+ * proper nouns) for unknown/unregistered people.
+ *
+ * @param originalText  The description with ORIGINAL casing (not lowercased).
+ * @param words         Tokens from the description (original casing).
+ * @param members       Org member list.
  */
 function detectPersons(
-  text: string,
+  originalText: string,
   words: string[],
   members: Array<{ id: string; user_id: string; display_name: string }>
 ): SuggestedChip[] {
   const chips: SuggestedChip[] = [];
-  const matchedNames = new Set<string>();
-  
-  // First, try to match against existing members
+  const matchedNames = new Set<string>(); // tracks already-matched lowercased names
+
+  // ── 1. Match against existing org members (case-insensitive) ──────────────
   for (const member of members) {
-    const displayName = member.display_name.toLowerCase();
-    const nameParts = displayName.split(' ');
-    
-    // Check if any name part matches words in text
+    const nameParts = member.display_name.toLowerCase().split(/\s+/);
     for (const part of nameParts) {
-      if (part.length > 2 && words.some(w => isFuzzyMatch(w, part))) {
+      if (part.length > 2 && words.some(w => isFuzzyMatch(w.toLowerCase(), part))) {
         chips.push({
           id: `person-${member.user_id}`,
           type: 'person',
           value: member.user_id,
           label: member.display_name,
-          score: 0.75,
+          score: 0.85,
           source: 'rule',
           resolvedEntityId: member.user_id,
-          blockingRequired: false
+          blockingRequired: false,
         });
-        matchedNames.add(part.toLowerCase());
+        nameParts.forEach(p => matchedNames.add(p));
         break;
       }
     }
   }
-  
-  // Then, look for potential person names that didn't match existing members
-  // Pattern: Capitalized words that look like names (e.g., "Frank", "James")
-  const originalText = text;
-  const namePattern = /\b([A-Z][a-z]{2,})\b/g;
-  let match;
-  
-  while ((match = namePattern.exec(originalText)) !== null) {
-    const potentialName = match[1];
-    const nameLower = potentialName.toLowerCase();
-    
-    // Skip if already matched to existing member
+
+  // ── 2. Detect sentence subject as potential person name ───────────────────
+  // Handles both "Frank must fix …" and "frank must fix …" (lowercase too)
+  const trimmed = originalText.trim();
+  for (const pattern of SUBJECT_PATTERNS) {
+    const m = trimmed.match(pattern);
+    if (m) {
+      const name = m[1];
+      const nameLower = name.toLowerCase();
+      if (!matchedNames.has(nameLower) && !NON_NAME_WORDS.has(nameLower)) {
+        chips.push({
+          id: `person-ghost-subject-${nameLower}`,
+          type: 'person',
+          value: name,
+          label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+          score: 0.7,
+          source: 'rule',
+          blockingRequired: true,
+          metadata: { detectedAs: 'sentence_subject' },
+        });
+        matchedNames.add(nameLower);
+      }
+      break;
+    }
+  }
+
+  // ── 3. Capitalized proper nouns (e.g. "Call Frank about …") ─────────────
+  const properNounPattern = /\b([A-Z][a-z]{2,})\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = properNounPattern.exec(originalText)) !== null) {
+    const name = m[1];
+    const nameLower = name.toLowerCase();
     if (matchedNames.has(nameLower)) continue;
-    
-    // Skip common words
-    if (commonWords.has(nameLower)) continue;
-    
-    // Skip if it looks like a space/location name (e.g., Kitchen, Bathroom)
-    const spaceKeywords = ['room', 'kitchen', 'bathroom', 'bedroom', 'living', 'garden', 'garage', 'office', 'hall', 'entrance', 'cottage', 'house', 'flat', 'apartment'];
-    if (spaceKeywords.some(k => nameLower.includes(k) || k.includes(nameLower))) continue;
-    
-    // This looks like a person name - create a ghost/verb chip
+    if (NON_NAME_WORDS.has(nameLower)) continue;
     chips.push({
-      id: `person-ghost-${nameLower}-${Date.now()}`,
+      id: `person-ghost-${nameLower}`,
       type: 'person',
-      value: potentialName,
-      label: potentialName,
+      value: name,
+      label: name,
       score: 0.6,
       source: 'rule',
-      blockingRequired: true, // Requires resolution (invite or choose existing)
-      metadata: { detectedAs: 'potential_name' }
+      blockingRequired: true,
+      metadata: { detectedAs: 'proper_noun' },
     });
     matchedNames.add(nameLower);
   }
-  
+
   return chips;
 }
 

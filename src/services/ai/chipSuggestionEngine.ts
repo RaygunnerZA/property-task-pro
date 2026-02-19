@@ -43,9 +43,66 @@ const defaultConfig: SuggestionEngineConfig = {
 };
 
 /**
- * Main suggestion engine function
- * Currently uses rule-based extraction only
- * Will be extended with vector and AI layers
+ * Synchronous chip extraction — runs immediately with no network calls.
+ * Returns rule-based chips + property profile boosts. Safe to call in useMemo.
+ */
+export function extractChipsSync(
+  context: ChipSuggestionContext,
+  entities: AvailableEntities,
+  config: Partial<SuggestionEngineConfig> = {}
+): ChipSuggestionResult {
+  const mergedConfig = { ...defaultConfig, ...config };
+
+  const hasDescription = context.description && context.description.trim().length >= 3;
+  const hasImageOcr = context.imageOcrText && context.imageOcrText.trim().length >= 3;
+  const hasDetected = (context.detectedLabels?.length ?? 0) > 0 || (context.detectedObjects?.length ?? 0) > 0;
+  if (!hasDescription && !hasImageOcr && !hasDetected) {
+    return { chips: [], ghostCategories: [], complianceMode: false };
+  }
+
+  const ruleResult = extractChipsFromText(context, entities);
+
+  const profileBoostMap = new Map<string, number>();
+  if (context.propertyProfile) {
+    const boosts = evaluateProfileForChipBoosts(context.propertyProfile);
+    for (const evaluated of boosts) {
+      if (evaluated.output.kind === "chip_boost") {
+        const existing = profileBoostMap.get(evaluated.output.chipType) ?? 0;
+        profileBoostMap.set(evaluated.output.chipType, Math.max(existing, evaluated.output.score));
+      }
+    }
+  }
+
+  const finalChips = ruleResult.chips.map((chip) => {
+    const profileBoost = profileBoostMap.get(chip.type);
+    return profileBoost != null ? { ...chip, score: Math.max(chip.score, profileBoost) } : chip;
+  });
+
+  for (const [chipType, boostScore] of profileBoostMap.entries()) {
+    if (!finalChips.some((c) => c.type === chipType) && boostScore >= mergedConfig.minScore) {
+      finalChips.push({
+        id: `profile-boost-${chipType}`,
+        type: chipType as SuggestedChip["type"],
+        value: chipType,
+        label: chipType,
+        score: boostScore,
+        source: "rule",
+        metadata: { reason: "property_profile_boost" },
+      });
+    }
+  }
+
+  return {
+    chips: finalChips.filter((c) => c.score >= mergedConfig.minScore),
+    ghostCategories: ruleResult.ghostCategories.filter((c) => c.score >= mergedConfig.minScore),
+    suggestedTitle: ruleResult.suggestedTitle,
+    complianceMode: ruleResult.complianceMode,
+  };
+}
+
+/**
+ * Async chip generation — adds icon RPC on top of synchronous extraction.
+ * Use only for secondary enrichment (icon suggestions), not for chip display.
  */
 export async function generateChipSuggestions(
   context: ChipSuggestionContext,
