@@ -1,35 +1,39 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useMemo } from "react";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { FrameworkEmptyState } from "@/components/property-framework";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
+import { ComplianceSuggestionsCard } from "@/components/compliance/ComplianceSuggestionsCard";
 import { ComplianceRecommendationCard } from "@/components/compliance/ComplianceRecommendationCard";
+import { ComplianceRulesSection } from "@/components/compliance/ComplianceRulesSection";
+import { ComplianceRuleModal } from "@/components/compliance/ComplianceRuleModal";
+import { ComplianceAutomationPanel } from "@/components/compliance/ComplianceAutomationPanel";
 import { ComplianceRecommendationDrawer } from "@/components/compliance/ComplianceRecommendationDrawer";
 import { ComplianceScoreHeroCard, StatusGroupedSection } from "@/components/property-framework";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Shield, AlertTriangle, Clock, CheckCircle2, Zap, Bot } from "lucide-react";
+import { Shield, Zap } from "lucide-react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { useOrgSettings } from "@/hooks/useOrgSettings";
 import { usePropertyAutoTasks } from "@/hooks/usePropertyAutoTasks";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { PropertyIntelligencePanel } from "@/components/properties/PropertyIntelligencePanel";
+import { usePropertyProfile } from "@/hooks/usePropertyProfile";
+import { evaluateProfile, normalizePropertyProfile } from "@/services/propertyIntelligence/ruleEvaluator";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 export default function PropertyCompliance() {
   const { id } = useParams<{ id: string }>();
   const { orgId } = useActiveOrg();
   const { data: compliance = [], isLoading } = useComplianceQuery(id || undefined);
   const { data: recommendations = [], isLoading: recsLoading } = useComplianceRecommendations(id || undefined);
-  const { settings: orgSettings } = useOrgSettings();
-  const { data: autoTasks = [], isLoading: autoTasksLoading } = usePropertyAutoTasks(id || undefined);
+  const { data: autoTasks = [] } = usePropertyAutoTasks(id || undefined);
   const { data: assetsData = [] } = useAssetsQuery(id || undefined);
+  const { data: rawProfile } = usePropertyProfile(id || undefined);
   const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [editingRule, setEditingRule] = useState<any | null>(null);
 
   const assetVectors = assetsData.map((a: any) => ({
     asset_type: a.asset_type,
@@ -39,6 +43,11 @@ export default function PropertyCompliance() {
   const complianceVectors = compliance.map((c: any) => ({
     document_type: c.document_type,
   }));
+
+  const intelligenceResult = useMemo(() => {
+    if (!rawProfile) return undefined;
+    return evaluateProfile(normalizePropertyProfile(rawProfile));
+  }, [rawProfile]);
 
   const selectedRec = useMemo(
     () => recommendations.find((r) => r.id === selectedRecId) ?? null,
@@ -100,12 +109,16 @@ export default function PropertyCompliance() {
         <LoadingState message="Loading property compliance..." />
       ) : (
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="mb-6 w-full grid grid-cols-2">
+          <TabsList className="mb-6 w-full grid grid-cols-3">
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="rules">Rules</TabsTrigger>
           </TabsList>
 
           <TabsContent value="schedule" className="space-y-6 mt-0">
+            {/* Intelligence suggestions — shown when Filla detects compliance gaps */}
+            {id && <ComplianceSuggestionsCard propertyId={id} />}
+
             {/* Compliance Score Hero - Framework V2 */}
             <ComplianceScoreHeroCard
               scorePercent={complianceScore}
@@ -114,48 +127,15 @@ export default function PropertyCompliance() {
               onViewCritical={sortedExpired.length > 0 ? () => {} : undefined}
             />
 
-            {/* Property Intelligence (Phase 11) */}
+            {/* Property Intelligence (Phase 11 + Sprint 2) */}
             <PropertyIntelligencePanel
               assetVectors={assetVectors}
               complianceVectors={complianceVectors}
+              intelligenceResult={intelligenceResult}
             />
 
-            {/* Automation Status */}
-            <Card className="shadow-e1">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-primary" />
-                  Automation Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Auto-create tasks:</span>
-                  <Badge variant={orgSettings?.auto_task_creation ? "default" : "secondary"}>
-                    {orgSettings?.auto_task_creation ? "On" : "Off"}
-                  </Badge>
-                </div>
-                {autoTasks.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground font-medium">Last auto-tasks</p>
-                    <ul className="text-xs space-y-1">
-                      {autoTasks.slice(0, 5).map((at) => (
-                        <li key={at.id} className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">
-                            {at.auto_task_type}
-                          </Badge>
-                          <span className="truncate flex-1">{at.doc_title || "—"}</span>
-                          <span className="text-muted-foreground">{at.status}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {!autoTasksLoading && autoTasks.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No auto-tasks for this property yet.</p>
-                )}
-              </CardContent>
-            </Card>
+            {/* Automation Panel (Sprint 3) */}
+            {id && <ComplianceAutomationPanel propertyId={id} />}
 
             {/* Intelligent Recommendations (Phase 11) — shown in PropertyIntelligencePanel above */}
 
@@ -228,6 +208,22 @@ export default function PropertyCompliance() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="rules" className="mt-0">
+            {id && (
+              <ComplianceRulesSection
+                propertyId={id}
+                onAddRule={() => {
+                  setEditingRule(null);
+                  setRuleModalOpen(true);
+                }}
+                onEditRule={(rule) => {
+                  setEditingRule(rule);
+                  setRuleModalOpen(true);
+                }}
+              />
+            )}
+          </TabsContent>
         </Tabs>
       )}
 
@@ -242,6 +238,15 @@ export default function PropertyCompliance() {
         nextDueDate={selectedRec ? (selectedRec as any)._doc?.next_due_date : undefined}
         onReanalyse={id ? handleReanalyse : undefined}
       />
+
+      {id && (
+        <ComplianceRuleModal
+          open={ruleModalOpen}
+          onOpenChange={setRuleModalOpen}
+          propertyId={id}
+          editRule={editingRule}
+        />
+      )}
     </StandardPageWithBack>
   );
 }

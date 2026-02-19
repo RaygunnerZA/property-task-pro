@@ -1,4 +1,5 @@
-import { ReactNode } from 'react';
+import { ReactNode, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
@@ -28,6 +29,23 @@ interface AppLayoutProps {
 export function AppLayout({
   children
 }: AppLayoutProps) {
+  const mainRef = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual';
+    }
+  }, []);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    mainRef.current?.scrollTo(0, 0);
+    // Also reset any overflow-y-auto child containers (e.g. DualPaneLayout columns)
+    mainRef.current?.querySelectorAll('[class*="overflow-y-auto"], [class*="overflow-auto"]')
+      .forEach(el => el.scrollTo(0, 0));
+  }, [pathname]);
+
   return <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative">
         {/* Sidebar - fixed to left */}
@@ -45,6 +63,7 @@ export function AppLayout({
 
           {/* Main content with paper background and noise texture */}
           <main 
+            ref={mainRef}
             className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-16 md:pb-0"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,

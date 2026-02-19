@@ -1,20 +1,23 @@
 /**
  * AI Chip Suggestion Engine
  * Combines rule-based, vector-based (future), and AI extraction (stub)
- * 
- * Current implementation: Rule-based only
+ *
+ * Current implementation: Rule-based + Property Profile layer
  * Future: Will add vector similarity and AI model extraction
  * Phase 12B: Icon inference from description, hazards, detected objects
  */
 
-import { 
-  ChipSuggestionContext, 
+import {
+  ChipSuggestionContext,
   ChipSuggestionResult,
   SuggestedChip,
-  GhostCategory
-} from '@/types/chip-suggestions';
-import { extractChipsFromText } from './ruleBasedExtractor';
-import { supabase } from '@/integrations/supabase/client';
+  GhostCategory,
+} from "@/types/chip-suggestions";
+import { extractChipsFromText } from "./ruleBasedExtractor";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  evaluateProfileForChipBoosts,
+} from "@/services/propertyIntelligence/ruleEvaluator";
 
 interface AvailableEntities {
   spaces: Array<{ id: string; name: string; property_id: string }>;
@@ -85,33 +88,70 @@ export async function generateChipSuggestions(
     // Non-fatal
   }
 
-  // 2. Vector-based similarity (future implementation)
+  // 2. Property Profile layer — boosts chips based on property characteristics
+  // Runs when context.propertyProfile is provided by the calling hook.
+  // Does not replace rule-based chips; adjusts scores using a max-merge strategy.
+  const profileBoostMap = new Map<string, number>(); // chipType → boost score
+  if (context.propertyProfile) {
+    const boosts = evaluateProfileForChipBoosts(context.propertyProfile);
+    for (const evaluated of boosts) {
+      if (evaluated.output.kind === "chip_boost") {
+        const existing = profileBoostMap.get(evaluated.output.chipType) ?? 0;
+        profileBoostMap.set(
+          evaluated.output.chipType,
+          Math.max(existing, evaluated.output.score)
+        );
+      }
+    }
+  }
+
+  // 3. Vector-based similarity (future implementation)
   // const vectorResult = await getVectorSimilarChips(context);
-  
-  // 3. AI model extraction (stub - will be connected later)
+
+  // 4. AI model extraction (stub - will be connected later)
   // const aiResult = await getAIExtractedChips(context, entities);
-  
-  // For now, return rule-based results directly
-  // Future: Merge and weight results from all three sources
-  const finalChips = ruleResult.chips.map(chip => ({
-    ...chip,
-    // Future: score = (chip.score * ruleWeight) + (vectorScore * vectorWeight) + (aiScore * aiWeight)
-    score: chip.score * mergedConfig.ruleWeight / mergedConfig.ruleWeight // Normalize for now
-  }));
-  
+
+  // Merge rule-based chips with profile boosts (max-merge, not additive — avoids over-boosting)
+  const finalChips = ruleResult.chips.map((chip) => {
+    const profileBoost = profileBoostMap.get(chip.type);
+    const boostedScore = profileBoost != null
+      ? Math.max(chip.score, profileBoost)
+      : chip.score;
+    return { ...chip, score: boostedScore };
+  });
+
+  // For chip types that have a profile boost but no rule-based chip yet,
+  // inject a lightweight profile-derived chip so the type appears in the UI.
+  for (const [chipType, boostScore] of profileBoostMap.entries()) {
+    const alreadyPresent = finalChips.some((c) => c.type === chipType);
+    if (!alreadyPresent && boostScore >= mergedConfig.minScore) {
+      finalChips.push({
+        id: `profile-boost-${chipType}`,
+        type: chipType as SuggestedChip["type"],
+        value: chipType,
+        label: chipType,
+        score: boostScore,
+        source: "rule",
+        metadata: { reason: "property_profile_boost" },
+      });
+    }
+  }
+
   // Apply fallback logic if no chips detected
   if (finalChips.length === 0 && context.propertyId) {
     const fallbackChips = generateFallbackChips(context, entities);
     finalChips.push(...fallbackChips);
   }
-  
+
   return {
-    chips: finalChips.filter(c => c.score >= mergedConfig.minScore),
-    ghostCategories: ruleResult.ghostCategories.filter(c => c.score >= mergedConfig.minScore),
+    chips: finalChips.filter((c) => c.score >= mergedConfig.minScore),
+    ghostCategories: ruleResult.ghostCategories.filter(
+      (c) => c.score >= mergedConfig.minScore
+    ),
     suggestedTitle: ruleResult.suggestedTitle,
     suggestedIcon,
     suggestedIconAlternatives,
-    complianceMode: ruleResult.complianceMode
+    complianceMode: ruleResult.complianceMode,
   };
 }
 

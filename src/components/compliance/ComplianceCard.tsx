@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { format, parseISO, isPast, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, CheckCircle2, Clock, Shield } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle2, Clock, Shield } from "lucide-react";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { useMarkComplianceComplete } from "@/hooks/useMarkComplianceComplete";
 
 interface ComplianceCardProps {
   compliance: {
@@ -12,8 +15,14 @@ interface ComplianceCardProps {
     expiry_status?: string;
     days_until_expiry?: number | null;
     status?: string;
+    /** rule_id from compliance_documents (Sprint 1+) */
+    rule_id?: string | null;
   };
   onClick?: () => void;
+  /** When provided, enables quick-action row (complete, create task, view rule) */
+  propertyId?: string;
+  /** Callback to navigate to Rules tab when "View rule" is clicked */
+  onViewRule?: () => void;
 }
 
 /**
@@ -21,8 +30,15 @@ interface ComplianceCardProps {
  * Task-like card styling for compliance items
  * Shows: Certificate name → Expiry date → Status (Red/Green/Amber)
  */
-export function ComplianceCard({ compliance, onClick }: ComplianceCardProps) {
-  const name = compliance.certificate_name || compliance.document_name || compliance.name || compliance.title || "Unknown";
+export function ComplianceCard({
+  compliance,
+  onClick,
+  propertyId,
+  onViewRule,
+}: ComplianceCardProps) {
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const markComplete = useMarkComplianceComplete();
+  const name = compliance.certificate_name || compliance.document_name || compliance.name || (compliance as any).title || "Unknown";
   const expiryStatus = compliance.expiry_status || "none";
   const daysUntilExpiry = compliance.days_until_expiry;
 
@@ -122,7 +138,74 @@ export function ComplianceCard({ compliance, onClick }: ComplianceCardProps) {
             </span>
           )}
         </div>
+
+        {/* Quick-action row — visible on hover (desktop) or always (mobile) */}
+        {propertyId && (
+          <div
+            className={cn(
+              "flex items-center gap-1 mt-2 pt-2 border-t border-border/30",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+              "@[0px]:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              disabled={markComplete.isPending}
+              onClick={(e) => {
+                e.stopPropagation();
+                markComplete.mutate({
+                  complianceDocId: compliance.id,
+                  propertyId,
+                  ruleId: compliance.rule_id ?? undefined,
+                });
+              }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-success transition-colors px-2 py-1 rounded-[4px] hover:bg-success/10"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              <span>Complete</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setCreateTaskOpen(true);
+              }}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1 rounded-[4px] hover:bg-primary/10"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Create task</span>
+            </button>
+            {compliance.rule_id && onViewRule && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewRule();
+                }}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-[4px] hover:bg-muted/50"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                <span>View rule</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Create task modal — triggered by quick action */}
+      {propertyId && (
+        <CreateTaskModal
+          open={createTaskOpen}
+          onOpenChange={setCreateTaskOpen}
+          defaultPropertyId={propertyId}
+          prefill={{
+            title: `Compliance: ${name}`,
+            propertyId,
+            is_compliance: true,
+          } as any}
+        />
+      )}
     </div>
   );
 }

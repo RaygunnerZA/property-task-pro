@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -92,6 +92,9 @@ export function InviteUserModal({
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [role, setRole] = useState("");
 
@@ -135,6 +138,8 @@ export function InviteUserModal({
     setEmailError(null);
     setAvatarUrl(null);
     setAvatarColor(AVATAR_COLORS[0]);
+    setAvatarFile(null);
+    setAvatarPreview(null);
     setRole("");
     setPropertyAccess("all");
     setSelectedPropertyIds([]);
@@ -235,6 +240,20 @@ export function InviteUserModal({
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) throw new Error("You must be logged in to send invitations");
 
+      let uploadedAvatarUrl: string | undefined;
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split(".").pop();
+        const fileName = `invite-avatars/${orgId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("user-avatars")
+          .upload(fileName, avatarFile, { cacheControl: "3600", upsert: false });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage
+          .from("user-avatars")
+          .getPublicUrl(fileName);
+        uploadedAvatarUrl = publicUrl;
+      }
+
       const { data, error } = await supabase.functions.invoke("invite-team-member", {
         body: {
           email: email.trim().toLowerCase(),
@@ -253,6 +272,8 @@ export function InviteUserModal({
           },
           message: inviteMessage.trim() || undefined,
           send_email: sendEmail,
+          avatar_url: uploadedAvatarUrl || undefined,
+          avatar_color: !uploadedAvatarUrl ? avatarColor : undefined,
         },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
@@ -424,33 +445,89 @@ export function InviteUserModal({
               Avatar
             </Label>
             <div className="flex items-center gap-4">
-              <Avatar className="h-12 w-12 shadow-e1">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} />
-                ) : (
-                  <AvatarFallback
-                    className="text-sm font-semibold text-white"
-                    style={{ backgroundColor: avatarColor }}
-                  >
-                    {initials || "?"}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div className="flex flex-wrap gap-1.5">
-                {AVATAR_COLORS.map((color) => (
+              <div className="relative group">
+                <Avatar className="h-12 w-12 shadow-e1">
+                  {avatarPreview || avatarUrl ? (
+                    <AvatarImage src={avatarPreview || avatarUrl || undefined} />
+                  ) : (
+                    <AvatarFallback
+                      className="text-sm font-semibold text-white"
+                      style={{ backgroundColor: avatarColor }}
+                    >
+                      {initials || "?"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                {(avatarPreview || avatarUrl) && (
                   <button
-                    key={color}
                     type="button"
-                    onClick={() => { setAvatarColor(color); setAvatarUrl(null); }}
-                    className={cn(
-                      "h-6 w-6 rounded-full transition-all",
-                      avatarColor === color && !avatarUrl
-                        ? "ring-2 ring-offset-2 ring-primary scale-110"
-                        : "hover:scale-105",
-                    )}
-                    style={{ backgroundColor: color }}
+                    onClick={() => {
+                      setAvatarFile(null);
+                      setAvatarPreview(null);
+                      setAvatarUrl(null);
+                      if (avatarInputRef.current) avatarInputRef.current.value = "";
+                    }}
+                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {AVATAR_COLORS.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => {
+                        setAvatarColor(color);
+                        setAvatarUrl(null);
+                        setAvatarFile(null);
+                        setAvatarPreview(null);
+                        if (avatarInputRef.current) avatarInputRef.current.value = "";
+                      }}
+                      className={cn(
+                        "h-6 w-6 rounded-full transition-all",
+                        avatarColor === color && !avatarUrl && !avatarPreview
+                          ? "ring-2 ring-offset-2 ring-primary scale-110"
+                          : "hover:scale-105",
+                      )}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+                <div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (!file.type.startsWith("image/")) {
+                        toast.error("Please select an image file");
+                        return;
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error("Image must be less than 5 MB");
+                        return;
+                      }
+                      setAvatarFile(file);
+                      const reader = new FileReader();
+                      reader.onloadend = () => setAvatarPreview(reader.result as string);
+                      reader.readAsDataURL(file);
+                    }}
                   />
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Upload className="h-3 w-3" />
+                    Upload photo
+                  </button>
+                </div>
               </div>
             </div>
           </section>

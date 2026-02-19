@@ -2,6 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * useComplianceQuery
+ *
+ * Sprint 4: Reads from compliance_schedule_view which unifies:
+ *   - Rule-based pending occurrences (source_type = 'rule')
+ *   - Standalone compliance documents — AI-extracted + uploaded (source_type = 'document')
+ *
+ * All downstream consumers (PropertyCompliance, ComplianceOverviewSection) get
+ * a consistent shape with expiry_status, days_until_expiry, and rule_id present.
+ */
 export function useComplianceQuery(propertyId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
 
@@ -9,14 +19,13 @@ export function useComplianceQuery(propertyId?: string) {
     queryKey: ["compliance", orgId, propertyId],
     queryFn: async () => {
       let query = supabase
-        .from("compliance_view")
+        .from("compliance_schedule_view")
         .select("*")
         .eq("org_id", orgId)
-        .order("next_due_date", { ascending: true, nullsFirst: false })
-        .order("expiry_date", { ascending: true, nullsFirst: false });
+        .order("days_until_expiry", { ascending: true, nullsFirst: false });
 
       if (propertyId) {
-        query = query.or(`property_id.eq.${propertyId},property_id.is.null`);
+        query = query.eq("property_id", propertyId);
       }
 
       const { data, error } = await query;
@@ -24,7 +33,7 @@ export function useComplianceQuery(propertyId?: string) {
       return data ?? [];
     },
     enabled: !!orgId && !orgLoading,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 }
 

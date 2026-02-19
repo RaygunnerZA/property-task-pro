@@ -101,6 +101,7 @@ const SettingsGeneral = lazy(() => import("./pages/settings/SettingsGeneral"));
 const SettingsAutomationPanel = lazy(() => import("./pages/settings/SettingsAutomationPanel"));
 const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
 const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
+const SettingsProfile = lazy(() => import("./pages/settings/SettingsProfile"));
 const DebugData = lazy(() => import("./pages/DebugData"));
 
 const queryClient = new QueryClient({
@@ -186,6 +187,7 @@ const App = () => {
                                 {/* Settings routes */}
                                 <Route path="/settings" element={<SettingsLayout />}>
                                   <Route index element={<SettingsGeneral />} />
+                                  <Route path="profile" element={<SettingsProfile />} />
                                   <Route path="automation" element={<SettingsAutomationPanel />} />
                                   <Route path="team" element={<SettingsTeam />} />
                                   <Route path="billing" element={<SettingsBilling />} />

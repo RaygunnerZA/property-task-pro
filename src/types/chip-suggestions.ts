@@ -3,6 +3,8 @@
  * Used by the Create Task modal's intelligent chip suggestion engine
  */
 
+import type { PropertyProfile } from "@/services/propertyIntelligence/types";
+
 export type ChipType = 'space' | 'person' | 'team' | 'priority' | 'category' | 'theme' | 'compliance' | 'date' | 'asset' | 'recurrence';
 
 export type PriorityValue = 'low' | 'medium' | 'high' | 'urgent';
@@ -51,6 +53,13 @@ export interface DetectedObjectForChips {
 export interface ChipSuggestionContext {
   description: string;
   propertyId?: string;
+  /**
+   * Enriched property profile from usePropertyProfile.
+   * When present, the chip engine applies profile-derived boosts:
+   * compliance chips for commercial properties, asset chips for
+   * high-maintenance asset types, date chip priority near lease end, etc.
+   */
+  propertyProfile?: PropertyProfile;
   selectedSpaceIds?: string[];
   selectedPersonId?: string;
   selectedTeamIds?: string[];

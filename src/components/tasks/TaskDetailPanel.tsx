@@ -103,6 +103,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [isCompliance, setIsCompliance] = useState(false);
   const [complianceLevel, setComplianceLevel] = useState("");
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -621,6 +623,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   assignedTeamIds={selectedTeamIds}
                   onUserChange={(userId) => handleUserChange(userId)}
                   onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
+                  pendingInvitations={pendingInvitations}
+                  onPendingInvitationsChange={setPendingInvitations}
+                  onInviteToOrg={() => setInviteModalOpen(true)}
+                  onAddAsContractor={() => setInviteModalOpen(true)}
                 />
 
                 <WhereSection
@@ -887,6 +893,23 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       "Task Details"
     )}
     
+    <InviteUserModal
+      open={inviteModalOpen}
+      onOpenChange={setInviteModalOpen}
+      onInviteSent={(inv) => {
+        setPendingInvitations((prev) => [
+          ...prev,
+          {
+            id: `pending-${Date.now()}`,
+            email: inv.email,
+            firstName: inv.firstName,
+            lastName: inv.lastName,
+            displayName: `${inv.firstName} ${inv.lastName}`.trim(),
+          },
+        ]);
+      }}
+    />
+
     {/* Image lightbox modal */}
     {lightboxOpen && taskImages.length > 0 && selectedImageIndex !== null && createPortal(
       <div
