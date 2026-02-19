@@ -1446,8 +1446,10 @@ export type Database = {
           invited_by: string
           last_name: string | null
           org_id: string
+          property_ids: string[] | null
           role: string
           status: string
+          team_ids: string[] | null
           token: string
           updated_at: string
         }
@@ -1461,8 +1463,10 @@ export type Database = {
           invited_by: string
           last_name?: string | null
           org_id: string
+          property_ids?: string[] | null
           role?: string
           status?: string
+          team_ids?: string[] | null
           token: string
           updated_at?: string
         }
@@ -1476,8 +1480,10 @@ export type Database = {
           invited_by?: string
           last_name?: string | null
           org_id?: string
+          property_ids?: string[] | null
           role?: string
           status?: string
+          team_ids?: string[] | null
           token?: string
           updated_at?: string
         }
@@ -3463,6 +3469,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_invitation: { Args: { p_token: string }; Returns: Json }
       ai_icon_search: {
         Args: { query_text?: string }
         Returns: {
@@ -3639,6 +3646,7 @@ export type Database = {
       ensure_user_has_org: { Args: { p_user_id: string }; Returns: string }
       expire_old_invitations: { Args: never; Returns: undefined }
       generate_invitation_token: { Args: never; Returns: string }
+      get_invitation_by_token: { Args: { p_token: string }; Returns: Json }
       get_task_with_contractor_token: {
         Args: { p_task_id: string; p_token: string }
         Returns: {

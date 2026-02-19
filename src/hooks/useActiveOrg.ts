@@ -40,27 +40,32 @@ export function useActiveOrg(): UseActiveOrgResult {
       return null;
     }
 
-    // Fetch the first organisation membership for this user
-    const { data: membership, error: membershipsError } = await supabase
+    // Fetch all org memberships for this user, joined with org type so we can
+    // prefer non-personal orgs (invited organisations rank above personal ones).
+    const { data: memberships, error: membershipsError } = await supabase
       .from("organisation_members")
-      .select("org_id")
+      .select("org_id, created_at, organisations(org_type)")
       .eq("user_id", userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: true });
 
     if (membershipsError) {
       console.error('[useActiveOrg] Query error:', {
         message: membershipsError.message,
         code: membershipsError.code,
         details: membershipsError.details,
-        hint: membershipsError.hint
+        hint: membershipsError.hint,
       });
       throw membershipsError;
     }
 
-    // Auto-select the first organisation found
-    return membership?.org_id || null;
+    if (!memberships || memberships.length === 0) return null;
+
+    // Prefer the first non-personal org (invited / team org).
+    // Falls back to personal org if that's all that exists.
+    const nonPersonal = memberships.find(
+      (m) => (m.organisations as any)?.org_type !== "personal"
+    );
+    return (nonPersonal ?? memberships[0]).org_id;
   }, [userId]);
 
   // Listen for auth state changes to invalidate queries
@@ -81,13 +86,16 @@ export function useActiveOrg(): UseActiveOrgResult {
     };
   }, [queryClient]);
 
-  // Fetch active org using TanStack Query
+  // Fetch active org using TanStack Query.
+  // staleTime is intentionally short (10s) rather than Infinity so that after
+  // accepting an invitation the app immediately picks up the new org membership.
+  // The query is otherwise stable — it only re-fetches on mount / focus / invalidation.
   const { data: orgId, isLoading, error } = useQuery({
     queryKey: ["activeOrg", userId],
     queryFn: fetchActiveOrg,
-    enabled: !!userId, // Only fetch when we have a user ID
-    staleTime: Infinity, // Org ID rarely changes - cache forever
-    retry: false, // Don't retry on error
+    enabled: !!userId,
+    staleTime: 10_000,
+    retry: false,
   });
 
   return {
