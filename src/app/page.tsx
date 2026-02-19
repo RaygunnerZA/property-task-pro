@@ -242,6 +242,7 @@ export default function Dashboard() {
                 onTaskCreated={handleTaskCreated}
                 variant="column"
                 headless
+                prefillFromLastUsedProperty={false}
               />
             ),
           },
@@ -378,6 +379,7 @@ export default function Dashboard() {
           onOpenChange={handleCreateTaskOpenChange}
           onTaskCreated={handleTaskCreated}
           variant="modal"
+          prefillFromLastUsedProperty={false}
         />
       )}
 

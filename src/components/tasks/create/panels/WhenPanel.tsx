@@ -9,8 +9,6 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { format, parseISO, addDays, startOfDay, isSameDay } from "date-fns";
@@ -24,6 +22,8 @@ interface WhenPanelProps {
   repeatRule?: RepeatRule;
   onDueDateChange: (date: string) => void;
   onRepeatRuleChange: (rule: RepeatRule | undefined) => void;
+  /** Hide the quick-date chip row when the parent already renders it inline. */
+  showQuickDates?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -183,11 +183,9 @@ function ScrollWheel({
 
 export function WhenPanel({
   dueDate,
-  repeatRule,
   onDueDateChange,
-  onRepeatRuleChange,
+  showQuickDates = true,
 }: WhenPanelProps) {
-  const [enableRepeat, setEnableRepeat] = useState(!!repeatRule);
   const dateScrollRef = useRef<HTMLDivElement>(null);
   const dateScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -301,15 +299,6 @@ export function WhenPanel({
     onDueDateChange(`${format(d, "yyyy-MM-dd")}T${buildTime(hour, minute)}`);
   };
 
-  /* ---------- repeat ---------- */
-
-  const handleRepeatToggle = (on: boolean) => {
-    setEnableRepeat(on);
-    onRepeatRuleChange(on ? { type: "weekly", interval: 1 } : undefined);
-  };
-  const handleRepeatTypeChange = (t: "daily" | "weekly" | "monthly") =>
-    onRepeatRuleChange({ ...repeatRule, type: t, interval: repeatRule?.interval || 1 });
-
   /* ---------- display ---------- */
 
   const displayMonth = months[selectedDate.getMonth()];
@@ -323,30 +312,32 @@ export function WhenPanel({
 
   return (
     <div className="space-y-3">
-      {/* Quick Date Buttons */}
-      <div className="flex flex-wrap gap-1 h-6">
-        {quickDates.map(({ label, days }) => {
-          const active = dueDate && (() => {
-            const t = new Date(); t.setDate(t.getDate() + days);
-            return dueDate.split("T")[0] === t.toISOString().split("T")[0];
-          })();
-          return (
-            <button
-              key={label}
-              type="button"
-              onClick={() => setQuickDate(days)}
-              className={cn(
-                "px-1.5 py-0.5 rounded-[4px] font-mono text-[9px] uppercase tracking-wide transition-all select-none cursor-pointer",
-                active
-                  ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                  : "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Quick Date Buttons (inline, no wrap) */}
+      {showQuickDates && (
+        <div className="flex flex-nowrap gap-1 h-6 overflow-x-auto min-w-0 no-scrollbar">
+          {quickDates.map(({ label, days }) => {
+            const active = dueDate && (() => {
+              const t = new Date(); t.setDate(t.getDate() + days);
+              return dueDate.split("T")[0] === t.toISOString().split("T")[0];
+            })();
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setQuickDate(days)}
+                className={cn(
+                  "px-1.5 py-0.5 rounded-[4px] font-mono text-[9px] uppercase tracking-wide transition-all select-none cursor-pointer",
+                  active
+                    ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    : "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Two-column: Calendar (110px) + Time */}
       <div className="flex gap-3 items-start">
@@ -453,26 +444,6 @@ export function WhenPanel({
         </div>
       </div>
 
-      {/* Repeat */}
-      <div className="flex items-center gap-2 !mt-0">
-        <span className="text-[10px] text-muted-foreground">Repeat</span>
-        <Switch checked={enableRepeat} onCheckedChange={handleRepeatToggle} className="scale-75 origin-left" />
-        {enableRepeat && (
-          <Select
-            value={repeatRule?.type || "weekly"}
-            onValueChange={(v) => handleRepeatTypeChange(v as "daily" | "weekly" | "monthly")}
-          >
-            <SelectTrigger className="h-6 w-auto min-w-[60px] text-[9px] font-mono px-1.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
-      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@
  * Rules: fact+entry invalid, compact+entry invalid.
  */
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,6 +32,8 @@ export interface SemanticChipProps {
   dropdownContent?: React.ReactNode;
   onDropdownOpenChange?: (open: boolean) => void;
   onPress?: () => void;
+  /** When true, trigger onPress on pointer-down (prevents scroll-cancelled clicks in overflow-x rows). */
+  pressOnPointerDown?: boolean;
   onRemove?: () => void;
   onCommit?: (value: string) => void;
   onCancel?: () => void;
@@ -54,6 +56,7 @@ export function SemanticChip({
   dropdownContent,
   onDropdownOpenChange,
   onPress,
+  pressOnPointerDown = false,
   onRemove,
   onCommit,
   onCancel,
@@ -64,6 +67,7 @@ export function SemanticChip({
   className,
 }: SemanticChipProps) {
   const [isPressed, setIsPressed] = useState(false);
+  const firedOnPointerDown = useRef(false);
 
   if (epistemic === "fact" && interaction === "entry") {
     if (process.env.NODE_ENV === "development") {
@@ -76,9 +80,20 @@ export function SemanticChip({
     }
   }
 
-  const handlePointerDown = () => setIsPressed(true);
+  const handlePointerDown = (e?: React.PointerEvent) => {
+    setIsPressed(true);
+    if (pressOnPointerDown && onPress) {
+      firedOnPointerDown.current = true;
+      e?.stopPropagation();
+      onPress();
+    }
+  };
   const handlePointerUp = () => setTimeout(() => setIsPressed(false), 90);
   const handleClick = (e: React.MouseEvent) => {
+    if (firedOnPointerDown.current) {
+      firedOnPointerDown.current = false;
+      return;
+    }
     if (onPress) {
       e.stopPropagation();
       onPress();
@@ -112,10 +127,10 @@ export function SemanticChip({
     textClass,
     epistemicStyles,
     interactionStyles,
-    epistemic === "fact" && "px-[10px] min-w-[40px] max-w-[160px]",
-    epistemic === "proposal" && "px-2 py-1 max-w-[180px]",
+    epistemic === "fact" && "px-[10px] min-w-[40px] max-w-[120px]",
+    epistemic === "proposal" && "px-2 py-1 max-w-[160px]",
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
-    epistemic === "fact" && removable && !dropdown && "overflow-visible pr-[10px] hover:pr-[35px]",
+    epistemic === "fact" && removable && "overflow-visible pr-[10px] hover:pr-[35px]",
     (onPress || dropdown) && "cursor-pointer select-none",
     onPress && !isPressed && "hover:opacity-90",
     pending && "opacity-75 text-muted-foreground",

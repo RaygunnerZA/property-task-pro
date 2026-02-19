@@ -29,12 +29,8 @@ import { WhereTab } from "./create/tabs/WhereTab";
 import { PriorityTab } from "./create/tabs/PriorityTab";
 
 // New Panel Components
-import { WherePanel } from "./create/panels/WherePanel";
-import { AssetPanel } from "./create/panels/AssetPanel";
 import { WhoPanel } from "./create/panels/WhoPanel";
 import { WhenPanel } from "./create/panels/WhenPanel";
-import { PriorityPanel } from "./create/panels/PriorityPanel";
-import { CategoryPanel } from "./create/panels/CategoryPanel";
 import { ClarityState, ClaritySeverity } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
@@ -49,6 +45,10 @@ import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import { WhoSection } from "./create/WhoSection";
+import { WhenSection } from "./create/WhenSection";
+import { WhereSection } from "./create/WhereSection";
+import { AssetSection } from "./create/AssetSection";
+import { CategorySection } from "./create/CategorySection";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
@@ -67,6 +67,8 @@ interface CreateTaskModalProps {
   onOpenChange: (open: boolean) => void;
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
+  /** If true, auto-select the last used property when no default/prefill is provided. */
+  prefillFromLastUsedProperty?: boolean;
   defaultDueDate?: string;
   defaultSpaceIds?: string[];
   defaultAssetIds?: string[];
@@ -79,6 +81,7 @@ export function CreateTaskModal({
   onOpenChange,
   onTaskCreated,
   defaultPropertyId,
+  prefillFromLastUsedProperty = true,
   defaultDueDate,
   defaultSpaceIds,
   defaultAssetIds,
@@ -115,11 +118,11 @@ export function CreateTaskModal({
 
   // Initialize propertyId from last used when modal opens
   useEffect(() => {
-    if (open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
+    if (prefillFromLastUsedProperty && open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
       setPropertyId(lastUsedPropertyId);
       setSelectedPropertyIds([lastUsedPropertyId]);
     }
-  }, [open, defaultPropertyId, lastUsedPropertyId]);
+  }, [prefillFromLastUsedProperty, open, defaultPropertyId, lastUsedPropertyId]);
 
   // Preseed space and asset when opening from "Create Task for Asset"
   useEffect(() => {
@@ -159,6 +162,7 @@ export function CreateTaskModal({
     }
   };
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [priorityTouched, setPriorityTouched] = useState(false);
   const [dueDate, setDueDate] = useState(defaultDueDate || "");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
@@ -336,7 +340,7 @@ export function CreateTaskModal({
     asset: 'what', priority: 'priority', category: 'category', theme: 'category', compliance: 'compliance',
   };
 
-  // Filter fact chips by section
+  // Filter fact chips by section; merge form's priority into priority section
   const factChipsBySection = useMemo(() => {
     const bySection: Record<string, SuggestedChip[]> = {};
     CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
@@ -344,8 +348,17 @@ export function CreateTaskModal({
       const section = chipTypeToSection[chip.type];
       if (section && bySection[section]) bySection[section].push(chip);
     });
+    // Priority section: hide default NORMAL until explicitly chosen
+    if (priorityTouched) {
+      const priorityLabel = { low: "LOW", medium: "NORMAL", high: "HIGH", urgent: "URGENT" }[priority];
+      bySection["priority"] = [
+        { id: `priority-${priority}`, type: "priority", value: priority, label: priorityLabel, score: 1, source: "rule", resolvedEntityId: priority },
+      ];
+    } else {
+      bySection["priority"] = [];
+    }
     return bySection;
-  }, [factChips, CREATE_TASK_SECTIONS]);
+  }, [factChips, CREATE_TASK_SECTIONS, priority, priorityTouched]);
 
   // Suggested (AI) chips by section — only chips not already in fact chips for that section
   // Excludes verb chips (blockingRequired && !resolvedEntityId) since those are handled separately
@@ -423,6 +436,11 @@ export function CreateTaskModal({
   
   // Handle chip removal (for fact chips in context row)
   const handleChipRemove = useCallback((chip: SuggestedChip) => {
+    if (chip.type === "priority") {
+      setPriority("medium");
+      setPriorityTouched(false);
+      return;
+    }
     const updated = new Map(appliedChips);
     updated.delete(chip.id);
     setAppliedChips(updated);
@@ -633,15 +651,19 @@ export function CreateTaskModal({
   useEffect(() => {
     if (!aiResult) return;
     
-    // Auto-set priority from AI
+    // Auto-set priority from AI (default NORMAL stays hidden unless explicitly chosen)
     if (aiResult.priority === "HIGH" || aiResult.priority === "high") {
       setPriority("high");
+      setPriorityTouched(true);
     } else if (aiResult.priority === "URGENT" || aiResult.priority === "urgent") {
       setPriority("urgent");
+      setPriorityTouched(true);
     } else if (aiResult.priority === "MEDIUM" || aiResult.priority === "medium") {
       setPriority("medium");
+      setPriorityTouched(false);
     } else if (aiResult.priority === "LOW" || aiResult.priority === "low") {
       setPriority("low");
+      setPriorityTouched(true);
     }
     
     // Auto-set date suggestions including weekdays
@@ -702,6 +724,7 @@ export function CreateTaskModal({
     setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
     setSelectedSpaceIds(defaultSpaceIds ?? []);
     setPriority("medium");
+    setPriorityTouched(false);
     setDueDate(defaultDueDate || "");
     setRepeatRule(undefined);
     setAssignedUserId(undefined);
@@ -1411,6 +1434,56 @@ export function CreateTaskModal({
                   />
                 )}
               </WhoSection>
+            ) : id === "where" ? (
+              <WhereSection
+                key={id}
+                propertyId={propertyId}
+                selectedPropertyIds={selectedPropertyIds}
+                selectedSpaceIds={selectedSpaceIds}
+                onPropertyChange={handlePropertyChange}
+                onSpacesChange={setSelectedSpaceIds}
+                showFactsByDefault={!!defaultPropertyId || !!prefill?.propertyId}
+              />
+            ) : id === "when" ? (
+              <WhenSection
+                key={id}
+                isActive={activeSection === id}
+                onActivate={() => setActiveSection(id)}
+                dueDate={dueDate}
+                repeatRule={repeatRule}
+                onDueDateChange={setDueDate}
+                onRepeatRuleChange={setRepeatRule}
+                hasUnresolved={unresolvedSections.includes(id)}
+              >
+                {activeSection === id && (
+                  <WhenPanel
+                    dueDate={dueDate}
+                    repeatRule={repeatRule}
+                    onDueDateChange={setDueDate}
+                    onRepeatRuleChange={setRepeatRule}
+                    showQuickDates={false}
+                  />
+                )}
+              </WhenSection>
+            ) : id === "what" ? (
+              <AssetSection
+                key={id}
+                isActive={activeSection === id}
+                onActivate={() => setActiveSection(id)}
+                propertyId={propertyId || undefined}
+                spaceId={selectedSpaceIds[0]}
+                selectedAssetIds={selectedAssetIds}
+                onAssetsChange={setSelectedAssetIds}
+              />
+            ) : id === "category" ? (
+              <CategorySection
+                key={id}
+                isActive={activeSection === id}
+                onActivate={() => setActiveSection(id)}
+                selectedThemeIds={selectedThemeIds}
+                onThemesChange={setSelectedThemeIds}
+                hasUnresolved={unresolvedSections.includes(id)}
+              />
             ) : (
             <CreateTaskRow
               key={id}
@@ -1427,56 +1500,19 @@ export function CreateTaskModal({
               onSuggestionClick={handleChipSelect}
               onVerbChipClick={handleChipSelect}
               hasUnresolved={unresolvedSections.includes(id)}
+              hoverChips={
+                id === "priority"
+                  ? [
+                      { id: "low", label: "LOW", onPress: () => { setPriorityTouched(true); setPriority("low"); } },
+                      { id: "medium", label: "NORMAL", onPress: () => { setPriorityTouched(true); setPriority("medium"); } },
+                      { id: "high", label: "HIGH", onPress: () => { setPriorityTouched(true); setPriority("high"); } },
+                      { id: "urgent", label: "URGENT", onPress: () => { setPriorityTouched(true); setPriority("urgent"); } },
+                    ]
+                  : undefined
+              }
             >
-              {activeSection === id && id === "where" && (
-                <WherePanel
-                  propertyId={propertyId}
-                  spaceIds={selectedSpaceIds}
-                  onPropertyChange={handlePropertyChange}
-                  onSpacesChange={setSelectedSpaceIds}
-                  suggestedSpaces={aiResult?.spaces?.map(s => s.name) || []}
-                  defaultPropertyId={defaultPropertyId}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              )}
-              {activeSection === id && id === "when" && (
-                <WhenPanel
-                  dueDate={dueDate}
-                  repeatRule={repeatRule}
-                  onDueDateChange={setDueDate}
-                  onRepeatRuleChange={setRepeatRule}
-                />
-              )}
-              {activeSection === id && id === "priority" && (
-                <PriorityPanel priority={priority} onPriorityChange={setPriority} />
-              )}
-              {activeSection === id && id === "category" && (
-                <CategoryPanel
-                  selectedThemeIds={selectedThemeIds}
-                  onThemesChange={setSelectedThemeIds}
-                  suggestedThemes={aiResult?.themes?.map(t => ({ name: t.name, type: t.type })) || []}
-                  instructionBlock={instructionBlock}
-                  onInstructionDismiss={() => setInstructionBlock(null)}
-                />
-              )}
-              {activeSection === id && id === "what" && (
-                propertyId ? (
-                  <AssetPanel
-                    propertyId={propertyId}
-                    spaceId={selectedSpaceIds[0]}
-                    selectedAssetIds={selectedAssetIds}
-                    onAssetsChange={setSelectedAssetIds}
-                    suggestedAssets={aiResult?.assets || []}
-                    instructionBlock={instructionBlock}
-                    onInstructionDismiss={() => setInstructionBlock(null)}
-                  />
-                ) : (
-                  <span className="text-[11px] font-mono uppercase text-muted-foreground">Select a property first</span>
-                )
-              )}
               {activeSection === id && id === "compliance" && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
                   <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
                   <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
                   {isCompliance && (

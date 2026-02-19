@@ -26,9 +26,16 @@ import { Upload, X } from "lucide-react";
 interface AddPropertyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (property: {
+    id: string;
+    address: string;
+    nickname: string | null;
+    icon_name: string;
+    icon_color_hex: string;
+  }) => void;
 }
 
-export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps) {
+export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddPropertyDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +118,13 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
       }
 
       const propertyId = (newProperty as any).id;
+      const created = {
+        id: propertyId,
+        address: finalAddress,
+        nickname: nickname.trim() || null,
+        icon_name: iconName || "building",
+        icon_color_hex: iconColor,
+      };
 
       // Upload image with automatic thumbnail generation if provided
       if (propertyImage && propertyId) {
@@ -153,6 +167,7 @@ export function AddPropertyDialog({ open, onOpenChange }: AddPropertyDialogProps
       }
 
       toast.success("Property created!");
+      onCreated?.(created);
       // Reset form
       setAddress("");
       setNickname("");

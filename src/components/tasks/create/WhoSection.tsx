@@ -34,7 +34,8 @@ interface WhoSectionProps {
   children?: React.ReactNode;
 }
 
-const INSTRUCTION_LABEL = "+Person";
+const PERSON_LABEL = "+ Person";
+const TEAM_LABEL = "+ Team";
 const ADD_PERSON_LABEL = "Add person";
 const INPUT_MIN_WIDTH = 100;
 const INPUT_MAX_WIDTH = 240;
@@ -61,6 +62,7 @@ export function WhoSection({
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [entryMode, setEntryMode] = useState<"person" | "team">("person");
   const inputRef = useRef<HTMLInputElement>(null);
 
   /** Pending team: user clicked CREATE but hasn't added members yet. Not in DB. */
@@ -79,6 +81,13 @@ export function WhoSection({
   const [teamMembersMap, setTeamMembersMap] = useState<Record<string, string[]>>({});
 
   const proposals = useWhoSuggestions(inputValue, isEditing);
+  const visibleProposals = useMemo(() => {
+    if (!isEditing) return [];
+    if (entryMode === "person") {
+      return proposals.filter((p) => p.type === "person" || p.type === "invite");
+    }
+    return proposals.filter((p) => p.type === "team" || p.type === "create_team");
+  }, [proposals, isEditing, entryMode]);
 
   /** Filter members by search for add-members input (person-only) */
   const memberProposals = useMemo(() => {
@@ -145,8 +154,16 @@ export function WhoSection({
     })),
   ];
 
-  const handleInstructionClick = () => {
+  const handleAddPersonClick = () => {
     if (!isActive) onActivate();
+    setEntryMode("person");
+    setIsEditing(true);
+    setInputValue("");
+  };
+
+  const handleAddTeamClick = () => {
+    if (!isActive) onActivate();
+    setEntryMode("team");
     setIsEditing(true);
     setInputValue("");
   };
@@ -247,7 +264,7 @@ export function WhoSection({
   };
 
   const handleInputBlur = () => {
-    if (proposals.length === 0 && !pendingTeam) {
+    if (visibleProposals.length === 0 && !pendingTeam) {
       setTimeout(() => {
         setIsEditing(false);
         setInputValue("");
@@ -335,8 +352,11 @@ export function WhoSection({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Main row: [ICON] Fact Chips | +Value | Suggestion Chips — gap 8px, h 32px, flex-nowrap */}
-      <div className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar min-w-0">
+      {/* Main row: [ICON] Fact Chips | +Value | Suggestion Chips — strict single-line */}
+      <div
+        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         <div
           className={cn(
             "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background",
@@ -346,7 +366,10 @@ export function WhoSection({
           <User className="h-4 w-4 text-muted-foreground" />
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 overflow-x-auto overflow-y-hidden flex-nowrap whitespace-nowrap no-scrollbar min-w-0">
+        <div
+          className="flex shrink-0 items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           {factChips.map((chip) => {
             const isTeamChip = chip.id.startsWith("team-");
             const teamId = isTeamChip ? chip.id.replace("team-", "") : null;
@@ -402,12 +425,12 @@ export function WhoSection({
                   setIsEditing(false);
                   setInputValue("");
                 }
-                if (e.key === "Enter" && proposals.length > 0) {
+                if (e.key === "Enter" && visibleProposals.length > 0) {
                   e.preventDefault();
-                  handleProposalClick(proposals[0]);
+                  handleProposalClick(visibleProposals[0]);
                 }
               }}
-              placeholder={INSTRUCTION_LABEL}
+              placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
               className={cn(
                 "h-[28px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
                 "font-mono text-[11px] uppercase tracking-wide",
@@ -418,16 +441,25 @@ export function WhoSection({
               style={{ width: inputWidth, minWidth: INPUT_MIN_WIDTH }}
             />
           ) : isHovered && !pendingTeam ? (
-            <SemanticChip
-              epistemic="proposal"
-              label={INSTRUCTION_LABEL}
-              truncate={false}
-              onPress={handleInstructionClick}
-              className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
-            />
+            <>
+              <SemanticChip
+                epistemic="proposal"
+                label={PERSON_LABEL}
+                truncate={false}
+                onPress={handleAddPersonClick}
+                className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+              />
+              <SemanticChip
+                epistemic="proposal"
+                label={TEAM_LABEL}
+                truncate={false}
+                onPress={handleAddTeamClick}
+                className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+              />
+            </>
           ) : null}
 
-          {proposals.map((proposal) => (
+          {visibleProposals.map((proposal) => (
             <SemanticChip
               key={proposal.id}
               epistemic="proposal"
@@ -453,7 +485,7 @@ export function WhoSection({
             "transition-all duration-150 ease-out"
           )}
         >
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar">
             {isAddingMembers ? (
               <input
                 ref={addMembersInputRef}

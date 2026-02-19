@@ -44,9 +44,10 @@ export function SemanticChipStrip({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar min-w-0",
+        "flex items-center gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar",
         className
       )}
+      style={{ WebkitOverflowScrolling: "touch" }}
     >
       {sorted.map((chip) => {
         const isValueChip = "kind" in chip && chip.kind === "instruction";

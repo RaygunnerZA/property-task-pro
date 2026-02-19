@@ -40,6 +40,8 @@ export interface CreateTaskRowProps {
   hasUnresolved?: boolean;
   /** Callback when the user types into the inline instruction input */
   onInlineSearch?: (query: string) => void;
+  /** When provided, show these chips on hover instead of single instruction chip (e.g. PRIORITY: LOW/NORMAL/HIGH/URGENT) */
+  hoverChips?: Array<{ id: string; label: string; onPress: () => void }>;
 }
 
 export function CreateTaskRow({
@@ -59,6 +61,7 @@ export function CreateTaskRow({
   onVerbChipClick,
   hasUnresolved = false,
   onInlineSearch,
+  hoverChips,
 }: CreateTaskRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
@@ -93,7 +96,7 @@ export function CreateTaskRow({
   }, [isActive, isInlineEditing]);
 
   // Convert to ChipData and merge for ChipStrip (contract: fact, interactive only)
-  // Instruction chip appears only on hover, to the right of any tags
+  // Instruction/hover chips appear only on hover
   const chipData = useMemo((): ChipData[] => {
     const facts: ChipData[] = factChips.map((c) =>
       suggestedChipToChipData(c)
@@ -104,21 +107,38 @@ export function CreateTaskRow({
     const suggested: ChipData[] = suggestedChips.map((c) =>
       suggestedChipToChipData(c)
     );
+    if (!isHovered) return [...facts, ...verbs, ...suggested];
+    // Hover: show hoverChips (e.g. PRIORITY) or single instruction chip
+    if (hoverChips && hoverChips.length > 0) {
+      const hoverAsChips: ChipData[] = hoverChips.map((h) => ({
+        id: h.id,
+        label: h.label,
+        variant: "interactive" as const,
+        kind: "instruction" as const,
+      }));
+      return [...facts, ...verbs, ...suggested, ...hoverAsChips];
+    }
     const instructionChip: ChipData = {
       id: `instruction-${sectionId}`,
       label: (valueLabel ?? instruction).toUpperCase(),
       variant: "interactive",
       kind: "instruction",
     };
-    return isHovered
-      ? [...facts, ...verbs, ...suggested, instructionChip]
-      : [...facts, ...verbs, ...suggested];
-  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered]);
+    return [...facts, ...verbs, ...suggested, instructionChip];
+  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered, hoverChips, valueLabel]);
 
   const handleChipPress = (chip: ChipData) => {
     if (chip.variant === "fact") {
       onActivate();
       return;
+    }
+    // Hover chip (e.g. PRIORITY LOW/NORMAL/HIGH/URGENT): call its onPress
+    if (hoverChips) {
+      const hoverChip = hoverChips.find((h) => h.id === chip.id);
+      if (hoverChip) {
+        hoverChip.onPress();
+        return;
+      }
     }
     // Instruction chip: enter inline editing (click → becomes text field)
     if (chip.variant === "interactive" && chip.kind === "instruction") {
@@ -151,8 +171,11 @@ export function CreateTaskRow({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      {/* Primary row: [ICON] Fact Chips | +Value | Suggestion Chips — gap 8px, h 32px, flex-nowrap, overflow-x auto */}
-      <div className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar min-w-0">
+      {/* Primary row: [ICON] Fact Chips | +Value | Suggestion Chips — strict single-line, horizontal scroll */}
+      <div
+        className="flex items-center gap-2 h-8 min-h-[32px] flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-w-0 no-scrollbar"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         {/* Icon: fixed 24px */}
         <div
           className={cn(
@@ -203,7 +226,10 @@ export function CreateTaskRow({
             />
           </div>
         ) : (
-          <div className="flex shrink-0 items-center min-w-0 overflow-x-auto overflow-y-hidden flex-nowrap">
+          <div
+            className="flex shrink-0 items-center min-w-0 gap-2 flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap no-scrollbar"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             <SemanticChipStrip
               chips={chipData}
               onChipPress={handleChipPress}
