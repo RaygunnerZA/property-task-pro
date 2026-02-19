@@ -18,6 +18,7 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
 import type { PendingInvitation } from "./tabs/WhoTab";
+import type { SuggestedChip } from "@/types/chip-suggestions";
 
 interface WhoSectionProps {
   isActive: boolean;
@@ -32,6 +33,10 @@ interface WhoSectionProps {
   onAddAsContractor?: () => void;
   hasUnresolved?: boolean;
   children?: React.ReactNode;
+  /** AI-suggested chips from useChipSuggestions (person / team types) */
+  suggestedChips?: SuggestedChip[];
+  /** Called when user taps an AI suggestion chip */
+  onSuggestionClick?: (chip: SuggestedChip) => void;
 }
 
 const PERSON_LABEL = "+ Person";
@@ -54,6 +59,8 @@ export function WhoSection({
   onAddAsContractor,
   hasUnresolved = false,
   children,
+  suggestedChips = [],
+  onSuggestionClick,
 }: WhoSectionProps) {
   const { members } = useOrgMembers();
   const { teams, refresh: refreshTeams } = useTeams();
@@ -404,6 +411,20 @@ export function WhoSection({
               className="shrink-0"
             />
           )}
+
+          {/* AI-suggested chips — shown when no person/team is assigned yet */}
+          {!assignedUserId && assignedTeamIds.length === 0 && !isEditing &&
+            suggestedChips.map((chip) => (
+              <SemanticChip
+                key={chip.id}
+                epistemic="proposal"
+                label={chip.label.toUpperCase()}
+                truncate={false}
+                onPress={() => onSuggestionClick?.(chip)}
+                className="shrink-0"
+              />
+            ))
+          }
 
           {isEditing ? (
             <input

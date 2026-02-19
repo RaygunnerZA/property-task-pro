@@ -46,6 +46,10 @@ interface WhenSectionProps {
   /** When provided, milestone state is owned by the parent (lifted state). */
   milestones?: MilestoneItem[];
   onMilestonesChange?: (milestones: MilestoneItem[]) => void;
+  /** AI-suggested date label (e.g. "MON 23 FEB") shown as a tappable chip when no date is set yet */
+  suggestedDateLabel?: string;
+  /** Called when the user taps the suggested date chip */
+  onSuggestedDateAccept?: () => void;
 }
 
 export function WhenSection({
@@ -59,6 +63,8 @@ export function WhenSection({
   hasUnresolved = false,
   milestones: externalMilestones,
   onMilestonesChange,
+  suggestedDateLabel,
+  onSuggestedDateAccept,
 }: WhenSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showRepeatOptions, setShowRepeatOptions] = useState(false);
@@ -250,6 +256,19 @@ export function WhenSection({
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
+          {/* AI-suggested date — shown as a proposal chip when no date has been set yet */}
+          {!dueDate && suggestedDateLabel && (
+            <span data-when-action="true" className="shrink-0">
+              <SemanticChip
+                epistemic="proposal"
+                label={suggestedDateLabel}
+                truncate={false}
+                onPress={onSuggestedDateAccept}
+                className="shrink-0"
+              />
+            </span>
+          )}
+
           {/* Fact chips: date, recurrence */}
           {dateFactLabel && (
             <span data-when-action="true" className="shrink-0">

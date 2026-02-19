@@ -1413,6 +1413,8 @@ export function CreateTaskModal({
                 onInviteToOrg={() => setInviteModalOpen(true)}
                 onAddAsContractor={() => { setInviteModalOpen(true); }}
                 hasUnresolved={unresolvedSections.includes(id)}
+                suggestedChips={suggestedChipsBySection["who"] ?? []}
+                onSuggestionClick={handleChipSelect}
               >
                 {activeSection === id && (
                   <WhoPanel
@@ -1453,6 +1455,13 @@ export function CreateTaskModal({
                 milestones={milestones}
                 onMilestonesChange={setMilestones}
                 hasUnresolved={unresolvedSections.includes(id)}
+                suggestedDateLabel={
+                  (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date")?.label?.toUpperCase()
+                }
+                onSuggestedDateAccept={() => {
+                  const dateChip = (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date");
+                  if (dateChip) handleChipSelect(dateChip);
+                }}
               />
             ) : id === "what" ? (
               <AssetSection
