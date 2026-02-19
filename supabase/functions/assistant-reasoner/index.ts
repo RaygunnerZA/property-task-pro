@@ -2,6 +2,12 @@
  * assistant-reasoner — Phase 14 FILLA Assistant Mode
  * Handles intent classification + reasoning in one function.
  * Accepts { query, context?, org_id }; computes intent internally.
+ *
+ * Resilience contract:
+ * - Individual data-source failures are caught and skipped; they never kill the response.
+ * - The function ALWAYS returns HTTP 200. Errors are surfaced as { ok: false, error }.
+ *   Returning 5xx causes supabase.functions.invoke() to throw "non-2xx" which is
+ *   meaningless to the user. Returning 200 lets useAssistant display the actual message.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -59,7 +65,6 @@ interface ReasonerInput {
   query: string;
   context?: { type: string | null; id: string | null } | null;
   org_id: string;
-  /** Legacy: if provided, use instead of classifying from query */
   intent?: string;
   target?: { type: string; id: string } | null;
   filters?: Record<string, unknown>;
@@ -72,25 +77,32 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
+/** Call a sibling edge function. Returns null (and logs) on failure instead of throwing. */
 async function invokeFunction(
   baseUrl: string,
   serviceKey: string,
   name: string,
   body: unknown
-): Promise<unknown> {
-  const res = await fetch(`${baseUrl}/functions/v1/${name}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${serviceKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${name}: ${text}`);
+): Promise<unknown | null> {
+  try {
+    const res = await fetch(`${baseUrl}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[assistant-reasoner] ${name} returned ${res.status}: ${text}`);
+      return null;
+    }
+    return res.json();
+  } catch (err) {
+    console.error(`[assistant-reasoner] ${name} threw:`, err);
+    return null;
   }
-  return res.json();
 }
 
 Deno.serve(async (req) => {
@@ -104,66 +116,76 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
   }
 
-  const { query, context, org_id: orgId, intent: intentOverride, target: targetOverride, filters: filtersOverride } = body;
+  const { query, context, org_id: orgId, intent: intentOverride, target: targetOverride } = body;
   if (!orgId || typeof query !== "string") {
     return jsonResponse({ ok: false, error: "org_id and query required" }, 400);
   }
 
   const intent = (intentOverride as Intent) ?? classifyIntent(query);
   const target = targetOverride ?? (context?.type && context?.id ? { type: context.type, id: context.id } : null);
-  const filters = filtersOverride ?? {};
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  if (!supabaseUrl || !serviceKey) {
+    return jsonResponse({ ok: false, error: "Server configuration error" });
+  }
+
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  try {
-    const start = target || (context?.type && context?.id ? { type: context.type, id: context.id } : null);
-    const calls = intentToCalls[intent] ?? intentToCalls.unknown;
+  // ── Immediate returns for action intents ──────────────────────────────────
 
-    let answer = "";
-    const sources: string[] = [];
-
-    if (intent === "create_task") {
-      const propId = context?.type === "property" ? context.id : null;
-      return jsonResponse({
-        ok: true,
-        answer: "I can create a task for you. Please confirm to proceed.",
-        sources: [],
-        proposed_action: {
-          type: "task",
-          payload: {
-            title: query.trim() || "New task",
-            property_id: propId,
-            space_ids: [],
-            priority: "medium",
-            description: null,
-          },
+  if (intent === "create_task") {
+    const propId = context?.type === "property" ? context.id : null;
+    return jsonResponse({
+      ok: true,
+      answer: "I can create a task for you. Please confirm to proceed.",
+      sources: [],
+      proposed_action: {
+        type: "task",
+        payload: {
+          title: query.trim() || "New task",
+          property_id: propId,
+          space_ids: [],
+          priority: "medium",
+          description: null,
         },
-      });
-    }
+      },
+    });
+  }
 
-    if (intent === "link") {
-      const attachmentId = context?.type === "document" ? context.id : null;
-      return jsonResponse({
-        ok: true,
-        answer: "I can link this document to a compliance item. Please select the compliance document and confirm.",
-        sources: [],
-        proposed_action: attachmentId
-          ? { type: "link", payload: { attachment_id: attachmentId, compliance_document_id: null } }
-          : null,
-      });
-    }
+  if (intent === "link") {
+    const attachmentId = context?.type === "document" ? context.id : null;
+    return jsonResponse({
+      ok: true,
+      answer: "I can link this document to a compliance item. Please select the compliance document and confirm.",
+      sources: [],
+      proposed_action: attachmentId
+        ? { type: "link", payload: { attachment_id: attachmentId, compliance_document_id: null } }
+        : null,
+    });
+  }
 
-    if (intent === "predictive") {
+  // ── Gather data from sources ──────────────────────────────────────────────
+
+  let answer = "";
+  const sources: string[] = [];
+  const calls = intentToCalls[intent] ?? intentToCalls.unknown;
+
+  // Predictive gate: check org settings
+  if (intent === "predictive") {
+    try {
       const { data: settings } = await supabase
         .from("org_settings")
         .select("automated_intelligence, data_sharing_level")
         .eq("org_id", orgId)
         .maybeSingle();
-      if (settings?.automated_intelligence === "off" || settings?.data_sharing_level === "minimal") {
+      if (
+        settings?.automated_intelligence === "off" ||
+        settings?.data_sharing_level === "minimal"
+      ) {
         return jsonResponse({
           ok: true,
           answer: "Predictive insights are disabled for this organisation.",
@@ -171,42 +193,49 @@ Deno.serve(async (req) => {
           proposed_action: null,
         });
       }
+    } catch (err) {
+      console.error("[assistant-reasoner] org_settings query failed:", err);
     }
+  }
 
-    if (calls.includes("graph") && start) {
-      const data = await invokeFunction(supabaseUrl, serviceKey, "graph-query", {
-        org_id: orgId,
-        start,
-        depth: intent === "graph" ? 2 : 3,
-      }) as { ok?: boolean; nodes?: Array<{ type: string; name?: string }>; edges?: unknown[] };
-      if (data?.ok && data.nodes) {
-        sources.push("graph-query");
-        const nodeSummary = data.nodes
-          .filter((n) => n.type !== start.type)
-          .slice(0, 10)
-          .map((n) => `${n.type}: ${n.name || n.type}`)
-          .join(", ");
-        answer += `Connected entities: ${nodeSummary || "none"}.\n`;
+  // Graph query (only when we have a starting entity)
+  if (calls.includes("graph") && target) {
+    const data = await invokeFunction(supabaseUrl, serviceKey, "graph-query", {
+      org_id: orgId,
+      start: target,
+      depth: intent === "graph" ? 2 : 3,
+    }) as { ok?: boolean; nodes?: Array<{ type: string; name?: string }> } | null;
+    if (data?.ok && data.nodes) {
+      sources.push("graph-query");
+      const nodeSummary = data.nodes
+        .filter((n) => n.type !== target.type)
+        .slice(0, 10)
+        .map((n) => `${n.type}: ${n.name || n.type}`)
+        .join(", ");
+      answer += `Connected entities: ${nodeSummary || "none"}.\n`;
+    }
+  }
+
+  // Graph insight (only when we have a starting entity)
+  if (calls.includes("graph-insight") && target) {
+    const data = await invokeFunction(supabaseUrl, serviceKey, "graph-insight", {
+      org_id: orgId,
+      start: target,
+      depth: 2,
+    }) as { ok?: boolean; hazardExposure?: number; complianceInfluence?: number; riskPaths?: string[][] } | null;
+    if (data?.ok) {
+      sources.push("graph-insight");
+      answer += `Hazard exposure: ${data.hazardExposure ?? 0}. Compliance influence: ${data.complianceInfluence ?? 0}.`;
+      if (data.riskPaths?.length) {
+        answer += ` ${data.riskPaths.length} risk path(s) identified.`;
       }
+      answer += "\n";
     }
+  }
 
-    if (calls.includes("graph-insight") && start) {
-      const data = await invokeFunction(supabaseUrl, serviceKey, "graph-insight", {
-        org_id: orgId,
-        start,
-        depth: 2,
-      }) as { ok?: boolean; hazardExposure?: number; complianceInfluence?: number; riskPaths?: string[][] };
-      if (data?.ok) {
-        sources.push("graph-insight");
-        answer += `Hazard exposure: ${data.hazardExposure ?? 0}. Compliance influence: ${data.complianceInfluence ?? 0}.`;
-        if (data.riskPaths?.length) {
-          answer += ` ${data.riskPaths.length} risk path(s) identified.`;
-        }
-        answer += "\n";
-      }
-    }
-
-    if (calls.includes("compliance")) {
+  // Compliance portfolio view
+  if (calls.includes("compliance")) {
+    try {
       const { data: compliance } = await supabase
         .from("compliance_portfolio_view")
         .select("id, title, expiry_state, document_type")
@@ -214,13 +243,18 @@ Deno.serve(async (req) => {
         .limit(20);
       if (compliance?.length) {
         sources.push("compliance_portfolio_view");
-        const expired = compliance.filter((c: { expiry_state?: string }) => c.expiry_state === "expired");
-        const expiring = compliance.filter((c: { expiry_state?: string }) => c.expiry_state === "expiring");
+        const expired = compliance.filter((c) => c.expiry_state === "expired");
+        const expiring = compliance.filter((c) => c.expiry_state === "expiring");
         answer += `Compliance: ${compliance.length} items. ${expired.length} expired, ${expiring.length} expiring soon.\n`;
       }
+    } catch (err) {
+      console.error("[assistant-reasoner] compliance_portfolio_view query failed:", err);
     }
+  }
 
-    if (calls.includes("assets")) {
+  // Assets view
+  if (calls.includes("assets")) {
+    try {
       const { data: assets } = await supabase
         .from("assets_view")
         .select("id, name, asset_type")
@@ -230,9 +264,14 @@ Deno.serve(async (req) => {
         sources.push("assets_view");
         answer += `Assets: ${assets.length} in scope.\n`;
       }
+    } catch (err) {
+      console.error("[assistant-reasoner] assets_view query failed:", err);
     }
+  }
 
-    if (calls.includes("filla-brain-infer")) {
+  // Filla Brain predictive inference
+  if (calls.includes("filla-brain-infer")) {
+    try {
       const { data: compliance } = await supabase
         .from("compliance_portfolio_view")
         .select("document_type")
@@ -243,10 +282,10 @@ Deno.serve(async (req) => {
         .select("asset_type, condition_score, install_date")
         .eq("org_id", orgId)
         .limit(5);
-      const compVecs = (compliance ?? []).map((c: { document_type?: string }) => ({
+      const compVecs = (compliance ?? []).map((c) => ({
         document_type: (c.document_type || "").toLowerCase().replace(/\s+/g, "_"),
-      })).filter((v: { document_type: string }) => v.document_type);
-      const assetVecs = (assets ?? []).map((a: { asset_type?: string; condition_score?: number; install_date?: string }) => ({
+      })).filter((v) => v.document_type);
+      const assetVecs = (assets ?? []).map((a) => ({
         asset_type: a.asset_type,
         condition_score: a.condition_score,
         install_date: a.install_date,
@@ -254,36 +293,40 @@ Deno.serve(async (req) => {
       const data = await invokeFunction(supabaseUrl, serviceKey, "filla-brain-infer", {
         assets: assetVecs,
         compliance_documents: compVecs,
-      }) as { ok?: boolean; predictions?: { assets: unknown[]; compliance: unknown[] } };
+      }) as { ok?: boolean; predictions?: { assets: Array<{ risk_score?: number }> } } | null;
       if (data?.ok && data.predictions) {
         sources.push("filla-brain-infer");
-        const preds = data.predictions;
-        const assetRisks = (preds.assets ?? []).slice(0, 3);
+        const assetRisks = (data.predictions.assets ?? []).slice(0, 3);
         answer += "Predictive insights: ";
-        if (assetRisks.length) {
-          answer += assetRisks.map((a: { risk_score?: number }) => `risk ${a.risk_score ?? 0}%`).join(", ");
-        } else {
-          answer += "no high-risk assets in sample.";
-        }
+        answer += assetRisks.length
+          ? assetRisks.map((a) => `risk ${a.risk_score ?? 0}%`).join(", ")
+          : "no high-risk assets in sample.";
         answer += "\n";
       }
+    } catch (err) {
+      console.error("[assistant-reasoner] filla-brain-infer block failed:", err);
     }
-
-    if (!answer.trim()) {
-      answer = "No data available for this query.";
-    }
-
-    return jsonResponse({
-      ok: true,
-      answer: answer.trim(),
-      sources,
-      proposed_action: null,
-    });
-  } catch (err: unknown) {
-    console.error("assistant-reasoner error:", err);
-    return jsonResponse(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
-      500
-    );
   }
+
+  // ── Fallback answer ───────────────────────────────────────────────────────
+
+  if (!answer.trim()) {
+    // Provide a helpful fallback rather than a dead-end message
+    const helpLines: string[] = [
+      "I'm here to help with your property portfolio.",
+      "Try asking me to:",
+      "• Summarise compliance status",
+      "• Show risk exposure for a property",
+      "• Create a task",
+      "• Give asset insights",
+    ];
+    answer = helpLines.join("\n");
+  }
+
+  return jsonResponse({
+    ok: true,
+    answer: answer.trim(),
+    sources,
+    proposed_action: null,
+  });
 });
