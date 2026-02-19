@@ -61,7 +61,7 @@ export default function AuthCallback() {
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            return "/work/tasks";
+            return "/dashboard";
           }
 
           // Owner/manager - check if they have properties
@@ -79,7 +79,7 @@ export default function AuthCallback() {
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            return "/work/tasks";
+            return "/dashboard";
           }
           return "/onboarding/add-property";
         }

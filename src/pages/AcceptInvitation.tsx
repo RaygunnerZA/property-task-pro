@@ -322,7 +322,7 @@ export default function AcceptInvitation() {
 
         {status === "error" && (
           <div className="space-y-3">
-            <NeomorphicButton variant="primary" onClick={() => navigate("/work/tasks")}>
+            <NeomorphicButton variant="primary" onClick={() => navigate("/dashboard")}>
               Go to Dashboard
             </NeomorphicButton>
             <NeomorphicButton variant="ghost" onClick={() => navigate("/login")}>
