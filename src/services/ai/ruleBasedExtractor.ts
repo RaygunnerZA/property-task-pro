@@ -551,14 +551,17 @@ function detectDate(text: string): SuggestedChip | null {
   const { datePatterns } = extractionPatterns;
   const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   
-  // Check for "next [weekday]" pattern first
-  const nextWeekdayMatch = text.match(/\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-  if (nextWeekdayMatch) {
-    const weekday = nextWeekdayMatch[1].toLowerCase();
-    const targetDate = getNextWeekday(weekday, true); // Skip to next week's occurrence
+  const WEEKDAY_PATTERN = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday)';
+
+  // "next week friday" / "next week on monday" — weekday in the upcoming week
+  const nextWeekWeekdayMatch = text.match(
+    new RegExp(`\\bnext\\s+week(?:\\s+on)?\\s+${WEEKDAY_PATTERN}\\b`, 'i')
+  );
+  if (nextWeekWeekdayMatch) {
+    const weekday = nextWeekWeekdayMatch[1].toLowerCase();
+    const targetDate = getNextWeekday(weekday, true);
     const label = formatDateLabel(targetDate);
     const dateValue = targetDate.toISOString().split('T')[0];
-    
     return {
       id: `date-${Date.now()}`,
       type: 'date',
@@ -566,12 +569,53 @@ function detectDate(text: string): SuggestedChip | null {
       label,
       score: 0.85,
       source: 'rule',
-      resolvedEntityId: dateValue, // Store the actual date
+      resolvedEntityId: dateValue,
       blockingRequired: false,
-      metadata: { 
-        originalText: nextWeekdayMatch[0],
-        calculatedDate: dateValue
-      }
+      metadata: { originalText: nextWeekWeekdayMatch[0], calculatedDate: dateValue }
+    };
+  }
+
+  // "next [weekday]" — always skip to the NEXT occurrence (not this week)
+  const nextWeekdayMatch = text.match(
+    new RegExp(`\\bnext\\s+${WEEKDAY_PATTERN}\\b`, 'i')
+  );
+  if (nextWeekdayMatch) {
+    const weekday = nextWeekdayMatch[1].toLowerCase();
+    const targetDate = getNextWeekday(weekday, true);
+    const label = formatDateLabel(targetDate);
+    const dateValue = targetDate.toISOString().split('T')[0];
+    return {
+      id: `date-${Date.now()}`,
+      type: 'date',
+      value: dateValue,
+      label,
+      score: 0.85,
+      source: 'rule',
+      resolvedEntityId: dateValue,
+      blockingRequired: false,
+      metadata: { originalText: nextWeekdayMatch[0], calculatedDate: dateValue }
+    };
+  }
+
+  // "before [weekday]" / "by [weekday]" — treat the named day as the deadline
+  const beforeWeekdayMatch = text.match(
+    new RegExp(`\\b(?:before|by)\\s+${WEEKDAY_PATTERN}\\b`, 'i')
+  );
+  if (beforeWeekdayMatch) {
+    const weekday = beforeWeekdayMatch[1].toLowerCase();
+    const targetDate = getNextWeekday(weekday, false);
+    const label = formatDateLabel(targetDate);
+    const dateValue = targetDate.toISOString().split('T')[0];
+    return {
+      id: `date-${Date.now()}`,
+      type: 'date',
+      value: dateValue,
+      label,
+      score: 0.8,
+      source: 'rule',
+      resolvedEntityId: dateValue,
+      blockingRequired: false,
+      metadata: { originalText: beforeWeekdayMatch[0], calculatedDate: dateValue }
     };
   }
   

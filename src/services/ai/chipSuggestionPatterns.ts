@@ -62,6 +62,8 @@ export const extractionPatterns: ExtractionPatterns = {
   datePatterns: [
     /\b(today)\b/i,
     /\b(tomorrow)\b/i,
+    /\bnext\s+week\s+(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+    /\b(?:before|by)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
     /\b(next week)\b/i,
     /\b(this week)\b/i,
     /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
