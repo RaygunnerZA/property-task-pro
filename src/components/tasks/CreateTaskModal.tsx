@@ -243,7 +243,6 @@ export function CreateTaskModal({
     detectedLabels,
     detectedObjects,
   });
-  
   // Track applied chips and their resolution state
   const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
   const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
@@ -258,12 +257,14 @@ export function CreateTaskModal({
   const factChips = useMemo(() => {
     const chipMap = new Map<string, SuggestedChip>();
     
-    // Add suggestions first
+    // Passive AI suggestions: exclude date chips — they are proposals until the user
+    // explicitly taps them. Absorbing them here would remove them from suggestedChipsBySection
+    // and prevent the proposal chip from ever rendering in WhenSection.
     chipSuggestions
-      .filter(chip => factChipTypes.includes(chip.type))
+      .filter(chip => factChipTypes.includes(chip.type) && chip.type !== 'date')
       .forEach(chip => chipMap.set(chip.id, chip));
     
-    // Override with applied chips (more current state)
+    // Override with applied chips (more current state) — applied date chips ARE facts
     Array.from(appliedChips.values())
       .filter(chip => factChipTypes.includes(chip.type))
       .forEach(chip => chipMap.set(chip.id, chip));
@@ -562,6 +563,11 @@ export function CreateTaskModal({
         }
       }
       
+      // For date chips: apply the resolved date directly to form state
+      if (chip.type === 'date' && chip.resolvedEntityId) {
+        setDueDate(chip.resolvedEntityId);
+      }
+
       // ADD RESOLUTION RULE: Auto-open panels for "Add" chips when prerequisites are missing
       // This ensures "Add" actions trigger the relevant flow
       if (chip.type === 'asset' && !propertyId) {

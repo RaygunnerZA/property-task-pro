@@ -61,10 +61,10 @@ export function useChipSuggestions(
 
   // Stable entity objects to avoid spurious useMemo re-runs
   const entities = useMemo(() => ({
-    spaces: spaces.map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
-    members: members.map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
-    teams: teams.map(t => ({ id: t.id, name: t.name ?? '' })),
-    categories: categories.map(c => ({ id: c.id, name: c.name })),
+    spaces: (spaces ?? []).map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
+    members: (members ?? []).map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
+    teams: (teams ?? []).map(t => ({ id: t.id, name: t.name ?? '' })),
+    categories: (categories ?? []).map(c => ({ id: c.id, name: c.name })),
   }), [spaces, members, teams, categories]);
 
   // ── Phase 1: synchronous chip extraction (instant, no debounce) ──────────
@@ -73,20 +73,24 @@ export function useChipSuggestions(
     if (desc.length < minDescriptionLength) {
       return { chips: [] as SuggestedChip[], ghostCategories: [] as GhostCategory[], complianceMode: false, suggestedTitle: undefined as string | undefined };
     }
-    return extractChipsSync(
-      {
-        description: desc,
-        propertyId: context.propertyId,
-        selectedSpaceIds: context.selectedSpaceIds,
-        selectedPersonId: context.selectedPersonId,
-        selectedTeamIds: context.selectedTeamIds,
-        imageOcrText: context.imageOcrText,
-        detectedLabels: context.detectedLabels,
-        detectedObjects: context.detectedObjects,
-        propertyProfile: context.propertyProfile,
-      },
-      entities
-    );
+    try {
+      return extractChipsSync(
+        {
+          description: desc,
+          propertyId: context.propertyId,
+          selectedSpaceIds: context.selectedSpaceIds,
+          selectedPersonId: context.selectedPersonId,
+          selectedTeamIds: context.selectedTeamIds,
+          imageOcrText: context.imageOcrText,
+          detectedLabels: context.detectedLabels,
+          detectedObjects: context.detectedObjects,
+          propertyProfile: context.propertyProfile,
+        },
+        entities
+      );
+    } catch {
+      return { chips: [] as SuggestedChip[], ghostCategories: [] as GhostCategory[], complianceMode: false, suggestedTitle: undefined as string | undefined };
+    }
   }, [
     context.description,
     context.propertyId,
