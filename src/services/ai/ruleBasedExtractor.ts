@@ -203,15 +203,28 @@ function detectComplianceMode(text: string): boolean {
 }
 
 /**
- * Common space/location keywords that indicate a space name
+ * Common space/location keywords that indicate a space name.
+ * Includes both residential and commercial venue terms.
  */
 const spaceKeywords = [
+  // Residential
   'room', 'kitchen', 'bathroom', 'bedroom', 'living', 'garden', 'garage', 'office',
   'hall', 'hallway', 'entrance', 'cottage', 'house', 'flat', 'apartment', 'unit',
   'basement', 'attic', 'loft', 'cellar', 'shed', 'outbuilding', 'annex', 'studio',
   'ensuite', 'utility', 'pantry', 'laundry', 'conservatory', 'patio', 'deck',
-  'balcony', 'terrace', 'yard', 'driveway', 'parking', 'lobby', 'foyer', 'landing'
+  'balcony', 'terrace', 'yard', 'driveway', 'parking', 'lobby', 'foyer', 'landing',
+  // Commercial / venue
+  'alley', 'bar', 'cafe', 'restaurant', 'shop', 'store', 'warehouse', 'depot',
+  'gym', 'pool', 'court', 'pitch', 'arena', 'stadium', 'club', 'centre', 'center',
+  'reception', 'showroom', 'workshop', 'factory', 'plant', 'site', 'yard',
+  'hotel', 'pub', 'lounge', 'suite', 'floor', 'wing', 'block', 'building',
 ];
+
+/**
+ * Patterns that indicate a multi-word location phrase:
+ * "at the bowling alley", "in the main office", "at the car park" etc.
+ */
+const AT_LOCATION_PATTERN = /\b(?:at|in|from)\s+the\s+([a-z][a-z\s]{2,30}?)(?:\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|last|by|before|on|at\b)|[,.!?]|$)/gi;
 
 /**
  * Detect spaces from text using fuzzy matching
@@ -276,47 +289,64 @@ function detectSpaces(
     }
   }
   
-  // Look for potential space names that didn't match existing spaces
-  // Pattern: Words that match space keywords or capitalized location-like names
-  const originalText = text;
-  
-  // Check for space keywords in text
+  // ── "at the [phrase]" / "in the [phrase]" multi-word location capture ─────
+  // Catches things like "at the bowling alley", "in the main office"
+  const atLocationRe = new RegExp(AT_LOCATION_PATTERN.source, 'gi');
+  let atMatch: RegExpExecArray | null;
+  while ((atMatch = atLocationRe.exec(text)) !== null) {
+    const phrase = atMatch[1].trim();
+    const phraseLower = phrase.toLowerCase();
+    if (phrase.length < 3 || matchedSpaces.has(phraseLower)) continue;
+    // Skip if it matches a date word
+    if (/^(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|last|week)/.test(phraseLower)) continue;
+    const formattedName = phrase.split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+    chips.push({
+      id: `space-ghost-phrase-${phraseLower.replace(/\s+/g, '-')}`,
+      type: 'space',
+      value: formattedName,
+      label: formattedName,
+      score: 0.65,
+      source: 'rule',
+      blockingRequired: true,
+      metadata: { detectedAs: 'at_location_phrase' }
+    });
+    matchedSpaces.add(phraseLower);
+  }
+
+  // ── Individual space keywords in text ────────────────────────────────────
   for (const keyword of spaceKeywords) {
     const keywordLower = keyword.toLowerCase();
     if (text.includes(keywordLower) && !matchedSpaces.has(keywordLower)) {
-      // Found a space keyword not matched to existing spaces
-      // Look for the full phrase (e.g., "the cottage", "main kitchen")
+      // Look for the full phrase (e.g., "the cottage", "bowling alley", "main kitchen")
       const patterns = [
-        new RegExp(`\\b(the\\s+)?${keywordLower}\\b`, 'i'),
-        new RegExp(`\\b\\w+\\s+${keywordLower}\\b`, 'i'),
-        new RegExp(`\\b${keywordLower}\\s+\\w+\\b`, 'i')
+        new RegExp(`\\b\\w+\\s+${keywordLower}\\b`, 'i'),  // "bowling alley", "main kitchen"
+        new RegExp(`\\b(the\\s+)?${keywordLower}\\b`, 'i'), // "the kitchen", "kitchen"
+        new RegExp(`\\b${keywordLower}\\s+\\w+\\b`, 'i'),   // "kitchen island"
       ];
       
       for (const pattern of patterns) {
-        const match = originalText.match(pattern);
+        const match = text.match(pattern);
         if (match) {
           const spaceName = match[0].replace(/^the\s+/i, '').trim();
           const spaceNameLower = spaceName.toLowerCase();
-          
-          if (!matchedSpaces.has(spaceNameLower)) {
-            // Capitalize properly
-            const formattedName = spaceName.split(' ')
-              .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-              .join(' ');
-            
-            chips.push({
-              id: `space-ghost-${spaceNameLower.replace(/\s+/g, '-')}-${Date.now()}`,
-              type: 'space',
-              value: formattedName,
-              label: formattedName,
-              score: 0.55,
-              source: 'rule',
-              blockingRequired: true, // Requires resolution (add to spaces)
-              metadata: { detectedAs: 'potential_space' }
-            });
-            matchedSpaces.add(spaceNameLower);
-            break;
-          }
+          if (matchedSpaces.has(spaceNameLower)) break;
+          const formattedName = spaceName.split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(' ');
+          chips.push({
+            id: `space-ghost-${spaceNameLower.replace(/\s+/g, '-')}`,
+            type: 'space',
+            value: formattedName,
+            label: formattedName,
+            score: 0.55,
+            source: 'rule',
+            blockingRequired: true,
+            metadata: { detectedAs: 'space_keyword' }
+          });
+          matchedSpaces.add(spaceNameLower);
+          break;
         }
       }
     }

@@ -246,6 +246,18 @@ export function CreateTaskModal({
   // Track applied chips and their resolution state
   const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
   const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
+
+  // Auto-apply date chips from the rule-based extractor immediately (no user tap required).
+  // This mirrors useAIExtract's behaviour but fires synchronously with no network delay.
+  // Only applied when dueDate is currently empty so we never stomp a user-set date.
+  useEffect(() => {
+    if (dueDate) return;
+    const dateChip = chipSuggestions.find(c => c.type === 'date' && c.resolvedEntityId);
+    if (dateChip?.resolvedEntityId) {
+      setDueDate(dateChip.resolvedEntityId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipSuggestions]);
   
   // Fact chips include: person, team, space, asset, category, date, recurrence
   // Recurrence never blocks entity resolution - only space, asset, person do
@@ -1447,6 +1459,7 @@ export function CreateTaskModal({
                 onPropertyChange={handlePropertyChange}
                 onSpacesChange={setSelectedSpaceIds}
                 showFactsByDefault={!!defaultPropertyId || !!prefill?.propertyId}
+                suggestedChips={suggestedChipsBySection["where"] ?? []}
               />
             ) : id === "when" ? (
               <WhenSection
@@ -1478,6 +1491,7 @@ export function CreateTaskModal({
                 spaceId={selectedSpaceIds[0]}
                 selectedAssetIds={selectedAssetIds}
                 onAssetsChange={setSelectedAssetIds}
+                suggestedChips={suggestedChipsBySection["what"] ?? []}
               />
             ) : id === "category" ? (
               <CategorySection

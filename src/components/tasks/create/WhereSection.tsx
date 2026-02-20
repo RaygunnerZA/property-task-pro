@@ -25,6 +25,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+interface SpaceSuggestion {
+  id: string;
+  label: string;
+  blockingRequired?: boolean;
+  resolvedEntityId?: string;
+}
+
 interface WhereSectionProps {
   propertyId: string;
   selectedPropertyIds: string[];
@@ -33,6 +40,8 @@ interface WhereSectionProps {
   onSpacesChange: (spaceIds: string[]) => void;
   /** When true, show selected property/space facts even when not hovered (e.g. modal opened from a specific property context). */
   showFactsByDefault?: boolean;
+  /** AI-detected space chips (from rule-based extractor) */
+  suggestedChips?: SpaceSuggestion[];
 }
 
 export function WhereSection({
@@ -42,6 +51,7 @@ export function WhereSection({
   onPropertyChange,
   onSpacesChange,
   showFactsByDefault = false,
+  suggestedChips = [],
 }: WhereSectionProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -218,6 +228,25 @@ export function WhereSection({
                 className="shrink-0"
               />
             ))}
+
+          {/* AI-suggested space chips — shown when not editing and no spaces selected */}
+          {!isSpaceEditing && selectedSpaceIds.length === 0 &&
+            suggestedChips
+              .filter(chip => chip.blockingRequired && !chip.resolvedEntityId)
+              .map((chip) => (
+                <SemanticChip
+                  key={chip.id}
+                  epistemic="proposal"
+                  label={`ADD ${chip.label.toUpperCase()}`}
+                  truncate={false}
+                  onPress={() => {
+                    setNewSpaceName(chip.label);
+                    setShowCreateSpace(true);
+                  }}
+                  className="shrink-0"
+                />
+              ))
+          }
 
           {/* +Space → input */} 
           {isSpaceEditing ? (

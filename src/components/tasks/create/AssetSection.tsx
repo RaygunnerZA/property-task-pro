@@ -22,6 +22,13 @@ const INPUT_MIN_WIDTH = 100;
 const INPUT_MAX_WIDTH = 240;
 const INPUT_CH_WIDTH = 8;
 
+interface AssetSuggestion {
+  id: string;
+  label: string;
+  blockingRequired?: boolean;
+  resolvedEntityId?: string;
+}
+
 interface AssetSectionProps {
   isActive: boolean;
   onActivate: () => void;
@@ -29,6 +36,8 @@ interface AssetSectionProps {
   spaceId?: string;
   selectedAssetIds: string[];
   onAssetsChange: (assetIds: string[]) => void;
+  /** AI-detected asset chips (from rule-based extractor) */
+  suggestedChips?: AssetSuggestion[];
 }
 
 export function AssetSection({
@@ -38,6 +47,7 @@ export function AssetSection({
   spaceId,
   selectedAssetIds,
   onAssetsChange,
+  suggestedChips = [],
 }: AssetSectionProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -187,6 +197,23 @@ export function AssetSection({
               className="shrink-0"
             />
           ))}
+
+          {/* AI-suggested asset chips — shown when no assets selected and not editing */}
+          {!isEditing && selectedAssetIds.length === 0 &&
+            suggestedChips.map((chip) => (
+              <SemanticChip
+                key={chip.id}
+                epistemic="proposal"
+                label={`ADD ${chip.label.toUpperCase()}`}
+                truncate={false}
+                onPress={() => {
+                  setCreateAssetDefaultName(chip.label);
+                  setShowCreateAsset(true);
+                }}
+                className="shrink-0"
+              />
+            ))
+          }
 
           {/* +Asset → input */}
           {isEditing ? (

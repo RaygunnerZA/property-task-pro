@@ -414,16 +414,23 @@ export function WhoSection({
 
           {/* AI-suggested chips — shown when no person/team is assigned yet */}
           {!assignedUserId && assignedTeamIds.length === 0 && !isEditing &&
-            suggestedChips.map((chip) => (
-              <SemanticChip
-                key={chip.id}
-                epistemic="proposal"
-                label={chip.label.toUpperCase()}
-                truncate={false}
-                onPress={() => onSuggestionClick?.(chip)}
-                className="shrink-0"
-              />
-            ))
+            suggestedChips.map((chip) => {
+              // Unknown person (not in org): show INVITE prefix to signal the action required
+              const isUnknownPerson = chip.type === 'person' && chip.blockingRequired && !chip.resolvedEntityId;
+              const chipLabel = isUnknownPerson
+                ? `INVITE ${chip.label.toUpperCase()}`
+                : chip.label.toUpperCase();
+              return (
+                <SemanticChip
+                  key={chip.id}
+                  epistemic="proposal"
+                  label={chipLabel}
+                  truncate={false}
+                  onPress={() => onSuggestionClick?.(chip)}
+                  className="shrink-0"
+                />
+              );
+            })
           }
 
           {isEditing ? (
