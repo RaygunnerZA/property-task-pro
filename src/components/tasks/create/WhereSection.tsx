@@ -21,7 +21,7 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -383,6 +383,7 @@ export function WhereSection({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Create Space</DialogTitle>
+            <DialogDescription>Add a new space to this property.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input
