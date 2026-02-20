@@ -59,13 +59,23 @@ export function useChipSuggestions(
   const [suggestedIconAlternatives, setSuggestedIconAlternatives] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Stable entity objects to avoid spurious useMemo re-runs
-  const entities = useMemo(() => ({
-    spaces: (spaces ?? []).map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
-    members: (members ?? []).map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
-    teams: (teams ?? []).map(t => ({ id: t.id, name: t.name ?? '' })),
-    categories: (categories ?? []).map(c => ({ id: c.id, name: c.name })),
-  }), [spaces, members, teams, categories]);
+  // Serialize entity content to primitive strings so the useMemo only recomputes when
+  // entity IDs or names actually change — not when React Query returns a new array
+  // reference for the same data (which happens on every background refetch).
+  const spacesSerial  = spaces?.map(s => `${s.id}|${s.name}`).join(',') ?? '';
+  const membersSerial = members?.map(m => `${m.id}|${m.display_name}`).join(',') ?? '';
+  const teamsSerial   = teams?.map(t => `${t.id}|${t.name ?? ''}`).join(',') ?? '';
+  const catSerial     = categories?.map(c => `${c.id}|${c.name}`).join(',') ?? '';
+
+  const entities = useMemo(() => {
+    return {
+      spaces: (spaces ?? []).map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
+      members: (members ?? []).map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
+      teams: (teams ?? []).map(t => ({ id: t.id, name: t.name ?? '' })),
+      categories: (categories ?? []).map(c => ({ id: c.id, name: c.name })),
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spacesSerial, membersSerial, teamsSerial, catSerial]);
 
   // ── Phase 1: synchronous chip extraction (instant, no debounce) ──────────
   const syncResult = useMemo(() => {

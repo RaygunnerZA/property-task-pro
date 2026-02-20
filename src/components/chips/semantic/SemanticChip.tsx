@@ -147,13 +147,15 @@ export function SemanticChip({
       )}
       <span className={cn(truncate && "min-w-0 truncate flex-1", !truncate && "flex-1")}>{label}</span>
       {removable && onRemove && epistemic === "fact" && (
-        <button
-          type="button"
+        <span
+          role="button"
+          tabIndex={0}
           onClick={handleRemove}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRemove(e as unknown as React.MouseEvent); } }}
           className="absolute right-[15px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-[120ms] flex-shrink-0 w-3 inline-flex items-center justify-center"
         >
           <X className="h-3 w-3" />
-        </button>
+        </span>
       )}
       {dropdown && (
         <span
