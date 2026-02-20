@@ -34,8 +34,8 @@ export async function getResolutionMemory(
     .single();
 
   if (error) {
-    // PGRST116 = no rows; 42P01 = table doesn't exist yet (migration pending)
-    if (error.code === 'PGRST116' || error.code === '42P01') {
+    // PGRST116 = no rows; 42P01/PGRST205 = table doesn't exist in schema cache
+    if (error.code === 'PGRST116' || error.code === '42P01' || error.code === 'PGRST205') {
       return null;
     }
     console.error('Error fetching resolution memory:', error);
@@ -69,7 +69,7 @@ export async function storeResolutionMemory(
     });
 
   if (error) {
-    if (error.code === '42P01') return; // table not yet migrated — skip silently
+    if (error.code === '42P01' || error.code === 'PGRST205') return; // table not yet in schema cache
     console.error('Error storing resolution memory:', error);
     throw error;
   }
