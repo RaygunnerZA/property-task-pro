@@ -154,6 +154,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
       setSelectedUserId(userId);
       await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast({
         title: "Assignee updated",
         description: userId ? "Task assigned to user" : "Assignee removed",
@@ -215,6 +216,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
       setSelectedTeamIds(teamIds);
       await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast({
         title: "Teams updated",
         description: `Task assigned to ${teamIds.length} team${teamIds.length !== 1 ? 's' : ''}`,
@@ -244,15 +246,40 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         milestones: milestones.length > 0 ? milestones : [],
       };
 
-      const { error: updateError } = await supabase
+      // #region agent log
+      const taskOrgId = (task as any)?.org_id as string | undefined;
+      // Test 1: Can we SELECT from tasks table directly?
+      const { data: taskSelectDirect, error: taskSelectError } = await supabase.from("tasks").select("id, org_id, assigned_user_id").eq("id", taskId).maybeSingle();
+      // Test 2: UPDATE with org_id in WHERE clause
+      const { data: updateWithOrgData, error: updateWithOrgError } = await supabase.from("tasks").update(updates).eq("id", taskId).eq("org_id", taskOrgId ?? "").select("id");
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-D: direct diagnostics',data:{taskId,taskOrgId,selectFromTableDirect:taskSelectDirect,selectError:taskSelectError?.message,updateWithOrgRowsAffected:(updateWithOrgData as any)?.length??0,updateWithOrgError:updateWithOrgError?.message},timestamp:Date.now(),hypothesisId:'H-D'})}).catch(()=>{});
+      // #endregion
+
+      const { error: updateError, data: updateData } = await supabase
         .from("tasks")
         .update(updates)
-        .eq("id", taskId);
+        .eq("id", taskId)
+        .select("id");
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-D: original update result',data:{updateError:updateError?.message,rowsAffected:(updateData as any)?.length??0},timestamp:Date.now(),hypothesisId:'H-D'})}).catch(()=>{});
+      // #endregion
 
       if (updateError) throw updateError;
 
       await refreshTask();
+
+      // #region agent log
+      const allQueryKeys = queryClient.getQueryCache().getAll().map(q=>q.queryKey);
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-A/H-B: queryCache keys before invalidate',data:{allQueryKeys},timestamp:Date.now(),hypothesisId:'H-A_H-B'})}).catch(()=>{});
+      // #endregion
+
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
+      // #region agent log
+      const tasksQueries = queryClient.getQueryCache().getAll().filter(q=>q.queryKey[0]==='tasks').map(q=>({key:q.queryKey,state:q.state.status,isStale:q.isStale()}));
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-A/H-B: tasks queries after invalidate',data:{tasksQueries},timestamp:Date.now(),hypothesisId:'H-A_H-B'})}).catch(()=>{});
+      // #endregion
       
       toast({
         title: "Task updated",
@@ -282,6 +309,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       await supabase.from("task_spaces").delete().eq("task_id", taskId);
       await supabase.from("task_assets").delete().eq("task_id", taskId);
       queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
     } catch (err: any) {
       toast({ title: "Couldn't update property", description: err.message, variant: "destructive" });
@@ -295,6 +323,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       if (spaceIds.length > 0) {
         await supabase.from("task_spaces").insert(spaceIds.map(id => ({ task_id: taskId, space_id: id })));
       }
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
     } catch (err: any) {
       toast({ title: "Couldn't update spaces", description: err.message, variant: "destructive" });
@@ -329,6 +358,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         await supabase.from("task_themes").insert(realIds.map(id => ({ task_id: taskId, theme_id: id })));
       }
       queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
     } catch (err: any) {
       toast({ title: "Couldn't update tags", description: err.message, variant: "destructive" });

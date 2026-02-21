@@ -342,7 +342,7 @@ function TaskCardComponent({
               <div 
                 className="absolute inset-0 pointer-events-none"
                 style={{
-                  boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
+                  boxShadow: 'inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)'
                 }}
               />
             </>
@@ -461,34 +461,37 @@ function TaskCardComponent({
         </div>
 
         {/* Property Icon + Space + Date/Time + Teams + Avatars */}
-        <div className="mt-[12px] flex gap-2 flex-wrap items-center">
-          {property && (
-            <PropertyIconChips properties={[property]} />
-          )}
-          {spaces.length > 0 && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
-              {spaces[0].name}
-            </Badge>
-          )}
-          {t.due_at && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
-              <Clock className="h-3 w-3" />
-              {formatTaskDate(t.due_at)}
-            </Badge>
-          )}
-          {teams.length > 0 && teams.map((team: any) => (
-            <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
-              {team.name}
-            </Badge>
-          ))}
-          {assignedUsers.length > 0 && (
-            <OverlappingAvatars 
-              users={assignedUsers}
-              size={24}
-              overlap={20}
-              className="ml-auto"
-            />
-          )}
+        <div className="mt-[12px] relative">
+          <div className="flex gap-2 items-center flex-nowrap overflow-x-auto no-scrollbar">
+            {property && (
+              <PropertyIconChips properties={[property]} />
+            )}
+            {spaces.length > 0 && (
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
+                {spaces[0].name}
+              </Badge>
+            )}
+            {t.due_at && (
+              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px] flex-shrink-0">
+                <Clock className="h-3 w-3" />
+                {formatTaskDate(t.due_at)}
+              </Badge>
+            )}
+            {teams.length > 0 && teams.map((team: any) => (
+              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
+                {team.name}
+              </Badge>
+            ))}
+            {assignedUsers.length > 0 && (
+              <OverlappingAvatars 
+                users={assignedUsers}
+                size={24}
+                overlap={20}
+                className="ml-auto flex-shrink-0"
+              />
+            )}
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-[5px] pointer-events-none bg-gradient-to-l from-card to-transparent" />
         </div>
       </div>
     </div>
@@ -517,12 +520,21 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
   const prevTask = prevProps.task;
   const nextTask = nextProps.task;
   
-  if (
-    prevTask?.status !== nextTask?.status ||
+  const fieldsChanged = prevTask?.status !== nextTask?.status ||
     prevTask?.title !== nextTask?.title ||
     prevTask?.due_date !== nextTask?.due_date ||
-    prevTask?.priority !== nextTask?.priority
-  ) {
+    prevTask?.priority !== nextTask?.priority ||
+    prevTask?.assigned_user_id !== nextTask?.assigned_user_id ||
+    JSON.stringify(prevTask?.teams) !== JSON.stringify(nextTask?.teams) ||
+    JSON.stringify(prevTask?.themes) !== JSON.stringify(nextTask?.themes);
+
+  // #region agent log
+  if (prevTask?.id && (prevTask?.status !== nextTask?.status || prevTask?.title !== nextTask?.title || prevTask?.due_date !== nextTask?.due_date || prevTask?.priority !== nextTask?.priority)) {
+    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskCard.tsx:memo',message:'H-C: memo comparator ran for task',data:{taskId:prevTask?.id,fieldsChanged,prev:{status:prevTask?.status,title:prevTask?.title,priority:prevTask?.priority,due_date:prevTask?.due_date},next:{status:nextTask?.status,title:nextTask?.title,priority:nextTask?.priority,due_date:nextTask?.due_date}},timestamp:Date.now(),hypothesisId:'H-C'})}).catch(()=>{});
+  }
+  // #endregion
+
+  if (fieldsChanged) {
     return false; // Task fields changed, re-render
   }
   

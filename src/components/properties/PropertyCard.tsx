@@ -59,7 +59,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
   return (
     <div
       className={cn(
-        "bg-card rounded-[12px] overflow-hidden shadow-e1",
+        "bg-card/70 rounded-[12px] overflow-hidden shadow-e1",
         "transition-all duration-200",
         className
       )}
@@ -107,7 +107,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
-            boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
+            boxShadow: 'inset 2px 2px 2px 0px rgba(255, 255, 255, 0.4), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)'
           }}
         />
       </div>
@@ -128,7 +128,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
 
         {/* Neumorphic Perforation Line - Row of cut circles */}
         <div 
-          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1"
+          className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1 mb-[11px]"
           style={{
             height: '1px',
             backgroundImage: 'repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)',
@@ -141,7 +141,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
         {/* Meta Zone - Clickable for filtering */}
         <div 
           onClick={handleMetaZoneClick}
-          className="cursor-pointer active:scale-[0.99] !mt-0"
+          className="cursor-pointer active:scale-[0.99] !mt-0 pt-[7px]"
         >
           {/* Task Counts Row */}
           <div className="flex items-center gap-2 flex-wrap !mt-[4px]">

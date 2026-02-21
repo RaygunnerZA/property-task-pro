@@ -102,7 +102,7 @@ export function TaskCardMinimized({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card shadow-e1 border border-border/50",
+        "rounded-[8px] bg-card/70 shadow-e1 border border-border/50",
         "cursor-pointer transition-all duration-300",
         "hover:shadow-md hover:-translate-y-[0.5px]",
         "active:scale-[0.99]"

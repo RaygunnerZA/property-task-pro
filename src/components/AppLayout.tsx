@@ -54,7 +54,7 @@ export function AppLayout({
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-h-screen min-w-0">
           {/* Mobile header with sidebar trigger + Assistant */}
-          <header className="h-12 border-b border-border/50 bg-background/80 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-40 md:hidden">
+          <header className="h-12 bg-background flex items-center justify-between px-4 sticky top-0 z-40 md:hidden">
             <SidebarTrigger className="mr-4">
               <Menu className="h-5 w-5 text-foreground" />
             </SidebarTrigger>

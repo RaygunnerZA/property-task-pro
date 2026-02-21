@@ -20,7 +20,7 @@ import {
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
-import fillaLogo from '@/assets/filla-logo-teal-2.svg';
+import fillaLogo from '@/assets/filla-logo.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -210,9 +210,9 @@ export function AppSidebar() {
     >
       <SidebarContent className="px-3 py-4 relative z-10 flex flex-col h-full">
         {/* Logo & Brand */}
-        <div className="pl-[16px] pr-2 pt-[15px] pb-0 mb-[15px]">
+        <div className="pl-[11px] pr-0 pt-[9px] pb-0 mb-[15px]">
           <div className="flex items-center gap-3 w-[121px]">
-            <img src={fillaLogo} alt="Filla" className="h-28 w-auto" />
+            <img src={fillaLogo} alt="Filla" className="w-full h-auto" />
           </div>
         </div>
 

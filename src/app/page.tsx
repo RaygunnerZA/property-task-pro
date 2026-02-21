@@ -142,10 +142,15 @@ export default function Dashboard() {
     }
   }, [assistantOpen, isLargeScreen]);
 
-  // Keep showCreateTask in sync when Create Task section is expanded
+  // Keep showCreateTask in sync when Create Task section is expanded (large screen concertina only)
   useEffect(() => {
-    if (expandedSection === 'create') setShowCreateTask(true);
-  }, [expandedSection]);
+    if (expandedSection === 'create' && isLargeScreen) setShowCreateTask(true);
+  }, [expandedSection, isLargeScreen]);
+
+  // When transitioning from large to small screen, close any auto-opened create modal
+  useEffect(() => {
+    if (!isLargeScreen) setShowCreateTask(false);
+  }, [isLargeScreen]);
 
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {

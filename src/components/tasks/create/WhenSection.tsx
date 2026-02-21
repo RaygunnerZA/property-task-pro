@@ -88,6 +88,8 @@ export function WhenSection({
 
   const [draftMilestone, setDraftMilestone] = useState<MilestoneItem | null>(null);
   const [editing, setEditing] = useState<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
+  // Captures editing state at close time so any in-flight 150ms scroll debounce can still commit
+  const editingAtCloseRef = useRef<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -134,6 +136,7 @@ export function WhenSection({
   };
 
   const closeEditor = () => {
+    editingAtCloseRef.current = editing; // preserve for any in-flight debounce
     maybeCommitDraft();
     setEditing(null);
     setShowRepeatOptions(false);
@@ -141,6 +144,7 @@ export function WhenSection({
   };
 
   const startEditDue = (forceTodayIfEmpty: boolean) => {
+    editingAtCloseRef.current = null;
     maybeCommitDraft();
     onActivate();
     if (forceTodayIfEmpty && !dueDate) {
@@ -155,6 +159,7 @@ export function WhenSection({
   };
 
   const startAddMilestone = () => {
+    editingAtCloseRef.current = null;
     maybeCommitDraft();
     onActivate();
     setShowRepeatOptions(false);
@@ -180,16 +185,19 @@ export function WhenSection({
   }, [editing, dueDate, draftMilestone, milestones]);
 
   const handlePanelDateChange = (next: string) => {
-    if (!editing) return;
-    if (editing.kind === "due") {
+    // Fall back to the state captured at close time to handle the 150ms scroll debounce
+    // firing after the panel has already been closed (e.g. user scrolls then quickly clicks Update).
+    const eff = editing ?? editingAtCloseRef.current;
+    if (!eff) return;
+    if (eff.kind === "due") {
       onDueDateChange(next);
       return;
     }
-    if (draftMilestone && draftMilestone.id === editing.id) {
+    if (draftMilestone && draftMilestone.id === eff.id) {
       setDraftMilestone({ ...draftMilestone, dateTime: next });
       return;
     }
-    setMilestones((prev) => prev.map((m) => (m.id === editing.id ? { ...m, dateTime: next } : m)));
+    setMilestones((prev) => prev.map((m) => (m.id === eff.id ? { ...m, dateTime: next } : m)));
   };
 
   const handleMilestoneLabelChange = (label: string) => {

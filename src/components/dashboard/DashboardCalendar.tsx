@@ -238,8 +238,7 @@ export function DashboardCalendar({
                 {date.getDate()}
                 {isTodayDate && (
                   <span 
-                    className="absolute top-0 right-0 w-2 h-2 rounded-full bg-primary"
-                    style={{ transform: 'translate(25%, -25%)' }}
+                    className="absolute w-8 h-8 rounded-full border-2 border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                   />
                 )}
               </button>

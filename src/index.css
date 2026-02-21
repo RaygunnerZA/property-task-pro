@@ -162,9 +162,8 @@
     background-size: 100% !important;
   }
   
-  /* Cards use pure white with reduced opacity paper texture overlay */
+  /* Cards use Tailwind bg-card color (supports opacity variants like bg-card/70) */
   div[class*="bg-card"] {
-    background-color: #ffffff !important;
     position: relative;
   }
   
@@ -218,7 +217,7 @@
   
   /* Flat Card - Default card style with texture */
   .shadow-e1 {
-    box-shadow: 1px 2px 2px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px 0px rgba(255, 255, 255, 0.5);
+    box-shadow: 1px 2px 2px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px 0px rgba(255, 255, 255, 0.9);
   }
   
   /* Flat Section - For section backgrounds */

@@ -121,7 +121,7 @@ export function useTaskDetails(taskId: string | undefined) {
       if (!taskId || !orgId) return [];
       const { data, error } = await supabase
         .from("attachments")
-        .select("id, file_url, thumbnail_url, optimized_url, file_name, file_type, created_at, parent_type, parent_id, org_id, ocr_text, document_type, expiry_date, status, metadata")
+        .select("id, file_url, thumbnail_url, file_name, file_type, created_at, parent_type, parent_id, org_id")
         .eq("parent_type", "task")
         .eq("parent_id", taskId)
         .eq("org_id", orgId)
@@ -135,15 +135,9 @@ export function useTaskDetails(taskId: string | undefined) {
         id: att.id,
         file_url: att.file_url,
         thumbnail_url: att.thumbnail_url,
-        optimized_url: att.optimized_url,
         file_name: att.file_name,
         file_type: att.file_type,
         created_at: att.created_at,
-        ocr_text: att.ocr_text,
-        document_type: att.document_type,
-        expiry_date: att.expiry_date,
-        status: att.status,
-        metadata: att.metadata,
       }));
     },
     enabled: !!taskId && !!orgId && isValidTaskId && !orgLoading,

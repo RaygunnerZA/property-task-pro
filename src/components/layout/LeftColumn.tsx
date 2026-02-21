@@ -245,11 +245,11 @@ export function LeftColumn({
         >
           <div className="px-2 pt-4 pb-4 w-full">
             {tasksLoading ? (
-              <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+              <div className="rounded-lg bg-card/70 p-3 shadow-e1 w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-card p-3 shadow-e1 w-full">
+              <div className="rounded-lg bg-card/70 p-3 shadow-e1 w-full">
                 <DashboardCalendar
                   tasks={tasks}
                   selectedDate={selectedDate}
