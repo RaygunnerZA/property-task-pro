@@ -31,11 +31,15 @@ interface AddSpaceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   properties?: any[];
-  propertyId?: string; // Optional: pre-select a property
+  propertyId?: string;
   /** "modal" = dialog overlay; "column" = inline in third column concertina */
   variant?: "modal" | "column";
   /** When true with variant="column", render only content (concertina provides header) */
   headless?: boolean;
+  /** Called after a space is successfully created, with the new space record */
+  onCreated?: (space: { id: string; name: string; icon_name: string }) => void;
+  /** Pre-fill the space name input */
+  initialName?: string;
 }
 
 export function AddSpaceDialog({ 
@@ -45,10 +49,12 @@ export function AddSpaceDialog({
   propertyId: initialPropertyId,
   variant = "modal",
   headless = false,
+  onCreated,
+  initialName = "",
 }: AddSpaceDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [propertyId, setPropertyId] = useState<string>(initialPropertyId || "");
   const [iconName, setIconName] = useState("");
   const [iconColor, setIconColor] = useState("#8EC9CE");
@@ -128,7 +134,7 @@ export function AddSpaceDialog({
       }
 
       toast.success("Space created!");
-      // Reset form (but keep propertyId if it was pre-selected)
+      onCreated?.({ id: newSpace.id, name: newSpace.name, icon_name: newSpace.icon_name });
       setName("");
       if (!initialPropertyId) {
         setPropertyId("");
@@ -157,12 +163,17 @@ export function AddSpaceDialog({
     }
   };
 
-  // Update propertyId when initialPropertyId changes
   useEffect(() => {
     if (initialPropertyId) {
       setPropertyId(initialPropertyId);
     }
   }, [initialPropertyId]);
+
+  useEffect(() => {
+    if (open && initialName) {
+      setName(initialName);
+    }
+  }, [open, initialName]);
 
   const IconComponent = getAssetIcon(iconName || "box");
 

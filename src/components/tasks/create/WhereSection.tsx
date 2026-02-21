@@ -16,14 +16,10 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { SemanticChip } from "@/components/chips/semantic";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
+import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useSpaces } from "@/hooks/useSpaces";
-import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { supabase } from "@/integrations/supabase/client";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 interface SpaceSuggestion {
   id: string;
@@ -54,7 +50,6 @@ export function WhereSection({
   suggestedChips = [],
 }: WhereSectionProps) {
   const { toast } = useToast();
-  const { orgId } = useActiveOrg();
   const { data: properties = [] } = usePropertiesQuery();
   const { spaces, refresh: refreshSpaces } = useSpaces(propertyId || undefined);
 
@@ -76,7 +71,6 @@ export function WhereSection({
 
   const [showCreateSpace, setShowCreateSpace] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
-  const [creatingSpace, setCreatingSpace] = useState(false);
 
   const selectedProperty =
     properties.find((p: any) => p.id === propertyId) ??
@@ -142,32 +136,12 @@ export function WhereSection({
     }
   };
 
-  const handleCreateSpace = async () => {
-    if (!newSpaceName.trim() || !propertyId || !orgId) return;
-    setCreatingSpace(true);
-    try {
-      await supabase.auth.refreshSession();
-      let iconName = "home";
-      const { data: icons } = await supabase.rpc("ai_icon_search", { query_text: newSpaceName.trim() });
-      if (icons?.length && (icons[0] as { name?: string })?.name) {
-        iconName = (icons[0] as { name: string }).name;
-      }
-      const { data, error } = await supabase
-        .from("spaces")
-        .insert({ org_id: orgId, property_id: propertyId, name: newSpaceName.trim(), icon_name: iconName })
-        .select("id")
-        .single();
-      if (error) throw error;
-      toast({ title: "Space created" });
-      setShowCreateSpace(false);
-      setNewSpaceName("");
-      onSpacesChange([...selectedSpaceIds, data.id]);
-      await refreshSpaces();
-    } catch (err: any) {
-      toast({ title: "Couldn't create space", description: err.message, variant: "destructive" });
-    } finally {
-      setCreatingSpace(false);
-    }
+  const handleSpaceCreated = (space: { id: string; name: string; icon_name: string }) => {
+    onSpacesChange([...selectedSpaceIds, space.id]);
+    setHasExplicitSelection(true);
+    setShowCreateSpace(false);
+    setNewSpaceName("");
+    refreshSpaces();
   };
 
   const spaceInputWidth = Math.min(240, Math.max(100, (spaceQuery.length + 2) * 8));
@@ -379,30 +353,17 @@ export function WhereSection({
         }}
       />
 
-      <Dialog open={showCreateSpace} onOpenChange={setShowCreateSpace}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Create Space</DialogTitle>
-            <DialogDescription>Add a new space to this property.</DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newSpaceName}
-              onChange={(e) => setNewSpaceName(e.target.value)}
-              placeholder="Space name"
-              className="shadow-engraved"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateSpace(false)} disabled={creatingSpace}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateSpace} disabled={!newSpaceName.trim() || creatingSpace}>
-              {creatingSpace ? "Creating..." : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AddSpaceDialog
+        open={showCreateSpace}
+        onOpenChange={(open) => {
+          setShowCreateSpace(open);
+          if (!open) setNewSpaceName("");
+        }}
+        properties={selectedProperty ? [selectedProperty] : properties}
+        propertyId={propertyId}
+        initialName={newSpaceName}
+        onCreated={handleSpaceCreated}
+      />
     </div>
   );
 }
