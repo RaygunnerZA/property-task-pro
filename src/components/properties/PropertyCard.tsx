@@ -59,7 +59,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
   return (
     <div
       className={cn(
-        "bg-card/70 rounded-[12px] overflow-hidden shadow-e1",
+        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 h-[216px]",
         "transition-all duration-200",
         className
       )}

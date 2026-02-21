@@ -8,15 +8,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { cn } from "@/lib/utils";
+import { RefreshCw } from "lucide-react";
 
 const DEFAULT_FALLBACK = ["box", "home", "building", "package", "tag"];
 
-const COLORS_5 = [
+const COLORS_6 = [
   "#8EC9CE", // Teal (primary)
   "#FF6B6B", // Coral
   "#4ECDC4", // Mint
   "#45B7D1", // Sky Blue
   "#96CEB4", // Sage
+  "#F5A623", // Amber
 ];
 
 interface AIIconColorPickerProps {
@@ -46,38 +48,41 @@ export function AIIconColorPicker({
 }: AIIconColorPickerProps) {
   const [aiIcons, setAiIcons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const debouncedSearch = useDebounce(searchText.trim(), 400);
 
   const themeIcons = defaultIcons.slice(0, 5);
-  // When suggestedIcon provided: use it as primary (from space_types); else AI results or thematic defaults
+
   const displayIcons =
-    suggestedIcon
-      ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
-      : aiIcons.length > 0
-        ? aiIcons
+    aiIcons.length > 0
+      ? aiIcons
+      : suggestedIcon
+        ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
         : themeIcons;
 
   useEffect(() => {
-    if (suggestedIcon) {
+    const shouldAiSearch = !!debouncedSearch || refreshKey > 0;
+
+    if (!shouldAiSearch) {
       setAiIcons([]);
       setLoading(false);
-      if (!value.iconName || value.iconName !== suggestedIcon) {
-        onChange(suggestedIcon, value.color);
-      }
-      return;
-    }
-    if (!debouncedSearch) {
-      setAiIcons([]);
-      setLoading(false);
-      if (!value.iconName || !themeIcons.includes(value.iconName)) {
+      if (suggestedIcon) {
+        if (!value.iconName || value.iconName !== suggestedIcon) {
+          onChange(suggestedIcon, value.color);
+        }
+      } else if (!value.iconName || !themeIcons.includes(value.iconName)) {
         onChange(themeIcons[0], value.color);
       }
       return;
     }
+
+    const query = debouncedSearch || searchText.trim() || fallbackSearch;
+    if (!query) return;
+
     let cancelled = false;
     setLoading(true);
     supabase
-      .rpc("ai_icon_search", { query_text: debouncedSearch })
+      .rpc("ai_icon_search", { query_text: query })
       .then(({ data }) => {
         if (cancelled) return;
         const names = (data ?? [])
@@ -105,7 +110,7 @@ export function AIIconColorPicker({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, suggestedIcon]);
+  }, [debouncedSearch, suggestedIcon, refreshKey]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -138,6 +143,19 @@ export function AIIconColorPicker({
               </button>
             );
           })}
+          <button
+            type="button"
+            disabled={disabled || loading}
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className={cn(
+              "w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
+              "border-2 border-border bg-white hover:bg-muted/20",
+              loading && "animate-spin"
+            )}
+            title="Refresh suggestions"
+          >
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
       </div>
 
@@ -145,7 +163,7 @@ export function AIIconColorPicker({
       <div>
         <p className="text-xs font-medium text-muted-foreground mb-2">Choose a color</p>
         <div className="flex gap-2 justify-center flex-wrap">
-          {COLORS_5.map((color) => (
+          {COLORS_6.map((color) => (
             <button
               key={color}
               type="button"
@@ -167,4 +185,4 @@ export function AIIconColorPicker({
   );
 }
 
-export { COLORS_5 };
+export { COLORS_6 };

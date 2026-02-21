@@ -1,12 +1,18 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import { supabase } from "@/integrations/supabase/client";
+import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
@@ -31,6 +37,7 @@ interface RecentAssetCardProps {
 }
 
 function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAssetCardProps) {
+  const queryClient = useQueryClient();
   const assetName = asset.name || asset.serial_number || "Unnamed Asset";
   const taskCount = asset.open_tasks_count ?? 0;
   const conditionScore = asset.condition_score ?? 100;
@@ -38,6 +45,8 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
   const propertyIconName = property?.icon_name || "home";
   const PropertyIcon = PROPERTY_ICONS[propertyIconName as keyof typeof PROPERTY_ICONS] || Home;
   const propColor = property?.icon_color_hex || iconColor;
+  const [iconDialogOpen, setIconDialogOpen] = useState(false);
+  const [iconValue, setIconValue] = useState({ iconName: asset.icon_name || "box", color: propColor });
 
   const getConditionLabel = (score: number) => {
     if (score >= 80) return "Good";
@@ -60,7 +69,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
   return (
     <div
       className={cn(
-        "bg-card rounded-[8px] overflow-hidden shadow-e1 h-[155px] w-[120px] flex-shrink-0",
+        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[155px] w-[120px] flex-shrink-0",
         "transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99]"
       )}
       onClick={handleClick}
@@ -93,9 +102,10 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
             <AssetIcon className="h-8 w-8 text-white/80" />
           </div>
         )}
-        {/* Asset icon - circle top left of image thumbnail panel */}
-        <div
-          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10"
+        {/* Asset icon - circle top left, clickable to change icon */}
+        <button
+          type="button"
+          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10 cursor-pointer hover:scale-110 active:scale-95 transition-transform"
           style={{
             backgroundColor: propColor,
             width: "24px",
@@ -103,13 +113,18 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
             boxShadow:
               "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
           }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIconValue({ iconName: asset.icon_name || "box", color: propColor });
+            setIconDialogOpen(true);
+          }}
         >
           <AssetIcon className="h-4 w-4 text-white" />
-        </div>
+        </button>
       </div>
 
       <div className="pt-2.5 pb-2.5 pl-2.5 pr-2.5 space-y-2 h-[96px]">
-        <div className="mb-[22px] mt-[4px] h-[15px] flex flex-col justify-center items-start">
+        <div className="mb-[15px] mt-[4px] h-[22px] flex flex-col justify-center items-start">
           <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
             {assetName}
           </h3>
@@ -117,7 +132,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
 
         {/* Perforation line */}
         <div
-          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1"
+          className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1"
           style={{
             height: "1px",
             backgroundImage:
@@ -130,7 +145,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
         />
 
         {/* Property icon (left) + Task count + Condition */}
-        <div className="flex items-center gap-2 flex-wrap mt-0">
+        <div className="flex items-center gap-2 flex-wrap pb-[3px]" style={{ marginTop: '6px' }}>
           <div
             className="rounded-full flex items-center justify-center flex-shrink-0"
             style={{
@@ -155,6 +170,47 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
           </Badge>
         </div>
       </div>
+
+      {/* Change Icon Dialog */}
+      <Dialog open={iconDialogOpen} onOpenChange={setIconDialogOpen}>
+        <DialogContent className="max-w-sm p-5" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle>Change Icon</DialogTitle>
+            <DialogDescription className="sr-only">
+              Pick a new icon for {assetName}
+            </DialogDescription>
+          </DialogHeader>
+          <AIIconColorPicker
+            searchText={assetName}
+            value={iconValue}
+            onChange={(icon, color) => setIconValue({ iconName: icon, color })}
+            suggestedIcon={asset.icon_name}
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIconDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  const { error } = await supabase
+                    .from("assets")
+                    .update({ icon_name: iconValue.iconName })
+                    .eq("id", asset.id);
+                  if (error) throw error;
+                  toast.success("Icon updated");
+                  queryClient.invalidateQueries({ queryKey: ["assets"] });
+                  setIconDialogOpen(false);
+                } catch (err: any) {
+                  toast.error(err.message || "Failed to update icon");
+                }
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

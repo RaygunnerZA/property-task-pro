@@ -84,37 +84,48 @@ export default function Dashboard() {
       return normalized;
     };
     
-    tasks.forEach((task) => {
-      const dueDateValue = task.due_date || task.due_at;
-      
-      if (dueDateValue && task.status !== 'completed' && task.status !== 'archived') {
-        try {
-          const date = new Date(dueDateValue);
-          const dateKey = format(date, "yyyy-MM-dd");
-          const current = dateMap.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
-          
-          current.total += 1;
-          
-          const priority = normalizePriority(task.priority);
-          
-          if (priority === 'high') {
-            current.high += 1;
-          } else if (priority === 'urgent') {
-            current.urgent += 1;
-            urgent += 1;
-          }
-          
-          // Check if overdue
-          date.setHours(0, 0, 0, 0);
-          if (date < today) {
-            current.overdue += 1;
-            overdue += 1;
-          }
-          
-          dateMap.set(dateKey, current);
-        } catch {
-          // Skip invalid dates
+    const addDateEntry = (dateValue: string, task: any) => {
+      try {
+        const date = new Date(dateValue);
+        if (isNaN(date.getTime())) return;
+        const dateKey = format(date, "yyyy-MM-dd");
+        const current = dateMap.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
+        
+        current.total += 1;
+        
+        const priority = normalizePriority(task.priority);
+        
+        if (priority === 'high') {
+          current.high += 1;
+        } else if (priority === 'urgent') {
+          current.urgent += 1;
+          urgent += 1;
         }
+        
+        date.setHours(0, 0, 0, 0);
+        if (date < today) {
+          current.overdue += 1;
+          overdue += 1;
+        }
+        
+        dateMap.set(dateKey, current);
+      } catch {
+        // Skip invalid dates
+      }
+    };
+
+    tasks.forEach((task) => {
+      if (task.status === 'completed' || task.status === 'archived') return;
+
+      const dueDateValue = task.due_date || task.due_at;
+      if (dueDateValue) addDateEntry(dueDateValue, task);
+
+      // Include milestone dates on the calendar
+      const milestones = (task as any).milestones;
+      if (Array.isArray(milestones)) {
+        milestones.forEach((m: any) => {
+          if (m?.dateTime) addDateEntry(m.dateTime, task);
+        });
       }
     });
     
@@ -228,7 +239,7 @@ export default function Dashboard() {
     : 'Details';
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pt-[100px] pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col pr-2 pb-0 pl-2 min-h-0">
       <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-[21px]">Task Workbench</h2>
       <ThirdColumnConcertina
         sections={[

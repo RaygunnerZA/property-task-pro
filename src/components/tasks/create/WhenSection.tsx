@@ -86,7 +86,6 @@ export function WhenSection({
     [onMilestonesChange],
   );
 
-  const [draftMilestone, setDraftMilestone] = useState<MilestoneItem | null>(null);
   const [editing, setEditing] = useState<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
   // Captures editing state at close time so any in-flight 150ms scroll debounce can still commit
   const editingAtCloseRef = useRef<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
@@ -129,15 +128,8 @@ export function WhenSection({
     onDueDateChange(`${format(d, "yyyy-MM-dd")}T${timePart}`);
   };
 
-  const maybeCommitDraft = () => {
-    if (!draftMilestone) return;
-    setMilestones((prev) => [...prev, draftMilestone]);
-    setDraftMilestone(null);
-  };
-
   const closeEditor = () => {
-    editingAtCloseRef.current = editing; // preserve for any in-flight debounce
-    maybeCommitDraft();
+    editingAtCloseRef.current = editing;
     setEditing(null);
     setShowRepeatOptions(false);
     onDeactivate?.();
@@ -145,7 +137,6 @@ export function WhenSection({
 
   const startEditDue = (forceTodayIfEmpty: boolean) => {
     editingAtCloseRef.current = null;
-    maybeCommitDraft();
     onActivate();
     if (forceTodayIfEmpty && !dueDate) {
       onDueDateChange(`${format(today, "yyyy-MM-dd")}T${timePartForDefault}`);
@@ -160,12 +151,11 @@ export function WhenSection({
 
   const startAddMilestone = () => {
     editingAtCloseRef.current = null;
-    maybeCommitDraft();
     onActivate();
     setShowRepeatOptions(false);
     const id = `milestone-${Date.now()}`;
     const initial = `${format(today, "yyyy-MM-dd")}T${timePartForDefault}`;
-    setDraftMilestone({ id, dateTime: initial, label: "" });
+    setMilestones((prev) => [...prev, { id, dateTime: initial }]);
     setEditing({ kind: "milestone", id });
   };
 
@@ -175,14 +165,13 @@ export function WhenSection({
   };
 
   const dateFactLabel = formatDueLabel();
-  const hideRepeat = milestones.length > 0 || !!draftMilestone;
+  const hideRepeat = milestones.length > 0;
 
   const editingValue = useMemo(() => {
     if (!editing) return "";
     if (editing.kind === "due") return dueDate;
-    if (draftMilestone && draftMilestone.id === editing.id) return draftMilestone.dateTime;
     return milestones.find((m) => m.id === editing.id)?.dateTime || "";
-  }, [editing, dueDate, draftMilestone, milestones]);
+  }, [editing, dueDate, milestones]);
 
   const handlePanelDateChange = (next: string) => {
     // Fall back to the state captured at close time to handle the 150ms scroll debounce
@@ -193,27 +182,18 @@ export function WhenSection({
       onDueDateChange(next);
       return;
     }
-    if (draftMilestone && draftMilestone.id === eff.id) {
-      setDraftMilestone({ ...draftMilestone, dateTime: next });
-      return;
-    }
     setMilestones((prev) => prev.map((m) => (m.id === eff.id ? { ...m, dateTime: next } : m)));
   };
 
   const handleMilestoneLabelChange = (label: string) => {
     if (!editing || editing.kind !== "milestone") return;
-    if (draftMilestone && draftMilestone.id === editing.id) {
-      setDraftMilestone({ ...draftMilestone, label: label.trim() || undefined });
-      return;
-    }
     setMilestones((prev) => prev.map((m) => (m.id === editing.id ? { ...m, label: label.trim() || undefined } : m)));
   };
 
   const editingMilestoneLabel = useMemo(() => {
     if (!editing || editing.kind !== "milestone") return "";
-    if (draftMilestone && draftMilestone.id === editing.id) return draftMilestone.label ?? "";
     return milestones.find((m) => m.id === editing.id)?.label ?? "";
-  }, [editing, draftMilestone, milestones]);
+  }, [editing, milestones]);
 
   const isDimmed = (kind: "due" | "milestone", id?: string) => {
     if (!editing) return false;
@@ -242,7 +222,7 @@ export function WhenSection({
     document.addEventListener("pointerdown", handler, true);
     return () => document.removeEventListener("pointerdown", handler, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, draftMilestone, dueDate, timePartForDefault]);
+  }, [editing, dueDate, timePartForDefault]);
 
   return (
     <div
@@ -290,7 +270,6 @@ export function WhenSection({
                   onDueDateChange("");
                   onRepeatRuleChange(undefined);
                   setMilestones([]);
-                  setDraftMilestone(null);
                   setEditing(null);
                   setShowRepeatOptions(false);
                   onDeactivate?.();
@@ -320,7 +299,6 @@ export function WhenSection({
                 icon={<Waypoints className="h-3 w-3" />}
                 truncate={false}
                 onPress={() => {
-                  maybeCommitDraft();
                   onActivate();
                   setEditing({ kind: "milestone", id: m.id });
                 }}
@@ -333,22 +311,6 @@ export function WhenSection({
               />
             </span>
           ))}
-
-          {draftMilestone && (
-            <span data-when-action="true" className="shrink-0">
-              <SemanticChip
-                epistemic="fact"
-                label={formatDateTimeLabel(draftMilestone.dateTime, draftMilestone.label)}
-                icon={<Waypoints className="h-3 w-3" />}
-                truncate={false}
-                onPress={() => {
-                  onActivate();
-                  setEditing({ kind: "milestone", id: draftMilestone.id });
-                }}
-                className="shrink-0 max-w-none"
-              />
-            </span>
-          )}
 
           {/* Hover chips: quick dates when no date, or Repeat/Milestone when date set */}
           {isHovered && (

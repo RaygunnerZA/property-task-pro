@@ -643,7 +643,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex flex-col py-4 px-1">
+          <div className="flex-1 overflow-hidden flex flex-col">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-0 flex flex-col mt-[15px]">
                 <WhoSection
@@ -844,7 +844,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       </div>
 
       {/* CTA panel - [Update][Mark Complete][Options] */}
-      <div className="flex flex-col gap-3 p-4 border-t border-transparent flex-shrink-0 bg-transparent backdrop-blur text-foreground sticky bottom-0">
+      <div className="flex flex-col gap-3 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
         <div className="flex gap-3 items-center">
           {hasEdits && canManageTask && (
             <Button

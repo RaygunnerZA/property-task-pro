@@ -4,23 +4,25 @@
  * Mirrors Property Identity Card layout (image + info).
  */
 import type { SpaceGroup } from "@/components/onboarding/onboardingSpaceGroups";
-import { ImageIcon, Plus } from "lucide-react";
+import { ImageIcon, Plus, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SpaceGroupIdentityCardProps {
   group: SpaceGroup;
   propertyName?: string | null;
   onAddTask?: () => void;
+  onSeeTasks?: () => void;
 }
 
 export function SpaceGroupIdentityCard({
   group,
   propertyName,
   onAddTask,
+  onSeeTasks,
 }: SpaceGroupIdentityCardProps) {
   return (
     <div className="sticky top-0 z-10 bg-background border-b border-border">
-      <div className="bg-card rounded-[8px] overflow-hidden shadow-e1 my-4 mx-2">
+      <div className="bg-card/60 rounded-[8px] overflow-hidden shadow-e1 my-4 mx-2">
         {/* Placeholder Image */}
         <div
           className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50"
@@ -40,16 +42,31 @@ export function SpaceGroupIdentityCard({
           <p className="text-sm text-muted-foreground leading-relaxed">
             {group.description}
           </p>
-          {onAddTask && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onAddTask}
-              className="w-full mt-2"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
+          {(onAddTask || onSeeTasks) && (
+            <div className="flex flex-col gap-2 mt-2">
+              {onAddTask && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onAddTask}
+                  className="w-full"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
+              )}
+              {onSeeTasks && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSeeTasks}
+                  className="w-full text-muted-foreground hover:text-foreground"
+                >
+                  <ListChecks className="h-4 w-4 mr-2" />
+                  See {group.label} Tasks
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </div>

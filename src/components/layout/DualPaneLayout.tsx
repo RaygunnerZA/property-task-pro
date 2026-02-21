@@ -29,6 +29,11 @@ interface DualPaneLayoutProps {
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
+  const hasHeader = !!header;
+
+  const stickyColClass = hasHeader
+    ? "h-[calc(100vh-100px)] sticky top-[100px] w-[245px]"
+    : "h-screen sticky top-0 w-[245px]";
 
   return (
     <div className="min-h-screen">
@@ -48,8 +53,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
           </div>
         )}
         
-        {/* Left Column: Fixed 245px, sticky on scroll */}
-        <div className="h-screen sticky top-0 w-[245px]">
+        {/* Left Column: Fixed 245px, sticky below header */}
+        <div className={stickyColClass}>
           {leftColumn}
         </div>
 
@@ -72,8 +77,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
               ? 'grid-cols-[245px_650px]' 
               : 'grid-cols-[245px_minmax(450px,_650px)]'
           }`}>
-            {/* Left Column: Fixed 245px, sticky on scroll */}
-            <div className="h-screen sticky top-0 w-[245px]">
+            {/* Left Column: Fixed 245px, sticky below header */}
+            <div className={stickyColClass}>
               {leftColumn}
             </div>
 
@@ -84,9 +89,9 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
           </div>
         </div>
 
-        {/* Third Column: Flexible width - truly extends to top of screen */}
+        {/* Third Column: Flexible width, top-padded to clear header */}
         {hasThirdColumn && (
-          <div className="overflow-y-auto flex-1">
+          <div className={`overflow-y-auto flex-1 ${hasHeader ? 'pt-[100px]' : ''}`}>
             {thirdColumn}
           </div>
         )}

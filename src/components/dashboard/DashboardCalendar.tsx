@@ -228,7 +228,7 @@ export function DashboardCalendar({
                   width: '28px',
                   height: '28px',
                   backgroundColor: fillColor || undefined,
-                  borderRadius: '9999px',
+                  borderRadius: hasTasks ? '10px' : '9999px',
                   // Apply neomorphic pressed effect directly via inline style
                   ...(hasTasks ? {
                     boxShadow: 'inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)'
@@ -276,7 +276,7 @@ export function DashboardCalendar({
           content: '';
           position: absolute;
           inset: 0;
-          border-radius: 9999px;
+          border-radius: 10px;
           box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
           pointer-events: none;
           z-index: 1;

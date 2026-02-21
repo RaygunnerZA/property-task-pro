@@ -32,16 +32,16 @@ export function SpaceGroupCard({
   return (
     <div
       className={cn(
-        "bg-card rounded-[8px] overflow-hidden shadow-e1",
+        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1",
         "transition-all duration-200 cursor-pointer hover:shadow-md",
-        "active:scale-[0.99] h-[260px]",
+        "active:scale-[0.99] h-[228px]",
         className
       )}
       onClick={handleClick}
     >
       {/* Thumbnail Image */}
       <div 
-        className="w-full h-[80px] overflow-hidden relative"
+        className="w-full h-[63px] overflow-hidden relative"
         style={{
           backgroundColor: thumbnailUrl ? undefined : color,
         }}
@@ -86,7 +86,7 @@ export function SpaceGroupCard({
 
         {/* Neumorphic Perforation Line */}
         <div 
-          className="-ml-2.5 -mr-2.5 pt-2 pb-0 px-1 mt-[7px]"
+          className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1 mt-[7px]"
           style={{
             height: '1px',
             backgroundImage: 'repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)',
@@ -98,7 +98,7 @@ export function SpaceGroupCard({
 
         {/* Description */}
         <div className="space-y-1" style={{ marginTop: '3px' }}>
-          <p className="text-xs text-muted-foreground leading-[18px]">
+          <p className="text-xs text-muted-foreground leading-[18px] pt-[9px]">
             {description}
           </p>
           {spaceCount > 0 && (

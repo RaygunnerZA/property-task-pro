@@ -71,7 +71,7 @@ const propertyContextItems = [
   {
     title: 'Spaces',
     icon: FolderOpen,
-    getUrl: (id: string) => `/properties/${id}`, // Spaces shown in overview for now
+    getUrl: (id: string) => `/properties/${id}/spaces/organise`,
   },
 ];
 
@@ -174,7 +174,8 @@ export function AppSidebar() {
     entityId?: string
   ) => {
     const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
-    const isActive = currentPath === url || (isContextItem && currentPath.startsWith(url.split('?')[0]));
+    const urlBase = url.split('?')[0];
+    const isActive = currentPath === urlBase || (isContextItem && currentPath.startsWith(urlBase + '/'));
     const IconComponent = item.icon;
     
     return (

@@ -31,11 +31,13 @@ function PropertyIconChip({ property }: { property: any }) {
   
   return (
     <div
-      className="inline-flex items-center justify-center rounded-[146px] border-0"
+      className="inline-flex items-center justify-center rounded-[8px] border-0 flex-shrink-0"
       style={{
         backgroundColor: iconColor,
         width: '24px',
         height: '24px',
+        minWidth: '24px',
+        minHeight: '24px',
       }}
     >
       <IconComponent className="h-4 w-4 text-white" />
@@ -377,11 +379,11 @@ function TaskCardComponent({
     <div 
       className={cn(
         "task-card-vertical h-[267px]",
-        "rounded-[12px] bg-card",
+        "rounded-[12px] bg-card/60",
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex flex-col relative group",
-        isSelected && "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
+        isSelected && "bg-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
       )}
       onClick={onClick}
     >
