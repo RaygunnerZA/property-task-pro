@@ -17,7 +17,7 @@ import {
   normalizePropertyProfile,
   evaluateProfileForChipBoosts,
 } from "@/services/propertyIntelligence/ruleEvaluator";
-import { COMPLIANCE_TEMPLATES, getTemplateById } from "@/services/propertyIntelligence/complianceTemplates";
+import { COMPLIANCE_TEMPLATES } from "@/services/propertyIntelligence/complianceTemplates";
 import type { PropertyProfile, EvaluatedRule } from "@/services/propertyIntelligence/types";
 
 export interface ExplainabilityQuery {

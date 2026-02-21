@@ -8,7 +8,8 @@
  */
 
 import { useCallback } from "react";
-import { useDevMode, type DevUserRole } from "@/context/DevModeContext";
+import { useDevMode } from "@/context/useDevMode";
+import type { DevUserRole } from "@/context/DevModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgScope } from "@/hooks/useOrgScope";
 import { generateCompliancePack } from "@/services/dev/generateCompliancePack";
@@ -71,8 +72,10 @@ function DevToolsDropdownInner() {
       console.warn("[DevTools] No active org — cannot generate compliance pack");
       return;
     }
+    const propertyId = prompt("Enter a property ID to seed compliance data for:");
+    if (!propertyId?.trim()) return;
     try {
-      const result = await generateCompliancePack("dev-property", orgId);
+      const result = await generateCompliancePack(propertyId.trim(), orgId);
       console.log("[DevTools] Compliance pack generated:", result);
       queryClient.invalidateQueries({ queryKey: ["compliance"] });
     } catch (err) {
@@ -84,6 +87,7 @@ function DevToolsDropdownInner() {
     (days: number) => {
       devMode.setSimulateTimeShiftDays(days);
       setTimeShiftDays(days);
+      if (!devMode.enabled && days > 0) devMode.setEnabled(true);
     },
     [devMode]
   );

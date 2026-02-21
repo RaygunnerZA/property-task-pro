@@ -114,7 +114,7 @@ export async function generateCompliancePack(
   if (toInsert.length > 0) {
     const { error } = await supabase
       .from("compliance_documents")
-      .insert(toInsert as any);
+      .insert(toInsert as Record<string, unknown>[]);
 
     if (error) {
       console.error("[generateCompliancePack] Insert error:", error);

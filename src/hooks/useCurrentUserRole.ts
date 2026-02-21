@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
-import { useDevMode } from "@/context/DevModeContext";
+import { useDevMode } from "@/context/useDevMode";
 
 interface UseCurrentUserRoleResult {
   role: string | null;
@@ -65,8 +65,8 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
         } else {
           setRole(membership?.role || null);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch user role");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to fetch user role");
         setRole(null);
       } finally {
         setIsLoading(false);
@@ -81,16 +81,18 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
       ? devMode.userRoleOverride
       : role;
 
+  const isDevOverride = !!(
+    import.meta.env.DEV &&
+    devMode.enabled &&
+    devMode.userRoleOverride
+  );
+
   return {
     role: effectiveRole,
     isLoading,
     error,
-    isOwner: effectiveRole === "owner",
-    isDevOverride: !!(
-      import.meta.env.DEV &&
-      devMode.enabled &&
-      devMode.userRoleOverride
-    ),
+    isOwner: isDevOverride ? role === "owner" : effectiveRole === "owner",
+    isDevOverride,
   };
 }
 

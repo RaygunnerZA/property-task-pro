@@ -33,10 +33,6 @@ function chipTypes(chips: SuggestedChip[]): string[] {
   return chips.map((c) => c.type);
 }
 
-function chipValues(chips: SuggestedChip[]): string[] {
-  return chips.map((c) => c.value);
-}
-
 // ─── Compliance Detection ────────────────────────────────────────────────────
 
 describe("extractChipsFromText — compliance detection", () => {

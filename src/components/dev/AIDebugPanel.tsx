@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useDevMode } from "@/context/DevModeContext";
+import { useDevMode } from "@/context/useDevMode";
 import {
   simulateCreateTask,
   evaluateProfileDiagnostics,
@@ -26,7 +26,6 @@ import {
   getAggregatedMetrics,
   clearPerfEntries,
   subscribePerfEntries,
-  type PerfEntry,
 } from "@/services/dev/performanceMetrics";
 import { normalizePropertyProfile } from "@/services/propertyIntelligence/ruleEvaluator";
 import type { PropertyProfile } from "@/services/propertyIntelligence/types";

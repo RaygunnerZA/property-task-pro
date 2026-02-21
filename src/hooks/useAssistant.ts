@@ -12,6 +12,7 @@
  */
 import { useState, useCallback } from "react";
 import { useActiveOrg } from "./useActiveOrg";
+import { useDevMode } from "@/context/useDevMode";
 import { supabase } from "@/integrations/supabase/client";
 import type { AssistantMessage, ProposedAction } from "@/components/assistant/AssistantPanel";
 
@@ -22,6 +23,7 @@ export interface AssistantContextInput {
 
 export function useAssistant() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const devMode = useDevMode();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [proposedAction, setProposedAction] = useState<ProposedAction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,8 +35,7 @@ export function useAssistant() {
       setLoading(true);
       setMessages((prev) => [...prev, { role: "user", content: query }]);
 
-      // Dev mode introspection: answer "why" questions locally
-      if (import.meta.env.DEV) {
+      if (import.meta.env.DEV && devMode?.enabled) {
         try {
           const { handleDevQuestion } = await import("@/services/dev/aiExplainability");
           const devResult = handleDevQuestion(query);
@@ -81,7 +82,7 @@ export function useAssistant() {
         setLoading(false);
       }
     },
-    [orgId, orgLoading]
+    [orgId, orgLoading, devMode?.enabled]
   );
 
   const confirmAction = useCallback(async () => {

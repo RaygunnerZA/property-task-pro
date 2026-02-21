@@ -72,10 +72,6 @@ const DevModeContext = createContext<DevModeContextValue>({
 
 function isDevAllowed(): boolean {
   if (import.meta.env.DEV) return true;
-  if (typeof window !== "undefined") {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("dev") === "true") return true;
-  }
   return false;
 }
 
@@ -159,5 +155,3 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
 export function useDevMode(): DevModeContextValue {
   return useContext(DevModeContext);
 }
-
-export default DevModeContext;
