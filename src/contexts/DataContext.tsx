@@ -61,34 +61,7 @@ export function useOrg() {
 
 export function useCurrentUser() {
   const { user, userId, loading } = useDataContext();
-
-  if (import.meta.env.DEV) {
-    try {
-      // Dynamic import avoided — inline lazy access to prevent circular deps.
-      // The DevModeContext is always above DataProvider in the tree.
-      const { useDevMode } = require("@/context/DevModeContext");
-      // eslint-disable-next-line react-hooks/rules-of-hooks
-      const devMode = useDevMode();
-      if (devMode.enabled && devMode.userRoleOverride && user) {
-        return {
-          user: {
-            ...user,
-            app_metadata: {
-              ...user.app_metadata,
-              dev_role_override: devMode.userRoleOverride,
-            },
-          },
-          userId,
-          loading,
-          devRoleOverride: devMode.userRoleOverride,
-        };
-      }
-    } catch {
-      // Context not yet mounted — fall through to real user
-    }
-  }
-
-  return { user, userId, loading, devRoleOverride: null };
+  return { user, userId, loading };
 }
 
 interface DataProviderProps {

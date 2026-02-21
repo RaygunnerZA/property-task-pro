@@ -2,6 +2,11 @@
  * useAssistant — Phase 14 FILLA Assistant Mode
  * Calls assistant-reasoner (classification + reasoning in one). Handles proposed actions.
  *
+ * Dev Mode enhancement (Phase 4.2):
+ *   When DevMode is enabled, "why" questions are intercepted and answered
+ *   locally via the rule engine explainability layer. This enables instant
+ *   introspection without a remote call (AI "Development Mode").
+ *
  * @deprecated assistant-intent — Removed. Only assistant-reasoner is used.
  * No references to assistant-intent remain in the codebase.
  */
@@ -27,6 +32,24 @@ export function useAssistant() {
 
       setLoading(true);
       setMessages((prev) => [...prev, { role: "user", content: query }]);
+
+      // Dev mode introspection: answer "why" questions locally
+      if (import.meta.env.DEV) {
+        try {
+          const { handleDevQuestion } = await import("@/services/dev/aiExplainability");
+          const devResult = handleDevQuestion(query);
+          if (devResult) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: `[Dev Mode]\n\n${devResult.answer}` },
+            ]);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Fall through to remote assistant
+        }
+      }
 
       try {
         const { data: reasonerData, error: reasonerErr } = await supabase.functions.invoke(
