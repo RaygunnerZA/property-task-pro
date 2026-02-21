@@ -11,7 +11,6 @@
  */
 
 import { extractChipsFromText } from "@/services/ai/ruleBasedExtractor";
-import { extractChipsSync } from "@/services/ai/chipSuggestionEngine";
 import {
   evaluateProfile,
   evaluateProfileForChipBoosts,
@@ -104,7 +103,33 @@ export function simulateCreateTask(
 
   const t2 = performance.now();
 
-  const merged = extractChipsSync(context, entities);
+  const profileBoostMap = new Map<string, number>();
+  for (const b of profileBoosts) {
+    const existing = profileBoostMap.get(b.chipType) ?? 0;
+    profileBoostMap.set(b.chipType, Math.max(existing, b.score));
+  }
+
+  const finalChips: SuggestedChip[] = ruleResult.chips.map((chip) => {
+    const boost = profileBoostMap.get(chip.type);
+    return boost != null ? { ...chip, score: Math.max(chip.score, boost) } : chip;
+  });
+
+  for (const [chipType, boostScore] of profileBoostMap.entries()) {
+    if (!finalChips.some((c) => c.type === chipType) && boostScore >= 0.5) {
+      finalChips.push({
+        id: `profile-boost-${chipType}`,
+        type: chipType as SuggestedChip["type"],
+        value: chipType,
+        label: chipType,
+        score: boostScore,
+        source: "rule",
+        metadata: { reason: "property_profile_boost" },
+      });
+    }
+  }
+
+  const filteredChips = finalChips.filter((c) => c.score >= 0.5);
+  const filteredGhosts = ruleResult.ghostCategories.filter((c) => c.score >= 0.5);
 
   const t3 = performance.now();
 
@@ -117,15 +142,15 @@ export function simulateCreateTask(
       complianceMode: ruleResult.complianceMode,
     },
     profileBoosts,
-    finalChips: merged.chips,
-    finalGhostCategories: merged.ghostCategories,
+    finalChips: filteredChips,
+    finalGhostCategories: filteredGhosts,
     diagnostics: {
       extractionTimeMs: Math.round((t1 - t0) * 100) / 100,
       profileBoostTimeMs: Math.round((t2 - t1) * 100) / 100,
       totalTimeMs: Math.round((t3 - t0) * 100) / 100,
-      chipCount: merged.chips.length,
-      ghostCategoryCount: merged.ghostCategories.length,
-      complianceMode: merged.complianceMode,
+      chipCount: filteredChips.length,
+      ghostCategoryCount: filteredGhosts.length,
+      complianceMode: ruleResult.complianceMode,
     },
   };
 }
