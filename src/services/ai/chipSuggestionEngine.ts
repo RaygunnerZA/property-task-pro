@@ -51,7 +51,7 @@ export function extractChipsSync(
   entities: AvailableEntities,
   config: Partial<SuggestionEngineConfig> = {}
 ): ChipSuggestionResult {
-  const mergedConfig = { ...defaultConfig, ...config };
+  const mergedConfig = Object.keys(config).length > 0 ? { ...defaultConfig, ...config } : defaultConfig;
 
   const hasDescription = context.description && context.description.trim().length >= 3;
   const hasImageOcr = context.imageOcrText && context.imageOcrText.trim().length >= 3;

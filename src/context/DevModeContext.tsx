@@ -65,20 +65,17 @@ const NOOP_ACTIONS: DevModeActions = {
   reset: () => {},
 };
 
-const DevModeContext = createContext<DevModeContextValue>({
+const PRODUCTION_VALUE: DevModeContextValue = {
   ...DEFAULT_STATE,
   ...NOOP_ACTIONS,
-});
+};
 
-function isDevAllowed(): boolean {
-  if (import.meta.env.DEV) return true;
-  return false;
-}
+const DevModeContext = createContext<DevModeContextValue>(PRODUCTION_VALUE);
 
 export function DevModeProvider({ children }: { children: ReactNode }) {
-  if (!isDevAllowed()) {
+  if (!import.meta.env.DEV) {
     return (
-      <DevModeContext.Provider value={{ ...DEFAULT_STATE, ...NOOP_ACTIONS }}>
+      <DevModeContext.Provider value={PRODUCTION_VALUE}>
         {children}
       </DevModeContext.Provider>
     );
