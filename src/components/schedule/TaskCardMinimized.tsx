@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { mapTask } from "@/utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Home, Building2, Hotel, Warehouse, Store, Castle, Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 // Property icon mapping
@@ -130,6 +130,21 @@ export function TaskCardMinimized({
               <span className="truncate max-w-[60px]">
                 {property.nickname || property.address || "Property"}
               </span>
+            </div>
+          )}
+
+          {/* Milestone Chip - Small */}
+          {task._milestoneLabel && (
+            <div
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium"
+              style={{
+                backgroundColor: "#8EC9CE20",
+                color: "#8EC9CE",
+                border: "1px solid #8EC9CE40",
+              }}
+            >
+              <Flag className="h-2.5 w-2.5" />
+              <span>{task._milestoneLabel}</span>
             </div>
           )}
 

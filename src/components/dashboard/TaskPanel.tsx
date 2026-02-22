@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -60,6 +60,19 @@ export function TaskPanel({
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
   const selectedDate = selectedDateProp ?? internalSelectedDate;
+
+  // Sync when parent passes a new date (e.g., left-column calendar click)
+  const prevSelectedDatePropRef = useRef<Date | undefined>(selectedDateProp);
+  useEffect(() => {
+    if (selectedDateProp === undefined) return;
+    const prevTime = prevSelectedDatePropRef.current?.getTime();
+    const newTime = selectedDateProp.getTime();
+    if (prevTime !== newTime) {
+      setInternalSelectedDate(selectedDateProp);
+      setIsDatePinned(true);
+      prevSelectedDatePropRef.current = selectedDateProp;
+    }
+  }, [selectedDateProp]);
   
   // Use external activeTab if provided, otherwise use internal state
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
@@ -110,21 +123,44 @@ export function TaskPanel({
       // Filter by selected date - normalize both dates to start of day for accurate comparison
       const selectedDateNormalized = startOfDay(selectedDate);
       const selectedDateStr = format(selectedDateNormalized, "yyyy-MM-dd");
+
+      const parseMilestones = (task: any): Array<{ id: string; dateTime: string; label?: string }> => {
+        if (!task.milestones) return [];
+        if (Array.isArray(task.milestones)) return task.milestones;
+        if (typeof task.milestones === "string") {
+          try { return JSON.parse(task.milestones); } catch { return []; }
+        }
+        return [];
+      };
+
       return tasksForView
-        .filter((task) => {
+        .flatMap((task) => {
+          if (!task.id) return [];
+          if (task.status === "completed" || task.status === "archived") return [];
+
           const dueValue = task.due_date || task.due_at;
-          if (!dueValue) return false;
-          if (!task.id) return false;
-          if (task.status === "completed" || task.status === "archived") return false;
-          try {
-            // Normalize task due_date to start of day for comparison
-            const taskDateNormalized = startOfDay(new Date(dueValue));
-            const taskDateStr = format(taskDateNormalized, "yyyy-MM-dd");
-            const matches = taskDateStr === selectedDateStr;
-            return matches;
-          } catch (error) {
-            return false;
+          let matchesDue = false;
+          if (dueValue) {
+            try {
+              matchesDue = format(startOfDay(new Date(dueValue)), "yyyy-MM-dd") === selectedDateStr;
+            } catch { /* skip */ }
           }
+
+          // Primary due date wins — no milestone label
+          if (matchesDue) return [task];
+
+          // Check milestones — task appears once for the first matching milestone
+          const milestones = parseMilestones(task);
+          const hit = milestones.find((m) => {
+            if (!m?.dateTime) return false;
+            try {
+              return format(startOfDay(new Date(m.dateTime)), "yyyy-MM-dd") === selectedDateStr;
+            } catch { return false; }
+          });
+
+          if (hit) return [{ ...task, _milestoneLabel: hit.label?.trim() || "Milestone", due_date: hit.dateTime, due_at: hit.dateTime }];
+
+          return [];
         })
         .sort((a, b) => {
           // Sort by time if available, otherwise by creation date

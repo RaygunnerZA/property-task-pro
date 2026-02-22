@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { mapTask } from "@/utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Home, Building2, Hotel, Warehouse, Store, Castle, CheckCircle2, Clock } from "lucide-react";
+import { Home, Building2, Hotel, Warehouse, Store, Castle, CheckCircle2, Clock, Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { archiveTask } from "@/services/tasks/taskMutations";
@@ -183,6 +183,21 @@ export function TaskCardActive({
             >
               <IconComponent className="h-3 w-3" />
               <span>{property.nickname || property.address || "Property"}</span>
+            </div>
+          )}
+
+          {/* Milestone Chip */}
+          {task._milestoneLabel && (
+            <div
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-xs font-medium"
+              style={{
+                backgroundColor: "#8EC9CE20",
+                color: "#8EC9CE",
+                border: "1px solid #8EC9CE40",
+              }}
+            >
+              <Flag className="h-3 w-3" />
+              <span>{task._milestoneLabel}</span>
             </div>
           )}
 

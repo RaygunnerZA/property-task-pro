@@ -218,16 +218,23 @@ export default function AcceptInvitation() {
         }
       }
 
-      // ── Step 5: success — clear storage, invalidate cache, navigate ──
+      // ── Step 5: success — clear storage, invalidate cache, set onboarding_completed, navigate ──
       sessionStorage.removeItem("pending_invitation_token");
 
       // CRITICAL: invalidate useActiveOrg cache so the app sees the new membership immediately.
-      // Without this, staleTime: Infinity means the app redirects to create-organisation.
       await queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
       await queryClient.invalidateQueries({ queryKey: ["auth"] });
       await queryClient.refetchQueries({ queryKey: ["activeOrg"] });
 
-      const orgId = rpcResult?.org_id as string | undefined;
+      // Invited team members inherit the org — skip create-organisation and staff onboarding
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (currentUser) {
+        await supabase.auth.updateUser({
+          data: { ...currentUser.user_metadata, onboarding_completed: true },
+        });
+        await supabase.auth.refreshSession();
+      }
+
       const alreadyMember = rpcResult?.already_member as boolean | undefined;
 
       setStatus("success");
@@ -238,9 +245,9 @@ export default function AcceptInvitation() {
       );
       toast.success("Welcome to the team!");
 
-      // Navigate to the correct org — use orgId from RPC so there's no ambiguity
+      // New team members arrive at the homehub dashboard
       setTimeout(() => {
-        navigate("/work/tasks", { replace: true });
+        navigate("/", { replace: true });
       }, 1500);
     };
 

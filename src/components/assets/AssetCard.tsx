@@ -170,11 +170,11 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
 
       {/* Change Icon Dialog */}
       <Dialog open={iconDialogOpen} onOpenChange={setIconDialogOpen}>
-        <DialogContent className="max-w-sm p-5" aria-describedby={undefined}>
+        <DialogContent className="max-w-sm p-5" aria-describedby="asset-icon-desc">
           <DialogHeader>
             <DialogTitle>Change Icon</DialogTitle>
-            <DialogDescription className="sr-only">
-              Pick a new icon for {assetName}
+            <DialogDescription id="asset-icon-desc">
+              Pick a new icon for <strong>{assetName}</strong>
             </DialogDescription>
           </DialogHeader>
           <AIIconColorPicker
@@ -182,6 +182,7 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
             value={iconValue}
             onChange={(icon, color) => setIconValue({ iconName: icon, color })}
             suggestedIcon={asset.icon_name}
+            showSearchInput
           />
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setIconDialogOpen(false)}>

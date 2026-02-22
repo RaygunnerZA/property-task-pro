@@ -3,8 +3,6 @@ import { format, isToday, startOfDay } from "date-fns";
 import { TaskCardActive } from "./TaskCardActive";
 import { TaskCardMinimized } from "./TaskCardMinimized";
 import { cn } from "@/lib/utils";
-import { debugLog } from "@/lib/logger";
-
 interface ScheduleViewProps {
   tasks: any[];
   properties?: any[];
@@ -29,13 +27,6 @@ export function ScheduleView({
   onTaskClick,
   selectedTaskId,
 }: ScheduleViewProps) {
-  // #region agent log
-  console.log('[DEBUG] ScheduleView component executing', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
-  useEffect(() => {
-    console.log('[DEBUG] ScheduleView useEffect running', {tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null});
-    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:23',message:'ScheduleView render',data:{tasksCount:tasks.length,selectedDate:selectedDate?.toISOString()||null,firstTask:tasks[0]||null},timestamp:Date.now()});
-  }, [tasks, selectedDate]);
-  // #endregion
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -79,9 +70,6 @@ export function ScheduleView({
     // Sort time tasks chronologically
     withTime.sort((a, b) => a.time.getTime() - b.time.getTime());
 
-    // #region agent log
-    debugLog({sessionId:'debug-session',runId:'run1',hypothesisId:'F',location:'ScheduleView.tsx:73',message:'Tasks categorized',data:{timeTasksCount:withTime.length,anyTimeTasksCount:withoutTime.length,totalTasks:tasks.length},timestamp:Date.now()});
-    // #endregion
     return {
       timeTasks: withTime,
       anyTimeTasks: withoutTime,

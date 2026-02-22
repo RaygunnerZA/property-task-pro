@@ -92,6 +92,9 @@ export function SuggestedSpacesStrip({
   } | null>(null);
   const [dialogInput, setDialogInput] = useState("");
   const [iconValue, setIconValue] = useState({ iconName: "box", color: "#8EC9CE" });
+  const [iconPreviewSpace, setIconPreviewSpace] = useState<string | null>(null);
+  const [iconPreviewValue, setIconPreviewValue] = useState({ iconName: "box", color: "#8EC9CE" });
+  const [preferredIcons, setPreferredIcons] = useState<Map<string, string>>(new Map());
 
   // ---- Queries ----
 
@@ -182,12 +185,14 @@ export function SuggestedSpacesStrip({
 
     setActivating(spaceName);
     try {
+      const preferred = preferredIcons.get(spaceName.toLowerCase().trim());
       const { iconName, typeId } = resolveIconAndType(spaceName);
+      const iconToUse = preferred ?? iconName;
       const insert: Record<string, unknown> = {
         name: spaceName,
         org_id: orgId,
         property_id: propertyId,
-        icon_name: iconName,
+        icon_name: iconToUse,
       };
       if (typeId) insert.space_type_id = typeId;
 
@@ -220,6 +225,29 @@ export function SuggestedSpacesStrip({
     if (type === "sub-space") setDialogInput("");
     if (type === "icon")
       setIconValue({ iconName: space.icon_name || "box", color: groupColor });
+  };
+
+  const openIconPreview = (spaceName: string) => {
+    const { iconName } = resolveIconAndType(spaceName);
+    const preferred = preferredIcons.get(spaceName.toLowerCase().trim());
+    setIconPreviewSpace(spaceName);
+    setIconPreviewValue({
+      iconName: preferred ?? iconName,
+      color: groupColor,
+    });
+  };
+
+  const closeIconPreview = () => setIconPreviewSpace(null);
+
+  const handleIconPreviewSave = () => {
+    if (!iconPreviewSpace) return;
+    setPreferredIcons((prev) => {
+      const next = new Map(prev);
+      next.set(iconPreviewSpace.toLowerCase().trim(), iconPreviewValue.iconName);
+      return next;
+    });
+    toast.success("Icon updated");
+    closeIconPreview();
   };
 
   const closeDialog = () => setEditAction(null);
@@ -384,6 +412,7 @@ export function SuggestedSpacesStrip({
                   isActivating={false}
                   onActivate={() => {}}
                   onEdit={(type) => openEdit(type, space)}
+                  onSwatchClick={() => openEdit("icon", space)}
                   onDuplicate={() => handleDuplicate(space)}
                   onDelete={() => handleDelete(space)}
                 />
@@ -406,15 +435,17 @@ export function SuggestedSpacesStrip({
             >
               {unactivated.map((name) => {
                 const { iconName } = resolveIconAndType(name);
+                const preferredIcon = preferredIcons.get(name.toLowerCase().trim());
                 return (
                   <SuggestedSpaceCard
                     key={name}
                     name={name}
-                    iconName={iconName}
+                    iconName={preferredIcon ?? iconName}
                     groupColor={groupColor}
                     isActivated={false}
                     isActivating={activating === name}
                     onActivate={() => handleActivate(name)}
+                    onSwatchClick={() => openIconPreview(name)}
                   />
                 );
               })}
@@ -455,8 +486,8 @@ export function SuggestedSpacesStrip({
             <>
               <DialogHeader>
                 <DialogTitle>Change Icon</DialogTitle>
-                <DialogDescription className="sr-only">
-                  Pick a new icon for this space
+                <DialogDescription id="icon-edit-desc">
+                  Pick a new icon for <strong>{editAction.space.name}</strong>
                 </DialogDescription>
               </DialogHeader>
               <AIIconColorPicker
@@ -464,6 +495,7 @@ export function SuggestedSpacesStrip({
                 value={iconValue}
                 onChange={(icon, color) => setIconValue({ iconName: icon, color })}
                 suggestedIcon={editAction.space.icon_name}
+                showSearchInput
               />
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="ghost" onClick={closeDialog}>
@@ -532,6 +564,37 @@ export function SuggestedSpacesStrip({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Change Icon modal for unactivated suggested spaces (swatch click) */}
+      <Dialog open={!!iconPreviewSpace} onOpenChange={(open) => !open && closeIconPreview()}>
+        <DialogContent className="max-w-sm p-5" aria-describedby={iconPreviewSpace ? "icon-preview-desc" : undefined}>
+          <DialogHeader>
+            <DialogTitle>Change Icon</DialogTitle>
+            <DialogDescription id="icon-preview-desc">
+              Pick an icon for <strong>{iconPreviewSpace}</strong>. Use the search field or refresh to get new suggestions.
+            </DialogDescription>
+          </DialogHeader>
+          {iconPreviewSpace && (
+            <div className="space-y-4">
+              <AIIconColorPicker
+                searchText={iconPreviewSpace}
+                value={iconPreviewValue}
+                onChange={(icon, color) =>
+                  setIconPreviewValue({ iconName: icon, color })
+                }
+                suggestedIcon={resolveIconAndType(iconPreviewSpace).iconName}
+                showSearchInput
+              />
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={closeIconPreview}>
+              Cancel
+            </Button>
+            <Button onClick={handleIconPreviewSave}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -548,6 +611,7 @@ function SuggestedSpaceCard({
   isActivating,
   onActivate,
   onEdit,
+  onSwatchClick,
   onDuplicate,
   onDelete,
 }: {
@@ -558,6 +622,7 @@ function SuggestedSpaceCard({
   isActivating: boolean;
   onActivate: () => void;
   onEdit?: (type: EditActionType) => void;
+  onSwatchClick?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
 }) {
@@ -581,8 +646,13 @@ function SuggestedSpaceCard({
           className="w-full h-[63px] overflow-hidden relative"
           style={{ backgroundColor: groupColor }}
         >
-          <div
-            className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSwatchClick?.();
+            }}
+            className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
             style={{
               backgroundColor: groupColor,
               width: "24px",
@@ -590,9 +660,10 @@ function SuggestedSpaceCard({
               boxShadow:
                 "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
             }}
+            title="Change icon"
           >
             <SpaceIcon className="h-4 w-4 text-white" />
-          </div>
+          </button>
 
           {isActivated && (
             <div className="absolute top-2 right-2 rounded-full bg-white/90 p-0.5 shadow-sm z-10">

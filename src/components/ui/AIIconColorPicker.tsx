@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { cn } from "@/lib/utils";
-import { RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { RefreshCw, Search } from "lucide-react";
 
 const DEFAULT_FALLBACK = ["box", "home", "building", "package", "tag"];
 
@@ -32,6 +33,8 @@ interface AIIconColorPickerProps {
   fallbackSearch?: string;
   /** When provided (e.g. from space_types lookup), takes precedence over ai_icon_search */
   suggestedIcon?: string | null;
+  /** When true, show an editable search field to find thematically appropriate icons */
+  showSearchInput?: boolean;
   disabled?: boolean;
   className?: string;
 }
@@ -43,13 +46,19 @@ export function AIIconColorPicker({
   defaultIcons = DEFAULT_FALLBACK,
   fallbackSearch = "room",
   suggestedIcon,
+  showSearchInput = false,
   disabled = false,
   className,
 }: AIIconColorPickerProps) {
   const [aiIcons, setAiIcons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const debouncedSearch = useDebounce(searchText.trim(), 400);
+  const [localSearchText, setLocalSearchText] = useState(searchText);
+  useEffect(() => {
+    setLocalSearchText(searchText);
+  }, [searchText]);
+  const effectiveSearchText = showSearchInput ? localSearchText : searchText;
+  const debouncedSearch = useDebounce(effectiveSearchText.trim(), 400);
 
   const themeIcons = defaultIcons.slice(0, 5);
 
@@ -76,7 +85,7 @@ export function AIIconColorPicker({
       return;
     }
 
-    const query = debouncedSearch || searchText.trim() || fallbackSearch;
+    const query = debouncedSearch || effectiveSearchText.trim() || fallbackSearch;
     if (!query) return;
 
     let cancelled = false;
@@ -114,6 +123,23 @@ export function AIIconColorPicker({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {showSearchInput && (
+        <div>
+          <label htmlFor="icon-search" className="text-xs font-medium text-muted-foreground mb-2 block">
+            Search for thematic ideas
+          </label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              id="icon-search"
+              value={localSearchText}
+              onChange={(e) => setLocalSearchText(e.target.value)}
+              placeholder="e.g. stairs, steps, entrance..."
+              className="pl-8 h-9 text-sm shadow-sm"
+            />
+          </div>
+        </div>
+      )}
       {/* Icon row: 5 thematic slots; first replaced by AI when user types */}
       <div>
         <p className="text-xs font-medium text-muted-foreground mb-2">

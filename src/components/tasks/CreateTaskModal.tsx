@@ -181,7 +181,11 @@ export function CreateTaskModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [invitePrefillName, setInvitePrefillName] = useState("");
+  const [invitePrefill, setInvitePrefill] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null>(null);
 
   // AI Title extraction
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
@@ -1428,8 +1432,11 @@ export function CreateTaskModal({
                 onTeamsChange={setAssignedTeamIds}
                 pendingInvitations={pendingInvitations}
                 onPendingInvitationsChange={setPendingInvitations}
-                onInviteToOrg={() => setInviteModalOpen(true)}
-                onAddAsContractor={() => { setInviteModalOpen(true); }}
+                onInviteToOrg={(prefill) => {
+                  setInvitePrefill(prefill ?? null);
+                  setInviteModalOpen(true);
+                }}
+                onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
                 hasUnresolved={unresolvedSections.includes(id)}
                 suggestedChips={suggestedChipsBySection["who"] ?? []}
                 onSuggestionClick={handleChipSelect}
@@ -1445,8 +1452,11 @@ export function CreateTaskModal({
                     onPendingInvitationsChange={setPendingInvitations}
                     instructionBlock={instructionBlock}
                     onInstructionDismiss={() => setInstructionBlock(null)}
-                    onInviteToOrg={() => setInviteModalOpen(true)}
-                    onAddAsContractor={() => { setInviteModalOpen(true); }}
+                    onInviteToOrg={(prefill) => {
+                      setInvitePrefill(prefill ?? null);
+                      setInviteModalOpen(true);
+                    }}
+                    onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
                   />
                 )}
               </WhoSection>
@@ -1710,14 +1720,19 @@ export function CreateTaskModal({
   const inviteModal = (
     <InviteUserModal
       open={inviteModalOpen}
-      onOpenChange={setInviteModalOpen}
-      prefillFirstName={invitePrefillName}
+      onOpenChange={(open) => {
+        setInviteModalOpen(open);
+        if (!open) setInvitePrefill(null);
+      }}
+      prefillFirstName={invitePrefill?.firstName ?? ""}
+      prefillLastName={invitePrefill?.lastName ?? ""}
+      prefillEmail={invitePrefill?.email ?? ""}
       onInviteSent={(inv) => {
         setPendingInvitations((prev) => [
           ...prev,
           { id: `pending-${inv.email}`, email: inv.email, displayName: `${inv.firstName} ${inv.lastName}` },
         ]);
-        setInvitePrefillName("");
+        setInvitePrefill(null);
       }}
     />
   );

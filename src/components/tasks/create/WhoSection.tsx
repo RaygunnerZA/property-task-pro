@@ -29,7 +29,8 @@ interface WhoSectionProps {
   onTeamsChange: (teamIds: string[]) => void;
   pendingInvitations?: PendingInvitation[];
   onPendingInvitationsChange?: (invitations: PendingInvitation[]) => void;
-  onInviteToOrg?: () => void;
+  /** Called to open Invite User modal. Optional prefill from "Invite [Name]" proposal. */
+  onInviteToOrg?: (prefill?: { firstName?: string; lastName?: string }) => void;
   onAddAsContractor?: () => void;
   hasUnresolved?: boolean;
   children?: React.ReactNode;
@@ -193,7 +194,10 @@ export function WhoSection({
       setInputValue("");
       setIsEditing(false);
     } else if (proposal.type === "invite") {
-      onInviteToOrg?.();
+      const nameParts = proposal.label.replace(/^Invite\s+/i, "").trim().split(/\s+/);
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      onInviteToOrg?.({ firstName, lastName });
       setInputValue("");
       setIsEditing(false);
     } else if (proposal.type === "create_team") {
@@ -415,7 +419,7 @@ export function WhoSection({
           {/* AI-suggested chips — shown when no person/team is assigned yet */}
           {!assignedUserId && assignedTeamIds.length === 0 && !isEditing &&
             suggestedChips.map((chip) => {
-              // Unknown person (not in org): show INVITE prefix to signal the action required
+              // Unknown person (not in org): show INVITE prefix — clicking opens InviteUserModal
               const isUnknownPerson = chip.type === 'person' && chip.blockingRequired && !chip.resolvedEntityId;
               const chipLabel = isUnknownPerson
                 ? `INVITE ${chip.label.toUpperCase()}`
@@ -426,7 +430,16 @@ export function WhoSection({
                   epistemic="proposal"
                   label={chipLabel}
                   truncate={false}
-                  onPress={() => onSuggestionClick?.(chip)}
+                  onPress={() => {
+                    if (isUnknownPerson) {
+                      const nameParts = chip.label.trim().split(/\s+/);
+                      const firstName = nameParts[0] || "";
+                      const lastName = nameParts.slice(1).join(" ") || "";
+                      onInviteToOrg?.({ firstName, lastName });
+                    } else {
+                      onSuggestionClick?.(chip);
+                    }
+                  }}
                   className="shrink-0"
                 />
               );

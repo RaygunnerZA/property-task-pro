@@ -104,6 +104,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [isCompliance, setIsCompliance] = useState(false);
   const [complianceLevel, setComplianceLevel] = useState("");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [invitePrefill, setInvitePrefill] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null>(null);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
 
   // Update local state when task data loads
@@ -655,8 +660,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
                   pendingInvitations={pendingInvitations}
                   onPendingInvitationsChange={setPendingInvitations}
-                  onInviteToOrg={() => setInviteModalOpen(true)}
-                  onAddAsContractor={() => setInviteModalOpen(true)}
+                  onInviteToOrg={(prefill) => {
+                    setInvitePrefill(prefill ?? null);
+                    setInviteModalOpen(true);
+                  }}
+                  onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
                 />
 
                 <WhereSection
@@ -925,7 +933,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     
     <InviteUserModal
       open={inviteModalOpen}
-      onOpenChange={setInviteModalOpen}
+      onOpenChange={(open) => {
+        setInviteModalOpen(open);
+        if (!open) setInvitePrefill(null);
+      }}
+      prefillFirstName={invitePrefill?.firstName ?? ""}
+      prefillLastName={invitePrefill?.lastName ?? ""}
+      prefillEmail={invitePrefill?.email ?? ""}
       onInviteSent={(inv) => {
         setPendingInvitations((prev) => [
           ...prev,

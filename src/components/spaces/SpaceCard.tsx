@@ -155,11 +155,11 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
         // #endregion
         setIconDialogOpen(open);
       }}>
-        <DialogContent className="max-w-sm p-5" aria-describedby={undefined}>
+        <DialogContent className="max-w-sm p-5" aria-describedby="space-icon-desc">
           <DialogHeader>
             <DialogTitle>Change Icon</DialogTitle>
-            <DialogDescription className="sr-only">
-              Pick a new icon for {displayName}
+            <DialogDescription id="space-icon-desc">
+              Pick a new icon for <strong>{displayName}</strong>
             </DialogDescription>
           </DialogHeader>
           <AIIconColorPicker
@@ -167,6 +167,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
             value={iconValue}
             onChange={(icon, color) => setIconValue({ iconName: icon, color })}
             suggestedIcon={space.icon_name}
+            showSearchInput
           />
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={() => setIconDialogOpen(false)}>

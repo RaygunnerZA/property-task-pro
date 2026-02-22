@@ -127,10 +127,9 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
 function ProtectedRouteSkeleton() {
   return (
     <div className="min-h-screen bg-[#F6F4F2] flex items-center justify-center">
-      <div className="w-full max-w-md space-y-4 p-6">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-12 w-full" />
+      <div className="text-center">
+        <Skeleton className="h-8 w-48 mx-auto mb-4" />
+        <p className="text-lg text-[#6D7480]">Loading Filla...</p>
       </div>
     </div>
   );
