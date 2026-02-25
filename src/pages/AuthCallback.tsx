@@ -84,6 +84,24 @@ export default function AuthCallback() {
           return "/onboarding/add-property";
         }
 
+        // Safety net: if this user has a pending invite, route through acceptance
+        // before falling back to create-organisation onboarding.
+        const userEmail = user.email?.toLowerCase();
+        if (userEmail) {
+          const { data: pendingInvitation } = await supabase
+            .from("invitations")
+            .select("token")
+            .eq("email", userEmail)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingInvitation?.token) {
+            return `/accept-invitation?token=${pendingInvitation.token}`;
+          }
+        }
+
         return "/onboarding/create-organisation";
       } catch (err: any) {
         console.error("[AuthCallback] Unexpected error:", err);

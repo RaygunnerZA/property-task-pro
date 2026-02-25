@@ -192,8 +192,14 @@ export default function LoginPage() {
         
         // Refresh session to ensure auth state is updated
         await supabase.auth.refreshSession();
-        
-        // Navigate to auth callback which will check org status and route accordingly
+
+        // If sign-in came from an invitation link, complete acceptance first.
+        if (inviteToken) {
+          navigate(`/accept-invitation?token=${inviteToken}`, { replace: true });
+          return;
+        }
+
+        // Normal post-login routing
         navigate("/auth/callback", { replace: true });
       }
     } catch (error: any) {

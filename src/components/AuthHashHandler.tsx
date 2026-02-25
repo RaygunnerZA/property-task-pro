@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -12,12 +12,19 @@ import { toast } from "sonner";
  */
 export function AuthHashHandler() {
   const navigate = useNavigate();
+  const location = useLocation();
   const handled = useRef(false);
 
   useEffect(() => {
     if (handled.current) return;
     const hash = window.location.hash;
     if (!hash) return;
+
+    // Invitation acceptance has its own token/session handler in AcceptInvitation.
+    // Avoid hijacking those flows into generic auth callback routing.
+    const onAcceptInvitationRoute = location.pathname === "/accept-invitation";
+    const hasInviteToken = new URLSearchParams(location.search).has("token");
+    if (onAcceptInvitationRoute || hasInviteToken) return;
 
     try {
       const params = new URLSearchParams(hash.substring(1));
@@ -42,7 +49,7 @@ export function AuthHashHandler() {
     } catch {
       // Ignore parse errors
     }
-  }, [navigate]);
+  }, [location.pathname, location.search, navigate]);
 
   return null;
 }

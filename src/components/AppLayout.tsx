@@ -71,15 +71,6 @@ export function AppLayout({
             </div>
           </header>
 
-          {/* Desktop dev toolbar */}
-          {import.meta.env.DEV && (
-            <div className="hidden md:flex items-center justify-end px-4 py-1.5 bg-background/80 backdrop-blur-sm border-b border-border/20">
-              <Suspense fallback={null}>
-                <DevToolsDropdown />
-              </Suspense>
-            </div>
-          )}
-
           {/* Main content with paper background and noise texture */}
           <main 
             ref={mainRef}

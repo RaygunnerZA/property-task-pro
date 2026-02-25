@@ -228,7 +228,7 @@ export function DashboardCalendar({
                   width: '28px',
                   height: '28px',
                   backgroundColor: fillColor || undefined,
-                  borderRadius: hasTasks ? '10px' : '9999px',
+                  borderRadius: isTodayDate ? '8px' : (hasTasks ? '10px' : '9999px'),
                   // Apply neomorphic pressed effect directly via inline style
                   ...(hasTasks ? {
                     boxShadow: 'inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)'
@@ -238,7 +238,7 @@ export function DashboardCalendar({
                 {date.getDate()}
                 {isTodayDate && (
                   <span 
-                    className="absolute w-8 h-8 rounded-full border-2 border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    className="absolute w-8 h-8 rounded-[12px] border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                   />
                 )}
               </button>
@@ -261,6 +261,11 @@ export function DashboardCalendar({
           display: grid !important;
           align-items: center !important;
           justify-items: center !important;
+        }
+
+        /* Keep today's date shape slightly rounded, not fully circular */
+        button.rdp-day.is-today {
+          border-radius: 8px !important;
         }
         
         /* Neumorphic pressed effect for days with tasks (priority fill circles) */
@@ -296,6 +301,8 @@ export function DashboardCalendar({
         
         /* Today indicator circle positioning */
         .rdp-day.is-today > span {
+          border-radius: 12px !important;
+          background-color: rgba(255, 255, 255, 0.9) !important;
           z-index: 3 !important;
         }
         
