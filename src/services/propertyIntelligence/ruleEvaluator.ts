@@ -87,9 +87,11 @@ function evaluateCompliance(profile: PropertyProfile): EvaluatedRule[] {
     profile.ownershipType === "rented" ||
     profile.ownershipType === "managed";
 
+  const presentSet = new Set(profile.presentComplianceTypes);
+
   const applicable = COMPLIANCE_TEMPLATES.filter((template) =>
-    templateApplies(template, profile)
-  ).filter((template) => !profile.presentComplianceTypes.includes(template.complianceType));
+    templateApplies(template, profile) && !presentSet.has(template.complianceType)
+  );
 
   return applicable
     .sort((a, b) => {
@@ -139,14 +141,7 @@ function evaluateChipBoosts(profile: PropertyProfile): EvaluatedRule[] {
     }
   }
 
-  const highMaintenanceAssets = [
-    "Passenger Lifts",
-    "Boiler",
-    "HVAC Units",
-    "UPS",
-    "Generators",
-  ];
-  if (profile.presentAssetTypes.some((t) => highMaintenanceAssets.includes(t))) {
+  if (profile.presentAssetTypes.some((t) => HIGH_MAINTENANCE_ASSETS.has(t))) {
     boosts.push({
       ruleId: "boost-asset-chip",
       output: { kind: "chip_boost", chipType: "asset", label: "Asset", score: 0.7 },
@@ -250,38 +245,46 @@ function buildRationale(
   return `Required because: ${reason}. Legal basis: ${template.legalRef}. ${actionNote}`;
 }
 
+const HIGH_MAINTENANCE_ASSETS = new Set([
+  "Passenger Lifts",
+  "Boiler",
+  "HVAC Units",
+  "UPS",
+  "Generators",
+]);
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+const SITE_TYPE_LABELS: Record<SiteType, string> = {
+  residential: "Residential",
+  commercial: "Commercial",
+  mixed_use: "Mixed-use",
+  industrial: "Industrial",
+  land: "Land",
+};
+
+const OWNERSHIP_TYPE_LABELS: Record<string, string> = {
+  owned: "Owner-occupied",
+  leased: "Leasehold",
+  rented: "Rented",
+  managed: "Managed",
+  other: "Other tenure",
+};
+
 function formatSiteType(siteType: SiteType): string {
-  const labels: Record<SiteType, string> = {
-    residential: "Residential",
-    commercial: "Commercial",
-    mixed_use: "Mixed-use",
-    industrial: "Industrial",
-    land: "Land",
-  };
-  return labels[siteType] ?? siteType;
+  return SITE_TYPE_LABELS[siteType] ?? siteType;
 }
 
 function formatOwnershipType(ownershipType: string): string {
-  const labels: Record<string, string> = {
-    owned: "Owner-occupied",
-    leased: "Leasehold",
-    rented: "Rented",
-    managed: "Managed",
-    other: "Other tenure",
-  };
-  return labels[ownershipType] ?? ownershipType;
+  return OWNERSHIP_TYPE_LABELS[ownershipType] ?? ownershipType;
 }
 
-// Re-export for backward compat with chipSuggestionEngine which calls the
-// chip-boost evaluator directly. Route through evaluateProfile internally.
 export function evaluateProfileForChipBoosts(
   profile: PropertyProfile
 ): EvaluatedRule[] {
-  return evaluateProfile(profile).chipBoosts;
+  return evaluateChipBoosts(profile);
 }

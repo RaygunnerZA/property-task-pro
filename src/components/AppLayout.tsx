@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect } from 'react';
+import { ReactNode, useRef, useEffect, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
@@ -6,6 +6,9 @@ import { Menu } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { cn } from '@/lib/utils';
+
+const DevToolsDropdown = lazy(() => import('@/components/dev/DevToolsDropdown'));
+const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
 
 function MobileAssistantButton() {
   const { openAssistant } = useAssistantContext();
@@ -58,8 +61,24 @@ export function AppLayout({
             <SidebarTrigger className="mr-4">
               <Menu className="h-5 w-5 text-foreground" />
             </SidebarTrigger>
-            <MobileAssistantButton />
+            <div className="flex items-center gap-2">
+              {import.meta.env.DEV && (
+                <Suspense fallback={null}>
+                  <DevToolsDropdown />
+                </Suspense>
+              )}
+              <MobileAssistantButton />
+            </div>
           </header>
+
+          {/* Desktop dev toolbar */}
+          {import.meta.env.DEV && (
+            <div className="hidden md:flex items-center justify-end px-4 py-1.5 bg-background/80 backdrop-blur-sm border-b border-border/20">
+              <Suspense fallback={null}>
+                <DevToolsDropdown />
+              </Suspense>
+            </div>
+          )}
 
           {/* Main content with paper background and noise texture */}
           <main 
@@ -77,6 +96,13 @@ export function AppLayout({
             </div>
           </main>
         </div>
+
+        {/* Dev-only AI Debug Panel overlay */}
+        {import.meta.env.DEV && (
+          <Suspense fallback={null}>
+            <AIDebugPanel />
+          </Suspense>
+        )}
       </div>
     </SidebarProvider>;
 }

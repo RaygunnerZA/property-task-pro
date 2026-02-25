@@ -2,11 +2,17 @@
  * useAssistant — Phase 14 FILLA Assistant Mode
  * Calls assistant-reasoner (classification + reasoning in one). Handles proposed actions.
  *
+ * Dev Mode enhancement (Phase 4.2):
+ *   When DevMode is enabled, "why" questions are intercepted and answered
+ *   locally via the rule engine explainability layer. This enables instant
+ *   introspection without a remote call (AI "Development Mode").
+ *
  * @deprecated assistant-intent — Removed. Only assistant-reasoner is used.
  * No references to assistant-intent remain in the codebase.
  */
 import { useState, useCallback } from "react";
 import { useActiveOrg } from "./useActiveOrg";
+import { useDevMode } from "@/context/useDevMode";
 import { supabase } from "@/integrations/supabase/client";
 import type { AssistantMessage, ProposedAction } from "@/components/assistant/AssistantPanel";
 
@@ -17,6 +23,7 @@ export interface AssistantContextInput {
 
 export function useAssistant() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const devMode = useDevMode();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [proposedAction, setProposedAction] = useState<ProposedAction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,6 +34,23 @@ export function useAssistant() {
 
       setLoading(true);
       setMessages((prev) => [...prev, { role: "user", content: query }]);
+
+      if (import.meta.env.DEV && devMode?.enabled) {
+        try {
+          const { handleDevQuestion } = await import("@/services/dev/aiExplainability");
+          const devResult = handleDevQuestion(query);
+          if (devResult) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: `[Dev Mode]\n\n${devResult.answer}` },
+            ]);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Fall through to remote assistant
+        }
+      }
 
       try {
         const { data: reasonerData, error: reasonerErr } = await supabase.functions.invoke(
@@ -58,7 +82,7 @@ export function useAssistant() {
         setLoading(false);
       }
     },
-    [orgId, orgLoading]
+    [orgId, orgLoading, devMode?.enabled]
   );
 
   const confirmAction = useCallback(async () => {

@@ -193,13 +193,10 @@ function detectPriority(text: string): SuggestedChip | null {
   return null;
 }
 
-/**
- * Detect compliance mode from text
- */
+const complianceKeywordsLower = extractionPatterns.complianceKeywords.map(k => k.toLowerCase());
+
 function detectComplianceMode(text: string): boolean {
-  return extractionPatterns.complianceKeywords.some(keyword => 
-    text.includes(keyword.toLowerCase())
-  );
+  return complianceKeywordsLower.some(keyword => text.includes(keyword));
 }
 
 /**
@@ -219,6 +216,18 @@ const spaceKeywords = [
   'reception', 'showroom', 'workshop', 'factory', 'plant', 'site', 'yard',
   'hotel', 'pub', 'lounge', 'suite', 'floor', 'wing', 'block', 'building',
 ];
+
+const spaceKeywordPatterns = spaceKeywords.map(keyword => {
+  const k = keyword.toLowerCase();
+  return {
+    keyword: k,
+    patterns: [
+      new RegExp(`\\b\\w+\\s+${k}\\b`, 'i'),
+      new RegExp(`\\b(the\\s+)?${k}\\b`, 'i'),
+      new RegExp(`\\b${k}\\s+\\w+\\b`, 'i'),
+    ],
+  };
+});
 
 /**
  * Patterns that indicate a multi-word location phrase:
@@ -315,17 +324,8 @@ function detectSpaces(
     matchedSpaces.add(phraseLower);
   }
 
-  // ── Individual space keywords in text ────────────────────────────────────
-  for (const keyword of spaceKeywords) {
-    const keywordLower = keyword.toLowerCase();
-    if (text.includes(keywordLower) && !matchedSpaces.has(keywordLower)) {
-      // Look for the full phrase (e.g., "the cottage", "bowling alley", "main kitchen")
-      const patterns = [
-        new RegExp(`\\b\\w+\\s+${keywordLower}\\b`, 'i'),  // "bowling alley", "main kitchen"
-        new RegExp(`\\b(the\\s+)?${keywordLower}\\b`, 'i'), // "the kitchen", "kitchen"
-        new RegExp(`\\b${keywordLower}\\s+\\w+\\b`, 'i'),   // "kitchen island"
-      ];
-      
+  for (const { keyword, patterns } of spaceKeywordPatterns) {
+    if (text.includes(keyword) && !matchedSpaces.has(keyword)) {
       for (const pattern of patterns) {
         const match = text.match(pattern);
         if (match) {
@@ -574,19 +574,15 @@ function getNextWeekday(weekdayName: string, skipCurrent: boolean = false): Date
   return result;
 }
 
-/**
- * Detect date references from text
- */
+const WEEKDAY_LIST = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const RE_NEXT_WEEK_WEEKDAY = /\bnext\s+week(?:\s+on)?\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+const RE_NEXT_WEEKDAY = /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+const RE_BEFORE_WEEKDAY = /\b(?:before|by)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+
 function detectDate(text: string): SuggestedChip | null {
   const { datePatterns } = extractionPatterns;
-  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  
-  const WEEKDAY_PATTERN = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday)';
 
-  // "next week friday" / "next week on monday" — weekday in the upcoming week
-  const nextWeekWeekdayMatch = text.match(
-    new RegExp(`\\bnext\\s+week(?:\\s+on)?\\s+${WEEKDAY_PATTERN}\\b`, 'i')
-  );
+  const nextWeekWeekdayMatch = text.match(RE_NEXT_WEEK_WEEKDAY);
   if (nextWeekWeekdayMatch) {
     const weekday = nextWeekWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, true);
@@ -605,10 +601,7 @@ function detectDate(text: string): SuggestedChip | null {
     };
   }
 
-  // "next [weekday]" — always skip to the NEXT occurrence (not this week)
-  const nextWeekdayMatch = text.match(
-    new RegExp(`\\bnext\\s+${WEEKDAY_PATTERN}\\b`, 'i')
-  );
+  const nextWeekdayMatch = text.match(RE_NEXT_WEEKDAY);
   if (nextWeekdayMatch) {
     const weekday = nextWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, true);
@@ -627,10 +620,7 @@ function detectDate(text: string): SuggestedChip | null {
     };
   }
 
-  // "before [weekday]" / "by [weekday]" — treat the named day as the deadline
-  const beforeWeekdayMatch = text.match(
-    new RegExp(`\\b(?:before|by)\\s+${WEEKDAY_PATTERN}\\b`, 'i')
-  );
+  const beforeWeekdayMatch = text.match(RE_BEFORE_WEEKDAY);
   if (beforeWeekdayMatch) {
     const weekday = beforeWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, false);
@@ -677,7 +667,7 @@ function detectDate(text: string): SuggestedChip | null {
         calculatedDate = getNextWeekday('friday', false);
         label = formatDateLabel(calculatedDate);
         dateValue = calculatedDate.toISOString().split('T')[0];
-      } else if (weekdays.includes(matchedText)) {
+      } else if (WEEKDAY_LIST.includes(matchedText)) {
         // Single weekday without "next" prefix - get next occurrence
         calculatedDate = getNextWeekday(matchedText, false);
         label = formatDateLabel(calculatedDate);

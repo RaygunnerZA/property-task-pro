@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
+import { useDevMode } from "@/context/useDevMode";
 
 interface UseCurrentUserRoleResult {
   role: string | null;
   isLoading: boolean;
   error: string | null;
   isOwner: boolean;
+  isDevOverride: boolean;
 }
 
 /**
  * Hook to get the current user's role in the active organization.
  * 
- * @returns {UseCurrentUserRoleResult} Object containing role, isLoading, error, and isOwner flag
+ * In dev mode, `userRoleOverride` from DevModeContext replaces the
+ * real DB role without any auth state mutation.
  */
 export function useCurrentUserRole(): UseCurrentUserRoleResult {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const devMode = useDevMode();
   const [role, setRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +37,6 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
       setError(null);
 
       try {
-        // Get the current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError) {
@@ -49,7 +52,6 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
           return;
         }
 
-        // Fetch the user's role in the active organization
         const { data: membership, error: membershipError } = await supabase
           .from("organisation_members")
           .select("role")
@@ -63,8 +65,8 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
         } else {
           setRole(membership?.role || null);
         }
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch user role");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to fetch user role");
         setRole(null);
       } finally {
         setIsLoading(false);
@@ -74,11 +76,23 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
     fetchUserRole();
   }, [supabase, orgId, orgLoading]);
 
+  const effectiveRole =
+    import.meta.env.DEV && devMode.enabled && devMode.userRoleOverride
+      ? devMode.userRoleOverride
+      : role;
+
+  const isDevOverride = !!(
+    import.meta.env.DEV &&
+    devMode.enabled &&
+    devMode.userRoleOverride
+  );
+
   return {
-    role,
+    role: effectiveRole,
     isLoading,
     error,
-    isOwner: role === "owner",
+    isOwner: isDevOverride ? role === "owner" : effectiveRole === "owner",
+    isDevOverride,
   };
 }
 

@@ -407,3 +407,191 @@ describe("evaluateProfile — output shape", () => {
     expect(Array.isArray(result.warnings)).toBe(true);
   });
 });
+
+// ─── Scenario Coverage (A/B/C/D) ─────────────────────────────────────────────
+
+describe("evaluateProfile — scenario coverage", () => {
+
+  it("Scenario A: commercial + leased + full asset suite → many recommendations", () => {
+    const profile = makeProfile({
+      siteType: "commercial",
+      ownershipType: "leased",
+      presentAssetTypes: ["Boiler", "HVAC Units", "Passenger Lifts", "Sprinklers"],
+      isListed: false,
+    });
+
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    expect(types).toContain("Fire Risk Assessment");
+    expect(types).toContain("Gas Safety Certificate");
+    expect(types).toContain("HVAC Servicing");
+    expect(types).toContain("LOLER Inspection");
+    expect(types).toContain("Sprinkler System Servicing");
+    expect(types).toContain("F-Gas Checks");
+    expect(result.complianceRecommendations.length).toBeGreaterThan(5);
+  });
+
+  it("Scenario B: residential + owned + minimal assets → few recommendations", () => {
+    const profile = makeProfile({
+      siteType: "residential",
+      ownershipType: "owned",
+      presentAssetTypes: [],
+      isListed: false,
+    });
+
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    expect(types).not.toContain("Gas Safety Certificate");
+    expect(types).not.toContain("EICR");
+    expect(types).toContain("Fire Extinguisher Service");
+    expect(types).toContain("Fire Door Inspection");
+  });
+
+  it("Scenario C: mixed_use + managed + listed building → includes listed consent + warnings", () => {
+    const profile = makeProfile({
+      siteType: "mixed_use",
+      ownershipType: "managed",
+      isListed: true,
+      listingGrade: "II*",
+      presentAssetTypes: ["Boiler"],
+    });
+
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    expect(types).toContain("Listed Building Consent Review");
+    expect(result.warnings.length).toBeGreaterThanOrEqual(1);
+    expect(result.warnings[0].output.kind).toBe("clarity_warning");
+  });
+
+  it("Scenario D: industrial + owned + generators and compressors → niche rules fire", () => {
+    const profile = makeProfile({
+      siteType: "industrial",
+      ownershipType: "owned",
+      presentAssetTypes: ["Compressors", "HVAC Units", "UPS"],
+    });
+
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    expect(types).toContain("Pressure Vessel Inspection");
+    expect(types).toContain("UPS Service");
+    expect(types).toContain("F-Gas Checks");
+    expect(types).toContain("HVAC Servicing");
+  });
+});
+
+// ─── Duplicate Seed Idempotency ──────────────────────────────────────────────
+
+describe("evaluateProfile — duplicate seed prevention", () => {
+
+  it("presentComplianceTypes prevents re-recommendation of those types", () => {
+    const profile = makeProfile({
+      siteType: "commercial",
+      ownershipType: "leased",
+      presentComplianceTypes: [
+        "Fire Risk Assessment",
+        "EICR",
+        "Legionella L8 Risk Assessment",
+      ],
+    });
+
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    expect(types).not.toContain("Fire Risk Assessment");
+    expect(types).not.toContain("EICR");
+    expect(types).not.toContain("Legionella L8 Risk Assessment");
+  });
+
+  it("second evaluation with full coverage returns zero recommendations", () => {
+    const profile = makeProfile({
+      siteType: "residential",
+      ownershipType: "leased",
+      presentAssetTypes: ["Boiler"],
+    });
+
+    const firstResult = evaluateProfile(profile);
+    const firstTypes = firstResult.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+
+    const fullCoverage = makeProfile({
+      ...profile,
+      presentComplianceTypes: firstTypes,
+    });
+
+    const secondResult = evaluateProfile(fullCoverage);
+    expect(secondResult.complianceRecommendations).toHaveLength(0);
+  });
+});
+
+// ─── Repairing Scope Extended ────────────────────────────────────────────────
+
+describe("evaluateProfile — repairing scope extended", () => {
+
+  it("rented property also triggers chase_landlord prefix (treated as tenant)", () => {
+    const profile = makeProfile({
+      siteType: "residential",
+      ownershipType: "rented",
+      presentAssetTypes: ["Boiler"],
+    });
+
+    const result = evaluateProfile(profile);
+    const gasRule = result.complianceRecommendations.find(
+      (r) => r.output.kind === "suggest_compliance" && r.output.complianceType === "Gas Safety Certificate"
+    );
+
+    expect(gasRule).toBeDefined();
+    if (gasRule!.output.kind === "suggest_compliance") {
+      expect(gasRule!.output.taskPrefix).toBe("chase_landlord");
+    }
+  });
+
+  it("managed property triggers chase_landlord for landlord-scoped rules", () => {
+    const profile = makeProfile({
+      siteType: "residential",
+      ownershipType: "managed",
+      presentAssetTypes: ["Boiler"],
+    });
+
+    const result = evaluateProfile(profile);
+    const gasRule = result.complianceRecommendations.find(
+      (r) => r.output.kind === "suggest_compliance" && r.output.complianceType === "Gas Safety Certificate"
+    );
+
+    if (gasRule && gasRule.output.kind === "suggest_compliance") {
+      expect(gasRule.output.taskPrefix).toBe("chase_landlord");
+    }
+  });
+
+  it("LOLER (both scope) on leased property → no chase_landlord prefix", () => {
+    const profile = makeProfile({
+      siteType: "commercial",
+      ownershipType: "leased",
+      presentAssetTypes: ["Passenger Lifts"],
+    });
+
+    const result = evaluateProfile(profile);
+    const lolerRule = result.complianceRecommendations.find(
+      (r) => r.output.kind === "suggest_compliance" && r.output.complianceType === "LOLER Inspection"
+    );
+
+    expect(lolerRule).toBeDefined();
+    if (lolerRule!.output.kind === "suggest_compliance") {
+      expect(lolerRule!.output.taskPrefix).toBeUndefined();
+    }
+  });
+});

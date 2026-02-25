@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { DevModeProvider } from "@/context/DevModeContext";
 import { AssistantProvider } from "@/contexts/AssistantContext";
 import { ThirdColumnProvider } from "@/contexts/ThirdColumnContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
@@ -118,6 +119,7 @@ const queryClient = new QueryClient({
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
+      <DevModeProvider>
       <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -252,6 +254,7 @@ const App = () => {
             </SystemStatusProvider>
           </BrowserRouter>
         </TooltipProvider>
+      </DevModeProvider>
     </QueryClientProvider>
   );
 };
