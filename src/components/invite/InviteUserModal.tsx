@@ -67,7 +67,14 @@ interface InviteUserModalProps {
   prefillFirstName?: string;
   prefillLastName?: string;
   prefillEmail?: string;
-  onInviteSent?: (invitation: { email: string; firstName: string; lastName: string; role: string }) => void;
+  onInviteSent?: (invitation: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    status: "pending" | "accepted";
+    userId?: string;
+  }) => void;
 }
 
 export function InviteUserModal({
@@ -291,6 +298,8 @@ export function InviteUserModal({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         role,
+        status: data?.auto_accepted ? "accepted" : "pending",
+        userId: data?.user_id || undefined,
       });
 
       await refreshMembers();

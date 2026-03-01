@@ -84,8 +84,8 @@ export default function AuthCallback() {
           return "/onboarding/add-property";
         }
 
-        // Safety net: if this user has a pending invite, route through acceptance
-        // before falling back to create-organisation onboarding.
+        // Safety net: if this user has a pending invite, resolve it during this
+        // loading gate before deciding onboarding vs dashboard routing.
         const userEmail = user.email?.toLowerCase();
         if (userEmail) {
           const { data: pendingInvitation } = await supabase
@@ -98,6 +98,23 @@ export default function AuthCallback() {
             .maybeSingle();
 
           if (pendingInvitation?.token) {
+            const { data: acceptResult, error: acceptError } = await supabase.rpc(
+              "accept_invitation",
+              { p_token: pendingInvitation.token }
+            );
+
+            if (!acceptError && !(acceptResult as any)?.error) {
+              const onboardingCompleted = user.user_metadata?.onboarding_completed;
+              if (!onboardingCompleted) {
+                await supabase.auth.updateUser({
+                  data: { ...user.user_metadata, onboarding_completed: true },
+                });
+                await supabase.auth.refreshSession();
+              }
+              return "/";
+            }
+
+            // Fall back to dedicated acceptance route if token flow needs user action.
             return `/accept-invitation?token=${pendingInvitation.token}`;
           }
         }

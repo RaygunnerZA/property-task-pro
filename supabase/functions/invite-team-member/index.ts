@@ -46,6 +46,74 @@ function generateInvitationToken(): string {
     .replace(/=/g, "");
 }
 
+async function findUserByEmail(email: string) {
+  const lowerEmail = email.toLowerCase();
+
+  // Supabase Admin API does not offer direct exact-email lookup, so page through users.
+  for (let page = 1; page <= 10; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const users = data?.users ?? [];
+    const matched = users.find((u) => u.email?.toLowerCase() === lowerEmail);
+    if (matched) return matched;
+    if (users.length < 200) break;
+  }
+
+  return null;
+}
+
+async function upsertOrgMembership(params: {
+  orgId: string;
+  userId: string;
+  role: string;
+  propertyIds: string[] | null;
+}) {
+  const { orgId, userId, role, propertyIds } = params;
+
+  const { data: existingMember, error: existingError } = await supabaseAdmin
+    .from("organisation_members")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  if (existingMember?.id) {
+    const { error: updateError } = await supabaseAdmin
+      .from("organisation_members")
+      .update({
+        role,
+        assigned_properties: propertyIds,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingMember.id);
+    if (updateError) throw updateError;
+    return { membershipId: existingMember.id, created: false };
+  }
+
+  const { data: newMember, error: insertError } = await supabaseAdmin
+    .from("organisation_members")
+    .insert({
+      org_id: orgId,
+      user_id: userId,
+      role,
+      assigned_properties: propertyIds,
+    })
+    .select("id")
+    .single();
+
+  if (insertError) throw insertError;
+  return { membershipId: newMember.id, created: true };
+}
+
 Deno.serve(async (req) => {
   const executionId = crypto.randomUUID();
   const startTime = Date.now();
@@ -141,9 +209,11 @@ Deno.serve(async (req) => {
       return jsonErr("Missing required fields: email, org_id", 400);
     }
 
+    const normalizedEmail = email.toLowerCase();
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       console.log("[invite:invalid-email]", { executionId, email });
       return jsonErr("Invalid email format", 400);
     }
@@ -194,7 +264,7 @@ Deno.serve(async (req) => {
           .from("invitations")
           .select("id, status, expires_at")
           .eq("org_id", org_id)
-          .eq("email", email.toLowerCase())
+          .eq("email", normalizedEmail)
           .eq("status", "pending")
           .maybeSingle(),
         new Promise((_, reject) => 
@@ -315,7 +385,7 @@ Deno.serve(async (req) => {
           .from("invitations")
           .insert({
             org_id,
-            email: email.toLowerCase(),
+            email: normalizedEmail,
             first_name: first_name?.trim() || null,
             last_name: last_name?.trim() || null,
             role,
@@ -351,6 +421,70 @@ Deno.serve(async (req) => {
     } catch (insertTimeoutErr: any) {
       console.error("[invite:insert-timeout]", { executionId, error: insertTimeoutErr?.message });
       return jsonErr("Failed to create invitation record: timeout", 408);
+    }
+
+    // Existing-account path: grant membership immediately and mark invitation accepted.
+    try {
+      const existingUser = await findUserByEmail(normalizedEmail);
+      if (existingUser?.id) {
+        const effectivePropertyIds =
+          Array.isArray(property_ids) && property_ids.length > 0
+            ? property_ids
+            : null;
+
+        const { membershipId, created } = await upsertOrgMembership({
+          orgId: org_id,
+          userId: existingUser.id,
+          role,
+          propertyIds: effectivePropertyIds,
+        });
+
+        const { error: markAcceptedError } = await supabaseAdmin
+          .from("invitations")
+          .update({
+            status: "accepted",
+            accepted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", invitation.id);
+
+        if (markAcceptedError) throw markAcceptedError;
+
+        const duration = Date.now() - startTime;
+        console.log("[invite:auto-accepted-existing-user]", {
+          executionId,
+          duration: `${duration}ms`,
+          email: normalizedEmail,
+          userId: existingUser.id,
+          orgId: org_id,
+          membershipId,
+          membershipCreated: created,
+        });
+
+        return jsonOK({
+          success: true,
+          auto_accepted: true,
+          user_id: existingUser.id,
+          membership_id: membershipId,
+          invitation: {
+            id: invitation.id,
+            email: invitation.email,
+            status: "accepted",
+            expires_at: invitation.expires_at,
+            accepted_at: new Date().toISOString(),
+          },
+          message: "User already has an account. Access was granted immediately.",
+        });
+      }
+    } catch (existingUserFlowError: any) {
+      console.error("[invite:existing-user-flow-error]", {
+        executionId,
+        message: existingUserFlowError?.message,
+      });
+      return jsonErr(
+        `Failed to grant immediate access for existing account: ${existingUserFlowError?.message ?? "unknown error"}`,
+        500
+      );
     }
 
     // Generate invitation link and send email
@@ -411,7 +545,7 @@ Deno.serve(async (req) => {
       console.log("[invite:using-inviteUserByEmail]", { executionId, email, redirectUrl });
       
       const inviteResult = await Promise.race([
-        supabaseAdmin.auth.admin.inviteUserByEmail(email.toLowerCase(), {
+        supabaseAdmin.auth.admin.inviteUserByEmail(normalizedEmail, {
           data: {
             invitation_token: invitationToken,
             org_id: org_id,
@@ -463,7 +597,7 @@ Deno.serve(async (req) => {
           const linkResult = await Promise.race([
             supabaseAdmin.auth.admin.generateLink({
               type: "magiclink",
-              email: email.toLowerCase(),
+              email: normalizedEmail,
               options: {
                 redirectTo: redirectUrl,
                 data: {

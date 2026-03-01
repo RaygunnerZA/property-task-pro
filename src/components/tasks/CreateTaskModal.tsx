@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Tab Components (keeping for backward compatibility during transition)
-import { WhoTab, type PendingInvitation } from "./create/tabs/WhoTab";
+import { type PendingInvitation } from "./create/tabs/WhoTab";
 import { WhenTab } from "./create/tabs/WhenTab";
 import { WhereTab } from "./create/tabs/WhereTab";
 import { PriorityTab } from "./create/tabs/PriorityTab";
@@ -102,7 +102,7 @@ export function CreateTaskModal({
     templates
   } = useChecklistTemplates(open);
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
-  const { members } = useOrgMembers();
+  const { members, refresh: refreshMembers } = useOrgMembers();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -1728,9 +1728,22 @@ export function CreateTaskModal({
       prefillLastName={invitePrefill?.lastName ?? ""}
       prefillEmail={invitePrefill?.email ?? ""}
       onInviteSent={(inv) => {
+        if (inv.status === "accepted" && inv.userId) {
+          setAssignedUserId(inv.userId);
+          setPendingInvitations((prev) => prev.filter((p) => p.email !== inv.email));
+          refreshMembers();
+          return;
+        }
+
         setPendingInvitations((prev) => [
-          ...prev,
-          { id: `pending-${inv.email}`, email: inv.email, displayName: `${inv.firstName} ${inv.lastName}` },
+          ...prev.filter((p) => p.email !== inv.email),
+          {
+            id: `pending-${inv.email}`,
+            email: inv.email,
+            firstName: inv.firstName,
+            lastName: inv.lastName,
+            displayName: `${inv.firstName} ${inv.lastName}`.trim(),
+          },
         ]);
         setInvitePrefill(null);
       }}
