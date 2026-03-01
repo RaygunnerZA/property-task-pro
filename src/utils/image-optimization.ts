@@ -19,10 +19,29 @@ export async function generateOptimizedImages(
 
     img.onload = async () => {
       try {
-        // Generate thumbnail (200x200px, WebP, 75% quality)
+        // Generate thumbnail (200x200px) using center-crop to preserve aspect ratio.
+        // This avoids portrait images being squashed into square thumbnails.
         canvas.width = 200;
         canvas.height = 200;
-        ctx.drawImage(img, 0, 0, 200, 200);
+        const srcAspect = img.width / img.height;
+        const targetAspect = 1; // square thumbnail
+
+        let sx = 0;
+        let sy = 0;
+        let sw = img.width;
+        let sh = img.height;
+
+        if (srcAspect > targetAspect) {
+          // Source is wider than square: crop left/right.
+          sw = img.height * targetAspect;
+          sx = (img.width - sw) / 2;
+        } else if (srcAspect < targetAspect) {
+          // Source is taller than square: crop top/bottom.
+          sh = img.width / targetAspect;
+          sy = (img.height - sh) / 2;
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 200, 200);
         const thumbnail = await new Promise<Blob>((res, rej) => {
           canvas.toBlob(
             (blob) => blob ? res(blob) : rej(new Error('Thumbnail generation failed')),

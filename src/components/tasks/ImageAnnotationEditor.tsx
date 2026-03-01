@@ -666,8 +666,17 @@ export function ImageAnnotationEditor({
   const commitInlineTextEditing = useCallback(() => {
     if (!inlineTextEditor) return;
     const trimmedText = inlineTextEditor.text.trim();
+    setAnnotations((prev) => {
+      if (!trimmedText) {
+        return prev.filter((ann) => ann.annotationId !== inlineTextEditor.annotationId);
+      }
+      return prev.map((ann) =>
+        ann.annotationId === inlineTextEditor.annotationId && ann.type === "text"
+          ? { ...ann, text: inlineTextEditor.text }
+          : ann
+      );
+    });
     if (!trimmedText) {
-      setAnnotations((prev) => prev.filter((ann) => ann.annotationId !== inlineTextEditor.annotationId));
       setSelectedAnnotationId((prev) => (prev === inlineTextEditor.annotationId ? null : prev));
     }
     setInlineTextEditor(null);
@@ -1146,20 +1155,20 @@ export function ImageAnnotationEditor({
     if (!inlineTextEditor) return;
     const frame = requestAnimationFrame(() => {
       inlineInputRef.current?.focus();
-      inlineInputRef.current?.select();
     });
     return () => cancelAnimationFrame(frame);
-  }, [inlineTextEditor]);
+  }, [inlineTextEditor?.annotationId]);
 
   // Keep local editor state aligned when fresh annotation data is loaded.
   useEffect(() => {
+    if (inlineTextEditor) return;
     if (hasUnsavedChanges) return;
     setAnnotations(initialAnnotations);
     setHistory([initialAnnotations]);
     setHistoryIndex(0);
     setLastSavedAnnotations(initialAnnotations);
     setSelectedAnnotationId(null);
-  }, [initialAnnotations, hasUnsavedChanges]);
+  }, [initialAnnotations, hasUnsavedChanges, inlineTextEditor]);
 
   // Track tool changes
   useEffect(() => {
@@ -1392,13 +1401,6 @@ export function ImageAnnotationEditor({
               onChange={(e) => {
                 const nextText = e.target.value;
                 setInlineTextEditor((prev) => (prev ? { ...prev, text: nextText } : prev));
-                setAnnotations((prev) =>
-                  prev.map((ann) =>
-                    ann.annotationId === inlineTextEditor.annotationId && ann.type === "text"
-                      ? { ...ann, text: nextText }
-                      : ann
-                  )
-                );
               }}
               onBlur={commitInlineTextEditing}
               onKeyDown={(e) => {
@@ -1416,6 +1418,9 @@ export function ImageAnnotationEditor({
                 top: `${pos.top}px`,
                 minWidth: `${pos.width}px`,
               }}
+              autoCorrect="on"
+              autoCapitalize="sentences"
+              spellCheck
               placeholder="Type text..."
             />
           );
