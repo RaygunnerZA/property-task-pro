@@ -14,7 +14,7 @@ const MIN_LOADING_MS = 2500;
  * Shows a loading screen with NewtonsCradle while validating user has org, property, etc.
  * Waits at least MIN_LOADING_MS so checks have time to complete before routing.
  * Routes to:
- * - /work/tasks if user has an org (and properties for owner/manager)
+ * - / if user has an org (and properties for owner/manager)
  * - /onboarding/create-organisation if user needs to onboard
  * - /onboarding/add-property if user has org but no properties
  * - /welcome if not authenticated
@@ -61,7 +61,7 @@ export default function AuthCallback() {
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            return "/dashboard";
+            return "/";
           }
 
           // Owner/manager - check if they have properties
@@ -79,7 +79,7 @@ export default function AuthCallback() {
                 data: { ...user.user_metadata, onboarding_completed: true }
               });
             }
-            return "/dashboard";
+            return "/";
           }
           return "/onboarding/add-property";
         }

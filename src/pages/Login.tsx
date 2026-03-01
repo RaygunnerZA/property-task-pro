@@ -109,8 +109,8 @@ export default function LoginPage() {
           .maybeSingle();
         
         if (memberData?.org_id) {
-          // User has an org, redirect to dashboard
-          navigate("/work/tasks");
+          // User has an org, redirect to the home hub dashboard
+          navigate("/");
         }
       }
     };
