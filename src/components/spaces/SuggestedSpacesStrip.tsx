@@ -71,6 +71,7 @@ interface SuggestedSpacesStripProps {
   groupColor: string;
   propertyId: string;
   onSpaceAdded?: () => void;
+  onSpaceOpen?: (spaceId: string) => void;
 }
 
 export function SuggestedSpacesStrip({
@@ -78,6 +79,7 @@ export function SuggestedSpacesStrip({
   groupColor,
   propertyId,
   onSpaceAdded,
+  onSpaceOpen,
 }: SuggestedSpacesStripProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
@@ -411,6 +413,7 @@ export function SuggestedSpacesStrip({
                   isActivated
                   isActivating={false}
                   onActivate={() => {}}
+                  onOpen={() => onSpaceOpen?.(space.id)}
                   onEdit={(type) => openEdit(type, space)}
                   onSwatchClick={() => openEdit("icon", space)}
                   onDuplicate={() => handleDuplicate(space)}
@@ -610,6 +613,7 @@ function SuggestedSpaceCard({
   isActivated,
   isActivating,
   onActivate,
+  onOpen,
   onEdit,
   onSwatchClick,
   onDuplicate,
@@ -621,6 +625,7 @@ function SuggestedSpaceCard({
   isActivated: boolean;
   isActivating: boolean;
   onActivate: () => void;
+  onOpen?: () => void;
   onEdit?: (type: EditActionType) => void;
   onSwatchClick?: () => void;
   onDuplicate?: () => void;
@@ -639,7 +644,13 @@ function SuggestedSpaceCard({
             : "opacity-40 grayscale cursor-pointer hover:opacity-70 hover:grayscale-0 active:scale-[0.97]",
           isActivating && "animate-pulse pointer-events-none"
         )}
-        onClick={!isActivated && !isActivating ? onActivate : undefined}
+        onClick={
+          isActivated
+            ? onOpen
+            : !isActivating
+              ? onActivate
+              : undefined
+        }
       >
         {/* Colour header */}
         <div

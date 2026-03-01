@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
+  const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const tabBeforeCreateTaskRef = useRef<string>("tasks");
 
@@ -162,6 +163,20 @@ export default function Dashboard() {
   useEffect(() => {
     if (!isLargeScreen) setShowCreateTask(false);
   }, [isLargeScreen]);
+
+  useEffect(() => {
+    const onApplyFilters = (event: Event) => {
+      const customEvent = event as CustomEvent<{ filterIds?: string[] }>;
+      const filterIds = Array.isArray(customEvent.detail?.filterIds)
+        ? customEvent.detail.filterIds
+        : [];
+      setAssistantFiltersToApply(filterIds);
+      setActiveTab("tasks");
+      window.setTimeout(() => setAssistantFiltersToApply(null), 100);
+    };
+    window.addEventListener("filla:assistant-apply-task-filters", onApplyFilters);
+    return () => window.removeEventListener("filla:assistant-apply-task-filters", onApplyFilters);
+  }, []);
 
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
@@ -381,6 +396,7 @@ export default function Dashboard() {
             onTabChange={setActiveTab}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
+            filtersToApply={assistantFiltersToApply}
             selectedPropertyIds={selectedPropertyIds}
             onCreateTask={handleOpenCreateTask}
           />

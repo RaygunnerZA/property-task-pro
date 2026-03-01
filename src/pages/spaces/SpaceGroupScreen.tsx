@@ -36,7 +36,7 @@ export default function SpaceGroupScreen() {
   const { data: tasksData = [] } = useTasksQuery(propertyId);
   const group = groupSlug ? getSpaceGroupById(groupSlug) : undefined;
 
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [selectedSpaceId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -259,7 +259,7 @@ export default function SpaceGroupScreen() {
                   groupSlug={groupSlug}
                   groupColor={group.color}
                   tasks={tasks}
-                  onSpaceClick={setSelectedSpaceId}
+                  onSpaceClick={(spaceId) => navigate(`/properties/${propertyId}/spaces/${spaceId}`)}
                   selectedSpaceId={selectedSpaceId}
                 />
               </div>
@@ -288,6 +288,7 @@ export default function SpaceGroupScreen() {
                   suggestedSpaces={group.suggestedSpaces}
                   groupColor={group.color}
                   propertyId={propertyId}
+                  onSpaceOpen={(spaceId) => navigate(`/properties/${propertyId}/spaces/${spaceId}`)}
                   onSpaceAdded={() => {
                     queryClient.invalidateQueries({ queryKey: ["spaces"] });
                   }}

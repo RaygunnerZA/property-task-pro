@@ -22,6 +22,7 @@ interface TaskPanelProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  filtersToApply?: string[] | null;
   selectedPropertyIds?: Set<string>;
   onCreateTask?: () => void;
 }
@@ -52,6 +53,7 @@ export function TaskPanel({
   onTabChange,
   selectedDate: selectedDateProp,
   filterToApply,
+  filtersToApply,
   selectedPropertyIds,
   onCreateTask
 }: TaskPanelProps = {}) {
@@ -293,6 +295,7 @@ export function TaskPanel({
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
                 filterToApply={filterToApply}
+                filtersToApply={filtersToApply}
                 selectedPropertyIds={selectedPropertyIds}
               />
             </div>

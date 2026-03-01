@@ -29,7 +29,7 @@ export interface AssistantMessage {
 }
 
 export interface ProposedAction {
-  type: "task" | "link";
+  type: "task" | "link" | "filter_tasks";
   payload: unknown;
 }
 

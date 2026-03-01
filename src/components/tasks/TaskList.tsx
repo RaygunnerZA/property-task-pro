@@ -23,6 +23,7 @@ interface TaskListProps {
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
   filterToApply?: string | null; // Filter ID to apply programmatically
+  filtersToApply?: string[] | null; // Replace current selected filters programmatically
   /** When provided, property filter uses this set (ALL = size === properties.length → show all). */
   selectedPropertyIds?: Set<string>;
 }
@@ -34,6 +35,7 @@ export function TaskList({
   onTaskClick, 
   selectedTaskId,
   filterToApply,
+  filtersToApply,
   selectedPropertyIds: selectedPropertyIdsProp,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
@@ -484,6 +486,12 @@ export function TaskList({
       });
     }
   }, [filterToApply]);
+
+  // Replace filters programmatically (used by assistant action suggestions)
+  useEffect(() => {
+    if (!filtersToApply) return;
+    setSelectedFilters(new Set(filtersToApply));
+  }, [filtersToApply]);
   
   // Memoize click handlers to prevent recreation on every render
   const handleTaskClick = useCallback((taskId: string) => {

@@ -17,15 +17,15 @@ const corsHeaders = {
 };
 
 const intentToCalls: Record<string, string[]> = {
-  summarise: ["compliance", "assets"],
-  query: ["graph"],
+  summarise: ["tasks", "compliance", "assets"],
+  query: ["tasks", "graph"],
   risk: ["graph-insight", "compliance"],
   recommend: ["compliance"],
   predictive: ["filla-brain-infer"],
   graph: ["graph"],
   create_task: [],
   link: [],
-  unknown: ["compliance"],
+  unknown: ["tasks", "compliance", "assets"],
 };
 
 type Intent =
@@ -38,6 +38,45 @@ type Intent =
   | "create_task"
   | "link"
   | "unknown";
+
+function buildTaskFollowUp(filteredCount: number, queryLower: string) {
+  if (filteredCount === 0) {
+    return "I can check a different slice next - try: 'show open tasks', 'show completed tasks', or 'show high priority tasks'.";
+  }
+  if (/\boverdue\b|\bpast due\b|\blate\b/.test(queryLower)) {
+    return "If you want, I can also break these down by property or show only unassigned overdue tasks.";
+  }
+  if (/\bhigh priority\b|\burgent\b|\bcritical\b/.test(queryLower)) {
+    return "I can also show which high-priority tasks are overdue versus due soon.";
+  }
+  if (/\bcompleted\b|\bdone\b|\bfinished\b/.test(queryLower)) {
+    return "If useful, I can compare completed vs active tasks by property.";
+  }
+  return "Ask a follow-up like 'which of these are overdue?' or 'show only unassigned tasks'.";
+}
+
+function buildPropertyScopeFollowUp(
+  target: { type: string; id: string } | null,
+  queryLower: string,
+  taskRows: Array<{ property_id: string | null; property_name: string | null }>
+) {
+  if (target?.type === "property") {
+    return "I can keep drilling into this property - for example: 'show overdue tasks here' or 'show unassigned tasks here'.";
+  }
+
+  const distinctProperties = new Set(
+    taskRows
+      .filter((t) => t.property_id)
+      .map((t) => t.property_name || t.property_id || "unknown")
+  ).size;
+
+  const asksProperty = /\bproperty\b|\bbuilding\b|\bsite\b/.test(queryLower);
+  if (distinctProperties > 1 || asksProperty) {
+    return "Do you want this across all properties, or should I focus on one property?";
+  }
+
+  return "";
+}
 
 function classifyIntent(query: string): Intent {
   const q = query.toLowerCase().trim();
@@ -128,6 +167,8 @@ Deno.serve(async (req) => {
     graphNodesCount: number | null;
     graphInsightAttempted: boolean;
     hazardExposure: number | null;
+    tasksCount: number | null;
+    taskMatchesCount: number | null;
     complianceCount: number | null;
     assetsCount: number | null;
   } = {
@@ -135,6 +176,8 @@ Deno.serve(async (req) => {
     graphNodesCount: null,
     graphInsightAttempted: false,
     hazardExposure: null,
+    tasksCount: null,
+    taskMatchesCount: null,
     complianceCount: null,
     assetsCount: null,
   };
@@ -191,7 +234,9 @@ Deno.serve(async (req) => {
 
   let answer = "";
   const sources: string[] = [];
+  let proposedAction: { type: string; payload: Record<string, unknown> } | null = null;
   const calls = intentToCalls[intent] ?? intentToCalls.unknown;
+  const queryLower = query.toLowerCase();
 
   // Predictive gate: check org settings
   if (intent === "predictive") {
@@ -234,6 +279,131 @@ Deno.serve(async (req) => {
         .map((n) => `${n.type}: ${n.name || n.type}`)
         .join(", ");
       answer += `Connected entities: ${nodeSummary || "none"}.\n`;
+    }
+  }
+
+  // Tasks portfolio view
+  if (calls.includes("tasks")) {
+    try {
+      type TaskRow = {
+        id: string | null;
+        title: string | null;
+        status: string | null;
+        priority: string | null;
+        due_date: string | null;
+        assigned_user_id: string | null;
+        property_id: string | null;
+        property_name: string | null;
+      };
+
+      const { data: tasks } = await supabase
+        .from("tasks_view")
+        .select("id, title, status, priority, due_date, assigned_user_id, property_id, property_name")
+        .eq("org_id", orgId)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+
+      const taskRows = (tasks ?? []) as TaskRow[];
+      telemetry.tasksCount = taskRows.length;
+
+      const now = new Date();
+      const dayMs = 24 * 60 * 60 * 1000;
+      const toDaysFromNow = (value: string | null): number | null => {
+        if (!value) return null;
+        const parsed = Date.parse(value);
+        if (Number.isNaN(parsed)) return null;
+        return Math.floor((parsed - now.getTime()) / dayMs);
+      };
+
+      let filtered = taskRows;
+      const asksAboutTaskStatus = /\b(task|tasks|todo|to-do)\b/.test(queryLower);
+      const wantsOverdue = /\boverdue\b|\bpast due\b|\blate\b/.test(queryLower);
+      const wantsDueSoon = /\bdue soon\b|\bupcoming\b|\bthis week\b|\bnext week\b/.test(queryLower);
+      const wantsCompleted = /\bcompleted\b|\bdone\b|\bfinished\b/.test(queryLower);
+      const wantsOpen = /\bopen\b|\bin progress\b|\bin_progress\b|\bpending\b/.test(queryLower);
+      const wantsHighPriority = /\bhigh priority\b|\burgent\b|\bcritical\b/.test(queryLower);
+      const wantsUnassigned = /\bunassigned\b|\bno owner\b/.test(queryLower);
+      const wantsImportant = /\bimportant\b|\bpriority\b|\burgent\b|\bcritical\b|\bhigh\b/.test(queryLower);
+      const wantsNextWeek = /\bnext week\b|\bthis week\b|\bnext 7 days\b|\b7 days\b/.test(queryLower);
+
+      if (target?.type === "property" && target.id) {
+        filtered = filtered.filter((t) => t.property_id === target.id);
+      }
+      if (wantsImportant && wantsNextWeek) {
+        filtered = filtered.filter((t) => {
+          const p = (t.priority ?? "").toLowerCase();
+          const isImportant = p === "high" || p === "urgent";
+          const days = toDaysFromNow(t.due_date);
+          const inNextWeek = days !== null && days >= 0 && days <= 7;
+          return isImportant && inNextWeek && t.status !== "completed" && t.status !== "archived";
+        });
+      }
+      if (wantsOverdue) {
+        filtered = filtered.filter((t) => {
+          const days = toDaysFromNow(t.due_date);
+          return days !== null && days < 0 && t.status !== "completed" && t.status !== "archived";
+        });
+      }
+      if (wantsDueSoon) {
+        filtered = filtered.filter((t) => {
+          const days = toDaysFromNow(t.due_date);
+          return days !== null && days >= 0 && days <= 14 && t.status !== "completed" && t.status !== "archived";
+        });
+      }
+      if (wantsCompleted) filtered = filtered.filter((t) => t.status === "completed");
+      if (wantsOpen) filtered = filtered.filter((t) => t.status === "open" || t.status === "in_progress");
+      if (wantsHighPriority) {
+        filtered = filtered.filter((t) => {
+          const p = (t.priority ?? "").toLowerCase();
+          return p === "high" || p === "urgent";
+        });
+      }
+      if (wantsUnassigned) filtered = filtered.filter((t) => !t.assigned_user_id);
+
+      telemetry.taskMatchesCount = filtered.length;
+
+      if (taskRows.length > 0 && (asksAboutTaskStatus || intent === "summarise" || intent === "query" || intent === "unknown")) {
+        const statusCounts = taskRows.reduce(
+          (acc, t) => {
+            const status = (t.status ?? "unknown").toLowerCase();
+            acc[status] = (acc[status] ?? 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>
+        );
+
+        const sample = filtered.slice(0, 5).map((t) => {
+          const due = t.due_date ? String(t.due_date).slice(0, 10) : "no due date";
+          return `${t.title ?? "Untitled task"} (${t.status ?? "unknown"}, due ${due})`;
+        });
+
+        const activeCount = (statusCounts.open ?? 0) + (statusCounts.in_progress ?? 0);
+        const headline = filtered.length === taskRows.length
+          ? `You currently have ${taskRows.length} tasks (${activeCount} active, ${statusCounts.completed ?? 0} completed).`
+          : `I found ${filtered.length} task${filtered.length === 1 ? "" : "s"} matching your question out of ${taskRows.length} total.`;
+
+        answer += `${headline}\n`;
+        if (sample.length) {
+          answer += `Here are the most relevant ones: ${sample.join("; ")}.\n`;
+        }
+        if (wantsImportant && wantsNextWeek) {
+          answer += "I can apply these exact filters to your Task List now (This Week + High + Urgent).\n";
+          proposedAction = {
+            type: "filter_tasks",
+            payload: {
+              filter_ids: ["filter-date-this-week", "filter-priority-high", "filter-priority-urgent"],
+            },
+          };
+        }
+        answer += `${buildTaskFollowUp(filtered.length, queryLower)}\n`;
+        const propertyScopeFollowUp = buildPropertyScopeFollowUp(target, queryLower, taskRows);
+        if (propertyScopeFollowUp) {
+          answer += `${propertyScopeFollowUp}\n`;
+        }
+        sources.push("tasks_view");
+      }
+    } catch (err) {
+      console.error("[assistant-reasoner] tasks_view query failed:", err);
     }
   }
 
@@ -340,22 +510,13 @@ Deno.serve(async (req) => {
   // #endregion
 
   if (!answer.trim()) {
-    // Provide a helpful fallback rather than a dead-end message
-    const helpLines: string[] = [
-      "I'm here to help with your property portfolio.",
-      "Try asking me to:",
-      "• Summarise compliance status",
-      "• Show risk exposure for a property",
-      "• Create a task",
-      "• Give asset insights",
-    ];
-    answer = helpLines.join("\n");
+    answer = "I couldn't find enough data for that yet. Ask me about tasks, compliance, assets, or risk for a specific property, and I'll give you a direct answer.";
   }
 
   return jsonResponse({
     ok: true,
     answer: answer.trim(),
     sources,
-    proposed_action: null,
+    proposed_action: proposedAction,
   });
 });

@@ -94,6 +94,25 @@ export function useAssistant() {
   const confirmAction = useCallback(async () => {
     if (!proposedAction || !orgId) return;
 
+    if (proposedAction.type === "filter_tasks") {
+      const payload = proposedAction.payload as { filter_ids?: string[] };
+      const filterIds = Array.isArray(payload?.filter_ids) ? payload.filter_ids : [];
+      window.dispatchEvent(
+        new CustomEvent("filla:assistant-apply-task-filters", {
+          detail: { filterIds },
+        })
+      );
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Applied those filters to your task list.",
+        },
+      ]);
+      setProposedAction(null);
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("assistant-action-executor", {

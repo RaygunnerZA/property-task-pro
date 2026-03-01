@@ -14,6 +14,7 @@ interface RightColumnProps {
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
+  filtersToApply?: string[] | null;
   selectedPropertyIds?: Set<string>;
   onCreateTask?: () => void;
 }
@@ -37,6 +38,7 @@ export function RightColumn({
   onTabChange,
   selectedDate,
   filterToApply,
+  filtersToApply,
   selectedPropertyIds,
   onCreateTask
 }: RightColumnProps) {
@@ -65,6 +67,7 @@ export function RightColumn({
             onTabChange={onTabChange}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
+            filtersToApply={filtersToApply}
             selectedPropertyIds={selectedPropertyIds}
             onCreateTask={onCreateTask}
           />
