@@ -417,6 +417,55 @@ const SUBJECT_PATTERNS = [
   /^([a-zA-Z]{3,})\s+(?:please|can|could)\b/i,
 ];
 
+// Directed-name phrases: "call john", "assign to john", "ask john to", etc.
+const DIRECTED_NAME_PATTERNS = [
+  /\b(?:call|ask|tell|contact|message|email|assign(?:\s+to)?|tag|loop\s+in)\s+([a-zA-Z]{3,})\b/i,
+  /\bfor\s+([a-zA-Z]{3,})\b/i,
+];
+
+const NUMBER_WORDS: Record<string, number> = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+};
+
+const WEEKDAY_ALIASES: Record<string, string> = {
+  sun: "sunday",
+  sunday: "sunday",
+  mon: "monday",
+  monday: "monday",
+  tue: "tuesday",
+  tues: "tuesday",
+  tuesday: "tuesday",
+  wed: "wednesday",
+  wednesday: "wednesday",
+  thu: "thursday",
+  thur: "thursday",
+  thurs: "thursday",
+  thursday: "thursday",
+  fri: "friday",
+  friday: "friday",
+  sat: "saturday",
+  saturday: "saturday",
+};
+
+const WEEKDAY_TOKEN_PATTERN =
+  "(?:sunday|sun|monday|mon|tuesday|tues|tue|wednesday|wed|thursday|thurs|thur|thu|friday|fri|saturday|sat)";
+
+const RELATIVE_NUMBER_PATTERN =
+  "(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\\d+)";
+
 /**
  * Detect persons from text using fuzzy matching against org members,
  * plus heuristic detection of potential person names (sentence subjects,
@@ -501,6 +550,26 @@ function detectPersons(
     matchedNames.add(nameLower);
   }
 
+  // ── 4. Directed lowercase/common names (e.g. "call john", "assign to john")
+  for (const pattern of DIRECTED_NAME_PATTERNS) {
+    const directedMatch = originalText.match(pattern);
+    if (!directedMatch) continue;
+    const name = directedMatch[1];
+    const nameLower = name.toLowerCase();
+    if (matchedNames.has(nameLower) || NON_NAME_WORDS.has(nameLower)) continue;
+    chips.push({
+      id: `person-ghost-directed-${nameLower}`,
+      type: "person",
+      value: name,
+      label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+      score: 0.68,
+      source: "rule",
+      blockingRequired: true,
+      metadata: { detectedAs: "directed_name_phrase" },
+    });
+    matchedNames.add(nameLower);
+  }
+
   return chips;
 }
 
@@ -554,10 +623,24 @@ function formatDateLabel(date: Date): string {
  * @param weekdayName - e.g., "monday", "tuesday"
  * @param skipCurrent - if true, always go to next week's occurrence
  */
+function normalizeWeekdayToken(token: string): string | null {
+  const normalized = token.trim().toLowerCase().replace(/[.,]/g, "");
+  return WEEKDAY_ALIASES[normalized] ?? null;
+}
+
+function parseRelativeCount(token: string): number | null {
+  const normalized = token.trim().toLowerCase();
+  if (/^\d+$/.test(normalized)) {
+    return Number(normalized);
+  }
+  return NUMBER_WORDS[normalized] ?? null;
+}
+
 function getNextWeekday(weekdayName: string, skipCurrent: boolean = false): Date {
   const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const today = new Date();
-  const targetDay = weekdays.indexOf(weekdayName.toLowerCase());
+  const normalizedWeekday = normalizeWeekdayToken(weekdayName);
+  const targetDay = normalizedWeekday ? weekdays.indexOf(normalizedWeekday) : -1;
   
   if (targetDay === -1) return today;
   
@@ -575,12 +658,74 @@ function getNextWeekday(weekdayName: string, skipCurrent: boolean = false): Date
 }
 
 const WEEKDAY_LIST = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-const RE_NEXT_WEEK_WEEKDAY = /\bnext\s+week(?:\s+on)?\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
-const RE_NEXT_WEEKDAY = /\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
-const RE_BEFORE_WEEKDAY = /\b(?:before|by)\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
+const RE_NEXT_WEEK_WEEKDAY = new RegExp(`\\bnext\\s+week(?:\\s+on)?\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
+const RE_NEXT_WEEKDAY = new RegExp(`\\bnext\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
+const RE_BEFORE_WEEKDAY = new RegExp(`\\b(?:before|by)\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
+const RE_RELATIVE_FROM_WEEKDAY = new RegExp(
+  `\\b(?:in\\s+)?(${RELATIVE_NUMBER_PATTERN})\\s+weeks?\\s+(?:from\\s+)?(${WEEKDAY_TOKEN_PATTERN})\\b`,
+  "i"
+);
+const RE_RELATIVE_TIME = new RegExp(
+  `\\b(?:in\\s+)?(${RELATIVE_NUMBER_PATTERN})\\s+(day|days|week|weeks|month|months)\\b(?:\\s*(?:from\\s+today|from\\s+now|day'?s?\\s+time|time|from))?`,
+  "i"
+);
+const RE_STANDALONE_WEEKDAY = new RegExp(`\\b(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
 
 function detectDate(text: string): SuggestedChip | null {
   const { datePatterns } = extractionPatterns;
+
+  const relativeFromWeekdayMatch = text.match(RE_RELATIVE_FROM_WEEKDAY);
+  if (relativeFromWeekdayMatch) {
+    const amount = parseRelativeCount(relativeFromWeekdayMatch[1]);
+    const normalizedWeekday = normalizeWeekdayToken(relativeFromWeekdayMatch[2]);
+    if (amount && normalizedWeekday) {
+      const baseDate = getNextWeekday(normalizedWeekday, false);
+      const targetDate = new Date(baseDate);
+      targetDate.setDate(baseDate.getDate() + (amount * 7));
+      const label = formatDateLabel(targetDate);
+      const dateValue = targetDate.toISOString().split("T")[0];
+      return {
+        id: `date-${Date.now()}`,
+        type: "date",
+        value: dateValue,
+        label,
+        score: 0.84,
+        source: "rule",
+        resolvedEntityId: dateValue,
+        blockingRequired: false,
+        metadata: { originalText: relativeFromWeekdayMatch[0], calculatedDate: dateValue },
+      };
+    }
+  }
+
+  const relativeTimeMatch = text.match(RE_RELATIVE_TIME);
+  if (relativeTimeMatch) {
+    const amount = parseRelativeCount(relativeTimeMatch[1]);
+    const unit = relativeTimeMatch[2].toLowerCase();
+    if (amount && amount > 0) {
+      const targetDate = new Date();
+      if (unit.startsWith("day")) {
+        targetDate.setDate(targetDate.getDate() + amount);
+      } else if (unit.startsWith("week")) {
+        targetDate.setDate(targetDate.getDate() + (amount * 7));
+      } else if (unit.startsWith("month")) {
+        targetDate.setMonth(targetDate.getMonth() + amount);
+      }
+      const label = formatDateLabel(targetDate);
+      const dateValue = targetDate.toISOString().split("T")[0];
+      return {
+        id: `date-${Date.now()}`,
+        type: "date",
+        value: dateValue,
+        label,
+        score: 0.82,
+        source: "rule",
+        resolvedEntityId: dateValue,
+        blockingRequired: false,
+        metadata: { originalText: relativeTimeMatch[0], calculatedDate: dateValue },
+      };
+    }
+  }
 
   const nextWeekWeekdayMatch = text.match(RE_NEXT_WEEK_WEEKDAY);
   if (nextWeekWeekdayMatch) {
@@ -690,6 +835,28 @@ function detectDate(text: string): SuggestedChip | null {
           originalText: matchedText,
           calculatedDate: dateValue
         } : undefined
+      };
+    }
+  }
+
+  const standaloneWeekdayMatch = text.match(RE_STANDALONE_WEEKDAY);
+  if (standaloneWeekdayMatch) {
+    const weekday = standaloneWeekdayMatch[1];
+    const normalizedWeekday = normalizeWeekdayToken(weekday);
+    if (normalizedWeekday) {
+      const targetDate = getNextWeekday(normalizedWeekday, false);
+      const label = formatDateLabel(targetDate);
+      const dateValue = targetDate.toISOString().split("T")[0];
+      return {
+        id: `date-${Date.now()}`,
+        type: "date",
+        value: dateValue,
+        label,
+        score: 0.8,
+        source: "rule",
+        resolvedEntityId: dateValue,
+        blockingRequired: false,
+        metadata: { originalText: standaloneWeekdayMatch[0], calculatedDate: dateValue },
       };
     }
   }

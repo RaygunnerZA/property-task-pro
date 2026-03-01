@@ -120,6 +120,13 @@ describe("extractChipsFromText — person detection", () => {
     expect(sarah).toBeDefined();
   });
 
+  it("lowercase common name 'call john' → person ghost chip for John", () => {
+    const result = extract("call john about the leak in unit 2");
+    const people = result.chips.filter((c) => c.type === "person");
+    const john = people.find((c) => c.label.toLowerCase().includes("john"));
+    expect(john).toBeDefined();
+  });
+
   it("matched org member → higher score than ghost", () => {
     const entities = {
       ...EMPTY_ENTITIES,
@@ -217,6 +224,61 @@ describe("extractChipsFromText — date detection", () => {
 
   it("'15 March' → date chip detected", () => {
     const result = extract("Finish works by 15 March");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'in two days' → date chip two days ahead", () => {
+    const result = extract("Fix it in two days");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'in two day's time' → date chip two days ahead", () => {
+    const result = extract("Fix it in two day's time");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'in 3 weeks' → date chip detected", () => {
+    const result = extract("Schedule follow-up in 3 weeks");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'in a month' → date chip detected", () => {
+    const result = extract("Review in a month");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'four months from today' → date chip detected", () => {
+    const result = extract("Check again four months from today");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'3 weeks Thursday' → date chip detected", () => {
+    const result = extract("Set reminder 3 weeks Thursday");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("'Three weeks from Thursday' → date chip detected", () => {
+    const result = extract("Set reminder Three weeks from Thursday");
+    const dateChip = result.chips.find((c) => c.type === "date");
+    expect(dateChip).toBeDefined();
+  });
+
+  it("weekday abbreviations like 'Thurs' and 'Tue' → date chip detected", () => {
+    const thursResult = extract("Need this done Thurs");
+    const tueResult = extract("Need this done Tue");
+    expect(thursResult.chips.find((c) => c.type === "date")).toBeDefined();
+    expect(tueResult.chips.find((c) => c.type === "date")).toBeDefined();
+  });
+
+  it("'five days from' → date chip detected", () => {
+    const result = extract("Follow up five days from");
     const dateChip = result.chips.find((c) => c.type === "date");
     expect(dateChip).toBeDefined();
   });

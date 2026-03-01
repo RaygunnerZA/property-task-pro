@@ -14,6 +14,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useTeams } from "@/hooks/useTeams";
 import { useCategories } from "@/hooks/useCategories";
@@ -103,6 +104,7 @@ export function CreateTaskModal({
   } = useChecklistTemplates(open);
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
   const { members, refresh: refreshMembers } = useOrgMembers();
+  const { data: existingTasks = [] } = useTasksQuery();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
 
@@ -186,6 +188,67 @@ export function CreateTaskModal({
     lastName?: string;
     email?: string;
   } | null>(null);
+
+  const minuteKeyFromDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    return `${y}-${m}-${d}T${hh}:${mm}`;
+  };
+
+  const includesMeetingSignal = (task: any) => {
+    const text = `${task?.title ?? ""} ${task?.description ?? ""}`.toLowerCase();
+    if (/\bmeeting\b|\bmeet[-\s]?up\b|\bstandup\b|\bsync\b/.test(text)) return true;
+
+    let themes: any[] = [];
+    if (Array.isArray(task?.themes)) {
+      themes = task.themes;
+    } else if (typeof task?.themes === "string") {
+      try {
+        themes = JSON.parse(task.themes);
+      } catch {
+        themes = [];
+      }
+    }
+
+    return themes.some((theme) => {
+      const themeName = String(theme?.name ?? "").toLowerCase();
+      return themeName.includes("meeting");
+    });
+  };
+
+  const scheduleConflictNote = useMemo(() => {
+    if (!assignedUserId || assignedUserId.startsWith("pending-")) return null;
+    if (!dueDate || !dueDate.includes("T")) return null;
+
+    const draftDate = new Date(dueDate);
+    if (Number.isNaN(draftDate.getTime())) return null;
+    const draftMinuteKey = minuteKeyFromDate(draftDate);
+
+    const assigneeName =
+      members.find((m) => m.user_id === assignedUserId)?.display_name || "This assignee";
+
+    const sameMinuteAssigned = existingTasks.filter((task: any) => {
+      if (task?.assigned_user_id !== assignedUserId) return false;
+      if (!task?.due_date) return false;
+      const existingDate = new Date(task.due_date);
+      if (Number.isNaN(existingDate.getTime())) return false;
+      return minuteKeyFromDate(existingDate) === draftMinuteKey;
+    });
+
+    if (sameMinuteAssigned.length === 0) return null;
+
+    const meetingConflict = sameMinuteAssigned.find((task: any) => includesMeetingSignal(task));
+    if (meetingConflict) {
+      const title = String(meetingConflict.title ?? "Untitled meeting");
+      return `NOTE: ${assigneeName} has a meeting at this time (${title}).`;
+    }
+
+    const firstConflictTitle = String(sameMinuteAssigned[0]?.title ?? "another task");
+    return `NOTE: ${assigneeName} already has a task at this time (${firstConflictTitle}).`;
+  }, [assignedUserId, dueDate, existingTasks, members]);
 
   // AI Title extraction
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
@@ -1472,26 +1535,32 @@ export function CreateTaskModal({
                 suggestedChips={suggestedChipsBySection["where"] ?? []}
               />
             ) : id === "when" ? (
-              <WhenSection
-                key={id}
-                isActive={activeSection === id}
-                onActivate={() => setActiveSection(id)}
-                onDeactivate={() => setActiveSection(null)}
-                dueDate={dueDate}
-                repeatRule={repeatRule}
-                onDueDateChange={setDueDate}
-                onRepeatRuleChange={setRepeatRule}
-                milestones={milestones}
-                onMilestonesChange={setMilestones}
-                hasUnresolved={unresolvedSections.includes(id)}
-                suggestedDateLabel={
-                  (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date")?.label?.toUpperCase()
-                }
-                onSuggestedDateAccept={() => {
-                  const dateChip = (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date");
-                  if (dateChip) handleChipSelect(dateChip);
-                }}
-              />
+              <div key={id} className="space-y-1">
+                <WhenSection
+                  isActive={activeSection === id}
+                  onActivate={() => setActiveSection(id)}
+                  onDeactivate={() => setActiveSection(null)}
+                  dueDate={dueDate}
+                  repeatRule={repeatRule}
+                  onDueDateChange={setDueDate}
+                  onRepeatRuleChange={setRepeatRule}
+                  milestones={milestones}
+                  onMilestonesChange={setMilestones}
+                  hasUnresolved={unresolvedSections.includes(id)}
+                  suggestedDateLabel={
+                    (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date")?.label?.toUpperCase()
+                  }
+                  onSuggestedDateAccept={() => {
+                    const dateChip = (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date");
+                    if (dateChip) handleChipSelect(dateChip);
+                  }}
+                />
+                {scheduleConflictNote && (
+                  <div className="pl-8 text-[11px] font-medium text-[#EB6834]">
+                    {scheduleConflictNote}
+                  </div>
+                )}
+              </div>
             ) : id === "what" ? (
               <AssetSection
                 key={id}

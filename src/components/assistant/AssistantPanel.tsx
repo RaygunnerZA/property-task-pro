@@ -138,14 +138,15 @@ export function AssistantPanelBody({
             return (
               <div key={idx} className="text-sm flex flex-wrap items-center gap-1">
                 <span>{item.title}</span>
-                <span className="text-muted-foreground">|</span>
+                <span className="text-[rgba(142,201,206,0.49)] opacity-80">|</span>
                 <span>{item.due}</span>
-                <span className="text-muted-foreground">|</span>
+                <span className="text-[rgba(142,201,206,0.49)] opacity-80">|</span>
                 {item.taskId ? (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2 py-0 text-xs align-middle"
+                    className="h-[29px] px-2 py-0 text-xs align-middle bg-[var(--tw-ring-offset-color)] text-[#85BABC] tracking-[0.1px] shadow-[inset_-1px_-1px_2px_0px_rgba(0,0,0,0.05),inset_1px_2px_1.7px_0px_rgba(255,255,255,1)]"
+                    style={{ fontFamily: '"Inter Tight"' }}
                     onClick={() => {
                       window.dispatchEvent(
                         new CustomEvent("filla:assistant-open-task", {
@@ -209,14 +210,14 @@ export function AssistantPanelBody({
               "rounded-lg p-3 shadow-e1",
               msg.role === "user"
                 ? "ml-8 bg-primary/10 text-foreground"
-                : "mr-8 bg-card"
+                : "mr-8 bg-card/75 opacity-100"
             )}
           >
             {renderMessageContent(msg.content)}
           </div>
         ))}
         {loading && (
-          <div className="rounded-lg p-3 shadow-e1 mr-8 bg-card animate-pulse">
+          <div className="rounded-lg p-3 shadow-e1 mr-8 bg-card/75 opacity-100 animate-pulse">
             <p className="text-sm text-muted-foreground">Thinking...</p>
           </div>
         )}

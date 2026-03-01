@@ -3,16 +3,6 @@ import { SquarePen, ArrowRight, Square, Circle, Type, Pen, X, Trash2, Save, Rota
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import type { Annotation, ArrowAnnotation, AnnotationColor, AnnotationStrokeWidth } from "@/types/image-annotations";
 import { getColorHex, getStrokeWidthPx, ANNOTATION_COLORS } from "@/utils/annotation-colors";
 
@@ -90,7 +80,6 @@ export function ImageAnnotationEditor({
   // Autosave state
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [lastSavedAnnotations, setLastSavedAnnotations] = useState<Annotation[]>(initialAnnotations);
-  const [showConfirmClose, setShowConfirmClose] = useState(false);
   
   // Track if annotations have changed
   const hasUnsavedChanges = useMemo(() => {
@@ -632,11 +621,13 @@ export function ImageAnnotationEditor({
 
   const handleCancel = useCallback(() => {
     if (hasUnsavedChanges) {
-      setShowConfirmClose(true);
-    } else {
-      onCancel();
+      const shouldDiscard = window.confirm(
+        "You have unsaved annotations. Are you sure you want to close without saving?"
+      );
+      if (!shouldDiscard) return;
     }
-  }, [hasUnsavedChanges, onCancel, annotations.length]);
+    onCancel();
+  }, [hasUnsavedChanges, onCancel]);
 
   const getRelativeCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
     if (!canvasRef.current || !imageSize) return null;
@@ -1106,7 +1097,7 @@ export function ImageAnnotationEditor({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<"saved" | "unchanged" | "failed"> => {
     setIsSaving(true);
     setAutosaveStatus('saving');
     try {
@@ -1124,7 +1115,7 @@ export function ImageAnnotationEditor({
       if (JSON.stringify(annotationsForSave) === JSON.stringify(lastSavedAnnotations)) {
         setIsSaving(false);
         setAutosaveStatus('idle');
-        return;
+        return "unchanged";
       }
       
       // Increment versions for append-only log
@@ -1141,9 +1132,11 @@ export function ImageAnnotationEditor({
       setTimeout(() => {
         setAutosaveStatus('idle');
       }, 1000);
+      return "saved";
     } catch (error) {
       console.error("Failed to save annotations:", error);
       setAutosaveStatus('idle');
+      return "failed";
     } finally {
       setIsSaving(false);
     }
@@ -1619,29 +1612,38 @@ export function ImageAnnotationEditor({
         </div>
       )}
 
-      {/* Autosave Indicator - Top-right */}
-      <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 z-10">
-        <div className="flex items-center gap-2 text-white text-sm">
-          {autosaveStatus === 'saving' && (
-            <>
-              <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
-              <span>Saving...</span>
-            </>
-          )}
-          {autosaveStatus === 'saved' && (
-            <>
-              <div className="h-3 w-3 bg-green-500 rounded-full" />
-              <span>Saved</span>
-            </>
-          )}
-          {autosaveStatus === 'idle' && hasUnsavedChanges && (
-            <span className="text-white/70">Unsaved changes</span>
-          )}
+      {/* Top-right controls: autosave status + close */}
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-white text-sm">
+            {autosaveStatus === "saving" && (
+              <>
+                <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
+                <span>Saving...</span>
+              </>
+            )}
+            {autosaveStatus === "saved" && (
+              <>
+                <div className="h-3 w-3 bg-green-500 rounded-full" />
+                <span>Saved</span>
+              </>
+            )}
+            {autosaveStatus === "idle" && hasUnsavedChanges && (
+              <span className="text-white/70">Unsaved changes</span>
+            )}
+          </div>
         </div>
+        <Button
+          onClick={handleCancel}
+          variant="outline"
+          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
+        >
+          CLOSE
+        </Button>
       </div>
 
-      {/* Save/Cancel/Reset Buttons - Bottom-left */}
-      <div className="absolute bottom-4 left-4 flex gap-2 z-10">
+      {/* Save/Cancel/Reset Buttons - Bottom-right */}
+      <div className="absolute bottom-4 right-4 flex gap-2 z-10">
         <Button
           onClick={handleCancel}
           variant="outline"
@@ -1659,8 +1661,13 @@ export function ImageAnnotationEditor({
           Reset
         </Button>
         <Button
-          onClick={handleSave}
-          disabled={isSaving || !hasUnsavedChanges}
+          onClick={async () => {
+            const result = await handleSave();
+            if (result !== "failed") {
+              onCancel();
+            }
+          }}
+          disabled={isSaving}
           className="bg-primary text-primary-foreground"
         >
           {isSaving ? (
@@ -1677,43 +1684,6 @@ export function ImageAnnotationEditor({
         </Button>
       </div>
 
-      {/* Confirmation Dialog */}
-      <AlertDialog 
-        open={showConfirmClose} 
-        onOpenChange={(open) => {
-          setShowConfirmClose(open);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved annotations. Are you sure you want to close without saving?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setShowConfirmClose(false);
-                onCancel();
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Discard Changes
-            </AlertDialogAction>
-            <AlertDialogAction
-              onClick={async () => {
-                await handleSave();
-                setShowConfirmClose(false);
-                onCancel();
-              }}
-            >
-              Save & Close
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

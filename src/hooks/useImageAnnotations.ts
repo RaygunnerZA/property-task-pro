@@ -10,6 +10,11 @@ export function useImageAnnotations(taskId: string, imageId: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const isMissingRelationError = (err: any) => {
+    const msg = String(err?.message || "").toLowerCase();
+    return msg.includes("does not exist") || msg.includes("relation") || err?.code === "42P01";
+  };
+
   const fetchAnnotations = useCallback(async () => {
     if (!orgId || !taskId || !imageId) {
       setAnnotations([]);
@@ -21,27 +26,41 @@ export function useImageAnnotations(taskId: string, imageId: string) {
     setError(null);
 
     try {
-      const { data, error: fetchError } = await supabase
+      // Prefer latest task_image_annotations row (handles duplicate legacy rows gracefully).
+      const { data: rows, error: fetchError } = await supabase
         .from("task_image_annotations")
-        .select("*")
+        .select("id, annotations, updated_at, created_at")
         .eq("task_id", taskId)
         .eq("image_id", imageId)
-        .maybeSingle();
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-      if (fetchError) throw fetchError;
+      if (fetchError && !isMissingRelationError(fetchError)) throw fetchError;
 
-      if (data) {
+      const latest = rows?.[0] as { annotations?: Annotation[] } | undefined;
+      if (latest?.annotations) {
         // Get the latest version of each annotation (append-only log)
         const annotationMap = new Map<string, Annotation>();
-        (data.annotations as Annotation[]).forEach((ann) => {
+        (latest.annotations as Annotation[]).forEach((ann) => {
           const existing = annotationMap.get(ann.annotationId);
           if (!existing || ann.version > existing.version) {
             annotationMap.set(ann.annotationId, ann);
           }
         });
         setAnnotations(Array.from(annotationMap.values()));
-      } else {
+      } else if (!fetchError) {
         setAnnotations([]);
+      } else {
+        // Fallback: annotation_json on attachments (for environments where
+        // task_image_annotations is missing/unavailable).
+        const { data: attachment } = await supabase
+          .from("attachments")
+          .select("annotation_json")
+          .eq("id", imageId)
+          .maybeSingle();
+        const fallbackAnnotations = (attachment as any)?.annotation_json as Annotation[] | undefined;
+        setAnnotations(Array.isArray(fallbackAnnotations) ? fallbackAnnotations : []);
       }
     } catch (err: any) {
       // 404 is expected when no annotations exist yet - don't treat as error
@@ -74,40 +93,60 @@ export function useImageAnnotations(taskId: string, imageId: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Fetch existing record
-      const { data: existing } = await supabase
-        .from("task_image_annotations")
-        .select("*")
-        .eq("task_id", taskId)
-        .eq("image_id", imageId)
-        .maybeSingle();
-
       // Store latest annotations (editor sends full state)
       const nextAnnotations = newAnnotations;
+      let persisted = false;
 
-      if (existing) {
-        // Update existing record (append-only)
-        const { error: updateError } = await supabase
-          .from("task_image_annotations")
-          .update({
-            annotations: nextAnnotations,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
+      // 1) Primary persistence: attachment row JSON (best-effort, non-fatal).
+      const { error: attachmentUpdateError } = await supabase
+        .from("attachments")
+        .update({
+          annotation_json: nextAnnotations as any,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", imageId);
+      if (!attachmentUpdateError) {
+        persisted = true;
+      }
 
-        if (updateError) throw updateError;
-      } else {
-        // Create new record
-        const { error: insertError } = await supabase
-          .from("task_image_annotations")
-          .insert({
-            task_id: taskId,
-            image_id: imageId,
-            created_by: user.id,
-            annotations: nextAnnotations,
-          });
+      // 2) Secondary persistence: task_image_annotations row (if table exists).
+      const { data: existingRows, error: existingFetchError } = await supabase
+        .from("task_image_annotations")
+        .select("id")
+        .eq("task_id", taskId)
+        .eq("image_id", imageId)
+        .order("updated_at", { ascending: false })
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-        if (insertError) throw insertError;
+      if (!existingFetchError) {
+        const existing = existingRows?.[0] as { id: string } | undefined;
+        if (existing) {
+          const { error: updateError } = await supabase
+            .from("task_image_annotations")
+            .update({
+              annotations: nextAnnotations,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+          if (!updateError) persisted = true;
+        } else {
+          const { error: insertError } = await supabase
+            .from("task_image_annotations")
+            .insert({
+              task_id: taskId,
+              image_id: imageId,
+              created_by: user.id,
+              annotations: nextAnnotations,
+            });
+          if (!insertError) persisted = true;
+        }
+      } else if (!isMissingRelationError(existingFetchError)) {
+        throw existingFetchError;
+      }
+
+      if (!persisted) {
+        throw new Error("Failed to persist annotations");
       }
 
       // Update last saved reference
@@ -119,9 +158,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
 
   // Update lastSavedRef when annotations are fetched
   useEffect(() => {
-    if (annotations.length > 0) {
-      lastSavedRef.current = JSON.stringify(annotations);
-    }
+    lastSavedRef.current = JSON.stringify(annotations);
   }, [annotations]);
 
   useEffect(() => {
