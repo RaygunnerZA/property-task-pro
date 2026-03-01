@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { SquarePen, ArrowRight, Square, Circle, Type, Pen, X, Trash2, Save, RotateCcw, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -70,7 +69,13 @@ export function ImageAnnotationEditor({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   const [draggingHandle, setDraggingHandle] = useState<"from" | "to" | null>(null);
-  const [editingText, setEditingText] = useState<string>("");
+  const [inlineTextEditor, setInlineTextEditor] = useState<{
+    annotationId: string;
+    text: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   
   // Track drawing state for click-and-drag tools
@@ -644,6 +649,53 @@ export function ImageAnnotationEditor({
     };
   };
 
+  const startInlineTextEditing = useCallback((annotationId: string) => {
+    const textAnnotation = annotations.find(
+      (ann): ann is Extract<Annotation, { type: "text" }> =>
+        ann.annotationId === annotationId && ann.type === "text"
+    );
+    if (!textAnnotation) return;
+    setInlineTextEditor({
+      annotationId: textAnnotation.annotationId,
+      text: textAnnotation.text,
+      x: textAnnotation.x,
+      y: textAnnotation.y,
+    });
+  }, [annotations]);
+
+  const commitInlineTextEditing = useCallback(() => {
+    if (!inlineTextEditor) return;
+    const trimmedText = inlineTextEditor.text.trim();
+    if (!trimmedText) {
+      setAnnotations((prev) => prev.filter((ann) => ann.annotationId !== inlineTextEditor.annotationId));
+      setSelectedAnnotationId((prev) => (prev === inlineTextEditor.annotationId ? null : prev));
+    }
+    setInlineTextEditor(null);
+  }, [inlineTextEditor]);
+
+  const cancelInlineTextEditing = useCallback(() => {
+    if (!inlineTextEditor) return;
+    setAnnotations((prev) =>
+      prev.filter((ann) => {
+        if (ann.annotationId !== inlineTextEditor.annotationId) return true;
+        return ann.type !== "text" || ann.text.trim().length > 0;
+      })
+    );
+    setSelectedAnnotationId((prev) => (prev === inlineTextEditor.annotationId ? null : prev));
+    setInlineTextEditor(null);
+  }, [inlineTextEditor]);
+
+  const getInlineEditorPosition = useCallback(() => {
+    if (!inlineTextEditor || !canvasRef.current || !containerRef.current || !imageSize) return null;
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+    return {
+      left: canvasRect.left - containerRect.left + inlineTextEditor.x * imageSize.width,
+      top: canvasRect.top - containerRect.top + inlineTextEditor.y * imageSize.height,
+      width: Math.max(140, DEFAULT_SIZES.text.width * imageSize.width),
+    };
+  }, [inlineTextEditor, imageSize]);
+
   const getAnnotationAtPoint = (x: number, y: number, hitArea: number = 15): Annotation | null => {
     if (!imageSize || !canvasRef.current) return null;
     
@@ -749,6 +801,9 @@ export function ImageAnnotationEditor({
   // Unified handler for both mouse and touch
   const handlePointerStart = (clientX: number, clientY: number) => {
     if (!imageSize) return;
+    if (inlineTextEditor) {
+      commitInlineTextEditing();
+    }
     
     const hitArea = isMobile ? 20 : 15;
     const coords = getRelativeCoords(clientX, clientY);
@@ -804,7 +859,7 @@ export function ImageAnnotationEditor({
         return;
       }
 
-      // Text: single click creates default text box (click-to-place, edit in panel)
+      // Text: single click creates text directly on image (inline edit)
       if (currentTool === "text") {
         const newAnnotation: Annotation = {
           annotationId: crypto.randomUUID(),
@@ -813,7 +868,7 @@ export function ImageAnnotationEditor({
           x: coords.x,
           y: coords.y,
           width: DEFAULT_SIZES.text.width,
-          text: "Text",
+          text: "",
           textColor: selectedColor,
           background: "none",
           strokeColor: selectedColor,
@@ -821,7 +876,12 @@ export function ImageAnnotationEditor({
         };
         setAnnotations([...annotations, newAnnotation]);
         setSelectedAnnotationId(newAnnotation.annotationId);
-        setEditingText("Text");
+        setInlineTextEditor({
+          annotationId: newAnnotation.annotationId,
+          text: "",
+          x: coords.x,
+          y: coords.y,
+        });
         setCurrentTool(null);
         return;
       }
@@ -861,6 +921,15 @@ export function ImageAnnotationEditor({
       setTempAnnotation(temp);
     } else {
       setSelectedAnnotationId(null);
+    }
+  };
+
+  const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const clickedAnnotation = getAnnotationAtPoint(e.clientX, e.clientY, isMobile ? 22 : 16);
+    if (clickedAnnotation?.type === "text") {
+      setSelectedAnnotationId(clickedAnnotation.annotationId);
+      startInlineTextEditing(clickedAnnotation.annotationId);
     }
   };
 
@@ -1021,6 +1090,9 @@ export function ImageAnnotationEditor({
   const handleDelete = () => {
     if (selectedAnnotationId) {
       setAnnotations(annotations.filter((a) => a.annotationId !== selectedAnnotationId));
+      if (inlineTextEditor?.annotationId === selectedAnnotationId) {
+        setInlineTextEditor(null);
+      }
       setSelectedAnnotationId(null);
     }
   };
@@ -1029,20 +1101,32 @@ export function ImageAnnotationEditor({
     setIsSaving(true);
     setAutosaveStatus('saving');
     try {
+      const annotationsForSave = inlineTextEditor
+        ? annotations
+            .map((ann) =>
+              ann.annotationId === inlineTextEditor.annotationId && ann.type === "text"
+                ? { ...ann, text: inlineTextEditor.text }
+                : ann
+            )
+            .filter((ann) => ann.type !== "text" || ann.text.trim().length > 0)
+        : annotations;
+
       // Only save if changed
-      if (!hasUnsavedChanges) {
+      if (JSON.stringify(annotationsForSave) === JSON.stringify(lastSavedAnnotations)) {
         setIsSaving(false);
         setAutosaveStatus('idle');
         return;
       }
       
       // Increment versions for append-only log
-      const versionedAnnotations = annotations.map((ann) => ({
+      const versionedAnnotations = annotationsForSave.map((ann) => ({
         ...ann,
         version: ann.version + 1,
       }));
       await onSave(versionedAnnotations, false); // false = manual save
-      setLastSavedAnnotations(annotations);
+      setAnnotations(annotationsForSave);
+      setLastSavedAnnotations(annotationsForSave);
+      setInlineTextEditor(null);
       setAutosaveStatus('saved');
       
       setTimeout(() => {
@@ -1057,6 +1141,25 @@ export function ImageAnnotationEditor({
   };
 
   const selectedAnnotation = annotations.find((a) => a.annotationId === selectedAnnotationId);
+
+  useEffect(() => {
+    if (!inlineTextEditor) return;
+    const frame = requestAnimationFrame(() => {
+      inlineInputRef.current?.focus();
+      inlineInputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [inlineTextEditor]);
+
+  // Keep local editor state aligned when fresh annotation data is loaded.
+  useEffect(() => {
+    if (hasUnsavedChanges) return;
+    setAnnotations(initialAnnotations);
+    setHistory([initialAnnotations]);
+    setHistoryIndex(0);
+    setLastSavedAnnotations(initialAnnotations);
+    setSelectedAnnotationId(null);
+  }, [initialAnnotations, hasUnsavedChanges]);
 
   // Track tool changes
   useEffect(() => {
@@ -1267,16 +1370,56 @@ export function ImageAnnotationEditor({
           onMouseDown={handleCanvasMouseDown}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
+          onDoubleClick={handleCanvasDoubleClick}
           onMouseLeave={handleCanvasMouseUp}
           onTouchStart={handleCanvasTouchStart}
           onTouchMove={handleCanvasTouchMove}
           onTouchEnd={handleCanvasTouchEnd}
           onTouchCancel={handleCanvasTouchEnd}
-          className="max-w-full max-h-full cursor-crosshair"
+          className={cn("max-w-full max-h-full", inlineTextEditor ? "cursor-text" : "cursor-crosshair")}
           style={{
             touchAction: "none"
           }}
         />
+        {inlineTextEditor && (() => {
+          const pos = getInlineEditorPosition();
+          if (!pos) return null;
+          return (
+            <input
+              ref={inlineInputRef}
+              type="text"
+              value={inlineTextEditor.text}
+              onChange={(e) => {
+                const nextText = e.target.value;
+                setInlineTextEditor((prev) => (prev ? { ...prev, text: nextText } : prev));
+                setAnnotations((prev) =>
+                  prev.map((ann) =>
+                    ann.annotationId === inlineTextEditor.annotationId && ann.type === "text"
+                      ? { ...ann, text: nextText }
+                      : ann
+                  )
+                );
+              }}
+              onBlur={commitInlineTextEditing}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitInlineTextEditing();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelInlineTextEditing();
+                }
+              }}
+              className="absolute z-20 rounded-md border border-white/20 bg-black/75 px-2 py-1 text-white text-sm shadow-md outline-none focus:ring-2 focus:ring-[#8EC9CE]"
+              style={{
+                left: `${pos.left}px`,
+                top: `${pos.top}px`,
+                minWidth: `${pos.width}px`,
+              }}
+              placeholder="Type text..."
+            />
+          );
+        })()}
       </div>
 
       {/* Context Panel - Bottom-right, only when annotation selected */}
@@ -1407,25 +1550,16 @@ export function ImageAnnotationEditor({
             </div>
           )}
 
-          {/* Text Input (text only) */}
+          {/* Text editing controls (text only) */}
           {selectedAnnotation.type === "text" && (
             <div className="space-y-1.5">
               <label className="text-white/80 text-xs font-medium">Text</label>
-              <Input
-                value={editingText || selectedAnnotation.text}
-                onChange={(e) => {
-                  setEditingText(e.target.value);
-                  setAnnotations(
-                    annotations.map((a) =>
-                      a.annotationId === selectedAnnotationId
-                        ? { ...a, text: e.target.value }
-                        : a
-                    )
-                  );
-                }}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                placeholder="Enter text..."
-              />
+              <button
+                onClick={() => startInlineTextEditing(selectedAnnotation.annotationId)}
+                className="w-full px-3 py-2 rounded text-xs font-medium text-white bg-white/10 hover:bg-white/20 transition-colors text-left"
+              >
+                Edit text directly on image
+              </button>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => {

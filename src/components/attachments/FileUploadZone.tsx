@@ -109,7 +109,7 @@ export function FileUploadZone({
               {uploading ? "Uploading..." : "Drop files here or click to upload"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Images will be optimized automatically
+              HEIC, PNG, JPG/JPEG up to 10MB each
             </p>
           </div>
         </div>

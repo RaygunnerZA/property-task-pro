@@ -16,6 +16,19 @@ interface UploadProgress {
   error?: string;
 }
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/heic",
+  "image/heif",
+]);
+const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "heic", "heif"]);
+
+const getFileExtension = (fileName: string) =>
+  (fileName.split(".").pop() || "").trim().toLowerCase();
+
 /**
  * Hook for uploading files to tasks
  * Uploads to task-images bucket and creates attachment records
@@ -27,6 +40,26 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
   const { orgId } = useActiveOrg();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress[]>([]);
+
+  const validateImageFile = (file: File) => {
+    const extension = getFileExtension(file.name);
+    const mime = (file.type || "").toLowerCase();
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+      throw new Error(
+        `File "${file.name}" is ${fileSizeMB}MB. Task image uploads are limited to 10MB per file.`
+      );
+    }
+
+    const mimeAllowed = mime ? ALLOWED_IMAGE_MIME_TYPES.has(mime) : false;
+    const extensionAllowed = ALLOWED_IMAGE_EXTENSIONS.has(extension);
+    if (!mimeAllowed && !extensionAllowed) {
+      throw new Error(
+        `File "${file.name}" is not supported. Accepted formats: HEIC, PNG, JPG/JPEG.`
+      );
+    }
+  };
 
   const uploadFile = async (file: File) => {
     if (!orgId) {
@@ -41,11 +74,12 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
       throw error;
     }
 
-    // Check file size (10MB limit for task-images bucket per migration)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (10485760 bytes)
-    if (file.size > MAX_FILE_SIZE) {
-      const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-      const error = new Error(`File "${file.name}" is too large (${fileSizeMB}MB). Maximum size is 10MB. Please compress or resize the image.`);
+    try {
+      validateImageFile(file);
+    } catch (validationError: any) {
+      const error = validationError instanceof Error
+        ? validationError
+        : new Error(`File "${file.name}" could not be uploaded.`);
       onError?.(error);
       throw error;
     }

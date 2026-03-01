@@ -483,12 +483,20 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <button
                 type="button"
                 className="w-full rounded-[10px] overflow-hidden bg-muted shadow-e1 cursor-pointer hover:shadow-e2 transition-shadow"
-                onClick={() => setLightboxOpen(true)}
+                onClick={() => {
+                  const selectedImage = taskImages[selectedImageIndex];
+                  if (selectedImage?.id) {
+                    setEditingImageId(selectedImage.id);
+                    setShowAnnotationEditor(true);
+                    return;
+                  }
+                  setLightboxOpen(true);
+                }}
               >
                 <img
                   src={taskImages[selectedImageIndex].optimized_url || taskImages[selectedImageIndex].file_url || taskImages[selectedImageIndex].thumbnail_url}
                   alt={taskImages[selectedImageIndex].file_name || "Task image"}
-                  className="w-full max-h-[300px] object-cover"
+                  className="w-full max-h-[300px] object-contain bg-muted/40"
                   onError={(e) => {
                     const img = taskImages[selectedImageIndex];
                     if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
@@ -514,7 +522,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     <img
                       src={image.thumbnail_url || image.file_url}
                       alt={image.file_name || "Task image"}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain bg-muted/40"
                       onError={(e) => {
                         if (image.thumbnail_url && image.file_url) {
                           (e.target as HTMLImageElement).src = image.file_url;
@@ -589,7 +597,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         <input
           ref={taskImageInputRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
           multiple
           capture="environment"
           className="hidden"
@@ -786,7 +794,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       refreshTask();
                       setSelectedImageIndex(0);
                     }}
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
                   />
                 </div>
                 {task.images && task.images.length > 0 && (() => {
@@ -819,18 +827,27 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({task.images.length})</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {task.images.map((image: any) => (
-                        <div key={image.id} className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group">
+                        <button
+                          key={image.id}
+                          type="button"
+                          className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
+                          onClick={() => {
+                            if (!image?.id) return;
+                            setEditingImageId(image.id);
+                            setShowAnnotationEditor(true);
+                          }}
+                        >
                           <img
                             src={image.thumbnail_url || image.file_url}
                             alt={image.file_name || "Task image"}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain bg-muted/40"
                             onError={(e) => {
                               if (image.thumbnail_url && image.file_url) {
                                 (e.target as HTMLImageElement).src = image.file_url;
                               }
                             }}
                           />
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -1024,8 +1041,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         taskId={taskId}
         imageId={editingImageId}
         imageUrl={
-          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
           task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
+          task.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
+          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
           ""
         }
         detectionOverlays={[]}
@@ -1054,7 +1072,15 @@ function ImageAnnotationEditorWrapper({
   detectionOverlays?: DetectionOverlay[];
   onClose: () => void;
 }) {
-  const { annotations, saveAnnotations } = useImageAnnotations(taskId, imageId);
+  const { annotations, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center">
+        <div className="text-white/80 text-sm">Loading annotations...</div>
+      </div>
+    );
+  }
 
   return (
     <ImageAnnotationEditor
