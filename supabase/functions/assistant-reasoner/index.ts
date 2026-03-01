@@ -275,6 +275,8 @@ Deno.serve(async (req) => {
   const proposedAction: { type: string; payload: Record<string, unknown> } | null = null;
   const calls = intentToCalls[intent] ?? intentToCalls.unknown;
   const queryLower = query.toLowerCase();
+  const asksAssets = /\basset\b|\bassets\b/.test(queryLower);
+  const asksCompliance = /\bcompliance\b|\bcertificate\b|\bdocument\b|\bexpiry\b|\bexpired\b/.test(queryLower);
 
   // Predictive gate: check org settings
   if (intent === "predictive") {
@@ -480,7 +482,7 @@ Deno.serve(async (req) => {
   }
 
   // Compliance portfolio view
-  if (calls.includes("compliance")) {
+  if (calls.includes("compliance") && (asksCompliance || !answer.trim())) {
     try {
       const { data: compliance } = await supabase
         .from("compliance_portfolio_view")
@@ -500,7 +502,7 @@ Deno.serve(async (req) => {
   }
 
   // Assets view
-  if (calls.includes("assets")) {
+  if (calls.includes("assets") && (asksAssets || !answer.trim())) {
     try {
       const { data: assets } = await supabase
         .from("assets_view")

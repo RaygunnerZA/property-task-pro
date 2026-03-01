@@ -82,7 +82,12 @@ export function AssistantPanelBody({
   const canSend = !!onSendMessage && !loading;
 
   const renderMessageContent = (content: string) => {
-    const lines = content
+    const normalizedContent = content.replace(
+      /\[See Details\]\s*\n\s*\(task:([^)]+)\)/gi,
+      "[See Details](task:$1)"
+    );
+
+    const lines = normalizedContent
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);

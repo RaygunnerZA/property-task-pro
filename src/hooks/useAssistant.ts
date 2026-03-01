@@ -30,6 +30,18 @@ export function useAssistant() {
 
   const sendMessage = useCallback(
     async (query: string, context?: AssistantContextInput | null) => {
+      const normalized = query.trim().toLowerCase();
+      if (
+        normalized === "clear chat" ||
+        normalized === "reset chat" ||
+        normalized === "new chat"
+      ) {
+        setMessages([]);
+        setProposedAction(null);
+        setLoading(false);
+        return;
+      }
+
       if (!orgId || orgLoading) return;
 
       setLoading(true);
