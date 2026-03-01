@@ -3,6 +3,7 @@ import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
+import { HorizontalDateStrip } from '@/components/dashboard/HorizontalDateStrip';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon, Shield, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
@@ -74,6 +75,18 @@ const Home = () => {
             selectedDate={selectedDate}
             onDateSelect={(date) => setSelectedDate(date || new Date())}
           />
+          <div className="mt-3 md:hidden">
+            <p className="mb-2 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+              Mobile condensed date strip preview
+            </p>
+            <HorizontalDateStrip
+              tasks={tasks}
+              selectedDate={selectedDate}
+              onDateSelect={(date) => setSelectedDate(date || new Date())}
+              daysBack={5}
+              daysAhead={24}
+            />
+          </div>
         </div>
 
         {/* Compliance Health Today */}

@@ -205,7 +205,7 @@ export function TaskPanel({
         <div className="sticky top-0 z-10 bg-background ml-[8px] mr-[8px] flex md:justify-between items-center">
           <TabsList
             className={cn(
-              "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-0 pr-0 gap-1.5 rounded-[15px] bg-transparent",
+              "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-1.5 rounded-[15px] bg-transparent",
               "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
             )}
           >
@@ -220,14 +220,7 @@ export function TaskPanel({
               )}
               style={{ paddingLeft: '26px', paddingRight: '26px' }}
             >
-              <AnimatedIcon 
-                icon={CheckSquare} 
-                size={16} 
-                animateOnHover
-                animation="path-draw"
-                className="mr-0.5 -ml-[10px]"
-                style={{ width: '31px' }}
-              />
+              <CheckSquare className="mr-0.5 -ml-[10px] h-4 w-4" style={{ width: '31px' }} />
               Tasks
             </TabsTrigger>
             <TabsTrigger
@@ -343,7 +336,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "px-3 h-9 rounded-[8px] text-sm font-medium",
+                            "px-3 h-9 rounded-[12px] text-sm font-medium",
                             "bg-card shadow-e1 border border-border/50",
                             "hover:shadow-md transition-shadow"
                           )}
@@ -361,7 +354,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "h-9 w-9 rounded-[8px] grid place-items-center",
+                            "h-9 w-9 rounded-[12px] grid place-items-center",
                             "bg-card shadow-e1 border border-border/50",
                             "hover:shadow-md transition-shadow"
                           )}
@@ -379,7 +372,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "h-9 w-9 rounded-[8px] grid place-items-center",
+                            "h-9 w-9 rounded-[12px] grid place-items-center",
                             "bg-card shadow-e1 border border-border/50",
                             "hover:shadow-md transition-shadow"
                           )}

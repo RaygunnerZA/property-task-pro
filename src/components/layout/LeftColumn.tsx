@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { HorizontalDateStrip } from "@/components/dashboard/HorizontalDateStrip";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -256,6 +257,18 @@ export function LeftColumn({
                   onDateSelect={onDateSelect}
                   tasksByDate={tasksByDate}
                 />
+                <div className="mt-3">
+                  <p className="mb-2 text-[10px] font-mono uppercase tracking-wide text-muted-foreground">
+                    Condensed date strip (comparison)
+                  </p>
+                  <HorizontalDateStrip
+                    tasks={tasks}
+                    selectedDate={selectedDate}
+                    onDateSelect={onDateSelect}
+                    daysBack={5}
+                    daysAhead={24}
+                  />
+                </div>
               </div>
             )}
           </div>
