@@ -81,6 +81,105 @@ export function AssistantPanelBody({
 
   const canSend = !!onSendMessage && !loading;
 
+  const renderMessageContent = (content: string) => {
+    const lines = content
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const taskLinePattern =
+      /^(.*?)\s*\|\s*(.*?)\s*\|\s*(?:\[See Details\]\(task:([^)]+)\)|see details\s*\(([^)]+)\)|See Details unavailable)$/i;
+    const headingPattern = /^The following tasks/i;
+    const suggestionPattern = /^(You can ask:|Need one property only\?|Try:)/i;
+
+    const parsed = lines.map((line) => {
+      const taskMatch = line.match(taskLinePattern);
+      if (taskMatch) {
+        return {
+          type: "task" as const,
+          raw: line,
+          title: taskMatch[1].trim(),
+          due: taskMatch[2].trim(),
+          taskId: (taskMatch[3] || taskMatch[4] || "").trim(),
+        };
+      }
+
+      if (headingPattern.test(line)) {
+        return { type: "heading" as const, raw: line };
+      }
+
+      if (suggestionPattern.test(line)) {
+        return { type: "suggestion" as const, raw: line };
+      }
+
+      return { type: "text" as const, raw: line };
+    });
+
+    const hasTaskRows = parsed.some((item) => item.type === "task");
+
+    return (
+      <div className="space-y-2">
+        {parsed.map((item, idx) => {
+          if (item.type === "heading" && hasTaskRows) {
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <FillaIcon size={12} className="text-[#EB6834] shrink-0" />
+                <p className="text-sm whitespace-pre-wrap">{item.raw}</p>
+              </div>
+            );
+          }
+
+          if (item.type === "task") {
+            return (
+              <div key={idx} className="text-sm flex flex-wrap items-center gap-1">
+                <span>{item.title}</span>
+                <span className="text-muted-foreground">|</span>
+                <span>{item.due}</span>
+                <span className="text-muted-foreground">|</span>
+                {item.taskId ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 py-0 text-xs align-middle"
+                    onClick={() => {
+                      window.dispatchEvent(
+                        new CustomEvent("filla:assistant-open-task", {
+                          detail: { taskId: item.taskId },
+                        })
+                      );
+                    }}
+                  >
+                    See Details
+                  </Button>
+                ) : (
+                  <span className="text-muted-foreground text-xs">No details</span>
+                )}
+              </div>
+            );
+          }
+
+          if (item.type === "suggestion") {
+            return (
+              <p
+                key={idx}
+                className="text-[12px] leading-[1.35] text-[#8F8D8A]"
+                style={{ fontFamily: '"Inter Tight", system-ui, sans-serif' }}
+              >
+                {item.raw}
+              </p>
+            );
+          }
+
+          return (
+            <p key={idx} className="text-sm whitespace-pre-wrap">
+              {item.raw}
+            </p>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className={cn("flex flex-1 flex-col min-h-0", className)}>
       {showContextHeader && context?.type && context?.name && (
@@ -108,7 +207,7 @@ export function AssistantPanelBody({
                 : "mr-8 bg-card"
             )}
           >
-            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+            {renderMessageContent(msg.content)}
           </div>
         ))}
         {loading && (

@@ -178,6 +178,22 @@ export default function Dashboard() {
     return () => window.removeEventListener("filla:assistant-apply-task-filters", onApplyFilters);
   }, []);
 
+  useEffect(() => {
+    const onOpenTask = (event: Event) => {
+      const customEvent = event as CustomEvent<{ taskId?: string }>;
+      const taskId = customEvent.detail?.taskId;
+      if (!taskId) return;
+
+      setActiveTab("tasks");
+      setShowCreateTask(false);
+      setSelectedItem({ type: "task", id: taskId });
+      if (isLargeScreen) setExpandedSection("details");
+    };
+
+    window.addEventListener("filla:assistant-open-task", onOpenTask);
+    return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
+  }, [isLargeScreen]);
+
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
       setShowCreateTask(false);

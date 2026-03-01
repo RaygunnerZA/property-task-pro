@@ -41,18 +41,56 @@ type Intent =
 
 function buildTaskFollowUp(filteredCount: number, queryLower: string) {
   if (filteredCount === 0) {
-    return "I can check a different slice next - try: 'show open tasks', 'show completed tasks', or 'show high priority tasks'.";
+    return "Try: show open tasks, overdue tasks, or high priority tasks.";
   }
   if (/\boverdue\b|\bpast due\b|\blate\b/.test(queryLower)) {
-    return "If you want, I can also break these down by property or show only unassigned overdue tasks.";
+    return "You can ask: show only unassigned overdue tasks.";
   }
   if (/\bhigh priority\b|\burgent\b|\bcritical\b/.test(queryLower)) {
-    return "I can also show which high-priority tasks are overdue versus due soon.";
+    return "You can ask: split these into overdue vs due this week.";
   }
   if (/\bcompleted\b|\bdone\b|\bfinished\b/.test(queryLower)) {
-    return "If useful, I can compare completed vs active tasks by property.";
+    return "You can ask: compare completed vs active by property.";
   }
-  return "Ask a follow-up like 'which of these are overdue?' or 'show only unassigned tasks'.";
+  return "You can ask: which of these are overdue?";
+}
+
+function formatPriority(priority: string | null) {
+  if (!priority) return "normal";
+  const p = priority.toLowerCase();
+  if (p === "urgent") return "urgent";
+  if (p === "high") return "high";
+  if (p === "medium") return "normal";
+  if (p === "low") return "low";
+  return p;
+}
+
+function formatDueLabel(value: string | null) {
+  if (!value) return "No due date";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invalid date";
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+
+  const hasTime = value.includes("T");
+  const time = hasTime
+    ? ` ${new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date)}`
+    : "";
+
+  if (diffDays === 0) return `Today${time}`;
+  if (diffDays === 1) return `Tomorrow${time}`;
+  if (diffDays > 1 && diffDays <= 7) {
+    const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(date);
+    return `${weekday}${time}`;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    ...(hasTime ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
+  }).format(date);
 }
 
 function buildPropertyScopeFollowUp(
@@ -234,7 +272,7 @@ Deno.serve(async (req) => {
 
   let answer = "";
   const sources: string[] = [];
-  let proposedAction: { type: string; payload: Record<string, unknown> } | null = null;
+  const proposedAction: { type: string; payload: Record<string, unknown> } | null = null;
   const calls = intentToCalls[intent] ?? intentToCalls.unknown;
   const queryLower = query.toLowerCase();
 
@@ -324,12 +362,13 @@ Deno.serve(async (req) => {
       const wantsHighPriority = /\bhigh priority\b|\burgent\b|\bcritical\b/.test(queryLower);
       const wantsUnassigned = /\bunassigned\b|\bno owner\b/.test(queryLower);
       const wantsImportant = /\bimportant\b|\bpriority\b|\burgent\b|\bcritical\b|\bhigh\b/.test(queryLower);
-      const wantsNextWeek = /\bnext week\b|\bthis week\b|\bnext 7 days\b|\b7 days\b/.test(queryLower);
+      const wantsWeekWindow = /\bdue this week\b|\bnext week\b|\bthis week\b|\bnext 7 days\b|\b7 days\b/.test(queryLower);
+      const wantsDue = /\bdue\b/.test(queryLower);
 
       if (target?.type === "property" && target.id) {
         filtered = filtered.filter((t) => t.property_id === target.id);
       }
-      if (wantsImportant && wantsNextWeek) {
+      if (wantsImportant && wantsWeekWindow) {
         filtered = filtered.filter((t) => {
           const p = (t.priority ?? "").toLowerCase();
           const isImportant = p === "high" || p === "urgent";
@@ -344,21 +383,27 @@ Deno.serve(async (req) => {
           return days !== null && days < 0 && t.status !== "completed" && t.status !== "archived";
         });
       }
-      if (wantsDueSoon) {
+      if (wantsDueSoon || (wantsDue && wantsWeekWindow)) {
         filtered = filtered.filter((t) => {
           const days = toDaysFromNow(t.due_date);
           return days !== null && days >= 0 && days <= 14 && t.status !== "completed" && t.status !== "archived";
         });
       }
-      if (wantsCompleted) filtered = filtered.filter((t) => t.status === "completed");
-      if (wantsOpen) filtered = filtered.filter((t) => t.status === "open" || t.status === "in_progress");
+      if (wantsCompleted) {
+        filtered = filtered.filter((t) => t.status === "completed");
+      }
+      if (wantsOpen) {
+        filtered = filtered.filter((t) => t.status === "open" || t.status === "in_progress");
+      }
       if (wantsHighPriority) {
         filtered = filtered.filter((t) => {
           const p = (t.priority ?? "").toLowerCase();
           return p === "high" || p === "urgent";
         });
       }
-      if (wantsUnassigned) filtered = filtered.filter((t) => !t.assigned_user_id);
+      if (wantsUnassigned) {
+        filtered = filtered.filter((t) => !t.assigned_user_id);
+      }
 
       telemetry.taskMatchesCount = filtered.length;
 
@@ -372,33 +417,41 @@ Deno.serve(async (req) => {
           {} as Record<string, number>
         );
 
+        const openCount = statusCounts.open ?? 0;
+        const inProgressCount = statusCounts.in_progress ?? 0;
+        const doneCount = statusCounts.completed ?? 0;
+        const archivedCount = statusCounts.archived ?? 0;
+        const activeCount = openCount + inProgressCount;
+
         const sample = filtered.slice(0, 5).map((t) => {
-          const due = t.due_date ? String(t.due_date).slice(0, 10) : "no due date";
-          return `${t.title ?? "Untitled task"} (${t.status ?? "unknown"}, due ${due})`;
+          const dueLabel = formatDueLabel(t.due_date);
+          const taskTitle = (t.title ?? "Untitled task").replace(/\|/g, "-");
+          const detailRef = t.id ? `[See Details](task:${t.id})` : "See Details unavailable";
+          return `${taskTitle} | ${dueLabel} | ${detailRef}`;
         });
 
-        const activeCount = (statusCounts.open ?? 0) + (statusCounts.in_progress ?? 0);
-        const headline = filtered.length === taskRows.length
-          ? `You currently have ${taskRows.length} tasks (${activeCount} active, ${statusCounts.completed ?? 0} completed).`
-          : `I found ${filtered.length} task${filtered.length === 1 ? "" : "s"} matching your question out of ${taskRows.length} total.`;
+        if (filtered.length === 0) {
+          answer += `No tasks match that right now.\n`;
+        } else if (wantsDue && wantsWeekWindow) {
+          answer += `The following tasks are due this week:\n`;
+        } else if (wantsOverdue) {
+          answer += `The following tasks are overdue:\n`;
+        } else if (wantsImportant && wantsWeekWindow) {
+          answer += `The following important tasks are due in the next week:\n`;
+        } else {
+          answer += `Here are the most relevant tasks:\n`;
+        }
 
-        answer += `${headline}\n`;
         if (sample.length) {
-          answer += `Here are the most relevant ones: ${sample.join("; ")}.\n`;
+          answer += `${sample.join("\n")}\n`;
         }
-        if (wantsImportant && wantsNextWeek) {
-          answer += "I can apply these exact filters to your Task List now (This Week + High + Urgent).\n";
-          proposedAction = {
-            type: "filter_tasks",
-            payload: {
-              filter_ids: ["filter-date-this-week", "filter-priority-high", "filter-priority-urgent"],
-            },
-          };
+
+        if (filtered.length > 0) {
+          answer += `${buildTaskFollowUp(filtered.length, queryLower)}\n`;
         }
-        answer += `${buildTaskFollowUp(filtered.length, queryLower)}\n`;
-        const propertyScopeFollowUp = buildPropertyScopeFollowUp(target, queryLower, taskRows);
-        if (propertyScopeFollowUp) {
-          answer += `${propertyScopeFollowUp}\n`;
+        const hasWidePortfolioContext = target?.type !== "property" && taskRows.some((t) => t.property_id);
+        if (hasWidePortfolioContext && filtered.length > 0 && /\bweek\b|\bdue\b|\boverdue\b/.test(queryLower)) {
+          answer += `Need one property only? Ask: show this for [property name].\n`;
         }
         sources.push("tasks_view");
       }
