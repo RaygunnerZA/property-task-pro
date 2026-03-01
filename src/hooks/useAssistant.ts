@@ -53,6 +53,9 @@ export function useAssistant() {
       }
 
       try {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H1',location:'src/hooks/useAssistant.ts:56',message:'assistant invoke payload',data:{queryLength:query.length,hasContext:!!context,contextType:context?.type ?? null,hasContextId:!!context?.id,orgIdPresent:!!orgId},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         const { data: reasonerData, error: reasonerErr } = await supabase.functions.invoke(
           "assistant-reasoner",
           {
@@ -67,6 +70,9 @@ export function useAssistant() {
         if (reasonerErr) throw reasonerErr;
         if (!reasonerData?.ok) throw new Error(reasonerData?.error ?? "Reasoner failed");
 
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H4',location:'src/hooks/useAssistant.ts:72',message:'assistant response payload',data:{ok:reasonerData?.ok ?? null,sourcesCount:Array.isArray(reasonerData?.sources)?reasonerData.sources.length:null,answerPreview:typeof reasonerData?.answer==='string'?reasonerData.answer.slice(0,120):null,hasProposedAction:!!reasonerData?.proposed_action},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: reasonerData.answer ?? "No response." },

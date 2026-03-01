@@ -123,6 +123,25 @@ Deno.serve(async (req) => {
 
   const intent = (intentOverride as Intent) ?? classifyIntent(query);
   const target = targetOverride ?? (context?.type && context?.id ? { type: context.type, id: context.id } : null);
+  const telemetry: {
+    graphAttempted: boolean;
+    graphNodesCount: number | null;
+    graphInsightAttempted: boolean;
+    hazardExposure: number | null;
+    complianceCount: number | null;
+    assetsCount: number | null;
+  } = {
+    graphAttempted: false,
+    graphNodesCount: null,
+    graphInsightAttempted: false,
+    hazardExposure: null,
+    complianceCount: null,
+    assetsCount: null,
+  };
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H2',location:'supabase/functions/assistant-reasoner/index.ts:128',message:'reasoner classified intent',data:{queryLength:query.length,intent,targetType:target?.type ?? null,targetIdPresent:!!target?.id},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -200,12 +219,14 @@ Deno.serve(async (req) => {
 
   // Graph query (only when we have a starting entity)
   if (calls.includes("graph") && target) {
+    telemetry.graphAttempted = true;
     const data = await invokeFunction(supabaseUrl, serviceKey, "graph-query", {
       org_id: orgId,
       start: target,
       depth: intent === "graph" ? 2 : 3,
     }) as { ok?: boolean; nodes?: Array<{ type: string; name?: string }> } | null;
     if (data?.ok && data.nodes) {
+      telemetry.graphNodesCount = data.nodes.length;
       sources.push("graph-query");
       const nodeSummary = data.nodes
         .filter((n) => n.type !== target.type)
@@ -218,12 +239,14 @@ Deno.serve(async (req) => {
 
   // Graph insight (only when we have a starting entity)
   if (calls.includes("graph-insight") && target) {
+    telemetry.graphInsightAttempted = true;
     const data = await invokeFunction(supabaseUrl, serviceKey, "graph-insight", {
       org_id: orgId,
       start: target,
       depth: 2,
     }) as { ok?: boolean; hazardExposure?: number; complianceInfluence?: number; riskPaths?: string[][] } | null;
     if (data?.ok) {
+      telemetry.hazardExposure = data.hazardExposure ?? null;
       sources.push("graph-insight");
       answer += `Hazard exposure: ${data.hazardExposure ?? 0}. Compliance influence: ${data.complianceInfluence ?? 0}.`;
       if (data.riskPaths?.length) {
@@ -241,6 +264,7 @@ Deno.serve(async (req) => {
         .select("id, title, expiry_state, document_type")
         .eq("org_id", orgId)
         .limit(20);
+      telemetry.complianceCount = compliance?.length ?? 0;
       if (compliance?.length) {
         sources.push("compliance_portfolio_view");
         const expired = compliance.filter((c) => c.expiry_state === "expired");
@@ -260,6 +284,7 @@ Deno.serve(async (req) => {
         .select("id, name, asset_type")
         .eq("org_id", orgId)
         .limit(20);
+      telemetry.assetsCount = assets?.length ?? 0;
       if (assets?.length) {
         sources.push("assets_view");
         answer += `Assets: ${assets.length} in scope.\n`;
@@ -309,6 +334,10 @@ Deno.serve(async (req) => {
   }
 
   // ── Fallback answer ───────────────────────────────────────────────────────
+
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H3',location:'supabase/functions/assistant-reasoner/index.ts:326',message:'reasoner pre-fallback state',data:{intent,calls,targetType:target?.type ?? null,answerLength:answer.trim().length,sources,telemetry},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   if (!answer.trim()) {
     // Provide a helpful fallback rather than a dead-end message
