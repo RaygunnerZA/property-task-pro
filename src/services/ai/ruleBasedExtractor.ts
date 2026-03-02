@@ -365,12 +365,26 @@ function detectAssets(
 ): SuggestedChip[] {
   const chips: SuggestedChip[] = [];
   const matchedAssets = new Set<string>();
+  const normalizedWords = words
+    .map((word) => word.toLowerCase().replace(/[^a-z0-9\s-]/g, ""))
+    .filter(Boolean);
+
+  const singularize = (value: string) => {
+    if (value.length > 3 && value.endsWith("s")) return value.slice(0, -1);
+    return value;
+  };
   
   // Check for known asset keywords from assetToSpaceMap
   for (const asset of Object.keys(extractionPatterns.assetToSpaceMap)) {
     const assetLower = asset.toLowerCase();
+    const normalizedAsset = singularize(assetLower);
+    const assetWords = assetLower.split(/\s+/).filter(Boolean);
+    const hasKnownAssetMention =
+      text.includes(assetLower) ||
+      (assetWords.length === 1 &&
+        normalizedWords.some((word) => singularize(word) === normalizedAsset));
     
-    if (text.includes(assetLower) && !matchedAssets.has(assetLower)) {
+    if (hasKnownAssetMention && !matchedAssets.has(normalizedAsset)) {
       // Capitalize asset name properly
       const formattedName = asset.split(' ')
         .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -387,8 +401,54 @@ function detectAssets(
         blockingRequired: true, // Requires resolution (add to assets)
         metadata: { detectedAs: 'known_asset_keyword' }
       });
-      matchedAssets.add(assetLower);
+      matchedAssets.add(normalizedAsset);
     }
+  }
+
+  // Fallback: detect unknown asset candidates from task-action phrases.
+  // This lets terms like "chairs" become addable asset suggestions even when
+  // they are not in the static asset keyword map.
+  const contextualAssetPattern =
+    /\b(?:fix|repair|replace|check|inspect|service|install|clean|paint|remove)\s+(?:the\s+|a\s+|an\s+)?([a-z][a-z-]{2,}(?:\s+[a-z][a-z-]{2,}){0,2})/gi;
+  const trailingStopWords = new Set([
+    "in", "at", "on", "before", "after", "by", "for", "with", "from", "to", "and", "or",
+  ]);
+
+  let contextualMatch: RegExpExecArray | null;
+  while ((contextualMatch = contextualAssetPattern.exec(text)) !== null) {
+    const rawCandidate = contextualMatch[1]?.trim();
+    if (!rawCandidate) continue;
+
+    const candidateTokens = rawCandidate.split(/\s+/).filter(Boolean);
+    const trimmedTokens: string[] = [];
+    for (const token of candidateTokens) {
+      if (trailingStopWords.has(token)) break;
+      trimmedTokens.push(token);
+    }
+
+    if (trimmedTokens.length === 0) continue;
+    const candidate = trimmedTokens.join(" ");
+    const normalizedCandidate = singularize(candidate.toLowerCase());
+
+    if (matchedAssets.has(normalizedCandidate)) continue;
+    if (NON_NAME_WORDS.has(normalizedCandidate)) continue;
+
+    const formattedName = candidate
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    chips.push({
+      id: `asset-ghost-context-${normalizedCandidate.replace(/\s+/g, "-")}-${Date.now()}`,
+      type: "asset",
+      value: formattedName,
+      label: formattedName,
+      score: 0.58,
+      source: "rule",
+      blockingRequired: true,
+      metadata: { detectedAs: "contextual_asset_candidate" },
+    });
+    matchedAssets.add(normalizedCandidate);
   }
   
   return chips;
@@ -422,6 +482,13 @@ const DIRECTED_NAME_PATTERNS = [
   /\b(?:call|ask|tell|contact|message|email|assign(?:\s+to)?|tag|loop\s+in)\s+([a-zA-Z]{3,})\b/i,
   /\bfor\s+([a-zA-Z]{3,})\b/i,
 ];
+
+const COMMON_FIRST_NAMES = new Set([
+  "alex", "ben", "chris", "dan", "david", "emma", "frank", "george", "hannah", "harry",
+  "isla", "jack", "james", "jane", "john", "josh", "kate", "liam", "lucy", "mark",
+  "matt", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah", "sam",
+  "simon", "sophie", "thomas", "tom",
+]);
 
 const NUMBER_WORDS: Record<string, number> = {
   a: 1,
@@ -568,6 +635,26 @@ function detectPersons(
       metadata: { detectedAs: "directed_name_phrase" },
     });
     matchedNames.add(nameLower);
+  }
+
+  // ── 5. Common first-name fallback (handles lowercase standalone names) ────
+  for (const rawWord of words) {
+    const cleaned = rawWord.toLowerCase().replace(/[^a-z'-]/g, "");
+    if (cleaned.length < 3) continue;
+    if (!COMMON_FIRST_NAMES.has(cleaned)) continue;
+    if (matchedNames.has(cleaned) || NON_NAME_WORDS.has(cleaned)) continue;
+
+    chips.push({
+      id: `person-ghost-common-${cleaned}`,
+      type: "person",
+      value: cleaned,
+      label: cleaned.charAt(0).toUpperCase() + cleaned.slice(1),
+      score: 0.66,
+      source: "rule",
+      blockingRequired: true,
+      metadata: { detectedAs: "common_first_name_token" },
+    });
+    matchedNames.add(cleaned);
   }
 
   return chips;

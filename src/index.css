@@ -339,7 +339,7 @@
   
   /* Page Header Style */
   .page-header {
-    @apply sticky top-0 z-40 shadow-paper-edge pl-0;
+    @apply relative z-10 shadow-paper-edge pl-0;
     height: 100px;
     border-radius: 0px 0px 0px 12px;
     background: linear-gradient(135deg, rgba(244, 243, 240, 1) 0%, rgba(239, 238, 235, 1) 50%, rgba(234, 233, 230, 1) 100%);

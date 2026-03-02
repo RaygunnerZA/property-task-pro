@@ -127,6 +127,13 @@ describe("extractChipsFromText — person detection", () => {
     expect(john).toBeDefined();
   });
 
+  it("standalone lowercase common name 'david' → person ghost chip", () => {
+    const result = extract("david to review the photos");
+    const people = result.chips.filter((c) => c.type === "person");
+    const david = people.find((c) => c.label.toLowerCase().includes("david"));
+    expect(david).toBeDefined();
+  });
+
   it("matched org member → higher score than ghost", () => {
     const entities = {
       ...EMPTY_ENTITIES,
@@ -301,6 +308,13 @@ describe("extractChipsFromText — asset detection", () => {
       c.label.toLowerCase().includes("washing machine")
     );
     expect(wm).toBeDefined();
+  });
+
+  it("unknown plural asset noun 'chairs' → contextual asset ghost chip", () => {
+    const result = extract("Replace the chairs in the dining room");
+    const assets = result.chips.filter((c) => c.type === "asset");
+    const chairs = assets.find((c) => c.label.toLowerCase().includes("chair"));
+    expect(chairs).toBeDefined();
   });
 });
 
