@@ -21,7 +21,7 @@ export function useActiveOrg(): UseActiveOrgResult {
   const queryClient = useQueryClient();
 
   // First, get the current user ID
-  const { data: userData } = useQuery({
+  const { data: userData, isLoading: userLoading } = useQuery({
     queryKey: ["auth", "user"],
     queryFn: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -90,7 +90,7 @@ export function useActiveOrg(): UseActiveOrgResult {
   // staleTime is intentionally short (10s) rather than Infinity so that after
   // accepting an invitation the app immediately picks up the new org membership.
   // The query is otherwise stable — it only re-fetches on mount / focus / invalidation.
-  const { data: orgId, isLoading, error } = useQuery({
+  const { data: orgId, isLoading: orgQueryLoading, error } = useQuery({
     queryKey: ["activeOrg", userId],
     queryFn: fetchActiveOrg,
     enabled: !!userId,
@@ -100,7 +100,8 @@ export function useActiveOrg(): UseActiveOrgResult {
 
   return {
     orgId: orgId ?? null,
-    isLoading: isLoading || !userId, // Loading if query is loading or no user yet
+    // Avoid startup deadlocks: "no user" is a resolved state, not a loading state.
+    isLoading: userLoading || (!!userId && orgQueryLoading),
     error: error ? (error as Error).message : null,
   };
 }
