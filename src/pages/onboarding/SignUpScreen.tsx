@@ -53,9 +53,6 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'SignUpScreen.tsx:handleSignUp:start',message:'signup started with invitation context',data:{search:location.search,hasInviteToken:new URLSearchParams(location.search).has('invite_token'),hasPendingToken:!!sessionStorage.getItem('pending_invitation_token'),email},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       // Use canonical app URL in production so confirmation email redirects to Vercel, not localhost.
       const redirectUrl = `${getAppBaseUrl()}/verify`;
 
@@ -89,9 +86,6 @@ export default function SignUpScreen() {
         const { data: sessionData } = await supabase.auth.getSession();
         
         if (sessionData.session || data.user.email_confirmed_at) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'SignUpScreen.tsx:handleSignUp:postSignup',message:'signup completed and routing to auth callback',data:{userId:data.user.id,hasSession:!!sessionData.session,emailConfirmed:!!data.user.email_confirmed_at},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           // Email confirmation is disabled or already confirmed - skip verification
           toast.success("Account created!");
           navigate("/auth/callback", { replace: true });

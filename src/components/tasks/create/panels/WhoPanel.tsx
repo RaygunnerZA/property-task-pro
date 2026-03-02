@@ -75,12 +75,7 @@ export function WhoPanel({
             {
               label: "Invite to your organisation",
               helperText: "Best for staff or team members",
-              onClick: () => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H1',location:'WhoPanel.tsx:InstructionBlock:inviteButton',message:'instruction block invite button pressed',data:{personName,hasInviteCallback:!!onInviteToOrg},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-                onInviteToOrg?.();
-              },
+              onClick: () => onInviteToOrg?.(),
             },
             {
               label: "Add as contractor",

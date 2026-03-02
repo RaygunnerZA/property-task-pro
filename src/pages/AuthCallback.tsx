@@ -31,9 +31,6 @@ export default function AuthCallback() {
       try {
         // 1. Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H2',location:'AuthCallback.tsx:runChecks:getUser',message:'auth callback user lookup',data:{hasUser:!!user,userId:user?.id,email:user?.email,userError:userError?.message},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         if (userError || !user) {
           return "/welcome";
@@ -51,9 +48,6 @@ export default function AuthCallback() {
         if (membershipError) {
           console.error("[AuthCallback] Error checking membership:", membershipError);
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H2',location:'AuthCallback.tsx:runChecks:membership',message:'membership query result in auth callback',data:{hasMembership:!!membership,orgId:membership?.org_id ?? null,role:membership?.role ?? null,membershipError:membershipError?.message ?? null,membershipCode:(membershipError as any)?.code ?? null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
 
         if (cancelled) return null;
 
@@ -102,9 +96,6 @@ export default function AuthCallback() {
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H3',location:'AuthCallback.tsx:runChecks:pendingInvitation',message:'pending invitation lookup by email',data:{userId:user.id,userEmail,foundPendingToken:!!pendingInvitation?.token},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
 
           if (pendingInvitation?.token) {
             // Security guard: always route through dedicated invitation acceptance
@@ -113,9 +104,6 @@ export default function AuthCallback() {
           }
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H5',location:'AuthCallback.tsx:runChecks:fallbackCreateOrg',message:'routing fallback to create-organisation',data:{reason:'no-membership-no-pending-invite',userId:user.id,userEmail:user.email?.toLowerCase() ?? null},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         return "/onboarding/create-organisation";
       } catch (err: any) {
         console.error("[AuthCallback] Unexpected error:", err);

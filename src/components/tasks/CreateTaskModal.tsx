@@ -189,12 +189,6 @@ export function CreateTaskModal({
     email?: string;
   } | null>(null);
 
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H2',location:'CreateTaskModal.tsx:inviteModalState',message:'invite modal state changed',data:{open,inviteModalOpen,activeSection,hasInvitePrefill:!!invitePrefill,prefill:invitePrefill},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  }, [inviteModalOpen, invitePrefill, activeSection, open]);
-
   const minuteKeyFromDate = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -1502,9 +1496,6 @@ export function CreateTaskModal({
                 pendingInvitations={pendingInvitations}
                 onPendingInvitationsChange={setPendingInvitations}
                 onInviteToOrg={(prefill) => {
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H3',location:'CreateTaskModal.tsx:WhoSection:onInviteToOrg',message:'create task received invite callback from who section',data:{prefill:prefill ?? null,beforeOpen:inviteModalOpen,activeSection},timestamp:Date.now()})}).catch(()=>{});
-                  // #endregion
                   setInvitePrefill(prefill ?? null);
                   setInviteModalOpen(true);
                 }}
@@ -1525,9 +1516,6 @@ export function CreateTaskModal({
                     instructionBlock={instructionBlock}
                     onInstructionDismiss={() => setInstructionBlock(null)}
                     onInviteToOrg={(prefill) => {
-                      // #region agent log
-                      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H3',location:'CreateTaskModal.tsx:WhoPanel:onInviteToOrg',message:'create task received invite callback from who panel',data:{prefill:prefill ?? null,beforeOpen:inviteModalOpen,activeSection},timestamp:Date.now()})}).catch(()=>{});
-                      // #endregion
                       setInvitePrefill(prefill ?? null);
                       setInviteModalOpen(true);
                     }}
@@ -1753,9 +1741,6 @@ export function CreateTaskModal({
     <InviteUserModal
       open={inviteModalOpen}
       onOpenChange={(open) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H4',location:'CreateTaskModal.tsx:InviteUserModal:onOpenChange',message:'invite user modal open change callback fired',data:{nextOpen:open,currentInviteModalOpen:inviteModalOpen,activeSection},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setInviteModalOpen(open);
         if (!open) setInvitePrefill(null);
       }}

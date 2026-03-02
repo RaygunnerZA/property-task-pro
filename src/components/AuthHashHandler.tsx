@@ -31,18 +31,12 @@ export function AuthHashHandler() {
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
       const type = params.get("type");
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'AuthHashHandler.tsx:parseHash',message:'global hash handler parsed auth hash',data:{path:location.pathname,search:location.search,type,hasAccessToken:!!accessToken,hasRefreshToken:!!refreshToken,onAcceptInvitationRoute,hasInviteToken},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       if ((type === "signup" || type === "magiclink") && accessToken) {
         handled.current = true;
         supabase.auth
           .setSession({ access_token: accessToken, refresh_token: refreshToken || "" })
           .then(({ error }) => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'AuthHashHandler.tsx:setSessionResult',message:'global hash handler setSession result',data:{hasError:!!error,error:error?.message ?? null},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             if (error) {
               handled.current = false;
               return;

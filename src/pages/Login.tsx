@@ -76,9 +76,6 @@ export default function LoginPage() {
       
       // Check if user is authenticated first
       const { data: { user }, error: authErr } = await supabase.auth.getUser();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.tsx:getUser',message:'auth state before invitations check',data:{hasUser:!!user,userEmail:user?.email,emailConfirmed:!!user?.email_confirmed_at,authError:authErr?.message},timestamp:Date.now(),hypothesisId:'invitations'})}).catch(()=>{});
-      // #endregion
       
       const tokenFromUserMetadata = user?.user_metadata?.invitation_token;
       const effectiveInviteToken = inviteToken || tokenFromUserMetadata;
@@ -96,15 +93,12 @@ export default function LoginPage() {
       // The user needs to sign in first, then AcceptInvitation will handle the redirect
       if (user?.email && user.email_confirmed_at) {
         // User is authenticated and verified - check if they have a pending invitation
-        // #region agent log
         const { data: pendingInvitation, error: invErr } = await supabase
           .from("invitations")
           .select("id, token")
           .eq("email", user.email.toLowerCase())
           .eq("status", "pending")
           .maybeSingle();
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.tsx:invitations',message:'invitations query result',data:{userId:user?.id,userEmail:user?.email,hasData:!!pendingInvitation,error:invErr?{message:invErr.message,code:invErr.code,status:invErr.status}:null},timestamp:Date.now(),hypothesisId:'invitations'})}).catch(()=>{});
-        // #endregion
         
         if (pendingInvitation) {
           console.log("User is authenticated and has pending invitation, redirecting to accept");
@@ -261,12 +255,7 @@ export default function LoginPage() {
             <NeomorphicButton
               type="button"
               variant="ghost"
-              onClick={() => {
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'Login.tsx:signupButton',message:'signup navigation from login',data:{hasInviteToken:!!inviteToken,inviteTokenLength:inviteToken?.length ?? 0,currentPath:window.location.pathname,currentSearch:window.location.search},timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
-                navigate("/signup");
-              }}
+              onClick={() => navigate("/signup")}
             >
               Don't have an account? Sign up
             </NeomorphicButton>

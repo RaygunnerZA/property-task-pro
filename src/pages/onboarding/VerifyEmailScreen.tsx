@@ -27,16 +27,10 @@ export default function VerifyEmailScreen() {
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
       const type = params.get("type");
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'VerifyEmailScreen.tsx:hashHandler',message:'verify screen hash handler parsed token payload',data:{type,hasAccessToken:!!accessToken,hasRefreshToken:!!refreshToken,path:window.location.pathname,search:window.location.search},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if ((type === "signup" || type === "magiclink") && accessToken) {
         supabase.auth
           .setSession({ access_token: accessToken, refresh_token: refreshToken || "" })
           .then(({ error }) => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'VerifyEmailScreen.tsx:hashHandler:setSessionResult',message:'verify screen setSession result',data:{hasError:!!error,error:error?.message ?? null},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             if (error) return;
             window.history.replaceState(null, "", window.location.pathname + window.location.search);
             toast.success("Email verified!");
@@ -52,9 +46,6 @@ export default function VerifyEmailScreen() {
     setChecking(true);
     try {
       const { data: { session }, error } = await supabase.auth.refreshSession();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'VerifyEmailScreen.tsx:checkVerification',message:'manual verify check refresh session result',data:{hasSession:!!session,hasUser:!!session?.user,error:error?.message ?? null,userId:session?.user?.id ?? null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       
       if (error) throw error;
 
