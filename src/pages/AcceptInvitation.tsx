@@ -128,20 +128,18 @@ export default function AcceptInvitation() {
         return;
       }
 
-      // ── Step 3: check if user needs to set a password ──
-      // Newly invited users created by Supabase have no password yet.
-      // We detect this by the absence of a password-based identity.
-      const hasPasswordIdentity = user.identities?.some(
-        (id) => id.provider === "email" && id.identity_data?.email_verified
+      // ── Step 3: require activation password before invitation acceptance ──
+      // Security guard: invited users should set a password before landing in the app.
+      // We mark completion in user metadata so the screen is not repeatedly shown.
+      const passwordActivated = Boolean(
+        user.user_metadata && (user.user_metadata as Record<string, unknown>).invitation_password_confirmed
       );
-      const justCreated =
-        !hasPasswordIdentity &&
-        new Date(user.created_at).getTime() > Date.now() - 5 * 60 * 1000; // within last 5 min
 
-      if (justCreated && !invitationToken) {
-        // Brand-new user with no token — show password setup
+      if (invitationToken && !passwordActivated) {
         setStatus("password");
-        setMessage("Set a password to complete your account setup.");
+        setMessage(
+          "Your details are already linked to your organisation. Create a secure password to activate your account."
+        );
         return;
       }
 
@@ -274,6 +272,17 @@ export default function AcceptInvitation() {
         return;
       }
       toast.success("Password set!");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.auth.updateUser({
+          data: {
+            ...user.user_metadata,
+            invitation_password_confirmed: true,
+          },
+        });
+      }
       setSettingPassword(false);
       setStatus("loading");
       // Reload to re-run the acceptance flow with the fresh session
@@ -291,7 +300,7 @@ export default function AcceptInvitation() {
       : status === "success"
       ? "Invitation accepted!"
       : status === "password"
-      ? "Set your password"
+      ? "You're Almost In"
       : "Invitation error";
 
   const subtitle =
@@ -346,9 +355,27 @@ export default function AcceptInvitation() {
 
         {status === "password" && (
           <div className="space-y-6">
+            <div className="space-y-3 text-left">
+              <p className="text-sm text-[#6D7480]">
+                Your details have already been added by the person who invited you to Filla.
+              </p>
+              <p className="text-sm text-[#6D7480]">
+                Please confirm your information below and create a secure password to activate your account.
+              </p>
+              <p className="text-sm text-[#6D7480]">
+                Once your password is set, you'll be able to sign in anytime and access your workspace.
+              </p>
+              <p className="text-sm font-medium text-foreground">What happens next:</p>
+              <ul className="list-disc pl-5 text-sm text-[#6D7480] space-y-1">
+                <li>Your name and email are already linked to your organisation</li>
+                <li>Your password will be securely stored for future sign-ins</li>
+                <li>You'll immediately gain access to your assigned properties and tasks</li>
+              </ul>
+              <p className="text-sm font-medium text-foreground">Create your password to continue.</p>
+            </div>
             <form onSubmit={handleSetPassword} className="space-y-4">
               <NeomorphicPasswordInput
-                label="Set Password"
+                label="Create password"
                 placeholder="At least 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -362,12 +389,9 @@ export default function AcceptInvitation() {
               >
                 {settingPassword
                   ? "Setting password…"
-                  : "Set Password & Accept Invitation"}
+                  : "Set Password & Activate Account"}
               </NeomorphicButton>
             </form>
-            <p className="text-sm text-[#6D7480] text-center">
-              After setting your password you'll be added to the organisation automatically.
-            </p>
           </div>
         )}
       </div>

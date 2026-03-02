@@ -52,9 +52,17 @@ export default function LoginPage() {
               
               if (!sessionError && sessionData?.session) {
                 console.log("[Login] Session established, redirecting to accept-invitation");
+                const tokenFromMetadata = sessionData.session.user?.user_metadata?.invitation_token;
+                const tokenFromSearch = new URLSearchParams(window.location.search).get("invite_token");
+                const invitationToken = tokenFromSearch || tokenFromMetadata;
                 // Clear hash and redirect
                 window.history.replaceState({}, '', "/accept-invitation");
-                navigate("/accept-invitation", { replace: true });
+                navigate(
+                  invitationToken
+                    ? `/accept-invitation?token=${encodeURIComponent(String(invitationToken))}`
+                    : "/accept-invitation",
+                  { replace: true }
+                );
                 return;
               }
             } catch (err) {
@@ -72,12 +80,15 @@ export default function LoginPage() {
       fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Login.tsx:getUser',message:'auth state before invitations check',data:{hasUser:!!user,userEmail:user?.email,emailConfirmed:!!user?.email_confirmed_at,authError:authErr?.message},timestamp:Date.now(),hypothesisId:'invitations'})}).catch(()=>{});
       // #endregion
       
-      // If there's an invite_token in URL query params AND user is authenticated, redirect to accept-invitation
+      const tokenFromUserMetadata = user?.user_metadata?.invitation_token;
+      const effectiveInviteToken = inviteToken || tokenFromUserMetadata;
+
+      // If there's an invite token available AND user is authenticated, redirect to accept-invitation.
       // This handles the case where inviteUserByEmail redirects to login
       // But only if we're not already on accept-invitation (prevent loop) and user is authenticated
-      if (inviteToken && user && !window.location.pathname.includes("accept-invitation")) {
-        console.log("[Login] Found invite_token and user is authenticated, redirecting to accept-invitation");
-        navigate(`/accept-invitation?token=${inviteToken}`, { replace: true });
+      if (effectiveInviteToken && user && !window.location.pathname.includes("accept-invitation")) {
+        console.log("[Login] Found invite token and user is authenticated, redirecting to accept-invitation");
+        navigate(`/accept-invitation?token=${encodeURIComponent(String(effectiveInviteToken))}`, { replace: true });
         return;
       }
       
@@ -250,7 +261,12 @@ export default function LoginPage() {
             <NeomorphicButton
               type="button"
               variant="ghost"
-              onClick={() => navigate("/signup")}
+              onClick={() => {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-inherit-baseline',hypothesisId:'H1',location:'Login.tsx:signupButton',message:'signup navigation from login',data:{hasInviteToken:!!inviteToken,inviteTokenLength:inviteToken?.length ?? 0,currentPath:window.location.pathname,currentSearch:window.location.search},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                navigate("/signup");
+              }}
             >
               Don't have an account? Sign up
             </NeomorphicButton>

@@ -197,6 +197,9 @@ export function WhoSection({
       const nameParts = proposal.label.replace(/^Invite\s+/i, "").trim().split(/\s+/);
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H1',location:'WhoSection.tsx:handleProposalClick:invite',message:'who section invite proposal pressed',data:{proposalLabel:proposal.label,hasInviteCallback:!!onInviteToOrg,firstName,lastName},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       onInviteToOrg?.({ firstName, lastName });
       setInputValue("");
       setIsEditing(false);
@@ -435,6 +438,9 @@ export function WhoSection({
                       const nameParts = chip.label.trim().split(/\s+/);
                       const firstName = nameParts[0] || "";
                       const lastName = nameParts.slice(1).join(" ") || "";
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'96e1a6'},body:JSON.stringify({sessionId:'96e1a6',runId:'invite-modal-baseline',hypothesisId:'H1',location:'WhoSection.tsx:suggestedChip:onPressInvite',message:'who section suggested invite chip pressed',data:{chipId:chip.id,chipLabel:chip.label,hasInviteCallback:!!onInviteToOrg,firstName,lastName},timestamp:Date.now()})}).catch(()=>{});
+                      // #endregion
                       onInviteToOrg?.({ firstName, lastName });
                     } else {
                       onSuggestionClick?.(chip);
