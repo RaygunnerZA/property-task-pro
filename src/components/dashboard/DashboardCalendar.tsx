@@ -120,7 +120,7 @@ export function DashboardCalendar({
   };
 
   return (
-    <div className={cn("w-full flex justify-center", className)}>
+    <div className={cn("dashboard-calendar w-full flex justify-center", className)}>
       <Calendar
         mode="single"
         selected={selectedDate}
@@ -247,6 +247,11 @@ export function DashboardCalendar({
         }}
       />
       <style>{`
+        /* Match browser-previewed nav button corners for month controls */
+        .dashboard-calendar button.rdp-button_reset.rdp-button {
+          border-radius: 12px !important;
+        }
+
         /* Ensure cells are properly styled with max border radius */
         .rdp-cell {
           border-radius: 9999px !important;
