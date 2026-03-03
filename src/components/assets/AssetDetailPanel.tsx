@@ -3,7 +3,7 @@
  * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network, Target, AlertTriangle, Zap } from "lucide-react";
+import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
@@ -52,7 +52,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
-import { useGraphInsight } from "@/hooks/useGraphInsight";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 
@@ -84,13 +84,6 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const assetVector = { asset_type: asset?.asset_type, condition_score: asset?.condition_score, install_date: (asset as { install_date?: string })?.install_date };
   const { data: brainData } = useBrainInference(asset ? [assetVector] : [], [], automatedIntelligence !== "off");
   const brainPred = brainData?.predictions?.assets?.[0];
-  const {
-    centrality,
-    hazardExposure,
-    complianceInfluence,
-    taskImpact,
-    loading: graphInsightLoading,
-  } = useGraphInsight({ start: { type: "asset", id: assetId ?? "" }, depth: 3 });
   const { openAssistant } = useAssistantContext();
 
   const [activeTab, setActiveTab] = useState("overview");
@@ -505,44 +498,12 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                 <div className="flex-1 overflow-hidden flex flex-col p-5">
                   <TabsContent value="overview" className="mt-0 flex-1 overflow-y-auto">
                     <div className="space-y-4">
-                        {/* Graph insight blocks (Centrality, Hazard exposure, Compliance influence, Task impact) */}
-                        {graphInsightLoading ? (
-                          <Skeleton className="h-24 w-full rounded-lg" />
-                        ) : (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="rounded-lg p-3 shadow-e1 bg-card">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Target className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-medium text-muted-foreground">Centrality</p>
-                              </div>
-                              <p className="text-lg font-semibold">{(centrality * 100).toFixed(0)}%</p>
-                              <p className="text-[10px] text-muted-foreground">Operational importance</p>
-                            </div>
-                            <div className="rounded-lg p-3 shadow-e1 bg-card">
-                              <div className="flex items-center gap-2 mb-1">
-                                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                                <p className="text-xs font-medium text-muted-foreground">Hazard exposure</p>
-                              </div>
-                              <p className="text-lg font-semibold">{hazardExposure.toFixed(1)}</p>
-                              <p className="text-[10px] text-muted-foreground">Weighted by distance</p>
-                            </div>
-                            <div className="rounded-lg p-3 shadow-e1 bg-card">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Shield className="h-4 w-4 text-teal-600" />
-                                <p className="text-xs font-medium text-muted-foreground">Compliance influence</p>
-                              </div>
-                              <p className="text-lg font-semibold">{complianceInfluence}</p>
-                              <p className="text-[10px] text-muted-foreground">Connected items</p>
-                            </div>
-                            <div className="rounded-lg p-3 shadow-e1 bg-card">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Zap className="h-4 w-4 text-muted-foreground" />
-                                <p className="text-xs font-medium text-muted-foreground">Task impact</p>
-                              </div>
-                              <p className="text-lg font-semibold">{taskImpact}</p>
-                              <p className="text-[10px] text-muted-foreground">Assets + compliance</p>
-                            </div>
-                          </div>
+                        {assetId && (
+                          <GraphInsightPanel
+                            start={{ type: "asset", id: assetId }}
+                            depth={3}
+                            variant="full"
+                          />
                         )}
 
                         {/* Recommended Action Card */}
