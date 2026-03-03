@@ -6,6 +6,7 @@ import { MessageSquare, Paperclip, Sparkles, AlertCircle, Clock, Inbox } from 'l
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { EmptyState } from '@/components/design-system/EmptyState';
+import { GlobalDropZone } from '@/components/attachments/GlobalDropZone';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
@@ -113,6 +114,8 @@ export default function WorkInbox() {
       icon={<Inbox className="h-6 w-6" />}
       maxWidth="lg"
     >
+      <GlobalDropZone className="mb-6" />
+
       <div className="mb-6">
         <div className="flex gap-2 flex-wrap">
           <NeomorphicButton
