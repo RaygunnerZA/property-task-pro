@@ -40,7 +40,7 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
 
     const sourceId = crypto.randomUUID();
     const cleanedName = sanitizeFileName(file.name) || `upload-${Date.now()}`;
-    const storagePath = `org/${orgId}/inbox/${sourceId}/${Date.now()}-${cleanedName}`;
+    const storagePath = `orgs/${orgId}/inbox/${sourceId}/${Date.now()}-${cleanedName}`;
 
     const { error: uploadError } = await supabase.storage
       .from("inbox")
@@ -50,16 +50,23 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
       throw new Error(`Upload failed for "${file.name}": ${uploadError.message}`);
     }
 
-    const { error: sourceError } = await supabase
-      .from("compliance_sources")
-      .insert({
-        id: sourceId,
-        org_id: orgId,
-      });
+    const { error: sourceError } = await supabase.rpc("create_compliance_source_from_inbox", {
+      p_id: sourceId,
+      p_storage_path: storagePath,
+      p_file_name: file.name,
+      p_mime_type: file.type || null,
+      p_file_size: file.size,
+      p_source: "global_dropzone",
+    });
 
     if (sourceError) {
-      await supabase.storage.from("inbox").remove([storagePath]);
-      throw new Error(`Failed to create source record for "${file.name}"`);
+      const { error: cleanupError } = await supabase.storage.from("inbox").remove([storagePath]);
+      if (cleanupError) {
+        throw new Error(
+          `Failed to create source record for "${file.name}" and cleanup failed: ${cleanupError.message}`
+        );
+      }
+      throw new Error(`Failed to create source record for "${file.name}": ${sourceError.message}`);
     }
   };
 
@@ -91,6 +98,9 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
       setUploading(false);
       setLastUploaded(uploaded);
       setLastFailures(failures);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
 
     if (uploaded > 0) {
