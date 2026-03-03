@@ -2,6 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 
+interface UseComplianceQueryOptions {
+  enabled?: boolean;
+}
+
 /**
  * useComplianceQuery
  *
@@ -12,8 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
  * All downstream consumers (PropertyCompliance, ComplianceOverviewSection) get
  * a consistent shape with expiry_status, days_until_expiry, and rule_id present.
  */
-export function useComplianceQuery(propertyId?: string) {
+export function useComplianceQuery(propertyId?: string, options?: UseComplianceQueryOptions) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryEnabled = options?.enabled ?? true;
 
   return useQuery({
     queryKey: ["compliance", orgId, propertyId],
@@ -32,7 +37,7 @@ export function useComplianceQuery(propertyId?: string) {
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!orgId && !orgLoading,
+    enabled: queryEnabled && !!orgId && !orgLoading,
     staleTime: 60000,
   });
 }

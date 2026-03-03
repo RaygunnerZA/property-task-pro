@@ -66,16 +66,18 @@ export interface UsePropertyDocumentsFilters {
 export interface UsePropertyDocumentsOptions {
   limit?: number;
   offset?: number;
+  enabled?: boolean;
 }
 
 export function usePropertyDocuments(
-  propertyId: string,
+  propertyId?: string,
   filters?: UsePropertyDocumentsFilters,
   options?: UsePropertyDocumentsOptions
 ) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
+  const queryEnabled = options?.enabled ?? true;
 
   const { data: documents = [], isLoading } = useQuery({
     queryKey: [
@@ -230,7 +232,7 @@ export function usePropertyDocuments(
 
       return docs;
     },
-    enabled: !!orgId && !!propertyId && !orgLoading,
+    enabled: queryEnabled && !!orgId && !!propertyId && !orgLoading,
   });
 
   return { documents, isLoading };

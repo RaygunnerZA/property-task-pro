@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Suspense, lazy } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useProperty } from "@/hooks/property/useProperty";
 import { usePropertyPhotos } from "@/hooks/property/usePropertyPhotos";
@@ -98,9 +98,35 @@ const PROPERTY_COLORS = [
 
 type PropertyHeaderTab = "overview" | "tasks" | "assets" | "compliance";
 
+interface PropertyAssetListItem {
+  id: string;
+  name?: string | null;
+  asset_type?: string | null;
+  space_name?: string | null;
+  status?: string | null;
+}
+
+const parsePropertyHeaderTab = (value: string | null): PropertyHeaderTab => {
+  if (value === "overview" || value === "tasks" || value === "assets" || value === "compliance") {
+    return value;
+  }
+  return "overview";
+};
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeHeaderTab = parsePropertyHeaderTab(searchParams.get("tab"));
+  const setActiveHeaderTab = (tab: PropertyHeaderTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "overview") {
+      next.delete("tab");
+    } else {
+      next.set("tab", tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
   const { property, loading: propertyLoading, refresh: refreshProperty } = useProperty(id);
   const { photos } = usePropertyPhotos(id || "");
   const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery(id);
@@ -180,14 +206,21 @@ export default function PropertyDetail() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [activeHeaderTab, setActiveHeaderTab] = useState<PropertyHeaderTab>("overview");
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [expandedSection, setExpandedSection] = useState<'create' | 'details' | 'assistant' | null>('create');
   const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   
   // Additional data hooks
-  const { data: compliance = [] } = useComplianceQuery(id);
-  const { documents, isLoading: documentsLoading } = usePropertyDocuments(id || "");
+  const shouldLoadOverviewOrComplianceData =
+    activeHeaderTab === "overview" || activeHeaderTab === "compliance";
+  const { data: compliance = [] } = useComplianceQuery(id, {
+    enabled: shouldLoadOverviewOrComplianceData,
+  });
+  const { documents, isLoading: documentsLoading } = usePropertyDocuments(
+    id,
+    undefined,
+    { enabled: shouldLoadOverviewOrComplianceData }
+  );
 
 
   // Track screen size for third column - match DualPaneLayout breakpoint (1380px)
@@ -306,7 +339,7 @@ export default function PropertyDetail() {
   }, [propertyTasks]);
 
   // Assets are already filtered by property_id from the query
-  const propertyAssets = assets;
+  const propertyAssets = assets as PropertyAssetListItem[];
 
   // Get property from properties_view to access aggregated counts
   const { data: properties = [] } = usePropertiesQuery();
@@ -640,8 +673,6 @@ if (!error) {
             ) : (
               <PropertyInsightsPanel
                 propertyId={id}
-                tasks={propertyTasks}
-                compliance={compliance}
               />
             ),
           },
@@ -765,7 +796,7 @@ if (!error) {
             <div className="px-[15px]">
               <Tabs
                 value={activeHeaderTab}
-                onValueChange={(value) => setActiveHeaderTab(value as PropertyHeaderTab)}
+                onValueChange={(value) => setActiveHeaderTab(parsePropertyHeaderTab(value))}
                 className="w-full"
               >
                 <TabsList
@@ -938,7 +969,7 @@ if (!error) {
                     />
                   ) : (
                     <div className="space-y-2">
-                      {propertyAssets.map((asset: any) => (
+                      {propertyAssets.map((asset) => (
                         <button
                           key={asset.id}
                           type="button"
@@ -975,6 +1006,9 @@ if (!error) {
               {activeHeaderTab === "compliance" && (
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {compliance.length} tracked item{compliance.length === 1 ? "" : "s"}
+                  </p>
                   {id && <ComplianceOverviewSection propertyId={id} />}
                   {id && <DocumentHealthSummary propertyId={id} documents={documents} />}
                 </div>
