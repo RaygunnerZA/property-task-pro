@@ -6,6 +6,7 @@ import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
 import { FileUploadZone } from "@/components/attachments/FileUploadZone";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
@@ -659,6 +660,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           <div className="flex-1 overflow-hidden flex flex-col">
             <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-0 flex flex-col mt-[15px]">
+                <GraphInsightPanel
+                  start={{ type: "task", id: taskId }}
+                  depth={2}
+                  variant="minimal"
+                  className="mb-3"
+                />
                 <WhoSection
                   isActive={activeSection === "who"}
                   onActivate={() => setActiveSection("who")}

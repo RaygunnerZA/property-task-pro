@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Suspense, lazy } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useProperty } from "@/hooks/property/useProperty";
 import { usePropertyPhotos } from "@/hooks/property/usePropertyPhotos";
@@ -33,8 +33,9 @@ import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsP
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
-import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle, LayoutGrid, CheckSquare, Package, Shield } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
+import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 // Lazy load PropertyImageDialog to isolate any import errors
@@ -43,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,9 +96,37 @@ const PROPERTY_COLORS = [
   "#DDA0DD", // Plum
 ];
 
+type PropertyHeaderTab = "overview" | "tasks" | "assets" | "compliance";
+
+interface PropertyAssetListItem {
+  id: string;
+  name?: string | null;
+  asset_type?: string | null;
+  space_name?: string | null;
+  status?: string | null;
+}
+
+const parsePropertyHeaderTab = (value: string | null): PropertyHeaderTab => {
+  if (value === "overview" || value === "tasks" || value === "assets" || value === "compliance") {
+    return value;
+  }
+  return "overview";
+};
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeHeaderTab = parsePropertyHeaderTab(searchParams.get("tab"));
+  const setActiveHeaderTab = (tab: PropertyHeaderTab) => {
+    const next = new URLSearchParams(searchParams);
+    if (tab === "overview") {
+      next.delete("tab");
+    } else {
+      next.set("tab", tab);
+    }
+    setSearchParams(next, { replace: true });
+  };
   const { property, loading: propertyLoading, refresh: refreshProperty } = useProperty(id);
   const { photos } = usePropertyPhotos(id || "");
   const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery(id);
@@ -181,8 +211,16 @@ export default function PropertyDetail() {
   const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   
   // Additional data hooks
-  const { data: compliance = [] } = useComplianceQuery(id);
-  const { documents, isLoading: documentsLoading } = usePropertyDocuments(id || "");
+  const shouldLoadOverviewOrComplianceData =
+    activeHeaderTab === "overview" || activeHeaderTab === "compliance";
+  const { data: compliance = [] } = useComplianceQuery(id, {
+    enabled: shouldLoadOverviewOrComplianceData,
+  });
+  const { documents, isLoading: documentsLoading } = usePropertyDocuments(
+    id,
+    undefined,
+    { enabled: shouldLoadOverviewOrComplianceData }
+  );
 
 
   // Track screen size for third column - match DualPaneLayout breakpoint (1380px)
@@ -214,6 +252,7 @@ export default function PropertyDetail() {
   };
 
   const handleTaskClick = (taskId: string) => {
+    setActiveHeaderTab("tasks");
     if (isLargeScreen) {
       setShowCreateTask(false);
       setExpandedSection('details');
@@ -300,7 +339,7 @@ export default function PropertyDetail() {
   }, [propertyTasks]);
 
   // Assets are already filtered by property_id from the query
-  const propertyAssets = assets;
+  const propertyAssets = assets as PropertyAssetListItem[];
 
   // Get property from properties_view to access aggregated counts
   const { data: properties = [] } = usePropertiesQuery();
@@ -634,8 +673,6 @@ if (!error) {
             ) : (
               <PropertyInsightsPanel
                 propertyId={id}
-                tasks={propertyTasks}
-                compliance={compliance}
               />
             ),
           },
@@ -755,75 +792,227 @@ if (!error) {
                 scopeLabel={property?.nickname || property?.address || (id ? "Property" : undefined)}
               />
             </div>
-            
-            <div className="p-[15px] space-y-6">
-              {/* Zones Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
-                  {id && (
+
+            <div className="px-[15px]">
+              <Tabs
+                value={activeHeaderTab}
+                onValueChange={(value) => setActiveHeaderTab(parsePropertyHeaderTab(value))}
+                className="w-full"
+              >
+                <TabsList
+                  className={cn(
+                    "w-full grid grid-cols-4 h-12 px-1 py-1 rounded-[15px] bg-transparent",
+                    "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
+                  )}
+                >
+                  <TabsTrigger
+                    value="overview"
+                    className={cn(
+                      "rounded-[8px] text-xs sm:text-sm",
+                      "data-[state=active]:bg-card",
+                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                    )}
+                  >
+                    <LayoutGrid className="h-4 w-4 mr-1.5" />
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tasks"
+                    className={cn(
+                      "rounded-[8px] text-xs sm:text-sm",
+                      "data-[state=active]:bg-card",
+                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                    )}
+                  >
+                    <CheckSquare className="h-4 w-4 mr-1.5" />
+                    Tasks
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="assets"
+                    className={cn(
+                      "rounded-[8px] text-xs sm:text-sm",
+                      "data-[state=active]:bg-card",
+                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                    )}
+                  >
+                    <Package className="h-4 w-4 mr-1.5" />
+                    Assets
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="compliance"
+                    className={cn(
+                      "rounded-[8px] text-xs sm:text-sm",
+                      "data-[state=active]:bg-card",
+                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                    )}
+                  >
+                    <Shield className="h-4 w-4 mr-1.5" />
+                    Compliance
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            <div className="p-[15px] pt-4 space-y-6">
+              {activeHeaderTab === "overview" && (
+                <>
+                  <Card className="p-4 shadow-e1 border-0 bg-card/80">
+                    <h2 className="text-sm font-semibold text-foreground mb-3">Property snapshot</h2>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
+                        <p className="text-lg font-semibold">{openTasksCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Open tasks</p>
+                      </div>
+                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
+                        <p className="text-lg font-semibold">{assetsCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Assets</p>
+                      </div>
+                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
+                        <p className="text-lg font-semibold">{spacesCount}</p>
+                        <p className="text-[11px] text-muted-foreground">Spaces</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
+                      {id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/properties/${id}/spaces/organise`)}
+                          className="text-primary hover:text-primary/90"
+                        >
+                          Add spaces
+                        </Button>
+                      )}
+                    </div>
+                    {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+                    {id && <DocumentHealthSummary propertyId={id} documents={documents} />}
+                    <DocumentsSection documents={documents} loading={documentsLoading} />
+                  </div>
+
+                  <div className="space-y-4">
+                    {id && (
+                      <MediaGallerySection
+                        propertyId={id}
+                        onImageUpdated={() => {
+                          refreshProperty();
+                          queryClient.invalidateQueries({ queryKey: ["properties"] });
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h2 className="text-lg font-semibold text-foreground">Property Graph</h2>
+                    {id && (
+                      <>
+                        <GraphInsightPanel start={{ type: "property", id }} depth={3} variant="full" />
+                        <GraphTabContent start={{ type: "property", id }} depth={3} />
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {activeHeaderTab === "tasks" && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-foreground">Property Tasks</h2>
+                  <PropertyTasksSection
+                    propertyId={id || ""}
+                    tasks={propertyTasks}
+                    properties={properties}
+                    tasksLoading={tasksLoading}
+                    selectedSpaceId={selectedSpaceId}
+                    onTaskClick={handleTaskClick}
+                    selectedTaskId={selectedTaskId || undefined}
+                  />
+                </div>
+              )}
+
+              {activeHeaderTab === "assets" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-foreground">Property Assets</h2>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/properties/${id}/spaces/organise`)}
+                      onClick={() => setShowCreateAsset(true)}
                       className="text-primary hover:text-primary/90"
                     >
-                      Add spaces
+                      Add asset
                     </Button>
+                  </div>
+
+                  {assetsLoading ? (
+                    <div className="space-y-2">
+                      <div className="h-16 rounded-lg bg-muted/40 animate-pulse" />
+                      <div className="h-16 rounded-lg bg-muted/40 animate-pulse" />
+                      <div className="h-16 rounded-lg bg-muted/40 animate-pulse" />
+                    </div>
+                  ) : propertyAssets.length === 0 ? (
+                    <EmptyState
+                      icon={Package}
+                      title="No assets yet"
+                      description="Add your first asset to start tracking equipment health"
+                      action={{
+                        label: "Add asset",
+                        onClick: () => setShowCreateAsset(true),
+                        icon: Plus,
+                      }}
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {propertyAssets.map((asset) => (
+                        <button
+                          key={asset.id}
+                          type="button"
+                          onClick={() => setSelectedAssetId(asset.id)}
+                          className="w-full rounded-lg bg-card p-4 shadow-e1 hover:shadow-e2 transition-all text-left"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-foreground truncate">{asset.name || "Unnamed Asset"}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {[asset.asset_type, asset.space_name].filter(Boolean).join(" · ") || "No type assigned"}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                asset.status === "active"
+                                  ? "success"
+                                  : asset.status === "retired"
+                                  ? "neutral"
+                                  : "warning"
+                              }
+                              className="shrink-0"
+                            >
+                              {(asset.status || "active").replace("_", " ")}
+                            </Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-                {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
-              </div>
+              )}
 
-              {/* Property Tasks Section */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Property Tasks</h2>
-                <PropertyTasksSection
-                  propertyId={id || ""}
-                  tasks={propertyTasks}
-                  properties={properties}
-                  tasksLoading={tasksLoading}
-                  selectedSpaceId={selectedSpaceId}
-                  onTaskClick={handleTaskClick}
-                  selectedTaskId={selectedTaskId || undefined}
-                />
-              </div>
-
-              {/* Compliance Overview Section */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
-                {id && <ComplianceOverviewSection propertyId={id} />}
-              </div>
-
-              {/* Documents Section */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Documents</h2>
-                {id && (
-                  <DocumentHealthSummary propertyId={id} documents={documents} />
-                )}
-                <DocumentsSection documents={documents} loading={documentsLoading} />
-              </div>
-
-              {/* Media Gallery Section */}
-              <div className="space-y-4">
-                {id && (
-                  <MediaGallerySection
-                    propertyId={id}
-                    onImageUpdated={() => {
-                      refreshProperty();
-                      queryClient.invalidateQueries({ queryKey: ["properties"] });
-                    }}
-                  />
-                )}
-              </div>
-
-              {/* Graph Section */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">Property Graph</h2>
-                {id && (
-                  <GraphTabContent start={{ type: "property", id }} depth={3} />
-                )}
-              </div>
+              {activeHeaderTab === "compliance" && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {compliance.length} tracked item{compliance.length === 1 ? "" : "s"}
+                  </p>
+                  {id && <ComplianceOverviewSection propertyId={id} />}
+                  {id && <DocumentHealthSummary propertyId={id} documents={documents} />}
+                </div>
+              )}
             </div>
           </div>
         }
