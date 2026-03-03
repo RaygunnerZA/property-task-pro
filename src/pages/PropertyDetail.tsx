@@ -801,7 +801,7 @@ if (!error) {
               >
                 <TabsList
                   className={cn(
-                    "w-full grid grid-cols-4 h-12 px-1 py-1 rounded-[15px] bg-transparent",
+                    "w-full grid grid-cols-4 h-12 px-2 py-1 rounded-[15px] bg-transparent",
                     "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
                   )}
                 >

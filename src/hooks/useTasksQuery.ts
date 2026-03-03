@@ -12,10 +12,6 @@ export function useTasksQuery(propertyId?: string) {
         throw new Error("No orgId available");
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'useTasksQuery.ts:queryFn',message:'H-A/H-E: tasks queryFn executing',data:{orgId,propertyId,ts:new Date().toISOString()},timestamp:Date.now(),hypothesisId:'H-A_H-E'})}).catch(()=>{});
-      // #endregion
-
       let query = supabase
         .from("tasks_view")
         .select("*")
@@ -52,11 +48,6 @@ export function useTasksQuery(propertyId?: string) {
           primary_image_url,
         };
       });
-      
-      // #region agent log
-      const sample = tasksWithImages[0];
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'useTasksQuery.ts:queryFn',message:'H-E: tasks queryFn returned data',data:{count:tasksWithImages.length,firstTask:sample?{id:sample.id,title:sample.title,status:sample.status,priority:sample.priority,due_date:sample.due_date}:null},timestamp:Date.now(),hypothesisId:'H-E'})}).catch(()=>{});
-      // #endregion
 
       return tasksWithImages;
     },

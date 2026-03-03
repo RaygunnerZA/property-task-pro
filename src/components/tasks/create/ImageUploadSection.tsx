@@ -1,25 +1,43 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Camera, Upload, SquarePen, AlertCircle } from "lucide-react";
+import { X, Camera, Upload, SquarePen, AlertCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TempImage, UploadStatus } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { ImageAnnotationEditor } from "@/components/tasks/ImageAnnotationEditor";
 import type { Annotation } from "@/types/image-annotations";
+import { useToast } from "@/hooks/use-toast";
+
+export interface PendingTaskFile {
+  local_id: string;
+  file: File;
+  display_name: string;
+  file_size: number;
+  file_type: string;
+}
 
 interface ImageUploadSectionProps {
   images: TempImage[];
   onImagesChange: (images: TempImage[]) => void;
+  files: PendingTaskFile[];
+  onFilesChange: (files: PendingTaskFile[]) => void;
   taskId?: string; // Only set after task creation
 }
 
 export function ImageUploadSection({ 
   images, 
   onImagesChange, 
+  files,
+  onFilesChange,
   taskId 
 }: ImageUploadSectionProps) {
+  const { toast } = useToast();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
   // Cleanup blob URLs on unmount only
   useEffect(() => {
@@ -29,21 +47,30 @@ export function ImageUploadSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileSelect = async (files: FileList | null) => {
-    if (!files) return;
-    
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-    
+  const handleFileSelect = async (incomingFiles: FileList | null) => {
+    if (!incomingFiles) return;
+
     const newImages: TempImage[] = [];
-    
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) continue;
-      
+    const newFiles: PendingTaskFile[] = [];
+    let oversizedCount = 0;
+
+    for (const file of Array.from(incomingFiles)) {
       if (file.size > MAX_FILE_SIZE) {
-        console.warn(`File "${file.name}" is too large`);
+        oversizedCount += 1;
         continue;
       }
-      
+
+      if (!file.type.startsWith("image/")) {
+        newFiles.push({
+          local_id: crypto.randomUUID(),
+          file,
+          display_name: file.name,
+          file_size: file.size,
+          file_type: file.type || "application/octet-stream",
+        });
+        continue;
+      }
+
       try {
         const tempImage = await createTempImage(file);
         newImages.push(tempImage);
@@ -51,9 +78,21 @@ export function ImageUploadSection({
         console.error(`Failed to process "${file.name}":`, error);
       }
     }
-    
+
+    if (oversizedCount > 0) {
+      toast({
+        title: "File too large",
+        description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
+        variant: "destructive",
+      });
+    }
+
     if (newImages.length > 0) {
       onImagesChange([...images, ...newImages]);
+    }
+
+    if (newFiles.length > 0) {
+      onFilesChange([...files, ...newFiles]);
     }
   };
 
@@ -72,6 +111,23 @@ export function ImageUploadSection({
     onImagesChange(updated);
   };
 
+  const removeFile = (localId: string) => {
+    onFilesChange(files.filter((file) => file.local_id !== localId));
+  };
+
+  const handleDrag = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(event.type === "dragenter" || event.type === "dragover");
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    handleFileSelect(event.dataTransfer.files);
+  };
+
   const getStatusIcon = (status?: UploadStatus) => {
     switch (status) {
       case 'uploading':
@@ -85,101 +141,55 @@ export function ImageUploadSection({
     }
   };
 
-  const primaryImage = images[0];
-
   return (
-    <div className="space-y-3">
-      {/* Primary Image Row - 50% width, icons bottom-right */}
-      {primaryImage && (
-        <div className="flex gap-3 items-end">
-          {/* Thumbnail - 50% width */}
-          <div className="w-1/2 relative group aspect-square rounded-[8px] overflow-hidden shadow-e1">
-            <img
-              src={primaryImage.thumbnail_url}
-              alt={primaryImage.display_name}
-              className="w-full h-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => removeImage(0)}
-              className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X className="h-3 w-3" />
-            </button>
-            {/* Annotation button */}
-            <button
-              type="button"
-              onClick={() => {
-                setEditingImageIndex(0);
-                setShowAnnotationEditor(true);
-              }}
-              className="absolute bottom-1 right-1 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Annotate image"
-            >
-              <SquarePen className="h-3 w-3" />
-            </button>
-            {/* Upload status indicator */}
-            {primaryImage.upload_status && primaryImage.upload_status !== 'pending' && (
-              <div className="absolute top-1 left-1 p-1 bg-black/50 rounded">
-                {getStatusIcon(primaryImage.upload_status)}
-              </div>
-            )}
-            {/* Annotation indicator */}
-            {primaryImage.annotation_json && primaryImage.annotation_json.length > 0 && (
-              <div className="absolute bottom-1 left-1 text-[10px] font-mono text-white bg-black/50 px-1 rounded">
-                {primaryImage.annotation_json.length} annotation{primaryImage.annotation_json.length !== 1 ? 's' : ''}
-              </div>
-            )}
-          </div>
-
-          {/* Icons - Bottom-right aligned */}
-          <div className="flex gap-2 items-end">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-              title="Take photo"
-            >
-              <Camera className="h-5 w-5 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-              title="Upload image"
-            >
-              <Upload className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </div>
+    <div className={cn("space-y-3", images.length === 0 && files.length === 0 && "h-[65px]")}>
+      <div
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+        onClick={() => !dragActive && fileInputRef.current?.click()}
+        className={cn(
+          "relative h-[65px] rounded-[12px] border-2 border-dashed border-white/90 bg-muted/35 transition-colors",
+          "flex items-start justify-start px-4 pt-[13px] pb-5 cursor-pointer",
+          dragActive && "bg-primary/15 border-white"
+        )}
+      >
+        <div className="text-left w-[241px] pointer-events-none">
+          <p className="flex flex-wrap text-[12px] font-normal text-muted-foreground">
+            Drag & Drop or Choose File to upload
+          </p>
+          <p className="mt-1 text-[10px] text-primary">50 MB max file size</p>
         </div>
-      )}
-
-      {/* No images state */}
-      {images.length === 0 && (
-        <div className="flex gap-2 justify-end items-end">
+        <div className="absolute top-3 right-3 flex gap-2">
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+            onClick={(event) => {
+              event.stopPropagation();
+              cameraInputRef.current?.click();
+            }}
+            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
             title="Take photo"
           >
             <Camera className="h-5 w-5 text-muted-foreground" />
           </button>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-            title="Upload image"
+            onClick={(event) => {
+              event.stopPropagation();
+              fileInputRef.current?.click();
+            }}
+            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
+            title="Upload file"
           >
             <Upload className="h-5 w-5 text-muted-foreground" />
           </button>
         </div>
-      )}
+      </div>
 
-      {/* Additional images grid */}
-      {images.length > 1 && (
+      {images.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          {images.slice(1).map((image, idx) => (
+          {images.map((image, idx) => (
             <div 
               key={image.local_id} 
               className="relative group aspect-square rounded-[8px] overflow-hidden shadow-e1"
@@ -191,7 +201,7 @@ export function ImageUploadSection({
               />
               <button
                 type="button"
-                onClick={() => removeImage(idx + 1)}
+                onClick={() => removeImage(idx)}
                 className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-3 w-3" />
@@ -199,7 +209,7 @@ export function ImageUploadSection({
               <button
                 type="button"
                 onClick={() => {
-                  setEditingImageIndex(idx + 1);
+                  setEditingImageIndex(idx);
                   setShowAnnotationEditor(true);
                 }}
                 className="absolute bottom-1 right-1 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -222,10 +232,46 @@ export function ImageUploadSection({
         </div>
       )}
 
+      {files.length > 0 && (
+        <div className="space-y-2">
+          {files.map((file) => (
+            <div
+              key={file.local_id}
+              className="flex items-center gap-2 rounded-[8px] bg-muted/40 px-3 py-2 shadow-e1"
+            >
+              <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-foreground">{file.display_name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {(file.file_size / (1024 * 1024)).toFixed(2)} MB
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFile(file.local_id)}
+                className="p-1 rounded-full hover:bg-muted"
+                title="Remove file"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleFileSelect(e.target.files)}
+      />
+
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
         multiple
         className="hidden"
         onChange={(e) => handleFileSelect(e.target.files)}

@@ -259,7 +259,7 @@ function TaskCardComponent({
       <div 
         className={cn(
           "task-card-horizontal",
-          "rounded-[12px] bg-card",
+          "rounded-[12px] bg-[rgba(255,255,255,0.6)]",
           "shadow-e1",
           "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
           "overflow-hidden flex flex-row min-h-[80px] relative group",
@@ -270,7 +270,7 @@ function TaskCardComponent({
         {/* Priority Indicator Circle - Top Left Corner */}
         <div 
           className={cn(
-            "absolute top-[2px] left-[2px] w-[10px] h-[10px] rounded-full",
+            "absolute top-[4px] left-[4px] w-[10px] h-[10px] rounded-full",
             priorityColor
           )}
         />

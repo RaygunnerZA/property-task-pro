@@ -18,17 +18,6 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
   const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
   const [conversationTaskMap, setConversationTaskMap] = useState<Map<string, string>>(new Map()); // conversation_id -> task_id
 
-  if (loading) return (
-    <div className="space-y-3">
-      <SkeletonTaskCard />
-      <SkeletonTaskCard />
-    </div>
-  );
-
-  if (error) {
-    return <EmptyState title="Unable to load messages" subtitle={error?.message || String(error)} />;
-  }
-
   // Fetch conversation task mappings
   useEffect(() => {
     if (messages.length === 0) {
@@ -159,9 +148,24 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
     });
   };
 
-  if (!messages.length) return (
-    <EmptyState title="No messages" subtitle="Messages from tasks and contractors appear here" />
-  );
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <SkeletonTaskCard />
+        <SkeletonTaskCard />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <EmptyState title="Unable to load messages" subtitle={error?.message || String(error)} />;
+  }
+
+  if (!messages.length) {
+    return (
+      <EmptyState title="No messages" subtitle="Messages from tasks and contractors appear here" />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -192,13 +196,13 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
             key={msg.id}
             onClick={() => onMessageClick?.(msg.id)}
             className={cn(
-              "w-full text-left p-4 rounded-[16px] backdrop-blur-md transition-all",
+              "w-full text-left p-4 rounded-[12px] backdrop-blur-md transition-all",
               "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)]",
               "hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
               "active:scale-[0.98]",
               isSelected 
                 ? "bg-primary/10 border-2 border-primary shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]" 
-                : "bg-white/60 border-2 border-transparent"
+                : "bg-white/60 border-0 border-none"
             )}
           >
             <div className="flex items-start justify-between gap-2 mb-1">
