@@ -43,7 +43,7 @@ export function SubtasksSection({
   // If no subtasks, show the "add subtask" placeholder row
   const showPlaceholder = subtasks.length === 0;
   return <div 
-      className="shadow-engraved rounded-2xl overflow-hidden text-white bg-white/80 mt-[15px]"
+      className="shadow-engraved rounded-xl overflow-hidden text-white bg-white/80 mt-4"
       style={{
         backgroundClip: 'unset',
         WebkitBackgroundClip: 'unset',
@@ -52,8 +52,8 @@ export function SubtasksSection({
       }}
     >
       {/* Description Area */}
-      <div className="pt-3 pb-3 bg-black/0" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
-        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-lg font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+      <div className="pt-3 pb-3 bg-black/0 h-[62px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
       </div>
 
       {/* Subtasks Area */}

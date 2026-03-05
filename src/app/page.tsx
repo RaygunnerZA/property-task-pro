@@ -33,13 +33,13 @@ type SelectedItem = {
   id: string;
 } | null;
 
-type ExpandedSection = 'create' | 'details' | 'assistant' | null;
+type ExpandedSection = 'details' | 'assistant' | null;
 
 export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<ExpandedSection>('create');
+  const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("tasks");
@@ -154,11 +154,6 @@ export default function Dashboard() {
     }
   }, [assistantOpen, isLargeScreen]);
 
-  // Keep showCreateTask in sync when Create Task section is expanded (large screen concertina only)
-  useEffect(() => {
-    if (expandedSection === 'create' && isLargeScreen) setShowCreateTask(true);
-  }, [expandedSection, isLargeScreen]);
-
   // When transitioning from large to small screen, close any auto-opened create modal
   useEffect(() => {
     if (!isLargeScreen) setShowCreateTask(false);
@@ -185,7 +180,6 @@ export default function Dashboard() {
       if (!taskId) return;
 
       setActiveTab("tasks");
-      setShowCreateTask(false);
       setSelectedItem({ type: "task", id: taskId });
       if (isLargeScreen) setExpandedSection("details");
     };
@@ -196,7 +190,6 @@ export default function Dashboard() {
 
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
-      setShowCreateTask(false);
       setExpandedSection('details');
     }
     setSelectedItem({ type: 'task', id: taskId });
@@ -204,9 +197,11 @@ export default function Dashboard() {
 
   const handleOpenCreateTask = () => {
     tabBeforeCreateTaskRef.current = activeTab;
-    setSelectedItem(null);
+    if (isLargeScreen) {
+      setExpandedSection(null);
+      return;
+    }
     setShowCreateTask(true);
-    if (isLargeScreen) setExpandedSection('create');
   };
 
   const handleCreateTaskOpenChange = (open: boolean) => {
@@ -222,11 +217,18 @@ export default function Dashboard() {
   };
 
   const handleMessageClick = (messageId: string) => {
+    if (isLargeScreen) {
+      // Keep the last selected task active on desktop workbench.
+      return;
+    }
     setSelectedItem({ type: 'message', id: messageId });
-    if (isLargeScreen) setExpandedSection('details');
   };
 
   const handleClosePanel = () => {
+    if (isLargeScreen) {
+      setExpandedSection((section) => (section === "details" ? null : section));
+      return;
+    }
     setSelectedItem(null);
   };
 
@@ -263,61 +265,40 @@ export default function Dashboard() {
 
   const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
 
-  const detailsSectionTitle = selectedItem
-    ? selectedItem.type === 'task'
-      ? 'Task Details'
-      : 'Message Details'
-    : 'Details';
+  const selectedTaskId = selectedItem?.type === "task" ? selectedItem.id : null;
+  const detailsSectionTitle = selectedTaskId ? "Task Details" : "Details";
 
   const thirdColumnContent = isLargeScreen ? (
     <div className="flex flex-col pr-2 pb-0 pl-2 min-h-0">
-      <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-[21px]">Task Workbench</h2>
+      <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-0">Task Workbench</h2>
+      <div className="pb-3">
+        <CreateTaskModal
+          open={true}
+          onOpenChange={() => undefined}
+          onTaskCreated={handleTaskCreated}
+          variant="column"
+          headless
+          prefillFromLastUsedProperty={false}
+          collapseDetails={Boolean(selectedTaskId)}
+        />
+      </div>
       <ThirdColumnConcertina
         sections={[
-          {
-            id: 'create',
-            title: 'Create Task',
-            isExpanded: expandedSection === 'create',
-            onToggle: () => setExpandedSection((s) => (s === 'create' ? null : 'create')),
-            children: (
-              <CreateTaskModal
-                open={showCreateTask}
-                onOpenChange={(open) => {
-                  handleCreateTaskOpenChange(open);
-                  if (!open) setExpandedSection(null);
-                }}
-                onTaskCreated={handleTaskCreated}
-                variant="column"
-                headless
-                prefillFromLastUsedProperty={false}
-              />
-            ),
-          },
-          {
-            id: 'details',
-            title: detailsSectionTitle,
-            isExpanded: expandedSection === 'details',
-            onToggle: () => setExpandedSection((s) => (s === 'details' ? null : 'details')),
-            children: selectedItem ? (
-              selectedItem.type === 'task' ? (
-                <TaskDetailPanel
-                  taskId={selectedItem.id}
-                  onClose={handleClosePanel}
-                  variant="column"
-                />
-              ) : (
-                <MessageDetailPanel
-                  messageId={selectedItem.id}
-                  onClose={handleClosePanel}
-                  variant="column"
-                />
-              )
-            ) : (
-              <div className="p-4 text-sm text-muted-foreground text-center">
-                Select a task or message from the list
-              </div>
-            ),
-          },
+          ...(selectedTaskId
+            ? [{
+                id: 'details',
+                title: detailsSectionTitle,
+                isExpanded: expandedSection === 'details',
+                onToggle: () => setExpandedSection((s) => (s === 'details' ? null : 'details')),
+                children: (
+                  <TaskDetailPanel
+                    taskId={selectedTaskId}
+                    onClose={handleClosePanel}
+                    variant="column"
+                  />
+                ),
+              }]
+            : []),
           {
             id: 'assistant',
             title: 'Filla AI',

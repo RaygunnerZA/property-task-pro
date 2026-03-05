@@ -210,20 +210,6 @@ export function TaskPanel({
             )}
           >
             <TabsTrigger
-              value="tasks"
-              className={cn(
-                "rounded-[8px] transition-all",
-                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                "data-[state=active]:bg-card",
-                "data-[state=inactive]:bg-transparent",
-                "text-sm font-medium"
-              )}
-              style={{ paddingLeft: '26px', paddingRight: '26px' }}
-            >
-              <CheckSquare className="mr-0.5 -ml-[10px] h-4 w-4" style={{ width: '31px' }} />
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger
               value="inbox"
               className={cn(
                 "rounded-[8px] transition-all",
@@ -242,6 +228,20 @@ export function TaskPanel({
                 className="mr-2"
               />
               Inbox
+            </TabsTrigger>
+            <TabsTrigger
+              value="tasks"
+              className={cn(
+                "rounded-[8px] transition-all",
+                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                "data-[state=active]:bg-card",
+                "data-[state=inactive]:bg-transparent",
+                "text-sm font-medium"
+              )}
+              style={{ paddingLeft: '26px', paddingRight: '26px' }}
+            >
+              <CheckSquare className="mr-0.5 -ml-[10px] h-4 w-4" style={{ width: '31px' }} />
+              Tasks
             </TabsTrigger>
             <TabsTrigger
               value="schedule"
@@ -296,10 +296,7 @@ export function TaskPanel({
 
           {/* Inbox Tab */}
           {activeTab === "inbox" && (
-            <div className="h-full min-h-0 overflow-y-auto p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Inbox
-              </h3>
+            <div className="h-full min-h-0 overflow-y-auto p-2 space-y-4">
               <MessageList 
                 onMessageClick={onMessageClick}
                 selectedMessageId={selectedItem?.type === 'message' ? selectedItem.id : undefined}
@@ -321,11 +318,6 @@ export function TaskPanel({
                   {/* Date navigation */}
                   <div className="px-4 pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-base font-semibold text-foreground truncate">
-                          {selectedDate ? format(selectedDate, "EEEE, MMM d") : "Upcoming"}
-                        </div>
-                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -337,8 +329,8 @@ export function TaskPanel({
                           }}
                           className={cn(
                             "px-3 h-9 rounded-[12px] text-sm font-medium",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
+                            "bg-card border border-border/50",
+                            "shadow-none hover:shadow-none"
                           )}
                         >
                           Today
@@ -355,8 +347,8 @@ export function TaskPanel({
                           }}
                           className={cn(
                             "h-9 w-9 rounded-[12px] grid place-items-center",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
+                            "bg-card border border-border/50",
+                            "shadow-none hover:shadow-none"
                           )}
                         >
                           <ChevronLeft className="h-4 w-4" />
@@ -373,8 +365,8 @@ export function TaskPanel({
                           }}
                           className={cn(
                             "h-9 w-9 rounded-[12px] grid place-items-center",
-                            "bg-card shadow-e1 border border-border/50",
-                            "hover:shadow-md transition-shadow"
+                            "bg-card border border-border/50",
+                            "shadow-none hover:shadow-none"
                           )}
                         >
                           <ChevronRight className="h-4 w-4" />

@@ -160,7 +160,7 @@ export function PropertyCard({ property, className, onFilterClick }: PropertyCar
           {/* Compliance Row */}
           <div className="flex items-center gap-1.5 !mt-1.5">
             <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground/80">
               {lastInspectedDays !== null 
                 ? `Last Inspected ${lastInspectedDays} day${lastInspectedDays !== 1 ? 's' : ''} ago`
                 : 'No inspections yet'

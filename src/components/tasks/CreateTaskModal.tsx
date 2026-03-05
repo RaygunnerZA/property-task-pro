@@ -40,7 +40,7 @@ import { logChipResolution } from "@/services/ai/resolutionAudit";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
-import { ImageUploadSection } from "./create/ImageUploadSection";
+import { ImageUploadSection, type PendingTaskFile } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
@@ -76,6 +76,7 @@ interface CreateTaskModalProps {
   prefill?: CreateTaskPrefill | null;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
   headless?: boolean; // when true with variant="column", render only content (concertina provides header)
+  collapseDetails?: boolean; // keeps top composer visible while hiding lower sections/actions
 }
 export function CreateTaskModal({
   open,
@@ -89,6 +90,7 @@ export function CreateTaskModal({
   prefill,
   variant = "modal",
   headless = false,
+  collapseDetails = false,
 }: CreateTaskModalProps) {
   const navigate = useNavigate();
   const {
@@ -179,6 +181,7 @@ export function CreateTaskModal({
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [images, setImages] = useState<TempImage[]>([]);
+  const [taskFiles, setTaskFiles] = useState<PendingTaskFile[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
@@ -796,6 +799,8 @@ export function CreateTaskModal({
       }
     }
   }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField]);
+  const shouldShowTitleField = showTitleField || aiLoading || Boolean(aiError) || Boolean(title.trim());
+  const shouldShowDetailsArea = Boolean(description.trim()) && !collapseDetails;
   const resetForm = useCallback(() => {
     setTitle("");
     setDescription("");
@@ -818,6 +823,7 @@ export function CreateTaskModal({
     setSelectedThemeIds([]);
     setSelectedAssetIds(defaultAssetIds ?? []);
     setImages([]);
+    setTaskFiles([]);
     setShowAdvanced(false);
     setActiveSection(null);
     setAppliedChips(new Map());
@@ -1127,11 +1133,9 @@ export function CreateTaskModal({
       const taskId = newTask.id;
       console.log('[CreateTaskModal] Task created successfully:', { taskId, newTask });
       
-      // Upload images in background (non-blocking)
-      if (images.length > 0 && taskId && orgId) {
-        // Update taskId in ImageUploadSection for annotation support
-        // Upload images in background
-        const uploadPromises = images.map(async (tempImage, index) => {
+      // Upload attachments in background (non-blocking)
+      if ((images.length > 0 || taskFiles.length > 0) && taskId && orgId) {
+        const imageUploadPromises = images.map(async (tempImage, index) => {
           try {
             // Update status to uploading
             setImages(prev => {
@@ -1274,8 +1278,51 @@ export function CreateTaskModal({
           }
         });
 
+        const fileUploadPromises = taskFiles.map(async (pendingFile, index) => {
+          try {
+            const fileExt = pendingFile.display_name.split(".").pop() || "bin";
+            const filePath = `org/${orgId}/tasks/${taskId}/files/${crypto.randomUUID()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from("task-images")
+              .upload(filePath, pendingFile.file, {
+                cacheControl: "31536000",
+              });
+
+            if (uploadError) throw uploadError;
+
+            const { data: fileUrl } = supabase.storage
+              .from("task-images")
+              .getPublicUrl(filePath);
+
+            const { error: attachmentError } = await supabase
+              .from("attachments")
+              .insert({
+                org_id: orgId,
+                parent_type: "task",
+                parent_id: taskId,
+                file_url: fileUrl.publicUrl,
+                file_name: pendingFile.display_name,
+                file_type: pendingFile.file_type,
+                file_size: pendingFile.file_size,
+                upload_status: "complete",
+              });
+
+            if (attachmentError) throw attachmentError;
+            return pendingFile;
+          } catch (error: any) {
+            console.error(`Error uploading file ${index}:`, error);
+            toast({
+              title: "File upload failed",
+              description: `Couldn't upload "${pendingFile.display_name}". You can retry later.`,
+              variant: "destructive",
+            });
+            return null;
+          }
+        });
+
         // Don't await - let uploads happen in background
-        Promise.all(uploadPromises).then(() => {
+        Promise.all([...imageUploadPromises, ...fileUploadPromises]).then(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
           queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
           queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
@@ -1389,12 +1436,13 @@ export function CreateTaskModal({
         taskId,
         orgId,
         imageCount: images.length,
+        fileCount: taskFiles.length,
       });
       
       // Invalidate queries to refresh task lists and details
       // If images were uploaded, we already invalidated above, but invalidate again
       // after a delay to pick up thumbnails processed by the edge function
-      if (images.length > 0) {
+      if (images.length > 0 || taskFiles.length > 0) {
         // Wait 2 seconds for edge function to process thumbnails, then invalidate again
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -1448,32 +1496,45 @@ export function CreateTaskModal({
       {/* Scrollable Content - Vertical Layout */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Image Upload Icons */}
-        <ImageUploadSection images={images} onImagesChange={setImages} taskId={undefined} />
+        <ImageUploadSection
+          images={images}
+          onImagesChange={setImages}
+          files={taskFiles}
+          onFilesChange={setTaskFiles}
+          taskId={undefined}
+        />
 
         {/* AI-Generated Title (appears after AI responds) */}
         <div className={cn(
-          "transition-all duration-300 ease-out mt-[6px]",
-          showTitleField ? "opacity-100 max-h-24" : "opacity-0 max-h-0 overflow-hidden"
+          "transition-all duration-300 ease-out mt-[14px] rounded-none",
+          shouldShowTitleField ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden"
         )}>
-          {showTitleField && (
-            <div className="space-y-2">
-              <label className="text-[12px] font-mono uppercase tracking-wider text-primary flex items-center gap-1.5">
-                <FillaIcon size={12} className="text-primary" />
-                AI Title
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setUserEditedTitle(true);
-                  setTitle(e.target.value);
-                  if (e.target.value.trim() === "") {
-                    setUserEditedTitle(false);
-                  }
-                }}
-                className="w-full px-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-lg transition-shadow"
-                placeholder="Generated title…"
-              />
+          {shouldShowTitleField && (
+            <div className="space-y-2 rounded-none">
+              <div className="relative">
+                <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => {
+                    setUserEditedTitle(true);
+                    setTitle(e.target.value);
+                    if (e.target.value.trim() === "") {
+                      setUserEditedTitle(false);
+                    }
+                  }}
+                  className="w-full h-10 pl-[22px] pr-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
+                  placeholder="Generated title…"
+                />
+              </div>
+              {aiLoading && (
+                <p className="text-[10px] text-muted-foreground">Generating AI title...</p>
+              )}
+              {!aiLoading && aiError && !aiResult?.title && (
+                <p className="text-[10px] text-muted-foreground">
+                  AI title is temporarily unavailable. You can still enter one manually.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -1481,217 +1542,232 @@ export function CreateTaskModal({
         {/* Combined Description + Subtasks Panel */}
         <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
 
-        {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
-        <div className="space-y-0 flex flex-col mt-[15px]">
-          {CREATE_TASK_SECTIONS.map(({ id, instruction, valueLabel, Icon }) =>
-            id === "who" ? (
-              <WhoSection
-                key={id}
-                isActive={activeSection === id}
-                onActivate={() => setActiveSection(id)}
-                assignedUserId={assignedUserId}
-                assignedTeamIds={assignedTeamIds}
-                onUserChange={setAssignedUserId}
-                onTeamsChange={setAssignedTeamIds}
-                pendingInvitations={pendingInvitations}
-                onPendingInvitationsChange={setPendingInvitations}
-                onInviteToOrg={(prefill) => {
-                  setInvitePrefill(prefill ?? null);
-                  setInviteModalOpen(true);
-                }}
-                onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
-                hasUnresolved={unresolvedSections.includes(id)}
-                suggestedChips={suggestedChipsBySection["who"] ?? []}
-                onSuggestionClick={handleChipSelect}
-              >
-                {activeSection === id && (
-                  <WhoPanel
-                    assignedUserId={assignedUserId}
-                    assignedTeamIds={assignedTeamIds}
-                    onUserChange={setAssignedUserId}
-                    onTeamsChange={setAssignedTeamIds}
-                    suggestedPeople={aiResult?.people?.map(p => p.name) || []}
-                    pendingInvitations={pendingInvitations}
-                    onPendingInvitationsChange={setPendingInvitations}
-                    instructionBlock={instructionBlock}
-                    onInstructionDismiss={() => setInstructionBlock(null)}
-                    onInviteToOrg={(prefill) => {
-                      setInvitePrefill(prefill ?? null);
-                      setInviteModalOpen(true);
-                    }}
-                    onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
-                  />
-                )}
-              </WhoSection>
-            ) : id === "where" ? (
-              <WhereSection
-                key={id}
-                propertyId={propertyId}
-                selectedPropertyIds={selectedPropertyIds}
-                selectedSpaceIds={selectedSpaceIds}
-                onPropertyChange={handlePropertyChange}
-                onSpacesChange={setSelectedSpaceIds}
-                showFactsByDefault={!!defaultPropertyId || !!prefill?.propertyId}
-                suggestedChips={suggestedChipsBySection["where"] ?? []}
-              />
-            ) : id === "when" ? (
-              <div key={id} className="space-y-1">
-                <WhenSection
+        <div
+          className={cn(
+            "transition-all duration-500 ease-out",
+            shouldShowDetailsArea
+              ? "opacity-100 max-h-[2400px] mt-0"
+              : "opacity-0 max-h-0 overflow-hidden pointer-events-none mt-0"
+          )}
+        >
+          {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
+          <div className="space-y-0 flex flex-col mt-[15px]">
+            {CREATE_TASK_SECTIONS.map(({ id, instruction, valueLabel, Icon }) =>
+              id === "who" ? (
+                <WhoSection
+                  key={id}
                   isActive={activeSection === id}
                   onActivate={() => setActiveSection(id)}
-                  onDeactivate={() => setActiveSection(null)}
-                  dueDate={dueDate}
-                  repeatRule={repeatRule}
-                  onDueDateChange={setDueDate}
-                  onRepeatRuleChange={setRepeatRule}
-                  milestones={milestones}
-                  onMilestonesChange={setMilestones}
-                  hasUnresolved={unresolvedSections.includes(id)}
-                  suggestedDateLabel={
-                    (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date")?.label?.toUpperCase()
-                  }
-                  onSuggestedDateAccept={() => {
-                    const dateChip = (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date");
-                    if (dateChip) handleChipSelect(dateChip);
+                  assignedUserId={assignedUserId}
+                  assignedTeamIds={assignedTeamIds}
+                  onUserChange={setAssignedUserId}
+                  onTeamsChange={setAssignedTeamIds}
+                  pendingInvitations={pendingInvitations}
+                  onPendingInvitationsChange={setPendingInvitations}
+                  onInviteToOrg={(prefill) => {
+                    setInvitePrefill(prefill ?? null);
+                    setInviteModalOpen(true);
                   }}
+                  onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
+                  hasUnresolved={unresolvedSections.includes(id)}
+                  suggestedChips={suggestedChipsBySection["who"] ?? []}
+                  onSuggestionClick={handleChipSelect}
+                >
+                  {activeSection === id && (
+                    <WhoPanel
+                      assignedUserId={assignedUserId}
+                      assignedTeamIds={assignedTeamIds}
+                      onUserChange={setAssignedUserId}
+                      onTeamsChange={setAssignedTeamIds}
+                      suggestedPeople={aiResult?.people?.map(p => p.name) || []}
+                      pendingInvitations={pendingInvitations}
+                      onPendingInvitationsChange={setPendingInvitations}
+                      instructionBlock={instructionBlock}
+                      onInstructionDismiss={() => setInstructionBlock(null)}
+                      onInviteToOrg={(prefill) => {
+                        setInvitePrefill(prefill ?? null);
+                        setInviteModalOpen(true);
+                      }}
+                      onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
+                    />
+                  )}
+                </WhoSection>
+              ) : id === "where" ? (
+                <WhereSection
+                  key={id}
+                  propertyId={propertyId}
+                  selectedPropertyIds={selectedPropertyIds}
+                  selectedSpaceIds={selectedSpaceIds}
+                  onPropertyChange={handlePropertyChange}
+                  onSpacesChange={setSelectedSpaceIds}
+                  showFactsByDefault={!!defaultPropertyId || !!prefill?.propertyId}
+                  suggestedChips={suggestedChipsBySection["where"] ?? []}
                 />
-                {scheduleConflictNote && (
-                  <div className="pl-8 text-[11px] font-medium text-[#EB6834]">
-                    {scheduleConflictNote}
-                  </div>
-                )}
-              </div>
-            ) : id === "what" ? (
-              <AssetSection
-                key={id}
-                isActive={activeSection === id}
-                onActivate={() => setActiveSection(id)}
-                propertyId={propertyId || undefined}
-                spaceId={selectedSpaceIds[0]}
-                selectedAssetIds={selectedAssetIds}
-                onAssetsChange={setSelectedAssetIds}
-                suggestedChips={suggestedChipsBySection["what"] ?? []}
-              />
-            ) : id === "category" ? (
-              <CategorySection
-                key={id}
-                isActive={activeSection === id}
-                onActivate={() => setActiveSection(id)}
-                selectedThemeIds={selectedThemeIds}
-                onThemesChange={setSelectedThemeIds}
-                hasUnresolved={unresolvedSections.includes(id)}
-              />
-            ) : (
-            <CreateTaskRow
-              key={id}
-              sectionId={id}
-              icon={<Icon className="h-4 w-4 text-muted-foreground" />}
-              instruction={instruction}
-              valueLabel={valueLabel}
-              isActive={activeSection === id}
-              onActivate={() => setActiveSection(id)}
-              factChips={factChipsBySection[id] ?? []}
-              suggestedChips={suggestedChipsBySection[id] ?? []}
-              verbChips={verbChipsBySection[id] ?? []}
-              onChipRemove={handleChipRemove}
-              onSuggestionClick={handleChipSelect}
-              onVerbChipClick={handleChipSelect}
-              hasUnresolved={unresolvedSections.includes(id)}
-              hoverChips={
-                id === "priority"
-                  ? [
-                      { id: "low", label: "LOW", onPress: () => { setPriorityTouched(true); setPriority("low"); } },
-                      { id: "medium", label: "NORMAL", onPress: () => { setPriorityTouched(true); setPriority("medium"); } },
-                      { id: "high", label: "HIGH", onPress: () => { setPriorityTouched(true); setPriority("high"); } },
-                      { id: "urgent", label: "URGENT", onPress: () => { setPriorityTouched(true); setPriority("urgent"); } },
-                    ]
-                  : undefined
-              }
-            >
-              {activeSection === id && id === "compliance" && (
-                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
-                  <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
-                  <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
-                  {isCompliance && (
-                    <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                      <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
-                        <SelectValue placeholder="Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Low</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="critical">Critical</SelectItem>
-                      </SelectContent>
-                    </Select>
+              ) : id === "when" ? (
+                <div key={id} className="space-y-1">
+                  <WhenSection
+                    isActive={activeSection === id}
+                    onActivate={() => setActiveSection(id)}
+                    onDeactivate={() => setActiveSection(null)}
+                    dueDate={dueDate}
+                    repeatRule={repeatRule}
+                    onDueDateChange={setDueDate}
+                    onRepeatRuleChange={setRepeatRule}
+                    milestones={milestones}
+                    onMilestonesChange={setMilestones}
+                    hasUnresolved={unresolvedSections.includes(id)}
+                    suggestedDateLabel={
+                      (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date")?.label?.toUpperCase()
+                    }
+                    onSuggestedDateAccept={() => {
+                      const dateChip = (suggestedChipsBySection["when"] ?? []).find(c => c.type === "date");
+                      if (dateChip) handleChipSelect(dateChip);
+                    }}
+                  />
+                  {scheduleConflictNote && (
+                    <div className="pl-8 text-[11px] font-medium text-[#EB6834]">
+                      {scheduleConflictNote}
+                    </div>
                   )}
                 </div>
-              )}
-            </CreateTaskRow>
-            )
-          )}
+              ) : id === "what" ? (
+                <AssetSection
+                  key={id}
+                  isActive={activeSection === id}
+                  onActivate={() => setActiveSection(id)}
+                  propertyId={propertyId || undefined}
+                  spaceId={selectedSpaceIds[0]}
+                  selectedAssetIds={selectedAssetIds}
+                  onAssetsChange={setSelectedAssetIds}
+                  suggestedChips={suggestedChipsBySection["what"] ?? []}
+                />
+              ) : id === "category" ? (
+                <CategorySection
+                  key={id}
+                  isActive={activeSection === id}
+                  onActivate={() => setActiveSection(id)}
+                  selectedThemeIds={selectedThemeIds}
+                  onThemesChange={setSelectedThemeIds}
+                  hasUnresolved={unresolvedSections.includes(id)}
+                />
+              ) : (
+              <CreateTaskRow
+                key={id}
+                sectionId={id}
+                icon={<Icon className="h-4 w-4 text-muted-foreground" />}
+                instruction={instruction}
+                valueLabel={valueLabel}
+                isActive={activeSection === id}
+                onActivate={() => setActiveSection(id)}
+                factChips={factChipsBySection[id] ?? []}
+                suggestedChips={suggestedChipsBySection[id] ?? []}
+                verbChips={verbChipsBySection[id] ?? []}
+                onChipRemove={handleChipRemove}
+                onSuggestionClick={handleChipSelect}
+                onVerbChipClick={handleChipSelect}
+                hasUnresolved={unresolvedSections.includes(id)}
+                hoverChips={
+                  id === "priority"
+                    ? [
+                        { id: "low", label: "LOW", onPress: () => { setPriorityTouched(true); setPriority("low"); } },
+                        { id: "medium", label: "NORMAL", onPress: () => { setPriorityTouched(true); setPriority("medium"); } },
+                        { id: "high", label: "HIGH", onPress: () => { setPriorityTouched(true); setPriority("high"); } },
+                        { id: "urgent", label: "URGENT", onPress: () => { setPriorityTouched(true); setPriority("urgent"); } },
+                      ]
+                    : undefined
+                }
+              >
+                {activeSection === id && id === "compliance" && (
+                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
+                    <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                    <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+                    {isCompliance && (
+                      <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                        <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                          <SelectValue placeholder="Level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Low</SelectItem>
+                          <SelectItem value="medium">Medium</SelectItem>
+                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="critical">Critical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
+              </CreateTaskRow>
+              )
+            )}
+          </div>
+
+          {/* Checklist Template */}
+          {templates.length > 0 && <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <ListTodo className="h-4 w-4 text-muted-foreground" />
+                Apply Template
+              </Label>
+              <Select value={templateId || undefined} onValueChange={(val) => setTemplateId(val === "none" ? "" : val)}>
+                <SelectTrigger className="shadow-engraved">
+                  <SelectValue placeholder="Choose a checklist template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {templates.map(template => <SelectItem key={template.id} value={template.id}>
+                      {template.icon && <span className="mr-2">{template.icon}</span>}
+                      {template.name}
+                    </SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>}
+
+          {/* Advanced Options */}
+          {showAdvanced && <div className="space-y-4 p-4 rounded-[8px] bg-muted/50 shadow-engraved">
+              {/* Compliance Toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>
+                  <p className="text-xs text-muted-foreground">Mark as regulatory requirement</p>
+                </div>
+                <Switch id="compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+              </div>
+
+              {isCompliance && <div className="space-y-2">
+                  <Label className="text-xs">Compliance Level</Label>
+                  <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>}
+
+              {/* Annotation Required */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="annotation" className="text-sm">Requires Photo Annotation</Label>
+                  <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
+                </div>
+                <Switch id="annotation" checked={annotationRequired} onCheckedChange={setAnnotationRequired} />
+              </div>
+            </div>}
         </div>
-
-
-        {/* Checklist Template */}
-        {templates.length > 0 && <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-2">
-              <ListTodo className="h-4 w-4 text-muted-foreground" />
-              Apply Template
-            </Label>
-            <Select value={templateId || undefined} onValueChange={(val) => setTemplateId(val === "none" ? "" : val)}>
-              <SelectTrigger className="shadow-engraved">
-                <SelectValue placeholder="Choose a checklist template" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {templates.map(template => <SelectItem key={template.id} value={template.id}>
-                    {template.icon && <span className="mr-2">{template.icon}</span>}
-                    {template.name}
-                  </SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>}
-
-        {/* Advanced Options */}
-        {showAdvanced && <div className="space-y-4 p-4 rounded-[8px] bg-muted/50 shadow-engraved">
-            {/* Compliance Toggle */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>
-                <p className="text-xs text-muted-foreground">Mark as regulatory requirement</p>
-              </div>
-              <Switch id="compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
-            </div>
-
-            {isCompliance && <div className="space-y-2">
-                <Label className="text-xs">Compliance Level</Label>
-                <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>}
-
-            {/* Annotation Required */}
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="annotation" className="text-sm">Requires Photo Annotation</Label>
-                <p className="text-xs text-muted-foreground">Enforce photo markup on completion</p>
-              </div>
-              <Switch id="annotation" checked={annotationRequired} onCheckedChange={setAnnotationRequired} />
-            </div>
-          </div>}
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col gap-3 p-4 pb-6 border-t border-transparent bg-transparent backdrop-blur text-foreground">
+      <div
+        className={cn(
+          "transition-all duration-500 ease-out flex flex-col gap-3 border-t border-transparent bg-transparent backdrop-blur text-foreground",
+          shouldShowDetailsArea
+            ? "opacity-100 max-h-60 px-4 pt-[6px] pb-6"
+            : "opacity-0 max-h-0 overflow-hidden pointer-events-none p-0 pb-0 border-t-0"
+        )}
+      >
         {/* Clarity State */}
         {clarityState && (
           <ClarityState

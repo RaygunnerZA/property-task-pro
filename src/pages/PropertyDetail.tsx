@@ -792,104 +792,25 @@ if (!error) {
                 scopeLabel={property?.nickname || property?.address || (id ? "Property" : undefined)}
               />
             </div>
-
-            <div className="px-[15px]">
-              <Tabs
-                value={activeHeaderTab}
-                onValueChange={(value) => setActiveHeaderTab(parsePropertyHeaderTab(value))}
-                className="w-full"
-              >
-                <TabsList
-                  className={cn(
-                    "w-full grid grid-cols-4 h-12 px-1 py-1 rounded-[15px] bg-transparent",
-                    "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
+            
+            <div className="p-[15px] space-y-6">
+              {/* Zones Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
+                  {id && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/properties/${id}/spaces/organise`)}
+                      className="text-primary hover:text-primary/90"
+                    >
+                      Add spaces
+                    </Button>
                   )}
-                >
-                  <TabsTrigger
-                    value="overview"
-                    className={cn(
-                      "rounded-[8px] text-xs sm:text-sm",
-                      "data-[state=active]:bg-card",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                    )}
-                  >
-                    <LayoutGrid className="h-4 w-4 mr-1.5" />
-                    Overview
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="tasks"
-                    className={cn(
-                      "rounded-[8px] text-xs sm:text-sm",
-                      "data-[state=active]:bg-card",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                    )}
-                  >
-                    <CheckSquare className="h-4 w-4 mr-1.5" />
-                    Tasks
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="assets"
-                    className={cn(
-                      "rounded-[8px] text-xs sm:text-sm",
-                      "data-[state=active]:bg-card",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                    )}
-                  >
-                    <Package className="h-4 w-4 mr-1.5" />
-                    Assets
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="compliance"
-                    className={cn(
-                      "rounded-[8px] text-xs sm:text-sm",
-                      "data-[state=active]:bg-card",
-                      "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                    )}
-                  >
-                    <Shield className="h-4 w-4 mr-1.5" />
-                    Compliance
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-
-            <div className="p-[15px] pt-4 space-y-6">
-              {activeHeaderTab === "overview" && (
-                <>
-                  <Card className="p-4 shadow-e1 border-0 bg-card/80">
-                    <h2 className="text-sm font-semibold text-foreground mb-3">Property snapshot</h2>
-                    <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
-                        <p className="text-lg font-semibold">{openTasksCount}</p>
-                        <p className="text-[11px] text-muted-foreground">Open tasks</p>
-                      </div>
-                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
-                        <p className="text-lg font-semibold">{assetsCount}</p>
-                        <p className="text-[11px] text-muted-foreground">Assets</p>
-                      </div>
-                      <div className="rounded-lg bg-input p-3 shadow-[inset_1px_1px_3px_rgba(0,0,0,0.08),inset_-1px_-1px_3px_rgba(255,255,255,0.8)]">
-                        <p className="text-lg font-semibold">{spacesCount}</p>
-                        <p className="text-[11px] text-muted-foreground">Spaces</p>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
-                      {id && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/properties/${id}/spaces/organise`)}
-                          className="text-primary hover:text-primary/90"
-                        >
-                          Add spaces
-                        </Button>
-                      )}
-                    </div>
-                    {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
-                  </div>
+                </div>
+                {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
+              </div>
 
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-foreground">Documents</h2>
