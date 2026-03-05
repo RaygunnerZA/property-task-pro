@@ -794,23 +794,25 @@ if (!error) {
             </div>
             
             <div className="p-[15px] space-y-6">
-              {/* Zones Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
-                  {id && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/properties/${id}/spaces/organise`)}
-                      className="text-primary hover:text-primary/90"
-                    >
-                      Add spaces
-                    </Button>
-                  )}
-                </div>
-                {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
-              </div>
+              {activeHeaderTab === "overview" && (
+                <>
+                  {/* Zones Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
+                      {id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/properties/${id}/spaces/organise`)}
+                          className="text-primary hover:text-primary/90"
+                        >
+                          Add spaces
+                        </Button>
+                      )}
+                    </div>
+                    {id && <PropertySpacesSection propertyId={id} variant="scroller" />}
+                  </div>
 
                   <div className="space-y-4">
                     <h2 className="text-lg font-semibold text-foreground">Documents</h2>
