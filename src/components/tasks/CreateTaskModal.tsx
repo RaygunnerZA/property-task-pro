@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, ListTodo, Shield, Box, Tag, Users } from "lucide-react";
+import { X, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, Shield, Box, Tag, Users } from "lucide-react";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
+import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
 import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -78,6 +79,16 @@ interface CreateTaskModalProps {
   headless?: boolean; // when true with variant="column", render only content (concertina provides header)
   collapseDetails?: boolean; // keeps top composer visible while hiding lower sections/actions
 }
+
+const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; label: string }> = [
+  { value: "compliance", label: "Compliance" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "security", label: "Security" },
+  { value: "operations", label: "Operations" },
+];
+
+type ChecklistTemplateDialogMode = "save" | "edit" | "duplicate";
+
 export function CreateTaskModal({
   open,
   onOpenChange,
@@ -102,7 +113,8 @@ export function CreateTaskModal({
   } = useActiveOrg();
   // Only fetch checklist templates when modal is open to avoid unnecessary queries
   const {
-    templates
+    templates,
+    refresh: refreshChecklistTemplates
   } = useChecklistTemplates(open);
   const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
   const { members, refresh: refreshMembers } = useOrgMembers();
@@ -177,6 +189,10 @@ export function CreateTaskModal({
   const [complianceLevel, setComplianceLevel] = useState("");
   const [annotationRequired, setAnnotationRequired] = useState(false);
   const [templateId, setTemplateId] = useState("");
+  const [recentTemplateIds, setRecentTemplateIds] = useState<string[]>([]);
+  const [templateDialogMode, setTemplateDialogMode] = useState<ChecklistTemplateDialogMode | null>(null);
+  const [templateDraftName, setTemplateDraftName] = useState("");
+  const [templateDraftCategory, setTemplateDraftCategory] = useState<ChecklistTemplateCategory>("operations");
   const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -257,6 +273,310 @@ export function CreateTaskModal({
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
+
+  const makeSubtaskFromText = useCallback((text: string): SubtaskInput => ({
+    id: crypto.randomUUID(),
+    title: text,
+    is_yes_no: false,
+    requires_signature: false
+  }), []);
+
+  const activeTemplate = useMemo(
+    () => templates.find((template) => template.id === templateId) ?? null,
+    [templateId, templates]
+  );
+
+  const recentStorageKey = useMemo(
+    () => `filla-checklist-recent:${orgId ?? "anon"}`,
+    [orgId]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const stored = window.localStorage.getItem(recentStorageKey);
+      if (!stored) {
+        setRecentTemplateIds([]);
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setRecentTemplateIds(parsed.filter((id): id is string => typeof id === "string").slice(0, 8));
+      } else {
+        setRecentTemplateIds([]);
+      }
+    } catch {
+      setRecentTemplateIds([]);
+    }
+  }, [open, recentStorageKey]);
+
+  const rememberRecentTemplate = useCallback(
+    (id: string) => {
+      setRecentTemplateIds((prev) => {
+        const next = [id, ...prev.filter((item) => item !== id)].slice(0, 8);
+        try {
+          window.localStorage.setItem(recentStorageKey, JSON.stringify(next));
+        } catch {
+          // Ignore localStorage write failures.
+        }
+        return next;
+      });
+    },
+    [recentStorageKey]
+  );
+
+  const normalizeChecklistItems = useCallback((items: SubtaskInput[]) => {
+    return items
+      .map((subtask) => ({
+        title: subtask.title.trim(),
+        is_yes_no: Boolean(subtask.is_yes_no),
+        requires_signature: Boolean(subtask.requires_signature),
+      }))
+      .filter((item) => item.title.length > 0);
+  }, []);
+
+  const importTemplateItems = useCallback((templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (!template) {
+      toast({
+        title: "Template not found",
+        description: "That checklist template is no longer available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const rawItems = Array.isArray(template.items) ? template.items : [];
+    const parsedSubtasks = rawItems
+      .map((item): SubtaskInput | null => {
+        if (typeof item === "string") {
+          const title = item.trim();
+          if (!title) return null;
+          return makeSubtaskFromText(title);
+        }
+        if (item && typeof item === "object") {
+          const candidate = item as {
+            title?: string;
+            label?: string;
+            is_yes_no?: boolean;
+            requires_signature?: boolean;
+          };
+          const title = (candidate.title || candidate.label || "").trim();
+          if (!title) return null;
+          return {
+            id: crypto.randomUUID(),
+            title,
+            is_yes_no: Boolean(candidate.is_yes_no),
+            requires_signature: Boolean(candidate.requires_signature)
+          };
+        }
+        return null;
+      })
+      .filter((item): item is SubtaskInput => Boolean(item));
+
+    if (parsedSubtasks.length === 0) {
+      toast({
+        title: "Template is empty",
+        description: "This template has no checklist items to import.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const hasExistingSubtasks = subtasks.some((subtask) => subtask.title.trim().length > 0);
+    let shouldReplace = true;
+    if (hasExistingSubtasks) {
+      shouldReplace = window.confirm("Replace existing subtasks? Click Cancel to append.");
+    }
+
+    const mergedSubtasks = shouldReplace ? parsedSubtasks : [...subtasks, ...parsedSubtasks];
+    setTemplateId(template.id);
+    setSubtasks(mergedSubtasks);
+    rememberRecentTemplate(template.id);
+    toast({
+      title: "Checklist imported",
+      description: shouldReplace
+        ? `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`
+        : `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} appended from "${template.name}".`
+    });
+  }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
+
+  const openTemplateDialog = useCallback((mode: ChecklistTemplateDialogMode) => {
+    const normalizedItems = normalizeChecklistItems(subtasks);
+    if (normalizedItems.length === 0) {
+      toast({
+        title: "No checklist items",
+        description: "Add at least one subtask before managing templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (mode === "edit" && !activeTemplate) {
+      toast({
+        title: "No active template",
+        description: "Load a checklist template before editing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const baseName =
+      title.trim() ||
+      description.trim().slice(0, 42) ||
+      `Checklist ${new Date().toLocaleDateString()}`;
+    const defaultName = `${baseName.replace(/\s+/g, " ").trim()} Template`;
+
+    if (mode === "edit" && activeTemplate) {
+      setTemplateDraftName(activeTemplate.name);
+      setTemplateDraftCategory(activeTemplate.category);
+    } else if (mode === "duplicate" && activeTemplate) {
+      setTemplateDraftName(`${activeTemplate.name} Copy`);
+      setTemplateDraftCategory(activeTemplate.category);
+    } else {
+      setTemplateDraftName(defaultName);
+      setTemplateDraftCategory("operations");
+    }
+    setTemplateDialogMode(mode);
+  }, [activeTemplate, description, normalizeChecklistItems, subtasks, title, toast]);
+
+  const submitTemplateDialog = useCallback(async () => {
+    if (!orgId) {
+      toast({
+        title: "Not signed in",
+        description: "Log in to save checklist templates.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const normalizedItems = normalizeChecklistItems(subtasks);
+    if (normalizedItems.length === 0) {
+      toast({
+        title: "No checklist items",
+        description: "Add at least one subtask before saving a template.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const templateName = templateDraftName.trim();
+    if (!templateName) {
+      toast({
+        title: "Template name required",
+        description: "Enter a checklist name before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (templateDialogMode === "edit" && activeTemplate) {
+      const { error } = await supabase
+        .from("checklist_templates")
+        .update({
+          name: templateName,
+          category: templateDraftCategory,
+          items: normalizedItems,
+        })
+        .eq("id", activeTemplate.id)
+        .eq("org_id", orgId);
+
+      if (error) {
+        toast({
+          title: "Couldn't update template",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await refreshChecklistTemplates();
+      setTemplateDialogMode(null);
+      toast({
+        title: "Template updated",
+        description: `"${templateName}" has been updated.`,
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("checklist_templates")
+      .insert({
+        org_id: orgId,
+        name: templateName,
+        category: templateDraftCategory,
+        items: normalizedItems,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      toast({
+        title: "Couldn't save template",
+        description: error.message,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    await refreshChecklistTemplates();
+    if (data?.id) {
+      setTemplateId(data.id);
+      rememberRecentTemplate(data.id);
+    }
+    setTemplateDialogMode(null);
+    toast({
+      title: "Template saved",
+      description: `"${templateName}" is now available to import.`
+    });
+  }, [
+    activeTemplate,
+    normalizeChecklistItems,
+    orgId,
+    refreshChecklistTemplates,
+    rememberRecentTemplate,
+    subtasks,
+    templateDialogMode,
+    templateDraftCategory,
+    templateDraftName,
+    toast,
+  ]);
+
+  const archiveActiveTemplate = useCallback(async () => {
+    if (!orgId || !activeTemplate) {
+      toast({
+        title: "No active template",
+        description: "Load a checklist template before archiving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const confirmed = window.confirm(`Archive "${activeTemplate.name}"? This will remove it from the checklist picker.`);
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("checklist_templates")
+      .update({ is_archived: true })
+      .eq("id", activeTemplate.id)
+      .eq("org_id", orgId);
+
+    if (error) {
+      toast({
+        title: "Couldn't archive template",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTemplateId("");
+    await refreshChecklistTemplates();
+    toast({
+      title: "Template archived",
+      description: `"${activeTemplate.name}" has been archived.`,
+    });
+  }, [activeTemplate, orgId, refreshChecklistTemplates, toast]);
 
   // Phase 1: Image analysis (fire-and-forget, never blocks task creation)
   // TempImage.aiOcrText used ONLY for chip suggestions – never written to attachments.
@@ -819,6 +1139,9 @@ export function CreateTaskModal({
     setComplianceLevel("");
     setAnnotationRequired(false);
     setTemplateId("");
+    setTemplateDialogMode(null);
+    setTemplateDraftName("");
+    setTemplateDraftCategory("operations");
     setSubtasks([]);
     setSelectedThemeIds([]);
     setSelectedAssetIds(defaultAssetIds ?? []);
@@ -1504,43 +1827,56 @@ export function CreateTaskModal({
           taskId={undefined}
         />
 
-        {/* AI-Generated Title (appears after AI responds) */}
-        <div className={cn(
-          "transition-all duration-300 ease-out mt-[14px] rounded-none",
-          shouldShowTitleField ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden"
-        )}>
-          {shouldShowTitleField && (
-            <div className="space-y-2 rounded-none">
-              <div className="relative">
-                <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => {
-                    setUserEditedTitle(true);
-                    setTitle(e.target.value);
-                    if (e.target.value.trim() === "") {
-                      setUserEditedTitle(false);
-                    }
-                  }}
-                  className="w-full h-10 pl-[22px] pr-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
-                  placeholder="Generated title…"
-                />
-              </div>
-              {aiLoading && (
-                <p className="text-[10px] text-muted-foreground">Generating AI title...</p>
-              )}
-              {!aiLoading && aiError && !aiResult?.title && (
-                <p className="text-[10px] text-muted-foreground">
-                  AI title is temporarily unavailable. You can still enter one manually.
-                </p>
+        {/* AI-Generated Title + quick chips */}
+        <div className="mt-[14px] rounded-none space-y-2">
+          <div className="flex items-start gap-2">
+            <div className={cn(
+              "flex-1 transition-all duration-300 ease-out rounded-none",
+              shouldShowTitleField ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden"
+            )}>
+              {shouldShowTitleField && (
+                <div className="relative">
+                  <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => {
+                      setUserEditedTitle(true);
+                      setTitle(e.target.value);
+                      if (e.target.value.trim() === "") {
+                        setUserEditedTitle(false);
+                      }
+                    }}
+                    className="w-full h-10 pl-[22px] pr-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
+                    placeholder="Generated title…"
+                  />
+                </div>
               )}
             </div>
+          </div>
+          {!aiLoading && aiError && !aiResult?.title && shouldShowTitleField && (
+            <p className="text-[10px] text-muted-foreground">
+              AI title is temporarily unavailable. You can still enter one manually.
+            </p>
           )}
         </div>
 
         {/* Combined Description + Subtasks Panel */}
-        <SubtasksSection subtasks={subtasks} onSubtasksChange={setSubtasks} description={description} onDescriptionChange={setDescription} className="bg-transparent" />
+        <SubtasksSection
+          subtasks={subtasks}
+          onSubtasksChange={setSubtasks}
+          description={description}
+          onDescriptionChange={setDescription}
+          className="bg-transparent"
+          templates={templates}
+          recentTemplateIds={recentTemplateIds}
+          activeTemplateName={activeTemplate?.name ?? null}
+          onUseTemplate={importTemplateItems}
+          onSaveAsTemplate={() => openTemplateDialog("save")}
+          onEditTemplate={() => openTemplateDialog("edit")}
+          onDuplicateTemplate={() => openTemplateDialog("duplicate")}
+          onArchiveTemplate={archiveActiveTemplate}
+        />
 
         <div
           className={cn(
@@ -1701,26 +2037,6 @@ export function CreateTaskModal({
             )}
           </div>
 
-          {/* Checklist Template */}
-          {templates.length > 0 && <div className="space-y-2">
-              <Label className="text-sm font-medium flex items-center gap-2">
-                <ListTodo className="h-4 w-4 text-muted-foreground" />
-                Apply Template
-              </Label>
-              <Select value={templateId || undefined} onValueChange={(val) => setTemplateId(val === "none" ? "" : val)}>
-                <SelectTrigger className="shadow-engraved">
-                  <SelectValue placeholder="Choose a checklist template" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {templates.map(template => <SelectItem key={template.id} value={template.id}>
-                      {template.icon && <span className="mr-2">{template.icon}</span>}
-                      {template.name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>}
-
           {/* Advanced Options */}
           {showAdvanced && <div className="space-y-4 p-4 rounded-[8px] bg-muted/50 shadow-engraved">
               {/* Compliance Toggle */}
@@ -1846,10 +2162,76 @@ export function CreateTaskModal({
     />
   );
 
+  const renderTemplateDialog = () => {
+    const isOpen = templateDialogMode !== null;
+    const title =
+      templateDialogMode === "edit"
+        ? "Edit Checklist Template"
+        : templateDialogMode === "duplicate"
+          ? "Duplicate Checklist Template"
+          : "Save Checklist Template";
+    const cta =
+      templateDialogMode === "edit" ? "Update Template" : "Save Template";
+
+    return (
+      <Dialog open={isOpen} onOpenChange={(openState) => !openState && setTemplateDialogMode(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              Save checklist templates for quick reuse in task creation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Template name</Label>
+              <input
+                value={templateDraftName}
+                onChange={(event) => setTemplateDraftName(event.target.value)}
+                placeholder="e.g. Fire Safety Check"
+                className="w-full h-9 px-3 rounded-[10px] bg-input shadow-engraved text-sm text-foreground placeholder:text-muted-foreground/60 border-0 outline-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Category</Label>
+              <Select
+                value={templateDraftCategory}
+                onValueChange={(value) => setTemplateDraftCategory(value as ChecklistTemplateCategory)}
+              >
+                <SelectTrigger className="h-9 shadow-engraved">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHECKLIST_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setTemplateDialogMode(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={submitTemplateDialog}>
+                {cta}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   // For column variant on wide screens: headless = content only (concertina provides header)
   if (variant === "column" && headless) {
     return <>
       {content}
+      {renderTemplateDialog()}
       {renderInviteModal()}
     </>;
   }
@@ -1896,6 +2278,7 @@ export function CreateTaskModal({
             {content}
           </div>
         </div>
+        {renderTemplateDialog()}
         {renderInviteModal()}
       </>
     );
@@ -1910,6 +2293,7 @@ export function CreateTaskModal({
           {content}
         </DrawerContent>
       </Drawer>
+      {renderTemplateDialog()}
       {renderInviteModal()}
     </>;
   }
@@ -1923,6 +2307,7 @@ export function CreateTaskModal({
         {content}
       </DialogContent>
     </Dialog>
+    {renderTemplateDialog()}
     {renderInviteModal()}
   </>;
 }

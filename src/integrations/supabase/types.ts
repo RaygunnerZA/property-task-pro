@@ -465,6 +465,7 @@ export type Database = {
       }
       checklist_templates: {
         Row: {
+          category: string
           created_at: string
           id: string
           is_archived: boolean
@@ -474,6 +475,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string
           created_at?: string
           id?: string
           is_archived?: boolean
@@ -483,6 +485,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string
           created_at?: string
           id?: string
           is_archived?: boolean

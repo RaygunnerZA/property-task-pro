@@ -132,7 +132,7 @@ export function DashboardCalendar({
           caption: "flex justify-center pt-1 relative items-center mb-2 -mx-2",
           caption_label: "text-xl font-semibold text-foreground",
           nav: "space-x-1 flex items-center",
-          nav_button: cardButtonClassName,
+          nav_button: cn(cardButtonClassName, "h-[35px] w-[35px]"),
           nav_button_previous: "absolute left-0",
           nav_button_next: "absolute right-0",
           table: "w-full border-collapse space-y-1",

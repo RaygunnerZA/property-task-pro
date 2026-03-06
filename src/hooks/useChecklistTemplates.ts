@@ -5,16 +5,32 @@ import { useActiveOrg } from "./useActiveOrg";
 
 type ChecklistTemplateRow = Tables<"checklist_templates">;
 type ChecklistTemplateItemRow = Tables<"checklist_template_items">;
+export type ChecklistTemplateCategory =
+  | "compliance"
+  | "maintenance"
+  | "security"
+  | "operations";
 
-export interface TemplateWithItems extends ChecklistTemplateRow {
+export interface ChecklistTemplate extends ChecklistTemplateRow {
+  category: ChecklistTemplateCategory;
+}
+
+export interface TemplateWithItems extends ChecklistTemplate {
   items: ChecklistTemplateItemRow[];
 }
 
 export function useChecklistTemplates(enabled: boolean = true) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [templates, setTemplates] = useState<ChecklistTemplateRow[]>([]);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const toCategory = (value: unknown): ChecklistTemplateCategory => {
+    if (value === "compliance" || value === "maintenance" || value === "security") {
+      return value;
+    }
+    return "operations";
+  };
 
   async function fetchTemplates() {
     if (!orgId) {
@@ -45,7 +61,11 @@ export function useChecklistTemplates(enabled: boolean = true) {
         setError(err.message);
       }
     } else {
-      setTemplates(data ?? []);
+      const normalized = (data ?? []).map((template) => ({
+        ...template,
+        category: toCategory((template as { category?: string }).category),
+      }));
+      setTemplates(normalized);
     }
 
     setLoading(false);
