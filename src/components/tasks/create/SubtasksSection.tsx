@@ -166,7 +166,7 @@ export function SubtasksSection({
   };
 
   return <div 
-      className={cn("shadow-engraved rounded-xl overflow-hidden text-white bg-white/80 mt-4", className)}
+      className={cn("group/subtask shadow-engraved rounded-xl overflow-hidden text-white bg-white/80 mt-4", className)}
       style={{
         backgroundClip: 'unset',
         WebkitBackgroundClip: 'unset',
@@ -213,7 +213,14 @@ export function SubtasksSection({
         )}
 
         {!activeTemplateName ? (
-          <div className="flex items-center justify-center gap-4 pt-2 mt-1 text-xs text-muted-foreground/60">
+          <div
+            className={cn(
+              "flex items-center justify-center gap-4 pt-2 mt-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
+              pickerOpen
+                ? "opacity-100 pointer-events-auto"
+                : "opacity-0 pointer-events-none group-hover/subtask:opacity-100 group-hover/subtask:pointer-events-auto group-focus-within/subtask:opacity-100 group-focus-within/subtask:pointer-events-auto"
+            )}
+          >
             <button
               type="button"
               className="hover:text-muted-foreground transition-colors"

@@ -1119,7 +1119,8 @@ export function CreateTaskModal({
       }
     }
   }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField]);
-  const shouldShowTitleField = showTitleField || aiLoading || Boolean(aiError) || Boolean(title.trim());
+  const hasDescriptionDraft = Boolean(description.trim());
+  const shouldShowTitleField = hasDescriptionDraft && (showTitleField || aiLoading || Boolean(aiError) || Boolean(title.trim()));
   const shouldShowDetailsArea = Boolean(description.trim()) && !collapseDetails;
   const resetForm = useCallback(() => {
     setTitle("");
@@ -1827,35 +1828,31 @@ export function CreateTaskModal({
           taskId={undefined}
         />
 
-        {/* AI-Generated Title + quick chips */}
-        <div className="mt-[14px] rounded-none space-y-2">
-          <div className="flex items-start gap-2">
-            <div className={cn(
-              "flex-1 transition-all duration-300 ease-out rounded-none",
-              shouldShowTitleField ? "opacity-100 max-h-32" : "opacity-0 max-h-0 overflow-hidden"
-            )}>
-              {shouldShowTitleField && (
-                <div className="relative">
-                  <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => {
-                      setUserEditedTitle(true);
-                      setTitle(e.target.value);
-                      if (e.target.value.trim() === "") {
-                        setUserEditedTitle(false);
-                      }
-                    }}
-                    className="w-full h-10 pl-[22px] pr-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
-                    placeholder="Generated title…"
-                  />
-                </div>
-              )}
-            </div>
+        {/* AI-Generated Title (collapses until user starts description) */}
+        <div
+          className={cn(
+            "rounded-none transition-all duration-300 ease-out overflow-hidden",
+            shouldShowTitleField ? "mt-[14px] max-h-28 opacity-100" : "mt-0 max-h-0 opacity-0 pointer-events-none"
+          )}
+        >
+          <div className="relative">
+            <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => {
+                setUserEditedTitle(true);
+                setTitle(e.target.value);
+                if (e.target.value.trim() === "") {
+                  setUserEditedTitle(false);
+                }
+              }}
+              className="w-full h-10 pl-[22px] pr-4 py-3 rounded-[8px] bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
+              placeholder="Generated title…"
+            />
           </div>
-          {!aiLoading && aiError && !aiResult?.title && shouldShowTitleField && (
-            <p className="text-[10px] text-muted-foreground">
+          {!aiLoading && aiError && !aiResult?.title && (
+            <p className="pt-2 text-[10px] text-muted-foreground">
               AI title is temporarily unavailable. You can still enter one manually.
             </p>
           )}
