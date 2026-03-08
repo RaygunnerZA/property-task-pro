@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, MoreHorizontal, Search } from "lucide-react";
 import { FilterChip } from "@/components/chips/filter";
 import { FilterRow } from "@/components/filla/FilterRow";
@@ -55,6 +56,7 @@ export function SubtasksSection({
   onArchiveTemplate,
   className
 }: SubtasksSectionProps) {
+  const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerView, setPickerView] = useState<"root" | "recent" | "categories" | "category-options" | "search">("root");
   const [animationDirection, setAnimationDirection] = useState<"left-to-right" | "right-to-left" | null>(null);
@@ -215,7 +217,7 @@ export function SubtasksSection({
         {!activeTemplateName ? (
           <div
             className={cn(
-              "flex items-center justify-center gap-4 pt-2 mt-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
+              "flex items-center justify-start gap-[5px] pt-2 mt-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
               pickerOpen
                 ? "opacity-100 pointer-events-auto"
                 : "opacity-0 pointer-events-none group-hover/subtask:opacity-100 group-hover/subtask:pointer-events-auto group-focus-within/subtask:opacity-100 group-focus-within/subtask:pointer-events-auto"
@@ -241,6 +243,17 @@ export function SubtasksSection({
               }}
             >
               Save Checklist
+            </button>
+            <span className="text-muted-foreground/30">|</span>
+            <button
+              type="button"
+              className="hover:text-muted-foreground transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate("/manage/templates");
+              }}
+            >
+              Manage
             </button>
           </div>
         ) : (

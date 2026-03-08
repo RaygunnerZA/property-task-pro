@@ -32,6 +32,13 @@ Canonical reference for database tables, relationships, and naming conventions.
 ### themes
 - `id`, `org_id`, `name`, `type` (category | hazard | etc), `color`, `icon`
 
+### checklist_templates
+- `id`, `org_id`, `name`, `category` (string: `compliance | maintenance | security | operations`), `items` (JSONB array), `is_archived` (boolean, default `false`), `created_at`, `updated_at`
+- `items` stores an array of `{ title: string, is_yes_no: boolean, requires_signature: boolean }` objects.
+- Categories are hardcoded in the UI (`CATEGORY_OPTIONS` in `SubtasksSection.tsx` and `TemplateDialog.tsx`).
+- Fetched via `useChecklistTemplates(enabled)`. Mutations via `src/services/templates/templateService.ts`.
+- Template library page: `src/pages/manage/ManageTemplates.tsx`.
+
 ### compliance_documents, compliance_portfolio_view
 - Document metadata, expiry, space/asset links.
 

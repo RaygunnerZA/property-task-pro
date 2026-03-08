@@ -50,6 +50,9 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     const [canScrollPrev, setCanScrollPrev] = React.useState(false);
     const [canScrollNext, setCanScrollNext] = React.useState(false);
 
+    const setApiRef = React.useRef(setApi);
+    setApiRef.current = setApi;
+
     const onSelect = React.useCallback((api: CarouselApi) => {
       if (!api) {
         return;
@@ -81,12 +84,12 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
     );
 
     React.useEffect(() => {
-      if (!api || !setApi) {
+      if (!api || !setApiRef.current) {
         return;
       }
 
-      setApi(api);
-    }, [api, setApi]);
+      setApiRef.current(api);
+    }, [api]);
 
     React.useEffect(() => {
       if (!api) {

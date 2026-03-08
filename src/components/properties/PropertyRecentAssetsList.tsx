@@ -219,6 +219,8 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
 interface PropertyRecentAssetsListProps {
   propertyId: string;
   onAssetClick?: (assetId: string) => void;
+  /** When true, omit section title (e.g. when used inside a concertina) */
+  headless?: boolean;
 }
 
 /**
@@ -226,7 +228,7 @@ interface PropertyRecentAssetsListProps {
  * Shows recently modified/created assets for the property (max 8)
  * Same format as Recent Spaces, with task count and condition
  */
-export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyRecentAssetsListProps) {
+export function PropertyRecentAssetsList({ propertyId, onAssetClick, headless = false }: PropertyRecentAssetsListProps) {
   const { data: assets = [], isLoading: assetsLoading } = useAssetsQuery(propertyId);
   const { data: properties = [] } = usePropertiesQuery();
   const property = useMemo(() => properties.find((p: any) => p.id === propertyId), [properties, propertyId]);
@@ -252,11 +254,13 @@ export function PropertyRecentAssetsList({ propertyId, onAssetClick }: PropertyR
   const { imageMap } = useAssetFilesForAssets(assetIds);
 
   return (
-    <div className="border-t border-border pt-4 px-2 pb-3">
-      <h2 className="text-base font-semibold text-foreground mb-3">
-        Recent Assets
-      </h2>
-      <div className="pt-[2px] w-full max-w-full overflow-x-hidden">
+    <div className={cn(headless ? "pt-0 px-2 pb-3" : "border-t border-border pt-4 px-2 pb-3")}>
+      {!headless && (
+        <h2 className="text-base font-semibold text-foreground mb-3">
+          Recent Assets
+        </h2>
+      )}
+      <div className={cn("w-full max-w-full overflow-x-hidden", headless ? "pt-0" : "pt-[2px]")}>
         {assetsLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-20 w-full rounded-lg" />

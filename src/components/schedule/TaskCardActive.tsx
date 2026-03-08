@@ -247,6 +247,7 @@ export function TaskCardActive({
                     description: "The task has been archived.",
                   });
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
                 } catch (error) {
                   toast({
                     title: "Error",

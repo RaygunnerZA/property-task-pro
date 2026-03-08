@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
 
-/** Groups table may not exist (404); use minimal row type */
+/** Groups are stored as themes with type='group' (groups table was replaced by themes in migration 20251220000032). */
 interface GroupRow {
   id: string;
   name?: string;
@@ -17,21 +19,16 @@ export function useGroups() {
     queryFn: async (): Promise<GroupRow[]> => {
       if (!orgId) return [];
       const { data, error: err } = await supabase
-        .from("groups")
-        .select("*")
+        .from("themes")
+        .select("id, name, color, icon, type, org_id, created_at, updated_at")
         .eq("org_id", orgId)
-        .eq("is_archived", false)
-        .order("display_order", { ascending: true });
-      // 404/PGRST205 = table doesn't exist - treat as empty; PGRST116 = no rows
-      if (err && (err.code === "PGRST205" || err.code === "PGRST116" || err.message?.includes("404"))) {
-        return [];
-      }
+        .eq("type", "group")
+        .order("name", { ascending: true });
       if (err) throw err;
       return (data ?? []) as GroupRow[];
     },
     enabled: !!orgId && !orgLoading,
-    retry: false, // Don't retry on 404 (table doesn't exist)
-    staleTime: 5 * 60 * 1000, // Cache 5 min to avoid repeated 404s
+    staleTime: 5 * 60 * 1000,
   });
 
   return {
@@ -42,45 +39,23 @@ export function useGroups() {
   };
 }
 
+/** group_members table was removed in themes migration; kept for API compatibility, returns empty. */
 export function useGroupMembers(groupId?: string) {
-  const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [members, setMembers] = useState<Tables<"group_members">[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<{ id: string; group_id?: string; user_id?: string; is_deleted?: boolean }[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchMembers() {
-    if (!orgId || !groupId) {
-      setMembers([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const { data, error: err } = await supabase
-      .from("group_members")
-      .select("*")
-      .eq("group_id", groupId)
-      .eq("is_deleted", false);
-
-    if (err) setError(err.message);
-    else setMembers(data ?? []);
-
-    setLoading(false);
-  }
-
   useEffect(() => {
-    if (!orgLoading) {
-      fetchMembers();
-    }
-  }, [orgId, groupId, orgLoading]);
+    setMembers([]);
+    setLoading(false);
+  }, [groupId]);
 
-  return { members, loading, error, refresh: fetchMembers };
+  return { members, loading, error, refresh: () => {} };
 }
 
+/** task_groups was replaced by task_themes (migration 20251220000032). */
 export function useTaskGroups(taskId?: string) {
-  const [taskGroups, setTaskGroups] = useState<Tables<"task_groups">[]>([]);
+  const [taskGroups, setTaskGroups] = useState<Tables<"task_themes">[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +70,7 @@ export function useTaskGroups(taskId?: string) {
     setError(null);
 
     const { data, error: err } = await supabase
-      .from("task_groups")
+      .from("task_themes")
       .select("*")
       .eq("task_id", taskId);
 

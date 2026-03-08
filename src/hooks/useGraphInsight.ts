@@ -18,11 +18,12 @@ export interface GraphInsightResult {
 export interface GraphInsightOptions {
   start: { type: string; id: string } | null;
   depth?: number;
+  enabled?: boolean;
 }
 
 export function useGraphInsight(options: GraphInsightOptions) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const { start, depth = 3 } = options;
+  const { start, depth = 3, enabled: enabledOption = true } = options;
 
   const query = useQuery({
     queryKey: ["graph-insight", orgId, start?.type, start?.id, depth],
@@ -56,7 +57,7 @@ export function useGraphInsight(options: GraphInsightOptions) {
         riskPaths: data.riskPaths ?? [],
       };
     },
-    enabled: !!orgId && !!start?.type && !!start?.id && !orgLoading,
+    enabled: enabledOption && !!orgId && !!start?.type && !!start?.id && !orgLoading,
     staleTime: 60000,
   });
 

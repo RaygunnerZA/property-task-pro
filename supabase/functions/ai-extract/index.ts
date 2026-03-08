@@ -328,7 +328,7 @@ async function resolveEntities(ai: any, orgId: string) {
   const [spacesRes, teamsRes, groupsRes, membersRes] = await Promise.all([
     supabase.from("spaces").select("id,name").eq("org_id", orgId),
     supabase.from("teams").select("id,name").eq("org_id", orgId),
-    supabase.from("groups").select("id,name").eq("org_id", orgId),
+    supabase.from("themes").select("id,name").eq("org_id", orgId).eq("type", "group"),
     supabase.from("organisation_members").select("id,user_id,role").eq("org_id", orgId),
   ]);
 

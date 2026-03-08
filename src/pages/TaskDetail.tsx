@@ -304,7 +304,6 @@ const TaskDetail = () => {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               Upload Images
             </h3>
-            {/* #endregion */}
             <FileUploadZone
               taskId={id!}
               propertyId={task?.property_id}
@@ -416,7 +415,6 @@ const TaskDetail = () => {
             <CardTitle className="text-lg">Conversation</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* #endregion */}
             <ChatThread taskId={id!} />
           </CardContent>
         </Card>

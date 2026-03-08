@@ -88,12 +88,7 @@ export function SpaceGroupMiniCardsStrip({
               <div
                 key={space.id}
                 className="w-[120px] flex-shrink-0 rounded-[5px]"
-                onClick={() => {
-                  // #region agent log
-                  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b0bc6'},body:JSON.stringify({sessionId:'6b0bc6',location:'SpaceGroupMiniCardsStrip.tsx:wrapper',message:'Strip wrapper clicked',data:{spaceId:space.id},timestamp:Date.now()})}).catch(()=>{});
-                  // #endregion
-                  onSpaceClick?.(space.id);
-                }}
+                onClick={() => onSpaceClick?.(space.id)}
               >
                 <SpaceCard
                   space={{

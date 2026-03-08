@@ -1456,7 +1456,31 @@ export function CreateTaskModal({
 
       const taskId = newTask.id;
       console.log('[CreateTaskModal] Task created successfully:', { taskId, newTask });
-      
+
+      // Update briefing radial immediately so "total" goes up (e.g. 1 of 8)
+      if (orgId) {
+        const propId = propertyId || undefined;
+        const entry = {
+          id: taskId,
+          status: "open",
+          property_id: propId,
+          priority: (newTask as any).priority ?? "normal",
+          due_date: (newTask as any).due_date ?? null,
+        };
+        queryClient.setQueryData(
+          ["tasks-briefing", orgId, null],
+          (old: { id: string; status: string; property_id?: string }[] | undefined) =>
+            [...(Array.isArray(old) ? old : []), entry]
+        );
+        if (propId) {
+          queryClient.setQueryData(
+            ["tasks-briefing", orgId, propId],
+            (old: { id: string; status: string; property_id?: string }[] | undefined) =>
+              [...(Array.isArray(old) ? old : []), entry]
+          );
+        }
+      }
+
       // Upload attachments in background (non-blocking)
       if ((images.length > 0 || taskFiles.length > 0) && taskId && orgId) {
         const imageUploadPromises = images.map(async (tempImage, index) => {
@@ -1648,6 +1672,7 @@ export function CreateTaskModal({
         // Don't await - let uploads happen in background
         Promise.all([...imageUploadPromises, ...fileUploadPromises]).then(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
           queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
           queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
         });
@@ -1770,12 +1795,14 @@ export function CreateTaskModal({
         // Wait 2 seconds for edge function to process thumbnails, then invalidate again
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
           queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
           queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
         }, 2000);
       } else {
         // Immediate invalidation if no images
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
         queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
         queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
       }
@@ -1818,7 +1845,7 @@ export function CreateTaskModal({
       )}
 
       {/* Scrollable Content - Vertical Layout */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 pb-0 space-y-6">
         {/* Image Upload Icons */}
         <ImageUploadSection
           images={images}
@@ -1832,7 +1859,7 @@ export function CreateTaskModal({
         <div
           className={cn(
             "rounded-none transition-all duration-300 ease-out overflow-hidden",
-            shouldShowTitleField ? "mt-[14px] max-h-28 opacity-100" : "mt-0 max-h-0 opacity-0 pointer-events-none"
+            shouldShowTitleField ? "!mt-2 max-h-28 opacity-100" : "!mt-3 max-h-0 opacity-0 pointer-events-none"
           )}
         >
           <div className="relative">
@@ -1858,13 +1885,14 @@ export function CreateTaskModal({
           )}
         </div>
 
-        {/* Combined Description + Subtasks Panel */}
-        <SubtasksSection
-          subtasks={subtasks}
-          onSubtasksChange={setSubtasks}
-          description={description}
-          onDescriptionChange={setDescription}
-          className="bg-transparent"
+        {/* Description: 12px below upload when title hidden; 8px below AI title when visible */}
+        <div className={cn(shouldShowTitleField ? "!mt-2" : "!mt-0")}>
+          <SubtasksSection
+            subtasks={subtasks}
+            onSubtasksChange={setSubtasks}
+            description={description}
+            onDescriptionChange={setDescription}
+            className="bg-transparent"
           templates={templates}
           recentTemplateIds={recentTemplateIds}
           activeTemplateName={activeTemplate?.name ?? null}
@@ -1874,6 +1902,7 @@ export function CreateTaskModal({
           onDuplicateTemplate={() => openTemplateDialog("duplicate")}
           onArchiveTemplate={archiveActiveTemplate}
         />
+        </div>
 
         <div
           className={cn(

@@ -3,7 +3,6 @@ import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } fro
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/chips/filter";
 import { IconButton } from "@/components/ui/IconButton";
-import { debugLog } from "@/lib/logger";
 
 // Custom Funnel icon component (not available in lucide-react)
 const Funnel = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -159,14 +158,6 @@ export function FilterBar({
     filterId => !filterId.startsWith('filter-property-')
   );
 
-  // #region agent log
-  // Verify icons are defined after fix
-  useEffect(() => {
-    debugLog({location:'FilterBar.tsx:97',message:'Post-fix icon verification',data:{funnelDefined:typeof Funnel !== 'undefined',arrowLeftToLineDefined:typeof ArrowLeftToLine !== 'undefined',funnelXDefined:typeof FunnelX !== 'undefined'},sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'});
-  }, []);
-  // #endregion
-
-
   // Reset animation direction after animation completes
   useEffect(() => {
     if (animationDirection) {
@@ -240,42 +231,28 @@ export function FilterBar({
           {/* Level 1: Primary filters + Filter By button */}
           {navigationLevel === 'primary' && (
             <>
-              {/* #region agent log */}
-              {(() => {
-                try {
-                  const funnelEl = <Funnel className="h-[14px] w-[14px] text-foreground" />;
-                  debugLog({location:'FilterBar.tsx:244',message:'Creating Funnel element',data:{funnelDefined:typeof Funnel !== 'undefined',funnelType:typeof Funnel},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
-                  return (
-                    <button
-                      type="button"
-                      onClick={handleFilterByClick}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 py-1 rounded-[8px] flex-shrink-0",
-                        "font-mono text-[11px] uppercase tracking-wider",
-                        "select-none cursor-pointer transition-all duration-150",
-                        "bg-background",
-                        "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
-                        "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
-                      )}
-                      style={{ paddingLeft: '8px', paddingRight: '10px', height: '28px' }}
-                    >
-                      {funnelEl}
-                      <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
-                    </button>
-                  );
-                } catch (e: any) {
-                  debugLog({location:'FilterBar.tsx:244',message:'Error creating Funnel',data:{error:e?.message,stack:e?.stack},sessionId:'debug-session',runId:'run3',hypothesisId:'D'});
-                  return null;
-                }
-              })()}
-              {/* FunnelX (Clear filters) - appears when filters are selected (excluding property filters) */}
+              <button
+                type="button"
+                onClick={handleFilterByClick}
+                className={cn(
+                  "inline-flex items-center gap-1.5 py-1 rounded-[8px] flex-shrink-0",
+                  "font-mono text-[11px] uppercase tracking-wider",
+                  "select-none cursor-pointer transition-all duration-150",
+                  "bg-background",
+                  "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
+                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
+                )}
+                style={{ paddingLeft: '8px', paddingRight: '10px', height: '28px' }}
+              >
+                <Funnel className="h-[14px] w-[14px] text-foreground" />
+                <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
+              </button>
               {hasNonPropertyFilters && (
                 renderIconButton(
                   <FunnelX className="h-[14px] w-[14px] text-foreground" />,
                   handleClearAllFilters
                 )
               )}
-              {/* #endregion */}
               {mostUsedOptions.map((option, index) => {
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));

@@ -222,8 +222,9 @@ function TaskCardComponent({
         title: "Task archived",
         description: "The task has been archived and is still available to view.",
       });
-      // Invalidate queries to refresh the task list
+      // Invalidate queries to refresh the task list and briefing radial
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
       queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] });
     } catch (error) {
       toast({
@@ -529,12 +530,6 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
     prevTask?.assigned_user_id !== nextTask?.assigned_user_id ||
     JSON.stringify(prevTask?.teams) !== JSON.stringify(nextTask?.teams) ||
     JSON.stringify(prevTask?.themes) !== JSON.stringify(nextTask?.themes);
-
-  // #region agent log
-  if (prevTask?.id && (prevTask?.status !== nextTask?.status || prevTask?.title !== nextTask?.title || prevTask?.due_date !== nextTask?.due_date || prevTask?.priority !== nextTask?.priority)) {
-    fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskCard.tsx:memo',message:'H-C: memo comparator ran for task',data:{taskId:prevTask?.id,fieldsChanged,prev:{status:prevTask?.status,title:prevTask?.title,priority:prevTask?.priority,due_date:prevTask?.due_date},next:{status:nextTask?.status,title:nextTask?.title,priority:nextTask?.priority,due_date:nextTask?.due_date}},timestamp:Date.now(),hypothesisId:'H-C'})}).catch(()=>{});
-  }
-  // #endregion
 
   if (fieldsChanged) {
     return false; // Task fields changed, re-render

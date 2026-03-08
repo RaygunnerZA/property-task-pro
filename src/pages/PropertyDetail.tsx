@@ -15,6 +15,7 @@ import { propertiesService } from "@/services/properties/properties";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
+import { SidebarConcertina } from "@/components/layout/SidebarConcertina";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
@@ -33,7 +34,7 @@ import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsP
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
-import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle, LayoutGrid, CheckSquare, Package, Shield } from "lucide-react";
+import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle, LayoutGrid, CheckSquare, Package, Shield, Zap, Activity, Clock } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -240,10 +241,10 @@ export default function PropertyDetail() {
     }
   }, [assistantOpen, isLargeScreen]);
 
-  // Keep showCreateTask in sync when Create Task section is expanded
+  // Keep showCreateTask in sync when Create Task section is expanded (only on large screen where concertina is visible)
   useEffect(() => {
-    if (expandedSection === 'create') setShowCreateTask(true);
-  }, [expandedSection]);
+    if (expandedSection === 'create' && isLargeScreen) setShowCreateTask(true);
+  }, [expandedSection, isLargeScreen]);
 
   const handleOpenCreateTask = () => {
     setSelectedTaskId(null);
@@ -340,6 +341,28 @@ export default function PropertyDetail() {
 
   // Assets are already filtered by property_id from the query
   const propertyAssets = assets as PropertyAssetListItem[];
+
+  // Property compliance summary (for left column concertina)
+  const complianceSummary = useMemo(() => {
+    const expired = compliance.filter((c: any) => c.expiry_status === "expired").length;
+    const expiring = compliance.filter((c: any) => c.expiry_status === "expiring").length;
+    const valid = compliance.filter(
+      (c: any) => c.expiry_status === "valid" || c.expiry_status === "none"
+    ).length;
+    return { expired, expiring, valid };
+  }, [compliance]);
+
+  // Last 5 property tasks by updated_at for Recent Activity in left column
+  const recentTasksForBriefing = useMemo(() => {
+    if (!propertyTasks?.length) return [];
+    return [...propertyTasks]
+      .sort((a, b) => {
+        const aT = new Date(a.updated_at || a.created_at).getTime();
+        const bT = new Date(b.updated_at || b.created_at).getTime();
+        return bT - aT;
+      })
+      .slice(0, 5);
+  }, [propertyTasks]);
 
   // Get property from properties_view to access aggregated counts
   const { data: properties = [] } = usePropertiesQuery();
@@ -759,23 +782,155 @@ if (!error) {
                 </div>
               </div>
 
-              {/* Property Info Sections - Below calendar */}
+              {/* Concertina: Quick Actions, Compliance, Recent Activity, Recent Spaces, Recent Assets */}
               {id && (
                 <>
-                  <PropertySpacesList
-                    propertyId={id}
-                    tasks={propertyTasks}
-                    onSpaceClick={setSelectedSpaceId}
-                    selectedSpaceId={selectedSpaceId}
+                  <SidebarConcertina
+                    sections={[
+                      {
+                        id: "quick-actions",
+                        title: "Quick Actions",
+                        icon: Zap,
+                        defaultOpen: false,
+                        children: (
+                          <div className="space-y-1.5">
+                            <button
+                              type="button"
+                              onClick={() => navigate("/properties")}
+                              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <Plus className="h-4 w-4 text-primary shrink-0" />
+                              Add Property
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setShowCreateAsset(true)}
+                              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <Package className="h-4 w-4 text-primary shrink-0" />
+                              Add Asset
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleOpenCreateTask}
+                              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                            >
+                              <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                              Create Task
+                            </button>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: "compliance",
+                        title: "Compliance",
+                        icon: Shield,
+                        defaultOpen: false,
+                        children: (
+                          <>
+                            {complianceSummary.expired === 0 &&
+                              complianceSummary.expiring === 0 &&
+                              complianceSummary.valid === 0 ? (
+                              <p className="text-xs text-muted-foreground py-1">No compliance items</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                {complianceSummary.expired > 0 && (
+                                  <span className="text-destructive font-medium">
+                                    {complianceSummary.expired} expired
+                                  </span>
+                                )}
+                                {complianceSummary.expired > 0 &&
+                                  (complianceSummary.expiring > 0 || complianceSummary.valid > 0) &&
+                                  " · "}
+                                {complianceSummary.expiring > 0 && (
+                                  <span className="text-amber-600 font-medium">
+                                    {complianceSummary.expiring} expiring
+                                  </span>
+                                )}
+                                {(complianceSummary.expired > 0 || complianceSummary.expiring > 0) &&
+                                  complianceSummary.valid > 0 &&
+                                  " · "}
+                                {complianceSummary.valid > 0 && (
+                                  <span className="text-green-600">{complianceSummary.valid} valid</span>
+                                )}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setActiveHeaderTab("compliance")}
+                              className="mt-2 text-xs font-medium text-primary hover:underline"
+                            >
+                              View compliance →
+                            </button>
+                          </>
+                        ),
+                      },
+                      {
+                        id: "recent-activity",
+                        title: "Recent Activity",
+                        icon: Activity,
+                        defaultOpen: false,
+                        spacing: "normal",
+                        children:
+                          recentTasksForBriefing.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-1">No recent activity</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {recentTasksForBriefing.map((task) => (
+                                <button
+                                  key={task.id}
+                                  type="button"
+                                  onClick={() => handleTaskClick(task.id)}
+                                  className="w-full text-left py-2 rounded-md transition-all hover:bg-muted/50 cursor-pointer"
+                                >
+                                  <p className="text-xs font-medium truncate text-foreground">
+                                    {(task as any).title || "Untitled Task"}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                                    <Clock className="h-3 w-3" />
+                                    {format(
+                                      new Date(task.updated_at || task.created_at),
+                                      "MMM d, HH:mm"
+                                    )}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          ),
+                      },
+                      {
+                        id: "recent-spaces",
+                        title: "Recent Spaces",
+                        icon: LayoutGrid,
+                        defaultOpen: true,
+                        contentClassName: "",
+                        children: (
+                          <PropertySpacesList
+                            propertyId={id}
+                            tasks={propertyTasks}
+                            onSpaceClick={setSelectedSpaceId}
+                            selectedSpaceId={selectedSpaceId}
+                            headless
+                          />
+                        ),
+                      },
+                      {
+                        id: "recent-assets",
+                        title: "Recent Assets",
+                        icon: Package,
+                        defaultOpen: true,
+                        contentClassName: "",
+                        children: (
+                          <PropertyRecentAssetsList
+                            propertyId={id}
+                            onAssetClick={(assetId) => setSelectedAssetId(assetId)}
+                            headless
+                          />
+                        ),
+                      },
+                    ]}
                   />
-                  <PropertyRecentAssetsList
-                    propertyId={id}
-                    onAssetClick={(assetId) => setSelectedAssetId(assetId)}
-                  />
-                  <PropertyRelatedEntities
-                    propertyId={id}
-                    tasks={propertyTasks}
-                  />
+                  <PropertyRelatedEntities propertyId={id} tasks={propertyTasks} />
                 </>
               )}
             </div>

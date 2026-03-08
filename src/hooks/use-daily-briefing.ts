@@ -31,9 +31,17 @@ interface DailyBriefingData {
  * - Local weather from open-meteo.com
  * 
  * @param providedTasks - Optional array of tasks to use instead of fetching all tasks
+ * @param options.skipNetworkRequests - When true, no network requests (tasks query, user, weather) are made
  */
-export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
-  const { data: allTasks = [], isLoading: tasksLoading } = useTasksQuery();
+export function useDailyBriefing(
+  providedTasks?: any[],
+  options?: { skipNetworkRequests?: boolean }
+): DailyBriefingData {
+  const skipNetwork = options?.skipNetworkRequests === true;
+  const { data: allTasks = [], isLoading: tasksLoading } = useTasksQuery(
+    undefined,
+    { enabled: !skipNetwork }
+  );
   const tasks = providedTasks !== undefined ? providedTasks : allTasks;
   const [userFirstName, setUserFirstName] = useState<string>("");
   const [weather, setWeather] = useState<WeatherData | null>(null);
@@ -59,8 +67,9 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     return "there";
   };
 
-  // Fetch user first name
+  // Fetch user first name (skipped when skipNetworkRequests is true)
   useEffect(() => {
+    if (skipNetwork) return;
     async function fetchUserFirstName() {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
@@ -103,7 +112,7 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     }
     
     fetchUserFirstName();
-  }, []);
+  }, [skipNetwork]);
 
   // Get time-based greeting
   const greeting = useMemo(() => {
@@ -213,8 +222,9 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     }).length;
   }, [tasks]);
 
-  // Fetch weather from open-meteo.com
+  // Fetch weather from open-meteo.com (skipped when skipNetworkRequests is true)
   useEffect(() => {
+    if (skipNetwork) return;
     async function fetchWeather() {
       try {
         // Get user's location from browser
@@ -262,7 +272,7 @@ export function useDailyBriefing(providedTasks?: any[]): DailyBriefingData {
     }
     
     fetchWeather();
-  }, []);
+  }, [skipNetwork]);
 
   return {
     greeting,

@@ -98,61 +98,18 @@ export function usePropertyDocuments(
     queryFn: async (): Promise<PropertyDocument[]> => {
       if (!orgId || !propertyId) return [];
 
+      // Select only columns that exist on attachments (per src/types/supabase.ts). Extended document
+      // fields (title, category, document_type, expiry_date, etc.) are not in the schema and cause 400.
       let query = supabase
         .from("attachments")
         .select(
-          `
-          id,
-          file_url,
-          file_name,
-          file_type,
-          file_size,
-          thumbnail_url,
-          title,
-          category,
-          document_type,
-          expiry_date,
-          renewal_frequency,
-          status,
-          notes,
-          ocr_text,
-          metadata,
-          ai_confidence,
-          created_at,
-          updated_at
-        `
+          "id, file_url, file_name, file_type, file_size, thumbnail_url, ocr_text, metadata, ai_confidence, created_at, updated_at"
         )
         .eq("org_id", orgId)
         .eq("parent_type", "property")
         .eq("parent_id", propertyId)
         .order("updated_at", { ascending: false })
         .range(offset, offset + limit - 1);
-
-      if (filters?.category) {
-        query = query.eq("category", filters.category);
-      }
-
-      if (filters?.search) {
-        query = query.or(
-          `title.ilike.%${filters.search}%,file_name.ilike.%${filters.search}%,category.ilike.%${filters.search}%,ocr_text.ilike.%${filters.search}%`
-        );
-      }
-
-      if (filters?.expiringSoon) {
-        const now = new Date();
-        const thirtyDays = new Date(now);
-        thirtyDays.setDate(thirtyDays.getDate() + 30);
-        query = query
-          .not("expiry_date", "is", null)
-          .gte("expiry_date", now.toISOString().split("T")[0])
-          .lte("expiry_date", thirtyDays.toISOString().split("T")[0]);
-      }
-
-      if (filters?.expired) {
-        query = query
-          .not("expiry_date", "is", null)
-          .lt("expiry_date", new Date().toISOString().split("T")[0]);
-      }
 
       if (filters?.missing) {
         query = query.is("file_url", null);
@@ -161,50 +118,58 @@ export function usePropertyDocuments(
       if (filters?.recentlyAdded) {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        query = query.gte(
-          "created_at",
-          sevenDaysAgo.toISOString()
+        query = query.gte("created_at", sevenDaysAgo.toISOString());
+      }
+
+      const { data: rawData, error } = await query;
+      if (error) throw error;
+
+      // Map DB rows to PropertyDocument; extended fields come from metadata or null (columns not in DB).
+      const data = (rawData || []).map((row: Record<string, unknown>) => {
+        const meta = row.metadata as DocMetadata | undefined;
+        return {
+          ...row,
+          title: (meta?.title as string) ?? row.title ?? null,
+          category: (meta?.category as string) ?? row.category ?? null,
+          document_type: (meta?.document_type as string) ?? row.document_type ?? null,
+          expiry_date: (meta?.expiry_date as string) ?? row.expiry_date ?? null,
+          renewal_frequency: (meta?.renewal_frequency as string) ?? row.renewal_frequency ?? null,
+          status: (meta?.status as string) ?? row.status ?? null,
+          notes: (meta?.notes as string) ?? row.notes ?? null,
+        };
+      }) as PropertyDocument[];
+
+      let docs = data;
+
+      // Client-side filters for fields not in DB (or when metadata is used)
+      if (filters?.category) {
+        docs = docs.filter((d) => d.category === filters.category);
+      }
+      if (filters?.search) {
+        const s = filters.search.toLowerCase();
+        docs = docs.filter(
+          (d) =>
+            (d.title?.toLowerCase().includes(s)) ||
+            (d.file_name?.toLowerCase().includes(s)) ||
+            (d.category?.toLowerCase().includes(s)) ||
+            (d.ocr_text?.toLowerCase().includes(s))
         );
       }
-
-      let { data, error } = await query;
-
-      // #region agent log
-      if (error) fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'usePropertyDocuments.ts:attachments',message:'attachments query error',data:{propertyId,orgId,errorMessage:error.message,errorCode:error.code,errorDetails:error.details},timestamp:Date.now(),hypothesisId:'attachments'})}).catch(()=>{});
-      // #endregion
-
-      // Fallback: on any error, retry with base schema only (migrations may not be applied; extended columns missing)
-      if (error) {
-        const baseQuery = supabase
-          .from("attachments")
-          .select("id, file_url, file_name, file_type, file_size, thumbnail_url, created_at, updated_at")
-          .eq("org_id", orgId)
-          .eq("parent_type", "property")
-          .eq("parent_id", propertyId)
-          .order("updated_at", { ascending: false })
-          .range(offset, offset + limit - 1);
-        const baseRes = await baseQuery;
-        data = baseRes.data;
-        error = baseRes.error;
-        if (!error && data) {
-          data = data.map((row: Record<string, unknown>) => ({
-            ...row,
-            title: null,
-            category: null,
-            document_type: null,
-            expiry_date: null,
-            renewal_frequency: null,
-            status: null,
-            notes: null,
-            ocr_text: null,
-            metadata: null,
-            ai_confidence: null,
-          }));
-        }
+      if (filters?.expiringSoon) {
+        const now = new Date();
+        const thirtyDays = new Date(now);
+        thirtyDays.setDate(thirtyDays.getDate() + 30);
+        const nowStr = now.toISOString().split("T")[0];
+        const thirtyStr = thirtyDays.toISOString().split("T")[0];
+        docs = docs.filter(
+          (d) =>
+            d.expiry_date != null && d.expiry_date >= nowStr && d.expiry_date <= thirtyStr
+        );
       }
-
-      if (error) throw error;
-      let docs = (data || []) as PropertyDocument[];
+      if (filters?.expired) {
+        const today = new Date().toISOString().split("T")[0];
+        docs = docs.filter((d) => d.expiry_date != null && d.expiry_date < today);
+      }
 
       if (filters?.hazards) {
         docs = docs.filter((d) => {

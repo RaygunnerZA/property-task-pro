@@ -2,8 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useTasksQuery(propertyId?: string) {
+export interface UseTasksQueryOptions {
+  enabled?: boolean;
+}
+
+export function useTasksQuery(
+  propertyId?: string,
+  options?: UseTasksQueryOptions
+) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const enabled = options?.enabled !== false;
 
   return useQuery({
     queryKey: ["tasks", orgId, propertyId],
@@ -51,7 +59,7 @@ export function useTasksQuery(propertyId?: string) {
 
       return tasksWithImages;
     },
-    enabled: !!orgId && !orgLoading, // Only fetch when orgId is available and not loading
+    enabled: enabled && !!orgId && !orgLoading, // Only fetch when orgId is available and not loading
     staleTime: 60000, // 1 minute
   });
 }

@@ -41,8 +41,8 @@ export function PropertyIntelligencePanel({
 }: PropertyIntelligencePanelProps) {
   const { settings } = useOrgSettings();
   const automatedIntelligence = settings?.automated_intelligence ?? "suggestions_only";
-  if (automatedIntelligence === "off") return null;
 
+  // Call all hooks unconditionally to avoid "Rendered fewer hooks than expected"
   const { data, isLoading, error } = useBrainInference(
     assetVectors,
     complianceVectors,
@@ -51,6 +51,9 @@ export function PropertyIntelligencePanel({
 
   const complianceGapCount = intelligenceResult?.complianceRecommendations.length ?? 0;
   const warnings = intelligenceResult?.warnings ?? [];
+
+  // Early outs only after all hooks have run
+  if (automatedIntelligence === "off") return null;
 
   // If both Brain inference failed and there are no local intelligence rows, hide the panel
   const hasBrainData = !isLoading && !error && !!data?.predictions;

@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from "react";
 
-// #region agent log
-console.log('[ImageEditor] Module loading', { timestamp: Date.now() });
-fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ImageEditor.tsx:1',message:'ImageEditor module loading',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-// #endregion
-
 interface ImageEditorProps {
   imageUrl: string;
   onSave: (file: File) => void;

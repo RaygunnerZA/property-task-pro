@@ -379,6 +379,8 @@ export default function Dashboard() {
             onFilterClick={handleFilterClick}
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={setSelectedPropertyIds}
+            onCreateTask={handleOpenCreateTask}
+            onTaskClick={handleTaskClick}
           />
         }
         rightColumn={

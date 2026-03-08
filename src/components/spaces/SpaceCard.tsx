@@ -82,9 +82,6 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b0bc6'},body:JSON.stringify({sessionId:'6b0bc6',location:'SpaceCard.tsx:82',message:'Icon button clicked',data:{spaceId:space.id,spaceName:space.name,iconDialogOpenBefore:iconDialogOpen},timestamp:Date.now()})}).catch(()=>{});
-            // #endregion
             setIconValue({ iconName: space.icon_name || "box", color: groupColor ?? "#8EC9CE" });
             setIconDialogOpen(true);
           }}
@@ -149,12 +146,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
       </div>
 
       {/* Change Icon Dialog */}
-      <Dialog open={iconDialogOpen} onOpenChange={(open) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b0bc6'},body:JSON.stringify({sessionId:'6b0bc6',location:'SpaceCard.tsx:dialog-onOpenChange',message:'Dialog onOpenChange called',data:{newOpen:open,spaceId:space.id},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        setIconDialogOpen(open);
-      }}>
+      <Dialog open={iconDialogOpen} onOpenChange={setIconDialogOpen}>
         <DialogContent className="max-w-sm p-5" aria-describedby="space-icon-desc">
           <DialogHeader>
             <DialogTitle>Change Icon</DialogTitle>

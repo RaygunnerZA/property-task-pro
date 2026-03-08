@@ -142,7 +142,7 @@ export function ImageUploadSection({
   };
 
   return (
-    <div className={cn("space-y-3", images.length === 0 && files.length === 0 && "h-[65px]")}>
+    <div className={cn("space-y-3", images.length === 0 && files.length === 0 && "min-h-[65px]")}>
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -150,18 +150,18 @@ export function ImageUploadSection({
         onDrop={handleDrop}
         onClick={() => !dragActive && fileInputRef.current?.click()}
         className={cn(
-          "relative h-[65px] rounded-[12px] border-2 border-dashed border-white/90 bg-muted/35 transition-colors",
-          "flex items-start justify-start px-4 pt-[13px] pb-5 cursor-pointer",
+          "relative min-h-[65px] rounded-[12px] border-2 border-dashed border-white/90 bg-muted/35 transition-colors",
+          "flex items-start justify-start px-4 pr-[88px] pt-[13px] pb-5 cursor-pointer",
           dragActive && "bg-primary/15 border-white"
         )}
       >
-        <div className="text-left w-[241px] pointer-events-none">
-          <p className="flex flex-wrap text-[12px] font-normal text-muted-foreground">
+        <div className="text-left min-w-0 flex-1 pointer-events-none">
+          <p className="text-[12px] font-normal text-muted-foreground leading-tight">
             Drag & Drop or Choose File to upload
           </p>
           <p className="mt-1 text-[10px] text-primary">50 MB max file size</p>
         </div>
-        <div className="absolute top-3 right-3 flex gap-2">
+        <div className="absolute top-3 right-3 flex gap-2 shrink-0">
           <button
             type="button"
             onClick={(event) => {

@@ -7,6 +7,7 @@ import { useProperty } from "@/hooks/property/useProperty";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface PropertySpacesListProps {
   propertyId: string;
@@ -17,6 +18,8 @@ interface PropertySpacesListProps {
   groupSlug?: string;
   /** Group color for mini cards (from getSpaceGroupById) */
   groupColor?: string;
+  /** When true, omit section title (e.g. when used inside a concertina) */
+  headless?: boolean;
 }
 
 const MAX_RECENT_CARDS = 8;
@@ -33,6 +36,7 @@ export function PropertySpacesList({
   selectedSpaceId,
   groupSlug,
   groupColor,
+  headless = false,
 }: PropertySpacesListProps) {
   const { spaces: spacesAll, loading: loadingAll, refresh: refreshAll } = useSpaces(propertyId);
   const { spaces: spacesFiltered, loading: loadingFiltered, refresh: refreshFiltered } = useSpacesWithTypes(propertyId, groupSlug);
@@ -93,19 +97,33 @@ export function PropertySpacesList({
 
   return (
     <>
-      <div className="border-b border-border pt-4 px-2 pb-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-foreground">{sectionTitle}</h2>
-          <button
-            onClick={() => setShowAddSpace(true)}
-            className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
-            aria-label="Add space"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+      {!headless && (
+        <div className="border-b border-border pt-4 px-2 pb-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground">{sectionTitle}</h2>
+            <button
+              onClick={() => setShowAddSpace(true)}
+              className="p-1.5 rounded-[5px] hover:bg-primary/20 text-sidebar-muted hover:text-primary transition-all duration-200"
+              aria-label="Add space"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="pt-[2px] px-2 pb-4 w-full max-w-full overflow-x-hidden">
+      )}
+      <div className={cn("pt-[2px] px-2 pb-4 w-full max-w-full overflow-x-hidden", headless && "pt-2")}>
+        {headless && (
+          <div className="flex justify-end pb-2">
+            <button
+              onClick={() => setShowAddSpace(true)}
+              className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+              aria-label="Add space"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add space
+            </button>
+          </div>
+        )}
         {spacesLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-20 w-full rounded-lg" />
@@ -129,12 +147,7 @@ export function PropertySpacesList({
                     <div 
                       key={space.id} 
                       className="w-[120px] flex-shrink-0 rounded-[5px]"
-                      onClick={() => {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b0bc6'},body:JSON.stringify({sessionId:'6b0bc6',location:'PropertySpacesList.tsx:wrapper',message:'Wrapper div clicked',data:{spaceId:space.id},timestamp:Date.now()})}).catch(()=>{});
-                        // #endregion
-                        handleSpaceClick(space);
-                      }}
+                      onClick={() => handleSpaceClick(space)}
                     >
                       <SpaceCard
                         space={{

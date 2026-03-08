@@ -252,41 +252,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         milestones: milestones.length > 0 ? milestones : [],
       };
 
-      // #region agent log
-      const taskOrgId = (task as any)?.org_id as string | undefined;
-      // Test 1: Can we SELECT from tasks table directly?
-      const { data: taskSelectDirect, error: taskSelectError } = await supabase.from("tasks").select("id, org_id, assigned_user_id").eq("id", taskId).maybeSingle();
-      // Test 2: UPDATE with org_id in WHERE clause
-      const { data: updateWithOrgData, error: updateWithOrgError } = await supabase.from("tasks").update(updates).eq("id", taskId).eq("org_id", taskOrgId ?? "").select("id");
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-D: direct diagnostics',data:{taskId,taskOrgId,selectFromTableDirect:taskSelectDirect,selectError:taskSelectError?.message,updateWithOrgRowsAffected:(updateWithOrgData as any)?.length??0,updateWithOrgError:updateWithOrgError?.message},timestamp:Date.now(),hypothesisId:'H-D'})}).catch(()=>{});
-      // #endregion
-
       const { error: updateError, data: updateData } = await supabase
         .from("tasks")
         .update(updates)
         .eq("id", taskId)
         .select("id");
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-D: original update result',data:{updateError:updateError?.message,rowsAffected:(updateData as any)?.length??0},timestamp:Date.now(),hypothesisId:'H-D'})}).catch(()=>{});
-      // #endregion
-
       if (updateError) throw updateError;
 
       await refreshTask();
 
-      // #region agent log
-      const allQueryKeys = queryClient.getQueryCache().getAll().map(q=>q.queryKey);
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-A/H-B: queryCache keys before invalidate',data:{allQueryKeys},timestamp:Date.now(),hypothesisId:'H-A_H-B'})}).catch(()=>{});
-      // #endregion
-
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
-      // #region agent log
-      const tasksQueries = queryClient.getQueryCache().getAll().filter(q=>q.queryKey[0]==='tasks').map(q=>({key:q.queryKey,state:q.state.status,isStale:q.isStale()}));
-      fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7a02c2'},body:JSON.stringify({sessionId:'7a02c2',location:'TaskDetailPanel.tsx:handleUpdateTask',message:'H-A/H-B: tasks queries after invalidate',data:{tasksQueries},timestamp:Date.now(),hypothesisId:'H-A_H-B'})}).catch(()=>{});
-      // #endregion
-      
       toast({
         title: "Task updated",
         description: "Changes saved successfully",
@@ -898,12 +875,33 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 if (status === "completed") return;
                 if (isUpdating) return;
                 setIsUpdating(true);
+                const orgId = (task as any)?.org_id;
+                const propId = (task as any)?.property_id ?? undefined;
                 try {
                   const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
                   if (error) throw error;
                   setStatus("completed");
                   await refreshTask();
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                  // Keep briefing radial correct: add or update this task as completed so "done" goes up, not "total" down.
+                  // Do not invalidate/refetch tasks-briefing here or the refetch can overwrite with server data that excludes completed.
+                  if (orgId) {
+                    const updateBriefingCache = (key: (string | undefined)[]) => {
+                      queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
+                        const list = Array.isArray(old) ? [...old] : [];
+                        const idx = list.findIndex((t) => t.id === taskId);
+                        const entry = { id: taskId, status: "completed", property_id: propId };
+                        if (idx >= 0) {
+                          list[idx] = { ...list[idx], ...entry };
+                        } else {
+                          list.push(entry);
+                        }
+                        return list;
+                      });
+                    };
+                    updateBriefingCache(["tasks-briefing", orgId, null]);
+                    if (propId) updateBriefingCache(["tasks-briefing", orgId, propId]);
+                  }
                   toast({ title: "Task completed" });
                 } catch (err: any) {
                   toast({ title: "Couldn't complete task", description: err.message, variant: "destructive" });
