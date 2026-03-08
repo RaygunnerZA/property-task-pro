@@ -1,11 +1,16 @@
 import { useMemo, useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { togglePropertyFilter } from "@/utils/propertyFilter";
-import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle, ChevronRight, Package, CheckSquare, Shield, Clock, Zap, Activity } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface LeftColumnProps {
   tasks?: any[];
@@ -25,6 +30,8 @@ interface LeftColumnProps {
   onFilterClick?: (filterId: string) => void;
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
+  onCreateTask?: () => void;
+  onTaskClick?: (taskId: string) => void;
 }
 
 /**
@@ -46,9 +53,13 @@ export function LeftColumn({
   overdueCount,
   onFilterClick,
   selectedPropertyIds: externalSelectedPropertyIds,
-  onPropertySelectionChange
+  onPropertySelectionChange,
+  onCreateTask,
+  onTaskClick,
 }: LeftColumnProps) {
+  const navigate = useNavigate();
   const { orgId } = useActiveOrg();
+  const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
@@ -102,6 +113,25 @@ export function LeftColumn({
     });
     return counts;
   }, [tasks]);
+
+  // Last 5 tasks by updated_at for Recent activity
+  const recentTasks = useMemo(() => {
+    if (!tasks?.length) return [];
+    return [...tasks]
+      .sort((a, b) => {
+        const aT = new Date(a.updated_at || a.created_at).getTime();
+        const bT = new Date(b.updated_at || b.created_at).getTime();
+        return bT - aT;
+      })
+      .slice(0, 5);
+  }, [tasks]);
+
+  const complianceSummary = useMemo(() => {
+    const expired = compliancePortfolio.filter((c: any) => c.expiry_state === "expired").length;
+    const expiring = compliancePortfolio.filter((c: any) => c.expiry_state === "expiring").length;
+    const valid = compliancePortfolio.filter((c: any) => c.expiry_state === "valid").length;
+    return { expired, expiring, valid };
+  }, [compliancePortfolio]);
 
   // Property icon mapping
   const PROPERTY_ICONS = {
@@ -258,6 +288,152 @@ export function LeftColumn({
                 />
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Quick actions - collapsible */}
+        <div className="px-2 pb-2">
+          <div className="rounded-lg bg-card/60 shadow-e1 overflow-hidden">
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger
+                className={cn(
+                  "w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium",
+                  "text-foreground hover:bg-muted/30 transition-colors"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary shrink-0" />
+                  Quick actions
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                <div className="px-3 pb-3 pt-0 border-t border-border/50 space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddProperty(true)}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <Plus className="h-4 w-4 text-primary shrink-0" />
+                    Add Property
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/assets")}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <Package className="h-4 w-4 text-primary shrink-0" />
+                    Add Asset
+                  </button>
+                  {onCreateTask && (
+                    <button
+                      type="button"
+                      onClick={onCreateTask}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
+                    >
+                      <CheckSquare className="h-4 w-4 text-primary shrink-0" />
+                      Create Task
+                    </button>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </div>
+
+        {/* Compliance snapshot - collapsible */}
+        <div className="px-2 pb-2">
+          <div className="rounded-lg bg-card/60 shadow-e1 overflow-hidden">
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger
+                className={cn(
+                  "w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium",
+                  "text-foreground hover:bg-muted/30 transition-colors"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary shrink-0" />
+                  Compliance
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                <div className="px-3 pb-3 pt-0 border-t border-border/50">
+                  {complianceSummary.expired === 0 && complianceSummary.expiring === 0 && complianceSummary.valid === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">No compliance items</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {complianceSummary.expired > 0 && (
+                        <span className="text-destructive font-medium">{complianceSummary.expired} expired</span>
+                      )}
+                      {complianceSummary.expired > 0 && (complianceSummary.expiring > 0 || complianceSummary.valid > 0) && " · "}
+                      {complianceSummary.expiring > 0 && (
+                        <span className="text-amber-600 font-medium">{complianceSummary.expiring} expiring</span>
+                      )}
+                      {(complianceSummary.expired > 0 || complianceSummary.expiring > 0) && complianceSummary.valid > 0 && " · "}
+                      {complianceSummary.valid > 0 && (
+                        <span className="text-green-600">{complianceSummary.valid} valid</span>
+                      )}
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate("/record/compliance/portfolio")}
+                    className="mt-2 text-xs font-medium text-primary hover:underline"
+                  >
+                    View portfolio →
+                  </button>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </div>
+
+        {/* Recent activity - collapsible */}
+        <div className="px-2 pb-4">
+          <div className="rounded-lg bg-card/60 shadow-e1 overflow-hidden">
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger
+                className={cn(
+                  "w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left text-sm font-medium",
+                  "text-foreground hover:bg-muted/30 transition-colors"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary shrink-0" />
+                  Recent activity
+                </span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 data-[state=open]:rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="overflow-hidden text-sm transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+                <div className="px-3 pb-3 pt-0 border-t border-border/50 space-y-1.5">
+                  {recentTasks.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-1">No recent activity</p>
+                  ) : (
+                    recentTasks.map((task) => (
+                      <button
+                        key={task.id}
+                        type="button"
+                        onClick={() => onTaskClick?.(task.id)}
+                        className={cn(
+                          "w-full text-left py-2 rounded-md transition-all",
+                          "hover:bg-muted/50",
+                          onTaskClick && "cursor-pointer"
+                        )}
+                      >
+                        <p className="text-xs font-medium truncate text-foreground">
+                          {(task as any).title || "Untitled Task"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3" />
+                          {format(new Date(task.updated_at || task.created_at), "MMM d, HH:mm")}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </div>
