@@ -182,7 +182,7 @@ export function SubtasksSection({
       </div>
 
       {/* Subtasks Area */}
-      <div className="px-4 pb-[6px] pt-0">
+      <div className="pl-2 pr-4 pb-[6px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
       <div className="flex items-center gap-2 py-1 cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
@@ -297,7 +297,7 @@ export function SubtasksSection({
           <div className="mt-2 -mx-4 px-4 py-2 animate-fade-in">
             <div
               key={`${pickerView}-${selectedCategory}-${searchQuery.length > 0 ? "q" : "nq"}`}
-              className={cn("flex items-center gap-2 overflow-x-auto no-scrollbar", getAnimationClass())}
+              className={cn("flex items-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
             >
               {pickerView === "root" && (
                 <>

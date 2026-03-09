@@ -138,7 +138,7 @@ export function SubtaskCard({
   return <div ref={setNodeRef} style={style} className={cn("transition-all duration-150", isDragging && "opacity-50 z-50", isDeleting && "opacity-0 scale-95")}>
       <div className={cn("rounded-xl bg-transparent shadow-e1 transition-shadow", isDragging && "shadow-e2")} style={{ color: "rgba(255, 255, 255, 0)", boxShadow: "none", border: "none" }}>
         {/* Main Row */}
-        <div className="flex items-center gap-[3px] pl-0 pr-0 py-2.5 rounded" style={{ color: "rgba(255, 255, 255, 0)", backgroundColor: "rgba(255, 255, 255, 0)", height: "49px" }}>
+        <div className="flex items-center gap-[3px] pl-0 pr-0 py-0 rounded" style={{ color: "rgba(255, 255, 255, 0)", backgroundColor: "rgba(255, 255, 255, 0)", height: "42px" }}>
           {/* Drag Handle */}
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
             <GripVertical className="h-4 w-4 text-muted-foreground/40" />
@@ -152,7 +152,7 @@ export function SubtaskCard({
           {/* Input */}
           <Textarea ref={inputRef} placeholder="Add subtask..." value={subtask.title} onChange={e => onUpdate(subtask.id, {
           title: e.target.value
-        })} onKeyDown={handleKeyDown} className="flex-1 min-w-0 min-h-[32px] max-h-[64px] text-base md:text-base border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 resize-none overflow-y-auto" style={{ border: 'none', outline: 'none', color: 'rgba(42, 41, 62, 1)' }} rows={1} />
+        })} onKeyDown={handleKeyDown} className="flex-1 min-w-0 min-h-[32px] max-h-[64px] text-base md:text-base border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 resize-none overflow-y-auto" style={{ border: 'none', outline: 'none', color: 'rgba(42, 41, 62, 1)', paddingTop: '6px' }} rows={1} />
 
           {/* Badges */}
           <div className="flex items-center gap-1.5 shrink-0">
