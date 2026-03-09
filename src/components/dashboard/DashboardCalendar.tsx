@@ -125,7 +125,7 @@ export function DashboardCalendar({
         mode="single"
         selected={selectedDate}
         onSelect={onDateSelect}
-        className="w-full max-w-[245px]"
+        className="w-full max-w-[280px]"
         classNames={{
           months: "flex flex-col space-y-4 w-full",
           month: "space-y-4 w-full",
@@ -167,6 +167,7 @@ export function DashboardCalendar({
             const overdueCount = dateData?.overdue || 0;
             const hasTasks = taskCount > 0;
             const isTodayDate = isToday(date);
+            const isWeekendDate = date.getDay() === 0 || date.getDay() === 6;
             
             // Determine fill color based on task count and priorities
             let fillColor = '';
@@ -235,7 +236,9 @@ export function DashboardCalendar({
                   } : {})
                 }}
               >
-                {date.getDate()}
+                <span className={isWeekendDate ? "opacity-50" : undefined}>
+                  {date.getDate()}
+                </span>
                 {isTodayDate && (
                   <span 
                     className="absolute w-8 h-8 rounded-[12px] border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"

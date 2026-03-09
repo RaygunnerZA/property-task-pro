@@ -182,7 +182,7 @@ export function SubtasksSection({
       </div>
 
       {/* Subtasks Area */}
-      <div className="px-4 pb-[3px] pt-0">
+      <div className="px-4 pb-[6px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
       <div className="flex items-center gap-2 py-1 cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />

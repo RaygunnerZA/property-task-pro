@@ -84,9 +84,9 @@ function Calendar({
           justify-items: center !important;
         }
 
-        /* Weekend date numbers at 50% opacity */
+        /* Weekend date numbers at 50% opacity (text only) */
         .rdp-day.weekend-date {
-          opacity: 0.5;
+          color: hsl(var(--foreground) / 0.5) !important;
         }
       `}</style>
     </>

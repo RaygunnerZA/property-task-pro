@@ -200,7 +200,7 @@ export function TaskPanel({
 
   return (
     <div className="h-full flex flex-col bg-background">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[3px] pb-[3px]">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
         {/* Sticky Tab Bar */}
         <div className="sticky top-0 z-10 bg-background ml-[8px] mr-[8px] flex md:justify-between items-center">
           <TabsList
