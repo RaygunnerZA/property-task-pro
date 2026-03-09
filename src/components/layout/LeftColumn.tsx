@@ -232,7 +232,7 @@ export function LeftColumn({
               style={{ borderRadius: '13px 13px 10px 0px' }}
             >
               <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
-                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content', height: '229px' }}>
+                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content', height: '228px' }}>
                   {properties.map((property) => (
                     <div key={property.id} className="w-[195px] flex-shrink-0" style={{ maxHeight: '228px' }}>
                       <PropertyCard
@@ -252,12 +252,12 @@ export function LeftColumn({
                   ))}
                 </div>
               </div>
-              {/* Gradient overlay - right side fade, aligned to right edge of mask */}
+              {/* Gradient overlay - right side fade scroll affordance */}
               <div 
                 className="absolute top-0 right-0 bottom-0 pointer-events-none"
                 style={{
-                  width: '10px',
-                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
+                  width: '48px',
+                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.12))',
                   zIndex: 20
                 }}
               />

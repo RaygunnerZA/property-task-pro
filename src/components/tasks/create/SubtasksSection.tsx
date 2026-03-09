@@ -177,8 +177,8 @@ export function SubtasksSection({
       }}
     >
       {/* Description Area */}
-      <div className="pt-3 pb-3 bg-black/0 h-[62px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
-        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none min-h-[80px]" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+      <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
       </div>
 
       {/* Subtasks Area */}
@@ -220,7 +220,7 @@ export function SubtasksSection({
               "flex items-center justify-start gap-[5px] pt-2 mt-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
               pickerOpen
                 ? "opacity-100 pointer-events-auto"
-                : "opacity-0 pointer-events-none group-hover/subtask:opacity-100 group-hover/subtask:pointer-events-auto group-focus-within/subtask:opacity-100 group-focus-within/subtask:pointer-events-auto"
+                : "md:opacity-0 md:pointer-events-none md:group-hover/subtask:opacity-100 md:group-hover/subtask:pointer-events-auto md:group-focus-within/subtask:opacity-100 md:group-focus-within/subtask:pointer-events-auto"
             )}
           >
             <button

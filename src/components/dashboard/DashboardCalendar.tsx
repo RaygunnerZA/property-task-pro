@@ -177,24 +177,24 @@ export function DashboardCalendar({
               const totalUrgentOrOverdue = urgentCount + overdueCount;
               
               if (totalUrgentOrOverdue >= 3) {
-                // 3+ Urgent/Overdue: Red fill
-                fillColor = 'rgba(220, 38, 38, 0.6)';
+                // 3+ Urgent/Overdue: Red fill (--destructive token)
+                fillColor = 'hsl(var(--destructive) / 0.6)';
               } else if (highCount >= 3) {
-                // 3+ High: Orange fill
-                fillColor = 'rgba(245, 138, 48, 0.6)';
+                // 3+ High: Accent/orange fill (--accent token)
+                fillColor = 'hsl(var(--accent) / 0.6)';
               } else if (totalUrgentOrOverdue >= 1 || highCount >= 1) {
                 // 1-2 Urgent/High: Lighter red/orange
                 fillColor = totalUrgentOrOverdue > 0 
-                  ? 'rgba(220, 38, 38, 0.4)' 
-                  : 'rgba(245, 138, 48, 0.4)';
+                  ? 'hsl(var(--destructive) / 0.4)' 
+                  : 'hsl(var(--accent) / 0.4)';
               } else {
-                // Normal tasks: Teal fill with opacity based on count
+                // Normal tasks: Teal fill (--primary token) with opacity based on count
                 if (taskCount >= 4) {
-                  fillColor = 'rgba(78, 179, 182, 0.6)';
+                  fillColor = 'hsl(var(--primary) / 0.6)';
                 } else if (taskCount >= 2) {
-                  fillColor = 'rgba(78, 179, 182, 0.5)';
+                  fillColor = 'hsl(var(--primary) / 0.5)';
                 } else {
-                  fillColor = 'rgba(78, 179, 182, 0.4)';
+                  fillColor = 'hsl(var(--primary) / 0.4)';
                 }
               }
             }
@@ -249,87 +249,7 @@ export function DashboardCalendar({
           },
         }}
       />
-      <style>{`
-        /* Match browser-previewed nav button corners for month controls */
-        .dashboard-calendar button.rdp-button_reset.rdp-button {
-          border-radius: 12px !important;
-        }
-
-        /* Ensure cells are properly styled with max border radius */
-        .rdp-cell {
-          border-radius: 9999px !important;
-        }
-        
-        /* Ensure day buttons maintain circular shape and proper layering */
-        .rdp-day,
-        button.rdp-day {
-          border-radius: 9999px !important;
-          position: relative !important;
-          z-index: 1 !important;
-          display: grid !important;
-          align-items: center !important;
-          justify-items: center !important;
-        }
-
-        /* Keep today's date shape slightly rounded, not fully circular */
-        button.rdp-day.is-today {
-          border-radius: 8px !important;
-        }
-        
-        /* Neumorphic pressed effect for days with tasks (priority fill circles) */
-        /* Stronger inner shadow for pressed effect - top-left (darker), bottom-right (lighter) */
-        button.rdp-day.has-tasks {
-          position: relative !important;
-          box-shadow: inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), 
-                      inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17) !important;
-        }
-        
-        /* Add overlay pseudo-element for additional depth on pressed effect */
-        button.rdp-day.has-tasks::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: 10px;
-          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-          pointer-events: none;
-          z-index: 1;
-        }
-        
-        /* Ensure text is above background and overlay */
-        .rdp-day > * {
-          position: relative !important;
-          z-index: 2 !important;
-        }
-        
-        /* Ensure date number text is above overlay for has-tasks buttons */
-        button.rdp-day.has-tasks > * {
-          position: relative !important;
-          z-index: 2 !important;
-        }
-        
-        /* Today indicator circle positioning */
-        .rdp-day.is-today > span {
-          border-radius: 12px !important;
-          background-color: rgba(255, 255, 255, 0.9) !important;
-          z-index: 3 !important;
-        }
-        
-        /* Selected day styling - ensure it's visible above fills */
-        .rdp-day_selected {
-          z-index: 2 !important;
-        }
-        
-        /* Ensure proper vertical centering */
-        .rdp-cell,
-        td.rdp-cell,
-        td.h-9 {
-          display: flex !important;
-          flex-wrap: wrap !important;
-          align-items: center !important;
-          justify-content: center !important;
-        }
-        
-      `}</style>
+      {/* Calendar scoped styles live in index.css under .dashboard-calendar */}
     </div>
   );
 }

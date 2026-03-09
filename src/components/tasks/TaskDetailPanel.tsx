@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -20,6 +20,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,6 +121,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     email?: string;
   } | null>(null);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -409,7 +420,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           {title && (
             <DialogHeader className="sr-only">
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>{title}</DialogDescription>
+              <DialogDescription>View and edit task details, attachments, and activity.</DialogDescription>
             </DialogHeader>
           )}
           {content}
@@ -525,16 +536,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   onClick={() => taskImageInputRef.current?.click()}
                   disabled={isUploadingImage}
                   className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                  title="Take photo"
-                >
-                  <Camera className="h-5 w-5 text-muted-foreground" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => taskImageInputRef.current?.click()}
-                  disabled={isUploadingImage}
-                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
                   title="Upload image"
+                  aria-label="Upload image"
                 >
                   <Upload className="h-5 w-5 text-muted-foreground" />
                 </button>
@@ -557,16 +560,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               onClick={() => taskImageInputRef.current?.click()}
               disabled={isUploadingImage}
               className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-              title="Take photo"
-            >
-              <Camera className="h-5 w-5 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => taskImageInputRef.current?.click()}
-              disabled={isUploadingImage}
-              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
               title="Upload image"
+              aria-label="Upload image"
             >
               <Upload className="h-5 w-5 text-muted-foreground" />
             </button>
@@ -577,7 +572,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           type="file"
           accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
           multiple
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             const files = e.target.files;
@@ -923,15 +917,68 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (isUpdating || !task) return;
+                    setIsUpdating(true);
+                    try {
+                      const { data: newTask, error } = await supabase
+                        .from("tasks")
+                        .insert({
+                          org_id: (task as any).org_id,
+                          title: `${(task as any).title} (copy)`,
+                          property_id: (task as any).property_id ?? null,
+                          priority: (task as any).priority ?? "normal",
+                          due_date: (task as any).due_date ?? null,
+                          description: (task as any).description ?? null,
+                          status: "open",
+                        })
+                        .select("id")
+                        .single();
+                      if (error) throw error;
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                      toast({ title: "Task duplicated", description: "A copy has been added to your task list." });
+                      onClose();
+                    } catch (err: any) {
+                      toast({ title: "Couldn't duplicate task", description: err.message, variant: "destructive" });
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  }}
+                  disabled={isUpdating}
+                >
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicate
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (isUpdating) return;
+                    setIsUpdating(true);
+                    try {
+                      const { error } = await supabase
+                        .from("tasks")
+                        .update({ status: "archived" })
+                        .eq("id", taskId);
+                      if (error) throw error;
+                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                      toast({ title: "Task archived" });
+                      onClose();
+                    } catch (err: any) {
+                      toast({ title: "Couldn't archive task", description: err.message, variant: "destructive" });
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  }}
+                  disabled={isUpdating}
+                >
                   <Archive className="h-4 w-4 mr-2" />
                   Archive
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                  disabled={isUpdating}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -940,6 +987,41 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           )}
         </div>
       </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete "{(task as any)?.title ?? "this task"}" and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (isUpdating) return;
+                setIsUpdating(true);
+                try {
+                  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
+                  if (error) throw error;
+                  queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                  toast({ title: "Task deleted" });
+                  onClose();
+                } catch (err: any) {
+                  toast({ title: "Couldn't delete task", description: err.message, variant: "destructive" });
+                } finally {
+                  setIsUpdating(false);
+                  setShowDeleteDialog(false);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 

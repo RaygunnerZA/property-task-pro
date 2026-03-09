@@ -3,6 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { X, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, Shield, Box, Tag, Users } from "lucide-react";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -207,6 +217,14 @@ export function CreateTaskModal({
     lastName?: string;
     email?: string;
   } | null>(null);
+  // Pending template import awaiting user choice (replace vs append)
+  const [pendingTemplateImport, setPendingTemplateImport] = useState<{
+    subtasks: SubtaskInput[];
+    templateId: string;
+    templateName: string;
+  } | null>(null);
+  // Pending archive confirmation
+  const [showArchiveTemplateDialog, setShowArchiveTemplateDialog] = useState(false);
 
   const minuteKeyFromDate = (date: Date) => {
     const y = date.getFullYear();
@@ -384,20 +402,19 @@ export function CreateTaskModal({
     }
 
     const hasExistingSubtasks = subtasks.some((subtask) => subtask.title.trim().length > 0);
-    let shouldReplace = true;
     if (hasExistingSubtasks) {
-      shouldReplace = window.confirm("Replace existing subtasks? Click Cancel to append.");
+      // Show AlertDialog to let user choose replace or append
+      setPendingTemplateImport({ subtasks: parsedSubtasks, templateId: template.id, templateName: template.name });
+      return;
     }
 
-    const mergedSubtasks = shouldReplace ? parsedSubtasks : [...subtasks, ...parsedSubtasks];
+    // No existing subtasks — import directly
     setTemplateId(template.id);
-    setSubtasks(mergedSubtasks);
+    setSubtasks(parsedSubtasks);
     rememberRecentTemplate(template.id);
     toast({
       title: "Checklist imported",
-      description: shouldReplace
-        ? `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`
-        : `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} appended from "${template.name}".`
+      description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`
     });
   }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
 
@@ -551,9 +568,12 @@ export function CreateTaskModal({
       });
       return;
     }
+    // Open confirmation dialog instead of window.confirm
+    setShowArchiveTemplateDialog(true);
+  }, [activeTemplate, orgId, toast]);
 
-    const confirmed = window.confirm(`Archive "${activeTemplate.name}"? This will remove it from the checklist picker.`);
-    if (!confirmed) return;
+  const confirmArchiveTemplate = useCallback(async () => {
+    if (!orgId || !activeTemplate) return;
 
     const { error } = await supabase
       .from("checklist_templates")
@@ -571,6 +591,7 @@ export function CreateTaskModal({
     }
 
     setTemplateId("");
+    setShowArchiveTemplateDialog(false);
     await refreshChecklistTemplates();
     toast({
       title: "Template archived",
@@ -1417,17 +1438,8 @@ export function CreateTaskModal({
       
       // Simplified: Use direct insert instead of RPC for reliability
       // RLS is now fixed, so we can use standard Supabase client
-      console.log('[CreateTaskModal] Creating task with:', {
-        orgId,
-        title: finalTitle,
-        propertyId: propertyId || null,
-        priority: dbPriority,
-        dueDate: dueDateValue,
-        description: description.trim() || null,
-        assignedUserId: finalAssignedUserId,
-        pendingInvitations: pendingInvitations.length,
-      });
-      
+      // Debug logging: wrap in if (import.meta.env.DEV) { console.log(...) }
+      // Never log raw user data unguarded in production.
       const { data: newTask, error: createError } = await supabase
         .from("tasks")
         .insert({
@@ -1455,7 +1467,6 @@ export function CreateTaskModal({
       }
 
       const taskId = newTask.id;
-      console.log('[CreateTaskModal] Task created successfully:', { taskId, newTask });
 
       // Update briefing radial immediately so "total" goes up (e.g. 1 of 8)
       if (orgId) {
@@ -1702,16 +1713,12 @@ export function CreateTaskModal({
           theme_id: themeId,
         }));
         
-        console.log('[CreateTaskModal] Linking themes:', { taskId, themeIds: resolvedThemeIds });
         const { error: themeLinkError } = await supabase
           .from("task_themes")
           .insert(themeInserts);
         
         if (themeLinkError) {
           console.error("[CreateTaskModal] Error linking themes to task:", themeLinkError);
-          // Don't throw - task is already created, just log the error
-        } else {
-          console.log('[CreateTaskModal] Themes linked successfully');
         }
       }
       
@@ -1722,16 +1729,12 @@ export function CreateTaskModal({
           team_id: teamId,
         }));
         
-        console.log('[CreateTaskModal] Linking teams:', { taskId, teamIds: assignedTeamIds });
         const { error: teamLinkError } = await supabase
           .from("task_teams")
           .insert(teamInserts);
         
         if (teamLinkError) {
           console.error("[CreateTaskModal] Error linking teams to task:", teamLinkError);
-          // Don't throw - task is already created, just log the error
-        } else {
-          console.log('[CreateTaskModal] Teams linked successfully');
         }
       }
 
@@ -1743,16 +1746,12 @@ export function CreateTaskModal({
           asset_id: assetId,
         }));
 
-        console.log('[CreateTaskModal] Linking assets:', { taskId, assetIds: realAssetIds });
         const { error: assetLinkError } = await supabase
           .from("task_assets")
           .insert(assetInserts);
 
         if (assetLinkError) {
           console.error("[CreateTaskModal] Error linking assets to task:", assetLinkError);
-          // Don't throw - task is already created, just log the error
-        } else {
-          console.log('[CreateTaskModal] Assets linked successfully');
         }
       }
       
@@ -1764,12 +1763,6 @@ export function CreateTaskModal({
         
         if (pendingInv) {
           // TODO: Create invitation record and send email with magic link
-          // For now, log that we need to handle this
-          console.log('[CreateTaskModal] Pending invitation for task:', {
-            taskId,
-            invitation: pendingInv,
-          });
-          
           // The chip is already created and dimmed in the UI
           // When the user validates/registers or visits via magic link,
           // we'll need to update the task's assigned_user_id
@@ -1780,13 +1773,6 @@ export function CreateTaskModal({
       const createdEntities = [];
       if (ghostSpaces.length > 0) createdEntities.push(`${ghostSpaces.length} space${ghostSpaces.length > 1 ? 's' : ''}`);
       if (ghostThemes.length > 0) createdEntities.push(`${ghostThemes.length} theme${ghostThemes.length > 1 ? 's' : ''}`);
-      
-      console.log('[CreateTaskModal] Task creation complete:', {
-        taskId,
-        orgId,
-        imageCount: images.length,
-        fileCount: taskFiles.length,
-      });
       
       // Invalidate queries to refresh task lists and details
       // If images were uploaded, we already invalidated above, but invalidate again
@@ -1905,13 +1891,15 @@ export function CreateTaskModal({
         </div>
 
         <div
+          aria-hidden={!shouldShowDetailsArea}
           className={cn(
-            "transition-all duration-500 ease-out",
+            "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
             shouldShowDetailsArea
-              ? "opacity-100 max-h-[2400px] mt-0"
-              : "opacity-0 max-h-0 overflow-hidden pointer-events-none mt-0"
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0 pointer-events-none"
           )}
         >
+        <div className="overflow-hidden">
           {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
           <div className="space-y-0 flex flex-col mt-[15px]">
             {CREATE_TASK_SECTIONS.map(({ id, instruction, valueLabel, Icon }) =>
@@ -2099,17 +2087,21 @@ export function CreateTaskModal({
               </div>
             </div>}
         </div>
-      </div>
+        </div>{/* end overflow-hidden */}
+      </div>{/* end grid-rows animation */}
 
       {/* Footer */}
       <div
+        aria-hidden={!shouldShowDetailsArea}
         className={cn(
-          "transition-all duration-500 ease-out flex flex-col gap-3 border-t border-transparent bg-transparent backdrop-blur text-foreground",
+          "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
           shouldShowDetailsArea
-            ? "opacity-100 max-h-60 px-4 pt-[6px] pb-6"
-            : "opacity-0 max-h-0 overflow-hidden pointer-events-none p-0 pb-0 border-t-0"
+            ? "grid-rows-[1fr] opacity-100"
+            : "grid-rows-[0fr] opacity-0 pointer-events-none"
         )}
       >
+      <div className="overflow-hidden">
+      <div className="flex flex-col gap-3 border-t border-transparent bg-transparent backdrop-blur text-foreground px-4 pt-[6px] pb-6">
         {/* Clarity State */}
         {clarityState && (
           <ClarityState
@@ -2123,35 +2115,19 @@ export function CreateTaskModal({
           <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          {clarityState?.severity === 'blocking' ? (
-            <Button 
-              variant="outline" 
-              className="flex-1 shadow-e1" 
-              onClick={async () => {
-                // Save as draft functionality
-                toast({
-                  title: "Draft saved",
-                  description: "Task saved as draft. You can continue later.",
-                });
-                onOpenChange(false);
-              }}
-              disabled={isSubmitting}
-            >
-              Save Draft
-            </Button>
-          ) : (
-            <Button 
-              className="flex-1 shadow-primary-btn" 
-              onClick={handleSubmit} 
-              // SUBMISSION GUARDRAIL: Disable if unresolved action chips exist
-              // Action chips must be resolved into entities or explicitly removed
-              disabled={isSubmitting || (clarityState?.severity === 'blocking') || verbChips.length > 0}
-            >
-              {isSubmitting ? "Creating..." : "Create Task"}
-            </Button>
-          )}
+          <Button 
+            className="flex-1 shadow-primary-btn" 
+            onClick={handleSubmit} 
+            // SUBMISSION GUARDRAIL: Disable if clarity is blocking or unresolved verb chips exist
+            disabled={isSubmitting || (clarityState?.severity === 'blocking') || verbChips.length > 0}
+            title={clarityState?.severity === 'blocking' ? clarityState.message : undefined}
+          >
+            {isSubmitting ? "Creating..." : "Create Task"}
+          </Button>
         </div>
-      </div>
+      </div>{/* end content div */}
+      </div>{/* end overflow-hidden */}
+      </div>{/* end grid-rows animation */}
     </div>;
 
   // Shared invite modal renderer (must exist for every variant path).
@@ -2253,12 +2229,79 @@ export function CreateTaskModal({
     );
   };
 
+  const renderAlertDialogs = () => (
+    <>
+      {/* Template import: replace vs append */}
+      <AlertDialog open={!!pendingTemplateImport} onOpenChange={(open) => !open && setPendingTemplateImport(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing checklist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You already have checklist items. Do you want to replace them with "{pendingTemplateImport?.templateName}", or add the new items to the end?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setPendingTemplateImport(null)}>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              className="shadow-e1"
+              onClick={() => {
+                if (!pendingTemplateImport) return;
+                setTemplateId(pendingTemplateImport.templateId);
+                setSubtasks((prev) => [...prev, ...pendingTemplateImport.subtasks]);
+                rememberRecentTemplate(pendingTemplateImport.templateId);
+                toast({ title: "Checklist appended", description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} added from "${pendingTemplateImport.templateName}".` });
+                setPendingTemplateImport(null);
+              }}
+            >
+              Append
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingTemplateImport) return;
+                setTemplateId(pendingTemplateImport.templateId);
+                setSubtasks(pendingTemplateImport.subtasks);
+                rememberRecentTemplate(pendingTemplateImport.templateId);
+                toast({ title: "Checklist imported", description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} loaded from "${pendingTemplateImport.templateName}".` });
+                setPendingTemplateImport(null);
+              }}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Archive template confirmation */}
+      <AlertDialog open={showArchiveTemplateDialog} onOpenChange={setShowArchiveTemplateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{activeTemplate?.name}" will be removed from the checklist picker. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmArchiveTemplate}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
   // For column variant on wide screens: headless = content only (concertina provides header)
   if (variant === "column" && headless) {
     return <>
       {content}
       {renderTemplateDialog()}
       {renderInviteModal()}
+      {renderAlertDialogs()}
     </>;
   }
 
@@ -2306,6 +2349,7 @@ export function CreateTaskModal({
         </div>
         {renderTemplateDialog()}
         {renderInviteModal()}
+        {renderAlertDialogs()}
       </>
     );
   }
@@ -2321,6 +2365,7 @@ export function CreateTaskModal({
       </Drawer>
       {renderTemplateDialog()}
       {renderInviteModal()}
+      {renderAlertDialogs()}
     </>;
   }
   return <>
@@ -2335,5 +2380,6 @@ export function CreateTaskModal({
     </Dialog>
     {renderTemplateDialog()}
     {renderInviteModal()}
+    {renderAlertDialogs()}
   </>;
 }

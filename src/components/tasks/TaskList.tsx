@@ -445,16 +445,8 @@ export function TaskList({
         icon: <Building2 className="h-4 w-4" />,
       })),
     },
-    {
-      id: "category",
-      label: "Category",
-      options: categories.map((category) => ({
-        id: `filter-category-${category.id}`,
-        label: category.name,
-        icon: <Tag className="h-4 w-4" />,
-        color: category.color || undefined,
-      })),
-    },
+    // TODO: Re-enable category filter once categories are added to tasks_view
+    // { id: "category", label: "Category", options: categories.map(...) }
   ];
 
   const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
@@ -570,7 +562,7 @@ export function TaskList({
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}
-      <div className="flex-1 flex flex-col min-h-0 max-h-[600px] overflow-y-auto rounded-[12px]">
+      <div className="flex-1 flex flex-col min-h-0 max-h-[calc(100vh-280px)] overflow-y-auto rounded-[12px]">
         {/* Show empty state if filters are active but no tasks match */}
         {hasActiveFilters && hasNoMatchingTasks ? (
           <EmptyState 

@@ -32,7 +32,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
   const hasHeader = !!header;
 
   const stickyColClass = hasHeader
-    ? "h-[calc(100vh-100px)] sticky top-[100px] w-[280px]"
+    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[280px]"
     : "h-screen sticky top-0 w-[280px]";
 
   return (
@@ -91,7 +91,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
 
         {/* Third Column: Flexible width, top-padded to clear header */}
         {hasThirdColumn && (
-          <div className={`overflow-y-auto flex-1 ${hasHeader ? 'pt-[100px]' : ''}`}>
+          <div className={`overflow-y-auto flex-1 ${hasHeader ? 'pt-[var(--header-height)]' : ''}`}>
             {thirdColumn}
           </div>
         )}

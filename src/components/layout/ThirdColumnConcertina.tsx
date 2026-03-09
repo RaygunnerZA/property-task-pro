@@ -75,6 +75,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
 
             <div
               id={`concertina-body-${section.id}`}
+              aria-hidden={!isExpanded}
               className={cn(
                 "overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out",
                 isExpanded ? "max-h-[70vh] opacity-100 overflow-y-auto" : "max-h-0 opacity-0 pointer-events-none"

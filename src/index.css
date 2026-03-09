@@ -9,6 +9,9 @@
 
 @layer base {
   :root {
+    /* Layout */
+    --header-height: 100px;
+
     /* Core Background & Foreground */
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
@@ -584,5 +587,75 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+
+  /* ── DashboardCalendar scoped styles ───────────────────────────────────── */
+  /* Replaces the inline <style> block that was injected per-render.          */
+  .dashboard-calendar button.rdp-button_reset.rdp-button {
+    border-radius: 12px;
+  }
+
+  .dashboard-calendar .rdp-cell {
+    border-radius: 9999px;
+  }
+
+  .dashboard-calendar .rdp-day,
+  .dashboard-calendar button.rdp-day {
+    border-radius: 9999px;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+  }
+
+  .dashboard-calendar button.rdp-day.is-today {
+    border-radius: 8px;
+  }
+
+  .dashboard-calendar button.rdp-day.has-tasks {
+    position: relative;
+    box-shadow:
+      inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41),
+      inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17);
+  }
+
+  .dashboard-calendar button.rdp-day.has-tasks::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .dashboard-calendar .rdp-day > * {
+    position: relative;
+    z-index: 2;
+  }
+
+  .dashboard-calendar button.rdp-day.has-tasks > * {
+    position: relative;
+    z-index: 2;
+  }
+
+  .dashboard-calendar .rdp-day.is-today > span {
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.9);
+    z-index: 3;
+  }
+
+  .dashboard-calendar .rdp-day_selected {
+    z-index: 2;
+  }
+
+  .dashboard-calendar .rdp-cell,
+  .dashboard-calendar td.rdp-cell,
+  .dashboard-calendar td.h-9 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
   }
 }
