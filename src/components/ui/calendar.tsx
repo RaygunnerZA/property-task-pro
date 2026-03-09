@@ -7,11 +7,20 @@ import { buttonVariants } from "@/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  weekStartsOn = 1,
+  modifiers,
+  modifiersClassNames,
+  ...props
+}: CalendarProps) {
   return (
     <>
       <DayPicker
         showOutsideDays={showOutsideDays}
+        weekStartsOn={weekStartsOn}
         className={cn("py-[5px] px-1.5", className)}
         classNames={{
           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -42,6 +51,14 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
           day_hidden: "invisible",
           ...classNames,
         }}
+        modifiers={{
+          weekend: { dayOfWeek: [0, 6] },
+          ...modifiers,
+        }}
+        modifiersClassNames={{
+          weekend: "weekend-date",
+          ...modifiersClassNames,
+        }}
         components={{
           IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
           IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
@@ -65,6 +82,11 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
           display: grid !important;
           align-items: center !important;
           justify-items: center !important;
+        }
+
+        /* Weekend date numbers at 50% opacity */
+        .rdp-day.weekend-date {
+          opacity: 0.5;
         }
       `}</style>
     </>

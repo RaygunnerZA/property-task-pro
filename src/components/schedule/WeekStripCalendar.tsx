@@ -77,6 +77,7 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
           const isSelected = iso === selectedISO;
           const isToday = iso === todayISO;
           const hasItems = daysWithItems.includes(iso);
+          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
           return (
             <button
@@ -94,7 +95,9 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
               </span>
 
               {/* Date number */}
-              <span className="text-sm font-bold">{dayNum(date)}</span>
+              <span className={`text-sm font-bold ${isWeekend ? "opacity-50" : ""}`}>
+                {dayNum(date)}
+              </span>
 
               {/* DOT INDICATOR */}
               {hasItems && !isSelected && (
