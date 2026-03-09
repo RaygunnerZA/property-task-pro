@@ -214,7 +214,7 @@ export function DailyBriefingCard({
             setApi={handleCarouselApi}
             className="w-full"
           >
-            <CarouselContent className="-ml-2">
+            <CarouselContent className="-ml-2 justify-center items-center gap-[11px]">
               {slides.map((slide) => (
                 <CarouselItem key={slide.id} className="pl-2 basis-full flex-none min-w-0">
                   <div className="flex flex-col items-center justify-center">
@@ -246,18 +246,18 @@ export function DailyBriefingCard({
               onClick={(e) => { e.stopPropagation(); carouselApi?.scrollPrev(); }}
               disabled={!carouselApi?.canScrollPrev}
               aria-label="Previous slide"
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-e1 bg-card hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
+              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
             >
-              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+              <ChevronLeft className="h-4 w-4 text-white" />
             </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); carouselApi?.scrollNext(); }}
               disabled={!carouselApi?.canScrollNext}
               aria-label="Next slide"
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-e1 bg-card hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
+              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
             >
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <ChevronRight className="h-4 w-4 text-white" />
             </button>
           </div>
         </div>
