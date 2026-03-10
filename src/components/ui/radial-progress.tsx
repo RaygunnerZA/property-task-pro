@@ -55,7 +55,7 @@ export function RadialProgress({
           fill="none"
           stroke="currentColor"
           strokeWidth={thickness}
-          className="text-muted/40"
+          className="text-muted/90"
         />
         {/* Progress arc with rounded ends */}
         <circle

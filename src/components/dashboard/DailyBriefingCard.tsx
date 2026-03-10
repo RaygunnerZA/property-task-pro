@@ -223,7 +223,7 @@ export function DailyBriefingCard({
                     ) : (
                       <RadialProgress
                         value={slide.value}
-                        size={112}
+                        size={90}
                         thickness={15}
                         aria-label={`${slide.label}: ${slide.value}%`}
                       />
