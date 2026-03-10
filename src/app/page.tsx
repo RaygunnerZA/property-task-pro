@@ -269,7 +269,7 @@ export default function Dashboard() {
   const detailsSectionTitle = selectedTaskId ? "Task Details" : "Details";
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col pr-2 pb-0 pl-2">
       <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-0">Task Workbench</h2>
       <div className="pb-0">
         <CreateTaskModal
@@ -279,7 +279,6 @@ export default function Dashboard() {
           variant="column"
           headless
           prefillFromLastUsedProperty={false}
-          collapseDetails={Boolean(selectedTaskId)}
         />
       </div>
       <ThirdColumnConcertina

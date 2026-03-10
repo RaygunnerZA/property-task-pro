@@ -2,7 +2,7 @@ import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
 import { Home, Clock, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { archiveTask } from "@/services/tasks/taskMutations";
+import { updateTaskFields } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -99,7 +99,7 @@ function TaskCardComponent({
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [isArchiving, setIsArchiving] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   
   // Memoize task mapping and image parsing to prevent re-renders
   // Only recalculate when task data actually changes, not when object reference changes
@@ -213,14 +213,14 @@ function TaskCardComponent({
   // Memoize handleDone to prevent recreation on every render
   const handleDone = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
-    if (!task?.id || !orgId || isArchiving) return;
-    
-    setIsArchiving(true);
+    if (!task?.id || isCompleting) return;
+
+    setIsCompleting(true);
     try {
-      await archiveTask(task.id, orgId);
+      await updateTaskFields(task.id, { status: 'completed' });
       toast({
-        title: "Task archived",
-        description: "The task has been archived and is still available to view.",
+        title: "Task completed",
+        description: "The task has been marked as complete.",
       });
       // Invalidate queries to refresh the task list and briefing radial
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -229,13 +229,13 @@ function TaskCardComponent({
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to archive task. Please try again.",
+        description: "Failed to complete task. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsArchiving(false);
+      setIsCompleting(false);
     }
-  }, [task?.id, orgId, isArchiving, toast, queryClient]);
+  }, [task?.id, isCompleting, toast, queryClient, orgId]);
   
   // Don't show Done button if task is already archived or completed
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';

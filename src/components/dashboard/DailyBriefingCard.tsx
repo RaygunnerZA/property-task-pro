@@ -216,7 +216,7 @@ export function DailyBriefingCard({
           >
             <CarouselContent className="-ml-2 justify-center items-center gap-[11px]">
               {slides.map((slide) => (
-                <CarouselItem key={slide.id} className="pl-2 basis-full flex-none min-w-0">
+                <CarouselItem key={slide.id} className="pl-2 basis-full flex-none min-w-0 font-medium">
                   <div className="flex flex-col items-center justify-center">
                     {effectivePropertyId && graphLoading && slide.id === "radial" ? (
                       <div className="w-[7rem] h-[7rem] rounded-full bg-muted/50 animate-pulse" />
@@ -224,7 +224,7 @@ export function DailyBriefingCard({
                       <RadialProgress
                         value={slide.value}
                         size={112}
-                        thickness={22}
+                        thickness={15}
                         aria-label={`${slide.label}: ${slide.value}%`}
                       />
                     )}

@@ -23,11 +23,17 @@ export function RadialProgress({
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (clampedValue / 100) * circumference;
+  const innerR = radius - thickness / 2;
 
   return (
     <div
       className={cn("relative flex items-center justify-center", className)}
-      style={{ width: size, height: size }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        boxShadow: "inset 2px 3px 3px 0px rgba(0, 0, 0, 0.23), inset -1.6px -4px 5.4px 0px rgba(255, 255, 255, 1)",
+      }}
       role="progressbar"
       aria-valuenow={clampedValue}
       aria-valuemin={0}
@@ -39,6 +45,7 @@ export function RadialProgress({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         className="-rotate-90"
+        style={{ filter: "drop-shadow(0px 2px 6px rgba(142,201,206,0.45))" }}
       >
         {/* Background track */}
         <circle
@@ -62,11 +69,21 @@ export function RadialProgress({
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           className="text-primary transition-[stroke-dashoffset] duration-500 ease-out"
+          style={{ color: "rgba(133, 186, 188, 0.96)" }}
+        />
+        {/* Inner edge overlay — shadow falls outward over the ring from the centre hole */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={innerR}
+          fill="hsl(var(--background))"
+          stroke="none"
+          style={{ filter: "drop-shadow(0px 0px 4px rgba(0, 0, 0, 0.28))" }}
         />
       </svg>
       <span
-        className="absolute inset-0 flex items-center justify-center font-mono font-extrabold text-foreground"
-        style={{ fontSize: size * 0.2 }}
+        className="absolute inset-0 flex items-center justify-center font-mono"
+        style={{ fontSize: Math.round(size * 0.179), color: "rgba(133, 186, 188, 1)" }}
       >
         {Math.round(clampedValue)}%
       </span>

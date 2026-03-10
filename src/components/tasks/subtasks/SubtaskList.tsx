@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
 import { SubtaskCard, SubtaskData } from "./SubtaskCard";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
 
 interface SubtaskListProps {
   subtasks: SubtaskData[];
@@ -34,6 +35,7 @@ export function SubtaskList({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const { members } = useOrgMembers();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -116,6 +118,7 @@ export function SubtaskList({
         title: "",
         is_yes_no: false,
         requires_signature: false,
+        step_type: "check",
       };
 
       const newSubtasks = [...subtasks];
@@ -173,6 +176,7 @@ export function SubtaskList({
               index={index}
               isCreator={isCreator}
               autoFocus={focusedId === subtask.id}
+              members={members}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onDuplicate={handleDuplicate}

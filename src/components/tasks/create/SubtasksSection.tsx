@@ -69,7 +69,8 @@ export function SubtasksSection({
         id: crypto.randomUUID(),
         title: "",
         is_yes_no: false,
-        requires_signature: false
+        requires_signature: false,
+        step_type: "check",
       };
       onSubtasksChange([newSubtask]);
     }
@@ -182,12 +183,12 @@ export function SubtasksSection({
       </div>
 
       {/* Subtasks Area */}
-      <div className="pl-2 pr-4 pb-[6px] pt-0">
-        {showPlaceholder ? (/* Empty State - Add Subtask Placeholder */
+      <div className="pl-2 pr-3 pb-[6px] pt-0">
+        {showPlaceholder ? (/* Empty State - Add Step Placeholder */
       <div className="flex items-center gap-2 py-1 cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
             <span className="flex-1 text-muted-foreground/50 text-sm">
-              Add subtask
+              Add step
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -197,7 +198,7 @@ export function SubtasksSection({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-card border shadow-e2">
                 <DropdownMenuItem onClick={handleAddFirstSubtask}>
-                  Add Subtask
+                  Add Step
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -217,7 +218,7 @@ export function SubtasksSection({
         {!activeTemplateName ? (
           <div
             className={cn(
-              "flex items-center justify-start gap-[5px] pt-2 mt-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
+              "flex items-center justify-end gap-[5px] pt-2 mt-1 pr-0 pb-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
               pickerOpen
                 ? "opacity-100 pointer-events-auto"
                 : "md:opacity-0 md:pointer-events-none md:group-hover/subtask:opacity-100 md:group-hover/subtask:pointer-events-auto md:group-focus-within/subtask:opacity-100 md:group-focus-within/subtask:pointer-events-auto"
@@ -297,7 +298,7 @@ export function SubtasksSection({
           <div className="mt-2 -mx-4 px-4 py-2 animate-fade-in">
             <div
               key={`${pickerView}-${selectedCategory}-${searchQuery.length > 0 ? "q" : "nq"}`}
-              className={cn("flex items-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
+              className={cn("flex items-center justify-end gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
             >
               {pickerView === "root" && (
                 <>
