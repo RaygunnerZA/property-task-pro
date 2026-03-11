@@ -58,24 +58,27 @@ export function SubtaskOptionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-card border-0 shadow-e2 rounded-xl">
-          <DropdownMenuItem onClick={onToggleRequired} className="gap-2 text-sm">
+          <DropdownMenuItem
+            onClick={onToggleRequired}
+            className={`gap-2 text-sm ${!isRequired ? "text-teal-700 focus:text-teal-700" : ""}`}
+          >
             <Star
-              className={`h-4 w-4 ${isRequired ? "text-[#EB6834] fill-[#EB6834]" : "text-muted-foreground"}`}
+              className={`h-4 w-4 ${isRequired ? "text-[#EB6834] fill-[#EB6834]" : "text-teal-600"}`}
             />
             {isRequired ? "Remove Required" : "Mark Required"}
             {isRequired && <Check className="h-3.5 w-3.5 text-[#EB6834] ml-auto" />}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenAssignPicker} className="gap-2 text-sm">
-            <User className="h-4 w-4 text-muted-foreground" />
+            <User className="h-4 w-4 text-current" />
             {assignedUserName ? `Assigned: ${assignedUserName}` : "Assign to User"}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onAddNote} className="gap-2 text-sm">
-            <StickyNote className="h-4 w-4 text-muted-foreground" />
+            <StickyNote className="h-4 w-4 text-current" />
             {hasNote ? "Remove Note" : "Add Note"}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onToggleFollowupIfFailed} className="gap-2 text-sm">
             <GitBranch
-              className={`h-4 w-4 ${hasFollowupIfFailed ? "text-amber-500" : "text-muted-foreground"}`}
+              className={`h-4 w-4 ${hasFollowupIfFailed ? "text-amber-500" : "text-current"}`}
             />
             {hasFollowupIfFailed ? "Remove Follow-up" : "Add Follow-up if Failed"}
             {hasFollowupIfFailed && <Check className="h-3.5 w-3.5 text-amber-500 ml-auto" />}

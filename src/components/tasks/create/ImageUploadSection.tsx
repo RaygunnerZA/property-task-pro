@@ -156,7 +156,7 @@ export function ImageUploadSection({
         )}
       >
         <div className="text-left min-w-0 flex-1 pointer-events-none">
-          <p className="text-[12px] font-normal text-muted-foreground leading-tight">
+          <p className="text-[12px] font-normal text-muted-foreground pr-[5px] leading-[17px]">
             Drag & Drop or Choose File to upload
           </p>
           <p className="mt-1 text-[10px] text-primary">50 MB max file size</p>
