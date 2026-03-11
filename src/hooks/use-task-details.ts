@@ -121,7 +121,7 @@ export function useTaskDetails(taskId: string | undefined) {
       if (!taskId || !orgId) return [];
       const { data, error } = await supabase
         .from("attachments")
-        .select("id, file_url, thumbnail_url, file_name, file_type, created_at, parent_type, parent_id, org_id")
+        .select("id, file_url, thumbnail_url, optimized_url, file_name, file_type, annotation_json, created_at, parent_type, parent_id, org_id")
         .eq("parent_type", "task")
         .eq("parent_id", taskId)
         .eq("org_id", orgId)
@@ -135,8 +135,10 @@ export function useTaskDetails(taskId: string | undefined) {
         id: att.id,
         file_url: att.file_url,
         thumbnail_url: att.thumbnail_url,
+        optimized_url: att.optimized_url,
         file_name: att.file_name,
         file_type: att.file_type,
+        annotation_json: Array.isArray(att.annotation_json) ? att.annotation_json : [],
         created_at: att.created_at,
       }));
     },
@@ -176,8 +178,14 @@ export function useTaskDetails(taskId: string | undefined) {
         return [];
       }
     })();
-    const primaryImageUrl = resolvedImages.length > 0
-      ? (resolvedImages[0].thumbnail_url || resolvedImages[0].file_url)
+    const firstImageAttachment = resolvedImages.find((attachment: any) => {
+      const fileType = String(attachment?.file_type || "").toLowerCase();
+      const fileName = String(attachment?.file_name || "").toLowerCase();
+      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+    });
+    const primarySourceAttachment = firstImageAttachment || resolvedImages[0];
+    const primaryImageUrl = primarySourceAttachment
+      ? (primarySourceAttachment.thumbnail_url || primarySourceAttachment.file_url)
       : null;
 
     return {

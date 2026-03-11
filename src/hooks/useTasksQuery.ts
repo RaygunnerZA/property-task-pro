@@ -43,8 +43,14 @@ export function useTasksQuery(
           try {
             const images = typeof task.images === 'string' ? JSON.parse(task.images) : task.images;
             if (Array.isArray(images) && images.length > 0) {
-              // Use the first image's thumbnail_url or file_url
-              primary_image_url = images[0].thumbnail_url || images[0].file_url || null;
+              const firstImageAttachment = images.find((attachment: any) => {
+                const fileType = String(attachment?.file_type || "").toLowerCase();
+                const fileName = String(attachment?.file_name || "").toLowerCase();
+                return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+              });
+              const fallbackAttachment = images[0];
+              const preferredAttachment = firstImageAttachment || fallbackAttachment;
+              primary_image_url = preferredAttachment?.thumbnail_url || preferredAttachment?.file_url || null;
             }
           } catch {
             // Skip invalid JSON

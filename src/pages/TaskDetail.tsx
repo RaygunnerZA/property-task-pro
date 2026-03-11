@@ -64,6 +64,7 @@ const TaskDetail = () => {
   
   const [status, setStatus] = useState<TaskStatus>('pending');
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [selectedDocumentUrl, setSelectedDocumentUrl] = useState<string | null>(null);
   const thumbnailScrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch task from tasks_view (includes property data)
@@ -98,14 +99,31 @@ const TaskDetail = () => {
     };
   }, [taskData]);
 
+  const imageAttachments = useMemo(() => {
+    const attachments = Array.isArray(task?.images) ? task.images : [];
+    return attachments.filter((attachment: any) => {
+      const fileType = String(attachment?.file_type || "").toLowerCase();
+      const fileName = String(attachment?.file_name || "").toLowerCase();
+      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+    });
+  }, [task?.images]);
+
+  const documentAttachments = useMemo(() => {
+    const attachments = Array.isArray(task?.images) ? task.images : [];
+    return attachments.filter((attachment: any) => {
+      const fileType = String(attachment?.file_type || "").toLowerCase();
+      return !fileType.startsWith("image/");
+    });
+  }, [task?.images]);
+
   // Reset selected image when task changes
   useEffect(() => {
-    if (task && task.images && task.images.length > 0) {
+    if (imageAttachments.length > 0) {
       setSelectedImageIndex(0);
     } else {
       setSelectedImageIndex(null);
     }
-  }, [task]);
+  }, [imageAttachments]);
 
   // Extract property data from task (tasks_view includes property_name and property_address)
   const property = useMemo(() => {
@@ -179,19 +197,20 @@ const TaskDetail = () => {
         <div className="space-y-4">
           {/* Square Primary Image */}
           <div className="aspect-square w-full bg-muted rounded-lg overflow-hidden shadow-e1 relative group">
-            {task.images && task.images.length > 0 ? (
+            {imageAttachments.length > 0 ? (
               <>
                 <img
-                  src={task.images[selectedImageIndex ?? 0]?.thumbnail_url || task.images[selectedImageIndex ?? 0]?.file_url}
-                  alt={task.images[selectedImageIndex ?? 0]?.file_name || "Task image"}
+                  src={imageAttachments[selectedImageIndex ?? 0]?.thumbnail_url || imageAttachments[selectedImageIndex ?? 0]?.file_url}
+                  alt={imageAttachments[selectedImageIndex ?? 0]?.file_name || "Task image"}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    const image = task.images[selectedImageIndex ?? 0];
+                    const image = imageAttachments[selectedImageIndex ?? 0];
                     if (image?.thumbnail_url && image?.file_url) {
                       (e.target as HTMLImageElement).src = image.file_url;
                     }
                   }}
                 />
+                <TaskAnnotationOverlay annotations={imageAttachments[selectedImageIndex ?? 0]?.annotation_json} />
                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     className="p-1.5 bg-black/50 rounded-[5px] hover:bg-black/70 text-white"
@@ -219,7 +238,7 @@ const TaskDetail = () => {
           </div>
 
           {/* Media Gallery Thumbnails - Only show when 2+ images exist */}
-          {task.images && task.images.length > 1 && (
+          {imageAttachments.length > 1 && (
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Media Gallery
@@ -232,7 +251,7 @@ const TaskDetail = () => {
                     ref={thumbnailScrollRef}
                     className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                   >
-                    {task.images.map((image: any, index: number) => (
+                    {imageAttachments.map((image: any, index: number) => (
                       <div
                         key={image.id}
                         className={cn(
@@ -267,7 +286,7 @@ const TaskDetail = () => {
                   </div>
                 </div>
                 {/* Navigation arrows - only show if more than 3 images */}
-                {task.images.length > 3 && (
+                {imageAttachments.length > 3 && (
                   <>
                     <button
                       onClick={() => {
@@ -296,6 +315,36 @@ const TaskDetail = () => {
                   </>
                 )}
               </div>
+            </div>
+          )}
+
+          {documentAttachments.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Documents
+              </h3>
+              <div className="space-y-2">
+                {documentAttachments.map((document: any) => (
+                  <button
+                    key={document.id}
+                    type="button"
+                    className="w-full rounded-lg bg-muted/40 px-3 py-2 text-left shadow-e1"
+                    onClick={() => setSelectedDocumentUrl(document.file_url)}
+                  >
+                    <p className="truncate text-sm font-medium">{document.file_name || "Document"}</p>
+                    <p className="text-xs text-muted-foreground">{document.file_type || "file"}</p>
+                  </button>
+                ))}
+              </div>
+              {selectedDocumentUrl && (
+                <div className="h-[320px] rounded-lg overflow-hidden border border-border/30">
+                  <iframe
+                    src={`${selectedDocumentUrl}#toolbar=1&navpanes=0&view=FitH`}
+                    title="Task document viewer"
+                    className="w-full h-full border-0"
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -425,3 +474,96 @@ const TaskDetail = () => {
 };
 
 export default TaskDetail;
+
+function TaskAnnotationOverlay({ annotations }: { annotations?: any[] }) {
+  if (!Array.isArray(annotations) || annotations.length === 0) return null;
+  const colorMap: Record<string, string> = {
+    charcoal: "#1f2937",
+    white: "#ffffff",
+    "warning-orange": "#f59e0b",
+    "danger-red": "#ef4444",
+    "calm-blue": "#3b82f6",
+    "success-green": "#22c55e",
+  };
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 w-full h-full">
+      {annotations.map((annotation: any) => {
+        const color = colorMap[String(annotation?.strokeColor || "charcoal")] || "#1f2937";
+        if (annotation?.type === "pin") {
+          return <circle key={annotation.annotationId} cx={annotation.x * 100} cy={annotation.y * 100} r={1.1} fill={color} />;
+        }
+        if (annotation?.type === "rect") {
+          return (
+            <rect
+              key={annotation.annotationId}
+              x={annotation.x * 100}
+              y={annotation.y * 100}
+              width={annotation.width * 100}
+              height={annotation.height * 100}
+              fill="none"
+              stroke={color}
+              strokeWidth={0.5}
+            />
+          );
+        }
+        if (annotation?.type === "circle") {
+          return (
+            <circle
+              key={annotation.annotationId}
+              cx={annotation.x * 100}
+              cy={annotation.y * 100}
+              r={annotation.radius * 100}
+              fill="none"
+              stroke={color}
+              strokeWidth={0.5}
+            />
+          );
+        }
+        if (annotation?.type === "arrow") {
+          return (
+            <line
+              key={annotation.annotationId}
+              x1={annotation.from.x * 100}
+              y1={annotation.from.y * 100}
+              x2={annotation.to.x * 100}
+              y2={annotation.to.y * 100}
+              stroke={color}
+              strokeWidth={0.5}
+              strokeLinecap="round"
+            />
+          );
+        }
+        if (annotation?.type === "freedraw" && Array.isArray(annotation.points) && annotation.points.length > 1) {
+          const polylinePoints = annotation.points
+            .map((point: any) => `${point.x * 100},${point.y * 100}`)
+            .join(" ");
+          return (
+            <polyline
+              key={annotation.annotationId}
+              points={polylinePoints}
+              fill="none"
+              stroke={color}
+              strokeWidth={0.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        }
+        if (annotation?.type === "text") {
+          return (
+            <text
+              key={annotation.annotationId}
+              x={annotation.x * 100}
+              y={annotation.y * 100}
+              fill={colorMap[String(annotation?.textColor || annotation?.strokeColor || "charcoal")] || color}
+              fontSize="3"
+            >
+              {annotation.text}
+            </text>
+          );
+        }
+        return null;
+      })}
+    </svg>
+  );
+}

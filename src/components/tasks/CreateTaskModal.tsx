@@ -1493,16 +1493,12 @@ export function CreateTaskModal({
       }
 
       // Upload attachments in background (non-blocking)
-      if ((images.length > 0 || taskFiles.length > 0) && taskId && orgId) {
-        const imageUploadPromises = images.map(async (tempImage, index) => {
+      // Use snapshots so async updates never repopulate cleared draft state.
+      const imagesToUpload = [...images];
+      const filesToUpload = [...taskFiles];
+      if ((imagesToUpload.length > 0 || filesToUpload.length > 0) && taskId && orgId) {
+        const imageUploadPromises = imagesToUpload.map(async (tempImage) => {
           try {
-            // Update status to uploading
-            setImages(prev => {
-              const updated = [...prev];
-              updated[index] = { ...updated[index], upload_status: 'uploading' };
-              return updated;
-            });
-
             const imageUuid = crypto.randomUUID();
             const basePath = `org/${orgId}/tasks/${taskId}/images/${imageUuid}`;
             
@@ -1574,21 +1570,6 @@ export function CreateTaskModal({
               }
             }
 
-            // Update status to uploaded
-            setImages(prev => {
-              const updated = [...prev];
-              updated[index] = { 
-                ...updated[index], 
-                upload_status: 'uploaded', 
-                uploaded: true,
-                storage_paths: {
-                  thumbnail: thumbnailPath,
-                  optimized: optimizedPath,
-                }
-              };
-              return updated;
-            });
-
             // Cleanup blob URLs
             cleanupTempImage(tempImage);
 
@@ -1614,18 +1595,7 @@ export function CreateTaskModal({
 
             return attachment;
           } catch (error: any) {
-            console.error(`Error uploading image ${index}:`, error);
-            
-            // Update status to failed
-            setImages(prev => {
-              const updated = [...prev];
-              updated[index] = { 
-                ...updated[index], 
-                upload_status: 'failed',
-                upload_error: error.message 
-              };
-              return updated;
-            });
+            console.error("Error uploading image:", error);
 
             toast({
               title: "Image upload failed",
@@ -1637,7 +1607,7 @@ export function CreateTaskModal({
           }
         });
 
-        const fileUploadPromises = taskFiles.map(async (pendingFile, index) => {
+        const fileUploadPromises = filesToUpload.map(async (pendingFile, index) => {
           try {
             const fileExt = pendingFile.display_name.split(".").pop() || "bin";
             const filePath = `org/${orgId}/tasks/${taskId}/files/${crypto.randomUUID()}.${fileExt}`;
@@ -1777,7 +1747,7 @@ export function CreateTaskModal({
       // Invalidate queries to refresh task lists and details
       // If images were uploaded, we already invalidated above, but invalidate again
       // after a delay to pick up thumbnails processed by the edge function
-      if (images.length > 0 || taskFiles.length > 0) {
+      if (imagesToUpload.length > 0 || filesToUpload.length > 0) {
         // Wait 2 seconds for edge function to process thumbnails, then invalidate again
         setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ["tasks"] });

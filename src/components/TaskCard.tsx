@@ -121,7 +121,11 @@ function TaskCardComponent({
       }
     }
     
-    const firstImage = images.length > 0 ? images[0] : null;
+    const firstImage = images.find((attachment: any) => {
+      const fileType = String(attachment?.file_type || "").toLowerCase();
+      const fileName = String(attachment?.file_name || "").toLowerCase();
+      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+    }) || (images.length > 0 ? images[0] : null);
     const url = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
     
     // Parse themes, spaces, and teams (handle both string and array formats)
@@ -536,8 +540,25 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
   }
   
   // Compare images array (by first image URL)
-  const prevImageUrl = prevTask?.images?.[0]?.thumbnail_url || prevTask?.images?.[0]?.file_url || prevTask?.primary_image_url;
-  const nextImageUrl = nextTask?.images?.[0]?.thumbnail_url || nextTask?.images?.[0]?.file_url || nextTask?.primary_image_url;
+  const selectImageUrl = (task: any) => {
+    const rawImages = task?.images;
+    const parsedImages = typeof rawImages === "string" ? (() => {
+      try {
+        return JSON.parse(rawImages);
+      } catch {
+        return [];
+      }
+    })() : rawImages;
+    const images = Array.isArray(parsedImages) ? parsedImages : [];
+    const preferred = images.find((attachment: any) => {
+      const fileType = String(attachment?.file_type || "").toLowerCase();
+      const fileName = String(attachment?.file_name || "").toLowerCase();
+      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+    }) || images[0];
+    return preferred?.thumbnail_url || preferred?.file_url || task?.primary_image_url || null;
+  };
+  const prevImageUrl = selectImageUrl(prevTask);
+  const nextImageUrl = selectImageUrl(nextTask);
   if (prevImageUrl !== nextImageUrl) return false;
   
   // onClick comparison - if both are functions, we assume they're equivalent if task.id is the same

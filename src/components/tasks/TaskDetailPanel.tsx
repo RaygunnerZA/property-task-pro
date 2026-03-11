@@ -49,6 +49,7 @@ import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
+import type { Annotation } from "@/types/image-annotations";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -122,6 +123,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   } | null>(null);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -139,11 +141,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setSelectedThemeIds((task.categories ?? []).map((c: any) => c.id));
       const rawMs = (task as any)?.milestones;
       setMilestones(Array.isArray(rawMs) ? rawMs : (typeof rawMs === 'string' ? JSON.parse(rawMs) : []));
-      if (task.images && task.images.length > 0) {
-        setSelectedImageIndex(0);
-      } else {
-        setSelectedImageIndex(null);
-      }
+      const attachmentList = Array.isArray((task as any).images) ? (task as any).images : [];
+      const hasImageAttachment = attachmentList.some((attachment: any) => {
+        const fileType = String(attachment?.file_type || "").toLowerCase();
+        const fileName = String(attachment?.file_name || "").toLowerCase();
+        return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+      });
+      setSelectedImageIndex(hasImageAttachment ? 0 : null);
     }
   }, [task]);
 
@@ -371,7 +375,33 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   }, [status]);
 
   const { userId } = useDataContext();
-  const taskImages = (task as any)?.images ?? [];
+  const allAttachments = (task as any)?.images ?? [];
+  const imageAttachments = useMemo(
+    () =>
+      (Array.isArray(allAttachments) ? allAttachments : []).filter((attachment: any) => {
+        const fileType = String(attachment?.file_type || "").toLowerCase();
+        const fileName = String(attachment?.file_name || "").toLowerCase();
+        return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+      }),
+    [allAttachments]
+  );
+  const documentAttachments = useMemo(
+    () =>
+      (Array.isArray(allAttachments) ? allAttachments : []).filter((attachment: any) => {
+        const fileType = String(attachment?.file_type || "").toLowerCase();
+        return !fileType.startsWith("image/");
+      }),
+    [allAttachments]
+  );
+  useEffect(() => {
+    if (imageAttachments.length === 0) {
+      if (selectedImageIndex !== null) setSelectedImageIndex(null);
+      return;
+    }
+    if (selectedImageIndex === null || selectedImageIndex >= imageAttachments.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [imageAttachments, selectedImageIndex]);
   const createdBy = (task as any)?.created_by ?? null;
   const assignedUserId = task?.assigned_user_id ?? null;
   const isAssigner = !!userId && createdBy === userId;
@@ -465,15 +495,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     <>
       {/* Image section - thumbnails at top + Camera/Upload buttons (Create Task style) */}
       <div className="p-4 pb-0 space-y-3">
-        {taskImages.length > 0 ? (
+        {imageAttachments.length > 0 ? (
           <div className="space-y-2">
             {/* Full-width selected image preview */}
-            {selectedImageIndex !== null && taskImages[selectedImageIndex] && (
+            {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
               <button
                 type="button"
-                className="w-full rounded-[10px] overflow-hidden bg-muted shadow-e1 cursor-pointer hover:shadow-e2 transition-shadow"
+                className="relative w-full rounded-[10px] overflow-hidden bg-muted shadow-e1 cursor-pointer hover:shadow-e2 transition-shadow"
                 onClick={() => {
-                  const selectedImage = taskImages[selectedImageIndex];
+                  const selectedImage = imageAttachments[selectedImageIndex];
                   if (selectedImage?.id) {
                     setEditingImageId(selectedImage.id);
                     setShowAnnotationEditor(true);
@@ -483,22 +513,25 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 }}
               >
                 <img
-                  src={taskImages[selectedImageIndex].optimized_url || taskImages[selectedImageIndex].file_url || taskImages[selectedImageIndex].thumbnail_url}
-                  alt={taskImages[selectedImageIndex].file_name || "Task image"}
+                  src={imageAttachments[selectedImageIndex].optimized_url || imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].thumbnail_url}
+                  alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
                   className="w-full max-h-[300px] object-contain bg-muted/40"
                   onError={(e) => {
-                    const img = taskImages[selectedImageIndex];
+                    const img = imageAttachments[selectedImageIndex];
                     if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
                       (e.target as HTMLImageElement).src = img.file_url;
                     }
                   }}
+                />
+                <TaskImageAnnotationOverlay
+                  annotations={imageAttachments[selectedImageIndex].annotation_json}
                 />
               </button>
             )}
             {/* Thumbnail strip + action buttons */}
             <div className="flex gap-3 items-end">
               <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
-                {taskImages.map((image: any, index: number) => (
+                {imageAttachments.map((image: any, index: number) => (
                   <button
                     key={image.id}
                     type="button"
@@ -565,6 +598,30 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             >
               <Upload className="h-5 w-5 text-muted-foreground" />
             </button>
+          </div>
+        )}
+        {documentAttachments.length > 0 && (
+          <div className="rounded-[10px] bg-muted/35 p-2 shadow-e1">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">
+              Documents ({documentAttachments.length})
+            </div>
+            <div className="space-y-1.5">
+              {documentAttachments.map((attachment: any) => (
+                <button
+                  key={attachment.id}
+                  type="button"
+                  onClick={() => setSelectedDocument(attachment)}
+                  className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
+                >
+                  <span className="block truncate font-medium text-foreground">
+                    {attachment.file_name || "Document"}
+                  </span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {attachment.file_type || "file"}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         <input
@@ -775,8 +832,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
                   />
                 </div>
-                {task.images && task.images.length > 0 && (() => {
-                  const img = task.images[selectedImageIndex ?? 0] as any;
+                {imageAttachments.length > 0 && (() => {
+                  const img = imageAttachments[selectedImageIndex ?? 0] as any;
                   const orgId = (task as any)?.org_id;
                   if (!orgId) return null;
                   return (
@@ -800,11 +857,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     />
                   );
                 })()}
-                {task.images && task.images.length > 0 && (
+                {imageAttachments.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({task.images.length})</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({imageAttachments.length})</h3>
                     <div className="grid grid-cols-2 gap-3">
-                      {task.images.map((image: any) => (
+                      {imageAttachments.map((image: any) => (
                         <button
                           key={image.id}
                           type="button"
@@ -825,6 +882,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                               }
                             }}
                           />
+                          <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
                         </button>
                       ))}
                     </div>
@@ -1058,8 +1116,42 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       }}
     />
 
+    <Dialog open={Boolean(selectedDocument)} onOpenChange={(open) => !open && setSelectedDocument(null)}>
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/20">
+          <DialogTitle className="truncate text-base">
+            {selectedDocument?.file_name || "Document"}
+          </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {selectedDocument?.file_type || "file"}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="h-[70vh] bg-muted/20">
+          {selectedDocument && String(selectedDocument.file_type || "").toLowerCase().includes("pdf") ? (
+            <iframe
+              src={`${selectedDocument.file_url}#toolbar=1&navpanes=0&view=FitH`}
+              title={selectedDocument.file_name || "PDF document"}
+              className="w-full h-full border-0"
+            />
+          ) : selectedDocument ? (
+            <div className="h-full flex flex-col items-center justify-center gap-3">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+              <a
+                href={selectedDocument.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-primary underline"
+              >
+                Open document in a new tab
+              </a>
+            </div>
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
+
     {/* Image lightbox modal */}
-    {lightboxOpen && taskImages.length > 0 && selectedImageIndex !== null && createPortal(
+    {lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null && createPortal(
       <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
         onClick={() => setLightboxOpen(false)}
@@ -1073,14 +1165,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           <X className="h-6 w-6" />
         </button>
 
-        {taskImages.length > 1 && (
+        {imageAttachments.length > 1 && (
           <>
             <button
               type="button"
               className="absolute left-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedImageIndex((selectedImageIndex - 1 + taskImages.length) % taskImages.length);
+                setSelectedImageIndex((selectedImageIndex - 1 + imageAttachments.length) % imageAttachments.length);
               }}
               aria-label="Previous image"
             >
@@ -1091,7 +1183,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               className="absolute right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedImageIndex((selectedImageIndex + 1) % taskImages.length);
+                setSelectedImageIndex((selectedImageIndex + 1) % imageAttachments.length);
               }}
               aria-label="Next image"
             >
@@ -1101,12 +1193,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         )}
 
         <img
-          src={taskImages[selectedImageIndex].file_url || taskImages[selectedImageIndex].optimized_url}
-          alt={taskImages[selectedImageIndex].file_name || "Task image"}
+          src={imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].optimized_url}
+          alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
           className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
           onClick={(e) => e.stopPropagation()}
           onError={(e) => {
-            const img = taskImages[selectedImageIndex];
+            const img = imageAttachments[selectedImageIndex];
             if (img.optimized_url && (e.target as HTMLImageElement).src !== img.optimized_url) {
               (e.target as HTMLImageElement).src = img.optimized_url;
             }
@@ -1114,7 +1206,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         />
 
         <div className="absolute bottom-4 text-white/70 text-sm">
-          {selectedImageIndex + 1} / {taskImages.length}
+          {selectedImageIndex + 1} / {imageAttachments.length}
         </div>
       </div>,
       document.body
@@ -1142,6 +1234,119 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       document.body
     )}
     </>
+  );
+}
+
+const OVERLAY_COLOR_MAP: Record<string, string> = {
+  charcoal: "#1f2937",
+  white: "#ffffff",
+  "warning-orange": "#f59e0b",
+  "danger-red": "#ef4444",
+  "calm-blue": "#3b82f6",
+  "success-green": "#22c55e",
+};
+
+function TaskImageAnnotationOverlay({
+  annotations,
+  compact = false,
+}: {
+  annotations?: Annotation[];
+  compact?: boolean;
+}) {
+  if (!Array.isArray(annotations) || annotations.length === 0) return null;
+  const strokeScale = compact ? 0.7 : 1;
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-0 h-full w-full"
+    >
+      {annotations.map((annotation) => {
+        const color = OVERLAY_COLOR_MAP[annotation.strokeColor] || "#1f2937";
+        const strokeWidth = annotation.strokeWidth === "bold" ? 0.8 : annotation.strokeWidth === "thin" ? 0.3 : 0.5;
+
+        if (annotation.type === "pin") {
+          return <circle key={annotation.annotationId} cx={annotation.x * 100} cy={annotation.y * 100} r={1.1} fill={color} />;
+        }
+
+        if (annotation.type === "arrow") {
+          return (
+            <g key={annotation.annotationId}>
+              <line
+                x1={annotation.from.x * 100}
+                y1={annotation.from.y * 100}
+                x2={annotation.to.x * 100}
+                y2={annotation.to.y * 100}
+                stroke={color}
+                strokeWidth={strokeWidth * strokeScale}
+                strokeLinecap="round"
+              />
+            </g>
+          );
+        }
+
+        if (annotation.type === "rect") {
+          return (
+            <rect
+              key={annotation.annotationId}
+              x={annotation.x * 100}
+              y={annotation.y * 100}
+              width={annotation.width * 100}
+              height={annotation.height * 100}
+              fill="none"
+              stroke={color}
+              strokeWidth={strokeWidth * strokeScale}
+            />
+          );
+        }
+
+        if (annotation.type === "circle") {
+          return (
+            <circle
+              key={annotation.annotationId}
+              cx={annotation.x * 100}
+              cy={annotation.y * 100}
+              r={annotation.radius * 100}
+              fill="none"
+              stroke={color}
+              strokeWidth={strokeWidth * strokeScale}
+            />
+          );
+        }
+
+        if (annotation.type === "text") {
+          return (
+            <text
+              key={annotation.annotationId}
+              x={annotation.x * 100}
+              y={annotation.y * 100}
+              fill={OVERLAY_COLOR_MAP[annotation.textColor] || color}
+              fontSize={compact ? "2.2" : "3"}
+            >
+              {annotation.text}
+            </text>
+          );
+        }
+
+        if (annotation.type === "freedraw" && annotation.points.length > 1) {
+          const polylinePoints = annotation.points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ");
+          return (
+            <polyline
+              key={annotation.annotationId}
+              points={polylinePoints}
+              fill="none"
+              stroke={color}
+              strokeWidth={strokeWidth * strokeScale}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        }
+
+        return null;
+      })}
+    </svg>
   );
 }
 
