@@ -268,7 +268,7 @@ export function TaskPanel({
           {onCreateTask && (
             <button
               onClick={onCreateTask}
-              className="hidden md:flex min-[1380px]:hidden items-center gap-2 px-4 h-9 rounded-lg bg-[#85BABC] text-white font-medium shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
+              className="hidden md:flex min-[1380px]:hidden items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
             >
               <Plus className="h-4 w-4" />
               Create Task

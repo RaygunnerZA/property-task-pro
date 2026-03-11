@@ -214,17 +214,20 @@ export function DailyBriefingCard({
             setApi={handleCarouselApi}
             className="w-full"
           >
-            <CarouselContent className="-ml-2 justify-center items-center gap-[11px]">
+            <CarouselContent className="-ml-2 justify-center items-center gap-1 w-[345px]">
               {slides.map((slide) => (
-                <CarouselItem key={slide.id} className="pl-2 basis-full flex-none min-w-0 font-medium">
-                  <div className="flex flex-col items-center justify-center">
+                <CarouselItem
+                  key={slide.id}
+                  className="pl-0 basis-[115px] w-[115px] flex-none min-w-0 font-medium"
+                >
+                  <div className="flex flex-col items-center justify-center w-[115px] h-[165px]">
                     {effectivePropertyId && graphLoading && slide.id === "radial" ? (
                       <div className="w-[7rem] h-[7rem] rounded-full bg-muted/50 animate-pulse" />
                     ) : (
                       <RadialProgress
                         value={slide.value}
                         size={90}
-                        thickness={15}
+                        thickness={10}
                         aria-label={`${slide.label}: ${slide.value}%`}
                       />
                     )}
