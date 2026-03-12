@@ -6,6 +6,7 @@ import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { PageHeader } from "@/components/design-system/PageHeader";
@@ -399,14 +400,12 @@ export default function Dashboard() {
         thirdColumn={thirdColumnContent}
       />
       
-      {/* Create Task Modal - Modal variant for smaller screens */}
+      {/* Universal Intake Modal - primary entry for task/compliance/document on smaller screens */}
       {showCreateTask && !isLargeScreen && (
-        <CreateTaskModal
+        <IntakeModal
           open={showCreateTask}
           onOpenChange={handleCreateTaskOpenChange}
           onTaskCreated={handleTaskCreated}
-          variant="modal"
-          prefillFromLastUsedProperty={false}
         />
       )}
 

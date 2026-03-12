@@ -1,6 +1,6 @@
 /**
  * useImageAnalysis — Lightweight orchestrator for AI image analysis (Phase 1)
- * Watches TempImage[] and sends each image's optimized_blob to ai-image-analyse edge function.
+ * Watches TempImage[] and sends each image's thumbnail_blob to ai-image-analyse edge function.
  * Fire-and-forget: never blocks task creation.
  *
  * Phase 3 merge rule: Results here are for chip suggestions ONLY.
@@ -49,19 +49,22 @@ export function useImageAnalysis({
 
   const analyzeImage = useCallback(
     async (img: TempImage) => {
-      if (!img.optimized_blob || img.rawAnalysis || inProgressRef.current.has(img.local_id)) {
+      const readyForFastPass = img.thumbnail_blob && img.thumbnail_blob.type === "image/webp";
+      if (!readyForFastPass || img.rawAnalysis || inProgressRef.current.has(img.local_id)) {
         return;
       }
       inProgressRef.current.add(img.local_id);
       setStatus((s) => (s === "idle" ? "loading" : s));
 
       try {
-        const imageBase64 = await blobToBase64(img.optimized_blob);
+        // Fast first-pass: use low-res thumbnail blob for near-instant routing hints.
+        const imageBase64 = await blobToBase64(img.thumbnail_blob);
         const { data, error } = await supabase.functions.invoke("ai-image-analyse", {
           body: {
             image: imageBase64,
             org_id: orgId,
             property_id: propertyId || null,
+            mode: "full",
           },
         });
 
@@ -91,13 +94,15 @@ export function useImageAnalysis({
     }
 
     for (const img of images) {
-      if (img.optimized_blob && !img.rawAnalysis) {
+      if (img.thumbnail_blob && img.thumbnail_blob.type === "image/webp" && !img.rawAnalysis) {
         analyzeImage(img);
       }
     }
 
     // If all images already have results, ensure status is idle
-    const pending = images.filter((i) => i.optimized_blob && !i.rawAnalysis);
+    const pending = images.filter(
+      (i) => i.thumbnail_blob && i.thumbnail_blob.type === "image/webp" && !i.rawAnalysis
+    );
     if (pending.length === 0 && inProgressRef.current.size === 0) {
       setStatus("idle");
     }

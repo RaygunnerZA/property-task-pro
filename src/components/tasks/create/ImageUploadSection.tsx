@@ -50,9 +50,11 @@ export function ImageUploadSection({
   const handleFileSelect = async (incomingFiles: FileList | null) => {
     if (!incomingFiles) return;
 
-    const newImages: TempImage[] = [];
+    const nextImages = [...images];
     const newFiles: PendingTaskFile[] = [];
+    const imageJobs: Promise<void>[] = [];
     let oversizedCount = 0;
+    const commitImages = () => onImagesChange([...nextImages]);
 
     for (const file of Array.from(incomingFiles)) {
       if (file.size > MAX_FILE_SIZE) {
@@ -71,12 +73,67 @@ export function ImageUploadSection({
         continue;
       }
 
-      try {
-        const tempImage = await createTempImage(file);
-        newImages.push(tempImage);
-      } catch (error) {
-        console.error(`Failed to process "${file.name}":`, error);
-      }
+      const localId = crypto.randomUUID();
+      const provisionalUrl = URL.createObjectURL(file);
+      const provisionalImage: TempImage = {
+        local_id: localId,
+        display_name: file.name,
+        original_file: file,
+        thumbnail_blob: file,
+        optimized_blob: file,
+        annotation_json: [],
+        uploaded: false,
+        upload_status: "pending",
+        thumbnail_url: provisionalUrl,
+        optimized_url: provisionalUrl,
+      };
+      // Instant preview path: add a provisional image immediately, then upgrade it.
+      nextImages.push(provisionalImage);
+      commitImages();
+
+      const job = createTempImage(file)
+        .then((tempImage) => {
+          const idx = nextImages.findIndex((img) => img.local_id === localId);
+          if (idx === -1) {
+            cleanupTempImage(tempImage);
+            return;
+          }
+          const existing = nextImages[idx];
+          if (existing.thumbnail_url === existing.optimized_url && existing.thumbnail_url) {
+            URL.revokeObjectURL(existing.thumbnail_url);
+          } else {
+            if (existing.thumbnail_url) URL.revokeObjectURL(existing.thumbnail_url);
+            if (existing.optimized_url) URL.revokeObjectURL(existing.optimized_url);
+          }
+          nextImages[idx] = {
+            ...tempImage,
+            local_id: localId,
+            display_name: existing.display_name,
+            original_file: existing.original_file,
+            annotation_json: existing.annotation_json ?? [],
+            uploaded: existing.uploaded,
+            upload_status: existing.upload_status ?? "pending",
+          };
+          commitImages();
+        })
+        .catch((error) => {
+          console.error(`Failed to process "${file.name}":`, error);
+          const idx = nextImages.findIndex((img) => img.local_id === localId);
+          if (idx !== -1) {
+            const failed = nextImages[idx];
+            nextImages[idx] = {
+              ...failed,
+              upload_status: "failed",
+              upload_error: "Image processing failed",
+            };
+            commitImages();
+          }
+        });
+      imageJobs.push(job);
+    }
+
+    if (imageJobs.length > 0) {
+      await Promise.allSettled(imageJobs);
     }
 
     if (oversizedCount > 0) {
@@ -85,10 +142,6 @@ export function ImageUploadSection({
         description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
         variant: "destructive",
       });
-    }
-
-    if (newImages.length > 0) {
-      onImagesChange([...images, ...newImages]);
     }
 
     if (newFiles.length > 0) {

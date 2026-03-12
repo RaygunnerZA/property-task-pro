@@ -18,6 +18,7 @@ interface RequestBody {
   org_id: string;
   property_id?: string | null;
   task_id?: string;
+  mode?: "router" | "full"; // router: fast first-pass hints only
   overwrite?: boolean; // Phase 3: if true, re-run analysis even when result exists
 }
 
@@ -70,6 +71,23 @@ const ANALYSIS_PROMPT = `Analyze this property/maintenance image. Return ONLY va
 
 Focus on: appliances (boiler, pump, HVAC), safety equipment (extinguisher, DB board), serial numbers, expiry dates, model names, warnings. Use snake_case for type.`;
 
+const ROUTER_PROMPT = `You are a fast intake router for a property management app.
+Return ONLY valid JSON (no markdown) with this exact structure:
+{
+  "workflow_hint": "task|compliance|document|uncertain",
+  "workflow_confidence": 0.0,
+  "document_type_hint": "string|null",
+  "expiry_date_hint": "YYYY-MM-DD|null",
+  "task_title_hint": "string|null",
+  "labels": ["string"]
+}
+Rules:
+- Keep it shallow and fast; do not perform deep extraction.
+- workflow_hint must be one of task, compliance, document, uncertain.
+- workflow_confidence is 0..1.
+- labels must be short, max 6.
+- If unsure, use uncertain with low confidence.`;
+
 function getGeminiKey(): string | undefined {
   return Deno.env.get("GEMINI_API_KEY");
 }
@@ -119,6 +137,49 @@ async function callGeminiVision(imageBase64: string): Promise<ResponseBody> {
   return normalizeResponse(parsed);
 }
 
+async function callGeminiVisionRouter(imageBase64: string): Promise<ResponseBody> {
+  const apiKey = getGeminiKey();
+  if (!apiKey) throw new Error("GEMINI_API_KEY not set");
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: ROUTER_PROMPT },
+            {
+              inline_data: {
+                mime_type: "image/webp",
+                data: imageBase64,
+              },
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        maxOutputTokens: 220,
+        temperature: 0,
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini router API error: ${res.status} - ${err}`);
+  }
+
+  const json = await res.json();
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Empty Gemini router response");
+
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return normalizeRouterResponse(parsed);
+}
+
 async function callOpenAIVision(imageBase64: string): Promise<ResponseBody> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
@@ -158,6 +219,49 @@ async function callOpenAIVision(imageBase64: string): Promise<ResponseBody> {
 
   const parsed = JSON.parse(text) as ResponseBody;
   return normalizeResponse(parsed);
+}
+
+async function callOpenAIVisionRouter(imageBase64: string): Promise<ResponseBody> {
+  const apiKey = getOpenAIApiKey();
+  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: ROUTER_PROMPT },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/webp;base64,${imageBase64}` },
+            },
+          ],
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0,
+      max_tokens: 220,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI router API error: ${res.status} - ${err}`);
+  }
+
+  const json = await res.json();
+  const text = json.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Empty OpenAI router response");
+
+  const parsed = JSON.parse(text) as Record<string, unknown>;
+  return normalizeRouterResponse(parsed);
 }
 
 // Phase 4: Map freeform document types to normalized values
@@ -264,6 +368,68 @@ function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
   };
 }
 
+function normalizeRouterResponse(parsed: Record<string, unknown>): ResponseBody {
+  const workflowHintRaw = String(parsed.workflow_hint ?? "uncertain").toLowerCase();
+  const workflowHint =
+    workflowHintRaw === "task" ||
+    workflowHintRaw === "compliance" ||
+    workflowHintRaw === "document" ||
+    workflowHintRaw === "uncertain"
+      ? workflowHintRaw
+      : "uncertain";
+
+  const confidenceNum = Number(parsed.workflow_confidence ?? 0.35);
+  const workflowConfidence = Number.isFinite(confidenceNum)
+    ? Math.max(0, Math.min(1, confidenceNum))
+    : 0.35;
+
+  const documentType =
+    typeof parsed.document_type_hint === "string" && parsed.document_type_hint.trim()
+      ? parsed.document_type_hint.trim()
+      : null;
+  const expiryDate =
+    typeof parsed.expiry_date_hint === "string" && parsed.expiry_date_hint.trim()
+      ? parsed.expiry_date_hint.trim()
+      : null;
+  const taskTitleHint =
+    typeof parsed.task_title_hint === "string" && parsed.task_title_hint.trim()
+      ? parsed.task_title_hint.trim()
+      : null;
+  const labels = Array.isArray(parsed.labels)
+    ? parsed.labels.map((v) => String(v)).filter(Boolean).slice(0, 6)
+    : [];
+
+  const metadata: Record<string, unknown> = {
+    router_mode: true,
+    workflow_hint: workflowHint,
+    workflow_confidence: workflowConfidence,
+    task_title_hint: taskTitleHint,
+    normalized_document_type: documentType,
+    normalized_expiry: expiryDate,
+    document_classification: documentType
+      ? {
+          type: documentType,
+          expiry_date: expiryDate,
+        }
+      : undefined,
+  };
+
+  return {
+    ocr_text: "",
+    detected_labels: labels,
+    detected_objects: [],
+    document_classification: documentType
+      ? {
+          type: documentType,
+          expiry_date: expiryDate ?? undefined,
+        }
+      : undefined,
+    anomalies: [],
+    suggested_icon: null,
+    metadata,
+  };
+}
+
 function stubResponse(): ResponseBody {
   return {
     ocr_text: "",
@@ -321,7 +487,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { image, file_url, attachment_id, org_id, property_id, overwrite = false } = body;
+    const { image, file_url, attachment_id, org_id, property_id, mode = "full", overwrite = false } = body;
 
     if (!org_id) {
       return new Response(
@@ -400,22 +566,32 @@ Deno.serve(async (req) => {
       const preferGemini = aiProvider === "gemini" || (!aiProvider && getGeminiKey());
       const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
 
+      const routerMode = mode === "router";
+
       if (preferGemini && getGeminiKey()) {
         try {
-          result = await callGeminiVision(imageBase64);
+          result = routerMode
+            ? await callGeminiVisionRouter(imageBase64)
+            : await callGeminiVision(imageBase64);
         } catch (err) {
           if (fallbackEnabled && getOpenAIApiKey()) {
-            result = await callOpenAIVision(imageBase64);
+            result = routerMode
+              ? await callOpenAIVisionRouter(imageBase64)
+              : await callOpenAIVision(imageBase64);
           } else {
             throw err;
           }
         }
       } else if (preferOpenAI && getOpenAIApiKey()) {
         try {
-          result = await callOpenAIVision(imageBase64);
+          result = routerMode
+            ? await callOpenAIVisionRouter(imageBase64)
+            : await callOpenAIVision(imageBase64);
         } catch (err) {
           if (fallbackEnabled && getGeminiKey()) {
-            result = await callGeminiVision(imageBase64);
+            result = routerMode
+              ? await callGeminiVisionRouter(imageBase64)
+              : await callGeminiVision(imageBase64);
           } else {
             throw err;
           }
