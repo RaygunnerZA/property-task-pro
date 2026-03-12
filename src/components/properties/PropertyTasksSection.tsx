@@ -179,7 +179,7 @@ export function PropertyTasksSection({
               selected={isActive}
               onSelect={() => setSelectedFilter(filter.id)}
               icon={filter.icon}
-              className="h-[28px] flex-shrink-0 whitespace-nowrap"
+              className="h-[24px] flex-shrink-0 whitespace-nowrap"
             />
           );
         })}

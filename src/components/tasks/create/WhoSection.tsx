@@ -363,7 +363,7 @@ export function WhoSection({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      <div className="flex items-center gap-2 h-[36px] min-w-0">
+      <div className="flex items-center gap-1 h-[33px] min-w-0">
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <User className="h-4 w-4 text-muted-foreground" />
         </div>
@@ -372,7 +372,7 @@ export function WhoSection({
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
+          <div className="flex h-[33px] items-center gap-2 flex-nowrap whitespace-nowrap pl-[3px] pr-[6px] pt-[3px] pb-[3px]">
           {factChips.map((chip) => {
             const isTeamChip = chip.id.startsWith("team-");
             const teamId = isTeamChip ? chip.id.replace("team-", "") : null;
@@ -480,14 +480,14 @@ export function WhoSection({
                 label={PERSON_LABEL}
                 truncate={false}
                 onPress={handleAddPersonClick}
-                className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+                className="shrink-0 h-[24px] px-2.5 py-1.5 bg-background shadow-e1"
               />
               <SemanticChip
                 epistemic="proposal"
                 label={TEAM_LABEL}
                 truncate={false}
                 onPress={handleAddTeamClick}
-                className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+                className="shrink-0 h-[24px] px-2.5 py-1.5 bg-background shadow-e1"
               />
             </>
           ) : null}
@@ -519,7 +519,7 @@ export function WhoSection({
             "transition-all duration-150 ease-out"
           )}
         >
-          <div className="flex items-center gap-1.5 h-[36px] flex-nowrap whitespace-nowrap min-w-0 no-scrollbar pr-[6px]">
+          <div className="flex items-center gap-1.5 h-[33px] flex-nowrap whitespace-nowrap min-w-0 no-scrollbar pr-[6px] pt-[3px] pb-[3px]">
             {isAddingMembers ? (
               <input
                 ref={addMembersInputRef}

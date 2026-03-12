@@ -151,25 +151,29 @@ export function LeftColumn({
     >
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background py-4 px-2 pb-[7px]">
+        <div className={cn("sticky top-0 z-10 bg-background px-2 pb-[7px]", properties.length === 1 ? "pt-[7px]" : "pt-4")}>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Properties</h2>
-              <button
-                onClick={() => setShowAddProperty(true)}
-                className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
-                style={{
-                  width: '20px',
-                  height: '35px',
-                }}
-                aria-label="Add property"
-              >
-                <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: '18px', height: '16px' }} />
-              </button>
+              {properties.length !== 1 && (
+                <>
+                  <h2 className="text-lg font-semibold text-foreground">Properties</h2>
+                  <button
+                    onClick={() => setShowAddProperty(true)}
+                    className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+                    style={{
+                      width: '20px',
+                      height: '35px',
+                    }}
+                    aria-label="Add property"
+                  >
+                    <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: '18px', height: '16px' }} />
+                  </button>
+                </>
+              )}
             </div>
 
-            {/* Property Filter Icon Row */}
-            {properties.length > 0 && (
+            {/* Property Filter Icon Row - only when multiple properties */}
+            {properties.length > 1 && (
               <div className="flex items-center gap-1.5">
                 {(() => {
                   const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
@@ -240,7 +244,10 @@ export function LeftColumn({
           </div>
         </div>
         {!hideProperties && (
-        <div className="px-2 w-full max-w-full overflow-x-hidden" style={{ height: '228px' }}>
+        <div 
+          className="px-2 w-full max-w-full overflow-x-hidden" 
+          style={{ height: properties.length === 1 ? 'auto' : '228px' }}
+        >
           {propertiesLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -250,6 +257,25 @@ export function LeftColumn({
           ) : properties.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">No properties yet</p>
+            </div>
+          ) : properties.length === 1 ? (
+            /* Single property: full-width card, horizontal layout, no gradient */
+            <div ref={propertiesRef} className="relative w-full max-w-full py-2" style={{ borderRadius: '13px 13px 10px 0px' }}>
+              <PropertyCard
+                property={{
+                  ...properties[0],
+                  taskCount: taskCounts[properties[0].id] || 0,
+                  urgentTaskCount: urgentTaskCounts[properties[0].id] || 0,
+                  lastInspectedDate: null,
+                }}
+                variant="horizontal"
+                onAddPropertyClick={() => setShowAddProperty(true)}
+                onFilterClick={(propertyId) => {
+                  if (onFilterClick) {
+                    onFilterClick(`filter-property-${propertyId}`);
+                  }
+                }}
+              />
             </div>
           ) : (
             <div 
@@ -278,7 +304,7 @@ export function LeftColumn({
                   ))}
                 </div>
               </div>
-              {/* Gradient overlay - right side fade scroll affordance */}
+              {/* Gradient overlay - right side fade scroll affordance (only when multiple cards) */}
               <div 
                 className="absolute top-0 right-0 bottom-0 pointer-events-none"
                 style={{

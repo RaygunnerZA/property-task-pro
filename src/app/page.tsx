@@ -338,7 +338,7 @@ export default function Dashboard() {
   const headerElement = (
     <PageHeader>
       <div
-        className="px-4 pt-[18px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+        className="pl-6 pr-4 pt-[18px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
         style={headerStyle}
       >
         <div className="flex items-center gap-[7px] w-[248px]">

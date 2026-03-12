@@ -1863,7 +1863,7 @@ export function CreateTaskModal({
         <div
           aria-hidden={!shouldShowDetailsArea}
           className={cn(
-            "grid transition-[grid-template-rows,opacity] duration-500 ease-out",
+            "grid !mt-0 pt-[5px] transition-[grid-template-rows,opacity] duration-500 ease-out",
             shouldShowDetailsArea
               ? "grid-rows-[1fr] opacity-100"
               : "grid-rows-[0fr] opacity-0 pointer-events-none"
@@ -1871,7 +1871,7 @@ export function CreateTaskModal({
         >
         <div className="overflow-hidden">
           {/* Vertical stacked Create Task rows (authoritative layout): Who → Where → When → Assets → Priority → Tags → Compliance */}
-          <div className="space-y-0 flex flex-col mt-[15px]">
+          <div className="space-y-0 flex flex-col mt-0">
             {CREATE_TASK_SECTIONS.map(({ id, instruction, valueLabel, Icon }) =>
               id === "who" ? (
                 <WhoSection

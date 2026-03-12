@@ -167,7 +167,7 @@ export function FilterBar({
   }, [animationDirection, navigationLevel, selectedCategory]);
 
   // Render chip with animation - now uses unified Chip component
-  // FilterBar chips: 28px height, 11px text, 14x14px icons
+  // FilterBar chips: 24px height, 11px text, 14x14px icons
   const renderChip = (
     option: FilterOption,
     index: number,
@@ -181,12 +181,12 @@ export function FilterBar({
       onSelect={onClick}
       icon={option.icon ? React.cloneElement(option.icon as React.ReactElement, { className: "h-[14px] w-[14px]" }) : undefined}
       color={option.color}
-      className="h-[28px]"
+      className="h-[24px]"
     />
   );
 
   // Render icon button - now uses unified IconButton component
-  // Updated to 28px to match chip height
+  // Updated to 24px to match chip height
   const renderIconButton = (
     icon: React.ReactNode,
     onClick: () => void,
@@ -218,9 +218,9 @@ export function FilterBar({
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-2 min-h-[28px]", className)}>
+    <div className={cn("flex items-center justify-between gap-2 min-h-[24px]", className)}>
       {/* Single Row Container - horizontally scrollable */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[32px] px-[5px]">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[28px] px-[5px]">
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
@@ -242,7 +242,7 @@ export function FilterBar({
                   "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
                   "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
                 )}
-                style={{ paddingLeft: '8px', paddingRight: '10px', height: '28px' }}
+                style={{ paddingLeft: '8px', paddingRight: '10px', height: '24px' }}
               >
                 <Funnel className="h-[14px] w-[14px] text-foreground" />
                 <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
@@ -269,7 +269,7 @@ export function FilterBar({
                   key={group.id}
                   onClick={() => handleCategoryClick(group.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] flex-shrink-0 h-[28px]",
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] flex-shrink-0 h-[24px]",
                     "font-mono text-[11px] uppercase tracking-wide",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
@@ -282,7 +282,7 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[28px] w-[28px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
@@ -306,7 +306,7 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[28px] w-[28px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
                     "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"

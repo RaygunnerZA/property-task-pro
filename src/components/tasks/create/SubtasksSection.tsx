@@ -143,7 +143,7 @@ export function SubtasksSection({
           <FilterChip
             key={template.id}
             label={template.name}
-            className="h-[28px]"
+            className="h-[24px]"
             onSelect={() => {
               onUseTemplate?.(template.id);
               closePicker();
@@ -183,9 +183,9 @@ export function SubtasksSection({
       </div>
 
       {/* Subtasks Area */}
-      <div className="pl-2 pr-3 pb-[6px] pt-0">
+      <div className="pl-0 pr-0 pb-[6px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Step Placeholder */
-      <div className="flex items-center gap-2 py-1 cursor-pointer group" onClick={handleAddFirstSubtask}>
+      <div className="flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group" onClick={handleAddFirstSubtask}>
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
             <span className="flex-1 text-muted-foreground/50 text-sm">
               Add step
@@ -218,7 +218,7 @@ export function SubtasksSection({
         {!activeTemplateName ? (
           <div
             className={cn(
-              "flex items-center justify-end gap-[5px] pt-2 mt-1 pr-0 pb-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
+              "flex items-center justify-end gap-[5px] pt-[3px] mt-1 pr-[10px] pb-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
               pickerOpen
                 ? "opacity-100 pointer-events-auto"
                 : "md:opacity-0 md:pointer-events-none md:group-hover/subtask:opacity-100 md:group-hover/subtask:pointer-events-auto md:group-focus-within/subtask:opacity-100 md:group-focus-within/subtask:pointer-events-auto"
@@ -295,27 +295,27 @@ export function SubtasksSection({
         )}
 
         {pickerOpen && (
-          <div className="mt-2 -mx-4 px-4 py-2 animate-fade-in">
+          <div className="-mt-[6px] pl-1 pr-[7px] pt-[5px] pb-0 animate-fade-in">
             <div
               key={`${pickerView}-${selectedCategory}-${searchQuery.length > 0 ? "q" : "nq"}`}
-              className={cn("flex items-center justify-end gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
+              className={cn("flex items-center justify-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
             >
               {pickerView === "root" && (
                 <>
                   <FilterChip
                     label="Recent"
                     onSelect={() => openChildView("recent")}
-                    className="h-[28px]"
+                    className="h-[24px]"
                   />
                   <FilterChip
                     label="Categories"
                     onSelect={() => openChildView("categories")}
-                    className="h-[28px]"
+                    className="h-[24px]"
                   />
                   <FilterChip
                     label="Search"
                     onSelect={() => openChildView("search")}
-                    className="h-[28px]"
+                    className="h-[24px]"
                   />
                 </>
               )}
@@ -323,11 +323,11 @@ export function SubtasksSection({
               {pickerView !== "root" && (
                 <button
                   type="button"
-                  className="h-[28px] w-[28px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0"
+                  className="h-[24px] w-[24px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0"
                   onClick={handleBack}
                   aria-label="Back"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
 
@@ -340,7 +340,7 @@ export function SubtasksSection({
                       key={option.id}
                       label={option.label}
                       selected={selectedCategory === option.id}
-                      className="h-[28px]"
+                      className="h-[24px]"
                       onSelect={() => {
                         setSelectedCategory(option.id);
                         setAnimationDirection("left-to-right");

@@ -178,11 +178,7 @@ export function DailyBriefingCard({
               <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
                 | {scopeLabel}
               </span>
-            ) : selectedPropertyNames.length === 0 ? (
-              <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
-                | All Properties
-              </span>
-            ) : (
+            ) : selectedPropertyNames.length > 0 ? (
               <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
                 {selectedPropertyNames.map((name, index) => (
                   <span key={index}>
@@ -191,7 +187,11 @@ export function DailyBriefingCard({
                   </span>
                 ))}
               </span>
-            )}
+            ) : properties.length !== 1 ? (
+              <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
+                | All Properties
+              </span>
+            ) : null}
           </div>
           <ul className="space-y-2">
             {observations.length > 0 ? (

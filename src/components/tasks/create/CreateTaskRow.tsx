@@ -171,7 +171,7 @@ export function CreateTaskRow({
         !isActive && "hover:bg-muted/30"
       )}
     >
-      <div className="flex items-center gap-2 h-[36px] min-w-0">
+      <div className="flex items-center gap-2 h-[33px] min-w-0">
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           {icon}
         </div>
@@ -181,7 +181,7 @@ export function CreateTaskRow({
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {isInlineEditing ? (
-            <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px]">
+            <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px] pt-[3px] pb-[3px]">
               <input
                 ref={inlineInputRef}
                 data-inline-instruction
@@ -219,7 +219,7 @@ export function CreateTaskRow({
               />
             </div>
           ) : (
-            <div className="flex items-center min-w-0 gap-2 flex-nowrap whitespace-nowrap no-scrollbar pr-[6px]">
+                <div className="flex items-center min-w-0 gap-2 flex-nowrap whitespace-nowrap no-scrollbar pr-[6px] pt-[3px] pb-[3px]">
               <SemanticChipStrip
                 chips={chipData}
                 onChipPress={handleChipPress}

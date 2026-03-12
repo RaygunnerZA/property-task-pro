@@ -104,7 +104,7 @@ export function SemanticChip({
     onRemove?.();
   };
 
-  const heightClass = size === "compact" ? "h-[20px]" : "h-[28px]";
+  const heightClass = size === "compact" ? "h-[20px]" : "h-[24px]";
   const textClass = size === "compact" ? "text-[10px]" : "text-[11px]";
 
   const epistemicStyles =

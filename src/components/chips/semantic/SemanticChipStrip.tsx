@@ -44,7 +44,7 @@ export function SemanticChipStrip({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 flex-nowrap whitespace-nowrap min-w-0 no-scrollbar pr-[6px]",
+        "flex items-center gap-2 flex-nowrap whitespace-nowrap min-w-0 no-scrollbar pr-[6px] pt-[3px] pb-[3px]",
         className
       )}
       style={{ WebkitOverflowScrolling: "touch" }}

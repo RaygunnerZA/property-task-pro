@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ children, className }: PageHeaderProps) {
   return (
-    <header className={cn("page-header relative", className)}>
+    <header className={cn("page-header relative pl-2", className)}>
       {isDevBuild && (
         <div className="hidden md:flex absolute right-4 top-2 z-50">
           <Suspense fallback={null}>

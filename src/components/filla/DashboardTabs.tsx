@@ -128,7 +128,7 @@ export function DashboardTabs({
                   selected={selectedFilter === filter.id}
                   onSelect={() => setSelectedFilter(filter.id)}
                   icon={filter.icon}
-                  className="h-[28px] flex-shrink-0 whitespace-nowrap"
+                  className="h-[24px] flex-shrink-0 whitespace-nowrap"
                 />
               ))}
             </div>
