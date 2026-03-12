@@ -151,10 +151,10 @@ export function LeftColumn({
     >
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background py-4 px-2 pb-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Properties</h2>
-            <div className="flex items-center gap-1">
+        <div className="sticky top-0 z-10 bg-background py-4 px-2 pb-[7px]">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Properties</h2>
               <button
                 onClick={() => setShowAddProperty(true)}
                 className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
@@ -166,51 +166,77 @@ export function LeftColumn({
               >
                 <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: '18px', height: '16px' }} />
               </button>
-              {/* Property Icon Buttons - Aligned Right */}
-              {properties.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  {properties.map((property) => {
-                    const iconName = property.icon_name || "home";
-                    const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
-                    const iconColor = property.icon_color_hex || "#8EC9CE";
-                    const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
-                    const isActive = isAllActive || selectedPropertyIds.has(property.id);
-                    
-                    return (
+            </div>
+
+            {/* Property Filter Icon Row */}
+            {properties.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {(() => {
+                  const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
+                  return (
+                    <>
                       <button
-                        key={property.id}
-                        onClick={() => {
-                          const newSelection = togglePropertyFilter(
-                            property.id,
-                            selectedPropertyIds,
-                            ALL_PROPERTY_IDS
-                          );
-                          setSelectedPropertyIds(newSelection);
-                          if (onFilterClick) {
-                            onFilterClick(`filter-property-${property.id}`);
-                          }
-                        }}
-                        className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95"
+                        onClick={() => setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS))}
+                        className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95 text-[11px] font-mono font-semibold tracking-wide"
                         style={{
                           width: '35px',
                           height: '35px',
-                          backgroundColor: isActive ? iconColor : 'transparent',
-                          boxShadow: isActive 
+                          backgroundColor: isAllActive ? "#8EC9CE" : 'transparent',
+                          boxShadow: isAllActive
                             ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
                             : "none",
                           borderColor: "rgba(0, 0, 0, 0)",
                           borderStyle: "none",
                           borderImage: "none",
                         }}
-                        aria-label={`Filter by ${property.nickname || property.address}`}
+                        aria-label="Show all properties"
                       >
-                        <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                        <span className={isAllActive ? "text-white" : "text-muted-foreground"}>ALL</span>
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+
+                      {properties.map((property) => {
+                        const iconName = property.icon_name || "home";
+                        const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                        const iconColor = property.icon_color_hex || "#8EC9CE";
+                        const isActive = isAllActive || selectedPropertyIds.has(property.id);
+
+                        return (
+                          <button
+                            key={property.id}
+                            onClick={() => {
+                              const newSelection = togglePropertyFilter(
+                                property.id,
+                                selectedPropertyIds,
+                                ALL_PROPERTY_IDS
+                              );
+                              setSelectedPropertyIds(newSelection);
+                              if (onFilterClick) {
+                                onFilterClick(`filter-property-${property.id}`);
+                              }
+                            }}
+                            className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95"
+                            style={{
+                              width: '35px',
+                              height: '35px',
+                              backgroundColor: isActive ? iconColor : 'transparent',
+                              boxShadow: isActive
+                                ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                                : "none",
+                              borderColor: "rgba(0, 0, 0, 0)",
+                              borderStyle: "none",
+                              borderImage: "none",
+                            }}
+                            aria-label={`Filter by ${property.nickname || property.address}`}
+                          >
+                            <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                          </button>
+                        );
+                      })}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </div>
         {!hideProperties && (

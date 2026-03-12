@@ -1,18 +1,33 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { debounce } from "@/lib/debounce";
-import type { Annotation, TaskImageAnnotationRecord } from "@/types/image-annotations";
+import type { Annotation } from "@/types/image-annotations";
+
+export interface AnnotationVersionEntry {
+  id: string;
+  created_at: string;
+  created_by: string | null;
+  version_number: number;
+  label: string;
+  annotations: Annotation[];
+}
 
 export function useImageAnnotations(taskId: string, imageId: string) {
   const { orgId } = useActiveOrg();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationVersions, setAnnotationVersions] = useState<AnnotationVersionEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const isMissingRelationError = (err: any) => {
     const msg = String(err?.message || "").toLowerCase();
-    return msg.includes("does not exist") || msg.includes("relation") || err?.code === "42P01";
+    return (
+      msg.includes("does not exist") ||
+      msg.includes("relation") ||
+      msg.includes("could not find the table") ||
+      err?.code === "42P01" ||
+      err?.code === "PGRST205"
+    );
   };
 
   const fetchAnnotations = useCallback(async () => {
@@ -26,45 +41,44 @@ export function useImageAnnotations(taskId: string, imageId: string) {
     setError(null);
 
     try {
-      // Prefer latest task_image_annotations row (handles duplicate legacy rows gracefully).
-      const { data: rows, error: fetchError } = await supabase
-        .from("task_image_annotations")
-        .select("id, annotations, updated_at, created_at")
+      // Primary source: version history table.
+      const { data: versionRows, error: versionsError } = await supabase
+        .from("task_image_annotation_versions")
+        .select("id, annotations, created_at, created_by, version_number, label")
         .eq("task_id", taskId)
         .eq("image_id", imageId)
-        .order("updated_at", { ascending: false })
+        .order("version_number", { ascending: false })
         .order("created_at", { ascending: false })
-        .limit(1);
+        .limit(50);
 
-      if (fetchError && !isMissingRelationError(fetchError)) throw fetchError;
+      if (versionsError && !isMissingRelationError(versionsError)) throw versionsError;
 
-      const latest = rows?.[0] as { annotations?: Annotation[] } | undefined;
-      if (latest?.annotations) {
-        // Get the latest version of each annotation (append-only log)
-        const annotationMap = new Map<string, Annotation>();
-        (latest.annotations as Annotation[]).forEach((ann) => {
-          const existing = annotationMap.get(ann.annotationId);
-          if (!existing || ann.version > existing.version) {
-            annotationMap.set(ann.annotationId, ann);
-          }
-        });
-        setAnnotations(Array.from(annotationMap.values()));
-      } else if (!fetchError) {
-        setAnnotations([]);
+      if (!versionsError && Array.isArray(versionRows) && versionRows.length > 0) {
+        const mappedVersions: AnnotationVersionEntry[] = (versionRows as any[]).map((row) => ({
+          id: row.id,
+          created_at: row.created_at,
+          created_by: row.created_by,
+          version_number: row.version_number,
+          label: row.label,
+          annotations: Array.isArray(row.annotations) ? (row.annotations as Annotation[]) : [],
+        }));
+        setAnnotationVersions(mappedVersions);
+        setAnnotations(mappedVersions[0]?.annotations ?? []);
       } else {
-        // Fallback: annotation_json on attachments (for environments where
-        // task_image_annotations is missing/unavailable).
+        // Fallback: attachment annotation JSON when version rows are missing/unavailable.
         const { data: attachment } = await supabase
           .from("attachments")
           .select("annotation_json")
           .eq("id", imageId)
           .maybeSingle();
         const fallbackAnnotations = (attachment as any)?.annotation_json as Annotation[] | undefined;
+        setAnnotationVersions([]);
         setAnnotations(Array.isArray(fallbackAnnotations) ? fallbackAnnotations : []);
       }
     } catch (err: any) {
       // 404 is expected when no annotations exist yet - don't treat as error
       if (err.code === 'PGRST116' || err.status === 404 || err.message?.includes('404')) {
+        setAnnotationVersions([]);
         setAnnotations([]);
         setError(null);
       } else {
@@ -109,40 +123,55 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         persisted = true;
       }
 
-      // 2) Secondary persistence: task_image_annotations row (if table exists).
-      const { data: existingRows, error: existingFetchError } = await supabase
-        .from("task_image_annotations")
-        .select("id")
+      // 2) Collaborative layers: same user edits same layer; new user gets a new layer.
+      const { data: latestVersionRows, error: latestVersionFetchError } = await supabase
+        .from("task_image_annotation_versions")
+        .select("id, version_number, created_by")
         .eq("task_id", taskId)
         .eq("image_id", imageId)
-        .order("updated_at", { ascending: false })
+        .order("version_number", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(1);
 
-      if (!existingFetchError) {
-        const existing = existingRows?.[0] as { id: string } | undefined;
-        if (existing) {
+      if (!latestVersionFetchError && latestVersionRows && latestVersionRows.length > 0) {
+        const latest = latestVersionRows[0] as { id: string; version_number: number; created_by: string | null };
+        const isSameUser = latest.created_by === user.id;
+        if (isSameUser) {
           const { error: updateError } = await supabase
-            .from("task_image_annotations")
-            .update({
-              annotations: nextAnnotations,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", existing.id);
+            .from("task_image_annotation_versions")
+            .update({ annotations: nextAnnotations as any })
+            .eq("id", latest.id);
           if (!updateError) persisted = true;
         } else {
+          const nextVersionNumber = (latest.version_number ?? 0) + 1;
+          const label = `Layer ${nextVersionNumber}`;
           const { error: insertError } = await supabase
-            .from("task_image_annotations")
+            .from("task_image_annotation_versions")
             .insert({
               task_id: taskId,
               image_id: imageId,
               created_by: user.id,
-              annotations: nextAnnotations,
+              version_number: nextVersionNumber,
+              label,
+              annotations: nextAnnotations as any,
             });
           if (!insertError) persisted = true;
         }
-      } else if (!isMissingRelationError(existingFetchError)) {
-        throw existingFetchError;
+      } else if (!latestVersionFetchError) {
+        const label = "Layer 1";
+        const { error: insertError } = await supabase
+          .from("task_image_annotation_versions")
+          .insert({
+            task_id: taskId,
+            image_id: imageId,
+            created_by: user.id,
+            version_number: 1,
+            label,
+            annotations: nextAnnotations as any,
+          });
+        if (!insertError) persisted = true;
+      } else if (!isMissingRelationError(latestVersionFetchError)) {
+        throw latestVersionFetchError;
       }
 
       if (!persisted) {
@@ -167,6 +196,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
 
   return {
     annotations,
+    annotationVersions,
     loading,
     error,
     saveAnnotations,

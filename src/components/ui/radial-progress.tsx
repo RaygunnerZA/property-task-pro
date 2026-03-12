@@ -20,7 +20,7 @@ export function RadialProgress({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - clampedValue / 100);
   const fontSize = Math.round(size * 0.167);
-  const innerDiscSize = 65;
+  const innerDiscSize = 63;
 
   return (
     <div

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { SquarePen, ArrowRight, Square, Circle, Type, Pen, X, Trash2, Save, RotateCcw, Undo2, Redo2 } from "lucide-react";
+import { ArrowRight, Square, Circle, Type, Pen, X, Trash2, Save, RotateCcw, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,12 +22,22 @@ interface ImageAnnotationEditorProps {
   imageId: string;
   taskId: string; // Can be empty string for temp images
   initialAnnotations?: Annotation[];
+  editSessions?: Array<{
+    id: string;
+    createdAt: string;
+    userId: string | null;
+    userDisplayName: string;
+    userAvatarUrl: string | null;
+    versionNumber: number;
+    label: string;
+    annotations: Annotation[];
+  }>;
   detectionOverlays?: DetectionOverlay[];
   onSave: (annotations: Annotation[], isAutosave?: boolean) => Promise<void>;
   onCancel: () => void;
 }
 
-type ToolType = "pin" | "arrow" | "rect" | "circle" | "text" | "freedraw" | null;
+type ToolType = "arrow" | "rect" | "circle" | "text" | "freedraw" | null;
 
 // Default sizes (relative 0-1)
 const DEFAULT_SIZES = {
@@ -43,6 +53,7 @@ export function ImageAnnotationEditor({
   imageId,
   taskId,
   initialAnnotations = [],
+  editSessions = [],
   detectionOverlays = [],
   onSave,
   onCancel,
@@ -80,11 +91,21 @@ export function ImageAnnotationEditor({
   // Autosave state
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [lastSavedAnnotations, setLastSavedAnnotations] = useState<Annotation[]>(initialAnnotations);
+  const imageElementRef = useRef<HTMLImageElement | null>(null);
+  const [visibleSessionIds, setVisibleSessionIds] = useState<string[]>([]);
   
   // Track if annotations have changed
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(annotations) !== JSON.stringify(lastSavedAnnotations);
   }, [annotations, lastSavedAnnotations]);
+
+  // Single layer visible at a time to avoid duplicate drawing (each version is full state)
+  const displayAnnotations = useMemo(() => {
+    if (editSessions.length === 0) return annotations;
+    if (visibleSessionIds.length === 0) return [];
+    const session = editSessions.find((s) => visibleSessionIds.includes(s.id));
+    return session ? session.annotations : [];
+  }, [annotations, editSessions, visibleSessionIds]);
 
   // Define drawSelectionHandles first (used by drawAnnotations)
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, annotation: Annotation) => {
@@ -178,7 +199,7 @@ export function ImageAnnotationEditor({
     try {
 
     // Draw all annotations
-    annotations.forEach((annotation) => {
+    displayAnnotations.forEach((annotation) => {
       const isSelected = annotation.annotationId === selectedAnnotationId;
       const strokeColor = getColorHex(annotation.strokeColor);
       const strokeWidth = getStrokeWidthPx(annotation.strokeWidth);
@@ -426,7 +447,7 @@ export function ImageAnnotationEditor({
     } catch (error) {
       console.error("Error in drawAnnotations:", error);
     }
-  }, [annotations, selectedAnnotationId, imageSize, tempAnnotation]);
+  }, [displayAnnotations, selectedAnnotationId, imageSize, tempAnnotation]);
 
   // Draw detection overlays (read-only, dashed boxes) — separate from user annotations
   const drawDetectionOverlays = useCallback(
@@ -471,19 +492,12 @@ export function ImageAnnotationEditor({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw image
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      drawAnnotations(ctx);
-      drawDetectionOverlays(ctx);
-    };
-    img.onerror = () => {
-      console.error("Failed to load image for annotation editor");
-    };
-    img.src = imageUrl;
-  }, [imageUrl, imageSize, drawAnnotations, drawDetectionOverlays]);
+    const imageElement = imageElementRef.current;
+    if (!imageElement) return;
+    ctx.drawImage(imageElement, 0, 0, canvas.width, canvas.height);
+    drawAnnotations(ctx);
+    drawDetectionOverlays(ctx);
+  }, [imageSize, drawAnnotations, drawDetectionOverlays, annotations.length, currentTool, tempAnnotation?.type]);
 
   // Load image and set up canvas
   useEffect(() => {
@@ -508,6 +522,7 @@ export function ImageAnnotationEditor({
           naturalWidth: img.width, 
           naturalHeight: img.height 
         });
+        imageElementRef.current = img;
       }
     };
     img.src = imageUrl;
@@ -842,23 +857,6 @@ export function ImageAnnotationEditor({
 
     // Start drawing new annotation if tool is selected
     if (currentTool) {
-      // Pin: single click creates immediately
-      if (currentTool === "pin") {
-        const newAnnotation: Annotation = {
-          annotationId: crypto.randomUUID(),
-          version: 1,
-          type: "pin",
-          x: coords.x,
-          y: coords.y,
-          strokeColor: selectedColor,
-          strokeWidth: selectedStrokeWidth,
-        };
-        setAnnotations([...annotations, newAnnotation]);
-        setSelectedAnnotationId(newAnnotation.annotationId);
-        setCurrentTool(null);
-        return;
-      }
-
       // Text: single click creates text directly on image (inline edit)
       if (currentTool === "text") {
         const newAnnotation: Annotation = {
@@ -1152,6 +1150,16 @@ export function ImageAnnotationEditor({
     return () => cancelAnimationFrame(frame);
   }, [inlineTextEditor?.annotationId]);
 
+  useEffect(() => {
+    if (editSessions.length === 0) return;
+    setVisibleSessionIds((prev) => {
+      if (prev.length > 0) return prev;
+      const latestVersion = editSessions.find((s) => s.id !== "original");
+      const originalId = editSessions.find((s) => s.id === "original")?.id;
+      return latestVersion ? [latestVersion.id] : (originalId ? [originalId] : [editSessions[0].id]);
+    });
+  }, [editSessions]);
+
   // Keep local editor state aligned when fresh annotation data is loaded.
   useEffect(() => {
     if (inlineTextEditor) return;
@@ -1215,26 +1223,6 @@ export function ImageAnnotationEditor({
           <Redo2 className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
         </button>
         <div className="w-px h-6 bg-white/20 mx-1" />
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "pin" ? null : "pin";
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error('Error in pin tool click:', error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "pin" && "bg-white/20"
-          )}
-          title="Pin"
-        >
-          <SquarePen className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
         <button
           onClick={(e) => {
             try {
@@ -1419,6 +1407,49 @@ export function ImageAnnotationEditor({
           );
         })()}
       </div>
+
+      {editSessions.length > 0 && (
+        <div className="absolute left-4 bottom-4 z-10 w-[280px] max-h-[45vh] overflow-auto rounded-lg bg-black/70 backdrop-blur-md p-3 border border-white/10">
+          <div className="text-white text-xs font-semibold mb-2">Layers</div>
+          <div className="space-y-2">
+            {editSessions.map((session) => {
+              const checked = visibleSessionIds.includes(session.id);
+              const displayLabel = session.id === "original" ? "Original" : session.label;
+              const dateStr = new Date(session.createdAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+              return (
+                <label key={session.id} className="flex items-start gap-2 text-white/90 text-xs cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => {
+                      setVisibleSessionIds((prev) => {
+                        if (prev.includes(session.id)) return prev.filter((id) => id !== session.id);
+                        return [session.id];
+                      });
+                    }}
+                    className="mt-0.5"
+                  />
+                  {session.id === "original" ? (
+                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]" aria-hidden>
+                      —
+                    </div>
+                  ) : session.userAvatarUrl ? (
+                    <img src={session.userAvatarUrl} alt={session.userDisplayName} className="h-5 w-5 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
+                      {session.userDisplayName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{displayLabel}</span>
+                    <span className="block text-white/60">{dateStr}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Context Panel - Bottom-right, only when annotation selected */}
       {selectedAnnotation && (

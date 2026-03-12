@@ -9,7 +9,7 @@ import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { PageHeader } from "@/components/design-system/PageHeader";
-import { Calendar as CalendarIcon, Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
+import { Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
@@ -337,16 +337,13 @@ export default function Dashboard() {
   // Header element that will be passed to DualPaneLayout
   const headerElement = (
     <PageHeader>
-      <div 
-        className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+      <div
+        className="px-4 pt-[18px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
         style={headerStyle}
       >
-        <div className="flex items-center gap-3 w-[248px]">
-          <span className="shrink-0">
-            <CalendarIcon className="h-6 w-6 text-white" />
-          </span>
+        <div className="flex items-center gap-[7px] w-[248px]">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold text-white leading-tight">Today</h1>
+            <h1 className="text-[18px] font-semibold text-white leading-tight">Today</h1>
           </div>
           <div className="h-6 w-px bg-white/30 mx-2"></div>
           <div className="flex items-center gap-2 text-right">

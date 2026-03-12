@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
@@ -445,7 +446,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       );
     }
     return (
-      <Dialog open={true} onOpenChange={onClose}>
+      <Dialog
+        open={true}
+        onOpenChange={(open) => {
+          if (!open && showAnnotationEditor) return;
+          if (!open) onClose();
+        }}
+      >
         <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
           {title && (
             <DialogHeader className="sr-only">
@@ -1217,20 +1224,20 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         Overlays disabled until true bounding box support is implemented. */}
     {showAnnotationEditor && editingImageId && task && createPortal(
       <ImageAnnotationEditorWrapper
-        taskId={taskId}
-        imageId={editingImageId}
-        imageUrl={
-          task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
-          task.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
-          task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
-          ""
-        }
-        detectionOverlays={[]}
-        onClose={() => {
-          setShowAnnotationEditor(false);
-          setEditingImageId(null);
-        }}
-      />,
+            taskId={taskId}
+            imageId={editingImageId}
+            imageUrl={
+              task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
+              task.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
+              task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
+              ""
+            }
+            detectionOverlays={[]}
+            onClose={() => {
+              setShowAnnotationEditor(false);
+              setEditingImageId(null);
+            }}
+          />,
       document.body
     )}
     </>
@@ -1364,7 +1371,48 @@ function ImageAnnotationEditorWrapper({
   detectionOverlays?: DetectionOverlay[];
   onClose: () => void;
 }) {
-  const { annotations, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
+  const { annotations, annotationVersions, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
+  const { members } = useOrgMembers();
+
+  // Original = no annotations when we have version history; otherwise attachment baseline
+  const originalAnnotations =
+    annotationVersions.length > 0 ? [] : annotations;
+  const originalCreatedAt =
+    annotationVersions.length > 0
+      ? annotationVersions[annotationVersions.length - 1].created_at
+      : new Date().toISOString();
+
+  const originalLayer = {
+    id: "original",
+    createdAt: originalCreatedAt,
+    userId: null as string | null,
+    versionNumber: 0,
+    label: "Original",
+    annotations: originalAnnotations,
+    userDisplayName: "Original",
+    userAvatarUrl: null as string | null,
+  };
+
+  const versionSessions = annotationVersions.map((version) => {
+    const member = members.find((m) => m.user_id === version.created_by);
+    const displayName = member?.display_name ?? "Unknown user";
+    const dateStr = new Date(version.created_at).toLocaleString(undefined, {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
+    return {
+      id: version.id,
+      createdAt: version.created_at,
+      userId: version.created_by,
+      versionNumber: version.version_number,
+      label: `Edit by ${displayName}, ${dateStr}`,
+      annotations: version.annotations,
+      userDisplayName: displayName,
+      userAvatarUrl: member?.avatar_url ?? null,
+    };
+  });
+
+  const editSessions = [originalLayer, ...versionSessions];
 
   if (loading) {
     return (
@@ -1380,6 +1428,7 @@ function ImageAnnotationEditorWrapper({
       imageId={imageId}
       taskId={taskId}
       initialAnnotations={annotations}
+      editSessions={editSessions}
       detectionOverlays={detectionOverlays}
       onSave={async (anns, isAutosave) => {
         await saveAnnotations(anns);

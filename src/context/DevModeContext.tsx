@@ -6,6 +6,7 @@
  *   - Time simulation for compliance testing
  *   - Network latency simulation
  *   - AI debug panel visibility
+ *   - When ON: JWT user_metadata.dev_mode = true so RLS shows all org tasks/files
  *
  * Production safety:
  *   Context is only active when `import.meta.env.DEV` or `?dev=true`.
@@ -18,8 +19,10 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   type ReactNode,
 } from "react";
+import { useSupabase } from "@/integrations/supabase/useSupabase";
 
 export type DevUserRole = "manager" | "contractor" | "vendor" | "admin";
 
@@ -85,15 +88,48 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
 }
 
 function DevModeProviderInner({ children }: { children: ReactNode }) {
+  const supabase = useSupabase();
   const [state, setState] = useState<DevModeState>(DEFAULT_STATE);
 
-  const toggle = useCallback(() => {
-    setState((prev) => ({ ...prev, enabled: !prev.enabled }));
-  }, []);
+  // Hydrate enabled from JWT (user_metadata.dev_mode) so UI matches after refresh
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const devMode = session?.user?.user_metadata?.dev_mode;
+      if (devMode === true || devMode === "true") {
+        setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+      }
+    });
+  }, [supabase]);
 
-  const setEnabled = useCallback((value: boolean) => {
-    setState((prev) => ({ ...prev, enabled: value }));
-  }, []);
+  const syncDevModeToJwt = useCallback(
+    async (enabled: boolean) => {
+      try {
+        await supabase.auth.updateUser({
+          data: { dev_mode: enabled },
+        });
+        await supabase.auth.refreshSession();
+      } catch {
+        // Ignore: user may be logged out or session invalid
+      }
+    },
+    [supabase]
+  );
+
+  const toggle = useCallback(() => {
+    setState((prev) => {
+      const next = !prev.enabled;
+      syncDevModeToJwt(next);
+      return { ...prev, enabled: next };
+    });
+  }, [syncDevModeToJwt]);
+
+  const setEnabled = useCallback(
+    (value: boolean) => {
+      setState((prev) => ({ ...prev, enabled: value }));
+      syncDevModeToJwt(value);
+    },
+    [syncDevModeToJwt]
+  );
 
   const setUserRoleOverride = useCallback((role: DevUserRole | null) => {
     setState((prev) => ({ ...prev, userRoleOverride: role }));
@@ -117,7 +153,8 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
 
   const reset = useCallback(() => {
     setState(DEFAULT_STATE);
-  }, []);
+    syncDevModeToJwt(false);
+  }, [syncDevModeToJwt]);
 
   const value = useMemo<DevModeContextValue>(
     () => ({
