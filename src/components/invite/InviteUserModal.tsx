@@ -44,7 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 type UserType = "internal" | "external";
 
 const INTERNAL_ROLES = [
-  { value: "owner", label: "Owner", description: "Full organisation control" },
+  { value: "owner", label: "Owner", description: "Co-owner — full organisation control" },
   { value: "manager", label: "Manager", description: "Manage properties, tasks & team" },
   { value: "staff", label: "Staff", description: "Execute tasks, view assigned properties" },
   { value: "viewer", label: "Viewer", description: "Read-only access" },
@@ -570,7 +570,7 @@ export function InviteUserModal({
               <div className="flex items-start gap-2 p-3 rounded-[8px] bg-amber-50 dark:bg-amber-950/30 shadow-e1">
                 <Shield className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-800 dark:text-amber-200">
-                  Owners have full control over the organisation, including billing and member management. Are you sure?
+                  They will be a <strong>co-owner</strong> with the same control as you (billing, member management, full access). You will both appear as Owner in the team.
                 </p>
               </div>
             )}

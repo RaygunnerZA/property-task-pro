@@ -87,16 +87,27 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
   return <DevModeProviderInner>{children}</DevModeProviderInner>;
 }
 
+// In dev, default to enabled so both accounts see all tasks/files without toggling
+const DEV_DEFAULT_STATE: DevModeState = { ...DEFAULT_STATE, enabled: true };
+
 function DevModeProviderInner({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
-  const [state, setState] = useState<DevModeState>(DEFAULT_STATE);
+  const [state, setState] = useState<DevModeState>(DEV_DEFAULT_STATE);
 
-  // Hydrate enabled from JWT (user_metadata.dev_mode) so UI matches after refresh
+  // Hydrate from JWT and default to dev mode ON when in dev (so both accounts get it)
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const devMode = session?.user?.user_metadata?.dev_mode;
-      if (devMode === true || devMode === "true") {
+      if (!session?.user) return;
+      const devMode = session.user.user_metadata?.dev_mode;
+      const alreadyOn = devMode === true || devMode === "true";
+      if (alreadyOn) {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+      } else {
+        // Default ON in dev: sync to JWT so RLS shows all org tasks for this user
+        setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+        supabase.auth.updateUser({ data: { dev_mode: true } }).then(() => {
+          supabase.auth.refreshSession();
+        });
       }
     });
   }, [supabase]);
