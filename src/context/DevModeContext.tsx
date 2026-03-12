@@ -27,6 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type DevUserRole = "manager" | "contractor" | "vendor" | "admin";
 
@@ -96,11 +97,12 @@ const DEV_DEFAULT_STATE: DevModeState = { ...DEFAULT_STATE, enabled: true };
 
 function DevModeProviderInner({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<DevModeState>(DEV_DEFAULT_STATE);
 
   // Default ON in this build: sync to JWT so you and Matt both see all tasks/files; only you can switch off
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) return;
       const devMode = session.user.user_metadata?.dev_mode;
       const alreadyOn = devMode === true || devMode === "true";
@@ -108,12 +110,14 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
       } else {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
-        supabase.auth.updateUser({ data: { dev_mode: true } }).then(() => {
-          supabase.auth.refreshSession();
-        });
+        await supabase.auth.updateUser({ data: { dev_mode: true } });
+        await supabase.auth.refreshSession();
+        // Refetch tasks (and related) with new JWT so RLS returns all org tasks
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
       }
     });
-  }, [supabase]);
+  }, [supabase, queryClient]);
 
   const syncDevModeToJwt = useCallback(
     async (enabled: boolean) => {
@@ -122,11 +126,14 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
           data: { dev_mode: enabled },
         });
         await supabase.auth.refreshSession();
+        // Refetch tasks so list reflects new visibility (all vs assigned-only)
+        queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
       } catch {
         // Ignore: user may be logged out or session invalid
       }
     },
-    [supabase]
+    [supabase, queryClient]
   );
 
   const toggle = useCallback(() => {
