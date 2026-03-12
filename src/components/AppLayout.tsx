@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useAssistantContext } from '@/contexts/AssistantContext';
+import { isDevBuild } from '@/context/DevModeContext';
 import { cn } from '@/lib/utils';
 
 const DevToolsDropdown = lazy(() => import('@/components/dev/DevToolsDropdown'));
@@ -62,7 +63,7 @@ export function AppLayout({
               <Menu className="h-5 w-5 text-foreground" />
             </SidebarTrigger>
             <div className="flex items-center gap-2">
-              {import.meta.env.DEV && (
+              {isDevBuild && (
                 <Suspense fallback={null}>
                   <DevToolsDropdown />
                 </Suspense>

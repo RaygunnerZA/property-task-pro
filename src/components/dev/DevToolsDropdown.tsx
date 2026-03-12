@@ -2,13 +2,12 @@
  * Dev Tools Dropdown — Header integration
  *
  * Provides quick access to all dev mode features from any page.
- * Only renders when dev mode is allowed (DEV env or ?dev=true).
- *
- * Production safety: returns null outside dev environments.
+ * Renders when isDevBuild (local dev or VITE_APP_DEV_BUILD=true deployment).
  */
 
 import { useCallback } from "react";
 import { useDevMode } from "@/context/useDevMode";
+import { isDevBuild } from "@/context/DevModeContext";
 import type { DevUserRole } from "@/context/DevModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgScope } from "@/hooks/useOrgScope";
@@ -58,7 +57,7 @@ const TIME_SHIFTS: { days: number; label: string }[] = [
 ];
 
 export function DevToolsDropdown() {
-  if (!import.meta.env.DEV) return null;
+  if (!isDevBuild) return null;
   return <DevToolsDropdownInner />;
 }
 

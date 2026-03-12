@@ -8,10 +8,14 @@
  *   - AI debug panel visibility
  *   - When ON: JWT user_metadata.dev_mode = true so RLS shows all org tasks/files
  *
- * Production safety:
- *   Context is only active when `import.meta.env.DEV` or `?dev=true`.
- *   The provider short-circuits to a no-op in production builds.
+ * Active when:
+ *   - Local dev (import.meta.env.DEV), or
+ *   - Deployed "development" build (VITE_APP_DEV_BUILD=true) so this org/build can see everything by default; only you can switch off.
  */
+
+/** True when dev mode UI and "see everything" default should be available (local dev or deployed dev build). */
+export const isDevBuild =
+  import.meta.env.DEV || import.meta.env.VITE_APP_DEV_BUILD === "true";
 
 import {
   createContext,
@@ -76,7 +80,7 @@ const PRODUCTION_VALUE: DevModeContextValue = {
 const DevModeContext = createContext<DevModeContextValue>(PRODUCTION_VALUE);
 
 export function DevModeProvider({ children }: { children: ReactNode }) {
-  if (!import.meta.env.DEV) {
+  if (!isDevBuild) {
     return (
       <DevModeContext.Provider value={PRODUCTION_VALUE}>
         {children}
@@ -94,7 +98,7 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
   const [state, setState] = useState<DevModeState>(DEV_DEFAULT_STATE);
 
-  // Hydrate from JWT and default to dev mode ON when in dev (so both accounts get it)
+  // Default ON in this build: sync to JWT so you and Matt both see all tasks/files; only you can switch off
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session?.user) return;
@@ -103,7 +107,6 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
       if (alreadyOn) {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
       } else {
-        // Default ON in dev: sync to JWT so RLS shows all org tasks for this user
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
         supabase.auth.updateUser({ data: { dev_mode: true } }).then(() => {
           supabase.auth.refreshSession();
