@@ -9,7 +9,7 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
 
 /**
@@ -162,9 +162,9 @@ export function MobileBottomNav() {
         </Drawer>
       )}
 
-      {/* Create Task Modal - Handles its own Drawer on mobile */}
+      {/* Intake Modal - mobile create entry */}
       {createView === "task" && (
-        <CreateTaskModal
+        <IntakeModal
           open={true}
           onOpenChange={(open) => {
             if (!open) {

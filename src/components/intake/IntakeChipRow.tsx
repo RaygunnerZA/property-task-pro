@@ -6,6 +6,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import { User, MapPin, Calendar, Box, AlertTriangle, Tag, Shield } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,8 @@ const SLOTS: { id: IntakeChipSlotId; icon: typeof User; title: string }[] = [
   { id: "compliance", icon: Shield, title: "Compliance" },
 ];
 
-const HOLD_MS = 1000;
+const HOLD_MS = 1800;
+const COLLAPSED_SIZE = "w-9 h-9";
 
 export interface IntakeChipRowValues {
   who?: string;
@@ -46,6 +48,12 @@ export interface IntakeChipRowProps {
 function getDisplayLabel(id: IntakeChipSlotId, value: string | undefined, title: string): string {
   if (value) return value;
   return title;
+}
+
+function getExpandedWidthPx(label: string): number {
+  // icon + gap + paddings + text width estimate; clamped for harmony across chips
+  const estimated = 52 + label.length * 5.8;
+  return Math.max(92, Math.min(168, Math.round(estimated)));
 }
 
 export function IntakeChipRow({
@@ -77,9 +85,25 @@ export function IntakeChipRow({
     setHoveredId(id);
   };
 
-  const handleMouseLeave = (id: IntakeChipSlotId) => {
+  const handleMouseLeave = (id: IntakeChipSlotId, event: ReactMouseEvent<HTMLButtonElement>) => {
     setHoveredId(null);
     if (getValue(id)) return;
+
+    const relatedTarget = event.relatedTarget;
+    const movingToAnotherChip =
+      relatedTarget instanceof HTMLElement &&
+      Boolean(relatedTarget.closest("[data-intake-chip='true']"));
+
+    // Moving chip-to-chip should feel continuous: collapse previous immediately while next expands.
+    if (movingToAnotherChip) {
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      setDelayedCloseId(null);
+      return;
+    }
+
     holdTimerRef.current = setTimeout(() => {
       setDelayedCloseId(null);
       holdTimerRef.current = null;
@@ -98,7 +122,7 @@ export function IntakeChipRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 overflow-x-auto no-scrollbar min-h-9 px-0 py-1",
+        "flex items-center gap-2 overflow-x-auto no-scrollbar min-h-9 px-0 py-1",
         className
       )}
     >
@@ -108,6 +132,7 @@ export function IntakeChipRow({
         const expanded = isExpanded(id);
         const displayText = getDisplayLabel(id, value, title);
         const label = value && id === "who" ? `Invite ${value}` : displayText;
+        const expandedWidth = getExpandedWidthPx(label);
 
         return (
           <Popover
@@ -121,22 +146,32 @@ export function IntakeChipRow({
             <PopoverTrigger asChild>
               <button
                 type="button"
+                data-intake-chip="true"
                 onMouseEnter={() => handleMouseEnter(id)}
-                onMouseLeave={() => handleMouseLeave(id)}
+                onMouseLeave={(event) => handleMouseLeave(id, event)}
+                style={{ width: expanded ? `${expandedWidth}px` : "36px" }}
                 className={cn(
-                  "flex items-center gap-1.5 shrink-0 rounded-[10px] py-1.5 overflow-hidden transition-[max-width] duration-300 ease-out",
+                  "flex items-center gap-2 shrink-0 rounded-[10px] overflow-hidden",
+                  "transition-[width,padding,background-color,border-color,box-shadow] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
                   "shadow-[2px_2px_4px_0px_rgba(0,0,0,0.08),-1px_-1px_2px_0px_rgba(255,255,255,0.5),inset_1px_1px_1px_0px_rgba(255,255,255,0.4)]",
                   value
-                    ? "bg-primary/15 text-foreground border border-border/50 max-w-[160px]"
+                    ? "bg-primary/15 text-foreground border border-border/50"
                     : "bg-muted/40 text-muted-foreground border border-transparent hover:border-border/40",
-                  expanded ? "max-w-[160px] pl-2 pr-2" : "max-w-[36px] pl-1.5 pr-1.5"
+                  expanded ? "h-9 pl-2 pr-3" : `${COLLAPSED_SIZE} pl-2 pr-2`
                 )}
               >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0"
+                  )}
+                />
                 <span
                   className={cn(
-                    "text-xs font-medium whitespace-nowrap truncate max-w-[120px]",
-                    !expanded && "opacity-0 w-0 overflow-hidden"
+                    "text-xs font-medium whitespace-nowrap truncate max-w-[160px] overflow-hidden",
+                    "transition-[opacity,clip-path,max-width] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
+                    expanded
+                      ? "opacity-100 [clip-path:inset(0_0_0_0)] max-w-[160px]"
+                      : "opacity-0 [clip-path:inset(0_100%_0_0)] max-w-0"
                   )}
                 >
                   {expanded ? label : title}
@@ -149,7 +184,6 @@ export function IntakeChipRow({
           </Popover>
         );
       })}
-      <span className="text-muted-foreground text-xs shrink-0 px-1">+ Add</span>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import { IntakeChipRow, type IntakeChipRowValues, type IntakeChipSlotId } from "@/components/intake/IntakeChipRow";
+import { SubtaskList, type SubtaskData } from "@/components/tasks/subtasks";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { format, addDays, startOfDay } from "date-fns";
@@ -50,6 +51,15 @@ export interface IntakeModalProps {
   onOpenChange: (open: boolean) => void;
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
+  variant?: "modal" | "column";
+  headless?: boolean;
+}
+
+interface UploadedAttachment {
+  id: string;
+  fileUrl: string;
+  fileName: string;
+  isImage: boolean;
 }
 
 export function IntakeModal({
@@ -57,6 +67,8 @@ export function IntakeModal({
   onOpenChange,
   onTaskCreated,
   defaultPropertyId,
+  variant = "modal",
+  headless = false,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -86,7 +98,7 @@ export function IntakeModal({
     setAiTitleGenerated(processed);
     if (!title.trim()) setTitle(processed);
     setShowTitleField(true);
-  }, [aiResult?.title, userEditedTitle]);
+  }, [aiResult?.title, userEditedTitle, title]);
 
   useEffect(() => {
     if (!description.trim()) {
@@ -109,7 +121,9 @@ export function IntakeModal({
   const [dueDate, setDueDate] = useState("");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
+  const [priorityDefined, setPriorityDefined] = useState(false);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
+  const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
 
   const handleAnalysisComplete = useCallback((localId: string, result: import("@/types/temp-image").ImageAnalysisResult) => {
     setImages((prev) =>
@@ -154,6 +168,25 @@ export function IntakeModal({
 
   const { members } = useOrgMembers();
 
+  useEffect(() => {
+    const priorityChip = chipSuggestions.find((c) => c.type === "priority");
+    if (!priorityChip?.label || priorityDefined) return;
+    const raw = priorityChip.label.toLowerCase();
+    if (raw.includes("urgent")) {
+      setPriority("urgent");
+      setPriorityDefined(true);
+    } else if (raw.includes("high")) {
+      setPriority("high");
+      setPriorityDefined(true);
+    } else if (raw.includes("low")) {
+      setPriority("low");
+      setPriorityDefined(true);
+    } else if (raw.includes("normal") || raw.includes("medium")) {
+      setPriority("medium");
+      setPriorityDefined(true);
+    }
+  }, [chipSuggestions, priorityDefined]);
+
   // Auto-apply extracted date and person when we have resolved chips and field is still empty (so we don't overwrite user edits)
   useEffect(() => {
     const dateChip = chipSuggestions.find((c) => c.type === "date" && c.resolvedEntityId);
@@ -175,7 +208,8 @@ export function IntakeModal({
   });
 
   const effectiveWorkflow: WorkflowHint =
-    userChoseWorkflow ?? (analysis.workflow_confidence >= 0.65 ? analysis.workflow_hint : "uncertain");
+    userChoseWorkflow ??
+    (hasDescriptionDraft ? "task" : analysis.workflow_confidence >= 0.65 ? analysis.workflow_hint : "uncertain");
   const primaryIsTask = effectiveWorkflow === "task" || effectiveWorkflow === "uncertain";
   const primaryIsCompliance = effectiveWorkflow === "compliance";
   const primaryIsDocument = effectiveWorkflow === "document";
@@ -196,7 +230,9 @@ export function IntakeModal({
           return format(dateObj, "EEE d MMM");
         })()
       : (chipSuggestions.find((c) => c.type === "date")?.label ?? undefined);
-    const priorityLabel = { low: "Low", medium: "Normal", high: "High", urgent: "Urgent" }[priority];
+    const priorityLabel = priorityDefined
+      ? { low: "Low", medium: "Normal", high: "High", urgent: "Urgent" }[priority]
+      : undefined;
     const whoLabel = assignedUserId
       ? (members?.find((m) => m.user_id === assignedUserId)?.display_name ?? "Assignee")
       : (chipSuggestions.find((c) => c.type === "person" || c.type === "team")?.label ?? undefined);
@@ -207,11 +243,11 @@ export function IntakeModal({
       where: whereLabel ?? undefined,
       when: whenLabel ?? undefined,
       asset: assetLabel ?? undefined,
-      priority: priorityLabel,
+      priority: priorityLabel ?? undefined,
       category: chipSuggestions.find((c) => c.type === "category" || c.type === "theme")?.label ?? undefined,
       compliance: undefined,
     };
-  }, [dueDate, propertyId, priority, assignedUserId, chipSuggestions, members]);
+  }, [dueDate, propertyId, priority, priorityDefined, assignedUserId, chipSuggestions, members]);
 
   const renderSlotContent = useCallback(
     (slot: IntakeChipSlotId, onClose: () => void) => {
@@ -260,6 +296,7 @@ export function IntakeModal({
                 type="button"
                 onClick={() => {
                   setPriority(p);
+                  setPriorityDefined(true);
                   onClose();
                 }}
                 className={cn(
@@ -282,6 +319,165 @@ export function IntakeModal({
     [dueDate, priority]
   );
 
+  const uploadIntakeAttachments = useCallback(
+    async (params: {
+      parentType: string;
+      parentId: string;
+      mode: "task" | "compliance" | "document";
+      taskId?: string;
+      complianceDocumentId?: string;
+    }): Promise<UploadedAttachment[]> => {
+      if (!orgId) return [];
+      const { parentType, parentId, mode, taskId, complianceDocumentId } = params;
+      const uploaded: UploadedAttachment[] = [];
+
+      for (const tempImage of images) {
+        try {
+          const imageUuid = crypto.randomUUID();
+          const basePath = `org/${orgId}/${parentType}/${parentId}/images/${imageUuid}`;
+          const thumbnailPath = `${basePath}/thumb.webp`;
+          const optimizedPath = `${basePath}/optimized.webp`;
+
+          const { error: thumbError } = await supabase.storage
+            .from("task-images")
+            .upload(thumbnailPath, tempImage.thumbnail_blob, {
+              contentType: tempImage.thumbnail_blob.type || "image/webp",
+              cacheControl: "31536000",
+            });
+          if (thumbError) throw thumbError;
+
+          const { error: optError } = await supabase.storage
+            .from("task-images")
+            .upload(optimizedPath, tempImage.optimized_blob, {
+              contentType: tempImage.optimized_blob.type || "image/webp",
+              cacheControl: "31536000",
+            });
+          if (optError) throw optError;
+
+          const { data: thumbUrl } = supabase.storage.from("task-images").getPublicUrl(thumbnailPath);
+          const { data: optUrl } = supabase.storage.from("task-images").getPublicUrl(optimizedPath);
+
+          const { data: attachment, error: attachError } = await supabase
+            .from("attachments")
+            .insert({
+              org_id: orgId,
+              parent_type: parentType,
+              parent_id: parentId,
+              file_url: optUrl.publicUrl,
+              thumbnail_url: thumbUrl.publicUrl,
+              optimized_url: optUrl.publicUrl,
+              file_name: tempImage.display_name,
+              file_type: tempImage.optimized_blob.type || "image/webp",
+              file_size: tempImage.optimized_blob.size,
+              annotation_json: tempImage.annotation_json || [],
+              upload_status: "complete",
+            })
+            .select("id,file_url,file_name")
+            .single();
+
+          if (attachError || !attachment?.id) throw attachError ?? new Error("Attachment insert failed");
+
+          uploaded.push({
+            id: attachment.id,
+            fileUrl: attachment.file_url,
+            fileName: attachment.file_name || tempImage.display_name,
+            isImage: true,
+          });
+
+          if (mode === "task") {
+            void supabase.functions.invoke("ai-image-analyse", {
+              body: {
+                attachment_id: attachment.id,
+                file_url: attachment.file_url,
+                org_id: orgId,
+                property_id: propertyId || null,
+                task_id: taskId || null,
+              },
+            });
+          } else {
+            void supabase.functions.invoke("ai-doc-analyse", {
+              body: {
+                attachment_id: attachment.id,
+                file_url: attachment.file_url,
+                file_name: attachment.file_name || tempImage.display_name,
+                org_id: orgId,
+                property_id: propertyId || null,
+                compliance_document_id: complianceDocumentId || null,
+              },
+            });
+          }
+        } catch (error) {
+          console.error("[IntakeModal] image upload failed:", error);
+          toast({
+            title: "Image upload failed",
+            description: `Couldn't upload "${tempImage.display_name}".`,
+            variant: "destructive",
+          });
+        }
+      }
+
+      for (const pendingFile of taskFiles) {
+        try {
+          const ext = pendingFile.display_name.split(".").pop() || "bin";
+          const filePath = `org/${orgId}/${parentType}/${parentId}/files/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("task-images")
+            .upload(filePath, pendingFile.file, {
+              cacheControl: "31536000",
+            });
+          if (uploadError) throw uploadError;
+
+          const { data: fileUrl } = supabase.storage.from("task-images").getPublicUrl(filePath);
+          const { data: attachment, error: attachmentError } = await supabase
+            .from("attachments")
+            .insert({
+              org_id: orgId,
+              parent_type: parentType,
+              parent_id: parentId,
+              file_url: fileUrl.publicUrl,
+              file_name: pendingFile.display_name,
+              file_type: pendingFile.file_type,
+              file_size: pendingFile.file_size,
+              upload_status: "complete",
+            })
+            .select("id,file_url,file_name")
+            .single();
+          if (attachmentError || !attachment?.id) throw attachmentError ?? new Error("Attachment insert failed");
+
+          uploaded.push({
+            id: attachment.id,
+            fileUrl: attachment.file_url,
+            fileName: attachment.file_name || pendingFile.display_name,
+            isImage: false,
+          });
+
+          if (mode !== "task") {
+            void supabase.functions.invoke("ai-doc-analyse", {
+              body: {
+                attachment_id: attachment.id,
+                file_url: attachment.file_url,
+                file_name: attachment.file_name || pendingFile.display_name,
+                org_id: orgId,
+                property_id: propertyId || null,
+                compliance_document_id: complianceDocumentId || null,
+              },
+            });
+          }
+        } catch (error) {
+          console.error("[IntakeModal] file upload failed:", error);
+          toast({
+            title: "File upload failed",
+            description: `Couldn't upload "${pendingFile.display_name}".`,
+            variant: "destructive",
+          });
+        }
+      }
+
+      return uploaded;
+    },
+    [images, taskFiles, orgId, propertyId, toast]
+  );
+
   const handleSubmit = async () => {
     if (!orgId) {
       toast({ title: "Not signed in", variant: "destructive" });
@@ -295,6 +491,7 @@ export function IntakeModal({
         const { data, error } = await supabase.functions.invoke("ai-actions-create-compliance", {
           body: {
             org_id: orgId,
+            property_id: propertyId || null,
             title: complianceTitle,
             compliance_type: intakeComplianceType.trim() || null,
             expiry_date: intakeComplianceExpiry.trim() || null,
@@ -303,6 +500,27 @@ export function IntakeModal({
         });
         if (error) throw error;
         if (!data?.id) throw new Error("No compliance record returned");
+
+        const uploaded = await uploadIntakeAttachments({
+          parentType: "compliance",
+          parentId: data.id,
+          mode: "compliance",
+          complianceDocumentId: data.id,
+        });
+
+        if (uploaded.length > 0) {
+          const links = uploaded.map((a) => ({
+            attachment_id: a.id,
+            compliance_document_id: data.id,
+            org_id: orgId,
+          }));
+          const { error: linkError } = await supabase.from("attachment_compliance").insert(links);
+          if (linkError) throw linkError;
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["compliance"] });
+        queryClient.invalidateQueries({ queryKey: ["compliance_recommendations"] });
+        queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         toast({ title: "Added to Compliance" });
         onOpenChange(false);
         resetForm();
@@ -319,7 +537,34 @@ export function IntakeModal({
     }
 
     if (primaryIsDocument) {
-      toast({ title: "Save document", description: "Document save coming soon." });
+      if (!propertyId) {
+        toast({
+          title: "Select a location",
+          description: "Choose a property before saving documents.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        await uploadIntakeAttachments({
+          parentType: "property",
+          parentId: propertyId,
+          mode: "document",
+        });
+        queryClient.invalidateQueries({ queryKey: ["property_documents"] });
+        toast({ title: "Document saved" });
+        onOpenChange(false);
+        resetForm();
+      } catch (err: unknown) {
+        toast({
+          title: "Could not save document",
+          description: err instanceof Error ? err.message : "Something went wrong",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -352,8 +597,34 @@ export function IntakeModal({
       if (error) throw error;
       if (!newTask?.id) throw new Error("No task id returned");
 
+      const normalizedSubtasks = subtasks
+        .map((step, index) => ({
+          task_id: newTask.id,
+          org_id: orgId,
+          title: step.title.trim(),
+          is_yes_no: Boolean(step.is_yes_no),
+          requires_signature: Boolean(step.requires_signature),
+          order_index: index,
+          is_completed: false,
+          completed: false,
+        }))
+        .filter((step) => step.title.length > 0);
+
+      if (normalizedSubtasks.length > 0) {
+        const { error: subtaskError } = await supabase.from("subtasks").insert(normalizedSubtasks);
+        if (subtaskError) throw subtaskError;
+      }
+
+      await uploadIntakeAttachments({
+        parentType: "task",
+        parentId: newTask.id,
+        mode: "task",
+        taskId: newTask.id,
+      });
+
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+      queryClient.invalidateQueries({ queryKey: ["task-attachments", newTask.id] });
       toast({ title: "Task created" });
       onTaskCreated?.(newTask.id);
       onOpenChange(false);
@@ -388,7 +659,9 @@ export function IntakeModal({
     setDueDate("");
     setPropertyId(defaultPropertyId || "");
     setPriority("medium");
+    setPriorityDefined(false);
     setAssignedUserId(undefined);
+    setSubtasks([]);
   }, [defaultPropertyId]);
 
   useEffect(() => {
@@ -407,18 +680,9 @@ export function IntakeModal({
         ? "Create task instead"
         : "Add to Compliance instead";
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn(
-          "max-w-lg max-h-[90vh] flex flex-col p-0 gap-0",
-          "rounded-xl border-0 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"
-        )}
-        style={{
-          ...PAPER_TEXTURE_STYLE,
-          backgroundColor: "hsl(var(--background))",
-        }}
-      >
+  const content = (
+    <>
+      {variant !== "column" && (
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-semibold">Add item</DialogTitle>
@@ -431,8 +695,9 @@ export function IntakeModal({
             </button>
           </div>
         </DialogHeader>
+      )}
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
           {/* 1. Upload */}
           <ImageUploadSection
             images={images}
@@ -541,34 +806,115 @@ export function IntakeModal({
             onCloseSlot={() => setOpenChipSlot(null)}
             renderSlotContent={renderSlotContent}
           />
-        </div>
 
-        {/* 6. Footer: one adaptive primary + secondary override */}
-        <div className="px-4 py-3 border-t border-border/30 space-y-2">
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button className="flex-1 shadow-primary-btn" onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Saving…" : primaryLabel}
-            </Button>
-          </div>
-          {analysis.workflow_confidence >= 0.5 && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() =>
-                  setUserChoseWorkflow(
-                    primaryIsCompliance ? "task" : primaryIsDocument ? "task" : "compliance"
-                  )
-                }
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
-                {secondaryLabel}
-              </button>
+          {/* 6. Task steps/checklist (hidden until user starts describing work) */}
+          {hasDescriptionDraft && (
+            <div className="rounded-lg bg-muted/35 p-3 border border-border/50 shadow-e1 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubtasks((prev) => [
+                      ...prev,
+                      {
+                        id: crypto.randomUUID(),
+                        title: "",
+                        is_yes_no: false,
+                        requires_signature: false,
+                        step_type: "check",
+                      },
+                    ])
+                  }
+                  className="text-xs text-primary hover:underline"
+                >
+                  + Add step
+                </button>
+              </div>
+              {subtasks.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubtasks([
+                      {
+                        id: crypto.randomUUID(),
+                        title: "",
+                        is_yes_no: false,
+                        requires_signature: false,
+                        step_type: "check",
+                      },
+                    ])
+                  }
+                  className="w-full rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-2 text-left text-sm text-muted-foreground hover:bg-background/60 transition-colors"
+                >
+                  Add first checklist step
+                </button>
+              ) : (
+                <SubtaskList subtasks={subtasks} isCreator={true} onSubtasksChange={setSubtasks} />
+              )}
             </div>
           )}
+      </div>
+
+      {/* 7. Footer: one adaptive primary + secondary override */}
+      <div className="px-4 py-3 border-t border-border/30 space-y-2">
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button className="flex-1 shadow-primary-btn" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Saving…" : primaryLabel}
+          </Button>
         </div>
+        {analysis.workflow_confidence >= 0.5 && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() =>
+                setUserChoseWorkflow(
+                  primaryIsCompliance ? "task" : primaryIsDocument ? "task" : "compliance"
+                )
+              }
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              {secondaryLabel}
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  if (variant === "column" && headless) {
+    return (
+      <div
+        className={cn(
+          "flex flex-col h-full min-h-0 p-0 gap-0 rounded-xl border-0",
+          "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"
+        )}
+        style={{
+          ...PAPER_TEXTURE_STYLE,
+          backgroundColor: "hsl(var(--background))",
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className={cn(
+          "max-w-lg max-h-[90vh] flex flex-col p-0 gap-0",
+          "rounded-xl border-0 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"
+        )}
+        style={{
+          ...PAPER_TEXTURE_STYLE,
+          backgroundColor: "hsl(var(--background))",
+        }}
+      >
+        {content}
       </DialogContent>
     </Dialog>
   );

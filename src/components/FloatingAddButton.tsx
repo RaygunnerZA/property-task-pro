@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Mic } from 'lucide-react';
-import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { IntakeModal } from '@/components/intake/IntakeModal';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
@@ -97,7 +97,7 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
       </button>
 
       {/* Modals */}
-      <CreateTaskModal 
+      <IntakeModal
         open={showCreateModal} 
         onOpenChange={setShowCreateModal}
         onTaskCreated={onTaskCreated}

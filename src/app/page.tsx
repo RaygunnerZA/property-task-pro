@@ -5,7 +5,6 @@ import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
-import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -273,13 +272,12 @@ export default function Dashboard() {
     <div className="flex flex-col pr-2 pb-0 pl-2">
       <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-0">Task Workbench</h2>
       <div className="pb-0">
-        <CreateTaskModal
+        <IntakeModal
           open={true}
           onOpenChange={() => undefined}
           onTaskCreated={handleTaskCreated}
           variant="column"
           headless
-          prefillFromLastUsedProperty={false}
         />
       </div>
       <ThirdColumnConcertina
@@ -400,7 +398,7 @@ export default function Dashboard() {
         thirdColumn={thirdColumnContent}
       />
       
-      {/* Universal Intake Modal - primary entry for task/compliance/document on smaller screens */}
+      {/* Universal Intake Modal - primary entry on smaller layouts */}
       {showCreateTask && !isLargeScreen && (
         <IntakeModal
           open={showCreateTask}
