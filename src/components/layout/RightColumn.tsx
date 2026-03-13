@@ -21,7 +21,7 @@ interface RightColumnProps {
 
 /**
  * Right Column Component
- * Task Panel with Tabs (Tasks, Inbox, Schedule)
+ * Task Panel with Tabs (Attention, Tasks, Compliance, Schedule)
  * 
  * Desktop: Dynamic width (1fr), visible
  * Mobile: Full width, stacked below LeftColumn

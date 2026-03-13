@@ -1,15 +1,12 @@
 /**
- * IntakeChipRow — Compact horizontal context chip row for IntakeModal.
- * Sections: Assign, Location, Date, Asset, Priority, Tag, Compliance.
- * Default: icon-only neumorphic ghost chip. On hover: smooth expand right to show title; holds 1s after inactive then closes.
- * When value/suggestion exists: chip stays expanded to show it (e.g. "Invite Frank", "Thursday").
+ * IntakeChipRow — Wrapped context chips for IntakeModal.
+ * Renders fact/proposal chips first, followed by any unused section icon chips.
  */
 
-import { useState, useRef, useEffect } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { User, MapPin, Calendar, Box, AlertTriangle, Tag, Shield } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { SemanticChip, type EpistemicState } from "@/components/chips/semantic";
 
 export type IntakeChipSlotId = "who" | "where" | "when" | "asset" | "priority" | "category" | "compliance";
 
@@ -24,20 +21,18 @@ const SLOTS: { id: IntakeChipSlotId; icon: typeof User; title: string }[] = [
 ];
 
 const HOLD_MS = 1800;
-const COLLAPSED_SIZE = "w-9 h-9";
+const COLLAPSED_SIZE_PX = 24;
 
-export interface IntakeChipRowValues {
-  who?: string;
-  where?: string;
-  when?: string;
-  asset?: string;
-  priority?: string;
-  category?: string;
-  compliance?: string;
+export interface IntakeChipRowChip {
+  id: string;
+  slot: IntakeChipSlotId;
+  label: string;
+  epistemic: EpistemicState;
+  onPress?: () => void;
 }
 
 export interface IntakeChipRowProps {
-  values: IntakeChipRowValues;
+  chips: IntakeChipRowChip[];
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   openSlot: IntakeChipSlotId | null;
   onCloseSlot: () => void;
@@ -45,30 +40,19 @@ export interface IntakeChipRowProps {
   className?: string;
 }
 
-function getDisplayLabel(id: IntakeChipSlotId, value: string | undefined, title: string): string {
-  if (value) return value;
-  return title;
-}
-
-function getExpandedWidthPx(label: string): number {
-  // icon + gap + paddings + text width estimate; clamped for harmony across chips
-  const estimated = 52 + label.length * 5.8;
-  return Math.max(92, Math.min(168, Math.round(estimated)));
-}
-
 export function IntakeChipRow({
-  values,
+  chips,
   onOpenSlot,
   openSlot,
   onCloseSlot,
   renderSlotContent,
   className,
 }: IntakeChipRowProps) {
+  const displayedSlots = new Set(chips.map((chip) => chip.slot));
+  const unusedSlots = SLOTS.filter((slot) => !displayedSlots.has(slot.id));
   const [hoveredId, setHoveredId] = useState<IntakeChipSlotId | null>(null);
   const [delayedCloseId, setDelayedCloseId] = useState<IntakeChipSlotId | null>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const getValue = (id: IntakeChipSlotId) => values[id === "category" ? "category" : id] || undefined;
 
   useEffect(() => {
     return () => {
@@ -76,114 +60,95 @@ export function IntakeChipRow({
     };
   }, []);
 
-  const handleMouseEnter = (id: IntakeChipSlotId) => {
+  const toggleSlot = (slot: IntakeChipSlotId) => {
+    if (openSlot === slot) {
+      onCloseSlot();
+      return;
+    }
+    onOpenSlot(slot);
+  };
+
+  const handleMouseEnter = (slot: IntakeChipSlotId) => {
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     }
     setDelayedCloseId(null);
-    setHoveredId(id);
+    setHoveredId(slot);
   };
 
-  const handleMouseLeave = (id: IntakeChipSlotId, event: ReactMouseEvent<HTMLButtonElement>) => {
-    setHoveredId(null);
-    if (getValue(id)) return;
-
-    const relatedTarget = event.relatedTarget;
-    const movingToAnotherChip =
-      relatedTarget instanceof HTMLElement &&
-      Boolean(relatedTarget.closest("[data-intake-chip='true']"));
-
-    // Moving chip-to-chip should feel continuous: collapse previous immediately while next expands.
-    if (movingToAnotherChip) {
-      if (holdTimerRef.current) {
-        clearTimeout(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
-      setDelayedCloseId(null);
-      return;
-    }
-
+  const handleMouseLeave = (slot: IntakeChipSlotId) => {
+    setHoveredId((current) => (current === slot ? null : current));
     holdTimerRef.current = setTimeout(() => {
-      setDelayedCloseId(null);
+      setDelayedCloseId((current) => (current === slot ? null : current));
       holdTimerRef.current = null;
     }, HOLD_MS);
-    setDelayedCloseId(id);
+    setDelayedCloseId(slot);
   };
 
-  const isExpanded = (id: IntakeChipSlotId) => {
-    const value = getValue(id);
-    if (value) return true;
-    if (hoveredId === id) return true;
-    if (delayedCloseId === id) return true;
-    return false;
+  const isExpanded = (slot: IntakeChipSlotId) => hoveredId === slot || delayedCloseId === slot || openSlot === slot;
+
+  const getExpandedWidthPx = (label: string) => {
+    const estimated = 38 + label.length * 5.8;
+    return Math.max(88, Math.min(156, Math.round(estimated)));
   };
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 overflow-x-auto no-scrollbar min-h-9 px-0 py-1",
-        className
-      )}
-    >
-      {SLOTS.map(({ id, icon: Icon, title }) => {
-        const value = getValue(id);
-        const isOpen = openSlot === id;
-        const expanded = isExpanded(id);
-        const displayText = getDisplayLabel(id, value, title);
-        const label = value && id === "who" ? `Invite ${value}` : displayText;
-        const expandedWidth = getExpandedWidthPx(label);
+    <div className={cn("space-y-2", className)}>
+      <div className="flex flex-wrap items-start gap-2 min-h-6 py-1">
+        {chips.map((chip) => (
+          <SemanticChip
+            key={chip.id}
+            epistemic={chip.epistemic}
+            label={chip.label}
+            onPress={chip.onPress ?? (() => toggleSlot(chip.slot))}
+          />
+        ))}
 
-        return (
-          <Popover
-            key={id}
-            open={isOpen}
-            onOpenChange={(open) => {
-              if (!open) onCloseSlot();
-              else onOpenSlot(id);
-            }}
-          >
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                data-intake-chip="true"
-                onMouseEnter={() => handleMouseEnter(id)}
-                onMouseLeave={(event) => handleMouseLeave(id, event)}
-                style={{ width: expanded ? `${expandedWidth}px` : "36px" }}
+        {unusedSlots.map(({ id, icon: Icon, title }) => {
+          const isOpen = openSlot === id;
+          const expanded = isExpanded(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => toggleSlot(id)}
+              onMouseEnter={() => handleMouseEnter(id)}
+              onMouseLeave={() => handleMouseLeave(id)}
+              aria-label={title}
+              title={title}
+              style={{ width: expanded ? `${getExpandedWidthPx(title)}px` : `${COLLAPSED_SIZE_PX}px` }}
+              className={cn(
+                "flex h-6 shrink-0 items-center gap-1.5 overflow-hidden rounded-[8px]",
+                "transition-[width,padding,background-color,box-shadow] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
+                expanded ? "pl-[5px] pr-[6px]" : "justify-center px-[5px]",
+                isOpen
+                  ? "bg-card shadow-inset"
+                  : "bg-background text-muted-foreground shadow-[2px_2px_4px_0px_rgba(0,0,0,0.08),-1px_-1px_2px_0px_rgba(255,255,255,0.5),inset_1px_1px_1px_0px_rgba(255,255,255,0.4)] hover:shadow-inset"
+              )}
+            >
+              <Icon className={cn("h-[14px] w-[14px] shrink-0", isOpen ? "text-primary" : "text-muted-foreground")} />
+              <span
                 className={cn(
-                  "flex items-center gap-2 shrink-0 rounded-[10px] overflow-hidden",
-                  "transition-[width,padding,background-color,border-color,box-shadow] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
-                  "shadow-[2px_2px_4px_0px_rgba(0,0,0,0.08),-1px_-1px_2px_0px_rgba(255,255,255,0.5),inset_1px_1px_1px_0px_rgba(255,255,255,0.4)]",
-                  value
-                    ? "bg-primary/15 text-foreground border border-border/50"
-                    : "bg-muted/40 text-muted-foreground border border-transparent hover:border-border/40",
-                  expanded ? "h-9 pl-2 pr-3" : `${COLLAPSED_SIZE} pl-2 pr-2`
+                  "text-[11px] font-mono uppercase tracking-wide whitespace-nowrap overflow-hidden",
+                  "transition-[opacity,clip-path,max-width] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
+                  expanded
+                    ? "opacity-100 [clip-path:inset(0_0_0_0)] max-w-[120px]"
+                    : "opacity-0 [clip-path:inset(0_100%_0_0)] max-w-0"
                 )}
               >
-                <Icon
-                  className={cn(
-                    "h-3.5 w-3.5 shrink-0"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-xs font-medium whitespace-nowrap truncate max-w-[160px] overflow-hidden",
-                    "transition-[opacity,clip-path,max-width] duration-[1020ms] ease-[cubic-bezier(0.23,1,0.32,1)]",
-                    expanded
-                      ? "opacity-100 [clip-path:inset(0_0_0_0)] max-w-[160px]"
-                      : "opacity-0 [clip-path:inset(0_100%_0_0)] max-w-0"
-                  )}
-                >
-                  {expanded ? label : title}
-                </span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-2 rounded-lg shadow-e1">
-              {renderSlotContent(id, onCloseSlot)}
-            </PopoverContent>
-          </Popover>
-        );
-      })}
+                {title}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {openSlot && (
+        <div className="rounded-[12px] bg-background/70 p-2.5 shadow-e1">
+          {renderSlotContent(openSlot, onCloseSlot)}
+        </div>
+      )}
     </div>
   );
 }

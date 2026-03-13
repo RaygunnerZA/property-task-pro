@@ -38,7 +38,7 @@ interface LeftColumnProps {
  * Left Column Component
  * Calendar + Properties
  * 
- * Desktop: Fixed 280px width, sticky on scroll
+ * Desktop: Fixed 265px width, sticky on scroll
  * Mobile: Full width, stacked above RightColumn
  */
 export function LeftColumn({ 

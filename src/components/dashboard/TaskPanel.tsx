@@ -2,14 +2,27 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
-import MessageList from "@/components/MessageList";
-import TaskCard from "@/components/TaskCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { CheckSquare, Inbox, Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
+import { useMessages } from "@/hooks/useMessages";
+import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
+import {
+  CheckSquare,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  AlertTriangle,
+  ShieldCheck,
+  Waves,
+  Upload,
+  FileText,
+  ClipboardCheck,
+  MessageSquare,
+} from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
-import EmptyState from "@/components/EmptyState";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -17,7 +30,7 @@ interface TaskPanelProps {
   tasksLoading?: boolean;
   onTaskClick?: (taskId: string) => void;
   onMessageClick?: (messageId: string) => void;
-  selectedItem?: { type: 'task' | 'message'; id: string } | null;
+  selectedItem?: { type: "task" | "message"; id: string } | null;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
@@ -27,27 +40,91 @@ interface TaskPanelProps {
   onCreateTask?: () => void;
 }
 
+type AttentionGroup = "urgent" | "review" | "recent";
+type ComplianceStatus = "healthy" | "expiring" | "overdue" | "missing";
+type ComplianceFilter = "all" | "expiring" | "overdue" | "missing";
+type ExpiryRange = "all" | "30" | "90" | "365";
+
+interface ComplianceRecord {
+  id: string;
+  title: string;
+  propertyName: string;
+  propertyId?: string | null;
+  complianceType: string;
+  expiryDate?: string | null;
+  nextDueDate?: string | null;
+  status: ComplianceStatus;
+  linkedDocument: string;
+  inspectionHistory: string[];
+  linkedTasks: string[];
+  notes: string;
+}
+
+interface AttentionItem {
+  id: string;
+  group: AttentionGroup;
+  title: string;
+  context: string;
+  hint?: string;
+  description?: string;
+  imageUrl?: string | null;
+  messageId?: string;
+  complianceSeed?: {
+    title: string;
+    propertyName: string;
+    propertyId?: string | null;
+    complianceType: string;
+  };
+}
+
+const STATUS_LABEL: Record<ComplianceStatus, string> = {
+  healthy: "Healthy",
+  expiring: "Expiring Soon",
+  overdue: "Overdue",
+  missing: "Missing",
+};
+
+function normalizeStatus(rawState?: string | null): ComplianceStatus {
+  const state = String(rawState || "").toLowerCase();
+  if (state.includes("overdue") || state.includes("expired")) return "overdue";
+  if (state.includes("missing") || state.includes("none")) return "missing";
+  if (state.includes("expiring") || state.includes("due_soon")) return "expiring";
+  if (state.includes("valid") || state.includes("healthy")) return "healthy";
+  return "healthy";
+}
+
+function daysUntil(dateString?: string | null): number | null {
+  if (!dateString) return null;
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const now = startOfDay(new Date());
+  const due = startOfDay(parsed);
+  const diff = due.getTime() - now.getTime();
+  return Math.round(diff / (1000 * 60 * 60 * 24));
+}
+
+function formatDueText(dateString?: string | null): string {
+  if (!dateString) return "No expiry date";
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return "No expiry date";
+  return format(parsed, "dd MMM yyyy");
+}
+
 /**
  * Task Panel Component
- * 
- * Desktop Right Column Task Panel with 3 tabs:
- * - Tasks: Full task list
- * - Inbox: Inbox items placeholder
- * - Schedule: Upcoming agenda
- * 
- * Features:
- * - 100% height container
- * - Sticky tab bar
- * - Scrollable content area
- * - Neomorphic tab styling (E2 elevation for active, inset for track)
- * - Paper texture background
+ *
+ * Desktop centre-column panel with 4 tabs:
+ * - Attention: triage queue for incoming signals
+ * - Tasks: full task list
+ * - Compliance: status-driven compliance records
+ * - Schedule: upcoming agenda
  */
-export function TaskPanel({ 
+export function TaskPanel({
   tasks = [],
   properties = [],
   tasksLoading = false,
-  onTaskClick, 
-  onMessageClick, 
+  onTaskClick,
+  onMessageClick,
   selectedItem,
   activeTab: externalActiveTab,
   onTabChange,
@@ -55,15 +132,31 @@ export function TaskPanel({
   filterToApply,
   filtersToApply,
   selectedPropertyIds,
-  onCreateTask
+  onCreateTask,
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
+  const { messages } = useMessages();
+  const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
+
   const [internalActiveTab, setInternalActiveTab] = useState("tasks");
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
+  const [attentionFilter, setAttentionFilter] = useState<AttentionGroup | "all">("all");
+  const [attentionPropertyFilter, setAttentionPropertyFilter] = useState<string>("all");
+  const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
+  const [complianceSearch, setComplianceSearch] = useState("");
+  const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
+  const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
+  const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
+  const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
+  const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
+  const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
+  const [hideTabIcons, setHideTabIcons] = useState(false);
+  const attentionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const tabsListRef = useRef<HTMLDivElement | null>(null);
+
   const selectedDate = selectedDateProp ?? internalSelectedDate;
 
-  // Sync when parent passes a new date (e.g., left-column calendar click)
   const prevSelectedDatePropRef = useRef<Date | undefined>(selectedDateProp);
   useEffect(() => {
     if (selectedDateProp === undefined) return;
@@ -75,25 +168,74 @@ export function TaskPanel({
       prevSelectedDatePropRef.current = selectedDateProp;
     }
   }, [selectedDateProp]);
-  
-  // Use external activeTab if provided, otherwise use internal state
+
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
   const setActiveTab = onTabChange || setInternalActiveTab;
 
-  // Create property map for quick lookup
+  useEffect(() => {
+    const tabsListEl = tabsListRef.current;
+    if (!tabsListEl) return;
+
+    let frameId: number | null = null;
+    const evaluateTabOverflow = () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      frameId = window.requestAnimationFrame(() => {
+        const tabButtons = Array.from(
+          tabsListEl.querySelectorAll<HTMLElement>('[role="tab"]')
+        );
+        const tabsAreOverlapping = tabButtons.some(
+          (tabButton) => tabButton.scrollWidth > tabButton.clientWidth + 1
+        );
+        setHideTabIcons(tabsAreOverlapping);
+      });
+    };
+
+    evaluateTabOverflow();
+
+    const resizeObserver = new ResizeObserver(() => {
+      evaluateTabOverflow();
+    });
+    resizeObserver.observe(tabsListEl);
+    Array.from(tabsListEl.querySelectorAll<HTMLElement>('[role="tab"]')).forEach((tabButton) => {
+      resizeObserver.observe(tabButton);
+    });
+    window.addEventListener("resize", evaluateTabOverflow);
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", evaluateTabOverflow);
+    };
+  }, [activeTab]);
+
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
 
-  // Apply property filter when selectedPropertyIds provided (ALL = show all)
+  const propertyOptions = useMemo(() => {
+    return properties
+      .map((property: any) => ({
+        id: property.id as string,
+        name: (property.name || property.nickname || property.address || "Property") as string,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [properties]);
+
   const tasksForView = useMemo(() => {
-    if (!selectedPropertyIds || selectedPropertyIds.size === 0 || selectedPropertyIds.size === properties.length) {
+    if (
+      !selectedPropertyIds ||
+      selectedPropertyIds.size === 0 ||
+      selectedPropertyIds.size === properties.length
+    ) {
       return tasks;
     }
     return tasks.filter((t) => t.property_id && selectedPropertyIds.has(t.property_id));
   }, [tasks, selectedPropertyIds, properties.length]);
 
-  // Get unscheduled tasks (no due_date) for backlog section
   const unscheduledTasks = useMemo(() => {
     return tasksForView.filter((task) => {
       if (!task.due_date && !task.due_at) {
@@ -117,12 +259,299 @@ export function TaskPanel({
       withoutDueDate: active.length - withDueDate.length,
       withoutId: active.length - withId.length,
     };
-  }, [tasksForView]);
+  }, [tasksForView, tasks.length]);
 
-  // Filter tasks for Schedule tab - by selectedDate if provided, otherwise upcoming
+  const complianceRecords = useMemo<ComplianceRecord[]>(() => {
+    const recordsFromView = (compliancePortfolio as any[]).map((row) => {
+      const title = row.title || row.document_type || "Compliance Record";
+      const propertyName = row.property_name || "Unassigned property";
+      const dueOrExpiry = row.next_due_date || row.expiry_date;
+      const computedStatus = normalizeStatus(row.expiry_state || row.status);
+      const dayDelta = daysUntil(dueOrExpiry);
+
+      let status = computedStatus;
+      if (status === "healthy" && dayDelta !== null && dayDelta <= 30 && dayDelta >= 0) {
+        status = "expiring";
+      }
+      if (status === "healthy" && dayDelta !== null && dayDelta < 0) {
+        status = "overdue";
+      }
+
+      return {
+        id: String(row.id || `compliance-${Math.random().toString(36).slice(2, 10)}`),
+        title,
+        propertyName,
+        propertyId: row.property_id,
+        complianceType: row.document_type || "General",
+        expiryDate: row.expiry_date,
+        nextDueDate: row.next_due_date,
+        status,
+        linkedDocument: row.title || row.document_type || "Document",
+        inspectionHistory: row.next_due_date
+          ? [`Next due ${formatDueText(row.next_due_date)}`]
+          : ["No inspection history yet"],
+        linkedTasks: [],
+        notes:
+          row.hazards?.length > 0
+            ? `Potential hazards: ${row.hazards.join(", ")}`
+            : "No hazards flagged.",
+      } as ComplianceRecord;
+    });
+
+    const merged = [...attentionComplianceDrafts, ...recordsFromView];
+    const byId = new Map<string, ComplianceRecord>();
+    merged.forEach((record) => {
+      if (!byId.has(record.id)) byId.set(record.id, record);
+    });
+    return Array.from(byId.values());
+  }, [attentionComplianceDrafts, compliancePortfolio]);
+
+  const attentionItems = useMemo<AttentionItem[]>(() => {
+    const urgent: AttentionItem[] = complianceRecords
+      .filter((record) => record.status === "overdue")
+      .slice(0, 4)
+      .map((record) => ({
+        id: `urgent-${record.id}`,
+        group: "urgent",
+        title: `Possible ${record.complianceType.toLowerCase()} risk`,
+        context: `${record.propertyName} • ${formatDueText(record.nextDueDate || record.expiryDate)}`,
+        hint: "Urgent signal",
+        description: `${record.title} is overdue and may need immediate attention.`,
+      }));
+
+    const review: AttentionItem[] = complianceRecords
+      .filter((record) => record.status === "expiring" || record.status === "missing")
+      .slice(0, 8)
+      .map((record) => ({
+        id: `review-${record.id}`,
+        group: "review",
+        title: `${record.complianceType} detected`,
+        context: `${record.propertyName}`,
+        hint:
+          record.status === "missing"
+            ? "Possible missing record"
+            : `Possible expiry: ${formatDueText(record.nextDueDate || record.expiryDate)}`,
+        description: "Filla suggests classifying this into compliance tracking.",
+        complianceSeed: {
+          title: record.title,
+          propertyName: record.propertyName,
+          propertyId: record.propertyId,
+          complianceType: record.complianceType,
+        },
+      }));
+
+    const recent: AttentionItem[] = messages.slice(0, 10).map((message: any) => ({
+      id: `recent-msg-${message.id}`,
+      group: "recent",
+      messageId: message.id,
+      title: "Incoming feed item",
+      context: `${message.author_name || "Unknown"} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
+      hint: "New upload/message signal",
+      description: message.body
+        ? String(message.body).slice(0, 120)
+        : "Incoming message requires triage.",
+    }));
+
+    if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
+      return [
+        {
+          id: "recent-empty-seed",
+          group: "recent",
+          title: "Photo uploaded",
+          context: "Bird property • Today 09:14",
+          hint: "Incoming feed item",
+          description: "Use Attention to triage uploads into tasks or compliance.",
+        },
+      ];
+    }
+
+    return [...urgent, ...review, ...recent];
+  }, [complianceRecords, messages]);
+
+  const unresolvedAttentionItems = useMemo(() => {
+    return attentionItems.filter((item) => !resolvedAttentionIds.has(item.id));
+  }, [attentionItems, resolvedAttentionIds]);
+
+  const filteredAttentionItems = useMemo(() => {
+    return unresolvedAttentionItems.filter((item) => {
+      if (attentionFilter !== "all" && item.group !== attentionFilter) return false;
+      if (attentionPropertyFilter === "all") return true;
+      return item.context.toLowerCase().includes(attentionPropertyFilter.toLowerCase());
+    });
+  }, [attentionFilter, attentionPropertyFilter, unresolvedAttentionItems]);
+
+  const groupedAttentionItems = useMemo(() => {
+    const urgent = filteredAttentionItems.filter((item) => item.group === "urgent");
+    const review = filteredAttentionItems.filter((item) => item.group === "review");
+    const recent = filteredAttentionItems.filter((item) => item.group === "recent");
+    return { urgent, review, recent };
+  }, [filteredAttentionItems]);
+
+  const attentionSummary = useMemo(() => {
+    const urgent = unresolvedAttentionItems.filter((item) => item.group === "urgent").length;
+    const review = unresolvedAttentionItems.filter((item) => item.group === "review").length;
+    const recent = unresolvedAttentionItems.filter((item) => item.group === "recent").length;
+    return { urgent, review, recent };
+  }, [unresolvedAttentionItems]);
+
+  const riskSignals = useMemo(() => {
+    return unresolvedAttentionItems.filter((item) => item.group === "urgent").slice(0, 5);
+  }, [unresolvedAttentionItems]);
+
+  const dominantAttentionProperty = useMemo(() => {
+    const counts = new Map<string, number>();
+    unresolvedAttentionItems.forEach((item) => {
+      const property = item.context.split("•")[0]?.trim();
+      if (!property) return;
+      counts.set(property, (counts.get(property) || 0) + 1);
+    });
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+    return sorted[0]?.[0] || "No dominant property";
+  }, [unresolvedAttentionItems]);
+
+  const filteredComplianceRecords = useMemo(() => {
+    const query = complianceSearch.trim().toLowerCase();
+    return complianceRecords.filter((record) => {
+      if (
+        query &&
+        !`${record.title} ${record.propertyName} ${record.complianceType}`
+          .toLowerCase()
+          .includes(query)
+      ) {
+        return false;
+      }
+
+      if (complianceFilter !== "all") {
+        if (complianceFilter === "expiring" && record.status !== "expiring") return false;
+        if (complianceFilter === "overdue" && record.status !== "overdue") return false;
+        if (complianceFilter === "missing" && record.status !== "missing") return false;
+      }
+
+      if (compliancePropertyFilter !== "all" && record.propertyName !== compliancePropertyFilter)
+        return false;
+      if (complianceTypeFilter !== "all" && record.complianceType !== complianceTypeFilter)
+        return false;
+
+      if (complianceExpiryRange !== "all") {
+        const due = daysUntil(record.nextDueDate || record.expiryDate);
+        const max = Number(complianceExpiryRange);
+        if (due === null || due < 0 || due > max) return false;
+      }
+
+      return true;
+    });
+  }, [
+    complianceSearch,
+    complianceRecords,
+    complianceFilter,
+    compliancePropertyFilter,
+    complianceTypeFilter,
+    complianceExpiryRange,
+  ]);
+
+  const complianceTypeOptions = useMemo(() => {
+    const typeSet = new Set<string>();
+    complianceRecords.forEach((record) => {
+      if (record.complianceType) typeSet.add(record.complianceType);
+    });
+    return Array.from(typeSet).sort((a, b) => a.localeCompare(b));
+  }, [complianceRecords]);
+
+  const complianceHealth = useMemo(() => {
+    return {
+      healthy: complianceRecords.filter((record) => record.status === "healthy").length,
+      expiring: complianceRecords.filter((record) => record.status === "expiring").length,
+      overdue: complianceRecords.filter((record) => record.status === "overdue").length,
+      missing: complianceRecords.filter((record) => record.status === "missing").length,
+    };
+  }, [complianceRecords]);
+
+  const propertyComplianceStatus = useMemo(() => {
+    const byProperty = new Map<
+      string,
+      { healthy: number; expiring: number; overdue: number; missing: number }
+    >();
+    complianceRecords.forEach((record) => {
+      const key = record.propertyName || "Unassigned property";
+      if (!byProperty.has(key)) byProperty.set(key, { healthy: 0, expiring: 0, overdue: 0, missing: 0 });
+      byProperty.get(key)![record.status] += 1;
+    });
+    return Array.from(byProperty.entries())
+      .map(([propertyName, counts]) => ({ propertyName, counts }))
+      .sort((a, b) => b.counts.overdue + b.counts.expiring - (a.counts.overdue + a.counts.expiring))
+      .slice(0, 6);
+  }, [complianceRecords]);
+
+  const upcomingExpiry = useMemo(() => {
+    return complianceRecords
+      .map((record) => ({
+        ...record,
+        dueIn: daysUntil(record.nextDueDate || record.expiryDate),
+      }))
+      .filter((record) => record.dueIn !== null && record.dueIn >= 0)
+      .sort((a, b) => (a.dueIn as number) - (b.dueIn as number))
+      .slice(0, 6);
+  }, [complianceRecords]);
+
+  const selectedComplianceRecord = useMemo(() => {
+    if (!selectedComplianceId) return filteredComplianceRecords[0];
+    return filteredComplianceRecords.find((record) => record.id === selectedComplianceId) || filteredComplianceRecords[0];
+  }, [filteredComplianceRecords, selectedComplianceId]);
+
+  useEffect(() => {
+    if (!filteredComplianceRecords.length) {
+      setSelectedComplianceId(null);
+      return;
+    }
+    if (!selectedComplianceId || !filteredComplianceRecords.some((record) => record.id === selectedComplianceId)) {
+      setSelectedComplianceId(filteredComplianceRecords[0].id);
+    }
+  }, [filteredComplianceRecords, selectedComplianceId]);
+
+  const resolveAttentionItem = (itemId: string) => {
+    setResolvedAttentionIds((prev) => {
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+  };
+
+  const addAttentionItemToCompliance = (item: AttentionItem) => {
+    if (!item.complianceSeed) return;
+    const newRecord: ComplianceRecord = {
+      id: `attention-${item.id}`,
+      title: item.complianceSeed.title,
+      propertyName: item.complianceSeed.propertyName,
+      propertyId: item.complianceSeed.propertyId,
+      complianceType: item.complianceSeed.complianceType,
+      expiryDate: null,
+      nextDueDate: null,
+      status: "missing",
+      linkedDocument: "Pending document",
+      inspectionHistory: ["Created from Attention tab"],
+      linkedTasks: [],
+      notes: "Promoted from Attention for compliance tracking.",
+    };
+
+    setAttentionComplianceDrafts((prev) => {
+      if (prev.some((record) => record.id === newRecord.id)) return prev;
+      return [newRecord, ...prev];
+    });
+    setSelectedComplianceId(newRecord.id);
+  };
+
+  const getComplianceStatusText = (record: ComplianceRecord): string => {
+    const due = record.nextDueDate || record.expiryDate;
+    const dayDelta = daysUntil(due);
+    if (record.status === "missing") return "Status: Missing record";
+    if (dayDelta === null) return `Status: ${STATUS_LABEL[record.status]}`;
+    if (dayDelta < 0) return `Status: Overdue by ${Math.abs(dayDelta)} day${Math.abs(dayDelta) === 1 ? "" : "s"}`;
+    if (dayDelta <= 30) return `Status: Expiring in ${dayDelta} day${dayDelta === 1 ? "" : "s"}`;
+    return `Status: ${STATUS_LABEL[record.status]}`;
+  };
+
   const scheduleTasks = useMemo(() => {
     if (selectedDate && isDatePinned) {
-      // Filter by selected date - normalize both dates to start of day for accurate comparison
       const selectedDateNormalized = startOfDay(selectedDate);
       const selectedDateStr = format(selectedDateNormalized, "yyyy-MM-dd");
 
@@ -130,7 +559,11 @@ export function TaskPanel({
         if (!task.milestones) return [];
         if (Array.isArray(task.milestones)) return task.milestones;
         if (typeof task.milestones === "string") {
-          try { return JSON.parse(task.milestones); } catch { return []; }
+          try {
+            return JSON.parse(task.milestones);
+          } catch {
+            return [];
+          }
         }
         return [];
       };
@@ -145,72 +578,74 @@ export function TaskPanel({
           if (dueValue) {
             try {
               matchesDue = format(startOfDay(new Date(dueValue)), "yyyy-MM-dd") === selectedDateStr;
-            } catch { /* skip */ }
+            } catch {
+              // No-op
+            }
           }
 
-          // Primary due date wins — no milestone label
           if (matchesDue) return [task];
 
-          // Check milestones — task appears once for the first matching milestone
           const milestones = parseMilestones(task);
           const hit = milestones.find((m) => {
             if (!m?.dateTime) return false;
             try {
               return format(startOfDay(new Date(m.dateTime)), "yyyy-MM-dd") === selectedDateStr;
-            } catch { return false; }
+            } catch {
+              return false;
+            }
           });
 
-          if (hit) return [{ ...task, _milestoneLabel: hit.label?.trim() || "Milestone", due_date: hit.dateTime, due_at: hit.dateTime }];
+          if (hit) {
+            return [{ ...task, _milestoneLabel: hit.label?.trim() || "Milestone", due_date: hit.dateTime, due_at: hit.dateTime }];
+          }
 
           return [];
         })
         .sort((a, b) => {
-          // Sort by time if available, otherwise by creation date
           const aValue = a.due_date || a.due_at;
           const bValue = b.due_date || b.due_at;
           const aTime = aValue ? new Date(aValue).getTime() : 0;
           const bTime = bValue ? new Date(bValue).getTime() : 0;
           return aTime - bTime;
         });
-    } else {
-      // Show upcoming tasks
-      const today = startOfDay(new Date());
-      return tasksForView
-        .filter((task) => {
-          const dueValue = task.due_date || task.due_at;
-          if (!dueValue) return false;
-          if (!task.id) return false;
-          if (task.status === "completed" || task.status === "archived") return false;
-          try {
-            const dueDate = startOfDay(new Date(dueValue));
-            return isAfter(dueDate, today) || dueDate.getTime() === today.getTime();
-          } catch {
-            return false;
-          }
-        })
-        .sort((a, b) => {
-          const aValue = a.due_date || a.due_at;
-          const bValue = b.due_date || b.due_at;
-          if (!aValue || !bValue) return 0;
-          return new Date(aValue).getTime() - new Date(bValue).getTime();
-        })
-        .slice(0, 25); // Give the schedule tab enough to feel "alive"
     }
+
+    const today = startOfDay(new Date());
+    return tasksForView
+      .filter((task) => {
+        const dueValue = task.due_date || task.due_at;
+        if (!dueValue) return false;
+        if (!task.id) return false;
+        if (task.status === "completed" || task.status === "archived") return false;
+        try {
+          const dueDate = startOfDay(new Date(dueValue));
+          return isAfter(dueDate, today) || dueDate.getTime() === today.getTime();
+        } catch {
+          return false;
+        }
+      })
+      .sort((a, b) => {
+        const aValue = a.due_date || a.due_at;
+        const bValue = b.due_date || b.due_at;
+        if (!aValue || !bValue) return 0;
+        return new Date(aValue).getTime() - new Date(bValue).getTime();
+      })
+      .slice(0, 25);
   }, [tasksForView, selectedDate, isDatePinned]);
 
   return (
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
-        {/* Sticky Tab Bar */}
         <div className="sticky top-0 z-10 bg-background ml-[8px] mr-[8px] flex md:justify-between items-center">
           <TabsList
+            ref={tabsListRef}
             className={cn(
-              "w-full md:w-[373px] grid md:flex grid-cols-3 h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-1.5 rounded-[15px] bg-transparent",
+              "w-full md:w-[430px] grid grid-cols-4 h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-[7px] rounded-[15px] bg-transparent",
               "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
             )}
           >
             <TabsTrigger
-              value="inbox"
+              value="attention"
               className={cn(
                 "rounded-[8px] transition-all",
                 "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
@@ -218,16 +653,16 @@ export function TaskPanel({
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: '24px', paddingRight: '24px' }}
+              style={{ paddingLeft: "10px", paddingRight: "10px" }}
             >
-              <AnimatedIcon 
-                icon={Inbox} 
-                size={16} 
+              <AnimatedIcon
+                icon={AlertTriangle}
+                size={16}
                 animateOnHover
                 animation="shake"
-                className="mr-2"
+                className={cn("mr-2", hideTabIcons && "hidden")}
               />
-              Inbox
+              Attention
             </TabsTrigger>
             <TabsTrigger
               value="tasks"
@@ -238,10 +673,24 @@ export function TaskPanel({
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: '26px', paddingRight: '26px' }}
+              style={{ paddingLeft: "10px", paddingRight: "10px" }}
             >
-              <CheckSquare className="mr-0.5 -ml-[10px] h-4 w-4" style={{ width: '31px' }} />
+              <CheckSquare className={cn("mr-1 h-4 w-4", hideTabIcons && "hidden")} />
               Tasks
+            </TabsTrigger>
+            <TabsTrigger
+              value="compliance"
+              className={cn(
+                "rounded-[8px] transition-all",
+                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
+                "data-[state=active]:bg-card",
+                "data-[state=inactive]:bg-transparent",
+                "text-sm font-medium"
+              )}
+              style={{ paddingLeft: "10px", paddingRight: "10px" }}
+            >
+              <ShieldCheck className={cn("mr-1 h-4 w-4", hideTabIcons && "hidden")} />
+              Compliance
             </TabsTrigger>
             <TabsTrigger
               value="schedule"
@@ -252,19 +701,19 @@ export function TaskPanel({
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: '24px', paddingRight: '24px' }}
+              style={{ paddingLeft: "10px", paddingRight: "10px" }}
             >
-              <AnimatedIcon 
-                icon={Calendar} 
-                size={16} 
+              <AnimatedIcon
+                icon={Calendar}
+                size={16}
                 animateOnHover
                 animation="pointing"
-                className="mr-2"
+                className={cn("mr-2", hideTabIcons && "hidden")}
               />
               Schedule
             </TabsTrigger>
           </TabsList>
-          {/* Create Task Button - Right aligned */}
+
           {onCreateTask && (
             <button
               onClick={onCreateTask}
@@ -276,17 +725,230 @@ export function TaskPanel({
           )}
         </div>
 
-        {/* Content Area (each tab owns its own scrolling to avoid nested scroll/height collapse) */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {/* Tasks Tab */}
+          {activeTab === "attention" && (
+            <div className="h-full min-h-0 overflow-y-auto pt-[8px] pl-2 pr-2 pb-2">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
+                <div className="space-y-3 min-w-0">
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-2.5 flex flex-wrap gap-2 items-center">
+                    {(["all", "urgent", "review", "recent"] as const).map((filterKey) => (
+                      <button
+                        key={filterKey}
+                        type="button"
+                        onClick={() => setAttentionFilter(filterKey)}
+                        className={cn(
+                          "text-xs rounded-[8px] px-2.5 py-1 transition-all",
+                          attentionFilter === filterKey
+                            ? "bg-background shadow-e2 font-medium"
+                            : "bg-muted/50 shadow-e1"
+                        )}
+                      >
+                        {filterKey === "all"
+                          ? "All"
+                          : filterKey === "urgent"
+                          ? "Urgent"
+                          : filterKey === "review"
+                          ? "Needs Review"
+                          : "Recent"}
+                      </button>
+                    ))}
+
+                    <select
+                      value={attentionPropertyFilter}
+                      onChange={(event) => setAttentionPropertyFilter(event.target.value)}
+                      className="ml-auto rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1"
+                    >
+                      <option value="all">Property: All</option>
+                      {propertyOptions.map((property) => (
+                        <option key={property.id} value={property.name}>
+                          {property.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-4">
+                    {([
+                      ["URGENT", groupedAttentionItems.urgent],
+                      ["NEEDS REVIEW", groupedAttentionItems.review],
+                      ["RECENT", groupedAttentionItems.recent],
+                    ] as const).map(([label, items]) =>
+                      items.length > 0 ? (
+                        <div key={label} className="space-y-2">
+                          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-1">{label}</p>
+                          <div className="space-y-2">
+                            {items.map((item) => (
+                              <OperationalStreamCard
+                                key={item.id}
+                                id={`attention-card-${item.id}`}
+                                cardRef={(node) => {
+                                  attentionCardRefs.current[item.id] = node;
+                                }}
+                                icon={
+                                  item.group === "urgent" ? (
+                                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                  ) : item.group === "review" ? (
+                                    <ShieldCheck className="h-4 w-4 text-teal-700" />
+                                  ) : (
+                                    <Upload className="h-4 w-4 text-muted-foreground" />
+                                  )
+                                }
+                                title={item.title}
+                                context={item.context}
+                                hint={item.hint}
+                                description={item.description}
+                                imageUrl={item.imageUrl}
+                                accent={item.group === "urgent" ? "red" : item.group === "review" ? "amber" : "slate"}
+                                actions={
+                                  item.group === "urgent"
+                                    ? [
+                                        {
+                                          id: "create-task",
+                                          label: "Create Task",
+                                          onClick: () => {
+                                            onCreateTask?.();
+                                            resolveAttentionItem(item.id);
+                                          },
+                                        },
+                                        {
+                                          id: "ignore",
+                                          label: "Ignore",
+                                          onClick: () => resolveAttentionItem(item.id),
+                                        },
+                                      ]
+                                    : item.group === "review"
+                                    ? [
+                                        {
+                                          id: "add-compliance",
+                                          label: "Add to Compliance",
+                                          onClick: () => {
+                                            addAttentionItemToCompliance(item);
+                                            resolveAttentionItem(item.id);
+                                          },
+                                        },
+                                        {
+                                          id: "create-task",
+                                          label: "Create Task",
+                                          onClick: () => {
+                                            onCreateTask?.();
+                                            resolveAttentionItem(item.id);
+                                          },
+                                        },
+                                        {
+                                          id: "save-document",
+                                          label: "Save Document",
+                                          onClick: () => resolveAttentionItem(item.id),
+                                        },
+                                      ]
+                                    : [
+                                        {
+                                          id: "process",
+                                          label: "Process",
+                                          onClick: () => {
+                                            if (item.messageId) onMessageClick?.(item.messageId);
+                                            resolveAttentionItem(item.id);
+                                          },
+                                        },
+                                        {
+                                          id: "dismiss",
+                                          label: "Dismiss",
+                                          onClick: () => resolveAttentionItem(item.id),
+                                        },
+                                      ]
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+
+                  {filteredAttentionItems.length === 0 && (
+                    <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
+                      No attention items match your current filters.
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:sticky lg:top-3 self-start space-y-3">
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Attention Summary</p>
+                    <div className="space-y-1 text-xs">
+                      <p>Urgent: {attentionSummary.urgent}</p>
+                      <p>Needs review: {attentionSummary.review}</p>
+                      <p>Recent signals: {attentionSummary.recent}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Potential Risks</p>
+                    <div className="space-y-1.5">
+                      {riskSignals.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No critical risks detected.</p>
+                      ) : (
+                        riskSignals.map((signal) => (
+                          <button
+                            key={signal.id}
+                            type="button"
+                            onClick={() =>
+                              attentionCardRefs.current[signal.id]?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                              })
+                            }
+                            className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2"
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                              {signal.title}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Quick Actions</p>
+                    <div className="space-y-1.5">
+                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                        Upload Document
+                      </button>
+                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                        Report Issue
+                      </button>
+                      <button type="button" onClick={() => onCreateTask?.()} className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                        Create Task
+                      </button>
+                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                        Add Compliance Record
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Filla Insights</p>
+                    <p className="text-xs text-foreground/90">
+                      Most signals today relate to: <span className="font-medium">{dominantAttentionProperty}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {attentionSummary.urgent + attentionSummary.review} safety and compliance signals detected.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === "tasks" && (
             <div className="h-full flex flex-col min-h-0 pt-[8px] pl-2 pr-2 pb-0">
-              <TaskList 
+              <TaskList
                 tasks={tasks}
                 properties={properties}
                 tasksLoading={tasksLoading}
                 onTaskClick={onTaskClick}
-                selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
+                selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
                 filterToApply={filterToApply}
                 filtersToApply={filtersToApply}
                 selectedPropertyIds={selectedPropertyIds}
@@ -294,17 +956,262 @@ export function TaskPanel({
             </div>
           )}
 
-          {/* Inbox Tab */}
-          {activeTab === "inbox" && (
-            <div className="h-full min-h-0 overflow-y-auto p-2 space-y-4">
-              <MessageList 
-                onMessageClick={onMessageClick}
-                selectedMessageId={selectedItem?.type === 'message' ? selectedItem.id : undefined}
-              />
+          {activeTab === "compliance" && (
+            <div className="h-full min-h-0 overflow-y-auto pt-[8px] pl-2 pr-2 pb-2">
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
+                <div className="space-y-3 min-w-0">
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-2.5 space-y-2">
+                    <input
+                      value={complianceSearch}
+                      onChange={(event) => setComplianceSearch(event.target.value)}
+                      placeholder="Search certificates or inspections"
+                      className="w-full rounded-[10px] bg-background shadow-engraved px-3 py-2 text-sm outline-none"
+                    />
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {([
+                        ["all", "All"],
+                        ["expiring", "Expiring Soon"],
+                        ["overdue", "Overdue"],
+                        ["missing", "Missing"],
+                      ] as const).map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setComplianceFilter(key)}
+                          className={cn(
+                            "text-xs rounded-[8px] px-2.5 py-1 transition-all",
+                            complianceFilter === key ? "bg-background shadow-e2 font-medium" : "bg-muted/50 shadow-e1"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <select
+                        value={compliancePropertyFilter}
+                        onChange={(event) => setCompliancePropertyFilter(event.target.value)}
+                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
+                      >
+                        <option value="all">Property: All</option>
+                        {propertyOptions.map((property) => (
+                          <option key={property.id} value={property.name}>
+                            {property.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={complianceTypeFilter}
+                        onChange={(event) => setComplianceTypeFilter(event.target.value)}
+                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
+                      >
+                        <option value="all">Compliance Type: All</option>
+                        {complianceTypeOptions.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={complianceExpiryRange}
+                        onChange={(event) => setComplianceExpiryRange(event.target.value as ExpiryRange)}
+                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
+                      >
+                        <option value="all">Expiry Range: Any</option>
+                        <option value="30">Within 30 days</option>
+                        <option value="90">Within 90 days</option>
+                        <option value="365">Within 1 year</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {filteredComplianceRecords.map((record) => (
+                      <OperationalStreamCard
+                        key={record.id}
+                        id={`compliance-card-${record.id}`}
+                        onClick={() => setSelectedComplianceId(record.id)}
+                        icon={
+                          record.status === "overdue" ? (
+                            <AlertTriangle className="h-4 w-4 text-destructive" />
+                          ) : record.status === "expiring" ? (
+                            <Waves className="h-4 w-4 text-amber-600" />
+                          ) : record.status === "missing" ? (
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                          )
+                        }
+                        title={record.title}
+                        context={record.propertyName}
+                        hint={`Expires: ${formatDueText(record.nextDueDate || record.expiryDate)}`}
+                        statusText={getComplianceStatusText(record)}
+                        accent={
+                          record.status === "overdue"
+                            ? "red"
+                            : record.status === "expiring"
+                            ? "amber"
+                            : record.status === "healthy"
+                            ? "green"
+                            : "slate"
+                        }
+                        actions={[
+                          {
+                            id: "create-inspection-task",
+                            label: "Create Inspection Task",
+                            onClick: () => onCreateTask?.(),
+                          },
+                          {
+                            id: "upload-certificate",
+                            label: "Upload New Certificate",
+                            onClick: () => navigate("/compliance"),
+                          },
+                          {
+                            id: "view-record",
+                            label: "View Record",
+                            onClick: () => setSelectedComplianceId(record.id),
+                          },
+                        ]}
+                        className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-[#8EC9CE]")}
+                      />
+                    ))}
+                  </div>
+
+                  {filteredComplianceRecords.length === 0 && (
+                    <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
+                      No compliance records match your current filters.
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:sticky lg:top-3 self-start space-y-3">
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Health</p>
+                    <div className="space-y-1 text-xs">
+                      <p>Healthy: {complianceHealth.healthy}</p>
+                      <p>Expiring soon: {complianceHealth.expiring}</p>
+                      <p>Overdue: {complianceHealth.overdue}</p>
+                      <p>Missing: {complianceHealth.missing}</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Property Compliance Status</p>
+                    <div className="space-y-1.5">
+                      {propertyComplianceStatus.map((row) => {
+                        const statusText =
+                          row.counts.overdue > 0
+                            ? `${row.counts.overdue} Overdue`
+                            : row.counts.expiring > 0
+                            ? `${row.counts.expiring} Expiring`
+                            : row.counts.missing > 0
+                            ? `${row.counts.missing} Missing`
+                            : "Healthy";
+                        return (
+                          <p key={row.propertyName} className="text-xs text-foreground/90">
+                            {row.propertyName} - {statusText}
+                          </p>
+                        );
+                      })}
+                      {propertyComplianceStatus.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No property compliance records yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Upcoming Expiry</p>
+                    <div className="space-y-1.5">
+                      {upcomingExpiry.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No upcoming expiries.</p>
+                      ) : (
+                        upcomingExpiry.slice(0, 3).map((record) => (
+                          <p key={record.id} className="text-xs text-foreground/90">
+                            {record.complianceType} - {record.dueIn} day{record.dueIn === 1 ? "" : "s"}
+                          </p>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Type Filters</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Fire", "Gas", "Electrical", "Insurance", "Safety"].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setComplianceTypeFilter(complianceTypeFilter === type ? "all" : type)}
+                          className={cn(
+                            "text-[11px] rounded-[8px] px-2 py-1 transition-all",
+                            complianceTypeFilter === type
+                              ? "bg-background shadow-e2 font-medium"
+                              : "bg-muted/50 shadow-e1"
+                          )}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selectedComplianceRecord && (
+                    <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Record Detail</p>
+                      <div className="space-y-1.5 text-xs">
+                        <p>
+                          <span className="text-muted-foreground">Compliance Type:</span>{" "}
+                          {selectedComplianceRecord.complianceType}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Linked Property:</span>{" "}
+                          {selectedComplianceRecord.propertyName}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Expiry Date:</span>{" "}
+                          {formatDueText(
+                            selectedComplianceRecord.nextDueDate || selectedComplianceRecord.expiryDate
+                          )}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Linked Document:</span>{" "}
+                          {selectedComplianceRecord.linkedDocument}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Inspection History:</span>{" "}
+                          {selectedComplianceRecord.inspectionHistory.join(", ")}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Linked Tasks:</span>{" "}
+                          {selectedComplianceRecord.linkedTasks.length || 0}
+                        </p>
+                        <p>
+                          <span className="text-muted-foreground">Notes:</span>{" "}
+                          {selectedComplianceRecord.notes}
+                        </p>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                          Upload Document
+                        </button>
+                        <button type="button" onClick={() => onCreateTask?.()} className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                          Create Inspection Task
+                        </button>
+                        <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                          Update Expiry
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Schedule Tab */}
           {activeTab === "schedule" && (
             <div className="h-full min-h-0 overflow-hidden">
               {tasksLoading ? (
@@ -315,7 +1222,6 @@ export function TaskPanel({
                 </div>
               ) : (
                 <div className="h-full flex flex-col min-h-0">
-                  {/* Date navigation */}
                   <div className="px-4 pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
@@ -383,7 +1289,7 @@ export function TaskPanel({
                           properties={properties}
                           selectedDate={isDatePinned ? selectedDate : undefined}
                           onTaskClick={onTaskClick}
-                          selectedTaskId={selectedItem?.type === 'task' ? selectedItem.id : undefined}
+                          selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
                           showDateHeaders={false}
                         />
                       </div>
@@ -415,7 +1321,6 @@ export function TaskPanel({
                     )}
                   </div>
 
-                  {/* Unscheduled Tasks Section */}
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
                       <div className="px-4 mb-3">
@@ -463,4 +1368,3 @@ export function TaskPanel({
     </div>
   );
 }
-

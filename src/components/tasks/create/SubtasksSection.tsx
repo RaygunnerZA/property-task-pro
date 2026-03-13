@@ -29,6 +29,8 @@ const CATEGORY_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: st
 interface SubtasksSectionProps {
   subtasks: SubtaskInput[];
   onSubtasksChange: (subtasks: SubtaskInput[]) => void;
+  showDescription?: boolean;
+  embedded?: boolean;
   description?: string;
   onDescriptionChange?: (description: string) => void;
   className?: string;
@@ -44,6 +46,8 @@ interface SubtasksSectionProps {
 export function SubtasksSection({
   subtasks,
   onSubtasksChange,
+  showDescription = true,
+  embedded = false,
   description = "",
   onDescriptionChange,
   templates = [],
@@ -169,7 +173,11 @@ export function SubtasksSection({
   };
 
   return <div 
-      className={cn("group/subtask shadow-engraved rounded-xl overflow-hidden text-white bg-white/80 mt-4", className)}
+      className={cn(
+        "group/subtask overflow-hidden text-white",
+        embedded ? "mt-0 rounded-none bg-transparent shadow-none" : "shadow-engraved rounded-xl bg-white/80 mt-4",
+        className
+      )}
       style={{
         backgroundClip: 'unset',
         WebkitBackgroundClip: 'unset',
@@ -178,16 +186,18 @@ export function SubtasksSection({
       }}
     >
       {/* Description Area */}
-      <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
-        <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
-      </div>
+      {showDescription && (
+        <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+          <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+        </div>
+      )}
 
       {/* Subtasks Area */}
       <div className="pl-0 pr-0 pb-[6px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Step Placeholder */
       <div className="flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group" onClick={handleAddFirstSubtask}>
-            <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50" />
-            <span className="flex-1 text-muted-foreground/50 text-sm">
+            <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50 opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className="flex-1 text-muted-foreground/50 text-sm opacity-0 transition-opacity group-hover:opacity-100">
               Add step
             </span>
             <DropdownMenu>
@@ -232,7 +242,7 @@ export function SubtasksSection({
                 setPickerOpen((prev) => !prev);
               }}
             >
-              Use Checklist
+              Load Checklist
             </button>
             <span className="text-muted-foreground/30">|</span>
             <button

@@ -23,7 +23,7 @@ import { toast } from "sonner";
 
 /**
  * Space Group Screen - Template for all space groups (Circulation, Service Areas, etc.)
- * Same layout as Property Detail: 245px left, 650px middle, third column concertina on wide screens.
+ * Same layout as Property Detail: 265px left, 660px middle, third column concertina on wide screens.
  */
 export default function SpaceGroupScreen() {
   const { id: propertyId, groupSlug } = useParams<{

@@ -207,7 +207,7 @@ export default function PropertyDocuments() {
       icon={<FileText className="h-6 w-6" />}
       maxWidth="lg"
     >
-      <div className="flex flex-col gap-6 max-w-[650px]">
+      <div className="flex flex-col gap-6 max-w-[660px]">
         {/* Summary Row - Framework V2 */}
         <DocumentsSummaryRow propertyId={propertyId} />
 

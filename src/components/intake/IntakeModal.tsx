@@ -11,23 +11,45 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useChecklistTemplates, type ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useSpaces } from "@/hooks/useSpaces";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { FillaIcon } from "@/components/filla/FillaIcon";
+import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
-import { IntakeChipRow, type IntakeChipRowValues, type IntakeChipSlotId } from "@/components/intake/IntakeChipRow";
-import { SubtaskList, type SubtaskData } from "@/components/tasks/subtasks";
+import { IntakeChipRow, type IntakeChipRowChip, type IntakeChipSlotId } from "@/components/intake/IntakeChipRow";
+import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
+import type { SubtaskData } from "@/components/tasks/subtasks";
+import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
+import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
+import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
+import { InviteUserModal } from "@/components/invite/InviteUserModal";
+import { getAssetIcon } from "@/lib/icon-resolver";
+import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { format, addDays, startOfDay } from "date-fns";
@@ -40,6 +62,33 @@ const INTAKE_COMPLIANCE_TYPES = [
   "PAT Test",
   "Other",
 ];
+
+const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; label: string }> = [
+  { value: "compliance", label: "Compliance" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "security", label: "Security" },
+  { value: "operations", label: "Operations" },
+];
+
+type ChecklistTemplateDialogMode = "save" | "edit" | "duplicate";
+
+const TITLE_TRAILING_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "before",
+  "for",
+  "from",
+  "in",
+  "into",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
 
 const PAPER_TEXTURE_STYLE: React.CSSProperties = {
   backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
@@ -73,6 +122,8 @@ export function IntakeModal({
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const { templates, refresh: refreshChecklistTemplates } = useChecklistTemplates(open);
+  const { data: properties = [] } = usePropertiesQuery();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -90,15 +141,28 @@ export function IntakeModal({
 
   const { result: aiResult, loading: aiLoading } = useAIExtract(description);
 
+  const isUsableGeneratedTitle = useCallback((rawTitle: string) => {
+    const trimmed = rawTitle.trim().replace(/[.!?,:;]+$/, "");
+    if (trimmed.length < 8) return false;
+
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (words.length < 3) return false;
+
+    const lastWord = words[words.length - 1]?.toLowerCase() ?? "";
+    if (TITLE_TRAILING_STOP_WORDS.has(lastWord)) return false;
+
+    return true;
+  }, []);
+
   useEffect(() => {
     if (!aiResult?.title?.trim() || userEditedTitle) return;
     const raw = aiResult.title.trim();
-    if (raw.length < 3) return;
+    if (!isUsableGeneratedTitle(raw)) return;
     const processed = raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[.!]+$/, "");
     setAiTitleGenerated(processed);
     if (!title.trim()) setTitle(processed);
     setShowTitleField(true);
-  }, [aiResult?.title, userEditedTitle, title]);
+  }, [aiResult?.title, isUsableGeneratedTitle, userEditedTitle, title]);
 
   useEffect(() => {
     if (!description.trim()) {
@@ -120,10 +184,34 @@ export function IntakeModal({
   // Chip row state (simplified: labels only for display; full IDs for submit)
   const [dueDate, setDueDate] = useState("");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [priorityDefined, setPriorityDefined] = useState(false);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
+  const [templateId, setTemplateId] = useState("");
+  const [recentTemplateIds, setRecentTemplateIds] = useState<string[]>([]);
+  const [templateDialogMode, setTemplateDialogMode] = useState<ChecklistTemplateDialogMode | null>(null);
+  const [templateDraftName, setTemplateDraftName] = useState("");
+  const [templateDraftCategory, setTemplateDraftCategory] = useState<ChecklistTemplateCategory>("operations");
+  const [pendingTemplateImport, setPendingTemplateImport] = useState<{
+    subtasks: SubtaskData[];
+    templateId: string;
+    templateName: string;
+  } | null>(null);
+  const [showArchiveTemplateDialog, setShowArchiveTemplateDialog] = useState(false);
+  const [showAddPropertyDialog, setShowAddPropertyDialog] = useState(false);
+  const [showAddSpaceDialog, setShowAddSpaceDialog] = useState(false);
+  const [showCreateAssetDialog, setShowCreateAssetDialog] = useState(false);
+  const [spaceDraftName, setSpaceDraftName] = useState("");
+  const [assetDraftName, setAssetDraftName] = useState("");
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [invitePrefill, setInvitePrefill] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  } | null>(null);
 
   const handleAnalysisComplete = useCallback((localId: string, result: import("@/types/temp-image").ImageAnalysisResult) => {
     setImages((prev) =>
@@ -167,6 +255,339 @@ export function IntakeModal({
   );
 
   const { members } = useOrgMembers();
+  const { spaces, refresh: refreshSpaces } = useSpaces(propertyId || undefined);
+  const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string }>>([]);
+  const activeTemplate = useMemo(
+    () => templates.find((template) => template.id === templateId) ?? null,
+    [templateId, templates]
+  );
+  const recentStorageKey = useMemo(
+    () => `filla-checklist-recent:${orgId ?? "anon"}`,
+    [orgId]
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const stored = window.localStorage.getItem(recentStorageKey);
+      if (!stored) {
+        setRecentTemplateIds([]);
+        return;
+      }
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        setRecentTemplateIds(parsed.filter((id): id is string => typeof id === "string").slice(0, 8));
+      } else {
+        setRecentTemplateIds([]);
+      }
+    } catch {
+      setRecentTemplateIds([]);
+    }
+  }, [open, recentStorageKey]);
+
+  const rememberRecentTemplate = useCallback((id: string) => {
+    setRecentTemplateIds((prev) => {
+      const next = [id, ...prev.filter((item) => item !== id)].slice(0, 8);
+      try {
+        window.localStorage.setItem(recentStorageKey, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage write failures.
+      }
+      return next;
+    });
+  }, [recentStorageKey]);
+
+  const makeSubtaskFromText = useCallback((text: string): SubtaskData => ({
+    id: crypto.randomUUID(),
+    title: text,
+    is_yes_no: false,
+    requires_signature: false,
+    step_type: "check",
+  }), []);
+
+  const normalizeChecklistItems = useCallback((items: SubtaskData[]) => {
+    return items
+      .map((subtask) => ({
+        title: subtask.title.trim(),
+        is_yes_no: Boolean(subtask.is_yes_no),
+        requires_signature: Boolean(subtask.requires_signature),
+      }))
+      .filter((item) => item.title.length > 0);
+  }, []);
+
+  const importTemplateItems = useCallback((incomingTemplateId: string) => {
+    const template = templates.find((item) => item.id === incomingTemplateId);
+    if (!template) {
+      toast({
+        title: "Template not found",
+        description: "That checklist template is no longer available.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const rawItems = Array.isArray(template.items) ? template.items : [];
+    const parsedSubtasks = rawItems
+      .map((item): SubtaskData | null => {
+        if (typeof item === "string") {
+          const title = item.trim();
+          return title ? makeSubtaskFromText(title) : null;
+        }
+        if (item && typeof item === "object") {
+          const candidate = item as {
+            title?: string;
+            label?: string;
+            is_yes_no?: boolean;
+            requires_signature?: boolean;
+          };
+          const title = (candidate.title || candidate.label || "").trim();
+          if (!title) return null;
+          return {
+            id: crypto.randomUUID(),
+            title,
+            is_yes_no: Boolean(candidate.is_yes_no),
+            requires_signature: Boolean(candidate.requires_signature),
+            step_type: "check",
+          };
+        }
+        return null;
+      })
+      .filter((item): item is SubtaskData => Boolean(item));
+
+    if (parsedSubtasks.length === 0) {
+      toast({
+        title: "Template is empty",
+        description: "This template has no checklist items to import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hasExistingSubtasks = subtasks.some((subtask) => subtask.title.trim().length > 0);
+    if (hasExistingSubtasks) {
+      setPendingTemplateImport({
+        subtasks: parsedSubtasks,
+        templateId: template.id,
+        templateName: template.name,
+      });
+      return;
+    }
+
+    setTemplateId(template.id);
+    setSubtasks(parsedSubtasks);
+    rememberRecentTemplate(template.id);
+    toast({
+      title: "Checklist imported",
+      description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`,
+    });
+  }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
+
+  const openTemplateDialog = useCallback((mode: ChecklistTemplateDialogMode) => {
+    const normalizedItems = normalizeChecklistItems(subtasks);
+    if (normalizedItems.length === 0) {
+      toast({
+        title: "No checklist items",
+        description: "Add at least one checklist item before managing templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (mode === "edit" && !activeTemplate) {
+      toast({
+        title: "No active template",
+        description: "Load a checklist template before editing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const baseName =
+      title.trim() ||
+      description.trim().slice(0, 42) ||
+      `Checklist ${new Date().toLocaleDateString()}`;
+    const defaultName = `${baseName.replace(/\s+/g, " ").trim()} Template`;
+
+    if (mode === "edit" && activeTemplate) {
+      setTemplateDraftName(activeTemplate.name);
+      setTemplateDraftCategory(activeTemplate.category);
+    } else if (mode === "duplicate" && activeTemplate) {
+      setTemplateDraftName(`${activeTemplate.name} Copy`);
+      setTemplateDraftCategory(activeTemplate.category);
+    } else {
+      setTemplateDraftName(defaultName);
+      setTemplateDraftCategory("operations");
+    }
+    setTemplateDialogMode(mode);
+  }, [activeTemplate, description, normalizeChecklistItems, subtasks, title, toast]);
+
+  const submitTemplateDialog = useCallback(async () => {
+    if (!orgId) {
+      toast({
+        title: "Not signed in",
+        description: "Log in to save checklist templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const normalizedItems = normalizeChecklistItems(subtasks);
+    if (normalizedItems.length === 0) {
+      toast({
+        title: "No checklist items",
+        description: "Add at least one checklist item before saving a template.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const trimmedName = templateDraftName.trim();
+    if (!trimmedName) {
+      toast({
+        title: "Template name required",
+        description: "Enter a checklist name before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (templateDialogMode === "edit" && activeTemplate) {
+      const { error } = await supabase
+        .from("checklist_templates")
+        .update({
+          name: trimmedName,
+          category: templateDraftCategory,
+          items: normalizedItems,
+        })
+        .eq("id", activeTemplate.id)
+        .eq("org_id", orgId);
+
+      if (error) {
+        toast({
+          title: "Couldn't update template",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await refreshChecklistTemplates();
+      setTemplateDialogMode(null);
+      toast({
+        title: "Template updated",
+        description: `"${trimmedName}" has been updated.`,
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("checklist_templates")
+      .insert({
+        org_id: orgId,
+        name: trimmedName,
+        category: templateDraftCategory,
+        items: normalizedItems,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      toast({
+        title: "Couldn't save template",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await refreshChecklistTemplates();
+    if (data?.id) {
+      setTemplateId(data.id);
+      rememberRecentTemplate(data.id);
+    }
+    setTemplateDialogMode(null);
+    toast({
+      title: "Template saved",
+      description: `"${trimmedName}" is now available to import.`,
+    });
+  }, [
+    activeTemplate,
+    normalizeChecklistItems,
+    orgId,
+    refreshChecklistTemplates,
+    rememberRecentTemplate,
+    subtasks,
+    templateDialogMode,
+    templateDraftCategory,
+    templateDraftName,
+    toast,
+  ]);
+
+  const archiveActiveTemplate = useCallback(async () => {
+    if (!orgId || !activeTemplate) {
+      toast({
+        title: "No active template",
+        description: "Load a checklist template before archiving.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowArchiveTemplateDialog(true);
+  }, [activeTemplate, orgId, toast]);
+
+  const confirmArchiveTemplate = useCallback(async () => {
+    if (!orgId || !activeTemplate) return;
+
+    const { error } = await supabase
+      .from("checklist_templates")
+      .update({ is_archived: true })
+      .eq("id", activeTemplate.id)
+      .eq("org_id", orgId);
+
+    if (error) {
+      toast({
+        title: "Couldn't archive template",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTemplateId("");
+    setShowArchiveTemplateDialog(false);
+    await refreshChecklistTemplates();
+    toast({
+      title: "Template archived",
+      description: `"${activeTemplate.name}" has been archived.`,
+    });
+  }, [activeTemplate, orgId, refreshChecklistTemplates, toast]);
+
+  const loadAssets = useCallback(async () => {
+    if (!orgId || !propertyId) {
+      setAvailableAssets([]);
+      return;
+    }
+    try {
+      let query = supabase
+        .from("assets")
+        .select("id, name")
+        .eq("org_id", orgId)
+        .eq("property_id", propertyId);
+      if (selectedSpaceIds[0]) {
+        query = query.eq("space_id", selectedSpaceIds[0]);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setAvailableAssets((data || []).map((asset) => ({ id: asset.id, name: asset.name || "" })));
+    } catch (error) {
+      console.error("[IntakeModal] failed loading assets", error);
+      setAvailableAssets([]);
+    }
+  }, [orgId, propertyId, selectedSpaceIds]);
+
+  useEffect(() => {
+    void loadAssets();
+  }, [loadAssets]);
 
   useEffect(() => {
     const priorityChip = chipSuggestions.find((c) => c.type === "priority");
@@ -219,38 +640,373 @@ export function IntakeModal({
     if (primaryIsCompliance && analysis.expiry_date_hint && !intakeComplianceExpiry) setIntakeComplianceExpiry(analysis.expiry_date_hint);
   }, [primaryIsCompliance, analysis.document_type_hint, analysis.expiry_date_hint, intakeComplianceType, intakeComplianceExpiry]);
 
-  const chipValues: IntakeChipRowValues = useMemo(() => {
-    const whenLabel = dueDate
-      ? (() => {
-          const d = dueDate.split("T")[0];
-          const dateObj = d ? new Date(d + "T00:00:00") : new Date();
-          const today = startOfDay(new Date());
-          if (dateObj.getTime() === today.getTime()) return "Today";
-          if (dateObj.getTime() === addDays(today, 1).getTime()) return "Tomorrow";
-          return format(dateObj, "EEE d MMM");
-        })()
-      : (chipSuggestions.find((c) => c.type === "date")?.label ?? undefined);
-    const priorityLabel = priorityDefined
-      ? { low: "Low", medium: "Normal", high: "High", urgent: "Urgent" }[priority]
-      : undefined;
-    const whoLabel = assignedUserId
-      ? (members?.find((m) => m.user_id === assignedUserId)?.display_name ?? "Assignee")
-      : (chipSuggestions.find((c) => c.type === "person" || c.type === "team")?.label ?? undefined);
-    const whereLabel = propertyId ? "Property" : (chipSuggestions.find((c) => c.type === "space")?.label ?? undefined);
-    const assetLabel = chipSuggestions.find((c) => c.type === "asset")?.label;
-    return {
-      who: whoLabel ?? undefined,
-      where: whereLabel ?? undefined,
-      when: whenLabel ?? undefined,
-      asset: assetLabel ?? undefined,
-      priority: priorityLabel ?? undefined,
-      category: chipSuggestions.find((c) => c.type === "category" || c.type === "theme")?.label ?? undefined,
-      compliance: undefined,
-    };
-  }, [dueDate, propertyId, priority, priorityDefined, assignedUserId, chipSuggestions, members]);
+  const selectedProperty = useMemo(
+    () => properties.find((property: any) => property.id === propertyId) ?? null,
+    [properties, propertyId]
+  );
+  const selectedSpaces = useMemo(
+    () => selectedSpaceIds
+      .map((id) => spaces.find((space) => space.id === id))
+      .filter(Boolean) as Array<{ id: string; name: string; icon_name?: string }>,
+    [selectedSpaceIds, spaces]
+  );
+  const selectedAssets = useMemo(
+    () => selectedAssetIds
+      .map((id) => availableAssets.find((asset) => asset.id === id))
+      .filter(Boolean) as Array<{ id: string; name: string }>,
+    [availableAssets, selectedAssetIds]
+  );
+
+  const splitName = useCallback((value: string) => {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) {
+      return { firstName: parts[0] ?? value.trim(), lastName: "" };
+    }
+    return { firstName: parts.slice(0, -1).join(" "), lastName: parts.slice(-1).join("") };
+  }, []);
+
+  const formatDueDateLabel = useCallback((value: string) => {
+    const dateValue = value.split("T")[0];
+    const dateObj = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
+    const today = startOfDay(new Date());
+    if (dateObj.getTime() === today.getTime()) return "TODAY";
+    if (dateObj.getTime() === addDays(today, 1).getTime()) return "TOMORROW";
+    return format(dateObj, "EEE d MMM").toUpperCase();
+  }, []);
+
+  const chipShouldRenderAsFact = useCallback((chip: SuggestedChip) => {
+    if (chip.type === "date") return false;
+    return Boolean(chip.resolvedEntityId || !chip.blockingRequired);
+  }, []);
+
+  const formatSuggestionLabel = useCallback((chip: SuggestedChip) => {
+    const raw = (chip.value || chip.label).toUpperCase();
+    if (chip.type === "date") {
+      const sourceValue =
+        chip.resolvedEntityId && typeof chip.resolvedEntityId === "string"
+          ? chip.resolvedEntityId
+          : chip.label;
+      return formatDueDateLabel(sourceValue);
+    }
+    if (chip.blockingRequired && !chip.resolvedEntityId) {
+      switch (chip.type) {
+        case "person":
+          return `INVITE ${raw}`;
+        case "team":
+          return `CHOOSE ${raw}`;
+        case "space":
+        case "asset":
+          return `ADD ${raw}`;
+        case "category":
+        case "theme":
+          return `CHOOSE ${raw}`;
+        default:
+          return raw;
+      }
+    }
+    return chip.label.toUpperCase();
+  }, [formatDueDateLabel]);
+
+  const rowSuggestionChip = useCallback(
+    (...types: SuggestedChip["type"][]) => chipSuggestions.find((chip) => types.includes(chip.type)),
+    [chipSuggestions]
+  );
+
+  const intakeRowChips: IntakeChipRowChip[] = useMemo(() => {
+    const chips: IntakeChipRowChip[] = [];
+    const whoSuggestion = rowSuggestionChip("person", "team");
+    const whenSuggestion = rowSuggestionChip("date");
+    const assetSuggestion = rowSuggestionChip("asset");
+    const categorySuggestion = rowSuggestionChip("category", "theme");
+    const locationSuggestion = rowSuggestionChip("space");
+    const shouldPromptForProperty =
+      hasDescriptionDraft &&
+      chipSuggestions.length > 0 &&
+      !selectedProperty &&
+      !locationSuggestion;
+
+    const assignedMember = members?.find((member) => member.user_id === assignedUserId);
+    if (assignedMember?.display_name) {
+      chips.push({
+        id: `who-${assignedMember.user_id}`,
+        slot: "who",
+        label: assignedMember.display_name.toUpperCase(),
+        epistemic: "fact",
+      });
+    } else if (whoSuggestion) {
+      const inviteName = whoSuggestion.value || whoSuggestion.label;
+      chips.push({
+        id: whoSuggestion.id,
+        slot: "who",
+        label: formatSuggestionLabel(whoSuggestion),
+        epistemic: chipShouldRenderAsFact(whoSuggestion) ? "fact" : "proposal",
+        onPress: chipShouldRenderAsFact(whoSuggestion)
+          ? undefined
+          : () => {
+              const parsed = splitName(inviteName);
+              setInvitePrefill({
+                firstName: parsed.firstName,
+                lastName: parsed.lastName,
+              });
+              setInviteModalOpen(true);
+            },
+      });
+    }
+
+    if (selectedProperty) {
+      chips.push({
+        id: `where-property-${selectedProperty.id}`,
+        slot: "where",
+        label: (selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase(),
+        epistemic: "fact",
+      });
+    } else if (shouldPromptForProperty) {
+      chips.push({
+        id: "where-add-property",
+        slot: "where",
+        label: "ADD PROPERTY",
+        epistemic: "proposal",
+      });
+    }
+
+    selectedSpaces.forEach((space) => {
+      chips.push({
+        id: `where-space-${space.id}`,
+        slot: "where",
+        label: space.name.toUpperCase(),
+        epistemic: "fact",
+      });
+    });
+
+    selectedAssets.forEach((asset) => {
+      chips.push({
+        id: `asset-${asset.id}`,
+        slot: "asset",
+        label: asset.name.toUpperCase(),
+        epistemic: "fact",
+      });
+    });
+
+    if (dueDate) {
+      chips.push({
+        id: `when-${dueDate}`,
+        slot: "when",
+        label: formatDueDateLabel(dueDate),
+        epistemic: "fact",
+      });
+    } else if (whenSuggestion) {
+      chips.push({
+        id: whenSuggestion.id,
+        slot: "when",
+        label: formatSuggestionLabel(whenSuggestion),
+        epistemic: "proposal",
+      });
+    }
+
+    if (assetSuggestion) {
+      chips.push({
+        id: assetSuggestion.id,
+        slot: "asset",
+        label: formatSuggestionLabel(assetSuggestion),
+        epistemic: chipShouldRenderAsFact(assetSuggestion) ? "fact" : "proposal",
+        onPress: () => {
+          if (!propertyId) {
+            setOpenChipSlot("where");
+            return;
+          }
+          setAssetDraftName(assetSuggestion.value || assetSuggestion.label);
+          setOpenChipSlot("asset");
+        },
+      });
+    }
+
+    if (priorityDefined) {
+      chips.push({
+        id: `priority-${priority}`,
+        slot: "priority",
+        label: (priority === "medium" ? "NORMAL" : priority.toUpperCase()),
+        epistemic: "fact",
+      });
+    } else {
+      const prioritySuggestion = rowSuggestionChip("priority");
+      if (prioritySuggestion?.label) {
+        chips.push({
+          id: prioritySuggestion.id,
+          slot: "priority",
+          label: prioritySuggestion.label.toUpperCase(),
+          epistemic: chipShouldRenderAsFact(prioritySuggestion) ? "fact" : "proposal",
+        });
+      }
+    }
+
+    if (categorySuggestion) {
+      chips.push({
+        id: categorySuggestion.id,
+        slot: "category",
+        label: formatSuggestionLabel(categorySuggestion),
+        epistemic: chipShouldRenderAsFact(categorySuggestion) ? "fact" : "proposal",
+      });
+    }
+
+    return chips;
+  }, [
+    assignedUserId,
+    chipShouldRenderAsFact,
+    dueDate,
+    formatDueDateLabel,
+    formatSuggestionLabel,
+    hasDescriptionDraft,
+    chipSuggestions.length,
+    members,
+    priority,
+    priorityDefined,
+    propertyId,
+    rowSuggestionChip,
+    selectedAssets,
+    selectedProperty,
+    selectedSpaces,
+    splitName,
+  ]);
+
+  const toggleSpaceSelection = useCallback((spaceId: string) => {
+    setSelectedSpaceIds((prev) =>
+      prev.includes(spaceId) ? prev.filter((id) => id !== spaceId) : [...prev, spaceId]
+    );
+  }, []);
 
   const renderSlotContent = useCallback(
     (slot: IntakeChipSlotId, onClose: () => void) => {
+      if (slot === "who") {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Assign</p>
+              {assignedUserId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAssignedUserId(undefined);
+                    onClose();
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {members.slice(0, 8).map((member) => (
+                <SemanticChip
+                  key={member.user_id}
+                  epistemic={assignedUserId === member.user_id ? "fact" : "proposal"}
+                  label={(member.display_name || member.email || "Member").toUpperCase()}
+                  onPress={() => {
+                    setAssignedUserId(member.user_id);
+                    onClose();
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      if (slot === "where") {
+        const unresolvedSpaceSuggestions = chipSuggestions.filter(
+          (chip) =>
+            chip.type === "space" &&
+            chip.blockingRequired &&
+            !chip.resolvedEntityId &&
+            !selectedSpaces.some((space) => space.name.toLowerCase() === chip.label.toLowerCase())
+        );
+
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Location</p>
+              <div className="flex flex-wrap gap-2">
+                {selectedProperty && (
+                  <SemanticChip
+                    epistemic="fact"
+                    label={(selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase()}
+                    onPress={() => onClose()}
+                  />
+                )}
+                {properties.slice(0, 6).map((property: any) => {
+                  if (selectedProperty?.id === property.id) return null;
+                  const Icon = getAssetIcon(property.icon_name || "building");
+                  return (
+                    <SemanticChip
+                      key={property.id}
+                      epistemic="proposal"
+                      label={(property.nickname || property.address || "Property").toUpperCase()}
+                      icon={<Icon className="h-3.5 w-3.5" />}
+                      onPress={() => {
+                        setPropertyId(property.id);
+                        setSelectedSpaceIds([]);
+                      }}
+                    />
+                  );
+                })}
+                <SemanticChip
+                  epistemic="proposal"
+                  label="+ PROPERTY"
+                  onPress={() => setShowAddPropertyDialog(true)}
+                />
+                <SemanticChip
+                  epistemic="proposal"
+                  label="+ SPACE"
+                  onPress={() => {
+                    if (!propertyId) {
+                      toast({
+                        title: "Choose a property first",
+                        description: "Pick a property before adding a space.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setSpaceDraftName("");
+                    setShowAddSpaceDialog(true);
+                  }}
+                />
+              </div>
+            </div>
+
+            {propertyId && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Spaces</p>
+                <div className="flex flex-wrap gap-2">
+                  {spaces.map((space) => {
+                    const Icon = getAssetIcon((space as { icon_name?: string }).icon_name);
+                    const selected = selectedSpaceIds.includes(space.id);
+                    return (
+                      <SemanticChip
+                        key={space.id}
+                        epistemic={selected ? "fact" : "proposal"}
+                        label={space.name.toUpperCase()}
+                        icon={<Icon className="h-3.5 w-3.5" />}
+                        onPress={() => toggleSpaceSelection(space.id)}
+                      />
+                    );
+                  })}
+                  {unresolvedSpaceSuggestions.map((chip) => (
+                    <SemanticChip
+                      key={chip.id}
+                      epistemic="proposal"
+                      label={`ADD ${chip.label.toUpperCase()}`}
+                      onPress={() => {
+                        setSpaceDraftName(chip.label);
+                        setShowAddSpaceDialog(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
       if (slot === "when") {
         const today = startOfDay(new Date());
         const quick = [
@@ -286,6 +1042,70 @@ export function IntakeModal({
           </div>
         );
       }
+
+      if (slot === "asset") {
+        const unresolvedAssetSuggestions = chipSuggestions.filter(
+          (chip) =>
+            chip.type === "asset" &&
+            chip.blockingRequired &&
+            !chip.resolvedEntityId &&
+            !selectedAssets.some((asset) => asset.name.toLowerCase() === (chip.value || chip.label).toLowerCase())
+        );
+
+        return (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Assets</p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!propertyId) {
+                    setOpenChipSlot("where");
+                    return;
+                  }
+                  setAssetDraftName("");
+                  setShowCreateAssetDialog(true);
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                + Asset
+              </button>
+            </div>
+            {!propertyId ? (
+              <p className="text-xs text-muted-foreground py-1">
+                Pick a property first, then you can add or select assets.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {availableAssets.map((asset) => (
+                  <SemanticChip
+                    key={asset.id}
+                    epistemic={selectedAssetIds.includes(asset.id) ? "fact" : "proposal"}
+                    label={asset.name.toUpperCase()}
+                    onPress={() => {
+                      setSelectedAssetIds((prev) =>
+                        prev.includes(asset.id) ? prev.filter((id) => id !== asset.id) : [...prev, asset.id]
+                      );
+                    }}
+                  />
+                ))}
+                {unresolvedAssetSuggestions.map((chip) => (
+                  <SemanticChip
+                    key={chip.id}
+                    epistemic="proposal"
+                    label={`ADD ${(chip.value || chip.label).toUpperCase()}`}
+                    onPress={() => {
+                      setAssetDraftName(chip.value || chip.label);
+                      setShowCreateAssetDialog(true);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
       if (slot === "priority") {
         return (
           <div className="space-y-1.5">
@@ -310,13 +1130,31 @@ export function IntakeModal({
           </div>
         );
       }
+
       return (
         <p className="text-xs text-muted-foreground py-1">
           {slot} — use full Create Task for full options.
         </p>
       );
     },
-    [dueDate, priority]
+    [
+      assignedUserId,
+      chipSuggestions,
+      dueDate,
+      members,
+      priority,
+      properties,
+      propertyId,
+      availableAssets,
+      selectedProperty,
+      selectedAssets,
+      selectedAssetIds,
+      selectedSpaceIds,
+      selectedSpaces,
+      spaces,
+      toast,
+      toggleSpaceSelection,
+    ]
   );
 
   const uploadIntakeAttachments = useCallback(
@@ -615,6 +1453,24 @@ export function IntakeModal({
         if (subtaskError) throw subtaskError;
       }
 
+      if (selectedSpaceIds.length > 0) {
+        const { error: taskSpacesError } = await supabase
+          .from("task_spaces")
+          .insert(selectedSpaceIds.map((spaceId) => ({ task_id: newTask.id, space_id: spaceId })));
+        if (taskSpacesError) {
+          console.error("Error linking spaces to task:", taskSpacesError);
+        }
+      }
+
+      if (selectedAssetIds.length > 0) {
+        const { error: taskAssetsError } = await supabase
+          .from("task_assets")
+          .insert(selectedAssetIds.map((assetId) => ({ task_id: newTask.id, asset_id: assetId })));
+        if (taskAssetsError) {
+          console.error("Error linking assets to task:", taskAssetsError);
+        }
+      }
+
       await uploadIntakeAttachments({
         parentType: "task",
         parentId: newTask.id,
@@ -658,10 +1514,26 @@ export function IntakeModal({
     setOpenChipSlot(null);
     setDueDate("");
     setPropertyId(defaultPropertyId || "");
+    setSelectedSpaceIds([]);
+    setSelectedAssetIds([]);
     setPriority("medium");
     setPriorityDefined(false);
     setAssignedUserId(undefined);
     setSubtasks([]);
+    setTemplateId("");
+    setRecentTemplateIds([]);
+    setTemplateDialogMode(null);
+    setTemplateDraftName("");
+    setTemplateDraftCategory("operations");
+    setPendingTemplateImport(null);
+    setShowArchiveTemplateDialog(false);
+    setShowAddPropertyDialog(false);
+    setShowAddSpaceDialog(false);
+    setShowCreateAssetDialog(false);
+    setSpaceDraftName("");
+    setAssetDraftName("");
+    setInviteModalOpen(false);
+    setInvitePrefill(null);
   }, [defaultPropertyId]);
 
   useEffect(() => {
@@ -679,6 +1551,140 @@ export function IntakeModal({
       : primaryIsDocument
         ? "Create task instead"
         : "Add to Compliance instead";
+
+  const renderTemplateDialog = () => {
+    const isOpen = templateDialogMode !== null;
+    const title =
+      templateDialogMode === "edit"
+        ? "Edit Checklist Template"
+        : templateDialogMode === "duplicate"
+          ? "Duplicate Checklist Template"
+          : "Save Checklist Template";
+    const cta = templateDialogMode === "edit" ? "Update Template" : "Save Template";
+
+    return (
+      <Dialog open={isOpen} onOpenChange={(openState) => !openState && setTemplateDialogMode(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>
+              Save checklist templates for quick reuse in the unified task composer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Template name</Label>
+              <input
+                value={templateDraftName}
+                onChange={(event) => setTemplateDraftName(event.target.value)}
+                placeholder="e.g. Fire Safety Check"
+                className="w-full h-9 px-3 rounded-[10px] bg-input shadow-engraved text-sm text-foreground placeholder:text-muted-foreground/60 border-0 outline-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Category</Label>
+              <Select
+                value={templateDraftCategory}
+                onValueChange={(value) => setTemplateDraftCategory(value as ChecklistTemplateCategory)}
+              >
+                <SelectTrigger className="h-9 shadow-engraved">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHECKLIST_CATEGORY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setTemplateDialogMode(null)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={submitTemplateDialog}>
+                {cta}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const renderAlertDialogs = () => (
+    <>
+      <AlertDialog open={!!pendingTemplateImport} onOpenChange={(openState) => !openState && setPendingTemplateImport(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing checklist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You already have checklist items. Do you want to replace them with "{pendingTemplateImport?.templateName}", or add the new items to the end?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => setPendingTemplateImport(null)}>Cancel</AlertDialogCancel>
+            <Button
+              variant="outline"
+              className="shadow-e1"
+              onClick={() => {
+                if (!pendingTemplateImport) return;
+                setTemplateId(pendingTemplateImport.templateId);
+                setSubtasks((prev) => [...prev, ...pendingTemplateImport.subtasks]);
+                rememberRecentTemplate(pendingTemplateImport.templateId);
+                toast({
+                  title: "Checklist appended",
+                  description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} added from "${pendingTemplateImport.templateName}".`,
+                });
+                setPendingTemplateImport(null);
+              }}
+            >
+              Append
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingTemplateImport) return;
+                setTemplateId(pendingTemplateImport.templateId);
+                setSubtasks(pendingTemplateImport.subtasks);
+                rememberRecentTemplate(pendingTemplateImport.templateId);
+                toast({
+                  title: "Checklist imported",
+                  description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} loaded from "${pendingTemplateImport.templateName}".`,
+                });
+                setPendingTemplateImport(null);
+              }}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showArchiveTemplateDialog} onOpenChange={setShowArchiveTemplateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{activeTemplate?.name}" will be removed from the checklist picker. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmArchiveTemplate}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 
   const content = (
     <>
@@ -722,43 +1728,39 @@ export function IntakeModal({
                 className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
               />
             )}
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What needs doing? Or add a note…"
-              rows={3}
-              className="w-full px-3 py-2 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30 resize-none"
-            />
-          </div>
-
-          {/* 3. Inline AI suggestion layer (compact; never overwrites composer) */}
-          {(analysis.workflow_confidence >= 0.5 || chipSuggestions.length > 0) && (
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-sm">
-                <FillaIcon size={14} className="shrink-0 text-primary" />
-                <span>
-                  {analysis.workflow_hint === "compliance" && "This looks like a compliance document."}
-                  {analysis.workflow_hint === "task" && "Suggesting a task."}
-                  {analysis.workflow_hint === "document" && "This could be saved as a document."}
-                  {analysis.workflow_hint === "uncertain" && chipSuggestions.length > 0 && "Suggesting a task."}
-                  {analysis.workflow_hint === "uncertain" && chipSuggestions.length === 0 && "Add a note or upload to get suggestions."}
-                  {chipSuggestions.length > 0 && (analysis.workflow_hint === "task" || analysis.workflow_hint === "uncertain") && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      Picked up: {chipSuggestions.slice(0, 6).map((c) => c.label).join(", ")}
-                    </span>
-                  )}
-                </span>
-              </div>
-              {analysis.expiry_date_hint && primaryIsCompliance && (
-                <div className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                  Possible expiry: {analysis.expiry_date_hint}
+            <div className="rounded-lg bg-input shadow-engraved overflow-hidden">
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What needs doing? Or add a note…"
+                rows={3}
+                className="w-full px-3 py-2 text-sm border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"
+              />
+              {hasDescriptionDraft && (
+                <div>
+                  <SubtasksSection
+                    subtasks={subtasks}
+                    onSubtasksChange={setSubtasks}
+                    showDescription={false}
+                    embedded
+                    description=""
+                    onDescriptionChange={() => {}}
+                    className="bg-transparent"
+                    templates={templates}
+                    recentTemplateIds={recentTemplateIds}
+                    activeTemplateName={activeTemplate?.name ?? null}
+                    onUseTemplate={importTemplateItems}
+                    onSaveAsTemplate={() => openTemplateDialog("save")}
+                    onEditTemplate={() => openTemplateDialog("edit")}
+                    onDuplicateTemplate={() => openTemplateDialog("duplicate")}
+                    onArchiveTemplate={archiveActiveTemplate}
+                  />
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {/* 4. Compliance inline fields when path is compliance */}
+          {/* 3. Compliance inline fields when path is compliance */}
           {primaryIsCompliance && (
             <div className="rounded-lg bg-muted/40 p-3 space-y-2 border border-border/50 shadow-e1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Compliance</p>
@@ -798,65 +1800,18 @@ export function IntakeModal({
             </div>
           )}
 
-          {/* 5. Context chip row (compact horizontal) */}
+          {/* 4. Context chip row */}
           <IntakeChipRow
-            values={chipValues}
+            chips={intakeRowChips}
             onOpenSlot={setOpenChipSlot}
             openSlot={openChipSlot}
             onCloseSlot={() => setOpenChipSlot(null)}
             renderSlotContent={renderSlotContent}
           />
 
-          {/* 6. Task steps/checklist (hidden until user starts describing work) */}
-          {hasDescriptionDraft && (
-            <div className="rounded-lg bg-muted/35 p-3 border border-border/50 shadow-e1 space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checklist</p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSubtasks((prev) => [
-                      ...prev,
-                      {
-                        id: crypto.randomUUID(),
-                        title: "",
-                        is_yes_no: false,
-                        requires_signature: false,
-                        step_type: "check",
-                      },
-                    ])
-                  }
-                  className="text-xs text-primary hover:underline"
-                >
-                  + Add step
-                </button>
-              </div>
-              {subtasks.length === 0 ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSubtasks([
-                      {
-                        id: crypto.randomUUID(),
-                        title: "",
-                        is_yes_no: false,
-                        requires_signature: false,
-                        step_type: "check",
-                      },
-                    ])
-                  }
-                  className="w-full rounded-md border border-dashed border-border/60 bg-background/40 px-3 py-2 text-left text-sm text-muted-foreground hover:bg-background/60 transition-colors"
-                >
-                  Add first checklist step
-                </button>
-              ) : (
-                <SubtaskList subtasks={subtasks} isCreator={true} onSubtasksChange={setSubtasks} />
-              )}
-            </div>
-          )}
       </div>
 
-      {/* 7. Footer: one adaptive primary + secondary override */}
+      {/* 6. Footer: one adaptive primary + secondary override */}
       <div className="px-4 py-3 border-t border-border/30 space-y-2">
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
@@ -882,6 +1837,59 @@ export function IntakeModal({
           </div>
         )}
       </div>
+      {renderTemplateDialog()}
+      {renderAlertDialogs()}
+      <AddPropertyDialog
+        open={showAddPropertyDialog}
+        onOpenChange={setShowAddPropertyDialog}
+        onCreated={(property) => {
+          setPropertyId(property.id);
+          setSelectedSpaceIds([]);
+          setShowAddPropertyDialog(false);
+        }}
+      />
+      <AddSpaceDialog
+        open={showAddSpaceDialog}
+        onOpenChange={setShowAddSpaceDialog}
+        properties={properties}
+        propertyId={propertyId || undefined}
+        initialName={spaceDraftName}
+        onCreated={(space) => {
+          setSelectedSpaceIds((prev) => (prev.includes(space.id) ? prev : [...prev, space.id]));
+          setSpaceDraftName("");
+          setShowAddSpaceDialog(false);
+          refreshSpaces();
+        }}
+      />
+      <CreateAssetDialog
+        open={showCreateAssetDialog}
+        onOpenChange={setShowCreateAssetDialog}
+        propertyId={propertyId || ""}
+        spaceId={selectedSpaceIds[0]}
+        defaultName={assetDraftName}
+        onAssetCreated={(assetId) => {
+          setSelectedAssetIds((prev) => (prev.includes(assetId) ? prev : [...prev, assetId]));
+          setAssetDraftName("");
+          setShowCreateAssetDialog(false);
+          void loadAssets();
+        }}
+      />
+      <InviteUserModal
+        open={inviteModalOpen}
+        onOpenChange={(openState) => {
+          setInviteModalOpen(openState);
+          if (!openState) setInvitePrefill(null);
+        }}
+        prefillFirstName={invitePrefill?.firstName ?? ""}
+        prefillLastName={invitePrefill?.lastName ?? ""}
+        prefillEmail={invitePrefill?.email ?? ""}
+        onInviteSent={(invitation) => {
+          if (invitation.status === "accepted" && invitation.userId) {
+            setAssignedUserId(invitation.userId);
+          }
+          setInvitePrefill(null);
+        }}
+      />
     </>
   );
 

@@ -14,7 +14,7 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 /**
  * Space Organisation Screen - Hub for space groups.
  * Each card links to its group screen (Circulation, Service Areas, etc.).
- * Same layout: 245px left (recent spaces), 650px right (group cards as links).
+ * Same layout: 265px left (recent spaces), 660px right (group cards as links).
  */
 export default function SpaceOrganisationScreen() {
   const { id: propertyId } = useParams<{ id: string }>();

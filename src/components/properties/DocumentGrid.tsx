@@ -83,7 +83,7 @@ export function DocumentGrid({
     <div
       className={cn(
         "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3",
-        "max-w-[650px]",
+        "max-w-[660px]",
         className
       )}
     >
