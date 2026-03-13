@@ -160,10 +160,10 @@ export function RadialProgress({
       <span
         style={{
           position: "relative",
-          fontSize: 21,
+          fontSize: 30,
           fontWeight: 400,
           fontFamily: '"Inter Tight"',
-          letterSpacing: "-2.8px",
+          letterSpacing: "-3.1px",
           marginLeft: 8,
           marginRight: 2,
           color: "rgba(42, 41, 62, 1)",

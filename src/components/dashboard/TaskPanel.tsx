@@ -21,6 +21,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
+import { FilterChip } from "@/components/chips/filter";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 
@@ -110,6 +111,31 @@ function formatDueText(dateString?: string | null): string {
   return format(parsed, "dd MMM yyyy");
 }
 
+function formatAuthorDisplayName(rawAuthor?: string | null): string {
+  const author = String(rawAuthor || "").trim();
+  if (!author) return "Unknown";
+  if (!author.includes("@")) return author;
+
+  // Some message sources persist an email in author_name.
+  // Convert it into a readable label for dashboard meta text.
+  const localPart = author.split("@")[0] || "";
+  const base = localPart.split("+")[0] || localPart;
+  const tokens = base
+    .replace(/[._-]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length === 0) return "Unknown";
+
+  return tokens
+    .map((token) =>
+      token.length <= 2
+        ? token.toUpperCase()
+        : `${token.charAt(0).toUpperCase()}${token.slice(1).toLowerCase()}`
+    )
+    .join(" ");
+}
+
 /**
  * Task Panel Component
  *
@@ -142,7 +168,6 @@ export function TaskPanel({
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
   const [attentionFilter, setAttentionFilter] = useState<AttentionGroup | "all">("all");
-  const [attentionPropertyFilter, setAttentionPropertyFilter] = useState<string>("all");
   const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
   const [complianceSearch, setComplianceSearch] = useState("");
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
@@ -340,17 +365,20 @@ export function TaskPanel({
         },
       }));
 
-    const recent: AttentionItem[] = messages.slice(0, 10).map((message: any) => ({
-      id: `recent-msg-${message.id}`,
-      group: "recent",
-      messageId: message.id,
-      title: "Incoming feed item",
-      context: `${message.author_name || "Unknown"} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
-      hint: "New upload/message signal",
-      description: message.body
-        ? String(message.body).slice(0, 120)
-        : "Incoming message requires triage.",
-    }));
+    const recent: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
+      const authorName = formatAuthorDisplayName(message.author_name);
+      return {
+        id: `recent-msg-${message.id}`,
+        group: "recent",
+        messageId: message.id,
+        title: "Incoming feed item",
+        context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
+        hint: "New upload/message signal",
+        description: message.body
+          ? String(message.body).slice(0, 120)
+          : "Incoming message requires triage.",
+      };
+    });
 
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
       return [
@@ -375,10 +403,9 @@ export function TaskPanel({
   const filteredAttentionItems = useMemo(() => {
     return unresolvedAttentionItems.filter((item) => {
       if (attentionFilter !== "all" && item.group !== attentionFilter) return false;
-      if (attentionPropertyFilter === "all") return true;
-      return item.context.toLowerCase().includes(attentionPropertyFilter.toLowerCase());
+      return true;
     });
-  }, [attentionFilter, attentionPropertyFilter, unresolvedAttentionItems]);
+  }, [attentionFilter, unresolvedAttentionItems]);
 
   const groupedAttentionItems = useMemo(() => {
     const urgent = filteredAttentionItems.filter((item) => item.group === "urgent");
@@ -640,7 +667,7 @@ export function TaskPanel({
           <TabsList
             ref={tabsListRef}
             className={cn(
-              "w-full md:w-[430px] grid grid-cols-4 h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-[7px] rounded-[15px] bg-transparent",
+              "w-full md:w-[430px] flex flex-wrap h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] gap-y-[5px] rounded-[15px] bg-transparent",
               "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
             )}
           >
@@ -673,7 +700,11 @@ export function TaskPanel({
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: "10px", paddingRight: "10px" }}
+              style={{
+                paddingLeft: "5px",
+                paddingRight: "5px",
+                width: hideTabIcons ? "76px" : "80px",
+              }}
             >
               <CheckSquare className={cn("mr-1 h-4 w-4", hideTabIcons && "hidden")} />
               Tasks
@@ -687,9 +718,9 @@ export function TaskPanel({
                 "data-[state=inactive]:bg-transparent",
                 "text-sm font-medium"
               )}
-              style={{ paddingLeft: "10px", paddingRight: "10px" }}
+              style={{ paddingLeft: "10px", paddingRight: "10px", width: "113px" }}
             >
-              <ShieldCheck className={cn("mr-1 h-4 w-4", hideTabIcons && "hidden")} />
+              <ShieldCheck className="mr-1 h-4 w-4" />
               Compliance
             </TabsTrigger>
             <TabsTrigger
@@ -727,44 +758,35 @@ export function TaskPanel({
 
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "attention" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[8px] pl-2 pr-2 pb-2">
+            <div className="h-full min-h-0 overflow-y-auto pt-[11px] pl-2 pr-2 pb-[11px]">
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                 <div className="space-y-3 min-w-0">
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-2.5 flex flex-wrap gap-2 items-center">
+                  <div
+                    className="rounded-xl px-0 py-0 ml-0 mr-0 flex flex-wrap gap-2 items-center"
+                    style={{
+                      boxShadow: "none",
+                      background: "unset",
+                      backgroundColor: "rgba(42, 41, 62, 0)",
+                    }}
+                  >
                     {(["all", "urgent", "review", "recent"] as const).map((filterKey) => (
-                      <button
+                      <FilterChip
                         key={filterKey}
-                        type="button"
-                        onClick={() => setAttentionFilter(filterKey)}
-                        className={cn(
-                          "text-xs rounded-[8px] px-2.5 py-1 transition-all",
-                          attentionFilter === filterKey
-                            ? "bg-background shadow-e2 font-medium"
-                            : "bg-muted/50 shadow-e1"
-                        )}
-                      >
-                        {filterKey === "all"
+                        label={
+                          filterKey === "all"
                           ? "All"
                           : filterKey === "urgent"
                           ? "Urgent"
                           : filterKey === "review"
                           ? "Needs Review"
-                          : "Recent"}
-                      </button>
+                          : "Recent"
+                        }
+                        selected={attentionFilter === filterKey}
+                        onSelect={() => setAttentionFilter(filterKey)}
+                        className="h-[24px] gap-[9px]"
+                      />
                     ))}
 
-                    <select
-                      value={attentionPropertyFilter}
-                      onChange={(event) => setAttentionPropertyFilter(event.target.value)}
-                      className="ml-auto rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1"
-                    >
-                      <option value="all">Property: All</option>
-                      {propertyOptions.map((property) => (
-                        <option key={property.id} value={property.name}>
-                          {property.name}
-                        </option>
-                      ))}
-                    </select>
                   </div>
 
                   <div className="space-y-4">
@@ -871,17 +893,71 @@ export function TaskPanel({
                   )}
                 </div>
 
-                <div className="lg:sticky lg:top-3 self-start space-y-3">
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Attention Summary</p>
-                    <div className="space-y-1 text-xs">
-                      <p>Urgent: {attentionSummary.urgent}</p>
-                      <p>Needs review: {attentionSummary.review}</p>
-                      <p>Recent signals: {attentionSummary.recent}</p>
+                <div className="lg:sticky lg:top-0 self-start align-top flex flex-wrap content-start items-start gap-3 [&>*]:w-full">
+                  <div
+                    className="rounded-xl px-0 py-0"
+                    style={{
+                      color: "rgba(255, 107, 107, 1)",
+                      marginLeft: 0,
+                      marginRight: 0,
+                      boxShadow: "none",
+                      background: "unset",
+                      backgroundColor: "rgba(42, 41, 62, 0)",
+                      backgroundClip: "unset",
+                      WebkitBackgroundClip: "unset",
+                    }}
+                  >
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">Attention Summary</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                        <p
+                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
+                          style={{
+                            width: 69,
+                            fontSize: 46,
+                            color: "rgba(255, 255, 255, 0)",
+                            fontFamily: '"Inter Tight"',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {attentionSummary.urgent}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">Urgent</p>
+                      </div>
+                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                        <p
+                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
+                          style={{
+                            width: 69,
+                            fontSize: 46,
+                            color: "rgba(255, 255, 255, 0)",
+                            fontFamily: '"Inter Tight"',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {attentionSummary.review}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">Needs review</p>
+                      </div>
+                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                        <p
+                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
+                          style={{
+                            width: 69,
+                            fontSize: 46,
+                            color: "rgba(255, 255, 255, 0)",
+                            fontFamily: '"Inter Tight"',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {attentionSummary.recent}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">Recent signals</p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Potential Risks</p>
                     <div className="space-y-1.5">
                       {riskSignals.length === 0 ? (
@@ -897,7 +973,7 @@ export function TaskPanel({
                                 block: "center",
                               })
                             }
-                            className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2"
+                            className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background"
                           >
                             <span className="inline-flex items-center gap-1">
                               <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
@@ -909,25 +985,25 @@ export function TaskPanel({
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Quick Actions</p>
                     <div className="space-y-1.5">
-                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
                         Upload Document
                       </button>
-                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
                         Report Issue
                       </button>
-                      <button type="button" onClick={() => onCreateTask?.()} className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                      <button type="button" onClick={() => onCreateTask?.()} className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
                         Create Task
                       </button>
-                      <button type="button" className="w-full text-left text-xs rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
                         Add Compliance Record
                       </button>
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
+                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
                     <p className="text-xs font-semibold text-muted-foreground mb-1">Filla Insights</p>
                     <p className="text-xs text-foreground/90">
                       Most signals today relate to: <span className="font-medium">{dominantAttentionProperty}</span>
@@ -957,7 +1033,7 @@ export function TaskPanel({
           )}
 
           {activeTab === "compliance" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[8px] pl-2 pr-2 pb-2">
+            <div className="h-full min-h-0 overflow-y-auto pt-[11px] pl-2 pr-2 pb-[11px]">
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                 <div className="space-y-3 min-w-0">
                   <div className="rounded-xl bg-card/70 shadow-e1 p-2.5 space-y-2">

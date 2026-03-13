@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Camera, Upload, SquarePen, AlertCircle, FileText } from "lucide-react";
+import { X, Camera, Upload, SquarePen, AlertCircle, FileText, Loader2, Shield, ScanSearch, BadgeCheck, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TempImage, UploadStatus } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
@@ -194,6 +194,139 @@ export function ImageUploadSection({
     }
   };
 
+  const inferComplianceTypeFromName = (name?: string) => {
+    const normalized = (name || "").replace(/[_\-\.]/g, " ").toLowerCase();
+    if (!normalized) return null;
+    if (/\bfire\b.*\bcertificate\b/.test(normalized)) return "Fire Certificate";
+    if (/\bgas\b.*\bsafety\b/.test(normalized) || /\bgas\s*safe\b/.test(normalized)) {
+      return "Gas Safety Certificate";
+    }
+    if (/\belectrical\b.*\bcertificate\b/.test(normalized)) return "Electrical Certificate";
+    if (/\beicr\b/.test(normalized)) return "EICR";
+    if (/\bepc\b/.test(normalized)) return "EPC";
+    if (/\bpat\b/.test(normalized)) return "PAT Test";
+    if (/\bcertificate\b|\binspection\b/.test(normalized)) return "Safety Certificate";
+    return null;
+  };
+
+  const inferExpiryFromText = (text?: string) => {
+    const value = (text || "").trim();
+    if (!value) return null;
+
+    const patterns = [
+      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{4}-\d{2}-\d{2})/i,
+      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i,
+      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i,
+      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = value.match(pattern);
+      if (match?.[1]) return match[1].trim();
+    }
+
+    return null;
+  };
+
+  const formatDisplayDate = (value?: string | null) => {
+    if (!value) return null;
+    const normalized = value.trim();
+    if (!normalized) return null;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      const parsed = new Date(`${normalized}T00:00:00`);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    if (/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/.test(normalized)) {
+      const parts = normalized.split(/[\/.-]/).map((part) => part.trim());
+      const [day, month, year] = parts;
+      if (day && month && year) {
+        const fullYear = year.length === 2 ? `20${year}` : year;
+        const parsed = new Date(`${fullYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T00:00:00`);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+        }
+      }
+    }
+
+    const parsed = new Date(normalized);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+
+    return normalized;
+  };
+
+  const getAnalysisState = (image: TempImage) => {
+    const analysisReady = image.thumbnail_blob?.type === "image/webp";
+    const analysisComplete = Boolean(image.rawAnalysis);
+    const analysisFailed = image.upload_status === "failed";
+    const metadata = image.rawAnalysis?.metadata as
+      | {
+          normalized_document_type?: string;
+          workflow_hint?: string;
+          document_classification?: { type?: string; expiry_date?: string };
+        }
+      | undefined;
+    const specificType =
+      metadata?.normalized_document_type ||
+      metadata?.document_classification?.type ||
+      inferComplianceTypeFromName(image.display_name);
+    const expiryDate =
+      metadata?.document_classification?.expiry_date ||
+      image.rawAnalysis?.detected_objects?.find((obj) => obj.expiry_date)?.expiry_date ||
+      inferExpiryFromText(image.aiOcrText);
+    const signalText = [
+      image.display_name,
+      image.aiOcrText,
+      ...(image.detectedLabels || []),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    const genericComplianceDetected =
+      Boolean(specificType) ||
+      metadata?.workflow_hint === "compliance" ||
+      /\bcertificate\b|\bexpiry\b|\binspection\b|\bcompliance\b|\bfire\b|\bgas\b|\belectrical\b|\bepc\b|\beicr\b|\bpat\b/.test(
+        signalText
+      );
+
+    let phase: "preparing" | "scanning" | "narrowing" | "typed" = "scanning";
+    if (!analysisReady) {
+      phase = "preparing";
+    } else if (specificType) {
+      phase = "typed";
+    } else if (genericComplianceDetected) {
+      phase = "narrowing";
+    }
+
+    return {
+      showScanner: !analysisFailed,
+      analysisReady,
+      analysisComplete,
+      genericComplianceDetected,
+      specificType,
+      expiryDate,
+      formattedExpiryDate: formatDisplayDate(expiryDate),
+      phase,
+    };
+  };
+
   return (
     <div className={cn("space-y-3", images.length === 0 && files.length === 0 && "min-h-[65px]")}>
       <div
@@ -241,47 +374,133 @@ export function ImageUploadSection({
       </div>
 
       {images.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {images.map((image, idx) => (
-            <div 
-              key={image.local_id} 
-              className="relative group aspect-square rounded-[8px] overflow-hidden shadow-e1"
-            >
-              <img
-                src={image.thumbnail_url}
-                alt={image.display_name}
-                className="w-full h-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => removeImage(idx)}
-                className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+        <div className="space-y-2">
+          {images.map((image, idx) => {
+            const {
+              showScanner,
+              analysisReady,
+              phase,
+              specificType,
+              genericComplianceDetected,
+              formattedExpiryDate,
+            } = getAnalysisState(image);
+
+            return (
+              <div
+                key={image.local_id}
+                className="flex items-stretch gap-2 rounded-[10px] bg-muted/25 p-1.5"
               >
-                <X className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingImageIndex(idx);
-                  setShowAnnotationEditor(true);
-                }}
-                className="absolute bottom-1 right-1 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Annotate image"
-              >
-                <SquarePen className="h-3 w-3" />
-              </button>
-              {image.upload_status && image.upload_status !== 'pending' && (
-                <div className="absolute top-1 left-1 p-1 bg-black/50 rounded">
-                  {getStatusIcon(image.upload_status)}
+                <div className="relative group h-[88px] w-[88px] shrink-0 rounded-[8px] overflow-hidden shadow-e1">
+                  <img
+                    src={image.thumbnail_url}
+                    alt={image.display_name}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1 right-1 p-1 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingImageIndex(idx);
+                      setShowAnnotationEditor(true);
+                    }}
+                    className="absolute bottom-1 right-1 p-1.5 bg-black/50 hover:bg-black/70 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Annotate image"
+                  >
+                    <SquarePen className="h-3 w-3" />
+                  </button>
+                  {image.upload_status && image.upload_status !== 'pending' && (
+                    <div className="absolute top-1 left-1 p-1 bg-black/50 rounded">
+                      {getStatusIcon(image.upload_status)}
+                    </div>
+                  )}
+                  {image.annotation_json && image.annotation_json.length > 0 && (
+                    <div className="absolute bottom-1 left-1 text-[10px] font-mono text-white bg-black/50 px-1 rounded">
+                      {image.annotation_json.length}
+                    </div>
+                  )}
                 </div>
-              )}
-              {image.annotation_json && image.annotation_json.length > 0 && (
-                <div className="absolute bottom-1 left-1 text-[10px] font-mono text-white bg-black/50 px-1 rounded">
-                  {image.annotation_json.length}
-                </div>
-              )}
-            </div>
-          ))}
+
+                {showScanner ? (
+                  <div className="min-w-0 flex-1 rounded-[8px] px-3 py-2 animate-fade-in">
+                    <div className="flex items-center gap-1 text-[11px] font-mono uppercase tracking-[0.4px] text-foreground/80">
+                      <div className="flex h-6 w-4 items-center justify-center rounded-[8px] bg-primary/12 shadow-e1">
+                        {phase === "typed" ? (
+                          <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        )}
+                      </div>
+                      <span className="font-['JetBrains_Mono'] text-[12px] font-medium text-foreground/60">
+                        {phase === "preparing"
+                          ? "Preparing scan"
+                          : phase === "typed"
+                            ? "AI identified document"
+                            : phase === "narrowing"
+                              ? "Compliance detected"
+                              : "AI scanning image"}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <ScanSearch className="h-3.5 w-3.5" />
+                        <span>{phase === "typed" ? "Matched" : "Objects"}</span>
+                      </div>
+                      <span className="text-muted-foreground/30">|</span>
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="h-3.5 w-3.5" />
+                        <span>{genericComplianceDetected ? "Compliance found" : "Compliance"}</span>
+                      </div>
+                    </div>
+                    {phase !== "typed" ? (
+                      <div className="mt-3 flex gap-1.5">
+                        <div className="h-1.5 w-10 rounded-full bg-primary/55 animate-pulse" />
+                        <div className="h-1.5 w-16 rounded-full bg-primary/35 animate-pulse [animation-delay:120ms]" />
+                        <div className="h-1.5 w-8 rounded-full bg-primary/20 animate-pulse [animation-delay:240ms]" />
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <div className="inline-flex rounded-[5px] bg-[#f6f4f2] px-[9px] py-1 text-[11px] font-medium text-foreground">
+                          {specificType}
+                        </div>
+                        {formattedExpiryDate ? (
+                          <div className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-e1">
+                            <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                            <span>Expiry {formattedExpiryDate}</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      {phase === "preparing"
+                        ? "Thumbnail ready. AI analysis will start in a moment."
+                        : phase === "typed"
+                          ? formattedExpiryDate
+                            ? `Recognised as ${specificType}. Expiry identified as ${formattedExpiryDate}.`
+                            : `Recognised as ${specificType}. Checking whether an expiry date is visible.`
+                          : phase === "narrowing"
+                            ? "This looks like compliance. Identifying the certificate type now."
+                            : analysisReady
+                              ? "Checking for objects and compliance signals now."
+                              : "Preparing the image for AI scanning."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="min-w-0 flex-1 rounded-[8px] bg-background/55 px-3 py-2 shadow-engraved">
+                    <p className="truncate text-xs font-medium text-foreground">{image.display_name}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Ready for annotation and upload.
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -63,7 +63,7 @@ export function OperationalStreamCard({
         }
       }}
       className={cn(
-        "group relative rounded-xl bg-card/80 shadow-e1 hover:shadow-e2 transition-all duration-[140ms]",
+        "group relative rounded-xl bg-card/60 shadow-e1 hover:shadow-e2 transition-all duration-[140ms]",
         "overflow-hidden px-3 py-2.5 cursor-default",
         onClick && "cursor-pointer",
         className
