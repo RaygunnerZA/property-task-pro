@@ -80,8 +80,14 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
     }
 
     try {
-      // First try to refresh the session
-      await supabase.auth.refreshSession();
+      // Avoid forcing auth refresh here; it can collide with other providers
+      // and create token-refresh bursts in dev StrictMode.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setSupabaseHealthy(true);
+        setLastError(null);
+        return;
+      }
 
       // Then test the connection
       const { error } = await supabase

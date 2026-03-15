@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 
@@ -15,19 +15,11 @@ export interface OrgMember {
 export function useOrgMembers() {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [members, setMembers] = useState<OrgMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchMembers() {
+  const fetchMembers = async (): Promise<OrgMember[]> => {
     if (!orgId) {
-      setMembers([]);
-      setLoading(false);
-      return;
+      return [];
     }
-
-    setLoading(true);
-    setError(null);
 
     try {
       // Fetch memberships
@@ -37,16 +29,11 @@ export function useOrgMembers() {
         .eq("org_id", orgId);
 
       if (err) {
-        setError(err.message);
-        setMembers([]);
-        setLoading(false);
-        return;
+        throw err;
       }
 
       if (!memberships || memberships.length === 0) {
-        setMembers([]);
-        setLoading(false);
-        return;
+        return [];
       }
 
       // Fetch user data via RPC function
@@ -68,9 +55,7 @@ export function useOrgMembers() {
           nickname: null,
           avatar_url: null,
         }));
-        setMembers(mapped);
-        setLoading(false);
-        return;
+        return mapped;
       }
 
       // Map members with user data
@@ -87,20 +72,26 @@ export function useOrgMembers() {
         };
       });
 
-      setMembers(mapped);
+      return mapped;
     } catch (err: any) {
-      setError(err.message || "Failed to fetch members");
-      setMembers([]);
-    } finally {
-      setLoading(false);
+      throw new Error(err.message || "Failed to fetch members");
     }
-  }
+  };
 
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchMembers();
-    }
-  }, [orgId, orgLoading]);
+  const query = useQuery({
+    queryKey: ["org-members", orgId],
+    queryFn: fetchMembers,
+    enabled: !orgLoading,
+    staleTime: 60_000,
+    retry: 1,
+  });
 
-  return { members, loading, error, refresh: fetchMembers };
+  return {
+    members: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: async () => {
+      await query.refetch();
+    },
+  };
 }

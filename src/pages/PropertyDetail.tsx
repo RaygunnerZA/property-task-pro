@@ -859,7 +859,19 @@ if (!error) {
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+                      {id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/properties/${id}/plans`)}
+                          className="text-primary hover:text-primary/90"
+                        >
+                          Upload Building Plans
+                        </Button>
+                      )}
+                    </div>
                     {id && <DocumentHealthSummary propertyId={id} documents={documents} />}
                     <DocumentsSection documents={documents} loading={documentsLoading} />
                   </div>

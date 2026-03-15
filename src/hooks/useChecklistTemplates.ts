@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
@@ -21,9 +22,6 @@ export interface TemplateWithItems extends ChecklistTemplate {
 
 export function useChecklistTemplates(enabled: boolean = true) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const toCategory = (value: unknown): ChecklistTemplateCategory => {
     if (value === "compliance" || value === "maintenance" || value === "security") {
@@ -32,15 +30,10 @@ export function useChecklistTemplates(enabled: boolean = true) {
     return "operations";
   };
 
-  async function fetchTemplates() {
+  const fetchTemplates = async (): Promise<ChecklistTemplate[]> => {
     if (!orgId) {
-      setTemplates([]);
-      setLoading(false);
-      return;
+      return [];
     }
-
-    setLoading(true);
-    setError(null);
 
     const { data, error: err } = await supabase
       .from("checklist_templates")
@@ -54,35 +47,34 @@ export function useChecklistTemplates(enabled: boolean = true) {
       // This is expected during development and should not be treated as a user-facing error
       if (err.code === 'PGRST205') {
         // Table doesn't exist - silently return empty array
-        setTemplates([]);
-        setError(null);
+        return [];
       } else {
-        // Other errors should be reported
-        setError(err.message);
+        throw err;
       }
-    } else {
-      const normalized = (data ?? []).map((template) => ({
-        ...template,
-        category: toCategory((template as { category?: string }).category),
-      }));
-      setTemplates(normalized);
     }
 
-    setLoading(false);
-  }
+    return (data ?? []).map((template) => ({
+      ...template,
+      category: toCategory((template as { category?: string }).category),
+    }));
+  };
 
-  useEffect(() => {
-    if (!orgLoading && enabled) {
-      fetchTemplates();
-    } else if (!enabled) {
-      // Reset state when disabled
-      setTemplates([]);
-      setLoading(false);
-      setError(null);
-    }
-  }, [orgId, orgLoading, enabled]);
+  const templatesQuery = useQuery({
+    queryKey: ["checklist-templates", orgId, enabled],
+    queryFn: fetchTemplates,
+    enabled: !orgLoading && enabled,
+    staleTime: 60_000,
+    retry: 1,
+  });
 
-  return { templates, loading, error, refresh: fetchTemplates };
+  return {
+    templates: enabled ? (templatesQuery.data ?? []) : [],
+    loading: enabled ? templatesQuery.isLoading : false,
+    error: enabled && templatesQuery.error ? (templatesQuery.error as Error).message : null,
+    refresh: async () => {
+      await templatesQuery.refetch();
+    },
+  };
 }
 
 export function useChecklistTemplateItems(templateId?: string) {

@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_resolution_memory: {
+        Row: {
+          confidence: number | null
+          entity_id: string
+          entity_type: string
+          id: string
+          key: string
+          org_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          key: string
+          org_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          key?: string
+          org_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_resolution_memory_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asset_files: {
         Row: {
           asset_id: string
@@ -317,6 +355,7 @@ export type Database = {
       attachments: {
         Row: {
           ai_confidence: number | null
+          annotation_json: Json | null
           created_at: string
           file_name: string | null
           file_size: number | null
@@ -325,14 +364,17 @@ export type Database = {
           id: string
           metadata: Json | null
           ocr_text: string | null
+          optimized_url: string | null
           org_id: string
           parent_id: string
           parent_type: string
           thumbnail_url: string | null
           updated_at: string
+          upload_status: string | null
         }
         Insert: {
           ai_confidence?: number | null
+          annotation_json?: Json | null
           created_at?: string
           file_name?: string | null
           file_size?: number | null
@@ -341,14 +383,17 @@ export type Database = {
           id?: string
           metadata?: Json | null
           ocr_text?: string | null
+          optimized_url?: string | null
           org_id: string
           parent_id: string
           parent_type: string
           thumbnail_url?: string | null
           updated_at?: string
+          upload_status?: string | null
         }
         Update: {
           ai_confidence?: number | null
+          annotation_json?: Json | null
           created_at?: string
           file_name?: string | null
           file_size?: number | null
@@ -357,11 +402,13 @@ export type Database = {
           id?: string
           metadata?: Json | null
           ocr_text?: string | null
+          optimized_url?: string | null
           org_id?: string
           parent_id?: string
           parent_type?: string
           thumbnail_url?: string | null
           updated_at?: string
+          upload_status?: string | null
         }
         Relationships: [
           {
@@ -646,6 +693,7 @@ export type Database = {
           notes: string | null
           org_id: string
           property_id: string | null
+          rule_id: string | null
           status: string | null
           title: string | null
           updated_at: string
@@ -670,6 +718,7 @@ export type Database = {
           notes?: string | null
           org_id: string
           property_id?: string | null
+          rule_id?: string | null
           status?: string | null
           title?: string | null
           updated_at?: string
@@ -694,6 +743,7 @@ export type Database = {
           notes?: string | null
           org_id?: string
           property_id?: string | null
+          rule_id?: string | null
           status?: string | null
           title?: string | null
           updated_at?: string
@@ -732,6 +782,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
             referencedColumns: ["id"]
           },
         ]
@@ -795,6 +852,85 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_occurrences: {
+        Row: {
+          asset_id: string | null
+          completed_at: string | null
+          created_at: string
+          due_date: string
+          id: string
+          org_id: string
+          rule_id: string
+          status: string
+          task_id: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          org_id: string
+          rule_id: string
+          status?: string
+          task_id?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          org_id?: string
+          rule_id?: string
+          status?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_occurrences_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_occurrences_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_occurrences_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_occurrences_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_occurrences_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_occurrences_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
             referencedColumns: ["id"]
           },
         ]
@@ -899,21 +1035,60 @@ export type Database = {
       }
       compliance_rules: {
         Row: {
+          auto_create: boolean
           created_at: string
+          description: string | null
+          frequency: string | null
           id: string
+          is_archived: boolean
+          last_completed_at: string | null
+          name: string | null
+          next_due_date: string | null
+          notify_days_before: number
           org_id: string
+          property_id: string | null
+          scope_asset_type: string | null
+          scope_ids: Json | null
+          scope_type: string
+          template_config: Json | null
           updated_at: string
         }
         Insert: {
+          auto_create?: boolean
           created_at?: string
+          description?: string | null
+          frequency?: string | null
           id?: string
+          is_archived?: boolean
+          last_completed_at?: string | null
+          name?: string | null
+          next_due_date?: string | null
+          notify_days_before?: number
           org_id: string
+          property_id?: string | null
+          scope_asset_type?: string | null
+          scope_ids?: Json | null
+          scope_type?: string
+          template_config?: Json | null
           updated_at?: string
         }
         Update: {
+          auto_create?: boolean
           created_at?: string
+          description?: string | null
+          frequency?: string | null
           id?: string
+          is_archived?: boolean
+          last_completed_at?: string | null
+          name?: string | null
+          next_due_date?: string | null
+          notify_days_before?: number
           org_id?: string
+          property_id?: string | null
+          scope_asset_type?: string | null
+          scope_ids?: Json | null
+          scope_type?: string
+          template_config?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -924,25 +1099,63 @@ export type Database = {
             referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "compliance_rules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_rules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       compliance_sources: {
         Row: {
           created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_size: number | null
           id: string
+          mime_type: string | null
           org_id: string
+          source: string | null
+          status: string | null
+          storage_bucket: string | null
+          storage_path: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_size?: number | null
           id?: string
+          mime_type?: string | null
           org_id: string
+          source?: string | null
+          status?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          created_by?: string | null
+          file_name?: string | null
+          file_size?: number | null
           id?: string
+          mime_type?: string | null
           org_id?: string
+          source?: string | null
+          status?: string | null
+          storage_bucket?: string | null
+          storage_path?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1171,6 +1384,392 @@ export type Database = {
           },
         ]
       }
+      extracted_assets: {
+        Row: {
+          asset_type: string | null
+          confidence: number
+          created_at: string
+          edited_asset_type: string | null
+          edited_name: string | null
+          extraction_run_id: string
+          id: string
+          imported_asset_id: string | null
+          is_accepted: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference: Json
+          source_page_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          asset_type?: string | null
+          confidence?: number
+          created_at?: string
+          edited_asset_type?: string | null
+          edited_name?: string | null
+          extraction_run_id: string
+          id?: string
+          imported_asset_id?: string | null
+          is_accepted?: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asset_type?: string | null
+          confidence?: number
+          created_at?: string
+          edited_asset_type?: string | null
+          edited_name?: string | null
+          extraction_run_id?: string
+          id?: string
+          imported_asset_id?: string | null
+          is_accepted?: boolean
+          name?: string
+          org_id?: string
+          property_id?: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extracted_assets_extraction_run_id_fkey"
+            columns: ["extraction_run_id"]
+            isOneToOne: false
+            referencedRelation: "plan_extraction_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_imported_asset_id_fkey"
+            columns: ["imported_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_imported_asset_id_fkey"
+            columns: ["imported_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_assets_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extracted_compliance_elements: {
+        Row: {
+          confidence: number
+          created_at: string
+          edited_element_type: string | null
+          edited_name: string | null
+          element_type: string | null
+          extraction_run_id: string
+          id: string
+          is_accepted: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference: Json
+          source_page_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          edited_element_type?: string | null
+          edited_name?: string | null
+          element_type?: string | null
+          extraction_run_id: string
+          id?: string
+          is_accepted?: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          edited_element_type?: string | null
+          edited_name?: string | null
+          element_type?: string | null
+          extraction_run_id?: string
+          id?: string
+          is_accepted?: boolean
+          name?: string
+          org_id?: string
+          property_id?: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extracted_compliance_elements_extraction_run_id_fkey"
+            columns: ["extraction_run_id"]
+            isOneToOne: false
+            referencedRelation: "plan_extraction_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_compliance_elements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_compliance_elements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_compliance_elements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_compliance_elements_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extracted_spaces: {
+        Row: {
+          confidence: number
+          created_at: string
+          edited_name: string | null
+          edited_space_type: string | null
+          extraction_run_id: string
+          id: string
+          imported_space_id: string | null
+          is_accepted: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference: Json
+          source_page_id: string | null
+          space_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          edited_name?: string | null
+          edited_space_type?: string | null
+          extraction_run_id: string
+          id?: string
+          imported_space_id?: string | null
+          is_accepted?: boolean
+          name: string
+          org_id: string
+          property_id: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          space_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          edited_name?: string | null
+          edited_space_type?: string | null
+          extraction_run_id?: string
+          id?: string
+          imported_space_id?: string | null
+          is_accepted?: boolean
+          name?: string
+          org_id?: string
+          property_id?: string
+          raw_reference?: Json
+          source_page_id?: string | null
+          space_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extracted_spaces_extraction_run_id_fkey"
+            columns: ["extraction_run_id"]
+            isOneToOne: false
+            referencedRelation: "plan_extraction_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_spaces_imported_space_id_fkey"
+            columns: ["imported_space_id"]
+            isOneToOne: false
+            referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_spaces_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_spaces_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_spaces_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_spaces_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extracted_task_suggestions: {
+        Row: {
+          confidence: number
+          created_at: string
+          extraction_run_id: string
+          id: string
+          imported_task_id: string | null
+          is_accepted: boolean
+          org_id: string
+          property_id: string
+          rationale: string | null
+          source_page_id: string | null
+          suggestion_type: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          extraction_run_id: string
+          id?: string
+          imported_task_id?: string | null
+          is_accepted?: boolean
+          org_id: string
+          property_id: string
+          rationale?: string | null
+          source_page_id?: string | null
+          suggestion_type?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          extraction_run_id?: string
+          id?: string
+          imported_task_id?: string | null
+          is_accepted?: boolean
+          org_id?: string
+          property_id?: string
+          rationale?: string | null
+          source_page_id?: string | null
+          suggestion_type?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extracted_task_suggestions_extraction_run_id_fkey"
+            columns: ["extraction_run_id"]
+            isOneToOne: false
+            referencedRelation: "plan_extraction_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_imported_task_id_fkey"
+            columns: ["imported_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_imported_task_id_fkey"
+            columns: ["imported_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extracted_task_suggestions_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       icon_library: {
         Row: {
           aliases: string[] | null
@@ -1281,8 +1880,10 @@ export type Database = {
           invited_by: string
           last_name: string | null
           org_id: string
+          property_ids: string[] | null
           role: string
           status: string
+          team_ids: string[] | null
           token: string
           updated_at: string
         }
@@ -1296,8 +1897,10 @@ export type Database = {
           invited_by: string
           last_name?: string | null
           org_id: string
+          property_ids?: string[] | null
           role?: string
           status?: string
+          team_ids?: string[] | null
           token: string
           updated_at?: string
         }
@@ -1311,8 +1914,10 @@ export type Database = {
           invited_by?: string
           last_name?: string | null
           org_id?: string
+          property_ids?: string[] | null
           role?: string
           status?: string
+          team_ids?: string[] | null
           token?: string
           updated_at?: string
         }
@@ -1833,6 +2438,83 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_extraction_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          model_name: string | null
+          normalised_output: Json
+          org_id: string
+          plan_file_id: string
+          property_id: string
+          raw_output: Json
+          run_type: string
+          status: Database["public"]["Enums"]["plan_run_status"]
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          model_name?: string | null
+          normalised_output?: Json
+          org_id: string
+          plan_file_id: string
+          property_id: string
+          raw_output?: Json
+          run_type?: string
+          status?: Database["public"]["Enums"]["plan_run_status"]
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          model_name?: string | null
+          normalised_output?: Json
+          org_id?: string
+          plan_file_id?: string
+          property_id?: string
+          raw_output?: Json
+          run_type?: string
+          status?: Database["public"]["Enums"]["plan_run_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_extraction_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_extraction_runs_plan_file_id_fkey"
+            columns: ["plan_file_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_extraction_runs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_extraction_runs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           address: string
@@ -2169,6 +2851,136 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: true
             referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_plan_files: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          file_name: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          org_id: string
+          page_count: number | null
+          property_id: string
+          status: Database["public"]["Enums"]["plan_file_status"]
+          storage_path: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id: string
+          page_count?: number | null
+          property_id: string
+          status?: Database["public"]["Enums"]["plan_file_status"]
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          org_id?: string
+          page_count?: number | null
+          property_id?: string
+          status?: Database["public"]["Enums"]["plan_file_status"]
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_plan_files_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_plan_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_plan_files_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_plan_pages: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          height: number | null
+          id: string
+          image_storage_path: string | null
+          org_id: string
+          page_number: number
+          plan_file_id: string
+          processing_status: Database["public"]["Enums"]["plan_page_processing_status"]
+          thumbnail_storage_path: string | null
+          updated_at: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          image_storage_path?: string | null
+          org_id: string
+          page_number: number
+          plan_file_id: string
+          processing_status?: Database["public"]["Enums"]["plan_page_processing_status"]
+          thumbnail_storage_path?: string | null
+          updated_at?: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          image_storage_path?: string | null
+          org_id?: string
+          page_number?: number
+          plan_file_id?: string
+          processing_status?: Database["public"]["Enums"]["plan_page_processing_status"]
+          thumbnail_storage_path?: string | null
+          updated_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_plan_pages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_plan_pages_plan_file_id_fkey"
+            columns: ["plan_file_id"]
+            isOneToOne: false
+            referencedRelation: "property_plan_files"
             referencedColumns: ["id"]
           },
         ]
@@ -2786,7 +3598,7 @@ export type Database = {
           due_date: string | null
           icon_name: string | null
           id: string
-          milestones: Record<string, unknown>[] | null
+          milestones: Json | null
           org_id: string
           priority: string | null
           property_id: string | null
@@ -2801,7 +3613,7 @@ export type Database = {
           due_date?: string | null
           icon_name?: string | null
           id?: string
-          milestones?: Record<string, unknown>[] | null
+          milestones?: Json | null
           org_id: string
           priority?: string | null
           property_id?: string | null
@@ -2816,7 +3628,7 @@ export type Database = {
           due_date?: string | null
           icon_name?: string | null
           id?: string
-          milestones?: Record<string, unknown>[] | null
+          milestones?: Json | null
           org_id?: string
           priority?: string | null
           property_id?: string | null
@@ -3106,6 +3918,28 @@ export type Database = {
           },
         ]
       }
+      compliance_schedule_view: {
+        Row: {
+          certificate_name: string | null
+          days_until_expiry: number | null
+          document_type: string | null
+          expiry_date: string | null
+          expiry_status: string | null
+          file_url: string | null
+          frequency: string | null
+          id: string | null
+          last_completed_date: string | null
+          next_due_date: string | null
+          org_id: string | null
+          property_id: string | null
+          rule_id: string | null
+          source_type: string | null
+          status: string | null
+          task_id: string | null
+          title: string | null
+        }
+        Relationships: []
+      }
       compliance_view: {
         Row: {
           auto_schedule: boolean | null
@@ -3276,6 +4110,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_invitation: { Args: { p_token: string }; Returns: Json }
       ai_icon_search: {
         Args: { query_text?: string }
         Returns: {
@@ -3418,6 +4253,36 @@ export type Database = {
           updated_at: string
         }[]
       }
+      create_compliance_source_from_inbox: {
+        Args: {
+          p_file_name: string
+          p_file_size: number
+          p_id: string
+          p_mime_type: string
+          p_source?: string
+          p_storage_path: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          org_id: string
+          source: string | null
+          status: string | null
+          storage_bucket: string | null
+          storage_path: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "compliance_sources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_organisation: {
         Args: {
           creator_id: string
@@ -3452,6 +4317,7 @@ export type Database = {
       ensure_user_has_org: { Args: { p_user_id: string }; Returns: string }
       expire_old_invitations: { Args: never; Returns: undefined }
       generate_invitation_token: { Args: never; Returns: string }
+      get_invitation_by_token: { Args: { p_token: string }; Returns: Json }
       get_task_with_contractor_token: {
         Args: { p_task_id: string; p_token: string }
         Returns: {
@@ -3476,11 +4342,20 @@ export type Database = {
           nickname: string
         }[]
       }
+      import_plan_extraction_run: {
+        Args: { p_extraction_run_id: string }
+        Returns: {
+          created_assets: number
+          created_spaces: number
+          created_tasks: number
+        }[]
+      }
       import_property_spaces_from_csv: {
         Args: { p_csv_data: Json; p_org_id: string }
         Returns: Json
       }
       is_org_member: { Args: { org_uuid: string }; Returns: boolean }
+      is_org_owner_or_manager: { Args: { p_org_id: string }; Returns: boolean }
       map_internal_external: {
         Args: { p_value: string }
         Returns: Database["public"]["Enums"]["internal_external"]
@@ -3506,6 +4381,10 @@ export type Database = {
         Args: { p_org_id: string; p_property_id: string }
         Returns: undefined
       }
+      seed_property_plan_fixture: {
+        Args: { p_property_id: string }
+        Returns: string
+      }
       test_user_org_membership: {
         Args: { p_org_id: string }
         Returns: {
@@ -3519,6 +4398,7 @@ export type Database = {
         Args: { p_property_id: string; p_thumbnail_url: string }
         Returns: Json
       }
+      user_org_ids: { Args: never; Returns: string[] }
     }
     Enums: {
       functional_class:
@@ -3546,6 +4426,20 @@ export type Database = {
       notification_status: "pending" | "sent" | "failed"
       org_type: "personal" | "business" | "contractor"
       ownership_type: "owned" | "leased" | "rented" | "managed" | "other"
+      plan_file_status:
+        | "uploaded"
+        | "converting"
+        | "extracting"
+        | "ready_for_review"
+        | "partially_reviewed"
+        | "imported"
+        | "failed"
+      plan_page_processing_status:
+        | "queued"
+        | "converted"
+        | "extracted"
+        | "failed"
+      plan_run_status: "queued" | "running" | "completed" | "failed"
       site_type:
         | "residential"
         | "commercial"
@@ -3708,6 +4602,22 @@ export const Constants = {
       notification_status: ["pending", "sent", "failed"],
       org_type: ["personal", "business", "contractor"],
       ownership_type: ["owned", "leased", "rented", "managed", "other"],
+      plan_file_status: [
+        "uploaded",
+        "converting",
+        "extracting",
+        "ready_for_review",
+        "partially_reviewed",
+        "imported",
+        "failed",
+      ],
+      plan_page_processing_status: [
+        "queued",
+        "converted",
+        "extracted",
+        "failed",
+      ],
+      plan_run_status: ["queued", "running", "completed", "failed"],
       site_type: [
         "residential",
         "commercial",

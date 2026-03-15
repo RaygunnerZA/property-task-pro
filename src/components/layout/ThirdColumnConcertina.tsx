@@ -13,10 +13,10 @@ const PAPER_TEXTURE_STYLE = {
 };
 
 const SECTION_HEADER_CLASS = cn(
-  "px-4 pt-3 pb-3 h-[55px] w-full text-left",
+  "px-4 pt-[15px] pb-[15px] h-[55px] w-full text-left",
   "flex items-center justify-between gap-3",
-  "bg-[linear-gradient(90deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0)_100%)] transition-colors hover:bg-[linear-gradient(90deg,rgba(255,255,255,0.74)_0%,rgba(255,255,255,0)_100%)]",
-  "shadow-[inset_-2px_-2px_3px_-2px_rgba(0,0,0,0.3),inset_2px_3px_2.5px_0px_rgba(255,255,255,0.4)]"
+  "bg-transparent transition-colors hover:bg-transparent",
+  "shadow-none"
 );
 
 export interface ConcertinaSection {
@@ -36,7 +36,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
   return (
     <div
       className={cn(
-        "flex flex-col bg-background rounded-[12px] shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 overflow-hidden mx-[15px]",
+        "flex flex-col bg-background rounded-[12px] shadow-none border-0 overflow-visible mx-0 box-content px-0",
         className
       )}
       style={PAPER_TEXTURE_STYLE}
@@ -78,6 +78,8 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
               aria-hidden={!isExpanded}
               className={cn(
                 "overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out",
+                section.id === "details" && "shadow-[3px_4px_5.4px_0px_rgba(0,0,0,0.15),-3px_-7px_4.8px_0px_rgba(255,255,255,0.7)]",
+                section.id === "details" && "rounded-[12px]",
                 isExpanded ? "max-h-[70vh] opacity-100 overflow-y-auto" : "max-h-0 opacity-0 pointer-events-none"
               )}
             >

@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+const appGlobal = globalThis as typeof globalThis & {
+  __fillaRootInstance?: ReturnType<typeof createRoot>;
+};
+
 // Error boundary for development
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -40,8 +44,10 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+const root = appGlobal.__fillaRootInstance ?? createRoot(rootElement);
+appGlobal.__fillaRootInstance = root;
 
-createRoot(rootElement).render(
+root.render(
   <React.StrictMode>
     <ErrorBoundary>
       <App />

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Shield, Building2, Home, Hotel, Warehouse, Store, Castle, CheckSquare, AlertTriangle, Layers, Plus } from "lucide-react";
+import { Shield, Building2, Home, Hotel, Warehouse, Store, Castle, CheckSquare, AlertTriangle, Layers, Plus, FileUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tables } from "@/integrations/supabase/types";
 import { differenceInDays } from "date-fns";
@@ -182,6 +182,19 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
               : 'No inspections yet'
             }
           </span>
+        </div>
+        <div className="!mt-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/properties/${property.id}/plans`);
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/90 font-medium"
+          >
+            <FileUp className="h-3.5 w-3.5" />
+            Add property plans
+          </button>
         </div>
       </div>
     </div>

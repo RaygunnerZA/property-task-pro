@@ -175,14 +175,9 @@ export function DataProvider({ children }: DataProviderProps) {
 
   // Initialize on mount - try to get a fresh session
   useEffect(() => {
-    // Try refreshSession first to get fresh JWT with org_id claim
-    supabase.auth.refreshSession().then(({ data: refreshData, error }) => {
-      if (error || !refreshData.session) {
-        // Fall back to getSession for new sessions without refresh token
-        return supabase.auth.getSession();
-      }
-      return { data: { session: refreshData.session }, error: null };
-    }).then((result) => {
+    // Use getSession for initialization to avoid competing refresh calls across providers.
+    // Supabase auto-refresh and auth events keep session current.
+    supabase.auth.getSession().then((result) => {
       const initialSession = result?.data?.session ?? null;
       setSession(initialSession);
       
@@ -193,13 +188,14 @@ export function DataProvider({ children }: DataProviderProps) {
         fetchOrganisation(initialOrgId).then(setOrganisation);
       }
       setLoading(false);
-    });
+    }).catch(() => {});
 
     // Listen for auth state changes
     // IMPORTANT: Do NOT use async callback or make Supabase calls directly inside
     // This prevents auth deadlock issues
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        void event;
         // Only synchronous state updates here
         setSession(newSession);
         
@@ -219,7 +215,9 @@ export function DataProvider({ children }: DataProviderProps) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [fetchOrganisation]);
 
   const value: DataContextValue = {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
@@ -11,19 +11,11 @@ export interface Theme extends ThemeRow {
 
 export function useThemes(type?: 'category' | 'project' | 'tag' | 'group') {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [themes, setThemes] = useState<Theme[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchThemes() {
+  const fetchThemes = async (): Promise<Theme[]> => {
     if (!orgId) {
-      setThemes([]);
-      setLoading(false);
-      return;
+      return [];
     }
-
-    setLoading(true);
-    setError(null);
 
     let query = supabase
       .from("themes")
@@ -36,19 +28,27 @@ export function useThemes(type?: 'category' | 'project' | 'tag' | 'group') {
     }
 
     const { data, error: err } = await query.order("created_at", { ascending: true });
-
-    if (err) setError(err.message);
-    else setThemes(data ?? []);
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchThemes();
+    if (err) {
+      throw err;
     }
-  }, [orgId, orgLoading, type]);
+    return (data ?? []) as Theme[];
+  };
 
-  return { themes, loading, error, refresh: fetchThemes };
+  const query = useQuery({
+    queryKey: ["themes", orgId, type ?? "all"],
+    queryFn: fetchThemes,
+    enabled: !orgLoading,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  return {
+    themes: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: async () => {
+      await query.refetch();
+    },
+  };
 }
 

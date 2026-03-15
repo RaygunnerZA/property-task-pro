@@ -48,6 +48,7 @@ import { WhereSection } from "./create/WhereSection";
 import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
+import { SemanticChip } from "@/components/chips/semantic";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
@@ -125,6 +126,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
+  const panelScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -375,6 +377,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
   }, [status]);
 
+  const hasWhoFacts = Boolean(selectedUserId) || selectedTeamIds.length > 0 || pendingInvitations.length > 0;
+  const hasWhereFacts = selectedPropertyIds.length > 0 || selectedSpaceIds.length > 0;
+  const hasWhenFacts = Boolean(dueDate) || milestones.length > 0;
+  const hasAssetFacts = selectedAssetIds.length > 0;
+  const hasCategoryFacts = selectedThemeIds.length > 0;
+  const hasComplianceFacts = isCompliance || Boolean(complianceLevel);
+
   const { userId } = useDataContext();
   const allAttachments = (task as any)?.images ?? [];
   const imageAttachments = useMemo(
@@ -440,7 +449,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const panelWrapper = (content: ReactNode, title?: string) => {
     if (variant === "column") {
       return (
-        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,1),inset_-1px_-1px_2px_0px_rgba(0,0,0,0.25)] border-0 bg-background">
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-none border-0 bg-background">
           {content}
         </div>
       );
@@ -500,200 +509,201 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   // Shared panel content - Create Task aesthetic: p-4, thumbnails + Camera/Upload at top, description, multi-column, CTA bottom
   const panelContent = (
     <>
-      {/* Image section - thumbnails at top + Camera/Upload buttons (Create Task style) */}
-      <div className="p-4 pb-0 space-y-3">
-        {imageAttachments.length > 0 ? (
-          <div className="space-y-2">
-            {/* Full-width selected image preview */}
-            {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
+      <div ref={panelScrollRef} className="flex-1 overflow-y-auto min-h-0">
+        {/* Image section - thumbnails at top + Camera/Upload buttons (Create Task style) */}
+        <div className="p-4 pb-0 space-y-3">
+          {imageAttachments.length > 0 ? (
+            <div className="space-y-2">
+              {/* Full-width selected image preview */}
+              {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
+                <button
+                  type="button"
+                  className="relative w-full rounded-[10px] overflow-hidden bg-muted shadow-none cursor-pointer hover:shadow-none transition-shadow"
+                  onClick={() => {
+                    const selectedImage = imageAttachments[selectedImageIndex];
+                    if (selectedImage?.id) {
+                      setEditingImageId(selectedImage.id);
+                      setShowAnnotationEditor(true);
+                      return;
+                    }
+                    setLightboxOpen(true);
+                  }}
+                >
+                  <img
+                    src={imageAttachments[selectedImageIndex].optimized_url || imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].thumbnail_url}
+                    alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
+                    className="w-full max-h-[300px] object-contain bg-muted/40"
+                    onError={(e) => {
+                      const img = imageAttachments[selectedImageIndex];
+                      if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
+                        (e.target as HTMLImageElement).src = img.file_url;
+                      }
+                    }}
+                  />
+                  <TaskImageAnnotationOverlay
+                    annotations={imageAttachments[selectedImageIndex].annotation_json}
+                  />
+                </button>
+              )}
+              {/* Thumbnail strip + action buttons */}
+              <div className="flex gap-3 items-end">
+                <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
+                  {imageAttachments.map((image: any, index: number) => (
+                    <button
+                      key={image.id}
+                      type="button"
+                      className={cn(
+                        "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
+                        selectedImageIndex === index ? "border-primary" : "border-transparent"
+                      )}
+                      onClick={() => setSelectedImageIndex(index)}
+                    >
+                      <img
+                        src={image.thumbnail_url || image.file_url}
+                        alt={image.file_name || "Task image"}
+                        className="w-full h-full object-contain bg-muted/40"
+                        onError={(e) => {
+                          if (image.thumbnail_url && image.file_url) {
+                            (e.target as HTMLImageElement).src = image.file_url;
+                          }
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 items-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+                    className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                    title="Ask FILLA"
+                    aria-label="Open Assistant"
+                  >
+                    <FillaIcon size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => taskImageInputRef.current?.click()}
+                    disabled={isUploadingImage}
+                    className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                    title="Upload image"
+                    aria-label="Upload image"
+                  >
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2 justify-end items-end">
               <button
                 type="button"
-                className="relative w-full rounded-[10px] overflow-hidden bg-muted shadow-e1 cursor-pointer hover:shadow-e2 transition-shadow"
-                onClick={() => {
-                  const selectedImage = imageAttachments[selectedImageIndex];
-                  if (selectedImage?.id) {
-                    setEditingImageId(selectedImage.id);
-                    setShowAnnotationEditor(true);
-                    return;
-                  }
-                  setLightboxOpen(true);
-                }}
+                onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
+                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                title="Ask FILLA"
+                aria-label="Open Assistant"
               >
-                <img
-                  src={imageAttachments[selectedImageIndex].optimized_url || imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].thumbnail_url}
-                  alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
-                  className="w-full max-h-[300px] object-contain bg-muted/40"
-                  onError={(e) => {
-                    const img = imageAttachments[selectedImageIndex];
-                    if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
-                      (e.target as HTMLImageElement).src = img.file_url;
-                    }
-                  }}
-                />
-                <TaskImageAnnotationOverlay
-                  annotations={imageAttachments[selectedImageIndex].annotation_json}
-                />
+                <FillaIcon size={18} />
               </button>
-            )}
-            {/* Thumbnail strip + action buttons */}
-            <div className="flex gap-3 items-end">
-              <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
-                {imageAttachments.map((image: any, index: number) => (
+              <button
+                type="button"
+                onClick={() => taskImageInputRef.current?.click()}
+                disabled={isUploadingImage}
+                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                title="Upload image"
+                aria-label="Upload image"
+              >
+                <Upload className="h-5 w-5 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+          {documentAttachments.length > 0 && (
+            <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
+              <div className="mb-2 text-xs font-medium text-muted-foreground">
+                Documents ({documentAttachments.length})
+              </div>
+              <div className="space-y-1.5">
+                {documentAttachments.map((attachment: any) => (
                   <button
-                    key={image.id}
+                    key={attachment.id}
                     type="button"
-                    className={cn(
-                      "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
-                      selectedImageIndex === index ? "border-primary" : "border-transparent"
-                    )}
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={() => setSelectedDocument(attachment)}
+                    className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
                   >
-                    <img
-                      src={image.thumbnail_url || image.file_url}
-                      alt={image.file_name || "Task image"}
-                      className="w-full h-full object-contain bg-muted/40"
-                      onError={(e) => {
-                        if (image.thumbnail_url && image.file_url) {
-                          (e.target as HTMLImageElement).src = image.file_url;
-                        }
-                      }}
-                    />
+                    <span className="block truncate font-medium text-foreground">
+                      {attachment.file_name || "Document"}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {attachment.file_type || "file"}
+                    </span>
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2 items-end shrink-0">
-                <button
-                  type="button"
-                  onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-                  title="Ask FILLA"
-                  aria-label="Open Assistant"
-                >
-                  <FillaIcon size={18} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => taskImageInputRef.current?.click()}
-                  disabled={isUploadingImage}
-                  className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                  title="Upload image"
-                  aria-label="Upload image"
-                >
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                </button>
-              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex gap-2 justify-end items-end">
-            <button
-              type="button"
-              onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-              title="Ask FILLA"
-              aria-label="Open Assistant"
-            >
-              <FillaIcon size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => taskImageInputRef.current?.click()}
-              disabled={isUploadingImage}
-              className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-              title="Upload image"
-              aria-label="Upload image"
-            >
-              <Upload className="h-5 w-5 text-muted-foreground" />
-            </button>
-          </div>
-        )}
-        {documentAttachments.length > 0 && (
-          <div className="rounded-[10px] bg-muted/35 p-2 shadow-e1">
-            <div className="mb-2 text-xs font-medium text-muted-foreground">
-              Documents ({documentAttachments.length})
-            </div>
-            <div className="space-y-1.5">
-              {documentAttachments.map((attachment: any) => (
-                <button
-                  key={attachment.id}
-                  type="button"
-                  onClick={() => setSelectedDocument(attachment)}
-                  className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
+          )}
+          <input
+            ref={taskImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files) {
+                Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
+                e.target.value = "";
+              }
+            }}
+          />
+        </div>
+
+        {/* Content - p-4 matching Create Task */}
+        <div className="p-4 space-y-4">
+          {/* Description 18pt - replaces title */}
+          <p className="text-[18px] text-foreground leading-relaxed">
+            {(task as any)?.description || "No description provided"}
+          </p>
+
+          {/* Tabs - below description: Summary | Messaging | Activity */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
+              <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
+                <TabsTrigger
+                  value="summary"
+                  className={cn(
+                    "rounded-[8px] data-[state=active]:bg-card",
+                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                  )}
                 >
-                  <span className="block truncate font-medium text-foreground">
-                    {attachment.file_name || "Document"}
-                  </span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {attachment.file_type || "file"}
-                  </span>
-                </button>
-              ))}
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Summary
+                </TabsTrigger>
+                <TabsTrigger
+                  value="messaging"
+                  className={cn(
+                    "rounded-[8px] data-[state=active]:bg-card",
+                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                  )}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Messaging
+                </TabsTrigger>
+                <TabsTrigger
+                  value="activity"
+                  className={cn(
+                    "rounded-[8px] data-[state=active]:bg-card",
+                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
+                  )}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Activity
+                </TabsTrigger>
+              </TabsList>
             </div>
-          </div>
-        )}
-        <input
-          ref={taskImageInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            if (files) {
-              Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
-              e.target.value = "";
-            }
-          }}
-        />
-      </div>
 
-      {/* Content - p-4 matching Create Task */}
-      <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
-        {/* Description 18pt - replaces title */}
-        <p className="text-[18px] text-foreground leading-relaxed">
-          {(task as any)?.description || "No description provided"}
-        </p>
-
-        {/* Tabs - below description: Summary | Messaging | Activity */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
-            <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
-              <TabsTrigger
-                value="summary"
-                className={cn(
-                  "rounded-[8px] data-[state=active]:bg-card",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                )}
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Summary
-              </TabsTrigger>
-              <TabsTrigger
-                value="messaging"
-                className={cn(
-                  "rounded-[8px] data-[state=active]:bg-card",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                )}
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Messaging
-              </TabsTrigger>
-              <TabsTrigger
-                value="activity"
-                className={cn(
-                  "rounded-[8px] data-[state=active]:bg-card",
-                  "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                )}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Activity
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
+            {/* Tab Content */}
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
               <div className="space-y-0 flex flex-col mt-[15px]">
                 <GraphInsightPanel
                   start={{ type: "task", id: taskId }}
@@ -701,101 +711,129 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   variant="minimal"
                   className="mb-3"
                 />
-                <WhoSection
-                  isActive={activeSection === "who"}
-                  onActivate={() => setActiveSection("who")}
-                  assignedUserId={selectedUserId}
-                  assignedTeamIds={selectedTeamIds}
-                  onUserChange={(userId) => handleUserChange(userId)}
-                  onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
-                  pendingInvitations={pendingInvitations}
-                  onPendingInvitationsChange={setPendingInvitations}
-                  onInviteToOrg={(prefill) => {
-                    setInvitePrefill(prefill ?? null);
-                    setInviteModalOpen(true);
-                  }}
-                  onAddAsContractor={() => { setInvitePrefill(null); setInviteModalOpen(true); }}
-                />
+                <div className="flex flex-wrap justify-end gap-2 pb-2">
+                  <SemanticChip epistemic={hasWhoFacts ? "fact" : "proposal"} label={hasWhoFacts ? "PERSON" : "+PERSON"} truncate={false} onPress={() => setActiveSection("who")} />
+                  <SemanticChip epistemic={hasWhereFacts ? "fact" : "proposal"} label={hasWhereFacts ? "PLACE" : "+PLACE"} truncate={false} onPress={() => setActiveSection("where")} />
+                  <SemanticChip epistemic={hasWhenFacts ? "fact" : "proposal"} label={hasWhenFacts ? "DATE" : "+DATE"} truncate={false} onPress={() => setActiveSection("when")} />
+                  <SemanticChip epistemic={hasAssetFacts ? "fact" : "proposal"} label={hasAssetFacts ? "ASSET" : "+ASSET"} truncate={false} onPress={() => setActiveSection("what")} />
+                  <SemanticChip epistemic="fact" label={priority.toUpperCase()} truncate={false} onPress={() => setActiveSection("priority")} />
+                  <SemanticChip epistemic="fact" label={statusFactChips[0]?.label ?? "OPEN"} truncate={false} onPress={() => setActiveSection("status")} />
+                  <SemanticChip epistemic={hasCategoryFacts ? "fact" : "proposal"} label={hasCategoryFacts ? "TAG" : "+TAG"} truncate={false} onPress={() => setActiveSection("category")} />
+                  <SemanticChip epistemic={hasComplianceFacts ? "fact" : "proposal"} label={hasComplianceFacts ? "RULE" : "+RULE"} truncate={false} onPress={() => setActiveSection("compliance")} />
+                </div>
 
-                <WhereSection
-                  propertyId={localPropertyId}
-                  selectedPropertyIds={selectedPropertyIds}
-                  selectedSpaceIds={selectedSpaceIds}
-                  onPropertyChange={handlePropertyChangeSection}
-                  onSpacesChange={handleSpacesChange}
-                  showFactsByDefault
-                />
+                {activeSection === "who" && (
+                  <WhoSection
+                    isActive
+                    onActivate={() => setActiveSection("who")}
+                    assignedUserId={selectedUserId}
+                    assignedTeamIds={selectedTeamIds}
+                    onUserChange={(userId) => handleUserChange(userId)}
+                    onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
+                    pendingInvitations={pendingInvitations}
+                    onPendingInvitationsChange={setPendingInvitations}
+                    onInviteToOrg={(prefill) => {
+                      setInvitePrefill(prefill ?? null);
+                      setInviteModalOpen(true);
+                    }}
+                    onAddAsContractor={() => {
+                      setInvitePrefill(null);
+                      setInviteModalOpen(true);
+                    }}
+                  />
+                )}
 
-                <WhenSection
-                  isActive={activeSection === "when"}
-                  onActivate={() => setActiveSection("when")}
-                  onDeactivate={() => setActiveSection(null)}
-                  dueDate={dueDate}
-                  repeatRule={repeatRule}
-                  onDueDateChange={handleDueDateChange}
-                  onRepeatRuleChange={setRepeatRule}
-                  milestones={milestones}
-                  onMilestonesChange={setMilestones}
-                />
+                {activeSection === "where" && (
+                  <WhereSection
+                    propertyId={localPropertyId}
+                    selectedPropertyIds={selectedPropertyIds}
+                    selectedSpaceIds={selectedSpaceIds}
+                    onPropertyChange={handlePropertyChangeSection}
+                    onSpacesChange={handleSpacesChange}
+                    showFactsByDefault
+                  />
+                )}
 
-                <AssetSection
-                  isActive={activeSection === "what"}
-                  onActivate={() => setActiveSection("what")}
-                  propertyId={localPropertyId || undefined}
-                  spaceId={selectedSpaceIds[0]}
-                  selectedAssetIds={selectedAssetIds}
-                  onAssetsChange={handleAssetsChange}
-                />
+                {activeSection === "when" && (
+                  <WhenSection
+                    isActive
+                    onActivate={() => setActiveSection("when")}
+                    onDeactivate={() => setActiveSection(null)}
+                    dueDate={dueDate}
+                    repeatRule={repeatRule}
+                    onDueDateChange={handleDueDateChange}
+                    onRepeatRuleChange={setRepeatRule}
+                    milestones={milestones}
+                    onMilestonesChange={setMilestones}
+                  />
+                )}
 
-                <CreateTaskRow
-                  sectionId="priority"
-                  icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-                  instruction="Add Priority"
-                  valueLabel="+Priority"
-                  isActive={activeSection === "priority"}
-                  onActivate={() => setActiveSection("priority")}
-                  factChips={priorityFactChips}
-                  hoverChips={[
-                    { id: "low", label: "LOW", onPress: () => setPriority("low") },
-                    { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
-                    { id: "high", label: "HIGH", onPress: () => setPriority("high") },
-                    { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
-                  ]}
-                />
+                {activeSection === "what" && (
+                  <AssetSection
+                    isActive
+                    onActivate={() => setActiveSection("what")}
+                    propertyId={localPropertyId || undefined}
+                    spaceId={selectedSpaceIds[0]}
+                    selectedAssetIds={selectedAssetIds}
+                    onAssetsChange={handleAssetsChange}
+                  />
+                )}
 
-                <CreateTaskRow
-                  sectionId="status"
-                  icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
-                  instruction="Set Status"
-                  valueLabel="+Status"
-                  isActive={activeSection === "status"}
-                  onActivate={() => setActiveSection("status")}
-                  factChips={statusFactChips}
-                  hoverChips={[
-                    { id: "open", label: "OPEN", onPress: () => setStatus("open") },
-                    { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
-                    { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
-                    { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
-                  ]}
-                />
+                {activeSection === "priority" && (
+                  <CreateTaskRow
+                    sectionId="priority"
+                    icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+                    instruction="Add Priority"
+                    valueLabel="+Priority"
+                    isActive
+                    onActivate={() => setActiveSection("priority")}
+                    factChips={priorityFactChips}
+                    hoverChips={[
+                      { id: "low", label: "LOW", onPress: () => setPriority("low") },
+                      { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
+                      { id: "high", label: "HIGH", onPress: () => setPriority("high") },
+                      { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
+                    ]}
+                  />
+                )}
 
-                <CategorySection
-                  isActive={activeSection === "category"}
-                  onActivate={() => setActiveSection("category")}
-                  selectedThemeIds={selectedThemeIds}
-                  onThemesChange={handleThemesChange}
-                />
+                {activeSection === "status" && (
+                  <CreateTaskRow
+                    sectionId="status"
+                    icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
+                    instruction="Set Status"
+                    valueLabel="+Status"
+                    isActive
+                    onActivate={() => setActiveSection("status")}
+                    factChips={statusFactChips}
+                    hoverChips={[
+                      { id: "open", label: "OPEN", onPress: () => setStatus("open") },
+                      { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
+                      { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
+                      { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
+                    ]}
+                  />
+                )}
 
-                <CreateTaskRow
-                  sectionId="compliance"
-                  icon={<Shield className="h-4 w-4 text-muted-foreground" />}
-                  instruction="Add Compliance Rule"
-                  valueLabel="+Rule"
-                  isActive={activeSection === "compliance"}
-                  onActivate={() => setActiveSection("compliance")}
-                  factChips={[]}
-                >
-                  {activeSection === "compliance" && (
+                {activeSection === "category" && (
+                  <CategorySection
+                    isActive
+                    onActivate={() => setActiveSection("category")}
+                    selectedThemeIds={selectedThemeIds}
+                    onThemesChange={handleThemesChange}
+                  />
+                )}
+
+                {activeSection === "compliance" && (
+                  <CreateTaskRow
+                    sectionId="compliance"
+                    icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+                    instruction="Add Compliance Rule"
+                    valueLabel="+Rule"
+                    isActive
+                    onActivate={() => setActiveSection("compliance")}
+                    factChips={[]}
+                  >
                     <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
                       <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
                       <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
@@ -813,17 +851,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         </Select>
                       )}
                     </div>
-                  )}
-                </CreateTaskRow>
+                  </CreateTaskRow>
+                )}
               </div>
-            </TabsContent>
+              </TabsContent>
 
-            <TabsContent value="messaging" className="mt-0 flex-1 flex flex-col min-h-0">
-              <TaskMessaging taskId={taskId} />
-            </TabsContent>
+              <TabsContent value="messaging" className="mt-0 flex-1 flex flex-col min-h-0">
+                <TaskMessaging taskId={taskId} />
+              </TabsContent>
 
-            <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
-              <div className="space-y-4">
+              <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
+                <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
                   <FileUploadZone
@@ -905,10 +943,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     Audit logs and activity history will appear here
                   </p>
                 </div>
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
 
       {/* CTA panel - [Update][Mark Complete][Options] */}

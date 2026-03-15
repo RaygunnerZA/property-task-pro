@@ -12,9 +12,10 @@ import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpac
 import { ONBOARDING_SPACE_GROUPS, shortSpaceLabel } from "@/components/onboarding/onboardingSpaceGroups";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
+import { useBuildingPlans } from "@/hooks/property/useBuildingPlans";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
-import { Plus, Layers } from "lucide-react";
+import { Plus, Layers, FileUp, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,8 @@ export default function AddSpaceScreen() {
     suggestedName: string;
   } | null>(null);
   const [copyModalInput, setCopyModalInput] = useState("");
+  const [planFiles, setPlanFiles] = useState<FileList | null>(null);
+  const plans = useBuildingPlans(propertyId || undefined);
 
   useEffect(() => {
     if (!orgLoading && orgId) {
@@ -288,6 +291,25 @@ export default function AddSpaceScreen() {
     }
   };
 
+  const handleUploadPlans = async () => {
+    if (!propertyId) {
+      toast.error("Property not found yet. Please try again in a moment.");
+      return;
+    }
+    if (!planFiles || planFiles.length === 0) {
+      toast.error("Choose one or more plan files first");
+      return;
+    }
+    try {
+      const uploaded = await plans.uploadPlans(Array.from(planFiles));
+      setPlanFiles(null);
+      toast.success(`${uploaded.length} plan file(s) uploaded`);
+      plans.refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to upload plans");
+    }
+  };
+
   // Single source of truth: selected spaces. Derived set for fast lookup (card chips disable when selected).
   const selectedSpacesSet = useMemo(
     () => new Set(spaces.map((s) => s.toLowerCase().trim())),
@@ -329,6 +351,39 @@ export default function AddSpaceScreen() {
           }
           showLogout={false}
         />
+
+        <div className="mb-6 rounded-xl bg-card/60 p-4 shadow-e1">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Add property plans (optional)</h3>
+              <p className="text-xs text-muted-foreground">
+                Upload PDFs or images now. Files are linked to this property for plan extraction.
+              </p>
+            </div>
+            {plans.files.length > 0 ? (
+              <span className="text-xs text-muted-foreground">{plans.files.length} uploaded</span>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+            <input
+              type="file"
+              accept="application/pdf,image/png,image/jpeg"
+              multiple
+              onChange={(e) => setPlanFiles(e.target.files)}
+              className="w-full text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleUploadPlans}
+              disabled={!propertyId || plans.isUploading}
+              className="h-10 px-4 rounded-xl text-white transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#8EC9CE" }}
+            >
+              {plans.isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
+              Add Property Plans
+            </button>
+          </div>
+        </div>
 
         {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
         <div className="mb-6">

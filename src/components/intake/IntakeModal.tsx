@@ -1703,7 +1703,12 @@ export function IntakeModal({
         </DialogHeader>
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+      <div
+        className={cn(
+          "flex-1 px-4 py-3 space-y-3 min-h-0",
+          variant === "column" && headless ? "overflow-visible" : "overflow-y-auto overscroll-contain"
+        )}
+      >
           {/* 1. Upload */}
           <ImageUploadSection
             images={images}
@@ -1812,7 +1817,7 @@ export function IntakeModal({
       </div>
 
       {/* 6. Footer: one adaptive primary + secondary override */}
-      <div className="px-4 py-3 border-t border-border/30 space-y-2">
+      <div className="px-4 pt-3 pb-5 border-t border-border/30 space-y-2">
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel

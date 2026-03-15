@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types";
@@ -8,35 +8,35 @@ type TeamRow = Tables<"teams">;
 export function useTeams() {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [teams, setTeams] = useState<TeamRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchTeams() {
+  const fetchTeams = async (): Promise<TeamRow[]> => {
     if (!orgId) {
-      setTeams([]);
-      setLoading(false);
-      return;
+      return [];
     }
-
-    setLoading(true);
-    setError(null);
-
     const query = supabase.from("teams").select("*").eq("org_id", orgId);
 
     const { data, error: err } = await query;
 
-    if (err) setError(err.message);
-    else setTeams(data ?? []);
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchTeams();
+    if (err) {
+      throw err;
     }
-  }, [orgId, orgLoading]);
+    return data ?? [];
+  };
 
-  return { teams, loading, error, refresh: fetchTeams };
+  const query = useQuery({
+    queryKey: ["teams", orgId],
+    queryFn: fetchTeams,
+    enabled: !orgLoading,
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  return {
+    teams: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: async () => {
+      await query.refetch();
+    },
+  };
 }

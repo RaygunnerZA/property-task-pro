@@ -46,6 +46,7 @@ export function useChipSuggestions(
   options: UseChipSuggestionsOptions = {}
 ): UseChipSuggestionsReturn {
   const { debounceMs = 600, minDescriptionLength = 3 } = options;
+
   const { orgId, orgLoading } = useOrgScope();
 
   // Fetch entities (cached by their own hooks)
