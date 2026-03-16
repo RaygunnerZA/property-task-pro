@@ -3,6 +3,7 @@
  * Shows document counts and links to filtered Property Documents view
  */
 
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, AlertCircle, AlertTriangle, Link2, Shield } from "lucide-react";
@@ -22,6 +23,7 @@ export function DocumentHealthSummary({
   documents,
   className,
 }: DocumentHealthSummaryProps) {
+  const renderCountRef = useRef(0);
   const navigate = useNavigate();
   const { orgId } = useActiveOrg();
   const docIds = documents.map((d) => d.id);
@@ -68,6 +70,7 @@ export function DocumentHealthSummary({
   }).length;
 
   const total = documents.length;
+  renderCountRef.current += 1;
 
   const items = [
     { label: "Total documents", value: total, icon: FileText, filter: null },
@@ -100,11 +103,58 @@ export function DocumentHealthSummary({
     },
   ];
 
+  // #region agent log
+  fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "0d80ed",
+    },
+    body: JSON.stringify({
+      sessionId: "0d80ed",
+      runId: "initial",
+      hypothesisId: "H2",
+      location: "DocumentHealthSummary.tsx:render",
+      message: "Render snapshot",
+      data: {
+        propertyId,
+        renderCount: renderCountRef.current,
+        docs: documents.length,
+        expired,
+        dueSoon,
+        unlinked,
+        withHazards,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+
+  useEffect(() => {
+    return () => {
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "0d80ed",
+        },
+        body: JSON.stringify({
+          sessionId: "0d80ed",
+          runId: "initial",
+          hypothesisId: "H3",
+          location: "DocumentHealthSummary.tsx:useEffectCleanup",
+          message: "Summary unmounted",
+          data: { propertyId, renderCount: renderCountRef.current },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    };
+  }, [propertyId]);
+
   return (
-    <div className={cn("rounded-lg bg-card p-4 shadow-e1", className)}>
-      <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-        Document Health
-      </h3>
+    <div className={cn("rounded-lg bg-white/60 p-4 shadow-e1", className)}>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {items.map((item) => {
           const Icon = item.icon;
@@ -118,12 +168,12 @@ export function DocumentHealthSummary({
                   : navigate(`/properties/${propertyId}/documents`)
               }
               className={cn(
-                "flex flex-col items-center gap-1 p-2 rounded-lg",
+                "flex flex-col items-center gap-[9px] px-3 py-4 rounded-lg",
                 "hover:bg-muted/50 transition-colors text-left",
                 item.color
               )}
             >
-              <span className="text-lg font-bold">{item.value}</span>
+              <span className="text-[38px] font-bold">{item.value}</span>
               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Icon className="h-3 w-3" />
                 {item.label}

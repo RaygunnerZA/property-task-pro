@@ -33,9 +33,29 @@ export function useActiveOrg(): UseActiveOrgResult {
   });
 
   const userId = userData?.id;
+  const userIdSuffix = userId ? userId.slice(-6) : null;
 
   // Memoize the fetch function to prevent unnecessary re-renders
   const fetchActiveOrg = useCallback(async () => {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "0d80ed",
+      },
+      body: JSON.stringify({
+        sessionId: "0d80ed",
+        runId: "initial",
+        hypothesisId: "H7",
+        location: "useActiveOrg.ts:fetchActiveOrg:start",
+        message: "fetchActiveOrg invoked",
+        data: { hasUserId: !!userId, userIdSuffix },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+
     if (!userId) {
       return null;
     }
@@ -49,6 +69,33 @@ export function useActiveOrg(): UseActiveOrgResult {
       .order("created_at", { ascending: true });
 
     if (membershipsError) {
+      const isAbortError =
+        membershipsError.message.includes("AbortError") ||
+        membershipsError.details?.includes("AbortError");
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "0d80ed",
+        },
+        body: JSON.stringify({
+          sessionId: "0d80ed",
+          runId: "initial",
+          hypothesisId: "H8",
+          location: "useActiveOrg.ts:fetchActiveOrg:error",
+          message: "organisation_members query failed",
+          data: {
+            userIdSuffix,
+            isAbortError,
+            message: membershipsError.message,
+            code: membershipsError.code,
+            details: membershipsError.details,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       console.error('[useActiveOrg] Query error:', {
         message: membershipsError.message,
         code: membershipsError.code,
@@ -65,12 +112,53 @@ export function useActiveOrg(): UseActiveOrgResult {
     const nonPersonal = memberships.find(
       (m) => (m.organisations as any)?.org_type !== "personal"
     );
-    return (nonPersonal ?? memberships[0]).org_id;
-  }, [userId]);
+    const selectedOrgId = (nonPersonal ?? memberships[0]).org_id;
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "0d80ed",
+      },
+      body: JSON.stringify({
+        sessionId: "0d80ed",
+        runId: "initial",
+        hypothesisId: "H9",
+        location: "useActiveOrg.ts:fetchActiveOrg:success",
+        message: "organisation resolved",
+        data: {
+          userIdSuffix,
+          membershipsCount: memberships.length,
+          selectedOrgIdSuffix: selectedOrgId.slice(-6),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    return selectedOrgId;
+  }, [userId, userIdSuffix]);
 
   // Listen for auth state changes to invalidate queries
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "0d80ed",
+        },
+        body: JSON.stringify({
+          sessionId: "0d80ed",
+          runId: "initial",
+          hypothesisId: "H10",
+          location: "useActiveOrg.ts:onAuthStateChange",
+          message: "Auth state event",
+          data: { event, hasSession: !!session },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       // Only invalidate on actual sign in/out, not token refresh
       // Token refresh doesn't change the user or org
       if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {

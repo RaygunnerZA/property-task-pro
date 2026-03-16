@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -15,6 +16,7 @@ interface PropertySpacesSectionProps {
 export function PropertySpacesSection({ propertyId, variant = "grid" }: PropertySpacesSectionProps) {
   const supabase = useSupabase();
   const { orgId } = useActiveOrg();
+  const navigate = useNavigate();
 
   // Fetch space types grouped by default_ui_group
   const { data: spaceTypes = [], isLoading: spaceTypesLoading } = useQuery({
@@ -96,6 +98,51 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
     return (
       <div className="relative w-full overflow-x-hidden overflow-y-visible">
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="flex-shrink-0 w-[200px]">
+            <div
+              className="bg-card/0 rounded-[8px] overflow-hidden shadow-none transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99] h-[228px]"
+              onClick={() => navigate(`/properties/${propertyId}/plans`)}
+            >
+              <div className="pt-[21px] pb-0 pl-[1px] pr-[1px]">
+                <div className="flex items-center justify-between gap-1 h-[92px] align-top">
+                  <h3 className="font-semibold text-[31px] text-teal-500 leading-[28px] flex-1 align-middle h-[81px] pt-0">
+                    Start with your building plans
+                  </h3>
+                </div>
+                <div
+                  className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1 mt-[7px]"
+                  style={{
+                    height: "1px",
+                    backgroundImage:
+                      "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+                    backgroundSize: "7px 1px",
+                    backgroundRepeat: "repeat-x",
+                    boxShadow: "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
+                  }}
+                />
+                <div className="space-y-1" style={{ marginTop: "3px" }}>
+                  <p className="text-xs text-muted-foreground leading-[18px] pt-[6px] pb-0">
+                    Upload a floor plan to quickly generate spaces, service areas and maintenance
+                    zones.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/properties/${propertyId}/plans`);
+                  }}
+                  className="mt-3 w-full h-8 rounded-[6px] bg-primary text-primary-foreground text-xs font-semibold transition-all duration-200 hover:opacity-95 active:scale-[0.99]"
+                  style={{
+                    boxShadow:
+                      "0px 0px 0px 0px rgba(0, 0, 0, 0), inset 1px 2px 2px 0px rgba(255, 255, 255, 0.75), inset -2.4px -1.5px 2px 0px rgba(0, 0, 0, 0.15)",
+                  }}
+                >
+                  Upload floor plan
+                </button>
+              </div>
+            </div>
+          </div>
           {cards.map((card, i) => (
             <div key={ONBOARDING_SPACE_GROUPS[i].id} className="flex-shrink-0 w-[200px]">
               {card}
