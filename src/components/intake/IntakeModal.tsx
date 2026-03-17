@@ -1164,11 +1164,15 @@ export function IntakeModal({
                       head_cell: "text-[#85BABC] rounded-md w-[30px] font-semibold text-[0.8rem] font-mono",
                       tbody: "rdp-tbody mt-0 rounded-[5px]",
                       row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
-                      cell: "h-[30px] w-[30px] rounded-[5px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                      day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-full grid items-center justify-center aria-selected:opacity-100",
-                      nav: "ml-auto flex items-center gap-1",
+                      cell: "h-[30px] w-[30px] rounded-[12px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-[12px] grid items-center justify-center aria-selected:opacity-100",
+                      day_today:
+                        "bg-white/30 text-foreground border-none shadow-[inset_0px_6.2px_3.9px_-1.2px_rgba(0,0,0,0.2),0px_1px_1px_0px_rgba(255,255,255,1)]",
+                      nav: "ml-[3px] flex items-start justify-end gap-1 text-center",
                       nav_button:
                         "h-7 w-7 rounded-full p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
+                      nav_button_previous:
+                        "absolute top-1 left-[177px] flex items-center justify-center",
                     }}
                     components={{
                       IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />,
