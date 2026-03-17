@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +53,7 @@ import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { format, addDays, startOfDay } from "date-fns";
+import { Calendar as MiniCalendar } from "@/components/ui/calendar";
 
 const INTAKE_COMPLIANCE_TYPES = [
   "Fire Certificate",
@@ -90,6 +91,25 @@ const TITLE_TRAILING_STOP_WORDS = new Set([
   "with",
 ]);
 
+function buildFallbackTitleFromDescription(input: string): string {
+  const normalized = input.replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+
+  const needToMatch = normalized.match(/\b(?:we\s+need\s+to|need\s+to)\s+([^,.!?]+)/i);
+  if (needToMatch?.[1]) {
+    const action = needToMatch[1].trim().replace(/[.!?,:;]+$/, "");
+    if (action.length >= 6) {
+      return action.charAt(0).toUpperCase() + action.slice(1);
+    }
+  }
+
+  const firstClause = normalized.split(/[,.!?]/)[0]?.trim() || normalized;
+  const words = firstClause.split(" ").filter(Boolean).slice(0, 8);
+  if (words.length === 0) return "";
+  const title = words.join(" ").replace(/[.!?,:;]+$/, "");
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
+
 const PAPER_TEXTURE_STYLE: React.CSSProperties = {
   backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
   backgroundSize: "100%",
@@ -110,6 +130,9 @@ interface UploadedAttachment {
   fileName: string;
   isImage: boolean;
 }
+
+type IntakeWhenTab = "due" | "milestone" | "repeat";
+type IntakeMilestone = { id: string; date: string };
 
 export function IntakeModal({
   open,
@@ -150,19 +173,25 @@ export function IntakeModal({
 
     const lastWord = words[words.length - 1]?.toLowerCase() ?? "";
     if (TITLE_TRAILING_STOP_WORDS.has(lastWord)) return false;
+    if (/\bon(?:\s+the)?\s+\d{1,2}(?:st|nd|rd|th)?$/i.test(trimmed)) return false;
 
     return true;
   }, []);
 
   useEffect(() => {
-    if (!aiResult?.title?.trim() || userEditedTitle) return;
-    const raw = aiResult.title.trim();
-    if (!isUsableGeneratedTitle(raw)) return;
-    const processed = raw.charAt(0).toUpperCase() + raw.slice(1).replace(/[.!]+$/, "");
+    if (userEditedTitle) return;
+    const aiRaw = aiResult?.title?.trim() || "";
+    const fallback = buildFallbackTitleFromDescription(description);
+    const chosen =
+      aiRaw && isUsableGeneratedTitle(aiRaw)
+        ? aiRaw
+        : fallback;
+    if (!chosen) return;
+    const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
     setAiTitleGenerated(processed);
     if (!title.trim()) setTitle(processed);
     setShowTitleField(true);
-  }, [aiResult?.title, isUsableGeneratedTitle, userEditedTitle, title]);
+  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, title]);
 
   useEffect(() => {
     if (!description.trim()) {
@@ -183,6 +212,10 @@ export function IntakeModal({
 
   // Chip row state (simplified: labels only for display; full IDs for submit)
   const [dueDate, setDueDate] = useState("");
+  const [whenTab, setWhenTab] = useState<IntakeWhenTab>("due");
+  const [milestones, setMilestones] = useState<IntakeMilestone[]>([]);
+  const [milestoneDraftDate, setMilestoneDraftDate] = useState(format(startOfDay(new Date()), "yyyy-MM-dd"));
+  const [repeatPreset, setRepeatPreset] = useState<"none" | "daily" | "weekly" | "monthly">("none");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -610,6 +643,13 @@ export function IntakeModal({
 
   // Auto-apply extracted date and person when we have resolved chips and field is still empty (so we don't overwrite user edits)
   useEffect(() => {
+    if (openChipSlot === "when") {
+      setWhenTab("due");
+      if (!milestoneDraftDate) setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+    }
+  }, [openChipSlot, milestoneDraftDate]);
+
+  useEffect(() => {
     const dateChip = chipSuggestions.find((c) => c.type === "date" && c.resolvedEntityId);
     if (!dueDate && dateChip?.resolvedEntityId && typeof dateChip.resolvedEntityId === "string") {
       const v = dateChip.resolvedEntityId;
@@ -667,7 +707,13 @@ export function IntakeModal({
 
   const formatDueDateLabel = useCallback((value: string) => {
     const dateValue = value.split("T")[0];
-    const dateObj = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
+    const normalizedDateValue = dateValue.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1").replace(/,/g, "").trim();
+    const isoLike = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDateValue);
+    const dateObj = normalizedDateValue
+      ? new Date(isoLike ? `${normalizedDateValue}T00:00:00` : normalizedDateValue)
+      : new Date();
+    const isValidDateObj = !Number.isNaN(dateObj.getTime());
+    if (!isValidDateObj) return dateValue.toUpperCase();
     const today = startOfDay(new Date());
     if (dateObj.getTime() === today.getTime()) return "TODAY";
     if (dateObj.getTime() === addDays(today, 1).getTime()) return "TOMORROW";
@@ -794,6 +840,14 @@ export function IntakeModal({
         label: formatDueDateLabel(dueDate),
         epistemic: "fact",
       });
+      if (repeatPreset !== "none") {
+        chips.push({
+          id: `when-repeat-${repeatPreset}`,
+          slot: "when",
+          label: `REPEAT ${repeatPreset.toUpperCase()}`,
+          epistemic: "fact",
+        });
+      }
     } else if (whenSuggestion) {
       chips.push({
         id: whenSuggestion.id,
@@ -802,6 +856,15 @@ export function IntakeModal({
         epistemic: "proposal",
       });
     }
+
+    milestones.forEach((milestone) => {
+      chips.push({
+        id: `when-milestone-${milestone.id}`,
+        slot: "when",
+        label: `MS ${formatDueDateLabel(milestone.date)}`,
+        epistemic: "fact",
+      });
+    });
 
     if (assetSuggestion) {
       chips.push({
@@ -853,6 +916,7 @@ export function IntakeModal({
     assignedUserId,
     chipShouldRenderAsFact,
     dueDate,
+    milestones,
     formatDueDateLabel,
     formatSuggestionLabel,
     hasDescriptionDraft,
@@ -860,6 +924,7 @@ export function IntakeModal({
     members,
     priority,
     priorityDefined,
+    repeatPreset,
     propertyId,
     rowSuggestionChip,
     selectedAssets,
@@ -1010,35 +1075,173 @@ export function IntakeModal({
       if (slot === "when") {
         const today = startOfDay(new Date());
         const quick = [
-          { label: "Today", date: format(today, "yyyy-MM-dd") },
-          { label: "Tomorrow", date: format(addDays(today, 1), "yyyy-MM-dd") },
+          { label: "TODAY", date: format(today, "yyyy-MM-dd") },
+          { label: "TOMORROW", date: format(addDays(today, 1), "yyyy-MM-dd") },
           { label: "+7D", date: format(addDays(today, 7), "yyyy-MM-dd") },
           { label: "+14D", date: format(addDays(today, 14), "yyyy-MM-dd") },
         ];
+        const selectedDueDate = dueDate ? new Date(`${dueDate}T00:00:00`) : undefined;
+        const selectedMilestoneDate = milestoneDraftDate ? new Date(`${milestoneDraftDate}T00:00:00`) : undefined;
+        const applyQuick = (date: string) => {
+          if (whenTab === "milestone") {
+            setMilestoneDraftDate(date);
+            return;
+          }
+          setDueDate(date);
+        };
         return (
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Due date</p>
-            <div className="flex flex-wrap gap-1.5">
-              {quick.map(({ label, date }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => {
-                    setDueDate(date);
-                    onClose();
-                  }}
-                  className="px-2.5 py-1.5 rounded-md text-xs font-medium bg-muted/60 hover:bg-muted"
-                >
-                  {label}
-                </button>
-              ))}
+          <div className="space-y-3">
+            <div
+              role="tablist"
+              aria-label="When options"
+              className="flex h-[37px] items-center w-[269px] gap-[9px] px-[7px] rounded-[12px] shadow-[inset_0px_4px_12px_0px_rgba(0,0,0,0.15),inset_0.8px_-9.5px_6.3px_0px_rgba(255,255,255,0.6)]"
+            >
+              <button
+                type="button"
+                onClick={() => setWhenTab("milestone")}
+                role="tab"
+                aria-selected={whenTab === "milestone"}
+                className={cn(
+                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
+                  whenTab === "milestone"
+                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
+                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
+                )}
+              >
+                +MILESTONE
+              </button>
+              <button
+                type="button"
+                onClick={() => setWhenTab("due")}
+                role="tab"
+                aria-selected={whenTab === "due"}
+                className={cn(
+                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
+                  whenTab === "due"
+                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
+                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
+                )}
+              >
+                DUE DATE
+              </button>
+              <button
+                type="button"
+                onClick={() => setWhenTab("repeat")}
+                role="tab"
+                aria-selected={whenTab === "repeat"}
+                className={cn(
+                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
+                  whenTab === "repeat"
+                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
+                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
+                )}
+              >
+                REPEAT
+              </button>
             </div>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full mt-1 h-8 rounded border border-input bg-input px-2 text-xs"
-            />
+
+            {whenTab !== "repeat" && (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {quick.map(({ label, date }) => (
+                    <SemanticChip
+                      key={label}
+                      epistemic={((whenTab === "milestone" ? milestoneDraftDate : dueDate) === date) ? "fact" : "proposal"}
+                      label={label}
+                      onPress={() => applyQuick(date)}
+                      className="text-[12px]"
+                    />
+                  ))}
+                </div>
+                <div className="rounded-lg bg-background/80 p-2 w-fit">
+                  <MiniCalendar
+                    mode="single"
+                    classNames={{
+                      month: "space-y-4 w-[246px]",
+                      caption: "flex justify-start pt-1 relative items-start gap-2.5 pl-[7px]",
+                      caption_label: "text-base font-medium",
+                      table: "w-full border-collapse space-y-1 mt-[10px]",
+                      head_cell: "text-[#85BABC] rounded-md w-[30px] font-semibold text-[0.8rem] font-mono",
+                      tbody: "rdp-tbody mt-0 rounded-[5px]",
+                      row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
+                      cell: "h-[30px] w-[30px] rounded-[5px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-full grid items-center justify-center aria-selected:opacity-100",
+                      nav: "ml-auto flex items-center gap-1",
+                      nav_button:
+                        "h-7 w-7 rounded-full p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
+                    }}
+                    components={{
+                      IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />,
+                      IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" strokeWidth={2.2} />,
+                    }}
+                    selected={whenTab === "milestone" ? selectedMilestoneDate : selectedDueDate}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      const next = format(date, "yyyy-MM-dd");
+                      if (whenTab === "milestone") {
+                        setMilestoneDraftDate(next);
+                      } else {
+                        setDueDate(next);
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
+            {whenTab === "milestone" && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Milestones</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!milestoneDraftDate) return;
+                      setMilestones((prev) => [...prev, { id: crypto.randomUUID(), date: milestoneDraftDate }]);
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    Add milestone
+                  </button>
+                </div>
+                {milestones.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {milestones.map((milestone) => (
+                      <SemanticChip
+                        key={milestone.id}
+                        epistemic="fact"
+                        label={formatDueDateLabel(milestone.date)}
+                        removable
+                        onRemove={() => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id))}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {whenTab === "repeat" && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">Repeat options</p>
+                <div className="flex flex-wrap gap-2">
+                  {(["daily", "weekly", "monthly"] as const).map((option) => (
+                    <SemanticChip
+                      key={option}
+                      epistemic={repeatPreset === option ? "fact" : "proposal"}
+                      label={option.toUpperCase()}
+                      onPress={() => setRepeatPreset(option)}
+                    />
+                  ))}
+                  {repeatPreset !== "none" && (
+                    <SemanticChip
+                      epistemic="proposal"
+                      label="CLEAR"
+                      onPress={() => setRepeatPreset("none")}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         );
       }
@@ -1142,8 +1345,11 @@ export function IntakeModal({
       chipSuggestions,
       dueDate,
       members,
+      milestoneDraftDate,
+      milestones,
       priority,
       properties,
+      repeatPreset,
       propertyId,
       availableAssets,
       selectedProperty,
@@ -1154,6 +1360,7 @@ export function IntakeModal({
       spaces,
       toast,
       toggleSpaceSelection,
+      whenTab,
     ]
   );
 
@@ -1415,7 +1622,10 @@ export function IntakeModal({
     setIsSubmitting(true);
     try {
       let dueDateValue: string | null = null;
-      if (dueDate) dueDateValue = new Date(dueDate).toISOString();
+      if (dueDate) {
+        const dateObj = new Date(dueDate);
+        dueDateValue = dateObj.toISOString();
+      }
 
       const { data: newTask, error } = await supabase
         .from("tasks")
@@ -1425,6 +1635,13 @@ export function IntakeModal({
           description: description.trim() || null,
           property_id: propertyId || null,
           due_date: dueDateValue,
+          milestones:
+            milestones.length > 0
+              ? milestones.map((milestone) => ({
+                  id: milestone.id,
+                  dateTime: `${milestone.date}T09:00`,
+                }))
+              : null,
           priority: priority === "medium" ? "normal" : priority,
           assigned_user_id: assignedUserId || null,
           status: "open",
@@ -1513,6 +1730,10 @@ export function IntakeModal({
     setCreateReminderFromCompliance(false);
     setOpenChipSlot(null);
     setDueDate("");
+    setWhenTab("due");
+    setMilestones([]);
+    setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+    setRepeatPreset("none");
     setPropertyId(defaultPropertyId || "");
     setSelectedSpaceIds([]);
     setSelectedAssetIds([]);

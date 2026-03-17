@@ -745,6 +745,20 @@ function getNextWeekday(weekdayName: string, skipCurrent: boolean = false): Date
 }
 
 const WEEKDAY_LIST = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, january: 0,
+  feb: 1, february: 1,
+  mar: 2, march: 2,
+  apr: 3, april: 3,
+  may: 4,
+  jun: 5, june: 5,
+  jul: 6, july: 6,
+  aug: 7, august: 7,
+  sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9,
+  nov: 10, november: 10,
+  dec: 11, december: 11,
+};
 const RE_NEXT_WEEK_WEEKDAY = new RegExp(`\\bnext\\s+week(?:\\s+on)?\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
 const RE_NEXT_WEEKDAY = new RegExp(`\\bnext\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
 const RE_BEFORE_WEEKDAY = new RegExp(`\\b(?:before|by)\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
@@ -905,8 +919,29 @@ function detectDate(text: string): SuggestedChip | null {
         label = formatDateLabel(calculatedDate);
         dateValue = calculatedDate.toISOString().split('T')[0];
       } else {
-        // For other patterns (specific dates), keep the original label
-        label = matchedText.charAt(0).toUpperCase() + matchedText.slice(1);
+        // Parse explicit month/day dates (e.g. "14th april", "april 14")
+        const dmy = matchedText.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\b/i);
+        const mdy = matchedText.match(/\b([a-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+        const dayRaw = dmy ? dmy[1] : mdy ? mdy[2] : null;
+        const monthRaw = dmy ? dmy[2] : mdy ? mdy[1] : null;
+        const day = dayRaw ? Number(dayRaw) : NaN;
+        const monthIndex = monthRaw ? MONTH_INDEX[monthRaw.toLowerCase()] : undefined;
+
+        if (Number.isFinite(day) && day >= 1 && day <= 31 && typeof monthIndex === "number") {
+          const now = new Date();
+          const year = now.getFullYear();
+          let explicit = new Date(year, monthIndex, day);
+          // If that date already passed this year, schedule next year.
+          if (explicit.getTime() < new Date(year, now.getMonth(), now.getDate()).getTime()) {
+            explicit = new Date(year + 1, monthIndex, day);
+          }
+          calculatedDate = explicit;
+          label = formatDateLabel(explicit);
+          dateValue = explicit.toISOString().split("T")[0];
+        } else {
+          // Fallback: keep original snippet if parsing fails.
+          label = matchedText.charAt(0).toUpperCase() + matchedText.slice(1);
+        }
       }
       
       return {

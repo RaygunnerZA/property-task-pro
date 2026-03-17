@@ -145,7 +145,7 @@ export function IntakeChipRow({
       </div>
 
       {openSlot && (
-        <div className="rounded-[12px] bg-background/70 p-2.5 shadow-e1">
+        <div className="rounded-[12px] bg-background/70 py-2.5 px-0">
           {renderSlotContent(openSlot, onCloseSlot)}
         </div>
       )}
