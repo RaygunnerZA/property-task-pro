@@ -88,7 +88,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
     return (
       <div className={variant === "scroller" ? "flex gap-3 overflow-x-auto pb-2 -mx-1 px-1" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"}>
         {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-          <Skeleton key={i} className={variant === "scroller" ? "h-[260px] w-[200px] flex-shrink-0 rounded-[8px]" : "h-[240px] rounded-[8px]"} />
+          <Skeleton key={i} className={variant === "scroller" ? "h-[260px] w-[190px] flex-shrink-0 rounded-[12px]" : "h-[240px] rounded-[12px]"} />
         ))}
       </div>
     );
@@ -98,9 +98,9 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
     return (
       <div className="relative w-full overflow-x-hidden overflow-y-visible">
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-          <div className="flex-shrink-0 w-[200px]">
+          <div className="flex-shrink-0 w-[190px] rounded-[12px]">
             <div
-              className="bg-card/0 rounded-[8px] overflow-hidden shadow-none transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99] h-[228px]"
+              className="bg-card/0 rounded-[12px] overflow-hidden shadow-none transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99] h-[228px]"
               onClick={() => navigate(`/properties/${propertyId}/plans`)}
             >
               <div className="pt-[21px] pb-0 pl-[1px] pr-[1px]">
@@ -144,7 +144,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
             </div>
           </div>
           {cards.map((card, i) => (
-            <div key={ONBOARDING_SPACE_GROUPS[i].id} className="flex-shrink-0 w-[200px]">
+            <div key={ONBOARDING_SPACE_GROUPS[i].id} className="flex-shrink-0 w-[190px] rounded-[12px]">
               {card}
             </div>
           ))}

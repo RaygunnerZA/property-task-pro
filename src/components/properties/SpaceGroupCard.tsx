@@ -32,7 +32,7 @@ export function SpaceGroupCard({
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1",
+        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1",
         "transition-all duration-200 cursor-pointer hover:shadow-md",
         "active:scale-[0.99] h-[228px]",
         className

@@ -58,7 +58,15 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     const { assets = [], compliance_documents = [] } = body as {
-      assets?: Array<{ asset_type?: string; condition_score?: number; install_date?: string }>;
+      assets?: Array<{
+        asset_type?: string;
+        condition_score?: number;
+        install_date?: string;
+        issue_present?: boolean;
+        severity_bucket?: "low" | "medium" | "high" | "critical";
+        confidence_bucket?: "low" | "medium" | "high";
+        trend_delta_bucket?: "improving_strong" | "improving" | "stable" | "worsening" | "worsening_strong";
+      }>;
       compliance_documents?: Array<{ document_type?: string }>;
     };
 
@@ -72,6 +80,10 @@ Deno.serve(async (req) => {
         const years = (Date.now() - new Date(a.install_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
         vec.age_bucket = bucketAge(Math.floor(years));
       }
+      if (a.issue_present != null) vec.issue_present = a.issue_present;
+      if (a.severity_bucket) vec.severity_bucket = a.severity_bucket;
+      if (a.confidence_bucket) vec.confidence_bucket = a.confidence_bucket;
+      if (a.trend_delta_bucket) vec.trend_delta_bucket = a.trend_delta_bucket;
       const check = validateNoPrivateData(vec);
       if (!check.valid) continue;
       const { data: assetInfer } = await admin.rpc("brain_infer_asset", { p_vector: vec });

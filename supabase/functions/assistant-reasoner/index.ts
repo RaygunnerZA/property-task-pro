@@ -220,10 +220,6 @@ Deno.serve(async (req) => {
     assetsCount: null,
   };
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H2',location:'supabase/functions/assistant-reasoner/index.ts:128',message:'reasoner classified intent',data:{queryLength:query.length,intent,targetType:target?.type ?? null,targetIdPresent:!!target?.id},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -559,10 +555,6 @@ Deno.serve(async (req) => {
   }
 
   // ── Fallback answer ───────────────────────────────────────────────────────
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/8c0e792f-62c4-49ed-ac4e-5af5ac66d2ea',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5837fa'},body:JSON.stringify({sessionId:'5837fa',runId:'pre-fix',hypothesisId:'H3',location:'supabase/functions/assistant-reasoner/index.ts:326',message:'reasoner pre-fallback state',data:{intent,calls,targetType:target?.type ?? null,answerLength:answer.trim().length,sources,telemetry},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   if (!answer.trim()) {
     answer = "I couldn't find enough data for that yet. Ask me about tasks, compliance, assets, or risk for a specific property, and I'll give you a direct answer.";

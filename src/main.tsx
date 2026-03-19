@@ -6,6 +6,7 @@ import "./index.css";
 const appGlobal = globalThis as typeof globalThis & {
   __fillaRootInstance?: ReturnType<typeof createRoot>;
   __fillaRemoveChildPatched?: boolean;
+  __fillaGlobalErrorPatched?: boolean;
 };
 
 if (!appGlobal.__fillaRemoveChildPatched) {
@@ -14,35 +15,68 @@ if (!appGlobal.__fillaRemoveChildPatched) {
     try {
       return originalRemoveChild.call(this, child) as T;
     } catch (error) {
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "0d80ed",
-        },
-        body: JSON.stringify({
-          sessionId: "0d80ed",
-          runId: "initial",
-          hypothesisId: "H5",
-          location: "main.tsx:Node.removeChild",
-          message: "removeChild failed",
-          data: {
-            errorName: error instanceof Error ? error.name : "UnknownError",
-            errorMessage: error instanceof Error ? error.message : String(error),
-            parentTag: this instanceof Element ? this.tagName : this.nodeName,
-            childTag: child instanceof Element ? child.tagName : child.nodeName,
-            parentChildCount: this.childNodes?.length ?? null,
-            parentHasChild: this.contains(child),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       throw error;
     }
   };
   appGlobal.__fillaRemoveChildPatched = true;
+}
+
+if (!appGlobal.__fillaGlobalErrorPatched) {
+  window.addEventListener("error", (event) => {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "0d80ed",
+      },
+      body: JSON.stringify({
+        sessionId: "0d80ed",
+        runId: "post-fix-2",
+        hypothesisId: "H12",
+        location: "main.tsx:window.error",
+        message: "Global error event",
+        data: {
+          message: event.message,
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          errorName: event.error instanceof Error ? event.error.name : null,
+          errorMessage: event.error instanceof Error ? event.error.message : null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "0d80ed",
+      },
+      body: JSON.stringify({
+        sessionId: "0d80ed",
+        runId: "post-fix-2",
+        hypothesisId: "H12",
+        location: "main.tsx:window.unhandledrejection",
+        message: "Global unhandled rejection",
+        data: {
+          reason:
+            event.reason instanceof Error
+              ? { name: event.reason.name, message: event.reason.message }
+              : String(event.reason),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  });
+
+  appGlobal.__fillaGlobalErrorPatched = true;
 }
 
 // Error boundary for development
@@ -60,28 +94,6 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "0d80ed",
-      },
-      body: JSON.stringify({
-        sessionId: "0d80ed",
-        runId: "initial",
-        hypothesisId: "H6",
-        location: "main.tsx:ErrorBoundary.componentDidCatch",
-        message: "Boundary captured error",
-        data: {
-          errorName: error.name,
-          errorMessage: error.message,
-          componentStack: errorInfo.componentStack?.slice(0, 400),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     console.error("Error caught by boundary:", error, errorInfo);
   }
 
@@ -104,8 +116,27 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
+const reusedExistingRoot = !!appGlobal.__fillaRootInstance;
 const root = appGlobal.__fillaRootInstance ?? createRoot(rootElement);
 appGlobal.__fillaRootInstance = root;
+// #region agent log
+fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-Debug-Session-Id": "0d80ed",
+  },
+  body: JSON.stringify({
+    sessionId: "0d80ed",
+    runId: "post-fix-2",
+    hypothesisId: "H13",
+    location: "main.tsx:root",
+    message: "Root render cycle",
+    data: { reusedExistingRoot },
+    timestamp: Date.now(),
+  }),
+}).catch(() => {});
+// #endregion
 
 root.render(
   <React.StrictMode>

@@ -2,7 +2,7 @@
  * AssetDetailPanel - Asset health dashboard with Overview, Activity, Compliance.
  * Paper texture modal, neumorphic tabs, 3-tab structure.
  */
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -69,6 +69,57 @@ interface AssetDetailPanelProps {
   onCreateTaskClick?: () => void;
 }
 
+function deriveInspectionIssueSignals(notes: string | null | undefined): {
+  issue_present?: boolean;
+  severity_bucket?: "low" | "medium" | "high" | "critical";
+  confidence_bucket?: "low" | "medium" | "high";
+} {
+  const note = (notes || "").trim().toLowerCase();
+  if (!note) return {};
+
+  const uncertainTerms = ["maybe", "possibly", "might", "unclear", "unknown", "monitor"];
+  const criticalTerms = ["critical", "urgent", "unsafe", "danger", "hazard", "fire", "electrical fault"];
+  const highTerms = ["failed", "failure", "broken", "leak", "major", "severe", "non-compliant", "unsafe condition"];
+  const mediumTerms = ["wear", "degrading", "service due", "attention", "repair", "fault", "issue"];
+  const healthyTerms = ["ok", "good condition", "no issue", "stable", "pass", "passed"];
+
+  const hasCritical = criticalTerms.some((t) => note.includes(t));
+  const hasHigh = highTerms.some((t) => note.includes(t));
+  const hasMedium = mediumTerms.some((t) => note.includes(t));
+  const hasHealthy = healthyTerms.some((t) => note.includes(t));
+  const hasUncertain = uncertainTerms.some((t) => note.includes(t));
+
+  const issuePresent = hasCritical || hasHigh || hasMedium || (!hasHealthy && note.length > 8);
+  if (!issuePresent) {
+    return { issue_present: false, severity_bucket: "low", confidence_bucket: hasUncertain ? "low" : "medium" };
+  }
+
+  let severity: "low" | "medium" | "high" | "critical" = "low";
+  if (hasCritical) severity = "critical";
+  else if (hasHigh) severity = "high";
+  else if (hasMedium) severity = "medium";
+
+  let confidence: "low" | "medium" | "high" = "medium";
+  if (hasUncertain) confidence = "low";
+  else if (hasCritical || hasHigh) confidence = "high";
+
+  return {
+    issue_present: true,
+    severity_bucket: severity,
+    confidence_bucket: confidence,
+  };
+}
+
+function deriveTrendDeltaBucket(scoresDesc: number[]): "improving_strong" | "improving" | "stable" | "worsening" | "worsening_strong" | undefined {
+  if (scoresDesc.length < 2) return undefined;
+  const delta = scoresDesc[0] - scoresDesc[1];
+  if (delta >= 10) return "improving_strong";
+  if (delta > 0) return "improving";
+  if (delta <= -10) return "worsening_strong";
+  if (delta < 0) return "worsening";
+  return "stable";
+}
+
 export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetDetailPanelProps) {
   const { asset, loading, error, refresh } = useAssetDetail(assetId ?? undefined);
   const { inspections, loading: inspectionsLoading, refresh: refreshInspections } = useAssetInspections(assetId ?? undefined);
@@ -81,7 +132,22 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const { orgId } = useActiveOrg();
   const { settings } = useOrgSettings();
   const automatedIntelligence = settings?.automated_intelligence ?? "suggestions_only";
-  const assetVector = { asset_type: asset?.asset_type, condition_score: asset?.condition_score, install_date: (asset as { install_date?: string })?.install_date };
+  const latestInspectionSignals = useMemo(() => {
+    const latest = inspections[0];
+    const scoreSeries = inspections
+      .map((i) => i.condition_score)
+      .filter((s): s is number => typeof s === "number");
+    return {
+      ...deriveInspectionIssueSignals(latest?.notes),
+      trend_delta_bucket: deriveTrendDeltaBucket(scoreSeries),
+    };
+  }, [inspections]);
+  const assetVector = {
+    asset_type: asset?.asset_type,
+    condition_score: asset?.condition_score,
+    install_date: (asset as { install_date?: string })?.install_date,
+    ...latestInspectionSignals,
+  };
   const { data: brainData } = useBrainInference(asset ? [assetVector] : [], [], automatedIntelligence !== "off");
   const brainPred = brainData?.predictions?.assets?.[0];
   const { openAssistant } = useAssistantContext();
@@ -693,27 +759,34 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                             {filtered.map((item) => (
                               <li key={`${item.type}-${item.id}`} className="p-3 rounded-lg bg-card shadow-e1">
                                 {item.type === "inspection" && (
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <span className="text-sm font-medium">Inspection logged</span>
-                                      <span className="text-xs text-muted-foreground ml-2">
-                                        {(item.data as { inspection_date?: string }).inspection_date
-                                          ? new Date((item.data as { inspection_date: string }).inspection_date).toLocaleDateString()
-                                          : "—"}
-                                      </span>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <span className="text-sm font-medium">Inspection logged</span>
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          {(item.data as { inspection_date?: string }).inspection_date
+                                            ? new Date((item.data as { inspection_date: string }).inspection_date).toLocaleDateString()
+                                            : "—"}
+                                        </span>
+                                      </div>
+                                      {(item.data as { condition_score?: number }).condition_score != null && (
+                                        <Badge
+                                          variant={
+                                            (item.data as { condition_score: number }).condition_score >= 80
+                                              ? "success"
+                                              : (item.data as { condition_score: number }).condition_score >= 60
+                                              ? "warning"
+                                              : "danger"
+                                          }
+                                        >
+                                          {(item.data as { condition_score: number }).condition_score}
+                                        </Badge>
+                                      )}
                                     </div>
-                                    {(item.data as { condition_score?: number }).condition_score != null && (
-                                      <Badge
-                                        variant={
-                                          (item.data as { condition_score: number }).condition_score >= 80
-                                            ? "success"
-                                            : (item.data as { condition_score: number }).condition_score >= 60
-                                            ? "warning"
-                                            : "danger"
-                                        }
-                                      >
-                                        {(item.data as { condition_score: number }).condition_score}
-                                      </Badge>
+                                    {(item.data as { notes?: string | null }).notes && (
+                                      <p className="text-xs text-muted-foreground">
+                                        {(item.data as { notes: string }).notes}
+                                      </p>
                                     )}
                                   </div>
                                 )}
@@ -943,17 +1016,50 @@ function LogInspectionModal({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleSave = async () => {
     setSaving(true);
     try {
       const score = parseInt(conditionScore, 10);
-      const { error } = await supabase.from("asset_inspections").insert({
-        asset_id: assetId,
-        condition_score: !isNaN(score) ? score : null,
-        notes: notes.trim() || null,
-      });
-      if (error) throw error;
+      const normalizedScore = !isNaN(score) ? score : null;
+      const normalizedNotes = notes.trim() || null;
+      const { data: insertedInspection, error: insertError } = await supabase
+        .from("asset_inspections")
+        .insert({
+          asset_id: assetId,
+          condition_score: normalizedScore,
+          notes: normalizedNotes,
+        })
+        .select("*")
+        .single();
+      if (insertError) throw insertError;
+
+      if (normalizedScore != null) {
+        const { error: assetUpdateError } = await supabase
+          .from("assets")
+          .update({ condition_score: normalizedScore })
+          .eq("id", assetId);
+        if (assetUpdateError) throw assetUpdateError;
+      }
+
+      queryClient.setQueryData(
+        ["asset-inspections", assetId],
+        (prev: Array<{
+          id: string;
+          inspection_date?: string | null;
+          condition_score?: number | null;
+          notes?: string | null;
+        }> | undefined) => [insertedInspection, ...(prev ?? [])]
+      );
+      queryClient.setQueriesData(
+        { queryKey: ["asset-detail"] },
+        (prev: { id?: string; condition_score?: number | null } | null | undefined) => {
+          if (!prev || prev.id !== assetId || normalizedScore == null) return prev;
+          return { ...prev, condition_score: normalizedScore };
+        }
+      );
+
       toast({ title: "Inspection logged" });
       onSaved();
       onClose();

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UseActiveOrgResult {
@@ -7,6 +7,10 @@ interface UseActiveOrgResult {
   isLoading: boolean;
   error: string | null;
 }
+
+let activeOrgSubscriptionRefCount = 0;
+let activeOrgAuthSubscription: { unsubscribe: () => void } | null = null;
+let activeOrgInvalidateQueries: (() => void) | null = null;
 
 /**
  * Hook to fetch and manage the active organization for the current user.
@@ -46,7 +50,7 @@ export function useActiveOrg(): UseActiveOrgResult {
       },
       body: JSON.stringify({
         sessionId: "0d80ed",
-        runId: "initial",
+        runId: "post-fix",
         hypothesisId: "H7",
         location: "useActiveOrg.ts:fetchActiveOrg:start",
         message: "fetchActiveOrg invoked",
@@ -72,6 +76,29 @@ export function useActiveOrg(): UseActiveOrgResult {
       const isAbortError =
         membershipsError.message.includes("AbortError") ||
         membershipsError.details?.includes("AbortError");
+      if (isAbortError) {
+        const cachedOrgId = queryClient.getQueryData<string | null>(["activeOrg", userId]) ?? null;
+        // #region agent log
+        fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "0d80ed",
+          },
+          body: JSON.stringify({
+            sessionId: "0d80ed",
+            runId: "post-fix",
+            hypothesisId: "H8",
+            location: "useActiveOrg.ts:fetchActiveOrg:abort-suppressed",
+            message: "AbortError suppressed and treated as cancellation",
+            data: { userIdSuffix, hadCachedOrg: !!cachedOrgId },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+        return cachedOrgId;
+      }
+
       // #region agent log
       fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
         method: "POST",
@@ -81,13 +108,12 @@ export function useActiveOrg(): UseActiveOrgResult {
         },
         body: JSON.stringify({
           sessionId: "0d80ed",
-          runId: "initial",
+          runId: "post-fix",
           hypothesisId: "H8",
           location: "useActiveOrg.ts:fetchActiveOrg:error",
           message: "organisation_members query failed",
           data: {
             userIdSuffix,
-            isAbortError,
             message: membershipsError.message,
             code: membershipsError.code,
             details: membershipsError.details,
@@ -96,6 +122,7 @@ export function useActiveOrg(): UseActiveOrgResult {
         }),
       }).catch(() => {});
       // #endregion
+
       console.error('[useActiveOrg] Query error:', {
         message: membershipsError.message,
         code: membershipsError.code,
@@ -122,7 +149,7 @@ export function useActiveOrg(): UseActiveOrgResult {
       },
       body: JSON.stringify({
         sessionId: "0d80ed",
-        runId: "initial",
+        runId: "post-fix",
         hypothesisId: "H9",
         location: "useActiveOrg.ts:fetchActiveOrg:success",
         message: "organisation resolved",
@@ -136,41 +163,52 @@ export function useActiveOrg(): UseActiveOrgResult {
     }).catch(() => {});
     // #endregion
     return selectedOrgId;
-  }, [userId, userIdSuffix]);
+  }, [queryClient, userId, userIdSuffix]);
 
   // Listen for auth state changes to invalidate queries
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "0d80ed",
-        },
-        body: JSON.stringify({
-          sessionId: "0d80ed",
-          runId: "initial",
-          hypothesisId: "H10",
-          location: "useActiveOrg.ts:onAuthStateChange",
-          message: "Auth state event",
-          data: { event, hasSession: !!session },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-      // Only invalidate on actual sign in/out, not token refresh
-      // Token refresh doesn't change the user or org
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        // Invalidate user query to refetch
-        queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-        // Invalidate org query for the new/old user
-        queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
-      }
-    });
+    activeOrgSubscriptionRefCount += 1;
+    activeOrgInvalidateQueries = () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
+    };
+
+    if (!activeOrgAuthSubscription) {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        // #region agent log
+        fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "0d80ed",
+          },
+          body: JSON.stringify({
+            sessionId: "0d80ed",
+            runId: "post-fix",
+            hypothesisId: "H10",
+            location: "useActiveOrg.ts:onAuthStateChange",
+            message: "Auth state event",
+            data: { event, hasSession: !!session },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+        // #endregion
+
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+          activeOrgInvalidateQueries?.();
+        }
+      });
+      activeOrgAuthSubscription = data.subscription;
+    }
 
     return () => {
-      subscription.unsubscribe();
+      activeOrgSubscriptionRefCount -= 1;
+      if (activeOrgSubscriptionRefCount <= 0) {
+        activeOrgAuthSubscription?.unsubscribe();
+        activeOrgAuthSubscription = null;
+        activeOrgInvalidateQueries = null;
+        activeOrgSubscriptionRefCount = 0;
+      }
     };
   }, [queryClient]);
 

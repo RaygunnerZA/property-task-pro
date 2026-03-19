@@ -42,13 +42,71 @@ function bucketAge(years: number): string {
   return "15+";
 }
 
-function toAssetVector(asset: { asset_type?: string; condition_score?: number; install_date?: string }): Record<string, unknown> {
+function deriveInspectionIssueSignals(notes: string | null | undefined): {
+  issue_present?: boolean;
+  severity_bucket?: "low" | "medium" | "high" | "critical";
+  confidence_bucket?: "low" | "medium" | "high";
+} {
+  const note = (notes || "").trim().toLowerCase();
+  if (!note) return {};
+
+  const uncertainTerms = ["maybe", "possibly", "might", "unclear", "unknown", "monitor"];
+  const criticalTerms = ["critical", "urgent", "unsafe", "danger", "hazard", "fire", "electrical fault"];
+  const highTerms = ["failed", "failure", "broken", "leak", "major", "severe", "non-compliant", "unsafe condition"];
+  const mediumTerms = ["wear", "degrading", "service due", "attention", "repair", "fault", "issue"];
+  const healthyTerms = ["ok", "good condition", "no issue", "stable", "pass", "passed"];
+
+  const hasCritical = criticalTerms.some((t) => note.includes(t));
+  const hasHigh = highTerms.some((t) => note.includes(t));
+  const hasMedium = mediumTerms.some((t) => note.includes(t));
+  const hasHealthy = healthyTerms.some((t) => note.includes(t));
+  const hasUncertain = uncertainTerms.some((t) => note.includes(t));
+
+  const issuePresent = hasCritical || hasHigh || hasMedium || (!hasHealthy && note.length > 8);
+  if (!issuePresent) {
+    return { issue_present: false, severity_bucket: "low", confidence_bucket: hasUncertain ? "low" : "medium" };
+  }
+
+  let severity: "low" | "medium" | "high" | "critical" = "low";
+  if (hasCritical) severity = "critical";
+  else if (hasHigh) severity = "high";
+  else if (hasMedium) severity = "medium";
+
+  let confidence: "low" | "medium" | "high" = "medium";
+  if (hasUncertain) confidence = "low";
+  else if (hasCritical || hasHigh) confidence = "high";
+
+  return {
+    issue_present: true,
+    severity_bucket: severity,
+    confidence_bucket: confidence,
+  };
+}
+
+function deriveTrendDeltaBucket(scoresDesc: number[]): "improving_strong" | "improving" | "stable" | "worsening" | "worsening_strong" | undefined {
+  if (scoresDesc.length < 2) return undefined;
+  const delta = scoresDesc[0] - scoresDesc[1];
+  if (delta >= 10) return "improving_strong";
+  if (delta > 0) return "improving";
+  if (delta <= -10) return "worsening_strong";
+  if (delta < 0) return "worsening";
+  return "stable";
+}
+
+function toAssetVector(
+  asset: { asset_type?: string; condition_score?: number; install_date?: string },
+  derived?: { notes?: string | null; trendDeltaBucket?: string }
+): Record<string, unknown> {
   const vec: Record<string, unknown> = {};
   if (asset.asset_type) vec.asset_type = String(asset.asset_type).toLowerCase().replace(/\s+/g, "_");
   if (asset.condition_score != null) vec.condition_bucket = bucketCondition(asset.condition_score);
   if (asset.install_date) {
     const years = (Date.now() - new Date(asset.install_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
     vec.age_bucket = bucketAge(Math.floor(years));
+  }
+  if (derived?.trendDeltaBucket) vec.trend_delta_bucket = derived.trendDeltaBucket;
+  if (derived?.notes) {
+    Object.assign(vec, deriveInspectionIssueSignals(derived.notes));
   }
   return vec;
 }
@@ -63,10 +121,34 @@ async function extractForOrg(admin: SupabaseClient, orgId: string): Promise<{ as
   let hazardCount = 0;
 
   if (sharingLevel !== "minimal") {
-    const { data: assets } = await admin.from("assets").select("asset_type, condition_score, install_date").eq("org_id", orgId);
+    const { data: assets } = await admin.from("assets").select("id, asset_type, condition_score, install_date").eq("org_id", orgId);
     if (assets) {
+      const assetIds = assets.map((a) => a.id).filter(Boolean);
+      const inspectionsByAsset = new Map<string, Array<{ notes: string | null; condition_score: number | null }>>();
+      if (assetIds.length > 0) {
+        const { data: inspections } = await admin
+          .from("asset_inspections")
+          .select("asset_id, notes, condition_score, inspection_date")
+          .in("asset_id", assetIds)
+          .order("inspection_date", { ascending: false });
+        for (const ins of inspections ?? []) {
+          const list = inspectionsByAsset.get(ins.asset_id) ?? [];
+          list.push({ notes: ins.notes, condition_score: ins.condition_score });
+          inspectionsByAsset.set(ins.asset_id, list);
+        }
+      }
+
       for (const a of assets) {
-        const vec = toAssetVector(a);
+        const inspections = inspectionsByAsset.get(a.id) ?? [];
+        const latestNotes = inspections[0]?.notes ?? null;
+        const scoreSeries = inspections
+          .map((i) => i.condition_score)
+          .filter((s): s is number => typeof s === "number");
+        const trendDeltaBucket = deriveTrendDeltaBucket(scoreSeries);
+        const vec = toAssetVector(
+          { asset_type: a.asset_type, condition_score: a.condition_score, install_date: a.install_date },
+          { notes: latestNotes, trendDeltaBucket }
+        );
         if (Object.keys(vec).length === 0) continue;
         const check = validateNoPrivateData(vec);
         if (!check.valid) continue;

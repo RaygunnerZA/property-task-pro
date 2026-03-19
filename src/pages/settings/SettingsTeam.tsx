@@ -65,20 +65,11 @@ export default function SettingsTeam() {
 
   const runInviteAction = useCallback(
     async (invitationId: string, action: string, newPassword?: string) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H2',location:'src/pages/settings/SettingsTeam.tsx:runInviteAction:start',message:'Invite action started',data:{action,invitationId,hasNewPassword:Boolean(newPassword)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H2',location:'src/pages/settings/SettingsTeam.tsx:runInviteAction:session',message:'Session lookup completed',data:{hasSession:Boolean(sessionData?.session),sessionError:sessionError?.message ?? null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       if (sessionError || !sessionData.session) {
         throw new Error("You must be logged in");
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H1',location:'src/pages/settings/SettingsTeam.tsx:runInviteAction:beforeInvoke',message:'Invoking manage-invited-users edge function',data:{action,invitationId,hasAuthorizationHeader:Boolean(sessionData.session.access_token)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const { data, error: invokeError } = await supabase.functions.invoke(
         "manage-invited-users",
         {
@@ -90,9 +81,6 @@ export default function SettingsTeam() {
           headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
         }
       );
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H1',location:'src/pages/settings/SettingsTeam.tsx:runInviteAction:afterInvoke',message:'Edge function invocation completed',data:{action,invitationId,invokeError:invokeError?.message ?? null,dataError:data?.error ?? null,hasData:Boolean(data)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
 
       if (invokeError) throw invokeError;
       if (data?.error) throw new Error(data.error);
@@ -257,16 +245,10 @@ export default function SettingsTeam() {
                             onClick={async () => {
                               try {
                                 setActionBusyId(invite.id);
-                                // #region agent log
-                                fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H3',location:'src/pages/settings/SettingsTeam.tsx:resend:onClick',message:'Resend invitation clicked',data:{invitationId:invite.id,inviteStatus:invite.status,emailDomain:invite.email.split('@')[1] ?? null},timestamp:Date.now()})}).catch(()=>{});
-                                // #endregion
                                 await runInviteAction(invite.id, "resend_invite");
                                 toast.success("Invitation resent");
                                 await fetchInvitations();
                               } catch (e: any) {
-                                // #region agent log
-                                fetch('http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'02a203'},body:JSON.stringify({sessionId:'02a203',runId:'pre-fix',hypothesisId:'H4',location:'src/pages/settings/SettingsTeam.tsx:resend:catch',message:'Resend invitation failed',data:{invitationId:invite.id,errorMessage:e?.message ?? null,errorName:e?.name ?? null},timestamp:Date.now()})}).catch(()=>{});
-                                // #endregion
                                 toast.error(e?.message ?? "Failed to resend invitation");
                               } finally {
                                 setActionBusyId(null);

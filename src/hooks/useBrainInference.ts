@@ -25,6 +25,10 @@ export interface AssetVector {
   asset_type?: string;
   condition_score?: number;
   install_date?: string;
+  issue_present?: boolean;
+  severity_bucket?: "low" | "medium" | "high" | "critical";
+  confidence_bucket?: "low" | "medium" | "high";
+  trend_delta_bucket?: "improving_strong" | "improving" | "stable" | "worsening" | "worsening_strong";
 }
 
 export interface ComplianceVector {
@@ -44,6 +48,10 @@ export function useBrainInference(
       const years = (Date.now() - new Date(a.install_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000);
       vec.age_bucket = bucketAge(Math.floor(years));
     }
+    if (a.issue_present != null) vec.issue_present = a.issue_present;
+    if (a.severity_bucket) vec.severity_bucket = a.severity_bucket;
+    if (a.confidence_bucket) vec.confidence_bucket = a.confidence_bucket;
+    if (a.trend_delta_bucket) vec.trend_delta_bucket = a.trend_delta_bucket;
     return vec;
   }).filter((v) => Object.keys(v).length > 0);
 

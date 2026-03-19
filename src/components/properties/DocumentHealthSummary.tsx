@@ -3,7 +3,6 @@
  * Shows document counts and links to filtered Property Documents view
  */
 
-import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, AlertCircle, AlertTriangle, Link2, Shield } from "lucide-react";
@@ -23,7 +22,6 @@ export function DocumentHealthSummary({
   documents,
   className,
 }: DocumentHealthSummaryProps) {
-  const renderCountRef = useRef(0);
   const navigate = useNavigate();
   const { orgId } = useActiveOrg();
   const docIds = documents.map((d) => d.id);
@@ -70,8 +68,6 @@ export function DocumentHealthSummary({
   }).length;
 
   const total = documents.length;
-  renderCountRef.current += 1;
-
   const items = [
     { label: "Total documents", value: total, icon: FileText, filter: null },
     {
@@ -102,56 +98,6 @@ export function DocumentHealthSummary({
       color: withHazards > 0 ? "text-amber-600" : undefined,
     },
   ];
-
-  // #region agent log
-  fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "0d80ed",
-    },
-    body: JSON.stringify({
-      sessionId: "0d80ed",
-      runId: "initial",
-      hypothesisId: "H2",
-      location: "DocumentHealthSummary.tsx:render",
-      message: "Render snapshot",
-      data: {
-        propertyId,
-        renderCount: renderCountRef.current,
-        docs: documents.length,
-        expired,
-        dueSoon,
-        unlinked,
-        withHazards,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
-  useEffect(() => {
-    return () => {
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "0d80ed",
-        },
-        body: JSON.stringify({
-          sessionId: "0d80ed",
-          runId: "initial",
-          hypothesisId: "H3",
-          location: "DocumentHealthSummary.tsx:useEffectCleanup",
-          message: "Summary unmounted",
-          data: { propertyId, renderCount: renderCountRef.current },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-    };
-  }, [propertyId]);
 
   return (
     <div className={cn("rounded-lg bg-white/60 p-4 shadow-e1", className)}>
