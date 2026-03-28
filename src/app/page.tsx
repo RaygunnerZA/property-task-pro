@@ -15,6 +15,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
+import { isAllPropertiesActive } from "@/utils/propertyFilter";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -136,6 +137,19 @@ export default function Dashboard() {
       overdueCount: overdue,
     };
   }, [tasks]);
+
+  /** Matches former DailyBriefingCard subtitle: all properties vs selected subset (hidden when only one property). */
+  const dashboardPropertyScopeTitle = useMemo(() => {
+    if (properties.length <= 1) return null;
+    const ids = selectedPropertyIds;
+    if (!ids || ids.size === 0 || ids.size === properties.length) {
+      return "All Properties";
+    }
+    const labels = properties
+      .filter((p) => ids.has(p.id))
+      .map((p) => p.nickname || p.address);
+    return labels.length > 0 ? labels.join(" | ") : null;
+  }, [properties, selectedPropertyIds]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -329,27 +343,52 @@ export default function Dashboard() {
     </div>
   ) : undefined;
 
-  // Primary color for dashboard header (from design system: #8EC9CE)
+  // Primary color for dashboard header (from design system: #8EC9CE); single-property filter uses that property's colour
   const primaryColor = "#8EC9CE";
-  const headerStyle = createGradientHeaderStyle(primaryColor);
+  const headerAccentColor = useMemo(() => {
+    const ids = properties.map((p) => p.id);
+    if (
+      properties.length <= 1 ||
+      isAllPropertiesActive(selectedPropertyIds, ids) ||
+      selectedPropertyIds.size !== 1
+    ) {
+      return primaryColor;
+    }
+    const onlyId = Array.from(selectedPropertyIds)[0];
+    const p = properties.find((x) => x.id === onlyId) as
+      | { icon_color_hex?: string | null }
+      | undefined;
+    const hex = p?.icon_color_hex?.trim();
+    return hex || primaryColor;
+  }, [properties, selectedPropertyIds, primaryColor]);
+
+  const headerStyle = createGradientHeaderStyle(headerAccentColor);
 
   // Header element that will be passed to DualPaneLayout
   const headerElement = (
     <PageHeader>
       <div
-        className="pl-6 pr-4 pt-[18px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+        className="pl-[18px] pr-4 pt-[18px] pb-[12px] h-[100px] flex items-end justify-start rounded-bl-[12px]"
         style={headerStyle}
       >
-        <div className="flex items-center gap-[7px] w-[248px]">
-          <div className="min-w-0">
-            <h1 className="text-[18px] font-semibold text-white leading-tight">Today</h1>
-          </div>
-          <div className="h-6 w-px bg-white/30 mx-2"></div>
-          <div className="flex items-center gap-2 text-right">
-            <WeatherIcon className="h-4 w-4 text-white/90" />
-            <span className="text-sm text-white/90">
-              {weather ? `${weather.temp}°C` : "--°C"}
-            </span>
+        <div className="flex flex-col items-start justify-center gap-1 w-[248px] min-w-0 shrink-0">
+          {dashboardPropertyScopeTitle ? (
+            <p
+              className="text-[34px] font-normal text-white/90 leading-tight truncate max-w-full"
+              title={dashboardPropertyScopeTitle}
+            >
+              {dashboardPropertyScopeTitle}
+            </p>
+          ) : null}
+          <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0">
+            <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
+            <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
+            <div className="flex items-center justify-start gap-2 text-left">
+              <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
+              <span className="text-sm text-white/90 whitespace-nowrap">
+                {weather ? `${weather.temp}°C` : "--°C"}
+              </span>
+            </div>
           </div>
         </div>
       </div>

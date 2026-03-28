@@ -6,8 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider } from "@/context/DevModeContext";
-import { AssistantProvider } from "@/contexts/AssistantContext";
-import { ThirdColumnProvider } from "@/contexts/ThirdColumnContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
 import { DataProvider } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
@@ -156,8 +154,6 @@ const App = () => {
                       {/* All main app routes wrapped in AppLayout */}
                       <Route path="/*" element={
                         <ProtectedRoute>
-                          <ThirdColumnProvider>
-                          <AssistantProvider>
                           <AppLayout>
                             <Suspense fallback={<LoadingState message="Loading page..." />}>
                               <Routes>
@@ -245,8 +241,6 @@ const App = () => {
                               </Routes>
                             </Suspense>
                           </AppLayout>
-                          </AssistantProvider>
-                          </ThirdColumnProvider>
                         </ProtectedRoute>
                       } />
                     </Routes>

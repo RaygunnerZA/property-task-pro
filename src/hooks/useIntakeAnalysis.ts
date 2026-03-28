@@ -56,6 +56,7 @@ function deriveWorkflow(
   const docClass = metadata?.document_classification as { type?: string; expiry_date?: string } | undefined;
   const suggestedType = (metadata?.normalized_document_type as string) || docClass?.type;
   const suggestedExpiry = docClass?.expiry_date;
+  const routerOnlyPass = metadata?.router_mode === true;
   const routerHint = metadata?.workflow_hint as WorkflowHint | undefined;
   const routerConfidenceRaw = Number(metadata?.workflow_confidence ?? 0);
   const routerConfidence = Number.isFinite(routerConfidenceRaw)
@@ -94,7 +95,13 @@ function deriveWorkflow(
     (/\b(task|fix|repair|replace|install|check|inspect)\b/i.test(combinedText) ||
       combinedText.length > 20);
 
-  if (routerHint && routerHint !== "uncertain" && routerConfidence >= 0.72) {
+  // Router first-pass is UI-only; do not drive global workflow until full scan or text/filename signals.
+  if (
+    !routerOnlyPass &&
+    routerHint &&
+    routerHint !== "uncertain" &&
+    routerConfidence >= 0.72
+  ) {
     return {
       hint: routerHint,
       confidence: routerConfidence,

@@ -1,3 +1,4 @@
+/* @refresh reset */
 /**
  * AssistantContext — Phase 14 FILLA Assistant Mode
  * Global state for Assistant panel open/close and context.

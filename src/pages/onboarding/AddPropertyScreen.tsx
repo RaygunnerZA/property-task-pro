@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
@@ -11,14 +11,25 @@ import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useQueryClient } from "@tanstack/react-query";
+import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
+import {
+  buildPropertyVisualOccupancy,
+  firstFreeColorFromPalette,
+  firstFreeIconFromList,
+  normalizePropertyColorHex,
+  normalizePropertyIconKey,
+  type PropertyVisualRow,
+} from "@/lib/propertyVisualUniqueness";
 
 export default function AddPropertyScreen() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { orgId: orgIdFromQuery, isLoading: orgLoading, error: orgError } = useActiveOrg();
   const { organization } = useOrganization();
@@ -42,6 +53,12 @@ export default function AddPropertyScreen() {
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [hasExistingProperties, setHasExistingProperties] = useState(false);
+  const [orgPropertyVisualRows, setOrgPropertyVisualRows] = useState<PropertyVisualRow[]>([]);
+
+  const { takenIconsArr, takenColorsArr } = useMemo(() => {
+    const o = buildPropertyVisualOccupancy(orgPropertyVisualRows);
+    return { takenIconsArr: [...o.takenIcons], takenColorsArr: [...o.takenColors] };
+  }, [orgPropertyVisualRows]);
 
   useEffect(() => {
     if (orgId) {
@@ -59,23 +76,57 @@ export default function AddPropertyScreen() {
     try {
       const { data: properties, error: propertiesError } = await supabase
         .from('properties')
-        .select('id')
+        .select('id, icon_name, icon_color_hex')
         .eq('org_id', orgId);
       
       if (propertiesError) {
         console.error("Error checking existing properties:", propertiesError);
         setHasExistingProperties(false);
+        setOrgPropertyVisualRows([]);
         return;
       }
       
       const hasProperties = properties && properties.length > 0;
       console.log(`[AddPropertyScreen] Found ${properties?.length || 0} properties for org ${orgId}`);
       setHasExistingProperties(hasProperties);
+      setOrgPropertyVisualRows(
+        (properties ?? []) as PropertyVisualRow[]
+      );
     } catch (error) {
       console.error("Error checking existing properties:", error);
       setHasExistingProperties(false);
+      setOrgPropertyVisualRows([]);
     }
   };
+
+  useEffect(() => {
+    if (!orgPropertyVisualRows.length) return;
+    const { takenIcons, takenColors } = buildPropertyVisualOccupancy(orgPropertyVisualRows);
+    const { propertyIconColor: c, propertyIcon: ic, setPropertyIconColor, setPropertyIcon } =
+      useOnboardingStore.getState();
+    if (takenColors.has(normalizePropertyColorHex(c))) {
+      const next = firstFreeColorFromPalette(takenColors);
+      if (next) setPropertyIconColor(next);
+    }
+    if (takenIcons.has(normalizePropertyIconKey(ic || "building"))) {
+      const next = firstFreeIconFromList(
+        [
+          "building",
+          "home",
+          "hotel",
+          "warehouse",
+          "store",
+          "castle",
+          "landmark",
+          "trees",
+          "factory",
+          "school",
+        ],
+        takenIcons
+      );
+      if (next) setPropertyIcon(next);
+    }
+  }, [orgPropertyVisualRows]);
 
   // Show loading only when we have no orgId (from query or state) and query is still loading
   if (!orgId && orgLoading) {
@@ -181,6 +232,18 @@ export default function AddPropertyScreen() {
       // Use propertyNickname as address if propertyAddress is empty
       const finalAddress = propertyAddress?.trim() || propertyNickname.trim() || "No address provided";
 
+      const { takenIcons, takenColors } = buildPropertyVisualOccupancy(orgPropertyVisualRows);
+      if (takenColors.has(normalizePropertyColorHex(propertyIconColor || "#8EC9CE"))) {
+        toast.error("That colour is already used by another property in this organisation");
+        setLoading(false);
+        return;
+      }
+      if (takenIcons.has(normalizePropertyIconKey(propertyIcon || "building"))) {
+        toast.error("That icon is already used by another property in this organisation");
+        setLoading(false);
+        return;
+      }
+
       // Use RPC function to create property (bypasses RLS with SECURITY DEFINER).
       // Pass all 6 params so PostgreSQL picks the single overload (avoids ambiguity with 2-param version).
       const { data: newProperty, error } = await supabase.rpc('create_property_v2', {
@@ -204,11 +267,33 @@ export default function AddPropertyScreen() {
         throw new Error("Property was not created");
       }
 
+      const propertyPayload = newProperty as { id?: string };
+      const propertyId = propertyPayload?.id ?? null;
+
+      if (propertyImage && propertyId && orgId) {
+        try {
+          await uploadPropertyImageWithThumbnail(supabase, {
+            orgId,
+            propertyId,
+            file: propertyImage,
+          });
+        } catch (imgErr) {
+          console.error("Property photo upload failed:", imgErr);
+          toast.warning(
+            "Property saved but photo upload failed — you can add a photo later from the property page."
+          );
+        }
+      }
+
+      if (orgId) {
+        queryClient.invalidateQueries({ queryKey: ["properties", orgId] });
+      }
+
       toast.success("Property added!");
-      
+
       // Mark that we're navigating from onboarding to prevent AppInitializer interference
       (window as any).__lastOnboardingNavigation = Date.now();
-      
+
       // Navigate to next step
       navigate("/onboarding/add-spaces");
     } catch (error: any) {
@@ -321,6 +406,8 @@ export default function AddPropertyScreen() {
             defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
             fallbackSearch="building"
             disabled={loading}
+            takenPropertyIconNames={takenIconsArr}
+            takenPropertyColorHexes={takenColorsArr}
           />
         </div>
 

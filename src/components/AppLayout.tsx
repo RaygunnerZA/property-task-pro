@@ -4,7 +4,8 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
-import { useAssistantContext } from '@/contexts/AssistantContext';
+import { AssistantProvider, useAssistantContext } from '@/contexts/AssistantContext';
+import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { isDevBuild } from '@/context/DevModeContext';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +51,10 @@ export function AppLayout({
       .forEach(el => el.scrollTo(0, 0));
   }, [pathname]);
 
-  return <SidebarProvider defaultOpen={true}>
+  return (
+    <ThirdColumnProvider>
+      <AssistantProvider>
+        <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative">
         {/* Sidebar - fixed to left */}
         <AppSidebar />
@@ -96,5 +100,8 @@ export function AppLayout({
           </Suspense>
         )}
       </div>
-    </SidebarProvider>;
+        </SidebarProvider>
+      </AssistantProvider>
+    </ThirdColumnProvider>
+  );
 }

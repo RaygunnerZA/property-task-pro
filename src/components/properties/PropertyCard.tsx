@@ -1,21 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { Shield, Building2, Home, Hotel, Warehouse, Store, Castle, CheckSquare, AlertTriangle, Layers, Plus } from "lucide-react";
+import { Shield, CheckSquare, AlertTriangle, Layers, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tables } from "@/integrations/supabase/types";
 import { differenceInDays } from "date-fns";
+import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 
 type PropertyRow = Tables<"properties">;
-
-
-// Property icon mapping
-const PROPERTY_ICONS = {
-  home: Home,
-  building: Building2,
-  hotel: Hotel,
-  warehouse: Warehouse,
-  store: Store,
-  castle: Castle,
-} as const;
 
 interface PropertyCardProps {
   property: PropertyRow & { 
@@ -24,7 +14,6 @@ interface PropertyCardProps {
     lastInspectedDate?: string | null;
   };
   className?: string;
-  onFilterClick?: (propertyId: string) => void;
   /** When "horizontal", thumbnail is on the left (for single-property view). */
   variant?: 'default' | 'horizontal';
   /** Shown in top-right of horizontal card; opens add-property flow when provided. */
@@ -96,7 +85,7 @@ function ThumbnailBlock({
   );
 }
 
-export function PropertyCard({ property, className, onFilterClick, variant = 'default', onAddPropertyClick }: PropertyCardProps) {
+export function PropertyCard({ property, className, variant = 'default', onAddPropertyClick }: PropertyCardProps) {
   const navigate = useNavigate();
   
   const displayName = property.nickname || property.address;
@@ -105,7 +94,7 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
   
   // Get property icon
   const iconName = property.icon_name || "home";
-  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const IconComponent = getPropertyChipIcon(iconName);
   const iconColor = property.icon_color_hex || "#8EC9CE";
   
   // Calculate days since last inspection
@@ -113,15 +102,14 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
     ? differenceInDays(new Date(), new Date(property.lastInspectedDate))
     : null;
 
-  const handleTopSectionClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const goToPropertyDetail = () => {
     navigate(`/properties/${property.id}`);
   };
 
-  const handleMetaZoneClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onFilterClick) {
-      onFilterClick(property.id);
+  const handleCardKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      goToPropertyDetail();
     }
   };
 
@@ -129,11 +117,7 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
 
   const contentBlock = (
     <div className={cn("flex-1 min-w-0 flex flex-col justify-center", isHorizontal ? "pt-3 pb-3 pl-3 pr-2.5" : "pt-4 pb-3 pl-2.5 pr-2.5 space-y-3")}>
-      {/* Top Section - Clickable for navigation */}
-      <div
-        onClick={handleTopSectionClick}
-        className="cursor-pointer active:scale-[0.99] mt-0"
-      >
+      <div className="mt-0">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold text-lg text-foreground leading-tight truncate">
             {displayName}
@@ -157,10 +141,9 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
         }}
       />
 
-      {/* Meta Zone - Clickable for filtering */}
+      {/* Meta Zone */}
         <div
-          onClick={handleMetaZoneClick}
-          className={cn("cursor-pointer active:scale-[0.99] !mt-0", isHorizontal ? "pt-0" : "pt-[7px]")}
+          className={cn("!mt-0", isHorizontal ? "pt-0" : "pt-[7px]")}
         >
         <div className="flex items-center gap-2 flex-wrap !mt-[4px]">
           <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -187,12 +170,22 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
     </div>
   );
 
+  const interactiveCardClass = cn(
+    "cursor-pointer transition-all duration-200 active:scale-[0.99]",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+  );
+
   if (isHorizontal) {
     return (
       <div
+        role="link"
+        tabIndex={0}
+        aria-label={`Open property ${displayName}`}
+        onClick={goToPropertyDetail}
+        onKeyDown={handleCardKeyDown}
         className={cn(
           "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 flex flex-row w-full h-[100px] items-stretch relative",
-          "transition-all duration-200",
+          interactiveCardClass,
           className
         )}
       >
@@ -224,9 +217,14 @@ export function PropertyCard({ property, className, onFilterClick, variant = 'de
 
   return (
     <div
+      role="link"
+      tabIndex={0}
+      aria-label={`Open property ${displayName}`}
+      onClick={goToPropertyDetail}
+      onKeyDown={handleCardKeyDown}
       className={cn(
-        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 h-[216px]",
-        "transition-all duration-200",
+        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 h-[216px] flex flex-col",
+        interactiveCardClass,
         className
       )}
     >

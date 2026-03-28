@@ -246,19 +246,33 @@ export function IntakeModal({
     email?: string;
   } | null>(null);
 
+  const patchImage = useCallback((localId: string, patch: Partial<TempImage>) => {
+    setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
+  }, []);
+
   const handleAnalysisComplete = useCallback((localId: string, result: import("@/types/temp-image").ImageAnalysisResult) => {
     setImages((prev) =>
-      prev.map((img) =>
-        img.local_id === localId ? { ...img, rawAnalysis: result, aiOcrText: result.ocr_text, detectedLabels: result.detected_labels || [] } : img
-      )
+      prev.map((img) => {
+        if (img.local_id !== localId) return img;
+        const meta = { ...(result.metadata || {}) };
+        const isRouter = meta.router_mode === true;
+        meta.intake_stage = isRouter ? "router" : "full";
+        return {
+          ...img,
+          rawAnalysis: { ...result, metadata: meta },
+          aiOcrText: result.ocr_text ?? "",
+          detectedLabels: result.detected_labels || [],
+        };
+      })
     );
   }, []);
 
-  const { imageOcrText, detectedLabels } = useImageAnalysis({
+  const { imageOcrText, detectedLabels, runFullIntakeAnalysis } = useImageAnalysis({
     images,
     propertyId: propertyId || undefined,
     orgId: orgId ?? "",
     onAnalysisComplete: handleAnalysisComplete,
+    onPatchImage: patchImage,
   });
 
   const detectedObjects = useMemo(
@@ -1938,6 +1952,8 @@ export function IntakeModal({
           <ImageUploadSection
             images={images}
             onImagesChange={setImages}
+            onPatchImage={patchImage}
+            onRunFullIntakeAnalysis={runFullIntakeAnalysis}
             files={taskFiles}
             onFilesChange={setTaskFiles}
             taskId={undefined}

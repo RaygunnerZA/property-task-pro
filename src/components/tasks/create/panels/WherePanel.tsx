@@ -11,7 +11,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
-import { Building2, MapPin, Plus, X, ImagePlus, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Building2, MapPin, Plus, X, ImagePlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,16 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ContextResolver } from "../ContextResolver";
 import { InstructionBlock } from "../InstructionBlock";
 import { cn } from "@/lib/utils";
-
-// Property icon mapping
-const PROPERTY_ICONS = {
-  home: Home,
-  building: Building2,
-  hotel: Hotel,
-  warehouse: Warehouse,
-  store: Store,
-  castle: Castle,
-} as const;
+import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 
 interface WherePanelProps {
   propertyId: string;
@@ -357,7 +348,7 @@ export function WherePanel({
                   color={selectedProperty.icon_color_hex || undefined}
                   icon={(() => {
                     const iconName = selectedProperty.icon_name || "home";
-                    const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                    const IconComponent = getPropertyChipIcon(iconName);
                     return <IconComponent className="h-3.5 w-3.5" />;
                   })()}
                   className="shrink-0"
@@ -386,7 +377,7 @@ export function WherePanel({
                       color={property.icon_color_hex || undefined}
                       icon={(() => {
                         const iconName = property.icon_name || "home";
-                        const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                        const IconComponent = getPropertyChipIcon(iconName);
                         return <IconComponent className="h-3.5 w-3.5" />;
                       })()}
                       className={cn(

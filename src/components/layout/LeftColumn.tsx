@@ -6,7 +6,8 @@ import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { togglePropertyFilter } from "@/utils/propertyFilter";
-import { Plus, Home, Building2, Hotel, Warehouse, Store, Castle, Package, CheckSquare, Shield, Clock, Zap, Activity } from "lucide-react";
+import { Plus, Home, Package, CheckSquare, Shield, Clock, Zap, Activity } from "lucide-react";
+import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarConcertina } from "@/components/layout/SidebarConcertina";
 import { cn } from "@/lib/utils";
@@ -133,16 +134,6 @@ export function LeftColumn({
     return { expired, expiring, valid };
   }, [compliancePortfolio]);
 
-  // Property icon mapping
-  const PROPERTY_ICONS = {
-    home: Home,
-    building: Building2,
-    hotel: Hotel,
-    warehouse: Warehouse,
-    store: Store,
-    castle: Castle,
-  } as const;
-
   return (
     <div 
       ref={leftColumnRef}
@@ -187,7 +178,7 @@ export function LeftColumn({
                           height: '35px',
                           backgroundColor: isAllActive ? "#8EC9CE" : 'transparent',
                           boxShadow: isAllActive
-                            ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                            ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(255, 255, 255, 0.5)"
                             : "none",
                           borderColor: "rgba(0, 0, 0, 0)",
                           borderStyle: "none",
@@ -200,7 +191,7 @@ export function LeftColumn({
 
                       {properties.map((property) => {
                         const iconName = property.icon_name || "home";
-                        const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                        const IconComponent = getPropertyChipIcon(iconName);
                         const iconColor = property.icon_color_hex || "#8EC9CE";
                         const isActive = isAllActive || selectedPropertyIds.has(property.id);
 
@@ -270,11 +261,6 @@ export function LeftColumn({
                 }}
                 variant="horizontal"
                 onAddPropertyClick={() => setShowAddProperty(true)}
-                onFilterClick={(propertyId) => {
-                  if (onFilterClick) {
-                    onFilterClick(`filter-property-${propertyId}`);
-                  }
-                }}
               />
             </div>
           ) : (
@@ -293,11 +279,6 @@ export function LeftColumn({
                           taskCount: taskCounts[property.id] || 0,
                           urgentTaskCount: urgentTaskCounts[property.id] || 0,
                           lastInspectedDate: null, // TODO: Add last inspected date from compliance data
-                        }}
-                        onFilterClick={(propertyId) => {
-                          if (onFilterClick) {
-                            onFilterClick(`filter-property-${propertyId}`);
-                          }
                         }}
                       />
                     </div>

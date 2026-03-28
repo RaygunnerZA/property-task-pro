@@ -602,25 +602,32 @@ export function CreateTaskModal({
   // Phase 1: Image analysis (fire-and-forget, never blocks task creation)
   // TempImage.aiOcrText used ONLY for chip suggestions – never written to attachments.
   // Phase 2 edge function ai-image-analyse is the source of truth for DB writes.
+  const patchImage = useCallback((localId: string, patch: Partial<TempImage>) => {
+    setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
+  }, []);
+
   const handleAnalysisComplete = useCallback((localId: string, result: ImageAnalysisResult) => {
     setImages((prev) =>
-      prev.map((img) =>
-        img.local_id === localId
-          ? {
-              ...img,
-              aiOcrText: result.ocr_text ?? "",
-              detectedLabels: result.detected_labels ?? [],
-              rawAnalysis: result,
-            }
-          : img
-      )
+      prev.map((img) => {
+        if (img.local_id !== localId) return img;
+        const meta = { ...(result.metadata || {}) };
+        const isRouter = meta.router_mode === true;
+        meta.intake_stage = isRouter ? "router" : "full";
+        return {
+          ...img,
+          aiOcrText: result.ocr_text ?? "",
+          detectedLabels: result.detected_labels ?? [],
+          rawAnalysis: { ...result, metadata: meta },
+        };
+      })
     );
   }, []);
-  const { imageOcrText, detectedLabels } = useImageAnalysis({
+  const { imageOcrText, detectedLabels, runFullIntakeAnalysis } = useImageAnalysis({
     images,
     propertyId: propertyId || undefined,
     orgId: orgId ?? "",
     onAnalysisComplete: handleAnalysisComplete,
+    onPatchImage: patchImage,
   });
 
   // Combined text + detected objects for chip suggestions
@@ -1806,6 +1813,8 @@ export function CreateTaskModal({
         <ImageUploadSection
           images={images}
           onImagesChange={setImages}
+          onPatchImage={patchImage}
+          onRunFullIntakeAnalysis={runFullIntakeAnalysis}
           files={taskFiles}
           onFilesChange={setTaskFiles}
           taskId={undefined}

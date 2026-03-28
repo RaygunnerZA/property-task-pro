@@ -24,6 +24,10 @@ export interface TempImage {
   aiOcrText?: string;
   detectedLabels?: string[];
   rawAnalysis?: ImageAnalysisResult;
+  /** True while user-requested full (compliance) analysis is in flight */
+  intakeFullAnalysisPending?: boolean;
+  /** User chose "Create task instead" on a compliance-leaning router hint */
+  intakeUserPrefersTask?: boolean;
 }
 
 /** Result from ai-image-analyse edge function */

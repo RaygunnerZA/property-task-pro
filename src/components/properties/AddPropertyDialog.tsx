@@ -3,10 +3,18 @@
  * Creates a permanent property in DB. Also used from LeftColumn / Properties page.
  * Create Task uses WhereTab/WherePanel for property creation (same permanent entity; entry context is task-scoped).
  */
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  buildPropertyVisualOccupancy,
+  firstFreeColorFromPalette,
+  firstFreeIconFromList,
+  normalizePropertyColorHex,
+  normalizePropertyIconKey,
+} from "@/lib/propertyVisualUniqueness";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +29,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { Upload, X } from "lucide-react";
 
 interface AddPropertyDialogProps {
@@ -38,6 +47,54 @@ interface AddPropertyDialogProps {
 export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddPropertyDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const { data: orgProperties = [] } = usePropertiesQuery();
+
+  const { takenIconsArr, takenColorsArr } = useMemo(() => {
+    const o = buildPropertyVisualOccupancy(
+      orgProperties.map((p: { id: string; icon_name?: string | null; icon_color_hex?: string | null }) => ({
+        id: p.id,
+        icon_name: p.icon_name,
+        icon_color_hex: p.icon_color_hex,
+      }))
+    );
+    return { takenIconsArr: [...o.takenIcons], takenColorsArr: [...o.takenColors] };
+  }, [orgProperties]);
+
+  useEffect(() => {
+    if (!open) return;
+    const { takenIcons, takenColors } = buildPropertyVisualOccupancy(
+      orgProperties.map((p: { id: string; icon_name?: string | null; icon_color_hex?: string | null }) => ({
+        id: p.id,
+        icon_name: p.icon_name,
+        icon_color_hex: p.icon_color_hex,
+      }))
+    );
+    setIconColor((prev) => {
+      if (!takenColors.has(normalizePropertyColorHex(prev))) return prev;
+      return firstFreeColorFromPalette(takenColors) ?? prev;
+    });
+    setIconName((prev) => {
+      const key = normalizePropertyIconKey(prev || "building");
+      if (!takenIcons.has(key)) return prev || "building";
+      return (
+        firstFreeIconFromList(
+          [
+            "building",
+            "home",
+            "hotel",
+            "warehouse",
+            "store",
+            "castle",
+            "landmark",
+            "trees",
+            "factory",
+            "school",
+          ],
+          takenIcons
+        ) ?? "building"
+      );
+    });
+  }, [open, orgProperties]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [address, setAddress] = useState("");
   const [nickname, setNickname] = useState("");
@@ -75,6 +132,22 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
 
     if (!orgId) {
       toast.error("Organisation not found");
+      return;
+    }
+
+    const { takenIcons, takenColors } = buildPropertyVisualOccupancy(
+      orgProperties.map((p: { id: string; icon_name?: string | null; icon_color_hex?: string | null }) => ({
+        id: p.id,
+        icon_name: p.icon_name,
+        icon_color_hex: p.icon_color_hex,
+      }))
+    );
+    if (takenColors.has(normalizePropertyColorHex(iconColor))) {
+      toast.error("That colour is already used by another property in this organisation");
+      return;
+    }
+    if (takenIcons.has(normalizePropertyIconKey(iconName || "building"))) {
+      toast.error("That icon is already used by another property in this organisation");
       return;
     }
 
@@ -126,42 +199,24 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
         icon_color_hex: iconColor,
       };
 
-      // Upload image with automatic thumbnail generation if provided
       if (propertyImage && propertyId) {
         try {
-          const fileExt = propertyImage.name.split(".").pop();
-          const fileName = `${orgId}/${propertyId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          // Upload file first
-          const { error: uploadError } = await supabase.storage
-            .from("property-images")
-            .upload(fileName, propertyImage);
-
-          if (uploadError) {
-            console.error("Image upload error:", uploadError);
-            toast.warning("Property created but image upload failed");
-          } else {
-            // Trigger thumbnail generation via edge function
-            const { error: processError } = await supabase.functions.invoke(
-              "process-image",
-              {
-                body: {
-                  bucket: "property-images",
-                  path: fileName,
-                  recordId: propertyId,
-                  table: "properties",
-                },
-              }
-            );
-
-            if (processError) {
-              console.error("Thumbnail generation failed:", processError);
-              // Property was created and image uploaded, just thumbnail generation failed
-            }
+          const { displayUrl } = await uploadPropertyImageWithThumbnail(supabase, {
+            orgId,
+            propertyId,
+            file: propertyImage,
+          });
+          if (displayUrl) {
+            queryClient.setQueryData(["properties", orgId], (prev: unknown) => {
+              const list = prev as Array<{ id: string; thumbnail_url?: string | null }> | undefined;
+              if (!list) return list;
+              return list.map((p) =>
+                p.id === propertyId ? { ...p, thumbnail_url: displayUrl } : p
+              );
+            });
           }
         } catch (uploadErr) {
           console.error("Image upload failed:", uploadErr);
-          // Continue - property was created successfully
           toast.warning("Property created but image upload failed");
         }
       }
@@ -250,6 +305,8 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
             defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
             fallbackSearch="building"
             disabled={loading}
+            takenPropertyIconNames={takenIconsArr}
+            takenPropertyColorHexes={takenColorsArr}
           />
 
           {/* Image Upload */}

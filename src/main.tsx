@@ -6,7 +6,6 @@ import "./index.css";
 const appGlobal = globalThis as typeof globalThis & {
   __fillaRootInstance?: ReturnType<typeof createRoot>;
   __fillaRemoveChildPatched?: boolean;
-  __fillaGlobalErrorPatched?: boolean;
 };
 
 if (!appGlobal.__fillaRemoveChildPatched) {
@@ -19,64 +18,6 @@ if (!appGlobal.__fillaRemoveChildPatched) {
     }
   };
   appGlobal.__fillaRemoveChildPatched = true;
-}
-
-if (!appGlobal.__fillaGlobalErrorPatched) {
-  window.addEventListener("error", (event) => {
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "0d80ed",
-      },
-      body: JSON.stringify({
-        sessionId: "0d80ed",
-        runId: "post-fix-2",
-        hypothesisId: "H12",
-        location: "main.tsx:window.error",
-        message: "Global error event",
-        data: {
-          message: event.message,
-          filename: event.filename,
-          lineno: event.lineno,
-          colno: event.colno,
-          errorName: event.error instanceof Error ? event.error.name : null,
-          errorMessage: event.error instanceof Error ? event.error.message : null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  });
-
-  window.addEventListener("unhandledrejection", (event) => {
-    // #region agent log
-    fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "0d80ed",
-      },
-      body: JSON.stringify({
-        sessionId: "0d80ed",
-        runId: "post-fix-2",
-        hypothesisId: "H12",
-        location: "main.tsx:window.unhandledrejection",
-        message: "Global unhandled rejection",
-        data: {
-          reason:
-            event.reason instanceof Error
-              ? { name: event.reason.name, message: event.reason.message }
-              : String(event.reason),
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  });
-
-  appGlobal.__fillaGlobalErrorPatched = true;
 }
 
 // Error boundary for development
@@ -116,27 +57,8 @@ const rootElement = document.getElementById("root");
 if (!rootElement) {
   throw new Error("Root element not found");
 }
-const reusedExistingRoot = !!appGlobal.__fillaRootInstance;
 const root = appGlobal.__fillaRootInstance ?? createRoot(rootElement);
 appGlobal.__fillaRootInstance = root;
-// #region agent log
-fetch("http://127.0.0.1:7242/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-Debug-Session-Id": "0d80ed",
-  },
-  body: JSON.stringify({
-    sessionId: "0d80ed",
-    runId: "post-fix-2",
-    hypothesisId: "H13",
-    location: "main.tsx:root",
-    message: "Root render cycle",
-    data: { reusedExistingRoot },
-    timestamp: Date.now(),
-  }),
-}).catch(() => {});
-// #endregion
 
 root.render(
   <React.StrictMode>

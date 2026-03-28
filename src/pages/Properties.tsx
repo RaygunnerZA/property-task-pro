@@ -1,5 +1,6 @@
 import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
-import { Building2, Plus, Home, Hotel, Warehouse, Store, Castle } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
+import { getPropertyChipIcon } from '@/lib/propertyChipIcons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect, useMemo } from 'react';
 import { PropertyCard } from '@/components/properties/PropertyCard';
@@ -15,16 +16,6 @@ const Properties = () => {
   const [searchParams] = useSearchParams();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
-
-  // Property icon mapping
-  const PROPERTY_ICONS = {
-    home: Home,
-    building: Building2,
-    hotel: Hotel,
-    warehouse: Warehouse,
-    store: Store,
-    castle: Castle,
-  } as const;
 
   // Check for ?add=true in URL
   useEffect(() => {
@@ -98,7 +89,7 @@ const Properties = () => {
               <div className="flex items-center gap-1.5">
                 {properties.map((property) => {
                   const iconName = property.icon_name || "home";
-                  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+                  const IconComponent = getPropertyChipIcon(iconName);
                   const iconColor = property.icon_color_hex || "#8EC9CE";
                   const isActive = activePropertyId === property.id;
                   

@@ -1,10 +1,7 @@
 /**
- * useImageAnalysis — Lightweight orchestrator for AI image analysis (Phase 1)
- * Watches TempImage[] and sends each image's thumbnail_blob to ai-image-analyse edge function.
- * Fire-and-forget: never blocks task creation.
- *
- * Phase 3 merge rule: Results here are for chip suggestions ONLY.
- * Never written to attachments. Phase 2 post-upload analysis is the source of truth.
+ * useImageAnalysis — AI image intake (router first, full on demand)
+ * First pass: mode "router" (task | compliance | document | uncertain + labels).
+ * Full extraction runs only when the user starts a compliance scan (never blocks task creation).
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -16,12 +13,14 @@ export interface UseImageAnalysisOptions {
   propertyId?: string;
   orgId: string;
   onAnalysisComplete?: (localId: string, result: ImageAnalysisResult) => void;
+  onPatchImage?: (localId: string, patch: Partial<TempImage>) => void;
 }
 
 export interface UseImageAnalysisReturn {
   imageOcrText: string;
   detectedLabels: string[];
   status: "idle" | "loading" | "error";
+  runFullIntakeAnalysis: (localId: string) => Promise<void>;
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -29,7 +28,6 @@ async function blobToBase64(blob: Blob): Promise<string> {
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
-      // Strip data URL prefix if present
       const base64 = result.includes(",") ? result.split(",")[1]! : result;
       resolve(base64);
     };
@@ -38,48 +36,66 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+function routerFallbackUncertain(): ImageAnalysisResult {
+  return {
+    ocr_text: "",
+    detected_labels: [],
+    detected_objects: [],
+    metadata: {
+      router_mode: true,
+      workflow_hint: "uncertain",
+      workflow_confidence: 0,
+    },
+  };
+}
+
 export function useImageAnalysis({
   images,
   propertyId,
   orgId,
   onAnalysisComplete,
+  onPatchImage,
 }: UseImageAnalysisOptions): UseImageAnalysisReturn {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
-  const inProgressRef = useRef<Set<string>>(new Set());
+  const routerInProgressRef = useRef<Set<string>>(new Set());
+  const fullInProgressRef = useRef<Set<string>>(new Set());
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
 
-  const analyzeImage = useCallback(
+  const analyzeImageRouter = useCallback(
     async (img: TempImage) => {
       const readyForFastPass = img.thumbnail_blob && img.thumbnail_blob.type === "image/webp";
-      if (!readyForFastPass || img.rawAnalysis || inProgressRef.current.has(img.local_id)) {
+      if (!readyForFastPass || img.rawAnalysis || routerInProgressRef.current.has(img.local_id)) {
         return;
       }
-      inProgressRef.current.add(img.local_id);
+      routerInProgressRef.current.add(img.local_id);
       setStatus((s) => (s === "idle" ? "loading" : s));
 
       try {
-        // Fast first-pass: use low-res thumbnail blob for near-instant routing hints.
         const imageBase64 = await blobToBase64(img.thumbnail_blob);
         const { data, error } = await supabase.functions.invoke("ai-image-analyse", {
           body: {
             image: imageBase64,
             org_id: orgId,
             property_id: propertyId || null,
-            mode: "full",
+            mode: "router",
           },
         });
 
         if (error) {
-          console.warn("[useImageAnalysis] Edge function error:", error);
+          console.warn("[useImageAnalysis] Router error:", error);
+          onAnalysisComplete?.(img.local_id, routerFallbackUncertain());
           return;
         }
 
-        const result = (data as ImageAnalysisResult) || {};
+        const result = (data as ImageAnalysisResult) || routerFallbackUncertain();
         onAnalysisComplete?.(img.local_id, result);
       } catch (err) {
-        console.warn("[useImageAnalysis] Analysis failed:", err);
+        console.warn("[useImageAnalysis] Router failed:", err);
+        onAnalysisComplete?.(img.local_id, routerFallbackUncertain());
       } finally {
-        inProgressRef.current.delete(img.local_id);
-        if (inProgressRef.current.size === 0) {
+        routerInProgressRef.current.delete(img.local_id);
+        if (routerInProgressRef.current.size === 0 && fullInProgressRef.current.size === 0) {
           setStatus("idle");
         }
       }
@@ -95,20 +111,75 @@ export function useImageAnalysis({
 
     for (const img of images) {
       if (img.thumbnail_blob && img.thumbnail_blob.type === "image/webp" && !img.rawAnalysis) {
-        analyzeImage(img);
+        analyzeImageRouter(img);
       }
     }
 
-    // If all images already have results, ensure status is idle
     const pending = images.filter(
       (i) => i.thumbnail_blob && i.thumbnail_blob.type === "image/webp" && !i.rawAnalysis
     );
-    if (pending.length === 0 && inProgressRef.current.size === 0) {
+    if (pending.length === 0 && routerInProgressRef.current.size === 0 && fullInProgressRef.current.size === 0) {
       setStatus("idle");
     }
-  }, [images, orgId, analyzeImage]);
+  }, [images, orgId, analyzeImageRouter]);
 
-  // Aggregate results from images (memoize to avoid infinite loop in useChipSuggestions)
+  const runFullIntakeAnalysis = useCallback(
+    async (localId: string) => {
+      const img = imagesRef.current.find((i) => i.local_id === localId);
+      if (!img?.thumbnail_blob || img.thumbnail_blob.type !== "image/webp" || !orgId) return;
+
+      const stage = (img.rawAnalysis?.metadata as Record<string, unknown> | undefined)?.intake_stage;
+      if (stage === "full") return;
+      if (fullInProgressRef.current.has(localId)) return;
+
+      fullInProgressRef.current.add(localId);
+      onPatchImage?.(localId, {
+        intakeFullAnalysisPending: true,
+        intakeUserPrefersTask: false,
+      });
+      setStatus((s) => (s === "idle" ? "loading" : s));
+
+      try {
+        const imageBase64 = await blobToBase64(img.thumbnail_blob);
+        const { data, error } = await supabase.functions.invoke("ai-image-analyse", {
+          body: {
+            image: imageBase64,
+            org_id: orgId,
+            property_id: propertyId || null,
+            mode: "full",
+          },
+        });
+
+        if (error) {
+          console.warn("[useImageAnalysis] Full analysis error:", error);
+          return;
+        }
+
+        const result = (data as ImageAnalysisResult) || {};
+        const mergedMeta = {
+          ...(result.metadata || {}),
+          intake_stage: "full",
+          router_mode: false,
+        };
+        onPatchImage?.(localId, {
+          intakeFullAnalysisPending: false,
+          rawAnalysis: { ...result, metadata: mergedMeta },
+          aiOcrText: result.ocr_text ?? "",
+          detectedLabels: result.detected_labels ?? [],
+        });
+      } catch (err) {
+        console.warn("[useImageAnalysis] Full analysis failed:", err);
+      } finally {
+        fullInProgressRef.current.delete(localId);
+        onPatchImage?.(localId, { intakeFullAnalysisPending: false });
+        if (routerInProgressRef.current.size === 0 && fullInProgressRef.current.size === 0) {
+          setStatus("idle");
+        }
+      }
+    },
+    [orgId, propertyId, onPatchImage]
+  );
+
   const imageOcrText = useMemo(
     () =>
       images
@@ -119,8 +190,7 @@ export function useImageAnalysis({
   );
 
   const detectedLabels = useMemo(
-    () =>
-      Array.from(new Set(images.flatMap((i) => i.detectedLabels || []))),
+    () => Array.from(new Set(images.flatMap((i) => i.detectedLabels || []))),
     [images]
   );
 
@@ -128,5 +198,6 @@ export function useImageAnalysis({
     imageOcrText,
     detectedLabels,
     status,
+    runFullIntakeAnalysis,
   };
 }

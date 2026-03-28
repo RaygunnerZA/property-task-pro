@@ -13,8 +13,6 @@ interface DailyBriefingCardProps {
   properties?: any[];
   /** When set, shows property-specific insights (e.g. graph centrality) on the right */
   propertyId?: string;
-  /** Scope label when in property context (e.g. property nickname) */
-  scopeLabel?: string;
 }
 
 /**
@@ -33,7 +31,6 @@ export function DailyBriefingCard({
   selectedPropertyIds,
   properties = [],
   propertyId,
-  scopeLabel,
 }: DailyBriefingCardProps) {
   const [carouselApi, setCarouselApi] = useState<{ scrollPrev: () => void; scrollNext: () => void; canScrollPrev: boolean; canScrollNext: boolean } | null>(null);
 
@@ -69,18 +66,6 @@ export function DailyBriefingCard({
     depth: 3,
     enabled: false,
   });
-
-  const selectedPropertyNames = useMemo(() => {
-    if (!selectedPropertyIds || selectedPropertyIds.size === 0) {
-      return [];
-    }
-    if (selectedPropertyIds.size === properties.length) {
-      return [];
-    }
-    return properties
-      .filter((p) => selectedPropertyIds.has(p.id))
-      .map((p) => p.nickname || p.address);
-  }, [selectedPropertyIds, properties]);
 
   // Use full API task list when available; otherwise use parent-provided tasks for radial metrics
   const tasksForMetrics = useMemo(() => {
@@ -174,24 +159,6 @@ export function DailyBriefingCard({
         <div className="min-w-0 flex flex-col justify-start">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-semibold text-foreground">Overview</h2>
-            {scopeLabel ? (
-              <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
-                | {scopeLabel}
-              </span>
-            ) : selectedPropertyNames.length > 0 ? (
-              <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
-                {selectedPropertyNames.map((name, index) => (
-                  <span key={index}>
-                    {index > 0 && " | "}
-                    {name}
-                  </span>
-                ))}
-              </span>
-            ) : properties.length !== 1 ? (
-              <span className="text-lg font-normal text-[#8EC9CE] tracking-[0.1px]">
-                | All Properties
-              </span>
-            ) : null}
           </div>
           <ul className="space-y-2">
             {observations.length > 0 ? (

@@ -3,24 +3,24 @@
  * - 5 icon slots: thematic defaults on load; when user types, AI replaces first slot if relevant
  * - 5 color options
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import {
+  PROPERTY_COLOR_PALETTE,
+  normalizePropertyColorHex,
+  normalizePropertyIconKey,
+  firstFreeIconFromList,
+} from "@/lib/propertyVisualUniqueness";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Search } from "lucide-react";
 
 const DEFAULT_FALLBACK = ["box", "home", "building", "package", "tag"];
 
-const COLORS_6 = [
-  "#8EC9CE", // Teal (primary)
-  "#FF6B6B", // Coral
-  "#4ECDC4", // Mint
-  "#45B7D1", // Sky Blue
-  "#96CEB4", // Sage
-  "#F5A623", // Amber
-];
+/** @deprecated Use PROPERTY_COLOR_PALETTE from @/lib/propertyVisualUniqueness */
+const COLORS_6 = [...PROPERTY_COLOR_PALETTE];
 
 interface AIIconColorPickerProps {
   /** Search text (e.g. space name, asset name, property nickname) — AI uses this to suggest icons */
@@ -37,6 +37,10 @@ interface AIIconColorPickerProps {
   showSearchInput?: boolean;
   disabled?: boolean;
   className?: string;
+  /** Property flow only: icon keys already used by other properties in the org */
+  takenPropertyIconNames?: string[];
+  /** Property flow only: normalized hex (no #, lowercase) already used by other properties */
+  takenPropertyColorHexes?: string[];
 }
 
 export function AIIconColorPicker({
@@ -49,6 +53,8 @@ export function AIIconColorPicker({
   showSearchInput = false,
   disabled = false,
   className,
+  takenPropertyIconNames,
+  takenPropertyColorHexes,
 }: AIIconColorPickerProps) {
   const [aiIcons, setAiIcons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,27 +66,93 @@ export function AIIconColorPicker({
   const effectiveSearchText = showSearchInput ? localSearchText : searchText;
   const debouncedSearch = useDebounce(effectiveSearchText.trim(), 400);
 
+  const iconTakenSet = useMemo(
+    () => new Set((takenPropertyIconNames ?? []).map((k) => normalizePropertyIconKey(k))),
+    [takenPropertyIconNames]
+  );
+  const colorTakenSet = useMemo(
+    () => new Set(takenPropertyColorHexes ?? []),
+    [takenPropertyColorHexes]
+  );
+
   const themeIcons = defaultIcons.slice(0, 5);
 
-  const displayIcons =
+  const rawDisplayIcons =
     aiIcons.length > 0
       ? aiIcons
       : suggestedIcon
         ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
         : themeIcons;
 
+  const displayIcons = useMemo(() => {
+    if (iconTakenSet.size === 0) return rawDisplayIcons.slice(0, 5);
+    const currentKey = normalizePropertyIconKey(value.iconName);
+    const pool = [...rawDisplayIcons];
+    if (value.iconName && !pool.includes(value.iconName)) pool.unshift(value.iconName);
+    const deduped = [...new Set(pool)];
+    const available = deduped.filter(
+      (n) =>
+        !iconTakenSet.has(normalizePropertyIconKey(n)) ||
+        normalizePropertyIconKey(n) === currentKey
+    );
+    const out = [...available];
+    const pad = [...themeIcons, ...DEFAULT_FALLBACK];
+    for (const p of pad) {
+      if (out.length >= 5) break;
+      if (
+        !iconTakenSet.has(normalizePropertyIconKey(p)) &&
+        !out.some((x) => normalizePropertyIconKey(x) === normalizePropertyIconKey(p))
+      ) {
+        out.push(p);
+      }
+    }
+    return out.slice(0, 5);
+  }, [rawDisplayIcons, themeIcons, iconTakenSet, value.iconName]);
+
+  const visibleColors = useMemo(() => {
+    const current = normalizePropertyColorHex(value.color);
+    return PROPERTY_COLOR_PALETTE.filter(
+      (c) => !colorTakenSet.has(normalizePropertyColorHex(c)) || normalizePropertyColorHex(c) === current
+    );
+  }, [colorTakenSet, value.color]);
+
+  const takenIconsDep = (takenPropertyIconNames ?? []).slice().sort().join("|");
+
   useEffect(() => {
+    const pickDefaultIcon = () =>
+      firstFreeIconFromList(themeIcons, iconTakenSet) ??
+      firstFreeIconFromList([...DEFAULT_FALLBACK], iconTakenSet) ??
+      themeIcons[0];
+
+    const pickFromAi = (names: string[]) =>
+      firstFreeIconFromList(names, iconTakenSet) ??
+      pickDefaultIcon() ??
+      names[0];
+
     const shouldAiSearch = !!debouncedSearch || refreshKey > 0;
 
     if (!shouldAiSearch) {
       setAiIcons([]);
       setLoading(false);
       if (suggestedIcon) {
-        if (!value.iconName || value.iconName !== suggestedIcon) {
+        const sKey = normalizePropertyIconKey(suggestedIcon);
+        const suggestedOk = !iconTakenSet.has(sKey);
+        if (suggestedOk && (!value.iconName || value.iconName !== suggestedIcon)) {
           onChange(suggestedIcon, value.color);
+        } else if (
+          !value.iconName ||
+          iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+        ) {
+          const d = pickDefaultIcon();
+          if (d) onChange(d, value.color);
         }
-      } else if (!value.iconName || !themeIcons.includes(value.iconName)) {
-        onChange(themeIcons[0], value.color);
+      } else if (
+        !value.iconName ||
+        !themeIcons.includes(value.iconName) ||
+        iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+      ) {
+        const d = pickDefaultIcon();
+        if (d) onChange(d, value.color);
       }
       return;
     }
@@ -100,13 +172,25 @@ export function AIIconColorPicker({
           .filter(Boolean) as string[];
         if (names.length > 0) {
           setAiIcons(names);
-          if (!value.iconName || !names.includes(value.iconName)) {
-            onChange(names[0], value.color);
+          const next = pickFromAi(names);
+          const keepCurrent =
+            value.iconName &&
+            names.some(
+              (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(value.iconName)
+            ) &&
+            !iconTakenSet.has(normalizePropertyIconKey(value.iconName));
+          if (!keepCurrent) {
+            onChange(next, value.color);
           }
         } else {
           setAiIcons([]);
-          if (!value.iconName || !themeIcons.includes(value.iconName)) {
-            onChange(themeIcons[0], value.color);
+          if (
+            !value.iconName ||
+            !themeIcons.includes(value.iconName) ||
+            iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+          ) {
+            const d = pickDefaultIcon();
+            if (d) onChange(d, value.color);
           }
         }
       })
@@ -119,7 +203,20 @@ export function AIIconColorPicker({
     return () => {
       cancelled = true;
     };
-  }, [debouncedSearch, suggestedIcon, refreshKey]);
+    // onChange omitted: parent often passes an inline callback; including it would re-run every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    debouncedSearch,
+    suggestedIcon,
+    refreshKey,
+    fallbackSearch,
+    effectiveSearchText,
+    themeIcons,
+    takenIconsDep,
+    iconTakenSet,
+    value.iconName,
+    value.color,
+  ]);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -148,7 +245,8 @@ export function AIIconColorPicker({
         <div className="flex gap-2 justify-center flex-wrap">
           {displayIcons.map((name, i) => {
             const IconComponent = getAssetIcon(name);
-            const isSelected = value.iconName === name;
+            const isSelected =
+              normalizePropertyIconKey(value.iconName) === normalizePropertyIconKey(name);
             return (
               <button
                 key={`${name}-${i}`}
@@ -185,27 +283,36 @@ export function AIIconColorPicker({
         </div>
       </div>
 
-      {/* Color row: 5 options */}
+      {/* Color row */}
       <div>
         <p className="text-xs font-medium text-muted-foreground mb-2">Choose a color</p>
-        <div className="flex gap-2 justify-center flex-wrap">
-          {COLORS_6.map((color) => (
-            <button
-              key={color}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(value.iconName || displayIcons[0], color)}
-              className={cn(
-                "w-10 h-10 rounded-full transition-all",
-                value.color === color && "scale-125 ring-2 ring-offset-2 ring-foreground/30"
-              )}
-              style={{
-                backgroundColor: color,
-                boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
-              }}
-            />
-          ))}
-        </div>
+        {visibleColors.length === 0 ? (
+          <p className="text-xs text-center text-muted-foreground">
+            All palette colours are in use in this organisation.
+          </p>
+        ) : (
+          <div className="flex gap-2 justify-center flex-wrap">
+            {visibleColors.map((color) => (
+              <button
+                key={color}
+                type="button"
+                disabled={disabled}
+                onClick={() =>
+                  onChange(value.iconName || displayIcons[0] || themeIcons[0], color)
+                }
+                className={cn(
+                  "w-10 h-10 rounded-full transition-all",
+                  normalizePropertyColorHex(value.color) === normalizePropertyColorHex(color) &&
+                    "scale-125 ring-2 ring-offset-2 ring-foreground/30"
+                )}
+                style={{
+                  backgroundColor: color,
+                  boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

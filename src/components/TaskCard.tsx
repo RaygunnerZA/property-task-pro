@@ -1,6 +1,7 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Home, Clock, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
+import { Clock } from "lucide-react";
+import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Badge } from "@/components/ui/badge";
 import { updateTaskFields } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -10,23 +11,13 @@ import { useState, useMemo, useCallback, memo } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { OverlappingAvatars } from "@/components/tasks/UserAvatar";
 
-// Property icon mapping
-const PROPERTY_ICONS = {
-  home: Home,
-  building: Building2,
-  hotel: Hotel,
-  warehouse: Warehouse,
-  store: Store,
-  castle: Castle,
-} as const;
-
 // Property Icon Chip Component - shows property icon on property color background
 // 24x24px icon bounding box
 function PropertyIconChip({ property }: { property: any }) {
   if (!property) return null;
   
   const iconName = property.icon_name || "home";
-  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const IconComponent = getPropertyChipIcon(iconName);
   const iconColor = property.icon_color_hex || "#8EC9CE";
   
   return (
@@ -59,7 +50,7 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
     <div className="inline-flex items-center" style={{ gap: '-6px' }}>
       {properties.map((property, index) => {
         const iconName = property?.icon_name || "home";
-        const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+        const IconComponent = getPropertyChipIcon(iconName);
         const iconColor = property?.icon_color_hex || "#8EC9CE";
         const zIndex = properties.length - index; // Later properties have higher z-index
         

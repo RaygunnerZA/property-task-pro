@@ -34,7 +34,7 @@ import { PropertyInsightsPanel } from "@/components/properties/PropertyInsightsP
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
-import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, Hotel, Warehouse, Store, Castle, LayoutGrid, CheckSquare, Package, Shield, Zap, Activity, Clock } from "lucide-react";
+import { Plus, Trash2, Archive, Building2, Edit, Check, X, Upload, Home, LayoutGrid, CheckSquare, Package, Shield, Zap, Activity, Clock } from "lucide-react";
 import { GraphTabContent } from "@/components/graph/GraphTabContent";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -78,24 +78,14 @@ import { StandardPageWithBack } from "@/components/design-system/StandardPageWit
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-
-const PROPERTY_ICONS = {
-  home: Home,
-  building: Building2,
-  hotel: Hotel,
-  warehouse: Warehouse,
-  store: Store,
-  castle: Castle,
-} as const;
-
-const PROPERTY_COLORS = [
-  "#FF6B6B", // Coral
-  "#4ECDC4", // Teal
-  "#45B7D1", // Sky Blue
-  "#96CEB4", // Sage
-  "#FFEAA7", // Yellow
-  "#DDA0DD", // Plum
-];
+import { toast } from "sonner";
+import {
+  PROPERTY_COLOR_PALETTE,
+  buildPropertyVisualOccupancy,
+  normalizePropertyColorHex,
+  normalizePropertyIconKey,
+} from "@/lib/propertyVisualUniqueness";
+import { getPropertyChipIcon, PROPERTY_CHIP_ICON_MAP } from "@/lib/propertyChipIcons";
 
 type PropertyHeaderTab = "overview" | "tasks" | "assets" | "compliance";
 
@@ -366,6 +356,21 @@ export default function PropertyDetail() {
 
   // Get property from properties_view to access aggregated counts
   const { data: properties = [] } = usePropertiesQuery();
+  const siblingPropertyVisuals = useMemo(
+    () =>
+      properties
+        .filter((p: any) => p.id !== id)
+        .map((p: any) => ({
+          id: p.id,
+          icon_name: p.icon_name,
+          icon_color_hex: p.icon_color_hex,
+        })),
+    [properties, id]
+  );
+  const { takenIcons: siblingTakenIcons, takenColors: siblingTakenColors } = useMemo(
+    () => buildPropertyVisualOccupancy(siblingPropertyVisuals),
+    [siblingPropertyVisuals]
+  );
   const propertyView = useMemo(() => {
     return properties.find((p: any) => p.id === id);
   }, [properties, id]);
@@ -487,6 +492,25 @@ export default function PropertyDetail() {
   // Handle save icon and color
   const handleSaveIcon = async () => {
     if (!id || !property) return;
+    const colorNorm = normalizePropertyColorHex(editedIconColor);
+    const iconNorm = normalizePropertyIconKey(editedIconName);
+    const dupColor = properties.some(
+      (p: any) =>
+        p.id !== id &&
+        normalizePropertyColorHex(p.icon_color_hex) === colorNorm &&
+        colorNorm !== ""
+    );
+    const dupIcon = properties.some(
+      (p: any) => p.id !== id && normalizePropertyIconKey(p.icon_name) === iconNorm
+    );
+    if (dupColor) {
+      toast.error("That colour is already used by another property in this organisation");
+      return;
+    }
+    if (dupIcon) {
+      toast.error("That icon is already used by another property in this organisation");
+      return;
+    }
     try {
       const { error } = await supabase
         .from("properties")
@@ -619,7 +643,7 @@ if (!error) {
 
   // Get property icon and color for header
   const iconName = (property as any).icon_name || "home";
-  const IconComponent = PROPERTY_ICONS[iconName as keyof typeof PROPERTY_ICONS] || Home;
+  const IconComponent = getPropertyChipIcon(iconName);
   const iconColor = (property as any).icon_color_hex || "#8EC9CE";
   
   // Create gradient: property color solid until 20%, then transition to transparent by 70%
@@ -833,7 +857,6 @@ if (!error) {
                 showGreeting={false}
                 tasks={propertyTasks}
                 propertyId={id}
-                scopeLabel={property?.nickname || property?.address || (id ? "Property" : undefined)}
               />
             </div>
             
@@ -1091,7 +1114,7 @@ if (!error) {
             {/* Icon Preview */}
             <div className="flex justify-center">
               {(() => {
-                const SelectedIcon = PROPERTY_ICONS[editedIconName as keyof typeof PROPERTY_ICONS] || Home;
+                const SelectedIcon = getPropertyChipIcon(editedIconName);
                 return (
                   <div
                     className="p-4 rounded-2xl transition-all duration-300"
@@ -1111,7 +1134,13 @@ if (!error) {
             <div>
               <Label className="mb-2 block">Choose an icon</Label>
               <div className="flex justify-center gap-3 flex-wrap">
-                {Object.entries(PROPERTY_ICONS).map(([name, Icon]) => (
+                {Object.entries(PROPERTY_CHIP_ICON_MAP)
+                  .filter(
+                    ([name]) =>
+                      !siblingTakenIcons.has(normalizePropertyIconKey(name)) ||
+                      normalizePropertyIconKey(name) === normalizePropertyIconKey(editedIconName)
+                  )
+                  .map(([name, Icon]) => (
                   <button
                     key={name}
                     type="button"
@@ -1143,7 +1172,11 @@ if (!error) {
             <div>
               <Label className="mb-2 block">Choose a color</Label>
               <div className="flex justify-center gap-3 flex-wrap">
-                {PROPERTY_COLORS.map((color) => (
+                {PROPERTY_COLOR_PALETTE.filter(
+                  (color) =>
+                    !siblingTakenColors.has(normalizePropertyColorHex(color)) ||
+                    normalizePropertyColorHex(color) === normalizePropertyColorHex(editedIconColor)
+                ).map((color) => (
                   <button
                     key={color}
                     type="button"

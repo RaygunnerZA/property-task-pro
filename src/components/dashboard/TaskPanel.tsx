@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -39,6 +39,24 @@ interface TaskPanelProps {
   filtersToApply?: string[] | null;
   selectedPropertyIds?: Set<string>;
   onCreateTask?: () => void;
+}
+
+type TabBarDensity = "comfortable" | "compact" | "iconOnly";
+
+/** At this width and below, tab bar hides icons (compact) until overflow forces icon-only. */
+const TASK_TAB_NARROW_VIEWPORT_PX = 455;
+
+function useTaskTabNarrowViewport() {
+  const query = `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`;
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onStoreChange);
+      return () => mql.removeEventListener("change", onStoreChange);
+    },
+    () => window.matchMedia(query).matches,
+    () => false
+  );
 }
 
 type AttentionGroup = "urgent" | "review" | "recent";
@@ -176,7 +194,8 @@ export function TaskPanel({
   const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
   const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
-  const [hideTabIcons, setHideTabIcons] = useState(false);
+  const [tabBarDensity, setTabBarDensity] = useState<TabBarDensity>("comfortable");
+  const narrowTaskTabViewport = useTaskTabNarrowViewport();
   const attentionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsListRef = useRef<HTMLDivElement | null>(null);
 
@@ -197,45 +216,55 @@ export function TaskPanel({
   const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
   const setActiveTab = onTabChange || setInternalActiveTab;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const tabsListEl = tabsListRef.current;
     if (!tabsListEl) return;
 
     let frameId: number | null = null;
-    const evaluateTabOverflow = () => {
+    const evaluateRowOverflow = () => {
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
       }
       frameId = window.requestAnimationFrame(() => {
-        const tabButtons = Array.from(
-          tabsListEl.querySelectorAll<HTMLElement>('[role="tab"]')
-        );
-        const tabsAreOverlapping = tabButtons.some(
-          (tabButton) => tabButton.scrollWidth > tabButton.clientWidth + 1
-        );
-        setHideTabIcons(tabsAreOverlapping);
+        const { scrollWidth, clientWidth } = tabsListEl;
+        const tight = scrollWidth > clientWidth + 2;
+        const loose = scrollWidth < clientWidth - 20;
+        const narrowViewport = window.matchMedia(
+          `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`
+        ).matches;
+
+        setTabBarDensity((d) => {
+          if (tight) {
+            if (d === "comfortable") return "compact";
+            if (d === "compact") return "iconOnly";
+            return d;
+          }
+          if (loose) {
+            if (d === "iconOnly") return "compact";
+            if (d === "compact") {
+              return narrowViewport ? "compact" : "comfortable";
+            }
+            return d;
+          }
+          return d;
+        });
       });
     };
 
-    evaluateTabOverflow();
+    evaluateRowOverflow();
 
-    const resizeObserver = new ResizeObserver(() => {
-      evaluateTabOverflow();
-    });
+    const resizeObserver = new ResizeObserver(evaluateRowOverflow);
     resizeObserver.observe(tabsListEl);
-    Array.from(tabsListEl.querySelectorAll<HTMLElement>('[role="tab"]')).forEach((tabButton) => {
-      resizeObserver.observe(tabButton);
-    });
-    window.addEventListener("resize", evaluateTabOverflow);
+    window.addEventListener("resize", evaluateRowOverflow);
 
     return () => {
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
       }
       resizeObserver.disconnect();
-      window.removeEventListener("resize", evaluateTabOverflow);
+      window.removeEventListener("resize", evaluateRowOverflow);
     };
-  }, [activeTab]);
+  }, [activeTab, tabBarDensity, narrowTaskTabViewport]);
 
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p]));
@@ -660,97 +689,144 @@ export function TaskPanel({
       .slice(0, 25);
   }, [tasksForView, selectedDate, isDatePinned]);
 
+  const effectiveTabBarDensity: TabBarDensity =
+    narrowTaskTabViewport && tabBarDensity === "comfortable" ? "compact" : tabBarDensity;
+  const compact = effectiveTabBarDensity === "compact";
+  const iconOnly = effectiveTabBarDensity === "iconOnly";
+  const tabTitle = (label: string) =>
+    effectiveTabBarDensity === "comfortable" ? undefined : label;
+
+  const taskTabShell =
+    "rounded-[8px] transition-all text-sm font-medium shrink-0 group/task-tab inline-flex items-center justify-center " +
+    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
+    "data-[state=active]:bg-card data-[state=inactive]:bg-transparent";
+
+  const taskTabIconOnly =
+    "min-w-9 max-w-9 px-0 overflow-hidden transition-[max-width,min-width,padding] duration-200 ease-out " +
+    "hover:z-20 hover:max-w-[min(220px,85vw)] hover:min-w-0 hover:px-3 " +
+    "focus-visible:z-20 focus-visible:max-w-[min(220px,85vw)] focus-visible:min-w-0 focus-visible:px-3 " +
+    "data-[state=active]:z-10 data-[state=active]:max-w-none data-[state=active]:min-w-0 data-[state=active]:px-3";
+
+  const taskTabLabelReveal =
+    "max-w-0 overflow-hidden opacity-0 transition-[max-width,opacity] duration-200 ease-out whitespace-nowrap " +
+    "group-hover/task-tab:max-w-[12rem] group-hover/task-tab:opacity-100 " +
+    "group-focus-visible/task-tab:max-w-[12rem] group-focus-visible/task-tab:opacity-100 " +
+    "group-data-[state=active]/task-tab:max-w-[12rem] group-data-[state=active]/task-tab:opacity-100";
+
+  const taskTabPadLabeled = "px-2.5 max-[455px]:px-1.5";
+
   return (
     <div className="h-full flex flex-col bg-background">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
-        <div className="sticky top-0 z-10 bg-background ml-[8px] mr-[8px] flex md:justify-between items-center">
+        <div
+          className={cn(
+            "sticky top-0 z-10 bg-background flex min-w-0 w-full max-w-[426px] justify-start items-center",
+            "ml-[8px] mr-[8px] gap-2 md:gap-3",
+            // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
+            "max-[455px]:ml-1 max-[455px]:mr-1.5 max-[455px]:gap-1"
+          )}
+        >
           <TabsList
             ref={tabsListRef}
             className={cn(
-              "w-full md:w-[430px] flex flex-wrap h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] gap-y-[5px] rounded-[15px] bg-transparent",
+              "min-w-0 flex-1 flex flex-nowrap h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] rounded-[15px] bg-transparent overflow-visible max-w-full",
+              "max-[455px]:pl-1 max-[455px]:pr-1 max-[455px]:gap-x-1",
               "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
             )}
           >
             <TabsTrigger
               value="attention"
-              className={cn(
-                "rounded-[8px] transition-all",
-                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                "data-[state=active]:bg-card",
-                "data-[state=inactive]:bg-transparent",
-                "text-sm font-medium"
-              )}
-              style={{ paddingLeft: "10px", paddingRight: "10px" }}
+              title={tabTitle("Attention")}
+              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
             >
-              <AnimatedIcon
-                icon={AlertTriangle}
-                size={16}
-                animateOnHover
-                animation="shake"
-                className={cn("mr-2", hideTabIcons && "hidden")}
-              />
-              Attention
+              <span className="inline-flex items-center min-w-0">
+                {!compact && (
+                  <AnimatedIcon
+                    icon={AlertTriangle}
+                    size={16}
+                    animateOnHover
+                    animation="shake"
+                    className={cn(
+                      "shrink-0 h-4 w-4",
+                      iconOnly
+                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                        : "mr-2 max-[455px]:mr-1"
+                    )}
+                  />
+                )}
+                <span className={cn(iconOnly && taskTabLabelReveal)}>Attention</span>
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="tasks"
-              className={cn(
-                "rounded-[8px] transition-all",
-                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                "data-[state=active]:bg-card",
-                "data-[state=inactive]:bg-transparent",
-                "text-sm font-medium"
-              )}
-              style={{
-                paddingLeft: "5px",
-                paddingRight: "5px",
-                width: hideTabIcons ? "76px" : "80px",
-              }}
+              title={tabTitle("Tasks")}
+              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
             >
-              <CheckSquare className={cn("mr-1 h-4 w-4", hideTabIcons && "hidden")} />
-              Tasks
+              <span className="inline-flex items-center min-w-0">
+                {!compact && (
+                  <CheckSquare
+                    className={cn(
+                      "shrink-0 h-4 w-4",
+                      iconOnly
+                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                        : "mr-1 max-[455px]:mr-0.5"
+                    )}
+                  />
+                )}
+                <span className={cn(iconOnly && taskTabLabelReveal)}>Tasks</span>
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="compliance"
-              className={cn(
-                "rounded-[8px] transition-all",
-                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                "data-[state=active]:bg-card",
-                "data-[state=inactive]:bg-transparent",
-                "text-sm font-medium"
-              )}
-              style={{ paddingLeft: "10px", paddingRight: "10px", width: "113px" }}
+              title={tabTitle("Compliance")}
+              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
             >
-              <ShieldCheck className="mr-1 h-4 w-4" />
-              Compliance
+              <span className="inline-flex items-center min-w-0">
+                {!compact && (
+                  <ShieldCheck
+                    className={cn(
+                      "shrink-0 h-4 w-4",
+                      iconOnly
+                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                        : "mr-1 max-[455px]:mr-0.5"
+                    )}
+                  />
+                )}
+                <span className={cn(iconOnly && taskTabLabelReveal)}>Compliance</span>
+              </span>
             </TabsTrigger>
             <TabsTrigger
               value="schedule"
-              className={cn(
-                "rounded-[8px] transition-all",
-                "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                "data-[state=active]:bg-card",
-                "data-[state=inactive]:bg-transparent",
-                "text-sm font-medium"
-              )}
-              style={{ paddingLeft: "10px", paddingRight: "10px" }}
+              title={tabTitle("Schedule")}
+              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
             >
-              <AnimatedIcon
-                icon={Calendar}
-                size={16}
-                animateOnHover
-                animation="pointing"
-                className={cn("mr-2", hideTabIcons && "hidden")}
-              />
-              Schedule
+              <span className="inline-flex items-center min-w-0">
+                {!compact && (
+                  <AnimatedIcon
+                    icon={Calendar}
+                    size={16}
+                    animateOnHover
+                    animation="pointing"
+                    className={cn(
+                      "shrink-0 h-4 w-4",
+                      iconOnly
+                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                        : "mr-2 max-[455px]:mr-1"
+                    )}
+                  />
+                )}
+                <span className={cn(iconOnly && taskTabLabelReveal)}>Schedule</span>
+              </span>
             </TabsTrigger>
           </TabsList>
 
           {onCreateTask && (
             <button
+              type="button"
               onClick={onCreateTask}
-              className="hidden md:flex min-[1380px]:hidden items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
+              className="hidden md:flex min-w-0 shrink-0 min-[1380px]:hidden items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4 shrink-0" />
               Create Task
             </button>
           )}
