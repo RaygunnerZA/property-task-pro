@@ -97,7 +97,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
   if (variant === "scroller") {
     return (
       <div className="relative w-full overflow-x-hidden overflow-y-visible">
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hz-teal">
           <div className="flex-shrink-0 w-[190px] rounded-[12px]">
             <div
               className="bg-card/0 rounded-[12px] overflow-hidden shadow-none transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99] h-[228px]"

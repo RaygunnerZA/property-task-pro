@@ -139,7 +139,7 @@ export function AISuggestionStrip({
       </div>
 
       {/* Horizontal scrolling chips */}
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent -mx-4 px-4">
+      <div className="overflow-x-auto scrollbar-hz-teal -mx-4 px-4">
         <div className="flex gap-2 pb-2">
           {/* People Chips */}
           {(aiResult.people || []).map((person, idx) => {

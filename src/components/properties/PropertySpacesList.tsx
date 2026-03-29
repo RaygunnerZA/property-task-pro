@@ -138,7 +138,7 @@ export function PropertySpacesList({
             ref={spacesRef}
             className="relative w-full max-w-full overflow-hidden"
           >
-            <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0" style={{ width: 'calc(100% + 15px)' }}>
+            <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0" style={{ width: 'calc(100% + 15px)' }}>
               <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
                 {displaySpaces.map((space) => {
                   const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };

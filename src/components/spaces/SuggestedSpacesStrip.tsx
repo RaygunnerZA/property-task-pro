@@ -399,7 +399,7 @@ export function SuggestedSpacesStrip({
           <h3 className="text-sm font-semibold text-foreground mb-2">
             My Spaces
           </h3>
-          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="overflow-x-auto pb-2 scrollbar-hz-teal">
             <div
               className="flex gap-2.5 h-[165px]"
               style={{ width: "max-content" }}
@@ -431,7 +431,7 @@ export function SuggestedSpacesStrip({
           <h3 className="text-sm font-semibold text-foreground mb-2">
             Suggested Spaces
           </h3>
-          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="overflow-x-auto pb-2 scrollbar-hz-teal">
             <div
               className="flex gap-2.5 h-[165px]"
               style={{ width: "max-content" }}

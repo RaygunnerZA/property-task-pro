@@ -1,2 +1,7 @@
 export { IntakeModal } from "./IntakeModal";
-export { IntakeChipRow, type IntakeChipRowValues, type IntakeChipSlotId } from "./IntakeChipRow";
+export {
+  IntakeChipRow,
+  type IntakeChipRowChip,
+  type IntakeChipSlotId,
+  type IntakeSlotPanelRows,
+} from "./IntakeChipRow";

@@ -577,7 +577,7 @@ export function TaskList({
               {view === 'vertical' ? (
                 <>
                   {/* Mobile: Horizontal scroll */}
-                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent md:hidden">
+                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal md:hidden">
                     <div className="flex gap-4 min-w-max">
                       {memoizedTaskCards.todo.map((props) => (
                         <div key={props.task.id} className="w-[210px] flex-shrink-0">
@@ -627,7 +627,7 @@ export function TaskList({
               {view === 'vertical' ? (
                 <>
                   {/* Mobile: Horizontal scroll */}
-                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent md:hidden">
+                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal md:hidden">
                     <div className="flex gap-4 min-w-max">
                       {memoizedTaskCards.done.map((props) => (
                         <div key={props.task.id} className="w-[210px] flex-shrink-0">

@@ -575,6 +575,22 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Horizontal overflow: thin track at bottom — 3px, 50% transparent primary teal */
+  .scrollbar-hz-teal {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(182 29% 63% / 0.5) transparent;
+  }
+  .scrollbar-hz-teal::-webkit-scrollbar {
+    height: 3px;
+  }
+  .scrollbar-hz-teal::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-hz-teal::-webkit-scrollbar-thumb {
+    background-color: hsl(182 29% 63% / 0.5);
+    border-radius: 9999px;
+  }
   
   /* Gradient mask for scroll indicators */
   .mask-gradient-right {

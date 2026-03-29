@@ -162,7 +162,7 @@ export function RadialProgress({
           position: "relative",
           fontSize: 30,
           fontWeight: 400,
-          fontFamily: '"Inter Tight"',
+          fontFamily: "'Inter Tight', system-ui, -apple-system, sans-serif",
           letterSpacing: "-3.1px",
           marginLeft: 8,
           marginRight: 2,

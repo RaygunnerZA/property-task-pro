@@ -273,7 +273,7 @@ export function PropertyRecentAssetsList({ propertyId, onAssetClick, headless = 
         ) : (
           <div className="relative w-full max-w-full overflow-hidden">
             <div
-              className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent min-w-0"
+              className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0"
               style={{ width: "calc(100% + 15px)" }}
             >
               <div

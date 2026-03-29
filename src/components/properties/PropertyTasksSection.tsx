@@ -153,7 +153,7 @@ export function PropertyTasksSection({
   if (tasksLoading) {
     return (
       <div className="w-full">
-        <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+        <div className="overflow-x-auto -mx-4 px-4 scrollbar-hz-teal">
           <div className="flex gap-4 min-w-max">
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-[210px] flex-shrink-0">
@@ -191,7 +191,7 @@ export function PropertyTasksSection({
           No tasks to display
         </p>
       ) : (
-        <div className="overflow-x-auto -mx-4 px-4 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+        <div className="overflow-x-auto -mx-4 px-4 scrollbar-hz-teal">
           <div className="flex gap-4 min-w-max">
             {filteredTasks.map((task) => {
               const property = propertyMap.get(task.property_id);

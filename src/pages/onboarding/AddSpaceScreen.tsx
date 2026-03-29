@@ -387,7 +387,7 @@ export default function AddSpaceScreen() {
 
         {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
         <div className="mb-6">
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hz-teal">
             {ONBOARDING_SPACE_GROUPS.map((group) => (
               <OnboardingSpaceGroupCard
                 key={group.id}

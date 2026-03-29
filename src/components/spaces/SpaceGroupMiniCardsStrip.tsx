@@ -79,7 +79,7 @@ export function SpaceGroupMiniCardsStrip({
 
   return (
     <div className="mb-4 flex-shrink-0 w-full min-w-0">
-      <div className="overflow-x-auto -mx-[15px] px-[15px] pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+      <div className="overflow-x-auto -mx-[15px] px-[15px] pb-2 scrollbar-hz-teal">
         <div className="flex gap-2.5 h-[165px]" style={{ width: "max-content" }}>
           {displaySpaces.map((space) => {
             const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };

@@ -104,7 +104,7 @@ export default function SpaceOrganisationScreen() {
                 <p className="text-sm text-muted-foreground">
                   Select a group to add and organise spaces.
                 </p>
-                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hz-teal">
                   {ONBOARDING_SPACE_GROUPS.map((group) => (
                     <SpaceGroupLinkCard
                       key={group.id}
