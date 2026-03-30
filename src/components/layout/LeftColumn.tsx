@@ -2,11 +2,12 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
+import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { togglePropertyFilter } from "@/utils/propertyFilter";
-import { Plus, Home, Package, CheckSquare, Shield, Clock, Zap, Activity } from "lucide-react";
+import { Plus, Home, Package, CheckSquare, Shield, Clock, Zap, Activity, Check } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarConcertina } from "@/components/layout/SidebarConcertina";
@@ -63,6 +64,9 @@ export function LeftColumn({
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggeredRef = useRef(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
     () => new Set()
   );
@@ -89,6 +93,12 @@ export function LeftColumn({
       );
     }
   }, [ALL_PROPERTY_IDS, properties.length, externalSelectedPropertyIds]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    };
+  }, []);
 
   // Extract task counts from properties_view (properties now have open_tasks_count)
   const taskCounts = useMemo(() => {
@@ -134,6 +144,51 @@ export function LeftColumn({
     return { expired, expiring, valid };
   }, [compliancePortfolio]);
 
+  // When exactly one property is selected (and not in multi-select mode), show
+  // the PropertyIdentityStrip instead of the card scroller.
+  const focusedProperty = useMemo(() => {
+    if (isMultiSelectMode || selectedPropertyIds.size !== 1) return null;
+    const id = Array.from(selectedPropertyIds)[0];
+    return (properties as any[]).find((p) => p.id === id) ?? null;
+  }, [selectedPropertyIds, isMultiSelectMode, properties]);
+
+  const handlePropertyPointerDown = (propertyId: string) => {
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setIsMultiSelectMode(true);
+      setSelectedPropertyIds(new Set([propertyId]));
+      onFilterClick?.(`filter-property-${propertyId}`);
+    }, 1000);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handlePropertyClick = (propertyId: string) => {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    if (isMultiSelectMode) {
+      const newSelection = togglePropertyFilter(propertyId, selectedPropertyIds, ALL_PROPERTY_IDS);
+      setSelectedPropertyIds(newSelection);
+      onFilterClick?.(`filter-property-${propertyId}`);
+    } else {
+      if (selectedPropertyIds.size === 1 && selectedPropertyIds.has(propertyId)) {
+        setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
+        onFilterClick?.("show-tasks");
+      } else {
+        setSelectedPropertyIds(new Set([propertyId]));
+        onFilterClick?.(`filter-property-${propertyId}`);
+      }
+    }
+  };
+
   return (
     <div 
       ref={leftColumnRef}
@@ -165,85 +220,99 @@ export function LeftColumn({
 
             {/* Property Filter Icon Row - only when multiple properties */}
             {properties.length > 1 && (
-              <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-                <div className="flex min-w-max items-center gap-1.5 pr-1">
-                  {(() => {
-                    const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
-                            onFilterClick?.("show-tasks");
-                          }}
-                          className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95 text-[11px] font-mono font-semibold tracking-wide shrink-0"
-                          style={{
-                            width: '35px',
-                            height: '35px',
-                            backgroundColor: isAllActive ? "#8EC9CE" : 'transparent',
-                            boxShadow: isAllActive
-                              ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(255, 255, 255, 0.5)"
-                              : "none",
-                            borderColor: "rgba(0, 0, 0, 0)",
-                            borderStyle: "none",
-                            borderImage: "none",
-                          }}
-                          aria-label="Show all properties"
-                        >
-                          <span className={isAllActive ? "text-white" : "text-muted-foreground"}>ALL</span>
-                        </button>
+              <div className="flex flex-col gap-0.5">
+                {/* Multi-select mode instruction banner */}
+                {isMultiSelectMode && (
+                  <div className="flex items-center justify-between px-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <span className="text-[10px] text-muted-foreground leading-none">Select multiple properties</span>
+                    {selectedPropertyIds.size >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsMultiSelectMode(false)}
+                        className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors duration-150"
+                      >
+                        <Check className="h-2.5 w-2.5 text-primary" />
+                        <span className="text-[9px] text-primary font-semibold">Done</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ paddingLeft: '4px', paddingRight: '4px', paddingTop: '3px', paddingBottom: '3px' }}>
+                  <div className="flex h-[32px] min-w-max items-center gap-1 pr-1">
+                    {(() => {
+                      const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
+                              setIsMultiSelectMode(false);
+                              onFilterClick?.("show-tasks");
+                            }}
+                            className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-200 hover:scale-110 active:scale-95 text-[10px] font-mono font-semibold tracking-wide shrink-0"
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              backgroundColor: isAllActive ? "#8EC9CE" : 'transparent',
+                              boxShadow: isAllActive
+                                ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(255, 255, 255, 0.5)"
+                                : "none",
+                              borderColor: "rgba(0, 0, 0, 0)",
+                              borderStyle: "none",
+                              borderImage: "none",
+                            }}
+                            aria-label="Show all properties"
+                          >
+                            <span className={isAllActive ? "text-white" : "text-muted-foreground"}>ALL</span>
+                          </button>
 
-                        {properties.map((property) => {
-                          const iconName = property.icon_name || "home";
-                          const IconComponent = getPropertyChipIcon(iconName);
-                          const iconColor = property.icon_color_hex || "#8EC9CE";
-                          const isActive = isAllActive || selectedPropertyIds.has(property.id);
+                          {properties.map((property) => {
+                            const iconName = property.icon_name || "home";
+                            const IconComponent = getPropertyChipIcon(iconName);
+                            const iconColor = property.icon_color_hex || "#8EC9CE";
+                            const isActive = isAllActive || selectedPropertyIds.has(property.id);
 
-                          return (
-                            <button
-                              key={property.id}
-                              onClick={() => {
-                                const newSelection = togglePropertyFilter(
-                                  property.id,
-                                  selectedPropertyIds,
-                                  ALL_PROPERTY_IDS
-                                );
-                                setSelectedPropertyIds(newSelection);
-                                if (onFilterClick) {
-                                  onFilterClick(`filter-property-${property.id}`);
-                                }
-                              }}
-                              className="flex items-center justify-center rounded-[12px] transition-all duration-200 hover:scale-110 active:scale-95 shrink-0"
-                              style={{
-                                width: '35px',
-                                height: '35px',
-                                backgroundColor: isActive ? iconColor : 'transparent',
-                                boxShadow: isActive
-                                  ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
-                                  : "none",
-                                borderColor: "rgba(0, 0, 0, 0)",
-                                borderStyle: "none",
-                                borderImage: "none",
-                              }}
-                              aria-label={`Filter by ${property.nickname || property.address}`}
-                            >
-                              <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
-                            </button>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
+                            return (
+                              <button
+                                key={property.id}
+                                onClick={() => handlePropertyClick(property.id)}
+                                onPointerDown={() => handlePropertyPointerDown(property.id)}
+                                onPointerUp={cancelLongPress}
+                                onPointerLeave={cancelLongPress}
+                                className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-200 hover:scale-110 active:scale-95 shrink-0"
+                                style={{
+                                  width: '28px',
+                                  height: '28px',
+                                  backgroundColor: isActive ? iconColor : 'transparent',
+                                  boxShadow: isActive
+                                    ? isMultiSelectMode
+                                      ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
+                                      : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                                    : "none",
+                                  borderColor: "rgba(0, 0, 0, 0)",
+                                  borderStyle: "none",
+                                  borderImage: "none",
+                                }}
+                                aria-label={`Filter by ${property.nickname || property.address}`}
+                              >
+                                <IconComponent className={`h-[18px] w-[16px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                              </button>
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </div>
         {!hideProperties && (
-        <div 
-          className="px-2 w-full max-w-full overflow-x-hidden" 
-          style={{ height: properties.length === 1 ? 'auto' : '228px' }}
+        <div
+          className="px-2 w-full max-w-full overflow-x-hidden"
+          style={{ height: focusedProperty ? 'auto' : '228px' }}
         >
           {propertiesLoading ? (
             <div className="space-y-3">
@@ -255,22 +324,21 @@ export function LeftColumn({
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
-          ) : properties.length === 1 ? (
-            /* Single property: full-width card, horizontal layout, no gradient */
-            <div ref={propertiesRef} className="relative w-full max-w-full py-2" style={{ borderRadius: '13px 13px 10px 0px' }}>
-              <PropertyCard
-                property={{
-                  ...properties[0],
-                  taskCount: taskCounts[properties[0].id] || 0,
-                  urgentTaskCount: urgentTaskCounts[properties[0].id] || 0,
-                  lastInspectedDate: null,
-                }}
-                variant="horizontal"
-                onAddPropertyClick={() => setShowAddProperty(true)}
+          ) : focusedProperty ? (
+            /* Single property in focus: show identity strip with sliding cards */
+            <div ref={propertiesRef} className="relative w-full max-w-full py-2">
+              <PropertyIdentityStrip
+                key={focusedProperty.id}
+                property={focusedProperty}
+                onAddTaskClick={onCreateTask}
+                onTaskCountClick={() =>
+                  onFilterClick?.(`filter-property-${focusedProperty.id}`)
+                }
               />
             </div>
           ) : (
-            <div 
+            /* Multiple properties selected: horizontal card scroller */
+            <div
               ref={propertiesRef}
               className="relative w-full max-w-full overflow-x-hidden overflow-y-visible"
               style={{ borderRadius: '13px 13px 10px 0px' }}
@@ -284,20 +352,20 @@ export function LeftColumn({
                           ...property,
                           taskCount: taskCounts[property.id] || 0,
                           urgentTaskCount: urgentTaskCounts[property.id] || 0,
-                          lastInspectedDate: null, // TODO: Add last inspected date from compliance data
+                          lastInspectedDate: null,
                         }}
                       />
                     </div>
                   ))}
                 </div>
               </div>
-              {/* Gradient overlay - right side fade scroll affordance (only when multiple cards) */}
-              <div 
+              {/* Right-side fade scroll affordance */}
+              <div
                 className="absolute top-0 right-0 bottom-0 pointer-events-none"
                 style={{
                   width: '48px',
                   background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.12))',
-                  zIndex: 20
+                  zIndex: 20,
                 }}
               />
             </div>
@@ -314,11 +382,11 @@ export function LeftColumn({
         >
           <div className="px-2 pt-4 pb-4 w-full">
             {tasksLoading ? (
-              <div className="rounded-lg bg-card/60 p-3 shadow-e1 w-full">
+              <div className="rounded-lg bg-card/60 px-3 py-[5px] shadow-e1 w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-card/60 p-3 shadow-e1 w-full">
+              <div className="rounded-lg bg-card/60 px-3 py-[5px] shadow-e1 w-full">
                 <DashboardCalendar
                   tasks={tasks}
                   selectedDate={selectedDate}

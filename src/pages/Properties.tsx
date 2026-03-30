@@ -118,7 +118,7 @@ const Properties = () => {
                       }}
                       aria-label={`Filter by ${property.nickname || property.address}`}
                     >
-                      <IconComponent className={`h-[18px] w-[18px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
+                      <IconComponent className={`h-[18px] w-[16px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
                     </button>
                   );
                 })}

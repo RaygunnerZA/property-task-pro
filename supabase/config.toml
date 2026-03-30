@@ -2,3 +2,6 @@ project_id = "tuyflmyojrmvlbptnpcg"
 
 [functions.ai-extract]
 verify_jwt = false
+
+[functions.sync-dev-mode]
+verify_jwt = true

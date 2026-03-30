@@ -31,6 +31,7 @@ import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { Upload, X } from "lucide-react";
+import { track } from "@/lib/analytics";
 
 interface AddPropertyDialogProps {
   open: boolean;
@@ -222,6 +223,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
       }
 
       toast.success("Property created!");
+      track("property_created", { org_id: orgId, property_id: propertyId });
       onCreated?.(created);
       // Reset form
       setAddress("");

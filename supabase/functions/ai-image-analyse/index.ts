@@ -4,6 +4,7 @@
 // Phase 3: Idempotency guard — if analysis exists for attachment_id and overwrite=false, skip
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -560,6 +561,13 @@ Deno.serve(async (req) => {
 
     const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
     const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
+    const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    let aiModelUsed = "gemini-2.0-flash";
+    let aiProviderUsed = "GEMINI";
+    let aiStatus: AiRequestStatus = "success";
+    let aiErrorMessage: string | null = null;
+    const aiStart = Date.now();
 
     let result: ResponseBody;
     try {
@@ -569,12 +577,17 @@ Deno.serve(async (req) => {
       const routerMode = mode === "router";
 
       if (preferGemini && getGeminiKey()) {
+        aiModelUsed = "gemini-2.0-flash";
+        aiProviderUsed = "GEMINI";
         try {
           result = routerMode
             ? await callGeminiVisionRouter(imageBase64)
             : await callGeminiVision(imageBase64);
         } catch (err) {
           if (fallbackEnabled && getOpenAIApiKey()) {
+            aiModelUsed = "gpt-4o-mini";
+            aiProviderUsed = "OPENAI";
+            aiStatus = "fallback";
             result = routerMode
               ? await callOpenAIVisionRouter(imageBase64)
               : await callOpenAIVision(imageBase64);
@@ -583,12 +596,17 @@ Deno.serve(async (req) => {
           }
         }
       } else if (preferOpenAI && getOpenAIApiKey()) {
+        aiModelUsed = "gpt-4o-mini";
+        aiProviderUsed = "OPENAI";
         try {
           result = routerMode
             ? await callOpenAIVisionRouter(imageBase64)
             : await callOpenAIVision(imageBase64);
         } catch (err) {
           if (fallbackEnabled && getGeminiKey()) {
+            aiModelUsed = "gemini-2.0-flash";
+            aiProviderUsed = "GEMINI";
+            aiStatus = "fallback";
             result = routerMode
               ? await callGeminiVisionRouter(imageBase64)
               : await callGeminiVision(imageBase64);
@@ -598,10 +616,33 @@ Deno.serve(async (req) => {
         }
       } else {
         result = stubResponse();
+        aiStatus = "error";
+        aiErrorMessage = "No AI provider configured; stub response used";
       }
     } catch (err) {
       console.error("ai-image-analyse error:", err);
+      aiStatus = "error";
+      aiErrorMessage = String(err);
       result = stubResponse();
+    } finally {
+      if (serviceRoleKeyForLog) {
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKeyForLog, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        logAiRequest(serviceClient, {
+          org_id,
+          function_name: "ai-image-analyse",
+          model_used: aiModelUsed,
+          provider: aiProviderUsed,
+          latency_ms: Date.now() - aiStart,
+          status: aiStatus,
+          error_message: aiErrorMessage,
+          entity_type: attachment_id ? "attachment" : null,
+          entity_id: attachment_id ?? null,
+          cost_usd: estimateCost(aiModelUsed, null, null),
+          metadata: { mode },
+        });
+      }
     }
 
     // Phase 2: DB writes when attachment_id provided

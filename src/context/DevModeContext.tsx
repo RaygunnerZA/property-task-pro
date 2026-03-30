@@ -6,7 +6,7 @@
  *   - Time simulation for compliance testing
  *   - Network latency simulation
  *   - AI debug panel visibility
- *   - When ON: JWT user_metadata.dev_mode = true so RLS shows all org tasks/files
+ *   - When ON: JWT app_metadata.dev_mode (via sync-dev-mode edge function) so RLS shows all org tasks/files
  *
  * Active when:
  *   - Local dev (import.meta.env.DEV), or
@@ -100,21 +100,24 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<DevModeState>(DEV_DEFAULT_STATE);
 
-  // Default ON in this build: sync to JWT so you and Matt both see all tasks/files; only you can switch off
+  // Default ON in this build: sync app_metadata via edge function (RLS reads app_metadata, not user_metadata)
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session?.user) return;
-      const devMode = session.user.user_metadata?.dev_mode;
+      const devMode = session.user.app_metadata?.dev_mode;
       const alreadyOn = devMode === true || devMode === "true";
       if (alreadyOn) {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
       } else {
         setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
-        await supabase.auth.updateUser({ data: { dev_mode: true } });
-        await supabase.auth.refreshSession();
-        // Refetch tasks (and related) with new JWT so RLS returns all org tasks
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+        const { error } = await supabase.functions.invoke("sync-dev-mode", {
+          body: { enabled: true },
+        });
+        if (!error) {
+          await supabase.auth.refreshSession();
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+        }
       }
     });
   }, [supabase, queryClient]);
@@ -122,11 +125,11 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
   const syncDevModeToJwt = useCallback(
     async (enabled: boolean) => {
       try {
-        await supabase.auth.updateUser({
-          data: { dev_mode: enabled },
+        const { error } = await supabase.functions.invoke("sync-dev-mode", {
+          body: { enabled },
         });
+        if (error) return;
         await supabase.auth.refreshSession();
-        // Refetch tasks so list reflects new visibility (all vs assigned-only)
         queryClient.invalidateQueries({ queryKey: ["tasks"] });
         queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
       } catch {

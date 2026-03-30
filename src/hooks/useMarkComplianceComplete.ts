@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyUtils";
 import { createTask } from "@/services/tasks/taskMutations";
+import { track } from "@/lib/analytics";
 
 export interface MarkCompleteInput {
   complianceDocId: string;
@@ -151,6 +152,11 @@ export function useMarkComplianceComplete() {
       }
     },
     onSuccess: (_data, variables) => {
+      track("compliance_item_completed", {
+        org_id: orgId,
+        document_id: variables.complianceDocId,
+        property_id: variables.propertyId,
+      });
       queryClient.invalidateQueries({
         queryKey: ["compliance", orgId, variables.propertyId],
       });

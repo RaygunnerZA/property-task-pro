@@ -1,7 +1,7 @@
 -- Run this in Supabase Dashboard → SQL Editor if "supabase db push" fails due to migration order.
 -- Applies: tasks dev-mode visibility + org members visible to all in org.
 
--- ========== 1. tasks_select (dev mode = see all org tasks) ==========
+-- ========== 1. tasks_select (dev mode = see all org tasks; app_metadata via sync-dev-mode) ==========
 DROP POLICY IF EXISTS "tasks_select" ON tasks;
 
 CREATE POLICY "tasks_select" ON tasks
@@ -14,7 +14,10 @@ CREATE POLICY "tasks_select" ON tasks
         AND organisation_members.user_id = auth.uid()
     )
     AND (
-      COALESCE((auth.jwt() -> 'user_metadata' ->> 'dev_mode') = 'true', false)
+      (
+        (auth.jwt() -> 'app_metadata' ->> 'dev_mode') = 'true'
+        OR (auth.jwt() -> 'app_metadata' -> 'dev_mode') = 'true'::jsonb
+      )
       OR (auth.jwt() ->> 'role') != 'staff'
       OR (
         (auth.jwt() ->> 'role') = 'staff'

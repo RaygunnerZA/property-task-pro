@@ -1,6 +1,7 @@
 // ai-extract — Semantic Task Extraction Engine with Provider Switch & Ghost-Chip Resolution
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const AI_PROVIDER = (Deno.env.get("AI_PROVIDER") || "LOVABLE").toUpperCase();
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -54,12 +56,38 @@ Deno.serve(async (req) => {
 
     // 1. Semantic AI Extraction
     let ai;
+    const aiModelUsed = AI_PROVIDER === "OPENAI" ? "gpt-4o-mini" : AI_PROVIDER === "GEMINI" ? "gemini-2.0-flash" : "google/gemini-2.0-flash";
+    const aiStart = Date.now();
+    let aiStatus: AiRequestStatus = "success";
+    let aiErrorMessage: string | null = null;
     try {
       ai = await withTimeout(callAI(description), 9000); // 9s timeout
       console.log('AI extraction successful:', JSON.stringify(ai));
     } catch (error) {
+      const isTimeout = (error as Error)?.message === "Timeout";
+      aiStatus = isTimeout ? "timeout" : "error";
+      aiErrorMessage = String(error);
       console.log('AI extraction error, falling back to rule-based:', error);
       ai = ruleBased(description);
+    } finally {
+      if (SUPABASE_SERVICE_ROLE_KEY) {
+        const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const latency = Date.now() - aiStart;
+        logAiRequest(serviceClient, {
+          org_id: orgId,
+          function_name: "ai-extract",
+          model_used: aiModelUsed,
+          provider: AI_PROVIDER,
+          latency_ms: latency,
+          status: aiStatus,
+          error_message: aiErrorMessage,
+          entity_type: "task",
+          entity_id: null,
+          cost_usd: estimateCost(aiModelUsed, null, null),
+        });
+      }
     }
 
     // 2. Resolve entities using database - WRAP IN TRY/CATCH

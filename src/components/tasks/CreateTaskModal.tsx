@@ -48,6 +48,7 @@ import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
+import { track } from "@/lib/analytics";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
@@ -1770,6 +1771,11 @@ export function CreateTaskModal({
         queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
       }
       
+      track("task_created", {
+        org_id: orgId,
+        task_id: taskId,
+        source: prefill ? "ai" : "manual",
+      });
       toast({
         title: "Task created",
         description: createdEntities.length > 0 

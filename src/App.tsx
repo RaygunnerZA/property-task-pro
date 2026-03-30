@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,13 +7,16 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
-import { DataProvider } from "@/contexts/DataContext";
+import { DataProvider, useAuth, useOrg } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
 import { AuthHashHandler } from "@/components/AuthHashHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import Login from "@/pages/Login";
+import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
+
+initAnalytics();
 
 // Lazy load all page components (except Login and AppLayout which load instantly)
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -55,6 +58,7 @@ const ComplianceDashboard = lazy(() => import("./pages/ComplianceDashboard"));
 const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompliance"));
 const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
 const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
+const CalendarV2 = lazy(() => import("./pages/CalendarV2"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
 const RecordLibrary = lazy(() => import("./pages/record/RecordLibrary"));
@@ -115,6 +119,30 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Sits inside DataProvider so it has access to auth + org context.
+ * Calls identifyUser once the session and org are both resolved.
+ * Calls resetAnalyticsUser on sign-out.
+ */
+function AnalyticsIdentifier() {
+  const { user } = useAuth();
+  const { orgId } = useOrg();
+
+  useEffect(() => {
+    if (user?.id && orgId) {
+      identifyUser(user.id, orgId, "");
+    }
+  }, [user?.id, orgId]);
+
+  useEffect(() => {
+    if (!user) {
+      resetAnalyticsUser();
+    }
+  }, [user]);
+
+  return null;
+}
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -127,6 +155,7 @@ const App = () => {
             <SystemStatusProvider>
               <StatusBanner />
               <DataProvider>
+                <AnalyticsIdentifier />
                 <AppInitializer>
                   <Suspense fallback={<LoadingState message="Loading..." />}>
                     <Routes>
@@ -161,6 +190,9 @@ const App = () => {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
                                 
+                                {/* Calendar v2 — stacked-paper swipe */}
+                                <Route path="/calendar-v2" element={<CalendarV2 />} />
+
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<Properties />} />
                                 <Route path="/tasks" element={<Tasks />} />

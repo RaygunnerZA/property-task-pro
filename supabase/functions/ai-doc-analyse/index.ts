@@ -3,6 +3,7 @@
 // Does NOT auto-link — stores suggestions in metadata only
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -414,6 +415,13 @@ Deno.serve(async (req) => {
 
     const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
     const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
+    const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    let aiModelUsed = "gemini-2.0-flash";
+    let aiProviderUsed = "GEMINI";
+    let aiStatus: AiRequestStatus = "success";
+    let aiErrorMessage: string | null = null;
+    const aiStart = Date.now();
 
     try {
       const { base64, mimeType } = await fetchFileAsBase64(file_url);
@@ -423,23 +431,35 @@ Deno.serve(async (req) => {
       const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
 
       if (preferGemini && getGeminiKey()) {
+        aiModelUsed = "gemini-2.0-flash";
+        aiProviderUsed = "GEMINI";
         try {
           result = await callGeminiDoc(base64, effectiveMime, file_name);
         } catch (err) {
           if (fallbackEnabled && getOpenAIApiKey() && effectiveMime !== "application/pdf") {
+            aiModelUsed = "gpt-4o-mini";
+            aiProviderUsed = "OPENAI";
+            aiStatus = "fallback";
             result = await callOpenAIDoc(base64, effectiveMime, file_name);
           } else {
             throw err;
           }
         }
       } else if (preferOpenAI && getOpenAIApiKey()) {
+        aiModelUsed = "gpt-4o-mini";
+        aiProviderUsed = "OPENAI";
         if (effectiveMime === "application/pdf") {
           result = stubResponse(file_name);
+          aiStatus = "error";
+          aiErrorMessage = "OpenAI does not support PDF; stub response used";
         } else {
           try {
             result = await callOpenAIDoc(base64, effectiveMime, file_name);
           } catch (err) {
             if (fallbackEnabled && getGeminiKey()) {
+              aiModelUsed = "gemini-2.0-flash";
+              aiProviderUsed = "GEMINI";
+              aiStatus = "fallback";
               result = await callGeminiDoc(base64, effectiveMime, file_name);
             } else {
               throw err;
@@ -448,10 +468,32 @@ Deno.serve(async (req) => {
         }
       } else {
         result = stubResponse(file_name);
+        aiStatus = "error";
+        aiErrorMessage = "No AI provider configured; stub response used";
       }
     } catch (err) {
       console.error("ai-doc-analyse error:", err);
+      aiStatus = "error";
+      aiErrorMessage = String(err);
       result = stubResponse(file_name);
+    } finally {
+      if (serviceRoleKeyForLog) {
+        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKeyForLog, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        logAiRequest(serviceClient, {
+          org_id,
+          function_name: "ai-doc-analyse",
+          model_used: aiModelUsed,
+          provider: aiProviderUsed,
+          latency_ms: Date.now() - aiStart,
+          status: aiStatus,
+          error_message: aiErrorMessage,
+          entity_type: compliance_document_id ? "compliance_document" : attachment_id ? "attachment" : null,
+          entity_id: (compliance_document_id ?? attachment_id ?? null) as string | null,
+          cost_usd: estimateCost(aiModelUsed, null, null),
+        });
+      }
     }
 
     const status = computeExpiryStatus(result.expiry_date);

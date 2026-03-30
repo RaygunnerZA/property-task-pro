@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useDebounce } from "./useDebounce";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
+import { track } from "@/lib/analytics";
 // Minimum description length before making expensive AI calls
 const MIN_DESCRIPTION_LENGTH = 10;
 
@@ -129,6 +130,15 @@ export function useAIExtract(input: string) {
 
         if (data.ok && data.combined) {
           setResult(data.combined);
+          track("ai_task_generated", {
+            org_id: orgId,
+            chip_count:
+              (data.combined.spaces?.length ?? 0) +
+              (data.combined.people?.length ?? 0) +
+              (data.combined.teams?.length ?? 0) +
+              (data.combined.assets?.length ?? 0) +
+              (data.combined.themes?.length ?? 0),
+          });
         } else {
           setError(data.error || "AI extraction failed");
           setResult(null);
