@@ -591,6 +591,46 @@
     background-color: hsl(182 29% 63% / 0.5);
     border-radius: 9999px;
   }
+
+  @keyframes chip-chevron-glow {
+    0%,
+    100% {
+      opacity: 0.72;
+      filter: drop-shadow(0 0 4px rgba(142, 201, 206, 0.55));
+    }
+    50% {
+      opacity: 1;
+      filter: drop-shadow(0 0 11px rgba(142, 201, 206, 0.95));
+    }
+  }
+
+  @keyframes chip-collapse-x {
+    from {
+      opacity: 1;
+      transform: scaleX(1);
+      max-width: 220px;
+    }
+    to {
+      opacity: 0;
+      transform: scaleX(0.5);
+      max-width: 0;
+    }
+  }
+
+  @keyframes fade-slide-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0.7);
+      transform-origin: left center;
+      max-width: 0;
+    }
+    to {
+      opacity: 1;
+      transform: scaleX(1);
+      transform-origin: left center;
+      max-width: 220px;
+    }
+  }
   
   /* Gradient mask for scroll indicators */
   .mask-gradient-right {

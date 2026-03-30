@@ -55,7 +55,6 @@ import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { format, addDays, addMonths, startOfDay } from "date-fns";
@@ -138,6 +137,10 @@ const INTAKE_INPUT_MIN = 100;
 const INTAKE_INPUT_MAX = 240;
 function intakeInlineInputWidth(charCount: number) {
   return Math.min(INTAKE_INPUT_MAX, Math.max(INTAKE_INPUT_MIN, (charCount + 2) * INTAKE_INPUT_CH));
+}
+const INTAKE_SEARCH_INPUT_MIN = 65;
+function intakeSearchInputWidth(charCount: number) {
+  return Math.min(INTAKE_INPUT_MAX, Math.max(INTAKE_SEARCH_INPUT_MIN, (charCount + 2) * INTAKE_INPUT_CH));
 }
 
 function intakeWhoProposalChipLabel(p: WhoProposal): string {
@@ -259,6 +262,7 @@ export function IntakeModal({
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [priorityDefined, setPriorityDefined] = useState(false);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
+  const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
   const [templateId, setTemplateId] = useState("");
   const [recentTemplateIds, setRecentTemplateIds] = useState<string[]>([]);
@@ -288,6 +292,7 @@ export function IntakeModal({
   /** After Enter on an unknown person name (no DB match yet), show INVITE [NAME] until clicked or slot closes. */
   const [intakeWhoInviteDraft, setIntakeWhoInviteDraft] = useState<string | null>(null);
   const [intakeWherePropertyPickerOpen, setIntakeWherePropertyPickerOpen] = useState(false);
+  const [intakeWherePropertyQuery, setIntakeWherePropertyQuery] = useState("");
   const [intakeWhereSpaceEditing, setIntakeWhereSpaceEditing] = useState(false);
   const [intakeWhereSpaceQuery, setIntakeWhereSpaceQuery] = useState("");
   const [intakeWhenCustom, setIntakeWhenCustom] = useState(false);
@@ -360,6 +365,7 @@ export function IntakeModal({
       detectedLabels,
       detectedObjects,
       selectedPersonId: assignedUserId,
+      selectedTeamIds: assignedTeamIds,
     },
     { minDescriptionLength: 3 }
   );
@@ -386,11 +392,19 @@ export function IntakeModal({
     if (openChipSlot !== "who") setIntakeWhoInviteDraft(null);
   }, [openChipSlot]);
 
+  /** Dashboard property filter: keep intake location in sync with single-property scope */
+  useEffect(() => {
+    if (!defaultPropertyId) return;
+    setPropertyId(defaultPropertyId);
+    setSelectedSpaceIds([]);
+  }, [defaultPropertyId]);
+
   useEffect(() => {
     if (!openChipSlot) {
       setIntakeWhoMode(null);
       setIntakeWhoQuery("");
       setIntakeWherePropertyPickerOpen(false);
+      setIntakeWherePropertyQuery("");
       setIntakeWhereSpaceEditing(false);
       setIntakeWhereSpaceQuery("");
       setIntakeWhenCustom(false);
@@ -858,56 +872,8 @@ export function IntakeModal({
     return format(dateObj, "EEE d MMM").toUpperCase();
   }, []);
 
-  const chipShouldRenderAsFact = useCallback((chip: SuggestedChip) => {
-    if (chip.type === "date") return false;
-    return Boolean(chip.resolvedEntityId || !chip.blockingRequired);
-  }, []);
-
-  const formatSuggestionLabel = useCallback((chip: SuggestedChip) => {
-    const raw = (chip.value || chip.label).toUpperCase();
-    if (chip.type === "date") {
-      const sourceValue =
-        chip.resolvedEntityId && typeof chip.resolvedEntityId === "string"
-          ? chip.resolvedEntityId
-          : chip.label;
-      return formatDueDateLabel(sourceValue);
-    }
-    if (chip.blockingRequired && !chip.resolvedEntityId) {
-      switch (chip.type) {
-        case "person":
-          return `INVITE ${raw}`;
-        case "team":
-          return `CHOOSE ${raw}`;
-        case "space":
-        case "asset":
-          return `ADD ${raw}`;
-        case "category":
-        case "theme":
-          return `CHOOSE ${raw}`;
-        default:
-          return raw;
-      }
-    }
-    return chip.label.toUpperCase();
-  }, [formatDueDateLabel]);
-
-  const rowSuggestionChip = useCallback(
-    (...types: SuggestedChip["type"][]) => chipSuggestions.find((chip) => types.includes(chip.type)),
-    [chipSuggestions]
-  );
-
   const intakeRowChips: IntakeChipRowChip[] = useMemo(() => {
     const chips: IntakeChipRowChip[] = [];
-    const whoSuggestion = rowSuggestionChip("person", "team");
-    const whenSuggestion = rowSuggestionChip("date");
-    const assetSuggestion = rowSuggestionChip("asset");
-    const categorySuggestion = rowSuggestionChip("category", "theme");
-    const locationSuggestion = rowSuggestionChip("space");
-    const shouldPromptForProperty =
-      hasDescriptionDraft &&
-      chipSuggestions.length > 0 &&
-      !selectedProperty &&
-      !locationSuggestion;
 
     const assignedMember = members?.find((member) => member.user_id === assignedUserId);
     if (assignedMember?.display_name) {
@@ -916,26 +882,23 @@ export function IntakeModal({
         slot: "who",
         label: assignedMember.display_name.toUpperCase(),
         epistemic: "fact",
-      });
-    } else if (whoSuggestion) {
-      const inviteName = whoSuggestion.value || whoSuggestion.label;
-      chips.push({
-        id: whoSuggestion.id,
-        slot: "who",
-        label: formatSuggestionLabel(whoSuggestion),
-        epistemic: chipShouldRenderAsFact(whoSuggestion) ? "fact" : "proposal",
-        onPress: chipShouldRenderAsFact(whoSuggestion)
-          ? undefined
-          : () => {
-              const parsed = splitName(inviteName);
-              setInvitePrefill({
-                firstName: parsed.firstName,
-                lastName: parsed.lastName,
-              });
-              setInviteModalOpen(true);
-            },
+        removable: true,
+        onRemove: () => setAssignedUserId(undefined),
       });
     }
+
+    assignedTeamIds.forEach((teamId) => {
+      const team = teams.find((t) => t.id === teamId);
+      const name = team?.name?.trim() || "Team";
+      chips.push({
+        id: `who-team-${teamId}`,
+        slot: "who",
+        label: name.toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onRemove: () => setAssignedTeamIds((prev) => prev.filter((id) => id !== teamId)),
+      });
+    });
 
     if (selectedProperty) {
       chips.push({
@@ -943,13 +906,11 @@ export function IntakeModal({
         slot: "where",
         label: (selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase(),
         epistemic: "fact",
-      });
-    } else if (shouldPromptForProperty) {
-      chips.push({
-        id: "where-add-property",
-        slot: "where",
-        label: "ADD PROPERTY",
-        epistemic: "proposal",
+        removable: true,
+        onRemove: () => {
+          setPropertyId(defaultPropertyId || "");
+          setSelectedSpaceIds([]);
+        },
       });
     }
 
@@ -959,6 +920,8 @@ export function IntakeModal({
         slot: "where",
         label: space.name.toUpperCase(),
         epistemic: "fact",
+        removable: true,
+        onRemove: () => setSelectedSpaceIds((prev) => prev.filter((id) => id !== space.id)),
       });
     });
 
@@ -968,6 +931,8 @@ export function IntakeModal({
         slot: "asset",
         label: asset.name.toUpperCase(),
         epistemic: "fact",
+        removable: true,
+        onRemove: () => setSelectedAssetIds((prev) => prev.filter((id) => id !== asset.id)),
       });
     });
 
@@ -975,8 +940,10 @@ export function IntakeModal({
       chips.push({
         id: `when-${dueDate}`,
         slot: "when",
-        label: formatDueDateLabel(dueDate),
+        label: "DATE",
         epistemic: "fact",
+        removable: true,
+        onRemove: () => setDueDate(""),
       });
       if (repeatPreset !== "none") {
         chips.push({
@@ -984,15 +951,10 @@ export function IntakeModal({
           slot: "when",
           label: `REPEAT ${repeatPreset.toUpperCase()}`,
           epistemic: "fact",
+          removable: true,
+          onRemove: () => setRepeatPreset("none"),
         });
       }
-    } else if (whenSuggestion) {
-      chips.push({
-        id: whenSuggestion.id,
-        slot: "when",
-        label: formatSuggestionLabel(whenSuggestion),
-        epistemic: "proposal",
-      });
     }
 
     milestones.forEach((milestone) => {
@@ -1001,25 +963,10 @@ export function IntakeModal({
         slot: "when",
         label: `MS ${formatDueDateLabel(milestone.date)}`,
         epistemic: "fact",
+        removable: true,
+        onRemove: () => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id)),
       });
     });
-
-    if (assetSuggestion) {
-      chips.push({
-        id: assetSuggestion.id,
-        slot: "asset",
-        label: formatSuggestionLabel(assetSuggestion),
-        epistemic: chipShouldRenderAsFact(assetSuggestion) ? "fact" : "proposal",
-        onPress: () => {
-          if (!propertyId) {
-            setOpenChipSlot("where");
-            return;
-          }
-          setAssetDraftName(assetSuggestion.value || assetSuggestion.label);
-          setOpenChipSlot("asset");
-        },
-      });
-    }
 
     if (priorityDefined && priority !== "medium") {
       chips.push({
@@ -1027,17 +974,12 @@ export function IntakeModal({
         slot: "priority",
         label: priority.toUpperCase(),
         epistemic: "fact",
+        removable: true,
+        onRemove: () => {
+          setPriority("medium");
+          setPriorityDefined(false);
+        },
       });
-    } else if (!priorityDefined) {
-      const prioritySuggestion = rowSuggestionChip("priority");
-      if (prioritySuggestion?.label) {
-        chips.push({
-          id: prioritySuggestion.id,
-          slot: "priority",
-          label: prioritySuggestion.label.toUpperCase(),
-          epistemic: chipShouldRenderAsFact(prioritySuggestion) ? "fact" : "proposal",
-        });
-      }
     }
 
     selectedThemeIds.forEach((themeId) => {
@@ -1049,40 +991,29 @@ export function IntakeModal({
         slot: "category",
         label: theme.name.toUpperCase(),
         epistemic: "fact",
+        removable: true,
+        onRemove: () => setSelectedThemeIds((prev) => prev.filter((id) => id !== themeId)),
       });
     });
 
-    if (categorySuggestion && !selectedThemeIds.length) {
-      chips.push({
-        id: categorySuggestion.id,
-        slot: "category",
-        label: formatSuggestionLabel(categorySuggestion),
-        epistemic: chipShouldRenderAsFact(categorySuggestion) ? "fact" : "proposal",
-      });
-    }
-
     return chips;
   }, [
+    assignedTeamIds,
     assignedUserId,
     categories,
-    chipShouldRenderAsFact,
     dueDate,
     milestones,
     formatDueDateLabel,
-    formatSuggestionLabel,
-    hasDescriptionDraft,
-    chipSuggestions.length,
     members,
     priority,
     priorityDefined,
     repeatPreset,
     propertyId,
-    rowSuggestionChip,
     selectedAssets,
     selectedProperty,
     selectedSpaces,
     selectedThemeIds,
-    splitName,
+    teams,
   ]);
 
   const toggleSpaceSelection = useCallback((spaceId: string) => {
@@ -1145,12 +1076,12 @@ export function IntakeModal({
             const nameFromLabel = p.label.replace(/^Invite\s+/i, "").trim();
             openInviteModalFromRawName(nameFromLabel);
           } else if (p.type === "team" && p.entityId) {
-            toast({
-              title: "Team assignment",
-              description: "Assign a team from the full Create Task screen.",
-            });
+            setAssignedTeamIds((prev) =>
+              prev.includes(p.entityId as string) ? prev : [...prev, p.entityId as string]
+            );
             setIntakeWhoInviteDraft(null);
             resetWhoInput();
+            onClose();
           } else if (p.type === "create_team") {
             toast({
               title: "New team",
@@ -1166,9 +1097,10 @@ export function IntakeModal({
         );
         const extraMemberChips =
           intakeWhoMode === "person"
-            ? q
-              ? visible.filter((m) => !proposalPersonIds.has(m.user_id)).slice(0, 20)
-              : visible.slice(0, 24)
+            ? (q
+                ? visible.filter((m) => !proposalPersonIds.has(m.user_id) && m.user_id !== assignedUserId)
+                : visible.filter((m) => m.user_id !== assignedUserId)
+              ).slice(0, 24)
             : [];
 
         const proposalTeamIds = new Set(
@@ -1176,14 +1108,35 @@ export function IntakeModal({
         );
         const extraTeamChips =
           intakeWhoMode === "team"
-            ? teamQ
-              ? visibleTeams.filter((t) => !proposalTeamIds.has(t.id)).slice(0, 20)
-              : visibleTeams.slice(0, 24)
+            ? (teamQ
+                ? visibleTeams.filter(
+                    (t) => !proposalTeamIds.has(t.id) && !assignedTeamIds.includes(t.id)
+                  )
+                : visibleTeams.filter((t) => !assignedTeamIds.includes(t.id))
+              ).slice(0, 24)
             : [];
 
         return {
           row2: (
             <>
+              {intakeWhoMode === null && (
+                <input
+                  type="text"
+                  value={intakeWhoQuery}
+                  onChange={(e) => setIntakeWhoQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setIntakeWhoQuery("");
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const first = ranked.find((m) => m.user_id !== assignedUserId);
+                      if (first) pickMember(first.user_id);
+                    }
+                  }}
+                  placeholder="SEARCH"
+                className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
+                style={{ width: intakeSearchInputWidth(intakeWhoQuery.length) }}
+                />
+              )}
               {intakeWhoMode === "person" ? (
                 <input
                   ref={intakeWhoPersonInputRef}
@@ -1244,12 +1197,11 @@ export function IntakeModal({
                       if (whoIntakeTeamProposals[0]) {
                         handleIntakeWhoProposal(whoIntakeTeamProposals[0]);
                       } else if (visibleTeams[0]) {
-                        toast({
-                          title: "Team assignment",
-                          description: "Assign a team from the full Create Task screen.",
-                        });
+                        const t0 = visibleTeams[0];
+                        setAssignedTeamIds((prev) => (prev.includes(t0.id) ? prev : [...prev, t0.id]));
                         setIntakeWhoInviteDraft(null);
                         resetWhoInput();
+                        onClose();
                       }
                     }
                   }}
@@ -1279,13 +1231,16 @@ export function IntakeModal({
           ),
           row3: (
             <>
-              {assignedUserId && (
+              {(assignedUserId || assignedTeamIds.length > 0) && (
                 <SemanticChip
                   epistemic="proposal"
                   label="CLEAR"
                   truncate={false}
                   pressOnPointerDown
-                  onPress={() => setAssignedUserId(undefined)}
+                  onPress={() => {
+                    setAssignedUserId(undefined);
+                    setAssignedTeamIds([]);
+                  }}
                   className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 h-[24px]"
                 />
               )}
@@ -1300,10 +1255,13 @@ export function IntakeModal({
                 />
               )}
               {intakeWhoMode === null &&
-                ranked.slice(0, 24).map((member) => (
+                ranked
+                  .filter((m) => m.user_id !== assignedUserId)
+                  .slice(0, 24)
+                  .map((member) => (
                   <SemanticChip
                     key={member.user_id}
-                    epistemic={assignedUserId === member.user_id ? "fact" : "proposal"}
+                    epistemic="proposal"
                     label={(member.display_name || member.email || "Member").toUpperCase()}
                     truncate
                     pressOnPointerDown
@@ -1312,7 +1270,11 @@ export function IntakeModal({
                   />
                 ))}
               {intakeWhoMode === "person" &&
-                whoIntakePersonProposals.map((proposal) => (
+                whoIntakePersonProposals
+                  .filter(
+                    (p) => !(p.type === "person" && p.entityId && p.entityId === assignedUserId)
+                  )
+                  .map((proposal) => (
                   <SemanticChip
                     key={proposal.id}
                     epistemic="proposal"
@@ -1324,7 +1286,9 @@ export function IntakeModal({
                   />
                 ))}
               {intakeWhoMode === "team" &&
-                whoIntakeTeamProposals.map((proposal) => (
+                whoIntakeTeamProposals
+                  .filter((p) => !(p.type === "team" && p.entityId && assignedTeamIds.includes(p.entityId as string)))
+                  .map((proposal) => (
                   <SemanticChip
                     key={proposal.id}
                     epistemic="proposal"
@@ -1356,11 +1320,9 @@ export function IntakeModal({
                     truncate
                     pressOnPointerDown
                     onPress={() => {
-                      toast({
-                        title: "Team assignment",
-                        description: "Assign a team from the full Create Task screen.",
-                      });
+                      setAssignedTeamIds((prev) => (prev.includes(team.id) ? prev : [...prev, team.id]));
                       resetWhoInput();
+                      onClose();
                     }}
                     className="shrink-0 max-w-[220px]"
                   />
@@ -1371,6 +1333,7 @@ export function IntakeModal({
       }
 
       if (slot === "where") {
+        const pq = intakeWherePropertyQuery.trim().toLowerCase();
         const unresolvedSpaceSuggestions = chipSuggestions.filter(
           (chip) =>
             chip.type === "space" &&
@@ -1386,13 +1349,37 @@ export function IntakeModal({
         const hasExactSpaceMatch =
           Boolean(sq) && spaces.some((s) => s.name.toLowerCase() === sq);
         const spaceInputW = intakeInlineInputWidth(intakeWhereSpaceQuery.length);
-        const otherProperties = properties
-          .filter((p: { id: string }) => p.id !== selectedProperty?.id)
-          .slice(0, 12);
+        const propertyMatches = properties.filter((p: { id: string; nickname?: string; address?: string }) => {
+          if (p.id === selectedProperty?.id) return false;
+          if (!pq) return true;
+          const label = `${p.nickname || ""} ${p.address || ""}`.toLowerCase();
+          return label.includes(pq);
+        });
+        const otherProperties = propertyMatches.slice(0, 12);
+        const propertySearchW = intakeInlineInputWidth(intakeWherePropertyQuery.length);
 
         return {
           row2: (
             <>
+              <input
+                type="text"
+                value={intakeWherePropertyQuery}
+                onChange={(e) => setIntakeWherePropertyQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setIntakeWherePropertyQuery("");
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const first = propertyMatches[0];
+                    if (!first) return;
+                    setPropertyId(first.id);
+                    setSelectedSpaceIds([]);
+                    setIntakeWherePropertyQuery("");
+                  }
+                }}
+                placeholder="SEARCH"
+                className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
+                style={{ width: intakeSearchInputWidth(intakeWherePropertyQuery.length) }}
+              />
               {intakeWherePropertyPickerOpen ? (
                 <>
                   <SemanticChip
@@ -1505,24 +1492,38 @@ export function IntakeModal({
           ),
           row3: (
             <>
-              {selectedProperty && (
-                <SemanticChip
-                  epistemic="fact"
-                  label={(selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase()}
-                  truncate
-                  pressOnPointerDown
-                  onPress={() => onClose()}
-                  className="shrink-0 max-w-[200px]"
-                />
-              )}
               {!intakeWherePropertyPickerOpen &&
-                otherProperties.map((property: { id: string; icon_name?: string; nickname?: string; address?: string }) => {
+                otherProperties.map((property: { id: string; icon_name?: string; nickname?: string; address?: string; icon_color_hex?: string }) => {
                   const Icon = getAssetIcon(property.icon_name || "building");
+                  const fullLabel = (property.nickname || property.address || "Property").toUpperCase();
+                  const color =
+                    typeof property.icon_color_hex === "string" && property.icon_color_hex.trim()
+                      ? property.icon_color_hex.trim()
+                      : "#8EC9CE";
+                  const compactPropertyChip =
+                    Boolean(defaultPropertyId) && property.id !== defaultPropertyId;
+                  if (compactPropertyChip) {
+                    return (
+                      <button
+                        key={property.id}
+                        type="button"
+                        title={fullLabel}
+                        aria-label={fullLabel}
+                        onClick={() => {
+                          setPropertyId(property.id);
+                          setSelectedSpaceIds([]);
+                        }}
+                        className="h-6 w-6 shrink-0 flex items-center justify-center rounded-[8px] bg-background/70 shadow-e1"
+                      >
+                        <Icon className="h-3.5 w-3.5" style={{ color }} />
+                      </button>
+                    );
+                  }
                   return (
                     <SemanticChip
                       key={property.id}
                       epistemic="proposal"
-                      label={(property.nickname || property.address || "Property").toUpperCase()}
+                      label={fullLabel}
                       icon={<Icon className="h-3.5 w-3.5" />}
                       truncate
                       pressOnPointerDown
@@ -1612,6 +1613,9 @@ export function IntakeModal({
         const selectedDueDate = dueDate ? new Date(`${dueDate}T00:00:00`) : undefined;
         const selectedMilestoneDate = milestoneDraftDate ? new Date(`${milestoneDraftDate}T00:00:00`) : undefined;
         const activeWhenDate = whenTab === "milestone" ? milestoneDraftDate : dueDate;
+        const dueDateChipLabel = dueDate
+          ? `DUE ${format(new Date(`${dueDate}T00:00:00`), "d MMMM").toUpperCase()}`
+          : "DUE DATE";
         const applyQuick = (date: string) => {
           setIntakeWhenCustom(false);
           if (whenTab === "milestone") {
@@ -1646,39 +1650,27 @@ export function IntakeModal({
         ) : (
           <>
             <SemanticChip
-              epistemic="proposal"
-              label="PRESETS"
+              epistemic={whenTab === "due" && dueDate ? "fact" : "proposal"}
+              label={dueDateChipLabel}
               truncate={false}
               pressOnPointerDown
-              onPress={() => setIntakeWhenCustom(false)}
-              className="shrink-0 text-[11px]"
-            />
-            {activeWhenDate && (
-              <SemanticChip
-                epistemic="fact"
-                label={formatDueDateLabel(activeWhenDate)}
-                removable
-                onRemove={() => {
-                  if (whenTab === "milestone") setMilestoneDraftDate(format(today, "yyyy-MM-dd"));
-                  else setDueDate("");
-                }}
-                className="shrink-0"
-              />
-            )}
-            <SemanticChip
-              epistemic="proposal"
-              label="REPEAT"
-              truncate={false}
-              pressOnPointerDown
-              onPress={() => setWhenTab("repeat")}
+              onPress={() => setWhenTab("due")}
               className="shrink-0 text-[11px]"
             />
             <SemanticChip
-              epistemic="proposal"
+              epistemic={whenTab === "milestone" ? "fact" : "proposal"}
               label="+ MILESTONE"
               truncate={false}
               pressOnPointerDown
               onPress={() => setWhenTab("milestone")}
+              className="shrink-0 text-[11px]"
+            />
+            <SemanticChip
+              epistemic={whenTab === "repeat" ? "fact" : "proposal"}
+              label="REPEAT"
+              truncate={false}
+              pressOnPointerDown
+              onPress={() => setWhenTab("repeat")}
               className="shrink-0 text-[11px]"
             />
           </>
@@ -1688,55 +1680,6 @@ export function IntakeModal({
           row2: whenRow2,
           row3: (
             <div className="flex w-full min-w-0 shrink-0 flex-col gap-2">
-            <div
-              role="tablist"
-              aria-label="When options"
-              className="flex h-[37px] max-w-full flex-wrap items-center gap-2 rounded-[12px] px-1 py-1 shadow-[inset_0px_4px_12px_0px_rgba(0,0,0,0.15),inset_0.8px_-9.5px_6.3px_0px_rgba(255,255,255,0.6)]"
-            >
-              <button
-                type="button"
-                onClick={() => setWhenTab("milestone")}
-                role="tab"
-                aria-selected={whenTab === "milestone"}
-                className={cn(
-                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
-                  whenTab === "milestone"
-                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
-                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
-                )}
-              >
-                +MILESTONE
-              </button>
-              <button
-                type="button"
-                onClick={() => setWhenTab("due")}
-                role="tab"
-                aria-selected={whenTab === "due"}
-                className={cn(
-                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
-                  whenTab === "due"
-                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
-                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
-                )}
-              >
-                DUE DATE
-              </button>
-              <button
-                type="button"
-                onClick={() => setWhenTab("repeat")}
-                role="tab"
-                aria-selected={whenTab === "repeat"}
-                className={cn(
-                  "h-6 px-3 rounded-[16px] text-[10px] font-mono tracking-[0.08em] uppercase transition-all",
-                  whenTab === "repeat"
-                    ? "bg-background text-foreground shadow-e1 ring-2 ring-[#E6A400]"
-                    : "bg-transparent text-muted-foreground shadow-none hover:text-foreground"
-                )}
-              >
-                REPEAT
-              </button>
-            </div>
-
             {whenTab === "repeat" && (
               <div className="flex flex-wrap gap-2">
                 {(["daily", "weekly", "monthly"] as const).map((option) => (
@@ -1763,7 +1706,7 @@ export function IntakeModal({
               </div>
             )}
 
-            {whenTab !== "repeat" && intakeWhenCustom && (
+            {intakeWhenCustom && (
               <div className="rounded-lg bg-background/80 p-2 w-fit">
                 <MiniCalendar
                   mode="single"
@@ -1804,34 +1747,6 @@ export function IntakeModal({
 
             {whenTab !== "repeat" && !intakeWhenCustom && whenTab === "due" && (
               <span className="sr-only">Choose a quick date in row above, or Custom for the calendar.</span>
-            )}
-
-            {whenTab !== "repeat" && !intakeWhenCustom && whenTab === "milestone" && (
-              <div className="flex w-full min-w-0 flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!milestoneDraftDate) return;
-                    setMilestones((prev) => [...prev, { id: crypto.randomUUID(), date: milestoneDraftDate }]);
-                  }}
-                  className="self-start shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground shadow-e1 hover:text-foreground"
-                >
-                  Add milestone
-                </button>
-                {milestones.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {milestones.map((milestone) => (
-                      <SemanticChip
-                        key={milestone.id}
-                        epistemic="fact"
-                        label={formatDueDateLabel(milestone.date)}
-                        removable
-                        onRemove={() => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id))}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
             )}
 
             {whenTab === "milestone" && intakeWhenCustom && (
@@ -1884,6 +1799,28 @@ export function IntakeModal({
         return {
           row2: (
             <>
+              {!intakeAssetSearchOpen && (
+                <input
+                  type="text"
+                  value={intakeAssetQuery}
+                  onChange={(e) => setIntakeAssetQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setIntakeAssetQuery("");
+                    if (e.key === "Enter" && intakeAssetQuery.trim()) {
+                      e.preventDefault();
+                      const exact = availableAssets.find(
+                        (a) => a.name.toLowerCase() === intakeAssetQuery.trim().toLowerCase()
+                      );
+                      if (exact) {
+                        setSelectedAssetIds((prev) => (prev.includes(exact.id) ? prev : [...prev, exact.id]));
+                      }
+                    }
+                  }}
+                  placeholder="SEARCH"
+                className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
+                style={{ width: intakeSearchInputWidth(intakeAssetQuery.length) }}
+                />
+              )}
               {intakeAssetSearchOpen && propertyId ? (
                 <input
                   ref={intakeAssetInputRef}
@@ -1987,10 +1924,13 @@ export function IntakeModal({
                   />
                 )}
               {propertyId &&
-                assetsRanked.slice(0, 20).map((asset) => (
+                assetsRanked
+                  .filter((asset) => !selectedAssetIds.includes(asset.id))
+                  .slice(0, 20)
+                  .map((asset) => (
                   <SemanticChip
                     key={asset.id}
-                    epistemic={selectedAssetIds.includes(asset.id) ? "fact" : "proposal"}
+                    epistemic="proposal"
                     label={asset.name.toUpperCase()}
                     truncate
                     pressOnPointerDown
@@ -2086,6 +2026,24 @@ export function IntakeModal({
                   className="shrink-0 max-w-[200px]"
                 />
               ))}
+              {!intakeTagEditing && (
+                <input
+                  type="text"
+                  value={intakeTagQuery}
+                  onChange={(e) => setIntakeTagQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setIntakeTagQuery("");
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const first = tagMatches.find((cat) => !selectedThemeIds.includes(cat.id));
+                      if (first) commitTagId(first.id);
+                    }
+                  }}
+                  placeholder="SEARCH"
+                className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
+                style={{ width: intakeSearchInputWidth(intakeTagQuery.length) }}
+                />
+              )}
               {intakeTagEditing ? (
                 <input
                   ref={intakeTagInputRef}
@@ -2159,10 +2117,13 @@ export function IntakeModal({
                   className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 max-w-[200px]"
                 />
               )}
-              {tagMatches.slice(0, 20).map((cat) => (
+              {tagMatches
+                .filter((cat) => !selectedThemeIds.includes(cat.id))
+                .slice(0, 20)
+                .map((cat) => (
                 <SemanticChip
                   key={cat.id}
-                  epistemic={selectedThemeIds.includes(cat.id) ? "fact" : "proposal"}
+                  epistemic="proposal"
                   label={cat.name.toUpperCase()}
                   truncate
                   pressOnPointerDown
@@ -2200,9 +2161,11 @@ export function IntakeModal({
       };
     },
     [
+      assignedTeamIds,
       assignedUserId,
       categories,
       chipSuggestions,
+      defaultPropertyId,
       dueDate,
       formatDueDateLabel,
       intakeAssetQuery,
@@ -2214,6 +2177,7 @@ export function IntakeModal({
       intakeWhoMode,
       intakeWhoQuery,
       intakeWherePropertyPickerOpen,
+      intakeWherePropertyQuery,
       intakeWhereSpaceEditing,
       intakeWhereSpaceQuery,
       members,
@@ -2575,6 +2539,15 @@ export function IntakeModal({
         }
       }
 
+      if (assignedTeamIds.length > 0) {
+        const { error: taskTeamsError } = await supabase.from("task_teams").insert(
+          assignedTeamIds.map((teamId) => ({ task_id: newTask.id, team_id: teamId }))
+        );
+        if (taskTeamsError) {
+          console.error("[IntakeModal] Error linking teams to task:", taskTeamsError);
+        }
+      }
+
       await uploadIntakeAttachments({
         parentType: "task",
         parentId: newTask.id,
@@ -2627,6 +2600,7 @@ export function IntakeModal({
     setPriority("medium");
     setPriorityDefined(false);
     setAssignedUserId(undefined);
+    setAssignedTeamIds([]);
     setSubtasks([]);
     setTemplateId("");
     setRecentTemplateIds([]);
@@ -2645,6 +2619,7 @@ export function IntakeModal({
     setIntakeWhoMode(null);
     setIntakeWhoQuery("");
     setIntakeWherePropertyPickerOpen(false);
+    setIntakeWherePropertyQuery("");
     setIntakeWhereSpaceEditing(false);
     setIntakeWhereSpaceQuery("");
     setIntakeWhenCustom(false);

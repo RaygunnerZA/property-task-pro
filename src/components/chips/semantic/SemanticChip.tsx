@@ -8,7 +8,7 @@
  * Rules: fact+entry invalid, compact+entry invalid.
  */
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -42,6 +42,8 @@ export interface SemanticChipProps {
   color?: string;
   /** When false, label uses natural width (no truncation). Use for instruction chips. */
   truncate?: boolean;
+  /** For proposal chips, collapse horizontally before calling onPress. */
+  transferOnPress?: boolean;
   className?: string;
 }
 
@@ -64,10 +66,37 @@ export function SemanticChip({
   icon,
   color,
   truncate = true,
+  transferOnPress = false,
   className,
 }: SemanticChipProps) {
+  const TRANSFER_COLLAPSE_MS = 260;
   const [isPressed, setIsPressed] = useState(false);
+  const [isTransferCollapsing, setIsTransferCollapsing] = useState(false);
   const firedOnPointerDown = useRef(false);
+  const transferTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (transferTimeoutRef.current !== null) {
+        window.clearTimeout(transferTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const shouldTransferOnPress = transferOnPress || (epistemic === "proposal" && pressOnPointerDown);
+  const triggerPress = (e?: React.SyntheticEvent) => {
+    if (!onPress) return;
+    e?.stopPropagation();
+    if (!shouldTransferOnPress) {
+      onPress();
+      return;
+    }
+    if (isTransferCollapsing) return;
+    setIsTransferCollapsing(true);
+    transferTimeoutRef.current = window.setTimeout(() => {
+      onPress();
+    }, TRANSFER_COLLAPSE_MS);
+  };
 
   if (epistemic === "fact" && interaction === "entry") {
     if (process.env.NODE_ENV === "development") {
@@ -84,8 +113,7 @@ export function SemanticChip({
     setIsPressed(true);
     if (pressOnPointerDown && onPress) {
       firedOnPointerDown.current = true;
-      e?.stopPropagation();
-      onPress();
+      triggerPress(e);
     }
   };
   const handlePointerUp = () => setTimeout(() => setIsPressed(false), 90);
@@ -95,8 +123,7 @@ export function SemanticChip({
       return;
     }
     if (onPress) {
-      e.stopPropagation();
-      onPress();
+      triggerPress(e);
     }
   };
   const handleRemove = (e: React.MouseEvent) => {
@@ -135,7 +162,9 @@ export function SemanticChip({
     onPress && !isPressed && "hover:opacity-90",
     pending && "opacity-75 text-muted-foreground",
     (removable || dropdown) && "group",
-    animateIn && "animate-fade-slide-in",
+    animateIn && "origin-left animate-[fade-slide-in_280ms_ease-out]",
+    isTransferCollapsing &&
+      "absolute z-10 origin-left pointer-events-none animate-[chip-collapse-x_260ms_cubic-bezier(0.22,1,0.36,1)_forwards]",
     className
   );
 

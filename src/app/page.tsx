@@ -255,10 +255,12 @@ export default function Dashboard() {
   };
 
   const handleFilterClick = (filterId: string) => {
-    // Set the filter to apply, which will trigger TaskList to apply it
-    setFilterToApply(filterId);
-    // Switch to tasks tab when filtering
+    // Switch to tasks tab for any property/filter interaction.
     setActiveTab("tasks");
+    // "show-tasks" is a tab-switch signal only (no filter mutation).
+    if (filterId === "show-tasks") return;
+    // Set the filter to apply, which will trigger TaskList to apply it.
+    setFilterToApply(filterId);
     // Reset filterToApply after a brief moment to allow the filter to be toggled again
     setTimeout(() => setFilterToApply(null), 100);
   };
@@ -282,6 +284,11 @@ export default function Dashboard() {
   const selectedTaskId = selectedItem?.type === "task" ? selectedItem.id : null;
   const detailsSectionTitle = selectedTaskId ? "Task Details" : "Details";
 
+  const intakeScopedPropertyId = useMemo(() => {
+    if (selectedPropertyIds.size !== 1) return undefined;
+    return Array.from(selectedPropertyIds)[0];
+  }, [selectedPropertyIds]);
+
   const thirdColumnContent = isLargeScreen ? (
     <div className="flex flex-col pr-2 pb-0 pl-2">
       <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-[15px]">Task Workbench</h2>
@@ -290,6 +297,7 @@ export default function Dashboard() {
           open={true}
           onOpenChange={() => undefined}
           onTaskCreated={handleTaskCreated}
+          defaultPropertyId={intakeScopedPropertyId}
           variant="column"
           headless
         />
@@ -443,6 +451,7 @@ export default function Dashboard() {
           open={showCreateTask}
           onOpenChange={handleCreateTaskOpenChange}
           onTaskCreated={handleTaskCreated}
+          defaultPropertyId={intakeScopedPropertyId}
         />
       )}
 
