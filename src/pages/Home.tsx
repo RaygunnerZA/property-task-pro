@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { DashboardCalendar } from '@/components/dashboard/DashboardCalendar';
+import { DashboardCalendarV2 } from '@/components/dashboard/DashboardCalendarV2';
 import { CheckSquare, Calendar, Building2, AlertCircle, Clock, Home as HomeIcon, Shield, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
@@ -68,8 +68,8 @@ const Home = () => {
     >
       <div className="space-y-6">
         {/* Calendar */}
-        <div className="rounded-xl bg-card p-4 shadow-e1">
-          <DashboardCalendar
+        <div className="rounded-xl bg-transparent p-4 shadow-e1">
+          <DashboardCalendarV2
             tasks={tasks}
             selectedDate={selectedDate}
             onDateSelect={(date) => setSelectedDate(date || new Date())}

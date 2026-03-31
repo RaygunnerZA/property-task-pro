@@ -174,7 +174,7 @@ export function PropertyIdentityStrip({
       <div
         className="relative w-full overflow-hidden"
         style={{
-          height: "88px",
+          height: "94px",
           backgroundColor: property.thumbnail_url ? undefined : iconColor,
         }}
       >
@@ -211,7 +211,7 @@ export function PropertyIdentityStrip({
 
         {/* Property name — bottom overlay */}
         <div className="absolute bottom-2 left-2.5 right-9 z-10">
-          <p className="text-white font-semibold text-sm leading-tight truncate drop-shadow-sm">
+          <p className="text-white font-semibold text-[22px] leading-tight truncate drop-shadow-sm">
             {displayName}
           </p>
         </div>
@@ -290,7 +290,7 @@ export function PropertyIdentityStrip({
       </div>
 
       {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="overflow-hidden" style={{ height: "148px" }}>
+      <div className="overflow-hidden" style={{ height: "152.5px" }}>
         <div
           className="flex transition-transform duration-300 ease-out h-full"
           style={{ transform: `translateX(-${activeTab * 100}%)` }}

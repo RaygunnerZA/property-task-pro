@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
+import { DashboardCalendarV2 } from "@/components/dashboard/DashboardCalendarV2";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
@@ -380,14 +380,14 @@ export function LeftColumn({
           ref={calendarRef}
           className="flex-shrink-0 w-full"
         >
-          <div className="px-2 pt-4 pb-4 w-full">
+          <div className="px-2 pt-3 pb-4 w-full">
             {tasksLoading ? (
-              <div className="rounded-lg bg-card/60 px-3 py-[5px] shadow-e1 w-full">
+              <div className="rounded-lg bg-transparent px-[2px] py-[5px] shadow-none w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-card/60 px-3 py-[5px] shadow-e1 w-full">
-                <DashboardCalendar
+              <div className="rounded-lg bg-transparent px-[2px] py-[5px] shadow-none w-full">
+                <DashboardCalendarV2
                   tasks={tasks}
                   selectedDate={selectedDate}
                   onDateSelect={onDateSelect}
