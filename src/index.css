@@ -24,7 +24,7 @@
     --popover-foreground: 248 15% 18%;
 
     /* Primary - Teal */
-    --primary: 182 29% 63%;          /* #8EC9CE */
+    --primary: 185 40% 68%;          /* #8EC9CE rgb(142,201,206) */
     --primary-foreground: 0 0% 100%;
     --primary-deep: 182 23% 56%;     /* #71AEB3 - Darker teal */
 
@@ -56,7 +56,7 @@
     /* Borders & Inputs */
     --border: 40 12% 88%;            /* #E3DFD7 - Concrete */
     --input: 40 12% 88%;
-    --ring: 182 29% 63%;             /* Primary teal */
+    --ring: 185 40% 68%;             /* Primary teal */
 
     /* Special Tokens */
     --concrete: 40 12% 88%;          /* Border gray */
@@ -73,12 +73,12 @@
     /* Sidebar - Deep Ink #2A293E = 248 15% 20% */
     --sidebar-background: 248 15% 20%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 182 29% 63%;           /* Teal accent */
+    --sidebar-primary: 185 40% 68%;           /* Teal accent */
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 248 12% 28%;            /* Lighter ink hover */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 248 12% 25%;
-    --sidebar-ring: 182 29% 63%;
+    --sidebar-ring: 185 40% 68%;
     --sidebar-muted: 248 10% 40%;
   }
 
@@ -93,7 +93,7 @@
     --popover: 248 15% 16%;
     --popover-foreground: 40 20% 94%;
 
-    --primary: 182 29% 63%;
+    --primary: 185 40% 68%;
     --primary-foreground: 248 15% 12%;
     --primary-deep: 182 23% 56%;
 
@@ -120,19 +120,19 @@
 
     --border: 248 10% 25%;
     --input: 248 10% 25%;
-    --ring: 182 29% 63%;
+    --ring: 185 40% 68%;
 
     --concrete: 248 10% 25%;
     --ink: 40 20% 94%;
     /* Sidebar - Deep Ink dark mode */
     --sidebar-background: 248 15% 12%;
     --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 182 29% 63%;
+    --sidebar-primary: 185 40% 68%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 248 12% 20%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 248 12% 18%;
-    --sidebar-ring: 182 29% 63%;
+    --sidebar-ring: 185 40% 68%;
   }
 }
 
@@ -266,7 +266,7 @@
   
   /* Primary button shadow */
   .shadow-primary-btn {
-    box-shadow: 3px 5px 5px 2px rgba(0, 0, 0, 0.13), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 1px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.27);
+    box-shadow: 2px 2px 2px 0px rgba(0, 0, 0, 0.15), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 2px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.15);
   }
   
   /* Button pressed state */
@@ -579,7 +579,7 @@
   /* Horizontal overflow: thin track at bottom — 3px, 50% transparent primary teal */
   .scrollbar-hz-teal {
     scrollbar-width: thin;
-    scrollbar-color: hsl(182 29% 63% / 0.5) transparent;
+    scrollbar-color: hsl(185 40% 68% / 0.5) transparent;
   }
   .scrollbar-hz-teal::-webkit-scrollbar {
     height: 3px;
@@ -588,7 +588,7 @@
     background: transparent;
   }
   .scrollbar-hz-teal::-webkit-scrollbar-thumb {
-    background-color: hsl(182 29% 63% / 0.5);
+    background-color: hsl(185 40% 68% / 0.5);
     border-radius: 9999px;
   }
 

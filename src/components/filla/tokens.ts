@@ -7,7 +7,7 @@
 // === COLOR PALETTE (HSL) ===
 export const colors = {
   // Primary Palette
-  primary: '182 29% 63%',       // #8EC9CE - Teal
+  primary: '185 40% 68%',       // #8EC9CE - Teal
   primaryDeep: '182 23% 56%',   // #71AEB3 - Deep Teal
   primaryGlow: '182 35% 75%',   // Lighter teal for glows
   

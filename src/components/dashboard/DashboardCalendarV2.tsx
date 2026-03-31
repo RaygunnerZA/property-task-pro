@@ -27,15 +27,15 @@ import {
   isSameDay,
   isSameMonth,
 } from "date-fns";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowDownToDot, ChevronDown, ChevronUp, Expand, Shrink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-const DOW_H    = 22;                       // weekday header height (px)
+const DOW_H    = 29;                       // weekday header height (px)
 const CELL_H   = 30;                       // each date row height (px)
 const SEP_H    = 1;                        // month separator row height (px)
 const ROWS_VIS = 6;                        // visible rows in date spinner
-const FRAME_H  = ROWS_VIS * CELL_H;       // 180 — scrollable area height (neumorphic date card height)
+const FRAME_H  = ROWS_VIS * CELL_H + 3;   // 183 — scrollable area height (neumorphic date card height)
 
 const ITEM_H   = 32;                       // height of each drum item (month/year)
 /** Viewport height for month/year drums (top row, above dates) */
@@ -46,9 +46,18 @@ const DRUM_OFFSET = DRUM_VIEWPORT_H / 2 - ITEM_H / 2;
 const DRUM_FADE_TOP_H = 12;
 const DRUM_TICK_H = 26;
 
-const MONTH_W  = 100;                      // month drum width (px)
-const YEAR_W   = 30;                       // year drum width (px)
-const SPINNER_GAP = 6;                     // gap between spinners (px)
+/** Inner track width: drum shell 102px − PRESSED_DRUM padding (11 + 3) under border-box */
+const MONTH_W  = 88;
+const YEAR_W   = 26;                       // year drum width (px)
+const SPINNER_GAP = 6;                     // gap between month/year spinners (px)
+const COL_GAP = 4;                         // gap between drums block and date panel (px)
+
+/** <1 slightly dampens wheel/trackpad so rows don’t overshoot; higher = snappier. */
+const DATE_SPINNER_WHEEL_DAMPING = 0.72;
+
+/** Drum translate follows scroll; keep short so it doesn’t feel laggy behind the date strip. */
+const DRUM_TRANS_MONTH = "transform 0.12s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+const DRUM_TRANS_YEAR  = "transform 0.14s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
 // ─── Date range ───────────────────────────────────────────────────────────────
 const MONTHS_BACK    = 1;
@@ -233,6 +242,7 @@ export function DashboardCalendarV2({
 
   // ── Current visible month key (drives drum positions) ─────────────────────
   const [currentMonthKey, setCurrentMonthKey] = useState(() => format(baseMonth, "yyyy-MM"));
+  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
 
   // Derived indices for drum animation
   const currentMonthIdx = useMemo(() => {
@@ -283,7 +293,7 @@ export function DashboardCalendarV2({
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const scrollToMonth = useCallback(
-    (month: Date, smooth = true) => {
+    (month: Date, smooth = false) => {
       const key = format(month, "yyyy-MM");
       const rowIdx = monthFirstRow.get(key);
       if (rowIdx !== undefined) {
@@ -296,7 +306,28 @@ export function DashboardCalendarV2({
     [monthFirstRow, scrollOffsetForRowIndex],
   );
 
+  const goToToday = useCallback(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    scrollToMonth(startOfMonth(t));
+    onDateSelect?.(t);
+  }, [scrollToMonth, onDateSelect]);
+
   useEffect(() => { scrollToMonth(baseMonth, false); }, [scrollToMonth, baseMonth]);
+
+  // Dampen wheel/trackpad on the date spinner so month rows don’t fly past.
+  useEffect(() => {
+    if (calendarCollapsed) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return; // let pinch-to-zoom pass through
+      e.preventDefault();
+      el.scrollTop += e.deltaY * DATE_SPINNER_WHEEL_DAMPING;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [calendarCollapsed]);
 
   // ── Drum translateY — centers the selected item inside DRUM_VIEWPORT_H ─────
   // translateY = DRUM_OFFSET - selectedIdx * ITEM_H
@@ -309,12 +340,12 @@ export function DashboardCalendarV2({
   return (
     <div className={cn("dashboard-calendar-v2 w-full", className)}>
       <div
-        className="w-full flex flex-col mx-auto"
-        style={{ gap: SPINNER_GAP }}
+        className="flex flex-col mx-auto w-full"
+        style={{ gap: COL_GAP, width: 245, maxWidth: "100%" }}
       >
         {/* ═══════════════ Month + year drums (above dates) ═════════════════ */}
         <div
-          className="flex justify-start items-center shrink-0 w-full h-[46px]"
+          className="flex justify-start items-center shrink-0 w-full h-[45px]"
           style={{ gap: SPINNER_GAP, paddingTop: 4, paddingBottom: 4, paddingLeft: 0, paddingRight: 0 }}
         >
           {/* Month drum */}
@@ -322,7 +353,8 @@ export function DashboardCalendarV2({
             className="relative overflow-hidden shrink-0"
             style={{
               ...PRESSED_DRUM,
-              width: 99,
+              paddingLeft: 11,
+              width: 102,
               height: DRUM_VIEWPORT_H,
               display: "flex",
               flexWrap: "wrap",
@@ -337,7 +369,7 @@ export function DashboardCalendarV2({
             <div
               style={{
                 transform:  `translateY(${monthDrumY}px)`,
-                transition: "transform 0.28s cubic-bezier(0.25, 0, 0, 1)",
+                transition: DRUM_TRANS_MONTH,
                 willChange: "transform",
               }}
             >
@@ -382,7 +414,7 @@ export function DashboardCalendarV2({
             <div
               style={{
                 transform:  `translateY(${yearDrumY}px)`,
-                transition: "transform 0.5s cubic-bezier(0.25, 0, 0, 1)",
+                transition: DRUM_TRANS_YEAR,
                 willChange: "transform",
               }}
             >
@@ -408,60 +440,126 @@ export function DashboardCalendarV2({
             </div>
           </div>
 
-          {/* Vertical month navigation in same row */}
-          <div className="ml-auto flex flex-col justify-center items-center h-[38px] shrink-0">
+          {/* Month nav chevrons — right of year */}
+          <div className="flex flex-col gap-[1px] justify-center items-center shrink-0">
             <button
               onClick={() => scrollToMonth(addMonths(shownMonth, 1))}
-              className="grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-              style={{ width: 24, height: 18 }}
+              className="grid place-items-center text-transparent hover:bg-muted/40 transition-colors"
+              style={{
+                width: 24,
+                height: 20,
+                borderRadius: "8px 8px 0 0",
+                color: "rgba(143, 141, 138, 0)",
+                boxShadow:
+                  "3.4px 1.4px 2px -1.5px rgba(0, 0, 0, 0.15), inset 1px 1px 2px 0px rgba(255, 255, 255, 1)",
+              }}
               aria-label="Next month"
             >
-              <ChevronUp size={14} className="text-[#EB6834]" />
+              <ChevronUp size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
             </button>
             <button
               onClick={() => scrollToMonth(subMonths(shownMonth, 1))}
-              className="grid place-items-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-              style={{ width: 24, height: 18 }}
+              className="grid place-items-center text-transparent hover:bg-muted/40 transition-colors"
+              style={{
+                width: 24,
+                height: 20,
+                borderRadius: "0 0 8px 8px",
+                color: "rgba(143, 141, 138, 0)",
+                boxShadow:
+                  "3.4px 1.4px 2px -1.5px rgba(0, 0, 0, 0.15), inset 1px 1px 2px 0px rgba(255, 255, 255, 1)",
+              }}
               aria-label="Previous month"
             >
-              <ChevronDown size={14} className="text-[#EB6834]" />
+              <ChevronDown size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
+            </button>
+          </div>
+
+          {/* Today + collapse — stacked, row end */}
+          <div className="ml-auto flex h-[42px] flex-col gap-[1px] justify-start items-center shrink-0">
+            <button
+              type="button"
+              onClick={goToToday}
+              className="flex flex-col justify-center items-center rounded-t-[10px] rounded-b-none text-muted-foreground hover:text-primary hover:bg-muted/40 transition-colors shrink-0"
+              style={{
+                width: 26,
+                height: 20,
+                boxShadow:
+                  "2px 3px 2px -1.5px rgba(0, 0, 0, 0.15), inset 1px 1px 1px 0px rgba(255, 255, 255, 1)",
+              }}
+              aria-label="Go to today"
+            >
+              <ArrowDownToDot
+                className="text-[hsl(var(--primary))]"
+                size={14}
+                strokeWidth={1.75}
+                style={{ marginBottom: -5 }}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCalendarCollapsed(c => !c)}
+              className="flex flex-col justify-center items-center text-muted-foreground hover:text-primary hover:bg-muted/40 transition-colors shrink-0 rounded-t-none rounded-b-[10px]"
+              style={{
+                width: 26,
+                height: 20,
+                boxShadow:
+                  "2px 3px 2px -1.5px rgba(0, 0, 0, 0.15), inset 1px 1px 1px 0px rgba(255, 255, 255, 1)",
+              }}
+              aria-expanded={!calendarCollapsed}
+              aria-label={calendarCollapsed ? "Expand calendar" : "Collapse calendar"}
+            >
+              {calendarCollapsed ? (
+                <Expand
+                  size={14}
+                  strokeWidth={2}
+                  className="text-[#8EC9CE]"
+                />
+              ) : (
+                <Shrink
+                  size={14}
+                  strokeWidth={2}
+                  className="text-[#8EC9CE]"
+                />
+              )}
             </button>
           </div>
         </div>
 
-        {/* Weekday labels sit above the neumorphic date card (not inside it) */}
-        <div
-          className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
-          style={{ height: DOW_H, paddingInline: 4 }}
-        >
-          {WEEK_DAYS.map(d => (
+        {!calendarCollapsed && (
+          <div className="flex flex-col w-full min-w-0" style={{ gap: 0 }}>
+            {/* Weekday labels sit above the neumorphic date card (not inside it) */}
             <div
-              key={d}
-              className="flex-1 text-center text-[10px] font-mono text-muted-foreground"
-              style={{ maxWidth: 28 }}
+              className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
+              style={{ height: DOW_H, paddingLeft: 15, paddingRight: 13 }}
             >
-              {d}
+              {WEEK_DAYS.map(d => (
+                <div
+                  key={d}
+                  className="flex-1 text-center text-[10px] font-mono text-muted-foreground"
+                  style={{ maxWidth: 28 }}
+                >
+                  {d}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        {/* ═══════════════ Dates spinner (full width, card surface) ═══════════ */}
-        <div
-          className="w-full min-w-0 flex flex-col overflow-hidden"
-          style={{ ...PRESSED, height: FRAME_H }}
-        >
-          <div
-            ref={scrollRef}
-            onScroll={handleScroll}
-            style={{
-              height:          FRAME_H,
-              overflowY:       "scroll",
-              scrollSnapType:  "y mandatory",
-              scrollbarWidth:  "none",
-              flexShrink:      0,
-            }}
-          >
-            {dateRows.map((row, rowIdx) => {
+            {/* ═══════════════ Dates spinner (full width, card surface) ═══════════ */}
+            <div
+              className="w-full min-w-0 flex flex-col overflow-hidden"
+              style={{ ...PRESSED, height: FRAME_H, paddingLeft: 10, paddingRight: 10 }}
+            >
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                style={{
+                  height:          FRAME_H,
+                  overflowY:       "scroll",
+                  scrollSnapType:  "y mandatory",
+                  scrollbarWidth:  "none",
+                  flexShrink:      0,
+                }}
+              >
+                {dateRows.map((row, rowIdx) => {
               if (row.type === "sep") {
                 return (
                   <div
@@ -574,20 +672,11 @@ export function DashboardCalendarV2({
               );
             })}
 
-            <div style={{ height: FRAME_H, flexShrink: 0 }} />
+                <div style={{ height: FRAME_H, flexShrink: 0 }} />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── Navigation strip ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-start px-0 mt-2">
-        <button
-          onClick={() => scrollToMonth(baseMonth)}
-          className="text-[11px] font-mono text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded-[8px] hover:bg-muted/40 flex justify-start items-center"
-          style={{ backgroundColor: "rgba(255, 255, 255, 0.85)" }}
-        >
-          TODAY
-        </button>
+        )}
       </div>
 
     </div>

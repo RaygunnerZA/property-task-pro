@@ -290,7 +290,7 @@ export function PropertyIdentityStrip({
       </div>
 
       {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="overflow-hidden" style={{ height: "152.5px" }}>
+      <div className="overflow-hidden" style={{ height: "159.5px" }}>
         <div
           className="flex transition-transform duration-300 ease-out h-full"
           style={{ transform: `translateX(-${activeTab * 100}%)` }}
@@ -369,7 +369,7 @@ export function PropertyIdentityStrip({
               <button
                 type="button"
                 onClick={onAddTaskClick}
-                className="w-full flex items-center justify-center gap-1.5 py-1 mt-0.5 rounded-md text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/20"
+                className="self-start flex h-7 w-[95px] items-center justify-center gap-1.5 rounded-[8px] border-0 bg-primary py-1.5 mt-0.5 text-[12px] font-medium text-white shadow-[3px_3px_5px_0px_rgba(0,0,0,0.15),inset_1px_2px_2px_0px_rgba(255,255,255,0.4),inset_-2px_-2px_2px_0px_rgba(0,0,0,0.15)] transition-all hover:brightness-105"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Task

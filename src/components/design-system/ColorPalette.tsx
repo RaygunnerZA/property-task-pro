@@ -3,7 +3,7 @@ import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 const colors = [
-  { name: 'Primary', token: 'primary', hsl: '182 29% 63%', hex: '#8EC9CE' },
+  { name: 'Primary', token: 'primary', hsl: '185 40% 68%', hex: '#8EC9CE' },
   { name: 'Primary Deep', token: 'primary-deep', hsl: '182 23% 56%', hex: '#71AEB3' },
   { name: 'Accent', token: 'accent', hsl: '16 83% 56%', hex: '#EB6834' },
   { name: 'Background', token: 'background', hsl: '40 20% 94%', hex: '#F1EEE8' },

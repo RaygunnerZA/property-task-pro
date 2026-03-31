@@ -729,9 +729,9 @@ export function TaskPanel({
           <TabsList
             ref={tabsListRef}
             className={cn(
-              "min-w-0 flex-1 flex flex-nowrap h-12 py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] rounded-[15px] bg-transparent overflow-visible max-w-full",
+              "min-w-0 flex-1 flex flex-nowrap h-[46px] py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] rounded-[15px] bg-transparent overflow-visible max-w-full",
               "max-[455px]:pl-1 max-[455px]:pr-1 max-[455px]:gap-x-1",
-              "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
+              "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]"
             )}
           >
             <TabsTrigger
