@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
@@ -14,7 +14,8 @@ import EmptyState from "@/components/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
-import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus } from "lucide-react";
+import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search } from "lucide-react";
+import { FilterChip } from "@/components/chips/filter";
 
 interface TaskListProps {
   tasks?: any[]; // Accept tasks as prop instead of fetching
@@ -60,6 +61,9 @@ export function TaskList({
     return new Set();
   });
   const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
+  const [taskSearchOpen, setTaskSearchOpen] = useState(false);
+  const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const tasksPanelInteractionRef = useRef<HTMLDivElement | null>(null);
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
   const tasks = useMemo(() => {
@@ -129,6 +133,18 @@ export function TaskList({
 
     if (selectedFilters.has("filter-assigned-me")) {
       filtered = filtered.filter((task) => task.assigned_user_id === userId);
+    }
+
+    const q = taskSearchQuery.trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter((task) => {
+        const title = String(task.title || "").toLowerCase();
+        const desc = String(task.description || "").toLowerCase();
+        const prop = task.property_id
+          ? String(propertyMap.get(task.property_id)?.name || propertyMap.get(task.property_id)?.address || "").toLowerCase()
+          : "";
+        return title.includes(q) || desc.includes(q) || prop.includes(q);
+      });
     }
 
     // Secondary filters - Status
@@ -296,7 +312,7 @@ export function TaskList({
     }
 
     return filtered;
-  }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties]);
+  }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties, taskSearchQuery, propertyMap]);
 
   // Group filtered tasks by status
   const groupedTasks = useMemo(() => {
@@ -544,11 +560,11 @@ export function TaskList({
   }
 
   // Check if filters are active but no tasks match
-  const hasActiveFilters = selectedFilters.size > 0;
+  const hasActiveFilters = selectedFilters.size > 0 || taskSearchQuery.trim().length > 0;
   const hasNoMatchingTasks = groupedTasks.todo.length === 0 && groupedTasks.done.length === 0;
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div ref={tasksPanelInteractionRef} className="flex flex-col h-full min-h-0">
       {/* Filter Bar - fixed at top, does not scroll with list */}
       <div className="flex-shrink-0 mt-0 mb-[18px] pb-0" style={{ marginLeft: '-3px' }}>
         <FilterBar
@@ -557,8 +573,38 @@ export function TaskList({
           selectedFilters={selectedFilters}
           onFilterChange={handleFilterChange}
           rightElement={<ViewToggle view={view} onViewChange={setView} />}
+          collapseFilterChipAfterMs={2000}
+          collapseInteractionRootRef={tasksPanelInteractionRef}
+          primaryTrailing={
+            <FilterChip
+              label="Search"
+              icon={<Search className="h-4 w-4" />}
+              selected={taskSearchOpen || taskSearchQuery.trim().length > 0}
+              onSelect={() => setTaskSearchOpen((open) => !open)}
+              className="h-[24px]"
+            />
+          }
         />
-        
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-200 ease-out",
+            taskSearchOpen || taskSearchQuery.trim().length > 0 ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          )}
+        >
+          <div className="overflow-hidden min-h-0">
+            <input
+              type="search"
+              value={taskSearchQuery}
+              onChange={(e) => setTaskSearchQuery(e.target.value)}
+              placeholder="Search tasks by title, notes, or property"
+              className={cn(
+                "mt-2 w-full rounded-[10px] bg-background shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.6)]",
+                "px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+              )}
+              aria-label="Search tasks"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalStore, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -19,9 +19,12 @@ import {
   FileText,
   ClipboardCheck,
   MessageSquare,
+  Building2,
+  Search,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
+import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { cn } from "@/lib/utils";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 
@@ -192,12 +195,14 @@ export function TaskPanel({
   const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
   const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
+  const [complianceSearchOpen, setComplianceSearchOpen] = useState(false);
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
   const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
   const [tabBarDensity, setTabBarDensity] = useState<TabBarDensity>("comfortable");
   const narrowTaskTabViewport = useTaskTabNarrowViewport();
   const attentionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const tabsListRef = useRef<HTMLDivElement | null>(null);
+  const compliancePanelInteractionRef = useRef<HTMLDivElement | null>(null);
 
   const selectedDate = selectedDateProp ?? internalSelectedDate;
 
@@ -483,8 +488,15 @@ export function TaskPanel({
         if (complianceFilter === "missing" && record.status !== "missing") return false;
       }
 
-      if (compliancePropertyFilter !== "all" && record.propertyName !== compliancePropertyFilter)
-        return false;
+      if (compliancePropertyFilter !== "all") {
+        const opt = propertyOptions.find((p) => p.id === compliancePropertyFilter);
+        if (!opt) return false;
+        if (record.propertyId) {
+          if (record.propertyId !== compliancePropertyFilter) return false;
+        } else if (record.propertyName !== opt.name) {
+          return false;
+        }
+      }
       if (complianceTypeFilter !== "all" && record.complianceType !== complianceTypeFilter)
         return false;
 
@@ -503,6 +515,7 @@ export function TaskPanel({
     compliancePropertyFilter,
     complianceTypeFilter,
     complianceExpiryRange,
+    propertyOptions,
   ]);
 
   const complianceTypeOptions = useMemo(() => {
@@ -512,6 +525,88 @@ export function TaskPanel({
     });
     return Array.from(typeSet).sort((a, b) => a.localeCompare(b));
   }, [complianceRecords]);
+
+  const compliancePrimaryOptions: FilterOption[] = useMemo(
+    () => [
+      { id: "cstat-all", label: "All", icon: <CheckSquare className="h-4 w-4" /> },
+      { id: "cstat-expiring", label: "Expiring Soon", icon: <Waves className="h-4 w-4" /> },
+      { id: "cstat-overdue", label: "Overdue", icon: <AlertTriangle className="h-4 w-4" />, color: "#EB6834" },
+      { id: "cstat-missing", label: "Missing", icon: <FileText className="h-4 w-4" /> },
+    ],
+    []
+  );
+
+  const complianceSecondaryGroups: FilterGroup[] = useMemo(
+    () => [
+      {
+        id: "compliance-property",
+        label: "Property",
+        options: propertyOptions.map((p) => ({
+          id: `cprop-${p.id}`,
+          label: p.name,
+          icon: <Building2 className="h-4 w-4" />,
+        })),
+      },
+      {
+        id: "compliance-type",
+        label: "Compliance Type",
+        options: complianceTypeOptions.map((t) => ({
+          id: `ctype-${encodeURIComponent(t)}`,
+          label: t,
+          icon: <ClipboardCheck className="h-4 w-4" />,
+        })),
+      },
+      {
+        id: "compliance-expiry",
+        label: "Expiry Range",
+        options: [
+          { id: "cexp-30", label: "Within 30 days", icon: <Calendar className="h-4 w-4" /> },
+          { id: "cexp-90", label: "Within 90 days", icon: <Calendar className="h-4 w-4" /> },
+          { id: "cexp-365", label: "Within 1 year", icon: <Calendar className="h-4 w-4" /> },
+        ],
+      },
+    ],
+    [propertyOptions, complianceTypeOptions]
+  );
+
+  const complianceSelectedFilters = useMemo(() => {
+    const s = new Set<string>();
+    s.add(`cstat-${complianceFilter}`);
+    if (compliancePropertyFilter !== "all") s.add(`cprop-${compliancePropertyFilter}`);
+    if (complianceTypeFilter !== "all") s.add(`ctype-${encodeURIComponent(complianceTypeFilter)}`);
+    if (complianceExpiryRange !== "all") s.add(`cexp-${complianceExpiryRange}`);
+    return s;
+  }, [complianceFilter, compliancePropertyFilter, complianceTypeFilter, complianceExpiryRange]);
+
+  const handleComplianceFilterChange = useCallback(
+    (filterId: string, selected: boolean) => {
+      if (filterId.startsWith("cstat-")) {
+        const key = filterId.slice(6) as ComplianceFilter;
+        if (selected) setComplianceFilter(key);
+        else if (complianceFilter === key) setComplianceFilter("all");
+        return;
+      }
+      if (filterId.startsWith("cprop-")) {
+        const id = filterId.slice(6);
+        if (selected) setCompliancePropertyFilter(id);
+        else setCompliancePropertyFilter("all");
+        return;
+      }
+      if (filterId.startsWith("ctype-")) {
+        const t = decodeURIComponent(filterId.slice(6));
+        if (selected) setComplianceTypeFilter(t);
+        else setComplianceTypeFilter("all");
+        return;
+      }
+      if (filterId.startsWith("cexp-")) {
+        const range = filterId.slice(5) as ExpiryRange;
+        if (selected) setComplianceExpiryRange(range);
+        else setComplianceExpiryRange("all");
+        return;
+      }
+    },
+    [complianceFilter]
+  );
 
   const complianceHealth = useMemo(() => {
     return {
@@ -1109,78 +1204,74 @@ export function TaskPanel({
           )}
 
           {activeTab === "compliance" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[11px] pl-2 pr-2 pb-[11px]">
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
-                <div className="space-y-3 min-w-0">
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-2.5 space-y-2">
+            <div
+              ref={compliancePanelInteractionRef}
+              className="h-full min-h-0 flex flex-col pt-[8px] pl-2 pr-2 pb-[11px]"
+            >
+              <div className="flex-shrink-0 mb-[18px]" style={{ marginLeft: "-3px" }}>
+                <FilterBar
+                  primaryOptions={compliancePrimaryOptions}
+                  secondaryGroups={complianceSecondaryGroups}
+                  selectedFilters={complianceSelectedFilters}
+                  onFilterChange={handleComplianceFilterChange}
+                  primaryOptionLimit={4}
+                  clearPreservePrefixes={[]}
+                  collapseFilterChipAfterMs={2000}
+                  collapseInteractionRootRef={compliancePanelInteractionRef}
+                  showClearButton={
+                    complianceFilter !== "all" ||
+                    compliancePropertyFilter !== "all" ||
+                    complianceTypeFilter !== "all" ||
+                    complianceExpiryRange !== "all" ||
+                    complianceSearch.trim().length > 0
+                  }
+                  onClearAll={() => {
+                    setComplianceFilter("all");
+                    setCompliancePropertyFilter("all");
+                    setComplianceTypeFilter("all");
+                    setComplianceExpiryRange("all");
+                    setComplianceSearch("");
+                    setComplianceSearchOpen(false);
+                  }}
+                  primaryTrailing={
+                    <FilterChip
+                      label="Search"
+                      icon={<Search className="h-4 w-4" />}
+                      selected={
+                        complianceSearchOpen || complianceSearch.trim().length > 0
+                      }
+                      onSelect={() => setComplianceSearchOpen((open) => !open)}
+                      className="h-[24px]"
+                    />
+                  }
+                />
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows] duration-200 ease-out",
+                    complianceSearchOpen || complianceSearch.trim().length > 0
+                      ? "grid-rows-[1fr]"
+                      : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden min-h-0">
                     <input
+                      type="search"
                       value={complianceSearch}
                       onChange={(event) => setComplianceSearch(event.target.value)}
                       placeholder="Search certificates or inspections"
-                      className="w-full rounded-[10px] bg-background shadow-engraved px-3 py-2 text-sm outline-none"
+                      className={cn(
+                        "mt-2 w-full rounded-[10px] bg-background shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.6)]",
+                        "px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                      )}
+                      aria-label="Search compliance records"
                     />
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {([
-                        ["all", "All"],
-                        ["expiring", "Expiring Soon"],
-                        ["overdue", "Overdue"],
-                        ["missing", "Missing"],
-                      ] as const).map(([key, label]) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setComplianceFilter(key)}
-                          className={cn(
-                            "text-xs rounded-[8px] px-2.5 py-1 transition-all",
-                            complianceFilter === key ? "bg-background shadow-e2 font-medium" : "bg-muted/50 shadow-e1"
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                      <select
-                        value={compliancePropertyFilter}
-                        onChange={(event) => setCompliancePropertyFilter(event.target.value)}
-                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
-                      >
-                        <option value="all">Property: All</option>
-                        {propertyOptions.map((property) => (
-                          <option key={property.id} value={property.name}>
-                            {property.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={complianceTypeFilter}
-                        onChange={(event) => setComplianceTypeFilter(event.target.value)}
-                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
-                      >
-                        <option value="all">Compliance Type: All</option>
-                        {complianceTypeOptions.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={complianceExpiryRange}
-                        onChange={(event) => setComplianceExpiryRange(event.target.value as ExpiryRange)}
-                        className="rounded-[8px] bg-background shadow-e1 text-xs px-2 py-1.5"
-                      >
-                        <option value="all">Expiry Range: Any</option>
-                        <option value="30">Within 30 days</option>
-                        <option value="90">Within 90 days</option>
-                        <option value="365">Within 1 year</option>
-                      </select>
-                    </div>
                   </div>
+                </div>
+              </div>
 
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
+                  <div className="space-y-3 min-w-0">
                   <div className="space-y-2">
                     {filteredComplianceRecords.map((record) => (
                       <OperationalStreamCard
@@ -1290,27 +1381,6 @@ export function TaskPanel({
                     </div>
                   </div>
 
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Type Filters</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {["Fire", "Gas", "Electrical", "Insurance", "Safety"].map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setComplianceTypeFilter(complianceTypeFilter === type ? "all" : type)}
-                          className={cn(
-                            "text-[11px] rounded-[8px] px-2 py-1 transition-all",
-                            complianceTypeFilter === type
-                              ? "bg-background shadow-e2 font-medium"
-                              : "bg-muted/50 shadow-e1"
-                          )}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   {selectedComplianceRecord && (
                     <div className="rounded-xl bg-card/70 shadow-e1 p-3">
                       <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Record Detail</p>
@@ -1360,6 +1430,7 @@ export function TaskPanel({
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             </div>
           )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/chips/filter";
@@ -66,6 +66,22 @@ interface FilterBarProps {
   onFilterChange: (filterId: string, selected: boolean) => void;
   className?: string;
   rightElement?: React.ReactNode; // Optional element to render on the right side of the row (desktop only)
+  /** Extra controls after primary chips (e.g. Search chip). */
+  primaryTrailing?: React.ReactNode;
+  /** Max primary chips after FILTER (default 3). Use 0 for all primaryOptions. */
+  primaryOptionLimit?: number;
+  /** Prefixes: filters starting with these are not removed by the clear (FunnelX) action. */
+  clearPreservePrefixes?: string[];
+  /** When set, FunnelX / clear buttons invoke this instead of clearing individual filter ids. */
+  onClearAll?: () => void;
+  /** When set, controls visibility of clear (FunnelX); overrides derived clearable state. */
+  showClearButton?: boolean;
+  /**
+   * After this many milliseconds from a pointer down inside `collapseInteractionRootRef`,
+   * the FILTER control collapses to icon-only (smooth width transition; sibling chips move left).
+   */
+  collapseFilterChipAfterMs?: number;
+  collapseInteractionRootRef?: RefObject<HTMLElement | null>;
 }
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
@@ -100,13 +116,24 @@ export function FilterBar({
   onFilterChange,
   className,
   rightElement,
+  primaryTrailing,
+  primaryOptionLimit = 3,
+  clearPreservePrefixes = ['filter-property-'],
+  onClearAll,
+  showClearButton,
+  collapseFilterChipAfterMs,
+  collapseInteractionRootRef,
 }: FilterBarProps) {
   const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>('primary');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [animationDirection, setAnimationDirection] = useState<'right-to-left' | 'left-to-right' | null>(null);
+  const [filterChipCollapsed, setFilterChipCollapsed] = useState(false);
+  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Limit primary options to first 3 (most used)
-  const mostUsedOptions = primaryOptions.slice(0, 3);
+  const mostUsedOptions =
+    primaryOptionLimit <= 0
+      ? primaryOptions
+      : primaryOptions.slice(0, primaryOptionLimit);
 
   const selectedGroup = selectedCategory 
     ? secondaryGroups.find(g => g.id === selectedCategory)
@@ -144,19 +171,24 @@ export function FilterBar({
   };
 
   const handleClearAllFilters = () => {
-    // Clear all selected filters except property filters
-    selectedFilters.forEach(filterId => {
-      // Don't clear property filters (they should be managed separately)
-      if (!filterId.startsWith('filter-property-')) {
+    if (onClearAll) {
+      onClearAll();
+      return;
+    }
+    selectedFilters.forEach((filterId) => {
+      const preserve = clearPreservePrefixes.some((p) => filterId.startsWith(p));
+      if (!preserve) {
         onFilterChange(filterId, false);
       }
     });
   };
 
-  // Count active filters excluding property filters (property icons are managed separately)
-  const hasNonPropertyFilters = Array.from(selectedFilters).some(
-    filterId => !filterId.startsWith('filter-property-')
-  );
+  const hasClearableFilters =
+    showClearButton !== undefined
+      ? showClearButton
+      : Array.from(selectedFilters).some(
+          (filterId) => !clearPreservePrefixes.some((p) => filterId.startsWith(p))
+        );
 
   // Reset animation direction after animation completes
   useEffect(() => {
@@ -165,6 +197,64 @@ export function FilterBar({
       return () => clearTimeout(timer);
     }
   }, [animationDirection, navigationLevel, selectedCategory]);
+
+  useLayoutEffect(() => {
+    const ms = collapseFilterChipAfterMs;
+    const rootRef = collapseInteractionRootRef;
+    if (ms === undefined || ms <= 0 || !rootRef) return;
+
+    const clearTimer = () => {
+      if (collapseTimerRef.current !== null) {
+        clearTimeout(collapseTimerRef.current);
+        collapseTimerRef.current = null;
+      }
+    };
+
+    const scheduleCollapse = () => {
+      clearTimer();
+      collapseTimerRef.current = setTimeout(() => {
+        setFilterChipCollapsed(true);
+        collapseTimerRef.current = null;
+      }, ms);
+    };
+
+    let cleanup: (() => void) | undefined;
+    let rafId = 0;
+    let cancelled = false;
+
+    const bind = (root: HTMLElement) => {
+      const onPointerDown = () => {
+        setFilterChipCollapsed(false);
+        scheduleCollapse();
+      };
+      root.addEventListener("pointerdown", onPointerDown);
+      // Tab opened, panel mounted, or full page load — start collapse countdown immediately.
+      setFilterChipCollapsed(false);
+      scheduleCollapse();
+      return () => {
+        root.removeEventListener("pointerdown", onPointerDown);
+        clearTimer();
+      };
+    };
+
+    const root = rootRef.current;
+    if (root) {
+      cleanup = bind(root);
+    } else {
+      rafId = requestAnimationFrame(() => {
+        if (cancelled) return;
+        const el = rootRef.current;
+        if (el) cleanup = bind(el);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      cleanup?.();
+      clearTimer();
+    };
+  }, [collapseFilterChipAfterMs, collapseInteractionRootRef]);
 
   // Render chip with animation - now uses unified Chip component
   // FilterBar chips: 24px height, 11px text, 14x14px icons
@@ -181,7 +271,7 @@ export function FilterBar({
       onSelect={onClick}
       icon={option.icon ? React.cloneElement(option.icon as React.ReactElement, { className: "h-[14px] w-[14px]" }) : undefined}
       color={option.color}
-      className="h-[24px]"
+      className="h-[24px] !duration-300 ease-out"
     />
   );
 
@@ -209,12 +299,12 @@ export function FilterBar({
     handleBackClick
   );
 
-  // Determine animation class based on direction
+  // Wipe between levels: slightly snappier than global 0.3s; `both` avoids a one-frame flash.
   const getAnimationClass = () => {
-    if (!animationDirection) return '';
-    return animationDirection === 'right-to-left' 
-      ? 'animate-wipe-right-to-left'
-      : 'animate-wipe-left-to-right';
+    if (!animationDirection) return "";
+    return animationDirection === "right-to-left"
+      ? "animate-[wipe-right-to-left_0.2s_ease-out_both]"
+      : "animate-[wipe-left-to-right_0.2s_ease-out_both]";
   };
 
   return (
@@ -225,6 +315,7 @@ export function FilterBar({
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
             "flex items-center gap-[5px] flex-nowrap min-w-max",
+            navigationLevel === "primary" && "transition-[gap] duration-300 ease-out",
             getAnimationClass()
           )}
         >
@@ -233,21 +324,36 @@ export function FilterBar({
             <>
               <button
                 type="button"
+                data-filter-primary-trigger
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={handleFilterByClick}
+                aria-label={filterChipCollapsed ? "Filter — open categories" : "Filter by category"}
+                title="Filter"
                 className={cn(
-                  "inline-flex items-center gap-1.5 py-1 rounded-[8px] flex-shrink-0",
+                  "inline-flex items-center py-1 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
                   "font-mono text-[11px] uppercase tracking-wider",
-                  "select-none cursor-pointer transition-all duration-150",
+                  "select-none cursor-pointer",
                   "bg-background",
                   "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
-                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
+                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card",
+                  "transition-[gap,padding,min-width] duration-300 ease-out",
+                  filterChipCollapsed
+                    ? "justify-center gap-0 px-0 min-w-[24px]"
+                    : "justify-start gap-1.5 pl-2 pr-2.5 min-w-0"
                 )}
-                style={{ paddingLeft: '8px', paddingRight: '10px', height: '24px' }}
               >
-                <Funnel className="h-[14px] w-[14px] text-foreground" />
-                <span style={{ letterSpacing: '0.325px' }}>FILTER</span>
+                <Funnel className={cn("h-[14px] w-[14px] text-foreground shrink-0")} />
+                <span
+                  className={cn(
+                    "whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ease-out",
+                    filterChipCollapsed ? "max-w-0 opacity-0" : "max-w-[5rem] opacity-100"
+                  )}
+                  style={{ letterSpacing: filterChipCollapsed ? 0 : "0.325px" }}
+                >
+                  FILTER
+                </span>
               </button>
-              {hasNonPropertyFilters && (
+              {hasClearableFilters && (
                 renderIconButton(
                   <FunnelX className="h-[14px] w-[14px] text-foreground" />,
                   handleClearAllFilters
@@ -257,6 +363,7 @@ export function FilterBar({
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
               })}
+              {primaryTrailing}
             </>
           )}
 
@@ -278,7 +385,7 @@ export function FilterBar({
                   <span>{group.label}</span>
                 </button>
               ))}
-              {hasNonPropertyFilters && (
+              {hasClearableFilters && (
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
@@ -302,7 +409,7 @@ export function FilterBar({
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
               })}
-              {hasNonPropertyFilters && (
+              {hasClearableFilters && (
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
