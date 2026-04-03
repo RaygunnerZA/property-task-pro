@@ -940,7 +940,7 @@ export function IntakeModal({
       chips.push({
         id: `when-${dueDate}`,
         slot: "when",
-        label: "DATE",
+        label: formatDueDateLabel(dueDate),
         epistemic: "fact",
         removable: true,
         onRemove: () => setDueDate(""),

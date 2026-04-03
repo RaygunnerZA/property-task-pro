@@ -8,7 +8,7 @@
  *   Mo Tu We Th Fr Sa Su      weekday row (above card)
  * ┌─────────────────────────┐
  * │ 24 25 26 27 28  1  2   │   Dates spinner (neumorphic card)
- * │  …                      │
+ * │  …   (6 rows expanded, 2 when minimized) │
  * └─────────────────────────┘
  *
  * Scrolling the dates spinner drives the month/year drums via translateY.
@@ -34,8 +34,12 @@ import { cn } from "@/lib/utils";
 const DOW_H    = 29;                       // weekday header height (px)
 const CELL_H   = 30;                       // each date row height (px)
 const SEP_H    = 1;                        // month separator row height (px)
-const ROWS_VIS = 6;                        // visible rows in date spinner
-const FRAME_H  = ROWS_VIS * CELL_H + 3;   // 183 — scrollable area height (neumorphic date card height)
+const ROWS_FULL = 6;                       // visible rows when expanded
+const ROWS_MINIMIZED = 2;                  // visible rows when minimize control is active
+/** Neumorphic date card: inner scroll viewport height */
+const FRAME_PAD = 3;
+const FRAME_H_FULL = ROWS_FULL * CELL_H + FRAME_PAD;
+const FRAME_H_MIN = ROWS_MINIMIZED * CELL_H + FRAME_PAD;
 
 const ITEM_H   = 32;                       // height of each drum item (month/year)
 /** Viewport height for month/year drums (top row, above dates) */
@@ -242,7 +246,9 @@ export function DashboardCalendarV2({
 
   // ── Current visible month key (drives drum positions) ─────────────────────
   const [currentMonthKey, setCurrentMonthKey] = useState(() => format(baseMonth, "yyyy-MM"));
+  /** Minimize: shrink date card to two visible rows (still scrollable); does not hide the panel. */
   const [calendarCollapsed, setCalendarCollapsed] = useState(false);
+  const visibleFrameH = calendarCollapsed ? FRAME_H_MIN : FRAME_H_FULL;
 
   // Derived indices for drum animation
   const currentMonthIdx = useMemo(() => {
@@ -270,7 +276,7 @@ export function DashboardCalendarV2({
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const centerY = el.scrollTop + FRAME_H / 2;
+    const centerY = el.scrollTop + visibleFrameH / 2;
     let acc = 0;
     for (let i = 0; i < dateRows.length; i++) {
       const row = dateRows[i];
@@ -289,7 +295,7 @@ export function DashboardCalendarV2({
       const k = format(last.month, "yyyy-MM");
       setCurrentMonthKey(prev => (prev === k ? prev : k));
     }
-  }, [dateRows]);
+  }, [dateRows, visibleFrameH]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const scrollToMonth = useCallback(
@@ -315,9 +321,13 @@ export function DashboardCalendarV2({
 
   useEffect(() => { scrollToMonth(baseMonth, false); }, [scrollToMonth, baseMonth]);
 
+  // Keep month drums aligned with the visible center when toggling two-row / six-row height.
+  useEffect(() => {
+    handleScroll();
+  }, [calendarCollapsed, visibleFrameH, handleScroll]);
+
   // Dampen wheel/trackpad on the date spinner so month rows don’t fly past.
   useEffect(() => {
-    if (calendarCollapsed) return;
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
@@ -327,7 +337,7 @@ export function DashboardCalendarV2({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [calendarCollapsed]);
+  }, []);
 
   // ── Drum translateY — centers the selected item inside DRUM_VIEWPORT_H ─────
   // translateY = DRUM_OFFSET - selectedIdx * ITEM_H
@@ -338,14 +348,19 @@ export function DashboardCalendarV2({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className={cn("dashboard-calendar-v2 w-full", className)}>
+    <div
+      className={cn(
+        "dashboard-calendar-v2 w-full max-w-full min-w-0 overflow-x-hidden touch-pan-y",
+        className,
+      )}
+    >
       <div
-        className="flex flex-col mx-auto w-full"
+        className="flex flex-col mx-auto w-full min-w-0 max-w-full"
         style={{ gap: COL_GAP, width: 245, maxWidth: "100%" }}
       >
         {/* ═══════════════ Month + year drums (above dates) ═════════════════ */}
         <div
-          className="flex justify-start items-center shrink-0 w-full h-[45px]"
+          className="flex justify-start items-center shrink-0 w-full min-w-0 h-[45px] overflow-x-hidden"
           style={{ gap: SPINNER_GAP, paddingTop: 4, paddingBottom: 4, paddingLeft: 0, paddingRight: 0 }}
         >
           {/* Month drum */}
@@ -506,7 +521,11 @@ export function DashboardCalendarV2({
                   "2px 3px 2px -1.5px rgba(0, 0, 0, 0.15), inset 1px 1px 1px 0px rgba(255, 255, 255, 1)",
               }}
               aria-expanded={!calendarCollapsed}
-              aria-label={calendarCollapsed ? "Expand calendar" : "Collapse calendar"}
+              aria-label={
+                calendarCollapsed
+                  ? "Expand date grid to six rows"
+                  : "Minimize date grid to two rows"
+              }
             >
               {calendarCollapsed ? (
                 <Expand
@@ -525,8 +544,7 @@ export function DashboardCalendarV2({
           </div>
         </div>
 
-        {!calendarCollapsed && (
-          <div className="flex flex-col w-full min-w-0" style={{ gap: 0 }}>
+        <div className="flex flex-col w-full min-w-0" style={{ gap: 0 }}>
             {/* Weekday labels sit above the neumorphic date card (not inside it) */}
             <div
               className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
@@ -545,18 +563,22 @@ export function DashboardCalendarV2({
 
             {/* ═══════════════ Dates spinner (full width, card surface) ═══════════ */}
             <div
-              className="w-full min-w-0 flex flex-col overflow-hidden"
-              style={{ ...PRESSED, height: FRAME_H, paddingLeft: 10, paddingRight: 10 }}
+              className="w-full min-w-0 flex flex-col overflow-hidden transition-[height] duration-300 ease-out"
+              style={{ ...PRESSED, height: visibleFrameH, paddingLeft: 10, paddingRight: 10 }}
             >
               <div
                 ref={scrollRef}
                 onScroll={handleScroll}
                 style={{
-                  height:          FRAME_H,
-                  overflowY:       "scroll",
-                  scrollSnapType:  "y mandatory",
-                  scrollbarWidth:  "none",
-                  flexShrink:      0,
+                  height:                visibleFrameH,
+                  overflowY:             "scroll",
+                  overflowX:             "hidden",
+                  scrollSnapType:        "y mandatory",
+                  scrollbarWidth:        "none",
+                  flexShrink:            0,
+                  transition:            "height 300ms ease-out",
+                  touchAction:           "pan-y",
+                  overscrollBehaviorX:   "contain",
                 }}
               >
                 {dateRows.map((row, rowIdx) => {
@@ -672,11 +694,10 @@ export function DashboardCalendarV2({
               );
             })}
 
-                <div style={{ height: FRAME_H, flexShrink: 0 }} />
+                <div style={{ height: visibleFrameH, flexShrink: 0 }} />
               </div>
             </div>
           </div>
-        )}
       </div>
 
     </div>

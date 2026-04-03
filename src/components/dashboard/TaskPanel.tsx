@@ -9,6 +9,7 @@ import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery
 import {
   CheckSquare,
   Calendar,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -48,6 +49,13 @@ type TabBarDensity = "comfortable" | "compact" | "iconOnly";
 
 /** At this width and below, tab bar hides icons (compact) until overflow forces icon-only. */
 const TASK_TAB_NARROW_VIEWPORT_PX = 455;
+
+const TASK_TAB_MICROCOPY = {
+  attention: "Things that need a decision",
+  tasks: "Work in progress",
+  compliance: "Records and requirements",
+  schedule: "What's coming up",
+} as const;
 
 function useTaskTabNarrowViewport() {
   const query = `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`;
@@ -101,7 +109,7 @@ interface AttentionItem {
 
 const STATUS_LABEL: Record<ComplianceStatus, string> = {
   healthy: "Healthy",
-  expiring: "Expiring Soon",
+  expiring: "Expiring",
   overdue: "Overdue",
   missing: "Missing",
 };
@@ -529,7 +537,7 @@ export function TaskPanel({
   const compliancePrimaryOptions: FilterOption[] = useMemo(
     () => [
       { id: "cstat-all", label: "All", icon: <CheckSquare className="h-4 w-4" /> },
-      { id: "cstat-expiring", label: "Expiring Soon", icon: <Waves className="h-4 w-4" /> },
+      { id: "cstat-expiring", label: "Expiring", icon: <CalendarClock className="h-4 w-4" /> },
       { id: "cstat-overdue", label: "Overdue", icon: <AlertTriangle className="h-4 w-4" />, color: "#EB6834" },
       { id: "cstat-missing", label: "Missing", icon: <FileText className="h-4 w-4" /> },
     ],
@@ -794,7 +802,12 @@ export function TaskPanel({
   const taskTabShell =
     "rounded-[8px] transition-all text-sm font-medium shrink-0 group/task-tab inline-flex items-center justify-center " +
     "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
-    "data-[state=active]:bg-card data-[state=inactive]:bg-transparent";
+    "data-[state=active]:bg-card data-[state=inactive]:bg-transparent data-[state=active]:text-[rgb(20,184,166)]";
+
+  const selectedTabMicrocopy =
+    activeTab in TASK_TAB_MICROCOPY
+      ? TASK_TAB_MICROCOPY[activeTab as keyof typeof TASK_TAB_MICROCOPY]
+      : null;
 
   const taskTabIconOnly =
     "min-w-9 max-w-9 px-0 overflow-hidden transition-[max-width,min-width,padding] duration-200 ease-out " +
@@ -811,115 +824,131 @@ export function TaskPanel({
   const taskTabPadLabeled = "px-2.5 max-[455px]:px-1.5";
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-transparent">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
         <div
           className={cn(
-            "sticky top-0 z-10 bg-background flex min-w-0 w-full max-w-[426px] justify-start items-center",
+            "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-[426px] justify-start items-start",
             "ml-[8px] mr-[8px] gap-2 md:gap-3",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
             "max-[455px]:ml-1 max-[455px]:mr-1.5 max-[455px]:gap-1"
           )}
         >
-          <TabsList
-            ref={tabsListRef}
-            className={cn(
-              "min-w-0 flex-1 flex flex-nowrap h-[46px] py-1 pl-[7px] pr-[7px] ml-0 mr-0 gap-x-[7px] rounded-[15px] bg-transparent overflow-visible max-w-full",
-              "max-[455px]:pl-1 max-[455px]:pr-1 max-[455px]:gap-x-1",
-              "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]"
+          <div className="flex flex-1 min-w-0 flex-col gap-1">
+            <div
+              className={cn(
+                "min-w-0 max-w-full rounded-[15px] bg-background overflow-visible",
+                "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]"
+              )}
+            >
+              <TabsList
+                ref={tabsListRef}
+                className={cn(
+                  "h-12 min-w-0 w-full flex flex-nowrap items-center justify-end p-0 pt-[6px] pb-1.5 pl-[7px] pr-[7px] gap-x-[7px] rounded-none bg-transparent overflow-visible",
+                  "max-[455px]:pl-1 max-[455px]:pr-1 max-[455px]:gap-x-1"
+                )}
+              >
+              <TabsTrigger
+                value="attention"
+                title={tabTitle("Attention")}
+                className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
+              >
+                <span className="inline-flex items-center min-w-0">
+                  {!compact && (
+                    <AnimatedIcon
+                      icon={AlertTriangle}
+                      size={16}
+                      animateOnHover
+                      animation="shake"
+                      className={cn(
+                        "shrink-0 h-4 w-4 text-[#FF6B6B]",
+                        iconOnly
+                          ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                          : "mr-2 max-[455px]:mr-1"
+                      )}
+                    />
+                  )}
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Attention</span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="tasks"
+                title={tabTitle("Tasks")}
+                className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
+              >
+                <span className="inline-flex items-center min-w-0">
+                  {!compact && (
+                    <CheckSquare
+                      className={cn(
+                        "shrink-0 h-4 w-4",
+                        iconOnly
+                          ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                          : "mr-1 max-[455px]:mr-0.5"
+                      )}
+                    />
+                  )}
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Tasks</span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="compliance"
+                title={tabTitle("Compliance")}
+                className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
+              >
+                <span className="inline-flex items-center min-w-0">
+                  {!compact && (
+                    <ShieldCheck
+                      className={cn(
+                        "shrink-0 h-4 w-4",
+                        iconOnly
+                          ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                          : "mr-1 max-[455px]:mr-0.5"
+                      )}
+                    />
+                  )}
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Compliance</span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="schedule"
+                title={tabTitle("Schedule")}
+                className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
+              >
+                <span className="inline-flex items-center min-w-0">
+                  {!compact && (
+                    <AnimatedIcon
+                      icon={Calendar}
+                      size={16}
+                      animateOnHover
+                      animation="pointing"
+                      className={cn(
+                        "shrink-0 h-4 w-4",
+                        iconOnly
+                          ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
+                          : "mr-2 max-[455px]:mr-1"
+                      )}
+                    />
+                  )}
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Schedule</span>
+                </span>
+              </TabsTrigger>
+              </TabsList>
+            </div>
+            {!iconOnly && selectedTabMicrocopy != null && (
+              <p
+                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-4 pt-2 pb-2 max-[455px]:px-1"
+                aria-live="polite"
+              >
+                {selectedTabMicrocopy}
+              </p>
             )}
-          >
-            <TabsTrigger
-              value="attention"
-              title={tabTitle("Attention")}
-              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
-            >
-              <span className="inline-flex items-center min-w-0">
-                {!compact && (
-                  <AnimatedIcon
-                    icon={AlertTriangle}
-                    size={16}
-                    animateOnHover
-                    animation="shake"
-                    className={cn(
-                      "shrink-0 h-4 w-4",
-                      iconOnly
-                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                        : "mr-2 max-[455px]:mr-1"
-                    )}
-                  />
-                )}
-                <span className={cn(iconOnly && taskTabLabelReveal)}>Attention</span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="tasks"
-              title={tabTitle("Tasks")}
-              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
-            >
-              <span className="inline-flex items-center min-w-0">
-                {!compact && (
-                  <CheckSquare
-                    className={cn(
-                      "shrink-0 h-4 w-4",
-                      iconOnly
-                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                        : "mr-1 max-[455px]:mr-0.5"
-                    )}
-                  />
-                )}
-                <span className={cn(iconOnly && taskTabLabelReveal)}>Tasks</span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="compliance"
-              title={tabTitle("Compliance")}
-              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
-            >
-              <span className="inline-flex items-center min-w-0">
-                {!compact && (
-                  <ShieldCheck
-                    className={cn(
-                      "shrink-0 h-4 w-4",
-                      iconOnly
-                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                        : "mr-1 max-[455px]:mr-0.5"
-                    )}
-                  />
-                )}
-                <span className={cn(iconOnly && taskTabLabelReveal)}>Compliance</span>
-              </span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="schedule"
-              title={tabTitle("Schedule")}
-              className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
-            >
-              <span className="inline-flex items-center min-w-0">
-                {!compact && (
-                  <AnimatedIcon
-                    icon={Calendar}
-                    size={16}
-                    animateOnHover
-                    animation="pointing"
-                    className={cn(
-                      "shrink-0 h-4 w-4",
-                      iconOnly
-                        ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                        : "mr-2 max-[455px]:mr-1"
-                    )}
-                  />
-                )}
-                <span className={cn(iconOnly && taskTabLabelReveal)}>Schedule</span>
-              </span>
-            </TabsTrigger>
-          </TabsList>
+          </div>
 
           {onCreateTask && (
             <button
               type="button"
               onClick={onCreateTask}
-              className="hidden md:flex min-w-0 shrink-0 min-[1380px]:hidden items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
+              className="hidden md:flex min-w-0 shrink-0 min-[1380px]:hidden self-center items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
             >
               <Plus className="h-4 w-4 shrink-0" />
               Create Task
@@ -1272,7 +1301,6 @@ export function TaskPanel({
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                   <div className="space-y-3 min-w-0">
-                  <div className="space-y-2">
                     {filteredComplianceRecords.map((record) => (
                       <OperationalStreamCard
                         key={record.id}
@@ -1322,13 +1350,12 @@ export function TaskPanel({
                         className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-[#8EC9CE]")}
                       />
                     ))}
-                  </div>
 
-                  {filteredComplianceRecords.length === 0 && (
-                    <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
-                      No compliance records match your current filters.
-                    </div>
-                  )}
+                    {filteredComplianceRecords.length === 0 && (
+                      <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
+                        No compliance records match your current filters.
+                      </div>
+                    )}
                 </div>
 
                 <div className="lg:sticky lg:top-3 self-start space-y-3">
@@ -1336,7 +1363,7 @@ export function TaskPanel({
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Health</p>
                     <div className="space-y-1 text-xs">
                       <p>Healthy: {complianceHealth.healthy}</p>
-                      <p>Expiring soon: {complianceHealth.expiring}</p>
+                      <p>Expiring: {complianceHealth.expiring}</p>
                       <p>Overdue: {complianceHealth.overdue}</p>
                       <p>Missing: {complianceHealth.missing}</p>
                     </div>

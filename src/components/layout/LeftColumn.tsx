@@ -374,13 +374,13 @@ export function LeftColumn({
         )}
       </div>
 
-      {/* Calendar Section - Scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+      {/* Calendar Section - Scrollable (no horizontal pan — avoid sideways slide on touch/trackpad) */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
         <div
           ref={calendarRef}
-          className="flex-shrink-0 w-full"
+          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden"
         >
-          <div className="px-2 pt-3 pb-4 w-full">
+          <div className="px-2 pt-3 pb-4 w-full min-w-0 max-w-full overflow-x-hidden">
             {tasksLoading ? (
               <div className="rounded-lg bg-transparent px-[2px] py-[5px] shadow-none w-full">
                 <Skeleton className="h-64 w-full" />
