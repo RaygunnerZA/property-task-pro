@@ -936,7 +936,7 @@ export function TaskPanel({
             </div>
             {!iconOnly && selectedTabMicrocopy != null && (
               <p
-                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-4 pt-2 pb-2 max-[455px]:px-1"
+                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-4 pt-8 pb-2 max-[455px]:px-1"
                 aria-live="polite"
               >
                 {selectedTabMicrocopy}

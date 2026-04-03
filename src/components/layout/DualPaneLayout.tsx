@@ -83,7 +83,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
             </div>
 
             {/* Middle Column */}
-            <div className="overflow-y-auto min-w-0 bg-surface-gradient">
+            <div className="overflow-y-auto min-w-0 bg-surface-gradient px-[14px]">
               {rightColumn}
             </div>
           </div>

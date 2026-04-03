@@ -192,7 +192,7 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0"
+      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full px-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties Section - Fixed at top */}
