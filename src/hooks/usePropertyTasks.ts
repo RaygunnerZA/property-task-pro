@@ -1,36 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from "react";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { useProperty } from "@/hooks/property/useProperty";
+import {
+  mapTasksViewToPropertyTask,
+  type PropertyTaskCardModel,
+} from "@/utils/mapTasksViewToCards";
 
-interface PropertyTask {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate: Date;
-  assignedTo?: string;
-  assignedTeam?: string;
-  createdAt: Date;
-  isOverdue?: boolean;
-}
+export type PropertyTask = PropertyTaskCardModel;
 
-interface Property {
+interface PropertyHeader {
   id: string;
   address: string;
-  nickname?: string;
+  nickname?: string | null;
 }
 
-export function usePropertyTasks(propertyId: string) {
-  const [data, setData] = useState<PropertyTask[]>([]);
-  const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
+export function usePropertyTasks(propertyId: string | undefined) {
+  const { data: tasksRaw = [], isLoading: tasksLoading } = useTasksQuery(
+    propertyId,
+    { enabled: !!propertyId }
+  );
+  const { property, loading: propertyLoading } = useProperty(propertyId);
 
-  useEffect(() => {
-    // TODO: Connect to backend service
-    // This is a stub that returns empty data
-    setLoading(false);
-    setData([]);
-    setProperty(null);
-  }, [propertyId]);
+  const data = useMemo(() => {
+    return tasksRaw
+      .filter((row) => row.id)
+      .map((row) => mapTasksViewToPropertyTask(row));
+  }, [tasksRaw]);
 
-  return { data, property, loading };
+  const header: PropertyHeader | null = property
+    ? {
+        id: property.id,
+        address: property.address,
+        nickname: property.nickname,
+      }
+    : null;
+
+  return {
+    data,
+    property: header,
+    loading: (!!propertyId && tasksLoading) || (!!propertyId && propertyLoading),
+  };
 }

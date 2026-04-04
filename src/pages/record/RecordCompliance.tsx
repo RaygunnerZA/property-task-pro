@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { StandardPage } from "@/components/design-system/StandardPage";
-import { Shield, BarChart3, User, Calendar } from "lucide-react";
+import { Shield, BarChart3, User, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 
 const complianceNavItems = [
   { path: "/record/compliance", label: "Dashboard", icon: BarChart3 },
+  { path: "/record/compliance/tasks", label: "Tasks", icon: CheckSquare },
   { path: "/record/compliance/portfolio", label: "Portfolio", icon: Shield },
   { path: "/record/compliance/contractors", label: "Contractors", icon: User },
   { path: "/record/compliance/calendar", label: "Calendar", icon: Calendar },

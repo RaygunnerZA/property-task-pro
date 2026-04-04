@@ -13,7 +13,7 @@ import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 export default function PropertyTasks() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: tasks, loading, property } = usePropertyTasks(id!);
+  const { data: tasks, loading, property } = usePropertyTasks(id);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const groupedTasks = {
@@ -33,7 +33,7 @@ export default function PropertyTasks() {
   return (
     <StandardPageWithBack
       title="Property Tasks"
-      subtitle={property?.address}
+      subtitle={property ? property.nickname || property.address : undefined}
       backTo="/properties"
       icon={<CheckSquare className="h-6 w-6" />}
       action={

@@ -58,6 +58,7 @@ const ComplianceDashboard = lazy(() => import("./pages/ComplianceDashboard"));
 const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompliance"));
 const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
 const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
+const ComplianceTasks = lazy(() => import("./pages/ComplianceTasks"));
 const CalendarV2 = lazy(() => import("./pages/CalendarV2"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
@@ -228,6 +229,7 @@ const App = () => {
                                 <Route path="/record/documents" element={<RecordDocuments />} />
                                 <Route path="/record/compliance" element={<RecordCompliance />}>
                                   <Route index element={<ComplianceDashboard />} />
+                                  <Route path="tasks" element={<ComplianceTasks />} />
                                   <Route path="portfolio" element={<PortfolioCompliance />} />
                                   <Route path="contractors" element={<ContractorCompliance />} />
                                   <Route path="calendar" element={<ComplianceCalendar />} />
