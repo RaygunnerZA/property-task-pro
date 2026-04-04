@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
@@ -13,8 +13,7 @@ import { ComplianceRuleModal } from "@/components/compliance/ComplianceRuleModal
 import { ComplianceAutomationPanel } from "@/components/compliance/ComplianceAutomationPanel";
 import { ComplianceRecommendationDrawer } from "@/components/compliance/ComplianceRecommendationDrawer";
 import { ComplianceScoreHeroCard, StatusGroupedSection } from "@/components/property-framework";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Shield, Zap } from "lucide-react";
+import { Shield, Zap, Plus, FileUp } from "lucide-react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { usePropertyAutoTasks } from "@/hooks/usePropertyAutoTasks";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -22,19 +21,30 @@ import { PropertyIntelligencePanel } from "@/components/properties/PropertyIntel
 import { usePropertyProfile } from "@/hooks/usePropertyProfile";
 import { evaluateProfile, normalizePropertyProfile } from "@/services/propertyIntelligence/ruleEvaluator";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  PropertyWorkspaceLayout,
+  WorkspaceSurfaceCard,
+  WorkspaceSectionHeading,
+  WorkspaceTabList,
+  WorkspaceTabTrigger,
+} from "@/components/property-workspace";
+
+type ComplianceWorkView = "due_soon" | "overdue" | "rules" | "history";
 
 export default function PropertyCompliance() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { orgId } = useActiveOrg();
   const { data: compliance = [], isLoading } = useComplianceQuery(id || undefined);
-  const { data: recommendations = [], isLoading: recsLoading } = useComplianceRecommendations(id || undefined);
+  const { data: recommendations = [] } = useComplianceRecommendations(id || undefined);
   const { data: autoTasks = [] } = usePropertyAutoTasks(id || undefined);
   const { data: assetsData = [] } = useAssetsQuery(id || undefined);
   const { data: rawProfile } = usePropertyProfile(id || undefined);
   const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any | null>(null);
+  const [workView, setWorkView] = useState<ComplianceWorkView>("due_soon");
 
   useEffect(() => {
     if (searchParams.get("addRule") !== "1") return;
@@ -66,7 +76,9 @@ export default function PropertyCompliance() {
 
   const handleReanalyse = async () => {
     if (!id || !orgId) return;
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) return;
     await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-doc-reanalyse`, {
@@ -90,11 +102,12 @@ export default function PropertyCompliance() {
 
   const complianceScore = useMemo(() => {
     if (compliance.length === 0) return 100;
-    const valid = compliance.filter((c: any) => c.expiry_status === "valid" || c.expiry_status === "none").length;
+    const valid = compliance.filter(
+      (c: any) => c.expiry_status === "valid" || c.expiry_status === "none"
+    ).length;
     return Math.round((valid / compliance.length) * 100);
   }, [compliance]);
 
-  // Sort by urgency
   const sortedExpired = useMemo(
     () => [...expired].sort((a, b) => (a.days_until_expiry ?? 0) - (b.days_until_expiry ?? 0)),
     [expired]
@@ -108,133 +121,200 @@ export default function PropertyCompliance() {
     [upcoming]
   );
 
+  const contextColumn = id ? (
+    <div className="space-y-4">
+      <ComplianceScoreHeroCard
+        scorePercent={complianceScore}
+        criticalCount={sortedExpired.length}
+        dueSoonCount={sortedExpiring.length}
+        onViewCritical={sortedExpired.length > 0 ? () => setWorkView("overdue") : undefined}
+      />
+      <WorkspaceSurfaceCard title="Posture" description="Rules and obligations on this property">
+        <ul className="text-xs text-muted-foreground space-y-2">
+          <li>
+            <span className="font-medium text-foreground">{compliance.length}</span> active items in schedule
+          </li>
+          <li>
+            <span className="font-medium text-foreground">{sortedExpired.length}</span> overdue
+          </li>
+          <li>
+            <span className="font-medium text-foreground">{sortedExpiring.length}</span> due within 30 days
+          </li>
+          {autoTasks.length > 0 && (
+            <li>
+              <span className="font-medium text-foreground">{autoTasks.length}</span> automation-backed tasks
+            </li>
+          )}
+        </ul>
+      </WorkspaceSurfaceCard>
+      <ComplianceSuggestionsCard propertyId={id} />
+    </div>
+  ) : null;
+
+  const workColumnInner = (
+    <div className="flex flex-col gap-5">
+      <div>
+        <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+        <WorkspaceTabList>
+          <WorkspaceTabTrigger selected={workView === "due_soon"} onClick={() => setWorkView("due_soon")}>
+            Due soon
+          </WorkspaceTabTrigger>
+          <WorkspaceTabTrigger selected={workView === "overdue"} onClick={() => setWorkView("overdue")}>
+            Overdue
+          </WorkspaceTabTrigger>
+          <WorkspaceTabTrigger selected={workView === "rules"} onClick={() => setWorkView("rules")}>
+            Rules
+          </WorkspaceTabTrigger>
+          <WorkspaceTabTrigger selected={workView === "history"} onClick={() => setWorkView("history")}>
+            Scheduled
+          </WorkspaceTabTrigger>
+        </WorkspaceTabList>
+      </div>
+
+      {workView === "due_soon" && (
+        <div className="space-y-6">
+          <PropertyIntelligencePanel
+            assetVectors={assetVectors}
+            complianceVectors={complianceVectors}
+            intelligenceResult={intelligenceResult}
+          />
+          {recommendations.length > 0 && (
+            <section>
+              <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm">
+                <Zap className="h-4 w-4 text-primary" />
+                Suggested actions ({recommendations.length})
+              </h2>
+              <div className="space-y-2">
+                {recommendations.map((rec) => (
+                  <ComplianceRecommendationCard
+                    key={rec.id}
+                    recommendation={rec}
+                    documentTitle={(rec as any)._doc?.title}
+                    propertyName={(rec as any)._doc?.property_name}
+                    expiryDate={(rec as any)._doc?.expiry_date}
+                    nextDueDate={(rec as any)._doc?.next_due_date}
+                    spaceCount={(rec as any)._doc?.space_ids?.length ?? 0}
+                    assetCount={(rec as any)._doc?.linked_asset_ids?.length ?? 0}
+                    onClick={() => setSelectedRecId(rec.id)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          <StatusGroupedSection
+            severity="warning"
+            title={`Due soon (${sortedExpiring.length})`}
+            items={sortedExpiring.map((item) => (
+              <ComplianceCard key={item.id} compliance={item} />
+            ))}
+            emptyMessage="No items due within 30 days"
+          />
+        </div>
+      )}
+
+      {workView === "overdue" && (
+        <StatusGroupedSection
+          severity="critical"
+          title={`Overdue (${sortedExpired.length})`}
+          items={sortedExpired.map((item) => (
+            <ComplianceCard key={item.id} compliance={item} />
+          ))}
+          emptyMessage="No expired items"
+        />
+      )}
+
+      {workView === "rules" && id && (
+        <ComplianceRulesSection
+          propertyId={id}
+          onAddRule={() => {
+            setEditingRule(null);
+            setRuleModalOpen(true);
+          }}
+          onEditRule={(rule) => {
+            setEditingRule(rule);
+            setRuleModalOpen(true);
+          }}
+        />
+      )}
+
+      {workView === "history" && (
+        <>
+          {compliance.length === 0 ? (
+            <FrameworkEmptyState
+              icon={Shield}
+              title="No compliance items"
+              description="Compliance items for this property will appear here"
+            />
+          ) : (
+            <div className="space-y-4">
+              <StatusGroupedSection
+                severity="neutral"
+                title={`Scheduled & valid (${sortedUpcoming.length})`}
+                items={sortedUpcoming.map((item) => (
+                  <ComplianceCard key={item.id} compliance={item} />
+                ))}
+                emptyMessage="No upcoming items"
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const actionColumn = id ? (
+    <div className="space-y-4">
+      <WorkspaceSurfaceCard title="Add & ingest" description="Create obligations or attach evidence">
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            className="w-full btn-accent-vibrant justify-center gap-2"
+            onClick={() => {
+              setEditingRule(null);
+              setRuleModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Add compliance rule
+          </Button>
+          <Button variant="outline" className="w-full btn-neomorphic justify-center gap-2" asChild>
+            <Link to={`/properties/${id}/documents?upload=1`}>
+              <FileUp className="h-4 w-4" />
+              Upload document
+            </Link>
+          </Button>
+        </div>
+      </WorkspaceSurfaceCard>
+      <ComplianceAutomationPanel propertyId={id} />
+    </div>
+  ) : null;
+
   return (
     <StandardPageWithBack
       title="Property Compliance"
+      subtitle="What is due, overdue, and what to do next"
       backTo={`/properties/${id}`}
       icon={<Shield className="h-6 w-6" />}
-      maxWidth="lg"
+      maxWidth="full"
+      contentClassName="max-w-[1480px]"
     >
       {isLoading ? (
         <LoadingState message="Loading property compliance..." />
       ) : (
-        <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="mb-6 w-full grid grid-cols-3">
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="rules">Rules</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="schedule" className="space-y-6 mt-0">
-            {/* Intelligence suggestions — shown when Filla detects compliance gaps */}
-            {id && <ComplianceSuggestionsCard propertyId={id} />}
-
-            {/* Compliance Score Hero - Framework V2 */}
-            <ComplianceScoreHeroCard
-              scorePercent={complianceScore}
-              criticalCount={sortedExpired.length}
-              dueSoonCount={sortedExpiring.length}
-              onViewCritical={sortedExpired.length > 0 ? () => {} : undefined}
+        <>
+          <div className="min-[1100px]:block hidden">
+            <PropertyWorkspaceLayout
+              contextColumn={contextColumn}
+              workColumn={workColumnInner}
+              actionColumn={actionColumn}
             />
-
-            {/* Property Intelligence (Phase 11 + Sprint 2) */}
-            <PropertyIntelligencePanel
-              assetVectors={assetVectors}
-              complianceVectors={complianceVectors}
-              intelligenceResult={intelligenceResult}
-            />
-
-            {/* Automation Panel (Sprint 3) */}
-            {id && <ComplianceAutomationPanel propertyId={id} />}
-
-            {/* Intelligent Recommendations (Phase 11) — shown in PropertyIntelligencePanel above */}
-
-            {/* Recommended Actions */}
-            {recommendations.length > 0 && (
-              <section>
-                <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-primary" />
-                  Recommended Actions ({recommendations.length})
-                </h2>
-                <div className="space-y-2">
-                  {recommendations.map((rec) => (
-                    <ComplianceRecommendationCard
-                      key={rec.id}
-                      recommendation={rec}
-                      documentTitle={(rec as any)._doc?.title}
-                      propertyName={(rec as any)._doc?.property_name}
-                      expiryDate={(rec as any)._doc?.expiry_date}
-                      nextDueDate={(rec as any)._doc?.next_due_date}
-                      spaceCount={(rec as any)._doc?.space_ids?.length ?? 0}
-                      assetCount={(rec as any)._doc?.linked_asset_ids?.length ?? 0}
-                      onClick={() => setSelectedRecId(rec.id)}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Required Actions - Framework V2 StatusGroupedSection */}
-            <StatusGroupedSection
-              severity="critical"
-              title={`Critical (${sortedExpired.length})`}
-              items={sortedExpired.map((item) => (
-                <ComplianceCard key={item.id} compliance={item} />
-              ))}
-              emptyMessage="No expired items"
-            />
-
-            <StatusGroupedSection
-              severity="warning"
-              title={`Due Soon (${sortedExpiring.length})`}
-              items={sortedExpiring.map((item) => (
-                <ComplianceCard key={item.id} compliance={item} />
-              ))}
-              emptyMessage="No items due within 30 days"
-            />
-
-            <StatusGroupedSection
-              severity="neutral"
-              title={`Scheduled (${sortedUpcoming.length})`}
-              items={sortedUpcoming.map((item) => (
-                <ComplianceCard key={item.id} compliance={item} />
-              ))}
-              emptyMessage="No upcoming items"
-            />
-          </TabsContent>
-
-          <TabsContent value="overview" className="space-y-4 mt-0">
-            {compliance.length === 0 ? (
-              <FrameworkEmptyState
-                icon={Shield}
-                title="No compliance items"
-                description="Compliance items for this property will appear here"
-              />
-            ) : (
-              <div className="space-y-2">
-                {compliance.map((item) => (
-                  <ComplianceCard key={item.id} compliance={item} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="rules" className="mt-0">
-            {id && (
-              <ComplianceRulesSection
-                propertyId={id}
-                onAddRule={() => {
-                  setEditingRule(null);
-                  setRuleModalOpen(true);
-                }}
-                onEditRule={(rule) => {
-                  setEditingRule(rule);
-                  setRuleModalOpen(true);
-                }}
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+          </div>
+          <div className="min-[1100px]:hidden flex flex-col gap-6 max-w-[660px]">
+            {actionColumn}
+            {workColumnInner}
+            {contextColumn}
+          </div>
+        </>
       )}
 
       <ComplianceRecommendationDrawer

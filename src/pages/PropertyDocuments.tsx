@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { FileText } from "lucide-react";
+import { FileText, Sparkles } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { DocumentsSummaryRow } from "@/components/properties/DocumentsSummaryRow";
@@ -9,8 +9,13 @@ import { DocumentSearchFilters } from "@/components/properties/DocumentSearchFil
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
+import { DocumentHealthSummary } from "@/components/properties/DocumentHealthSummary";
 import { TintedSectionCard, FrameworkEmptyState } from "@/components/property-framework";
-import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
+import {
+  DOCUMENT_CATEGORIES,
+  type DocMetadata,
+  type PropertyDocument,
+} from "@/hooks/property/usePropertyDocuments";
 import type { TintedSectionColor } from "@/components/property-framework";
 import {
   Dialog,
@@ -18,6 +23,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  PropertyWorkspaceLayout,
+  WorkspaceSurfaceCard,
+  WorkspaceSectionHeading,
+  WorkspaceTabList,
+  WorkspaceTabTrigger,
+} from "@/components/property-workspace";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -27,6 +40,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+type WorkTab = "all" | "expiring" | "missing_links" | "compliance" | "asset_docs";
+
+const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
+
 export default function PropertyDocuments() {
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +52,7 @@ export default function PropertyDocuments() {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
 
+  const [workTab, setWorkTab] = useState<WorkTab>("all");
   const [category, setCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [expiringSoon, setExpiringSoon] = useState(false);
@@ -44,7 +62,7 @@ export default function PropertyDocuments() {
   const [hazards, setHazards] = useState(false);
   const [unlinked, setUnlinked] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
+  const [showUploadMobile, setShowUploadMobile] = useState(false);
   const [showReanalyseModal, setShowReanalyseModal] = useState(false);
   const [reanalyseLoading, setReanalyseLoading] = useState(false);
   const [reanalyseResult, setReanalyseResult] = useState<{
@@ -54,40 +72,104 @@ export default function PropertyDocuments() {
     errors: number;
   } | null>(null);
 
+  const applyWorkTab = useCallback((tab: WorkTab) => {
+    setWorkTab(tab);
+    if (tab === "expiring") {
+      setExpiringSoon(true);
+      setExpired(false);
+      setUnlinked(false);
+    } else if (tab === "missing_links") {
+      setUnlinked(true);
+      setExpiringSoon(false);
+      setExpired(false);
+    } else if (tab === "all") {
+      setExpiringSoon(false);
+      setUnlinked(false);
+    } else {
+      setExpiringSoon(false);
+      setUnlinked(false);
+      setExpired(false);
+    }
+  }, []);
+
   // URL filter: ?filter=expired | expiring | hazards | unlinked; ?upload=1 opens upload dialog
   useEffect(() => {
     const filter = searchParams.get("filter");
-    if (filter === "expired") setExpired(true);
-    if (filter === "expiring") setExpiringSoon(true);
+    if (filter === "expired") {
+      setExpired(true);
+      applyWorkTab("all");
+    }
+    if (filter === "expiring") applyWorkTab("expiring");
     if (filter === "hazards") setHazards(true);
-    if (filter === "unlinked") setUnlinked(true);
-  }, [searchParams]);
+    if (filter === "unlinked") applyWorkTab("missing_links");
+  }, [searchParams, applyWorkTab]);
 
   useEffect(() => {
     if (searchParams.get("upload") !== "1") return;
-    setShowUpload(true);
+    setShowUploadMobile(true);
     const next = new URLSearchParams(searchParams);
     next.delete("upload");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const { documents, isLoading } = usePropertyDocuments(
-    propertyId,
-    {
+  const tabUsesBroadFetch = workTab === "compliance" || workTab === "asset_docs";
+
+  const mergedFilters = useMemo(
+    () => ({
       category: category || undefined,
       search: search || undefined,
+      expiringSoon: workTab === "expiring" ? true : !tabUsesBroadFetch && expiringSoon,
+      expired: tabUsesBroadFetch ? false : expired,
+      missing: tabUsesBroadFetch ? false : missing,
+      recentlyAdded: tabUsesBroadFetch ? false : recentlyAdded,
+      hazards: tabUsesBroadFetch ? false : hazards,
+      unlinked: workTab === "missing_links" ? true : !tabUsesBroadFetch && unlinked,
+    }),
+    [
+      category,
+      search,
+      workTab,
+      tabUsesBroadFetch,
       expiringSoon,
       expired,
       missing,
       recentlyAdded,
       hazards,
       unlinked,
-    }
+    ]
+  );
+
+  const { documents, isLoading } = usePropertyDocuments(propertyId, mergedFilters, { limit: 500 });
+
+  const { documents: contextDocuments = [], isLoading: contextLoading } = usePropertyDocuments(
+    propertyId,
+    {},
+    { limit: 500 }
   );
 
   const { spaces } = useSpaces(propertyId);
   const { data: assets = [] } = useAssetsQuery(propertyId);
-  const { data: complianceItems = [] } = useComplianceQuery();
+  const { data: complianceItems = [] } = useComplianceQuery(propertyId);
+
+  const documentsForWork = useMemo(() => {
+    if (workTab === "compliance") {
+      return documents.filter((d) =>
+        COMPLIANCE_DOC_CATEGORIES.some((c) => c === d.category)
+      );
+    }
+    if (workTab === "asset_docs") {
+      return documents.filter((d) => {
+        const meta = d.metadata as DocMetadata | null | undefined;
+        const detected = meta?.detected_assets;
+        return (
+          (Array.isArray(detected) && detected.length > 0) ||
+          d.category === "Warranties" ||
+          d.category === "O&M Manuals"
+        );
+      });
+    }
+    return documents;
+  }, [documents, workTab]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["property-documents"] });
@@ -95,7 +177,7 @@ export default function PropertyDocuments() {
   };
 
   const handleUploadComplete = () => {
-    setShowUpload(false);
+    setShowUploadMobile(false);
     handleRefresh();
   };
 
@@ -182,7 +264,6 @@ export default function PropertyDocuments() {
     title: c.title || "Untitled",
   }));
 
-  // Category → colour mapping (Framework V2)
   const categoryColor: Record<string, TintedSectionColor> = {
     "Fire Safety": "red",
     Electrical: "amber",
@@ -198,128 +279,192 @@ export default function PropertyDocuments() {
   };
 
   const documentsByCategory = useMemo(() => {
-    const map = new Map<string, typeof documents>();
-    for (const doc of documents) {
+    const map = new Map<string, PropertyDocument[]>();
+    for (const doc of documentsForWork) {
       const cat = doc.category || "Misc";
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(doc);
     }
     return map;
-  }, [documents]);
+  }, [documentsForWork]);
+
+  const contextColumn = (
+    <div className="space-y-4">
+      <WorkspaceSurfaceCard title="Health snapshot" description="What exists on this property">
+        {contextLoading ? (
+          <p className="text-xs text-muted-foreground">Loading summary…</p>
+        ) : (
+          <DocumentHealthSummary propertyId={propertyId} documents={contextDocuments} className="!shadow-none !bg-transparent p-0" />
+        )}
+      </WorkspaceSurfaceCard>
+      <WorkspaceSurfaceCard title="Quick focus" description="Jump to common slices">
+        <DocumentsSummaryRow propertyId={propertyId} />
+      </WorkspaceSurfaceCard>
+    </div>
+  );
+
+  const workColumn = (
+    <div className="flex flex-col gap-5">
+      <div>
+        <WorkspaceSectionHeading>View</WorkspaceSectionHeading>
+        <WorkspaceTabList className="mb-3">
+          {(
+            [
+              ["all", "All"],
+              ["expiring", "Expiring"],
+              ["missing_links", "Missing links"],
+              ["compliance", "Compliance"],
+              ["asset_docs", "Asset docs"],
+            ] as const
+          ).map(([id, label]) => (
+            <WorkspaceTabTrigger key={id} selected={workTab === id} onClick={() => applyWorkTab(id)}>
+              {label}
+            </WorkspaceTabTrigger>
+          ))}
+        </WorkspaceTabList>
+      </div>
+
+      <div>
+        <WorkspaceSectionHeading>Category</WorkspaceSectionHeading>
+        <DocumentCategoryChips selected={category} onSelect={setCategory} />
+      </div>
+      <div>
+        <WorkspaceSectionHeading>Search & filters</WorkspaceSectionHeading>
+        <DocumentSearchFilters
+          search={search}
+          onSearchChange={setSearch}
+          expiringSoon={expiringSoon}
+          expired={expired}
+          missing={missing}
+          recentlyAdded={recentlyAdded}
+          hazards={hazards}
+          unlinked={unlinked}
+          onExpiringSoonToggle={() => setExpiringSoon((s) => !s)}
+          onExpiredToggle={() => setExpired((s) => !s)}
+          onMissingToggle={() => setMissing((s) => !s)}
+          onRecentlyAddedToggle={() => setRecentlyAdded((s) => !s)}
+          onHazardsToggle={() => setHazards((s) => !s)}
+          onUnlinkedToggle={() => setUnlinked((s) => !s)}
+        />
+      </div>
+
+      <div className="space-y-4">
+        {isLoading ? (
+          <LoadingState message="Loading documents..." />
+        ) : documentsForWork.length === 0 ? (
+          <FrameworkEmptyState
+            icon={FileText}
+            title="No documents"
+            description="Upload from the action column or adjust filters"
+            action={{
+              label: "Upload document",
+              onClick: () => setShowUploadMobile(true),
+            }}
+          />
+        ) : category ? (
+          <TintedSectionCard
+            title={category}
+            color={categoryColor[category] ?? "slate"}
+            count={documentsByCategory.get(category)?.length ?? 0}
+            collapsible
+            defaultExpanded
+          >
+            <DocumentGrid
+              documents={documentsByCategory.get(category) ?? documentsForWork}
+              propertyId={propertyId}
+              spaces={spaceOptions}
+              assets={assetOptions}
+              compliance={complianceOptions}
+              onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+              onOpen={(doc) => window.open(doc.file_url, "_blank")}
+              onReplace={() => {}}
+              onLinkItems={(doc) => setSelectedDocId(doc.id)}
+              onLinkSpace={handleLinkSpace}
+              onLinkAsset={handleLinkAsset}
+              onLinkCompliance={handleLinkCompliance}
+            />
+          </TintedSectionCard>
+        ) : (
+          <div className="space-y-4">
+            {Array.from(documentsByCategory.entries())
+              .sort(([a], [b]) => {
+                const ai = DOCUMENT_CATEGORIES.indexOf(a as (typeof DOCUMENT_CATEGORIES)[number]);
+                const bi = DOCUMENT_CATEGORIES.indexOf(b as (typeof DOCUMENT_CATEGORIES)[number]);
+                if (ai >= 0 && bi >= 0) return ai - bi;
+                if (ai >= 0) return -1;
+                if (bi >= 0) return 1;
+                return a.localeCompare(b);
+              })
+              .map(([cat, docs]) => (
+                <TintedSectionCard
+                  key={cat}
+                  title={cat}
+                  color={categoryColor[cat] ?? "slate"}
+                  count={docs.length}
+                  collapsible
+                  defaultExpanded
+                >
+                  <DocumentGrid
+                    documents={docs}
+                    propertyId={propertyId}
+                    spaces={spaceOptions}
+                    assets={assetOptions}
+                    compliance={complianceOptions}
+                    onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+                    onOpen={(doc) => window.open(doc.file_url, "_blank")}
+                    onReplace={() => {}}
+                    onLinkItems={(doc) => setSelectedDocId(doc.id)}
+                    onLinkSpace={handleLinkSpace}
+                    onLinkAsset={handleLinkAsset}
+                    onLinkCompliance={handleLinkCompliance}
+                  />
+                </TintedSectionCard>
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const actionColumn = (
+    <div className="space-y-4">
+      <WorkspaceSurfaceCard title="Upload" description="Add files to this property">
+        <DocumentUploadZone propertyId={propertyId} onUploadComplete={handleUploadComplete} />
+      </WorkspaceSurfaceCard>
+      <WorkspaceSurfaceCard
+        title="Classification"
+        description="Re-run extraction to refresh types, expiry hints, and link suggestions."
+      >
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full btn-neomorphic justify-center gap-2"
+          onClick={handleReanalyse}
+        >
+          <Sparkles className="h-4 w-4 text-primary" />
+          Re-run AI extraction
+        </Button>
+      </WorkspaceSurfaceCard>
+    </div>
+  );
 
   return (
     <StandardPageWithBack
       title="Property Documents"
-      subtitle="View and manage property documentation"
+      subtitle="What you have, what expires, and where it belongs"
       backTo={`/properties/${propertyId}`}
       icon={<FileText className="h-6 w-6" />}
-      maxWidth="lg"
+      maxWidth="full"
+      contentClassName="max-w-[1480px]"
     >
-      <div className="flex flex-col gap-6 max-w-[660px]">
-        {/* Summary Row - Framework V2 */}
-        <DocumentsSummaryRow propertyId={propertyId} />
+      <div className="min-[1100px]:block hidden">
+        <PropertyWorkspaceLayout contextColumn={contextColumn} workColumn={workColumn} actionColumn={actionColumn} />
+      </div>
 
-        <div className="flex flex-col gap-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Category</h3>
-            <DocumentCategoryChips selected={category} onSelect={setCategory} />
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">Search & filters</h3>
-            <DocumentSearchFilters
-              search={search}
-              onSearchChange={setSearch}
-              expiringSoon={expiringSoon}
-              expired={expired}
-              missing={missing}
-              recentlyAdded={recentlyAdded}
-              hazards={hazards}
-              unlinked={unlinked}
-              onExpiringSoonToggle={() => setExpiringSoon((s) => !s)}
-              onExpiredToggle={() => setExpired((s) => !s)}
-              onMissingToggle={() => setMissing((s) => !s)}
-              onRecentlyAddedToggle={() => setRecentlyAdded((s) => !s)}
-              onHazardsToggle={() => setHazards((s) => !s)}
-              onUnlinkedToggle={() => setUnlinked((s) => !s)}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {isLoading ? (
-            <LoadingState message="Loading documents..." />
-          ) : documents.length === 0 ? (
-            <FrameworkEmptyState
-              icon={FileText}
-              title="No documents"
-              description="Upload your first document or adjust filters"
-              action={{
-                label: "Upload document",
-                onClick: () => setShowUpload(true),
-              }}
-            />
-          ) : category ? (
-            <TintedSectionCard
-              title={category}
-              color={categoryColor[category] ?? "slate"}
-              count={documentsByCategory.get(category)?.length ?? 0}
-              collapsible
-              defaultExpanded
-            >
-              <DocumentGrid
-                documents={documentsByCategory.get(category) ?? documents}
-                propertyId={propertyId}
-                spaces={spaceOptions}
-                assets={assetOptions}
-                compliance={complianceOptions}
-                onDocumentClick={(doc) => setSelectedDocId(doc.id)}
-                onOpen={(doc) => window.open(doc.file_url, "_blank")}
-                onReplace={() => {}}
-                onLinkItems={(doc) => setSelectedDocId(doc.id)}
-                onLinkSpace={handleLinkSpace}
-                onLinkAsset={handleLinkAsset}
-                onLinkCompliance={handleLinkCompliance}
-              />
-            </TintedSectionCard>
-          ) : (
-            <div className="space-y-4">
-              {Array.from(documentsByCategory.entries())
-                .sort(([a], [b]) => {
-                  const ai = DOCUMENT_CATEGORIES.indexOf(a as any);
-                  const bi = DOCUMENT_CATEGORIES.indexOf(b as any);
-                  if (ai >= 0 && bi >= 0) return ai - bi;
-                  if (ai >= 0) return -1;
-                  if (bi >= 0) return 1;
-                  return a.localeCompare(b);
-                })
-                .map(([cat, docs]) => (
-                  <TintedSectionCard
-                    key={cat}
-                    title={cat}
-                    color={categoryColor[cat] ?? "slate"}
-                    count={docs.length}
-                    collapsible
-                    defaultExpanded
-                  >
-                    <DocumentGrid
-                      documents={docs}
-                      propertyId={propertyId}
-                      spaces={spaceOptions}
-                      assets={assetOptions}
-                      compliance={complianceOptions}
-                      onDocumentClick={(doc) => setSelectedDocId(doc.id)}
-                      onOpen={(doc) => window.open(doc.file_url, "_blank")}
-                      onReplace={() => {}}
-                      onLinkItems={(doc) => setSelectedDocId(doc.id)}
-                      onLinkSpace={handleLinkSpace}
-                      onLinkAsset={handleLinkAsset}
-                      onLinkCompliance={handleLinkCompliance}
-                    />
-                  </TintedSectionCard>
-                ))}
-            </div>
-          )}
-        </div>
+      <div className="min-[1100px]:hidden flex flex-col gap-6 max-w-[660px]">
+        {actionColumn}
+        {workColumn}
+        {contextColumn}
       </div>
 
       <DocumentDetailDrawer
@@ -329,15 +474,12 @@ export default function PropertyDocuments() {
         onRefresh={handleRefresh}
       />
 
-      <Dialog open={showUpload} onOpenChange={setShowUpload}>
+      <Dialog open={showUploadMobile} onOpenChange={setShowUploadMobile}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload documents</DialogTitle>
           </DialogHeader>
-          <DocumentUploadZone
-            propertyId={propertyId}
-            onUploadComplete={handleUploadComplete}
-          />
+          <DocumentUploadZone propertyId={propertyId} onUploadComplete={handleUploadComplete} />
         </DialogContent>
       </Dialog>
 

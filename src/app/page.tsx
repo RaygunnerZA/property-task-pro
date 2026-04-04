@@ -382,7 +382,7 @@ export default function Dashboard() {
         <div className="flex flex-col items-start justify-center gap-1 w-[248px] min-w-0 shrink-0">
           {dashboardPropertyScopeTitle ? (
             <p
-              className="text-[34px] font-normal text-white leading-tight truncate max-w-full text-shadow-neu-pressed"
+              className="text-[34px] font-normal text-transparent leading-tight truncate max-w-full text-shadow-neu-pressed bg-[linear-gradient(0deg,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.64)_100%)] bg-clip-text"
               title={dashboardPropertyScopeTitle}
             >
               {dashboardPropertyScopeTitle}

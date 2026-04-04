@@ -1,6 +1,6 @@
 /**
  * ContextSummaryCard - Framework V2 summary card
- * 140px height, 36px tinted band, shadow-e1
+ * ~150px max height, 15px tinted band, shadow-e1
  * Used for: Expiring Soon, Expired, Missing (Documents), Active Assets, etc.
  */
 import { ReactNode } from "react";
@@ -31,6 +31,8 @@ interface ContextSummaryCardProps {
   onClick?: () => void;
   ctaLabel?: string;
   className?: string;
+  /** Narrow layout for asset summary strip: fixed height, tighter padding, no description line */
+  variant?: "default" | "compact";
 }
 
 export function ContextSummaryCard({
@@ -41,8 +43,10 @@ export function ContextSummaryCard({
   onClick,
   ctaLabel,
   className,
+  variant = "default",
 }: ContextSummaryCardProps) {
   const isClickable = !!onClick;
+  const isCompact = variant === "compact";
 
   return (
     <div
@@ -60,31 +64,64 @@ export function ContextSummaryCard({
           : undefined
       }
       className={cn(
-        "rounded-[8px] overflow-hidden shadow-e1 min-h-[100px] max-h-[140px] flex flex-col",
+        "rounded-[12px] overflow-hidden shadow-e1 min-h-[100px] max-h-[150px] flex flex-col",
+        isCompact && "h-[150px]",
         "transition-all duration-150 ease-out",
         "hover:shadow-e2 hover:-translate-y-0.5",
         isClickable && "cursor-pointer active:scale-[0.99]",
         className
       )}
     >
-      {/* 36px tinted band */}
+      {/* 15px tinted band */}
       <div
-        className={cn("h-9 flex-shrink-0", COLOR_BANDS[color])}
+        className={cn("h-[15px] flex-shrink-0", COLOR_BANDS[color])}
         aria-hidden
       />
       {/* Body - neutral surface */}
-      <div className="flex-1 p-4 bg-card flex flex-col gap-1 min-h-0">
-        <span className="text-2xl font-bold text-foreground leading-tight">
+      <div
+        className={cn(
+          "flex-1 min-h-[136px] bg-card flex flex-col",
+          isCompact
+            ? "px-2.5 pt-[10px] pb-4 gap-[5px] justify-start items-center"
+            : "px-5 py-4 gap-2.5"
+        )}
+      >
+        <span
+          className={cn(
+            "inline-flex w-fit max-w-full items-center justify-center tabular-nums",
+            "text-[37px] font-bold leading-none tracking-tight",
+            isCompact
+              ? "text-[rgba(133,186,188,1)]"
+              : "text-foreground",
+            "rounded-[10px] px-3 py-1.5 bg-muted/25",
+            "shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_rgba(255,255,255,0.88)]",
+            isCompact && "text-center"
+          )}
+        >
           {count}
         </span>
-        <span className="text-sm font-medium text-foreground">{title}</span>
-        {description && (
+        <span
+          className={cn(
+            "text-sm font-medium text-foreground",
+            isCompact && "w-full text-center"
+          )}
+        >
+          {title}
+        </span>
+        {!isCompact && description && (
           <span className="text-xs text-muted-foreground line-clamp-1">
             {description}
           </span>
         )}
         {ctaLabel && isClickable && (
-          <span className="text-xs text-primary font-medium mt-1">{ctaLabel}</span>
+          <span
+            className={cn(
+              "text-xs text-primary font-medium mt-auto",
+              isCompact ? "w-full pt-0.5 text-center" : "pt-2"
+            )}
+          >
+            {ctaLabel}
+          </span>
         )}
       </div>
     </div>

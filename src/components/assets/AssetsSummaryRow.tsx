@@ -27,37 +27,41 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
   }, [assets]);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="flex w-full flex-wrap gap-x-6 gap-y-5">
       <ContextSummaryCard
         title="Active Assets"
         count={counts.active}
-        description="In use"
         color="teal"
         ctaLabel="View"
+        variant="compact"
+        className="min-w-0 w-[120px]"
         onClick={onFilterClick ? () => onFilterClick("active") : undefined}
       />
       <ContextSummaryCard
         title="Needs Inspection"
         count={counts.needsInspection}
-        description="Condition &lt; 60%"
         color="amber"
         ctaLabel="View"
+        variant="compact"
+        className="min-w-0 w-[120px]"
         onClick={onFilterClick ? () => onFilterClick("needsInspection") : undefined}
       />
       <ContextSummaryCard
         title="Non-Compliant"
         count={counts.nonCompliant}
-        description="Requires attention"
         color="red"
         ctaLabel="View"
+        variant="compact"
+        className="min-w-0 w-[120px]"
         onClick={onFilterClick ? () => onFilterClick("nonCompliant") : undefined}
       />
       <ContextSummaryCard
         title="Retired"
         count={counts.retired}
-        description="Out of service"
         color="slate"
         ctaLabel="View"
+        variant="compact"
+        className="min-w-0 w-[120px]"
         onClick={onFilterClick ? () => onFilterClick("retired") : undefined}
       />
     </div>

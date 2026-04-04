@@ -218,7 +218,7 @@ export function AssetList({ propertyId }: AssetListProps = {}) {
           subtitle="Try adjusting your filters"
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map((asset) => {
             // assets_view includes property_name and space_name
             const propertyName = (asset as any).property_name || (asset.property_id

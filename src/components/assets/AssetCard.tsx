@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { supabase } from "@/integrations/supabase/client";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
@@ -48,22 +48,25 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
   const [iconValue, setIconValue] = useState({ iconName: asset.icon_name || "box", color: iconColor });
 
   const getConditionBadge = (score: number) => {
-    if (score >= 80) return <Badge variant="success" size="sm" className="text-[10px] px-[5px] h-[24px]">Good</Badge>;
-    if (score >= 60) return <Badge variant="warning" size="sm" className="text-[10px] px-[5px] h-[24px]">Fair</Badge>;
-    return <Badge variant="danger" size="sm" className="text-[10px] px-[5px] h-[24px]">Poor</Badge>;
+    if (score >= 80) return <Badge variant="success" size="sm" className="text-[10px] px-[5px] h-[22px]">Good</Badge>;
+    if (score >= 60) return <Badge variant="warning" size="sm" className="text-[10px] px-[5px] h-[22px]">Fair</Badge>;
+    return <Badge variant="danger" size="sm" className="text-[10px] px-[5px] h-[22px]">Poor</Badge>;
   };
 
   const dateAdded = asset.created_at
-    ? formatDistanceToNow(new Date(asset.created_at), { addSuffix: true })
+    ? format(new Date(asset.created_at), "d MMM yy")
     : null;
 
   return (
     <div
-      className="rounded-[12px] bg-card shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col"
+      className="rounded-[12px] bg-card shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[182px]"
       onClick={onClick}
     >
-      {/* Image Zone - Top (stacked thumbnail like vertical task card) */}
-      <div className="w-full h-[100px] relative flex-shrink-0">
+      {/* Top band: photo or solid property colour — property icon top-left only */}
+      <div
+        className="w-full h-[34px] relative flex-shrink-0"
+        style={!imageUrl ? { backgroundColor: iconColor } : undefined}
+      >
         {imageUrl ? (
           <>
             <img
@@ -84,82 +87,77 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
               }}
             />
           </>
-        ) : (
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={{ backgroundColor: iconColor }}
-          >
-            <AssetIcon className="h-10 w-10 text-white/80" />
-          </div>
-        )}
-        {/* Asset Icon - circle top left, clickable to change icon */}
-        <button
-          type="button"
-          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10 cursor-pointer hover:scale-110 active:scale-95 transition-transform"
+        ) : null}
+        <div
+          className="absolute top-1.5 left-1.5 rounded-full flex items-center justify-center z-10 pointer-events-none bg-white/95"
           style={{
-            backgroundColor: iconColor,
-            width: "24px",
-            height: "24px",
+            width: "22px",
+            height: "22px",
             boxShadow:
-              "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
+              "2px 2px 5px rgba(0,0,0,0.12), -1px -1px 3px rgba(255,255,255,0.9), inset 1px 1px 2px rgba(255,255,255,0.85)",
           }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIconValue({ iconName: asset.icon_name || "box", color: iconColor });
-            setIconDialogOpen(true);
-          }}
+          aria-hidden
         >
-          <AssetIcon className="h-4 w-4 text-white" />
-        </button>
+          <PropertyIcon className="h-3 w-3" style={{ color: iconColor }} />
+        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 pt-4 pb-3 px-[14px] flex flex-col">
-        <h3 className="text-[16px] font-semibold text-foreground leading-tight line-clamp-2">
-          {assetName}
-        </h3>
-
-        {/* Chips: Property icon (left), Space, Date added, Condition */}
-        <div className="mt-3 flex gap-2 flex-wrap items-center">
-          {/* Property icon - left on chip line */}
-          <div
-            className="rounded-full flex items-center justify-center flex-shrink-0"
+      <div className="flex-1 min-h-0 pt-2 pb-2 px-3 flex flex-col">
+        <div className="flex items-start gap-2 min-w-0 shrink-0">
+          <h3 className="flex-1 min-w-0 text-[15px] font-semibold text-foreground leading-tight line-clamp-2">
+            {assetName}
+          </h3>
+          <button
+            type="button"
+            className="rounded-full flex items-center justify-center z-10 flex-shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-transform mt-0.5"
             style={{
               backgroundColor: iconColor,
-              width: "24px",
-              height: "24px",
-              boxShadow: "2px 2px 4px rgba(0,0,0,0.08), -1px -1px 2px rgba(255,255,255,0.4)",
+              width: "28px",
+              height: "28px",
+              boxShadow:
+                "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
             }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIconValue({ iconName: asset.icon_name || "box", color: iconColor });
+              setIconDialogOpen(true);
+            }}
+            aria-label="Change asset icon"
           >
-            <PropertyIcon className="h-3.5 w-3.5 text-white" />
-          </div>
+            <AssetIcon className="h-4 w-4 text-white" />
+          </button>
+        </div>
+
+        {/* Chips: space, date, condition (property icon lives in header) */}
+        <div className="mt-1.5 flex gap-1.5 flex-wrap items-center shrink-0">
           {spaceName && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[22px]">
               {spaceName}
             </Badge>
           )}
           {dateAdded && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] h-[24px]">
+            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] h-[22px] tabular-nums">
               {dateAdded}
             </Badge>
           )}
           {getConditionBadge(conditionScore)}
           {asset.status && asset.status !== "active" && (
-            <Badge variant={asset.status === "retired" ? "neutral" : "warning"} size="sm" className="text-[10px] px-[5px] h-[24px]">
+            <Badge variant={asset.status === "retired" ? "neutral" : "warning"} size="sm" className="text-[10px] px-[5px] h-[22px]">
               {asset.status}
             </Badge>
           )}
         </div>
 
         {/* Condition progress bar - bottom of card */}
-        <div className="mt-3 pt-3 border-t border-border/30">
-          <div className="flex items-center justify-between mb-1">
+        <div className="mt-auto pt-2 border-t border-border/30 shrink-0">
+          <div className="flex items-center justify-between mb-0.5">
             <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Condition</span>
-            <span className="text-[10px] font-medium text-muted-foreground">{conditionScore}/100</span>
+            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">{conditionScore}/100</span>
           </div>
-          <div className="w-full bg-muted rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-1.5">
             <div
-              className={`h-2 rounded-full transition-all ${
+              className={`h-1.5 rounded-full transition-all ${
                 conditionScore >= 80 ? "bg-green-500" : conditionScore >= 60 ? "bg-yellow-500" : "bg-red-500"
               }`}
               style={{ width: `${conditionScore}%` }}

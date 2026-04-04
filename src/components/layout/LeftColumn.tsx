@@ -6,7 +6,7 @@ import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityS
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
-import { togglePropertyFilter } from "@/utils/propertyFilter";
+import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
 import { Plus, Home, Package, CheckSquare, Shield, Clock, Zap, Activity, Check } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -83,6 +83,14 @@ export function LeftColumn({
 
   // ALL_PROPERTIES: full list of property IDs (N ≥ 1). Active set never empty; ALL = all active.
   const ALL_PROPERTY_IDS = useMemo(() => properties.map((p: { id: string }) => p.id), [properties]);
+
+  const isAllActive = useMemo(
+    () => isAllPropertiesActive(selectedPropertyIds, ALL_PROPERTY_IDS),
+    [selectedPropertyIds, ALL_PROPERTY_IDS]
+  );
+
+  /** Multi-property hub: show heading row only when "all" are selected; keep visible for 0-property empty state. */
+  const isPropertiesHeadingExpanded = properties.length < 2 || isAllActive;
 
   // When using internal state, initialise to ALL when properties load (never empty).
   useEffect(() => {
@@ -198,25 +206,34 @@ export function LeftColumn({
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
         <div className={cn("sticky top-0 z-10 bg-background px-0 pb-[7px]", properties.length === 1 ? "pt-[7px]" : "pt-4")}>
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              {properties.length !== 1 && (
-                <>
-                  <h2 className="text-lg font-semibold text-foreground">Properties</h2>
+          <div className="flex flex-col gap-0">
+            {properties.length !== 1 && (
+              <div
+                className={cn(
+                  "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-300 ease-in-out",
+                  isPropertiesHeadingExpanded
+                    ? "max-h-[52px] opacity-100 mb-2"
+                    : "max-h-0 opacity-0 mb-0 pointer-events-none"
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {properties.length > 1 && isAllActive ? "All Properties" : "Properties"}
+                  </h2>
                   <button
                     onClick={() => setShowAddProperty(true)}
                     className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
                     style={{
-                      width: '20px',
-                      height: '35px',
+                      width: "20px",
+                      height: "35px",
                     }}
                     aria-label="Add property"
                   >
-                    <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: '18px', height: '16px' }} />
+                    <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: "18px", height: "16px" }} />
                   </button>
-                </>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
 
             {/* Property Filter Icon Row - only when multiple properties */}
             {properties.length > 1 && (
@@ -239,70 +256,71 @@ export function LeftColumn({
                 )}
                 <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ paddingLeft: '4px', paddingRight: '4px', paddingTop: '3px', paddingBottom: '3px' }}>
                   <div className="flex h-[32px] w-full min-w-max items-center gap-1 pr-0 mx-0">
-                    {(() => {
-                      const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
+                        setIsMultiSelectMode(false);
+                        onFilterClick?.("show-tasks");
+                      }}
+                      className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95 text-[10px] font-mono font-semibold tracking-wide shrink-0"
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        backgroundColor: isAllActive ? "#8EC9CE" : "transparent",
+                        boxShadow: isAllActive
+                          ? "2px 2px 5px 0px rgba(0, 0, 0, 0.06), -1px -1px 3px 0px rgba(255, 255, 255, 0.95), inset 1px 1px 2px 0px rgba(255, 255, 255, 1), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 255, 255, 0.75), 0 0 16px 5px rgba(255, 255, 255, 0.55)"
+                          : "none",
+                        borderColor: "rgba(0, 0, 0, 0)",
+                        borderStyle: "none",
+                        borderImage: "none",
+                      }}
+                      aria-label="Show all properties"
+                    >
+                      <span className={isAllActive ? "text-white drop-shadow-sm" : "text-muted-foreground"}>ALL</span>
+                    </button>
+
+                    {properties.map((property) => {
+                      const iconName = property.icon_name || "home";
+                      const IconComponent = getPropertyChipIcon(iconName);
+                      const iconColor = property.icon_color_hex || "#8EC9CE";
+                      const isPropertyChipActive = isAllActive || selectedPropertyIds.has(property.id);
+
                       return (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
-                              setIsMultiSelectMode(false);
-                              onFilterClick?.("show-tasks");
-                            }}
-                            className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-200 hover:scale-110 active:scale-95 text-[10px] font-mono font-semibold tracking-wide shrink-0"
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              backgroundColor: isAllActive ? "#8EC9CE" : 'transparent',
-                              boxShadow: isAllActive
-                                ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(255, 255, 255, 0.5)"
-                                : "none",
-                              borderColor: "rgba(0, 0, 0, 0)",
-                              borderStyle: "none",
-                              borderImage: "none",
-                            }}
-                            aria-label="Show all properties"
-                          >
-                            <span className={isAllActive ? "text-white" : "text-muted-foreground"}>ALL</span>
-                          </button>
-
-                          {properties.map((property) => {
-                            const iconName = property.icon_name || "home";
-                            const IconComponent = getPropertyChipIcon(iconName);
-                            const iconColor = property.icon_color_hex || "#8EC9CE";
-                            const isActive = isAllActive || selectedPropertyIds.has(property.id);
-
-                            return (
-                              <button
-                                key={property.id}
-                                onClick={() => handlePropertyClick(property.id)}
-                                onPointerDown={() => handlePropertyPointerDown(property.id)}
-                                onPointerUp={cancelLongPress}
-                                onPointerLeave={cancelLongPress}
-                                className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-200 hover:scale-110 active:scale-95 shrink-0"
-                                style={{
-                                  width: '28px',
-                                  height: '28px',
-                                  backgroundColor: isActive ? iconColor : 'transparent',
-                                  boxShadow: isActive
-                                    ? isMultiSelectMode
-                                      ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
-                                      : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
-                                    : "none",
-                                  borderColor: "rgba(0, 0, 0, 0)",
-                                  borderStyle: "none",
-                                  borderImage: "none",
-                                }}
-                                aria-label={`Filter by ${property.nickname || property.address}`}
-                              >
-                                <IconComponent className={`h-[18px] w-[16px] ${isActive ? 'text-white' : 'text-muted-foreground'}`} />
-                              </button>
-                            );
-                          })}
-                        </>
+                        <button
+                          key={property.id}
+                          onClick={() => handlePropertyClick(property.id)}
+                          onPointerDown={() => handlePropertyPointerDown(property.id)}
+                          onPointerUp={cancelLongPress}
+                          onPointerLeave={cancelLongPress}
+                          className={cn(
+                            "flex items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95 shrink-0",
+                            isAllActive && "opacity-70 hover:opacity-100"
+                          )}
+                          style={{
+                            width: "28px",
+                            height: "28px",
+                            backgroundColor: isPropertyChipActive ? iconColor : "transparent",
+                            boxShadow: isPropertyChipActive
+                              ? isMultiSelectMode
+                                ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
+                                : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                              : "none",
+                            borderColor: "rgba(0, 0, 0, 0)",
+                            borderStyle: "none",
+                            borderImage: "none",
+                          }}
+                          aria-label={`Filter by ${property.nickname || property.address}`}
+                        >
+                          <IconComponent
+                            className={cn(
+                              "h-[18px] w-[16px]",
+                              isPropertyChipActive ? "text-white" : "text-muted-foreground"
+                            )}
+                          />
+                        </button>
                       );
-                    })()}
+                    })}
                   </div>
                 </div>
               </div>
@@ -380,11 +398,11 @@ export function LeftColumn({
         >
           <div className="px-0 w-full min-w-0 max-w-full overflow-x-hidden">
             {tasksLoading ? (
-              <div className="rounded-lg bg-transparent px-0 py-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 pt-[15px] pb-[5px] shadow-none w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-transparent px-0 py-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 pt-[15px] pb-[5px] shadow-none w-full">
                 <DashboardCalendarV2
                   tasks={tasks}
                   selectedDate={selectedDate}

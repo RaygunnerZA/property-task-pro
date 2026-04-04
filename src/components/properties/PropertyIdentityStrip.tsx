@@ -11,6 +11,7 @@ import {
   Check,
   X,
   Plus,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
@@ -22,6 +23,7 @@ import { uploadPropertyImageWithThumbnail } from "@/services/properties/property
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
+import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 
 function humanizeSiteType(value: string): string {
   return value
@@ -52,13 +54,73 @@ const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
 type TabIndex = 0 | 1 | 2 | 3;
 
 const summaryRowLabelClass =
-  "flex w-[100px] shrink-0 items-center gap-2 text-xs text-muted-foreground";
-const summaryRowValueClass = "flex-1 min-w-0 text-left text-xs tabular-nums";
+  "flex w-[105px] shrink-0 items-center gap-2 text-xs text-muted-foreground";
+
+/** Full-width grid: primary column is track 1 (fixed 3rem, text-right) so 2 / 6 / 13 / — / 0 line up; track 2 = white bar; track 3 = secondary + ⚠. */
+const summaryMetricsGridClass =
+  "grid min-w-0 w-[86px] shrink-0 grid-cols-[minmax(0,3rem)_minmax(0,12px)_max-content_minmax(0,1fr)] items-center gap-x-0 gap-y-0 pr-1 text-xs tabular-nums";
+
+const metricVBarClass =
+  "h-[11px] w-0.5 shrink-0 rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.06)]";
+
+type AssetViewRow = {
+  status?: string | null;
+  condition_score?: number | null;
+  open_tasks_count?: number | null;
+};
+
+/** Primary in fixed column (right-aligned); white bar; then secondary count + ⚠ when attention &gt; 0. */
+function StripMetricValue({
+  primary,
+  attention,
+  primaryMuted,
+  attentionTitle,
+  warnClassName = "text-red-600/85",
+}: {
+  primary: number | string;
+  attention: number;
+  primaryMuted?: boolean;
+  attentionTitle?: string;
+  warnClassName?: string;
+}) {
+  const showSecondary = attention > 0;
+  return (
+    <div className={summaryMetricsGridClass}>
+      <div className="flex h-6 w-6 min-w-0 flex-col items-center justify-center justify-self-end rounded-lg bg-[var(--tw-ring-offset-color)] font-semibold tabular-nums">
+        <span
+          className={
+            primaryMuted ? "text-muted-foreground" : "font-mono text-[rgb(42,41,62)]"
+          }
+        >
+          {primary}
+        </span>
+      </div>
+      <div className="flex items-center justify-center">
+        {showSecondary ? <span className={metricVBarClass} aria-hidden /> : null}
+      </div>
+      {showSecondary ? (
+        <div className="flex h-6 min-w-0 w-7 shrink-0 items-center justify-end gap-0.5 rounded-lg bg-[var(--tw-ring-offset-color)] px-0.5">
+          <span className="font-semibold font-mono tabular-nums text-[#EB6834]">{attention}</span>
+          <span
+            className={cn("font-medium", warnClassName)}
+            title={attentionTitle ?? ""}
+            aria-label={attentionTitle ?? "Attention"}
+          >
+            ⚠
+          </span>
+        </div>
+      ) : (
+        <div className="h-6 w-7 min-w-0 shrink-0" aria-hidden />
+      )}
+      <div className="min-w-0" aria-hidden />
+    </div>
+  );
+}
 
 interface PropertyIdentityStripProps {
   property: PropertyForStrip;
   onAddTaskClick?: () => void;
-  /** Open (non-complete) tasks with priority urgent or high — PROPERTY tab shows ⚠ beside count */
+  /** Open tasks with priority urgent or high — shown as `total • urgent ⚠` on PROPERTY tab */
   urgentOpenTaskCount?: number;
 }
 
@@ -84,6 +146,7 @@ export function PropertyIdentityStrip({
   const { documents: propertyDocuments = [] } = usePropertyDocuments(property.id, undefined, {
     limit: 500,
   });
+  const { data: propertyAssets = [] } = useAssetsQuery(property.id);
 
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -115,6 +178,16 @@ export function PropertyIdentityStrip({
   const spacesCount = property.spaces_count ?? 0;
   const urgentCount = urgentOpenTaskCount;
 
+  const assetsAttentionCount = useMemo(() => {
+    return (propertyAssets as AssetViewRow[]).filter((a) => {
+      const active = (a.status || "active") === "active";
+      if (!active) return false;
+      const score = a.condition_score ?? 100;
+      const openTasks = a.open_tasks_count ?? 0;
+      return score < 60 || openTasks > 0;
+    }).length;
+  }, [propertyAssets]);
+
   const complianceStats = useMemo(() => {
     const expiring = complianceList.filter((c: { expiry_status?: string }) => c.expiry_status === "expiring")
       .length;
@@ -122,6 +195,8 @@ export function PropertyIdentityStrip({
       .length;
     return { total: complianceList.length, expiring, expired };
   }, [complianceList]);
+
+  const complianceAttentionCount = complianceStats.expired + complianceStats.expiring;
 
   const documentsCount = propertyDocuments.length;
   const documentsCountLabel = documentsCount >= 500 ? "500+" : String(documentsCount);
@@ -173,7 +248,7 @@ export function PropertyIdentityStrip({
   }, [propertyDetails, bedroomCount]);
 
   const summaryActionCol =
-    "flex h-6 shrink-0 w-[75px] items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto";
+    "flex h-6 shrink-0 w-[55px] items-center justify-end gap-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto";
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -248,13 +323,13 @@ export function PropertyIdentityStrip({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full">
+    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[368px] flex flex-col">
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
       <div
-        className="relative w-full overflow-hidden"
+        className="relative w-full shrink-0 overflow-hidden"
         style={{
-          height: "94px",
+          height: "144px",
           backgroundColor: property.thumbnail_url ? undefined : iconColor,
         }}
       >
@@ -268,10 +343,10 @@ export function PropertyIdentityStrip({
 
         {/* Gradient scrim — ensures name is legible over any photo */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute left-0 right-0 top-0 h-[146px] pointer-events-none"
           style={{
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)",
+              "linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 33%, rgba(0,0,0,0) 100%)",
           }}
         />
 
@@ -321,7 +396,7 @@ export function PropertyIdentityStrip({
 
         {/* Inset shadow — matches ThumbnailBlock */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute left-0 right-0 top-0 h-[146px] pointer-events-none"
           style={{
             boxShadow:
               "inset 2px 2px 2px 0px rgba(255,255,255,0.4), inset -1px -1px 2px 0px rgba(0,0,0,0.1)",
@@ -337,10 +412,13 @@ export function PropertyIdentityStrip({
         />
       </div>
 
-      {/* ── PERFORATION LINE (PropertyCard DNA) ──────────────────────────── */}
+      {/* ── PERFORATION LINE (PropertyCard DNA; lock to 1px — no flex growth) ─ */}
       <div
+        className="shrink-0 w-full overflow-hidden"
         style={{
           height: "1px",
+          minHeight: "1px",
+          maxHeight: "1px",
           backgroundImage:
             "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
           backgroundSize: "7px 1px",
@@ -350,22 +428,27 @@ export function PropertyIdentityStrip({
       />
 
       {/* ── TAB STRIP ────────────────────────────────────────────────────── */}
-      <div className="flex border-b border-border/30">
+      <div className="relative z-10 flex shrink-0 justify-center items-center gap-0 pt-[10px] pb-[6px] px-[6px] bg-muted/20">
         {TABS.map((tab, idx) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(idx as TabIndex)}
             className={cn(
-              "flex-1 py-[7px] font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors duration-150",
-              "focus-visible:outline-none",
+              "flex-1 rounded-[8px] h-6 flex items-center justify-center px-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide leading-none",
+              "transition-[color,background-color,box-shadow] duration-200 ease-out",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
               activeTab === idx
                 ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground/70"
+                : "text-muted-foreground hover:text-foreground/90 hover:bg-background/55"
             )}
             style={
               activeTab === idx
-                ? { boxShadow: `inset 0 -2px 0 ${iconColor}` }
+                ? {
+                    backgroundColor: "rgba(255, 255, 255, 1)",
+                    boxShadow:
+                      "-1px -2px 2px 0px rgba(0, 0, 0, 0.16), -1px -1px 2px 0px rgba(255, 255, 255, 0.45)",
+                  }
                 : undefined
             }
           >
@@ -375,14 +458,19 @@ export function PropertyIdentityStrip({
       </div>
 
       {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="overflow-hidden" style={{ height: "182px" }}>
+      <div className="relative z-0 flex-1 min-h-0 overflow-hidden">
         <div
-          className="flex transition-transform duration-300 ease-out h-full"
+          className="flex h-full pointer-events-none transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${activeTab * 100}%)` }}
         >
 
           {/* 0 ── SUMMARY ──────────────────────────────────────────────── */}
-          <div className="w-full flex-shrink-0 h-full px-1.5 py-2 space-y-0.5 overflow-y-auto">
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full pl-1.5 pr-0 py-0 space-y-0.5 overflow-y-auto",
+              activeTab === 0 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
             {/* Open Tasks */}
             <div
               role="button"
@@ -394,32 +482,24 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}/tasks`);
                 }
               }}
-              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <CheckSquare className="h-3.5 w-3.5 shrink-0" />
                 Open Tasks
               </span>
-              <span className={summaryRowValueClass}>
-                <span className={cn("font-semibold", taskCount > 0 ? "text-foreground" : "text-muted-foreground")}>
-                  {taskCount}
-                </span>
-                {urgentCount > 0 && (
-                  <span
-                    className="ml-1 font-medium text-red-600/85"
-                    title={`${urgentCount} urgent`}
-                    aria-label={`${urgentCount} urgent`}
-                  >
-                    ⚠
-                  </span>
-                )}
-              </span>
+              <StripMetricValue
+                primary={taskCount}
+                attention={urgentCount}
+                primaryMuted={taskCount === 0}
+                attentionTitle={`${urgentCount} urgent task${urgentCount === 1 ? "" : "s"}`}
+              />
               <div className={summaryActionCol}>
                 {onAddTaskClick && (
                   <button
                     type="button"
                     aria-label="Add task"
-                    className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onAddTaskClick();
@@ -429,7 +509,7 @@ export function PropertyIdentityStrip({
                   </button>
                 )}
                 <span
-                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -450,18 +530,23 @@ export function PropertyIdentityStrip({
                   navigate(`/assets?property=${encodeURIComponent(property.id)}`);
                 }
               }}
-              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Package className="h-3.5 w-3.5 shrink-0" />
                 Assets
               </span>
-              <span className={cn(summaryRowValueClass, "font-semibold text-foreground")}>{assetsCount}</span>
+              <StripMetricValue
+                primary={assetsCount}
+                attention={assetsAttentionCount}
+                primaryMuted={assetsCount === 0}
+                attentionTitle={`${assetsAttentionCount} asset${assetsAttentionCount === 1 ? "" : "s"} need attention`}
+              />
               <div className={summaryActionCol}>
                 <button
                   type="button"
                   aria-label="Add asset"
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(
@@ -472,7 +557,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -491,18 +576,22 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}`);
                 }
               }}
-              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Layers className="h-3.5 w-3.5 shrink-0" />
                 Spaces
               </span>
-              <span className={cn(summaryRowValueClass, "font-semibold text-foreground")}>{spacesCount}</span>
+              <StripMetricValue
+                primary={spacesCount}
+                attention={0}
+                primaryMuted={spacesCount === 0}
+              />
               <div className={summaryActionCol}>
                 <button
                   type="button"
                   aria-label="Add or organise spaces"
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/spaces/organise`);
@@ -511,7 +600,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -530,39 +619,31 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}/compliance`);
                 }
               }}
-              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Shield className="h-3.5 w-3.5 shrink-0" />
                 Compliance
               </span>
-              <span className={summaryRowValueClass}>
-                {complianceStats.total === 0 ? (
-                  <span className="text-muted-foreground">—</span>
-                ) : (
-                  <>
-                    <span className="font-semibold text-foreground">{complianceStats.total}</span>
-                    {(complianceStats.expiring > 0 || complianceStats.expired > 0) && (
-                      <span
-                        className="ml-1 font-medium text-amber-600"
-                        title={
-                          complianceStats.expired > 0
-                            ? `${complianceStats.expired} expired, ${complianceStats.expiring} expiring`
-                            : `${complianceStats.expiring} expiring`
-                        }
-                        aria-label="Has expired or expiring compliance"
-                      >
-                        ⚠
-                      </span>
-                    )}
-                  </>
-                )}
-              </span>
+              {complianceStats.total === 0 ? (
+                <StripMetricValue primary="—" attention={0} primaryMuted />
+              ) : (
+                <StripMetricValue
+                  primary={complianceStats.total}
+                  attention={complianceAttentionCount}
+                  attentionTitle={
+                    complianceStats.expired > 0
+                      ? `${complianceStats.expired} expired, ${complianceStats.expiring} expiring within 30 days`
+                      : `${complianceStats.expiring} expiring within 30 days`
+                  }
+                  warnClassName="text-amber-600"
+                />
+              )}
               <div className={summaryActionCol}>
                 <button
                   type="button"
                   aria-label="Add compliance rule"
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/compliance?addRule=1`);
@@ -571,7 +652,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -590,34 +671,33 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}/documents`);
                 }
               }}
-              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <FileText className="h-3.5 w-3.5 shrink-0" />
                 Documents
               </span>
-              <span className={summaryRowValueClass}>
-                <span className="font-semibold text-foreground">{documentsCountLabel}</span>
-                {documentsExpiringCount > 0 && (
-                  <>
-                    <span className="mx-0.5 text-muted-foreground">•</span>
-                    <span className="font-medium text-amber-600">{documentsExpiringCount} expiring</span>
-                  </>
-                )}
-              </span>
+              <StripMetricValue
+                primary={documentsCountLabel}
+                attention={documentsExpiringCount}
+                primaryMuted={documentsCount === 0}
+                attentionTitle={`${documentsExpiringCount} document${documentsExpiringCount === 1 ? "" : "s"} expiring within 30 days`}
+                warnClassName="text-amber-600"
+              />
               <div className={summaryActionCol}>
                 <button
                   type="button"
-                  className="rounded-md px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  aria-label="Upload document"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/documents?upload=1`);
                   }}
                 >
-                  Upload
+                  <Upload className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -627,7 +707,12 @@ export function PropertyIdentityStrip({
           </div>
 
           {/* 1 ── DETAILS ──────────────────────────────────────────────── */}
-          <div className="w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto">
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 1 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
             {isEditingDetails ? (
               <div className="space-y-2">
                 <div>
@@ -709,7 +794,12 @@ export function PropertyIdentityStrip({
           </div>
 
           {/* 2 ── CONTACTS ─────────────────────────────────────────────── */}
-          <div className="w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto">
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 2 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
             {isEditingContacts ? (
               <div className="space-y-1.5">
                 {(
@@ -819,7 +909,12 @@ export function PropertyIdentityStrip({
           </div>
 
           {/* 3 ── MEDIA ────────────────────────────────────────────────── */}
-          <div className="w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto">
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 3 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
             <div className="space-y-2">
               {property.thumbnail_url ? (
                 <div className="relative w-full rounded-lg overflow-hidden" style={{ height: "64px" }}>

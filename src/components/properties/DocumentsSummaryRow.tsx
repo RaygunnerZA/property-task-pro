@@ -48,7 +48,7 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
   const missing = documents.filter((d) => !d.file_url).length;
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid w-full grid-cols-3 gap-x-6 gap-y-5">
       <ContextSummaryCard
         title="Expiring Soon"
         count={expiringSoon}
