@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function PropertyCompliance() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { orgId } = useActiveOrg();
   const { data: compliance = [], isLoading } = useComplianceQuery(id || undefined);
   const { data: recommendations = [], isLoading: recsLoading } = useComplianceRecommendations(id || undefined);
@@ -34,6 +35,15 @@ export default function PropertyCompliance() {
   const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("addRule") !== "1") return;
+    setEditingRule(null);
+    setRuleModalOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("addRule");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const assetVectors = assetsData.map((a: any) => ({
     asset_type: a.asset_type,

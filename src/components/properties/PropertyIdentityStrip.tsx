@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Camera,
   CheckSquare,
   Package,
   Layers,
   Shield,
+  FileText,
   Edit2,
   Check,
   X,
@@ -17,6 +19,15 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
+import { useComplianceQuery } from "@/hooks/useComplianceQuery";
+import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
+import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
+
+function humanizeSiteType(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
 
 export type PropertyForStrip = {
   id: string;
@@ -37,13 +48,18 @@ export type PropertyForStrip = {
   valid_compliance_count?: number | null;
 };
 
-const TABS = ["Summary", "Details", "Contacts", "Media"] as const;
+const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
 type TabIndex = 0 | 1 | 2 | 3;
+
+const summaryRowLabelClass =
+  "flex w-[100px] shrink-0 items-center gap-2 text-xs text-muted-foreground";
+const summaryRowValueClass = "flex-1 min-w-0 text-left text-xs tabular-nums";
 
 interface PropertyIdentityStripProps {
   property: PropertyForStrip;
   onAddTaskClick?: () => void;
-  onTaskCountClick?: () => void;
+  /** Open (non-complete) tasks with priority urgent or high — PROPERTY tab shows ⚠ beside count */
+  urgentOpenTaskCount?: number;
 }
 
 /**
@@ -53,16 +69,21 @@ interface PropertyIdentityStripProps {
  * when exactly one property is in focus. The top section is a persistent identity
  * header (sharing visual DNA with PropertyCard). Below it, a tab strip controls
  * which of four sliding content panels is shown:
- *   Summary | Details | Contacts | Media
+ *   PROPERTY | DETAILS | CONTACTS | MEDIA
  */
 export function PropertyIdentityStrip({
   property,
   onAddTaskClick,
-  onTaskCountClick,
+  urgentOpenTaskCount = 0,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
+  const { details: propertyDetails } = usePropertyDetails(property.id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: complianceList = [] } = useComplianceQuery(property.id);
+  const { documents: propertyDocuments = [] } = usePropertyDocuments(property.id, undefined, {
+    limit: 500,
+  });
 
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -92,8 +113,67 @@ export function PropertyIdentityStrip({
   const taskCount = property.open_tasks_count ?? 0;
   const assetsCount = property.assets_count ?? 0;
   const spacesCount = property.spaces_count ?? 0;
-  const expiredCount = property.expired_compliance_count ?? 0;
-  const validCount = property.valid_compliance_count ?? 0;
+  const urgentCount = urgentOpenTaskCount;
+
+  const complianceStats = useMemo(() => {
+    const expiring = complianceList.filter((c: { expiry_status?: string }) => c.expiry_status === "expiring")
+      .length;
+    const expired = complianceList.filter((c: { expiry_status?: string }) => c.expiry_status === "expired")
+      .length;
+    return { total: complianceList.length, expiring, expired };
+  }, [complianceList]);
+
+  const documentsCount = propertyDocuments.length;
+  const documentsCountLabel = documentsCount >= 500 ? "500+" : String(documentsCount);
+
+  const documentsExpiringCount = useMemo(() => {
+    const now = new Date();
+    const thirty = new Date(now);
+    thirty.setDate(thirty.getDate() + 30);
+    const nowStr = now.toISOString().split("T")[0];
+    const thirtyStr = thirty.toISOString().split("T")[0];
+    return propertyDocuments.filter(
+      (d) => d.expiry_date != null && d.expiry_date >= nowStr && d.expiry_date <= thirtyStr
+    ).length;
+  }, [propertyDocuments]);
+
+  const { data: bedroomCount = 0 } = useQuery({
+    queryKey: ["property-bedroom-spaces-count", orgId, property.id],
+    queryFn: async () => {
+      if (!orgId) return 0;
+      const { data, error } = await supabase
+        .from("spaces")
+        .select("id, space_types(name)")
+        .eq("org_id", orgId)
+        .eq("property_id", property.id);
+      if (error) throw error;
+      return (data ?? []).filter((row: { space_types?: { name?: string | null } | null }) => {
+        const n = row.space_types?.name?.toLowerCase() ?? "";
+        return n.includes("bedroom");
+      }).length;
+    },
+    enabled: !!orgId && !!property.id,
+    staleTime: 60_000,
+  });
+
+  const identitySubtitle = useMemo(() => {
+    const parts: string[] = [];
+    if (propertyDetails?.site_type) {
+      parts.push(humanizeSiteType(propertyDetails.site_type));
+    }
+    if (bedroomCount > 0) {
+      parts.push(`${bedroomCount} bed`);
+    }
+    const sqft = propertyDetails?.total_area_sqft;
+    if (sqft != null && sqft > 0) {
+      const m2 = Math.round(sqft * 0.09290304);
+      parts.push(`${m2}m²`);
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [propertyDetails, bedroomCount]);
+
+  const summaryActionCol =
+    "flex h-6 shrink-0 w-[75px] items-center justify-end gap-0.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto";
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -209,11 +289,16 @@ export function PropertyIdentityStrip({
           <IconComponent className="h-3.5 w-3.5 text-white" />
         </div>
 
-        {/* Property name — bottom overlay */}
-        <div className="absolute bottom-2 left-2.5 right-9 z-10">
+        {/* Property name + optional facts line — bottom overlay */}
+        <div className="absolute bottom-2 left-2.5 right-9 z-10 min-w-0">
           <p className="text-white font-semibold text-[22px] leading-tight truncate drop-shadow-sm">
             {displayName}
           </p>
+          {identitySubtitle && (
+            <p className="mt-0.5 truncate text-[11px] font-medium leading-tight text-white/90 drop-shadow-sm">
+              {identitySubtitle}
+            </p>
+          )}
         </div>
 
         {/* Edit photo button — bottom right */}
@@ -272,7 +357,7 @@ export function PropertyIdentityStrip({
             type="button"
             onClick={() => setActiveTab(idx as TabIndex)}
             className={cn(
-              "flex-1 py-[7px] text-[11px] font-medium transition-colors duration-150",
+              "flex-1 py-[7px] font-mono text-[10px] font-semibold uppercase tracking-wide transition-colors duration-150",
               "focus-visible:outline-none",
               activeTab === idx
                 ? "text-foreground"
@@ -290,91 +375,255 @@ export function PropertyIdentityStrip({
       </div>
 
       {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="overflow-hidden" style={{ height: "159.5px" }}>
+      <div className="overflow-hidden" style={{ height: "182px" }}>
         <div
           className="flex transition-transform duration-300 ease-out h-full"
           style={{ transform: `translateX(-${activeTab * 100}%)` }}
         >
 
           {/* 0 ── SUMMARY ──────────────────────────────────────────────── */}
-          <div className="w-full flex-shrink-0 h-full px-3 py-2 space-y-1 overflow-y-auto">
-            <button
-              type="button"
-              onClick={onTaskCountClick}
-              className="w-full flex items-center justify-between py-1 rounded hover:bg-muted/30 transition-colors group"
+          <div className="w-full flex-shrink-0 h-full px-1.5 py-2 space-y-0.5 overflow-y-auto">
+            {/* Open Tasks */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/properties/${property.id}/tasks`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/properties/${property.id}/tasks`);
+                }
+              }}
+              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className={summaryRowLabelClass}>
                 <CheckSquare className="h-3.5 w-3.5 shrink-0" />
                 Open Tasks
               </span>
-              <span className="flex items-center gap-1">
-                <span
-                  className={cn(
-                    "text-xs font-semibold",
-                    taskCount > 0 ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
+              <span className={summaryRowValueClass}>
+                <span className={cn("font-semibold", taskCount > 0 ? "text-foreground" : "text-muted-foreground")}>
                   {taskCount}
                 </span>
-                {taskCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground group-hover:text-primary">
-                    →
+                {urgentCount > 0 && (
+                  <span
+                    className="ml-1 font-medium text-red-600/85"
+                    title={`${urgentCount} urgent`}
+                    aria-label={`${urgentCount} urgent`}
+                  >
+                    ⚠
                   </span>
                 )}
               </span>
-            </button>
+              <div className={summaryActionCol}>
+                {onAddTaskClick && (
+                  <button
+                    type="button"
+                    aria-label="Add task"
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddTaskClick();
+                    }}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <span
+                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  aria-hidden
+                >
+                  →
+                </span>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-between py-1">
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Assets */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                navigate(`/assets?property=${encodeURIComponent(property.id)}`)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/assets?property=${encodeURIComponent(property.id)}`);
+                }
+              }}
+              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className={summaryRowLabelClass}>
                 <Package className="h-3.5 w-3.5 shrink-0" />
                 Assets
               </span>
-              <span className="text-xs font-semibold text-foreground">{assetsCount}</span>
+              <span className={cn(summaryRowValueClass, "font-semibold text-foreground")}>{assetsCount}</span>
+              <div className={summaryActionCol}>
+                <button
+                  type="button"
+                  aria-label="Add asset"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(
+                      `/assets?property=${encodeURIComponent(property.id)}&add=true`
+                    );
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+                <span
+                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  aria-hidden
+                >
+                  →
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between py-1">
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Spaces */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/properties/${property.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/properties/${property.id}`);
+                }
+              }}
+              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className={summaryRowLabelClass}>
                 <Layers className="h-3.5 w-3.5 shrink-0" />
                 Spaces
               </span>
-              <span className="text-xs font-semibold text-foreground">{spacesCount}</span>
+              <span className={cn(summaryRowValueClass, "font-semibold text-foreground")}>{spacesCount}</span>
+              <div className={summaryActionCol}>
+                <button
+                  type="button"
+                  aria-label="Add or organise spaces"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/properties/${property.id}/spaces/organise`);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+                <span
+                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  aria-hidden
+                >
+                  →
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between py-1">
-              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Compliance */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/properties/${property.id}/compliance`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/properties/${property.id}/compliance`);
+                }
+              }}
+              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className={summaryRowLabelClass}>
                 <Shield className="h-3.5 w-3.5 shrink-0" />
                 Compliance
               </span>
-              <span className="flex items-center gap-1">
-                {expiredCount > 0 && (
-                  <span className="text-[10px] text-destructive font-medium">
-                    {expiredCount} expired
-                  </span>
-                )}
-                {expiredCount > 0 && validCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground">·</span>
-                )}
-                {validCount > 0 && (
-                  <span className="text-[10px] text-green-600 font-medium">
-                    {validCount} valid
-                  </span>
-                )}
-                {expiredCount === 0 && validCount === 0 && (
-                  <span className="text-[10px] text-muted-foreground">—</span>
+              <span className={summaryRowValueClass}>
+                {complianceStats.total === 0 ? (
+                  <span className="text-muted-foreground">—</span>
+                ) : (
+                  <>
+                    <span className="font-semibold text-foreground">{complianceStats.total}</span>
+                    {(complianceStats.expiring > 0 || complianceStats.expired > 0) && (
+                      <span
+                        className="ml-1 font-medium text-amber-600"
+                        title={
+                          complianceStats.expired > 0
+                            ? `${complianceStats.expired} expired, ${complianceStats.expiring} expiring`
+                            : `${complianceStats.expiring} expiring`
+                        }
+                        aria-label="Has expired or expiring compliance"
+                      >
+                        ⚠
+                      </span>
+                    )}
+                  </>
                 )}
               </span>
+              <div className={summaryActionCol}>
+                <button
+                  type="button"
+                  aria-label="Add compliance rule"
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/properties/${property.id}/compliance?addRule=1`);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+                <span
+                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  aria-hidden
+                >
+                  →
+                </span>
+              </div>
             </div>
 
-            {onAddTaskClick && (
-              <button
-                type="button"
-                onClick={onAddTaskClick}
-                className="self-start flex h-7 w-[95px] items-center justify-center gap-1.5 rounded-[8px] border-0 bg-primary py-1.5 mt-0.5 text-[12px] font-medium text-white shadow-[3px_3px_5px_0px_rgba(0,0,0,0.15),inset_1px_2px_2px_0px_rgba(255,255,255,0.4),inset_-2px_-2px_2px_0px_rgba(0,0,0,0.15)] transition-all hover:brightness-105"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add Task
-              </button>
-            )}
+            {/* Documents */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/properties/${property.id}/documents`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate(`/properties/${property.id}/documents`);
+                }
+              }}
+              className="group flex w-full cursor-pointer items-center gap-1 rounded-md py-1 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <span className={summaryRowLabelClass}>
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                Documents
+              </span>
+              <span className={summaryRowValueClass}>
+                <span className="font-semibold text-foreground">{documentsCountLabel}</span>
+                {documentsExpiringCount > 0 && (
+                  <>
+                    <span className="mx-0.5 text-muted-foreground">•</span>
+                    <span className="font-medium text-amber-600">{documentsExpiringCount} expiring</span>
+                  </>
+                )}
+              </span>
+              <div className={summaryActionCol}>
+                <button
+                  type="button"
+                  className="rounded-md px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/properties/${property.id}/documents?upload=1`);
+                  }}
+                >
+                  Upload
+                </button>
+                <span
+                  className="flex h-6 w-6 items-center justify-center text-xs text-muted-foreground"
+                  aria-hidden
+                >
+                  →
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* 1 ── DETAILS ──────────────────────────────────────────────── */}

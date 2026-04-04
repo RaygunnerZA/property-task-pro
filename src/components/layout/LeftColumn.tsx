@@ -311,7 +311,7 @@ export function LeftColumn({
         </div>
         {!hideProperties && (
         <div
-          className="px-2 w-full max-w-full overflow-x-hidden"
+          className="px-0 w-full max-w-full overflow-x-hidden"
           style={{ height: focusedProperty ? 'auto' : '228px' }}
         >
           {propertiesLoading ? (
@@ -326,14 +326,12 @@ export function LeftColumn({
             </div>
           ) : focusedProperty ? (
             /* Single property in focus: show identity strip with sliding cards */
-            <div ref={propertiesRef} className="relative w-full max-w-full py-2">
+            <div ref={propertiesRef} className="relative w-full max-w-full pt-[2px] pb-[7px] pr-[5px]">
               <PropertyIdentityStrip
                 key={focusedProperty.id}
                 property={focusedProperty}
                 onAddTaskClick={onCreateTask}
-                onTaskCountClick={() =>
-                  onFilterClick?.(`filter-property-${focusedProperty.id}`)
-                }
+                urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
               />
             </div>
           ) : (
@@ -380,7 +378,7 @@ export function LeftColumn({
           ref={calendarRef}
           className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden"
         >
-          <div className="px-0 pt-3 pb-4 w-full min-w-0 max-w-full overflow-x-hidden">
+          <div className="px-0 w-full min-w-0 max-w-full overflow-x-hidden">
             {tasksLoading ? (
               <div className="rounded-lg bg-transparent px-0 py-[5px] shadow-none w-full">
                 <Skeleton className="h-64 w-full" />

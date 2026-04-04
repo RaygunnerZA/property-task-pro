@@ -371,18 +371,6 @@ export default function PropertyDetail() {
     () => buildPropertyVisualOccupancy(siblingPropertyVisuals),
     [siblingPropertyVisuals]
   );
-  const propertyView = useMemo(() => {
-    return properties.find((p: any) => p.id === id);
-  }, [properties, id]);
-
-  // Use counts from properties_view if available, otherwise calculate
-  const openTasksCount = useMemo(() => {
-    return propertyView?.open_tasks_count ?? propertyTasks.filter(
-      (task) => task.status === "open" || task.status === "in_progress"
-    ).length;
-  }, [propertyView, propertyTasks]);
-  const assetsCount = propertyView?.assets_count ?? propertyAssets.length;
-  const spacesCount = propertyView?.spaces_count ?? spaces.length;
 
   // Initialize edited values when property loads
   useMemo(() => {
@@ -895,7 +883,6 @@ if (!error) {
                         </Button>
                       )}
                     </div>
-                    {id && <DocumentHealthSummary propertyId={id} documents={documents} />}
                     <DocumentsSection documents={documents} loading={documentsLoading} />
                   </div>
 

@@ -70,11 +70,15 @@ const Assets = () => {
 
   const { spaces } = useSpaces(filterPropertyId || undefined);
 
-  // Check for ?add=true in URL to open dialog
+  // Check for ?add=true in URL to open dialog (preserve ?property= when present)
   useEffect(() => {
     if (searchParams.get("add") === "true") {
       setIsDialogOpen(true);
-      navigate("/assets", { replace: true });
+      const propertyParam = searchParams.get("property");
+      const next = propertyParam
+        ? `/assets?property=${encodeURIComponent(propertyParam)}`
+        : "/assets";
+      navigate(next, { replace: true });
     }
   }, [searchParams, navigate]);
 

@@ -29,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function PropertyDocuments() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const propertyId = id || "";
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
@@ -54,7 +54,7 @@ export default function PropertyDocuments() {
     errors: number;
   } | null>(null);
 
-  // URL filter: ?filter=expired | expiring | hazards | unlinked
+  // URL filter: ?filter=expired | expiring | hazards | unlinked; ?upload=1 opens upload dialog
   useEffect(() => {
     const filter = searchParams.get("filter");
     if (filter === "expired") setExpired(true);
@@ -62,6 +62,14 @@ export default function PropertyDocuments() {
     if (filter === "hazards") setHazards(true);
     if (filter === "unlinked") setUnlinked(true);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("upload") !== "1") return;
+    setShowUpload(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("upload");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const { documents, isLoading } = usePropertyDocuments(
     propertyId,
