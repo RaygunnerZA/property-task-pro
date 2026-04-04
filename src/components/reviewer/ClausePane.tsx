@@ -1,20 +1,42 @@
-import React, { useState } from 'react';
-import { Surface, Text, Heading, Button } from '@/components/filla';
-import { ClauseEditor } from './ClauseEditor';
-import { AIRewritePanel } from './AIRewritePanel';
-import { ClauseDiffPreview } from './ClauseDiffPreview';
-import { useClauseEditor } from '@/hooks/useClauseEditor';
-import { useAIRewrite } from '@/hooks/useAIRewrite';
+import React, { useState } from "react";
+import { Surface, Text, Heading, Button } from "@/components/filla";
+import { ClauseEditor } from "./ClauseEditor";
+import { AIRewritePanel } from "./AIRewritePanel";
+import { ClauseDiffPreview } from "./ClauseDiffPreview";
+import { useClauseEditor } from "@/hooks/useClauseEditor";
+import { useAIRewrite } from "@/hooks/useAIRewrite";
 
 interface ClausePaneProps {
   clause: any;
   onApprove: () => void;
   onReject: () => void;
+  actionsDisabled?: boolean;
 }
 
-export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
+export function ClausePane({
+  clause,
+  onApprove,
+  onReject,
+  actionsDisabled = false,
+}: ClausePaneProps) {
   const [showEditor, setShowEditor] = useState(false);
-  
+
+  const editor = useClauseEditor({
+    initialText: clause?.text || "",
+    clauseId: clause?.id,
+  });
+
+  const textForAi = clause
+    ? editor.isDirty
+      ? editor.edited
+      : clause.text || ""
+    : "";
+
+  const ai = useAIRewrite({
+    clauseText: textForAi,
+    criticNotes: clause?.critic_notes ?? null,
+  });
+
   const {
     original,
     edited,
@@ -22,11 +44,8 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
     save,
     cancel,
     loading: editorLoading,
-    isDirty
-  } = useClauseEditor({ 
-    initialText: clause?.text || '', 
-    clauseId: clause?.id 
-  });
+    isDirty,
+  } = editor;
 
   const {
     loading: aiLoading,
@@ -34,12 +53,15 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
     reasoning,
     generate,
     accept: acceptAI,
-    regenerate
-  } = useAIRewrite(clause?.id);
+    regenerate,
+  } = ai;
 
   if (!clause) {
     return (
-      <Surface variant="neomorphic" className="p-8 h-full flex items-center justify-center">
+      <Surface
+        variant="neomorphic"
+        className="flex h-full items-center justify-center p-8"
+      >
         <Text variant="muted">Select a clause to review</Text>
       </Surface>
     );
@@ -61,16 +83,22 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
   };
 
   return (
-    <Surface variant="neomorphic" className="p-6 h-full flex flex-col gap-4 overflow-y-auto">
+    <Surface
+      variant="neomorphic"
+      className="flex h-full flex-col gap-4 overflow-y-auto p-6"
+    >
       <Heading variant="l">Clause Review</Heading>
-      
-      {/* Original Clause Text */}
+
       <Surface variant="engraved" className="p-4">
-        <Text variant="label" className="mb-2 block">Original Clause</Text>
+        <Text variant="label" className="mb-2 block">
+          Original Clause
+        </Text>
         <Text className="leading-relaxed">{clause.text}</Text>
         {clause.critic_notes && (
-          <div className="mt-3 pt-3 border-t border-concrete/50">
-            <Text variant="label" className="mb-1 block text-warning">Critic Notes</Text>
+          <div className="mt-3 border-t border-concrete/50 pt-3">
+            <Text variant="label" className="mb-1 block text-warning">
+              Critic Notes
+            </Text>
             <Text variant="caption" className="text-muted-foreground">
               {clause.critic_notes}
             </Text>
@@ -78,16 +106,14 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
         )}
       </Surface>
 
-      {/* Show diff preview if edited */}
       {isDirty && !showEditor && (
         <ClauseDiffPreview original={original} edited={edited} />
       )}
 
-      {/* Editor Toggle */}
       {!showEditor && (
-        <Button 
-          variant="secondary" 
-          size="sm" 
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => setShowEditor(true)}
           className="self-start"
         >
@@ -95,7 +121,6 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
         </Button>
       )}
 
-      {/* Clause Editor */}
       {showEditor && (
         <ClauseEditor
           value={edited}
@@ -106,7 +131,6 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
         />
       )}
 
-      {/* AI Rewrite Panel */}
       <AIRewritePanel
         suggestion={suggestion}
         reasoning={reasoning}
@@ -116,12 +140,21 @@ export function ClausePane({ clause, onApprove, onReject }: ClausePaneProps) {
         onRegenerate={regenerate}
       />
 
-      {/* Approve/Reject Actions */}
-      <div className="flex gap-3 pt-4 border-t border-concrete/50 mt-auto">
-        <Button variant="primary" onClick={onApprove} fullWidth>
+      <div className="mt-auto flex gap-3 border-t border-concrete/50 pt-4">
+        <Button
+          variant="primary"
+          onClick={onApprove}
+          fullWidth
+          disabled={actionsDisabled}
+        >
           Approve
         </Button>
-        <Button variant="danger" onClick={onReject} fullWidth>
+        <Button
+          variant="danger"
+          onClick={onReject}
+          fullWidth
+          disabled={actionsDisabled}
+        >
           Reject
         </Button>
       </div>

@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { complianceReviews } from "@/services/compliance/reviews";
 
 export function usePendingReviews() {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: reviews = [], isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["compliance-pending-reviews"],
+    queryFn: async () => {
+      const { data, error: e } = await complianceReviews.getPendingReviews();
+      if (e) throw new Error(e);
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    // Placeholder: will call complianceReviews service
-    setReviews([]);
-    setLoading(false);
-  }, []);
-
-  return { reviews, loading };
+  return { reviews, loading: isLoading, isError, error, refetch };
 }

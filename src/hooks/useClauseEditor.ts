@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { complianceClauses } from "@/services/compliance/clauses";
 
 interface UseClauseEditorProps {
   initialText?: string;
   clauseId?: string;
 }
 
-export function useClauseEditor({ initialText = '', clauseId }: UseClauseEditorProps = {}) {
+export function useClauseEditor({
+  initialText = "",
+  clauseId,
+}: UseClauseEditorProps = {}) {
+  const queryClient = useQueryClient();
   const [original, setOriginal] = useState(initialText);
   const [edited, setEdited] = useState(initialText);
   const [loading, setLoading] = useState(false);
@@ -16,17 +22,22 @@ export function useClauseEditor({ initialText = '', clauseId }: UseClauseEditorP
   }, [initialText]);
 
   const save = async () => {
+    if (!clauseId) {
+      setOriginal(edited);
+      return;
+    }
     setLoading(true);
     try {
-      // TODO: Connect to backend service to save edited clause
-      console.log('Saving edited clause:', { clauseId, edited });
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      const { error } = await complianceClauses.updateClauseText(
+        clauseId,
+        edited
+      );
+      if (error) throw new Error(error);
       setOriginal(edited);
+      await queryClient.invalidateQueries({ queryKey: ["compliance-review"] });
     } catch (error) {
-      console.error('Error saving clause:', error);
+      console.error("Error saving clause:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -43,6 +54,6 @@ export function useClauseEditor({ initialText = '', clauseId }: UseClauseEditorP
     save,
     cancel,
     loading,
-    isDirty: original !== edited
+    isDirty: original !== edited,
   };
 }

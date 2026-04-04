@@ -1,47 +1,50 @@
-import { useState } from 'react';
+import { useState, useCallback } from "react";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { fetchClauseRewrite } from "@/services/compliance/clauseRewriteAi";
 
-interface AIRewriteResult {
-  suggestion: string;
-  reasoning: string;
-}
-
-export function useAIRewrite(clauseId?: string) {
+export function useAIRewrite(opts: {
+  clauseText: string;
+  criticNotes?: string | null;
+}) {
+  const { orgId } = useActiveOrg();
   const [loading, setLoading] = useState(false);
-  const [suggestion, setSuggestion] = useState('');
-  const [reasoning, setReasoning] = useState('');
+  const [suggestion, setSuggestion] = useState("");
+  const [reasoning, setReasoning] = useState("");
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
+    if (!orgId) {
+      console.warn("[useAIRewrite] No active org");
+      return;
+    }
+    const text = (opts.clauseText || "").trim();
+    if (!text) return;
+
     setLoading(true);
     try {
-      // TODO: Connect to backend AI service
-      // This is a stub that simulates AI generation
-      console.log('Generating AI rewrite for clause:', clauseId);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock response
-      setSuggestion('AI-generated rewrite will appear here');
-      setReasoning('AI reasoning for the rewrite will be displayed here');
+      const out = await fetchClauseRewrite({
+        org_id: orgId,
+        clause_text: text,
+        critic_notes: opts.criticNotes ?? null,
+      });
+      setSuggestion(out.suggestion);
+      setReasoning(out.reasoning);
     } catch (error) {
-      console.error('Error generating AI rewrite:', error);
+      console.error("Error generating AI rewrite:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [orgId, opts.clauseText, opts.criticNotes]);
 
-  const accept = () => {
-    // TODO: Connect to backend to accept suggestion
-    console.log('Accepting AI suggestion:', suggestion);
-    setSuggestion('');
-    setReasoning('');
-  };
+  const accept = useCallback(() => {
+    setSuggestion("");
+    setReasoning("");
+  }, []);
 
-  const regenerate = async () => {
-    setSuggestion('');
-    setReasoning('');
+  const regenerate = useCallback(async () => {
+    setSuggestion("");
+    setReasoning("");
     await generate();
-  };
+  }, [generate]);
 
   return {
     loading,
@@ -49,6 +52,6 @@ export function useAIRewrite(clauseId?: string) {
     reasoning,
     generate,
     accept,
-    regenerate
+    regenerate,
   };
 }

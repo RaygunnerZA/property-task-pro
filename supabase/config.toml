@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.sync-dev-mode]
 verify_jwt = true
+
+[functions.compliance-clause-rewrite]
+verify_jwt = true

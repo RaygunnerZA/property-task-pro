@@ -2,6 +2,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { tryCatch } from '../../lib/async';
 
 export const complianceReviews = {
+  async getById(reviewId: string) {
+    return tryCatch(async () => {
+      const { data, error } = await supabase
+        .from("compliance_reviews")
+        .select("*")
+        .eq("id", reviewId)
+        .single();
+      if (error) throw error;
+      return data;
+    });
+  },
+
   async getPendingReviews() {
     return tryCatch(async () => {
       const { data, error } = await supabase
@@ -32,7 +44,6 @@ export const complianceReviews = {
         .update({
           status: 'approved',
           reviewer_id: reviewerId,
-          completed_at: new Date().toISOString()
         })
         .eq('id', reviewId);
 
