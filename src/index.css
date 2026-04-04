@@ -264,9 +264,13 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
   }
   
-  /* Primary button shadow */
+  /* Primary button shadow (border on default Button variant — allows border-0 overrides) */
   .shadow-primary-btn {
-    box-shadow: 2px 2px 2px 0px rgba(0, 0, 0, 0.15), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 2px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.15);
+    box-shadow:
+      1.5px 2px 2px 0px rgba(0, 0, 0, 0.15),
+      -2px -3px 5px 0px rgba(255, 255, 255, 0.48),
+      inset 1px 2px 2px 0px rgba(255, 255, 255, 0.5),
+      inset -1px -2px 2px 0px rgba(0, 0, 0, 0.15);
   }
   
   /* Button pressed state */
@@ -556,6 +560,13 @@
   
   .text-shadow-neu-emboss {
     text-shadow: 2px 2px 3px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Debossed / pressed typography (dark TL + light BR) — Daily Brief title, radial numerals, graph labels */
+  .text-shadow-neu-pressed {
+    text-shadow:
+      -1px -2px 2px rgba(0, 0, 0, 0.15),
+      1px 2px 2px rgba(255, 255, 255, 0.3);
   }
   
   /* Global Heading Styles - Single source of truth */

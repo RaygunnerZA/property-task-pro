@@ -32,8 +32,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
   const hasHeader = !!header;
 
   const stickyColClass = hasHeader
-    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px]"
-    : "h-screen sticky top-0 w-[265px]";
+    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px] px-0"
+    : "h-screen sticky top-0 w-[265px] px-0";
 
   return (
     <div className="min-h-screen">
@@ -41,7 +41,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
       <div className="flex flex-col md:hidden w-full min-w-0 max-w-full overflow-x-hidden">
         {header && <div className="w-full">{header}</div>}
         <div className="w-full min-w-0 max-w-full">{leftColumn}</div>
-        <div className="w-full min-w-0 max-w-full bg-surface-gradient">{rightColumn}</div>
+        <div className="w-full min-w-0 max-w-full">{rightColumn}</div>
       </div>
 
       {/* Desktop: Two-column layout (md+), shown until third-column breakpoint */}
@@ -59,7 +59,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {/* Right Column: Dynamic 1fr, max 660px */}
-        <div className="overflow-y-auto min-w-0 max-w-[660px] bg-surface-gradient">
+        <div className="overflow-y-auto min-w-0 max-w-[660px]">
           {rightColumn}
         </div>
       </div>
@@ -83,7 +83,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
             </div>
 
             {/* Middle Column */}
-            <div className="overflow-y-auto min-w-0 bg-surface-gradient px-[14px]">
+            <div className="overflow-y-auto min-w-0 px-[14px]">
               {rightColumn}
             </div>
           </div>

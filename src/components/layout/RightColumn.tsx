@@ -53,8 +53,14 @@ export function RightColumn({
         />
       </div>
       
-      {/* Task Panel or custom children */}
-      <div className="flex-1 min-h-0 min-w-0 w-full md:w-auto">
+      {/* Task Panel or custom children — gradient only below Daily Briefing */}
+      <div
+        className="flex-1 min-h-0 min-w-0 w-full md:w-auto rounded-[23px]"
+        style={{
+          background:
+            "linear-gradient(0deg, rgba(234, 233, 230, 0) 0%, rgba(239, 238, 235, 0) 77%, rgba(255, 255, 255, 0.5) 100%)",
+        }}
+      >
         {children || (
           <TaskPanel 
             tasks={tasks}

@@ -156,14 +156,15 @@ export function RadialProgress({
         }}
       />
 
-      {/* Percentage label */}
+      {/* Percentage label — neumorphic pressed numerals */}
       <span
+        className="text-shadow-neu-pressed"
         style={{
           position: "relative",
           fontSize: 30,
           fontWeight: 400,
           fontFamily: "'Inter Tight', system-ui, -apple-system, sans-serif",
-          letterSpacing: "-3.1px",
+          letterSpacing: "-0.9px",
           marginLeft: 8,
           marginRight: 2,
           color: "rgba(42, 41, 62, 1)",

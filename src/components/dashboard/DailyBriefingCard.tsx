@@ -4,6 +4,7 @@ import { useTasksForBriefingQuery } from "@/hooks/useTasksForBriefingQuery";
 import { useCallback, useMemo, useState } from "react";
 import { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { RadialProgress } from "@/components/ui/radial-progress";
+import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DailyBriefingCardProps {
@@ -156,7 +157,7 @@ export function DailyBriefingCard({
     <div className="w-full max-w-full">
       <div className="grid grid-cols-[1fr_1fr] gap-4 h-[166px] max-h-[166px] items-start">
         {/* Left half: Title + bullet observations (briefing points) */}
-        <div className="min-w-0 flex flex-col justify-start">
+        <div className="min-w-0 flex flex-col justify-start pt-1">
           <div className="flex items-center gap-2 mb-3">
             <h2 className="text-lg font-semibold text-foreground">Overview</h2>
           </div>
@@ -175,13 +176,13 @@ export function DailyBriefingCard({
         </div>
 
         {/* Right half: Carousel with graphic data (radial, charts) + discrete chevrons */}
-        <div className="min-w-0 flex items-start justify-center relative">
+        <div className="min-w-0 flex w-[300px] gap-0 items-start justify-center relative">
           <Carousel
             opts={carouselOpts}
             setApi={handleCarouselApi}
-            className="w-full"
+            className="w-full max-w-[300px]"
           >
-            <CarouselContent className="-ml-2 justify-center items-center gap-1 w-[345px]">
+            <CarouselContent className="ml-0 justify-center items-center gap-1 w-[300px]">
               {slides.map((slide) => (
                 <CarouselItem
                   key={slide.id}
@@ -198,7 +199,12 @@ export function DailyBriefingCard({
                         aria-label={`${slide.label}: ${slide.value}%`}
                       />
                     )}
-                    <p className="text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider">
+                    <p
+                      className={cn(
+                        "text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider",
+                        "text-shadow-neu-pressed"
+                      )}
+                    >
                       {slide.label}
                     </p>
                     <p className="text-[10px] text-muted-foreground/80 mt-0.5">
@@ -210,7 +216,7 @@ export function DailyBriefingCard({
             </CarouselContent>
           </Carousel>
           {/* Discrete chevrons to select previous/next slide */}
-          <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-0">
+          <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-0 pb-[38px]">
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); carouselApi?.scrollPrev(); }}
@@ -218,7 +224,7 @@ export function DailyBriefingCard({
               aria-label="Previous slide"
               className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
             >
-              <ChevronLeft className="h-4 w-4 text-white" />
+              <ChevronLeft className="h-[35px] w-[35px] text-primary" />
             </button>
             <button
               type="button"
@@ -227,7 +233,7 @@ export function DailyBriefingCard({
               aria-label="Next slide"
               className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
             >
-              <ChevronRight className="h-4 w-4 text-white" />
+              <ChevronRight className="h-4 w-5 text-white" />
             </button>
           </div>
         </div>

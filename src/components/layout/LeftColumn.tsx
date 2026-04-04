@@ -197,7 +197,7 @@ export function LeftColumn({
     >
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
-        <div className={cn("sticky top-0 z-10 bg-background px-2 pb-[7px]", properties.length === 1 ? "pt-[7px]" : "pt-4")}>
+        <div className={cn("sticky top-0 z-10 bg-background px-0 pb-[7px]", properties.length === 1 ? "pt-[7px]" : "pt-4")}>
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               {properties.length !== 1 && (
@@ -238,7 +238,7 @@ export function LeftColumn({
                   </div>
                 )}
                 <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar" style={{ paddingLeft: '4px', paddingRight: '4px', paddingTop: '3px', paddingBottom: '3px' }}>
-                  <div className="flex h-[32px] min-w-max items-center gap-1 pr-1">
+                  <div className="flex h-[32px] w-full min-w-max items-center gap-1 pr-0 mx-0">
                     {(() => {
                       const isAllActive = selectedPropertyIds.size === ALL_PROPERTY_IDS.length;
                       return (
@@ -380,13 +380,13 @@ export function LeftColumn({
           ref={calendarRef}
           className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden"
         >
-          <div className="px-2 pt-3 pb-4 w-full min-w-0 max-w-full overflow-x-hidden">
+          <div className="px-0 pt-3 pb-4 w-full min-w-0 max-w-full overflow-x-hidden">
             {tasksLoading ? (
-              <div className="rounded-lg bg-transparent px-[2px] py-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 py-[5px] shadow-none w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-transparent px-[2px] py-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 py-[5px] shadow-none w-full">
                 <DashboardCalendarV2
                   tasks={tasks}
                   selectedDate={selectedDate}

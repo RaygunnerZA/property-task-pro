@@ -31,7 +31,8 @@ export const Button: React.FC<ButtonProps> = ({
   const base = `inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-150 rounded-[5px] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]`;
   
   const variants = {
-    primary: 'bg-primary text-primary-foreground shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed',
+    primary:
+      'bg-primary text-primary-foreground border-0 shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed',
     secondary: 'bg-card text-ink shadow-e1 hover:translate-y-[-1px] hover:shadow-e2 active:translate-y-0',
     ghost: 'bg-transparent text-ink/60 hover:text-ink hover:bg-concrete/30',
     danger: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shadow-e1',

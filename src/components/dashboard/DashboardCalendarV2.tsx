@@ -356,12 +356,12 @@ export function DashboardCalendarV2({
     >
       <div
         className="flex flex-col mx-auto w-full min-w-0 max-w-full"
-        style={{ gap: COL_GAP, width: 245, maxWidth: "100%" }}
+        style={{ gap: COL_GAP, width: 265, maxWidth: "100%", marginLeft: 0, marginRight: 0 }}
       >
         {/* ═══════════════ Month + year drums (above dates) ═════════════════ */}
         <div
-          className="flex justify-start items-center shrink-0 w-full min-w-0 h-[45px] overflow-x-hidden"
-          style={{ gap: SPINNER_GAP, paddingTop: 4, paddingBottom: 4, paddingLeft: 0, paddingRight: 0 }}
+          className="flex justify-start items-center shrink-0 w-full min-w-0 h-[46px] overflow-x-hidden"
+          style={{ gap: SPINNER_GAP, paddingTop: 0, paddingBottom: 5, paddingLeft: 0, paddingRight: 4 }}
         >
           {/* Month drum */}
           <div
@@ -544,7 +544,10 @@ export function DashboardCalendarV2({
           </div>
         </div>
 
-        <div className="flex flex-col w-full min-w-0" style={{ gap: 0 }}>
+        <div
+          className="flex flex-col w-full min-w-0 pt-0 pb-[4px] px-[3px]"
+          style={{ gap: 0 }}
+        >
             {/* Weekday labels sit above the neumorphic date card (not inside it) */}
             <div
               className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
