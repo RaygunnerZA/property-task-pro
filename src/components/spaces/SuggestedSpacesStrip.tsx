@@ -27,6 +27,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -396,9 +397,7 @@ export function SuggestedSpacesStrip({
       {/* My Spaces — activated cards */}
       {mySpaces.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">
-            My Spaces
-          </h3>
+          <PanelSectionTitle as="h3">My Spaces</PanelSectionTitle>
           <div className="overflow-x-auto pb-2 scrollbar-hz-teal">
             <div
               className="flex gap-2.5 h-[165px]"
@@ -428,9 +427,7 @@ export function SuggestedSpacesStrip({
       {/* Suggested Spaces — only unactivated cards */}
       {unactivated.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">
-            Suggested Spaces
-          </h3>
+          <PanelSectionTitle as="h3">Suggested Spaces</PanelSectionTitle>
           <div className="overflow-x-auto pb-2 scrollbar-hz-teal">
             <div
               className="flex gap-2.5 h-[165px]"

@@ -63,14 +63,14 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
           <button
             onClick={() => openIntake('add_record')}
             className={intakeFabSatelliteAddClassName}
-            aria-label="Add record"
+            aria-label="Add Record"
           >
             <AnimatedIcon icon={FileText} size={20} animateOnHover animateOnTap animation="pulse" />
           </button>
           <button
             onClick={() => openIntake('report_issue')}
             className={intakeFabSatelliteReportClassName}
-            aria-label="Report issue"
+            aria-label="Report Issue"
           >
             <AnimatedIcon icon={Plus} size={20} animateOnHover animateOnTap animation="rotate" />
           </button>

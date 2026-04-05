@@ -27,6 +27,7 @@ import {
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import {
@@ -814,6 +815,11 @@ export function TaskPanel({
   const tabTitle = (label: string) =>
     effectiveTabBarDensity === "comfortable" ? undefined : label;
 
+  /** Inset track shared by tab strip + intake CTAs (neumorphic well). */
+  const taskToolbarRecessedClass =
+    "rounded-[15px] bg-background overflow-visible " +
+    "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]";
+
   const taskTabShell =
     "rounded-[8px] transition-all text-sm font-medium min-w-0 group/task-tab inline-flex items-center justify-center " +
     "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
@@ -854,12 +860,7 @@ export function TaskPanel({
           )}
         >
           <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
-            <div
-              className={cn(
-                "min-w-0 w-full max-w-[432px] rounded-[15px] bg-background overflow-visible",
-                "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]"
-              )}
-            >
+            <div className={cn("min-w-0 w-full max-w-[432px]", taskToolbarRecessedClass)}>
               <TabsList
                 ref={tabsListRef}
                 className={cn(
@@ -968,25 +969,29 @@ export function TaskPanel({
           </div>
 
           {onOpenIntake && (
-            <div
-              className={cn(
-                "hidden min-w-0 md:grid min-[1380px]:hidden",
-                /* Stacked toolbar: two-up row, full width of column */
-                "grid-cols-2 gap-2 lg:flex lg:w-[7.75rem] lg:shrink-0 lg:flex-col lg:gap-1.5 lg:self-start"
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => onOpenIntake("report_issue")}
-                className={intakeReportIssueButtonClassName}
-              >
-                <Plus className={intakeReportIssueIconClassName} />
-                Report issue
-              </button>
-              <button type="button" onClick={() => onOpenIntake("add_record")} className={intakeAddRecordButtonClassName}>
-                <FileText className={intakeAddRecordIconClassName} />
-                Add record
-              </button>
+            <div className="hidden min-w-0 min-[1380px]:hidden md:block lg:w-[139px] lg:shrink-0 lg:self-start">
+              <div className={cn("w-full min-w-0", taskToolbarRecessedClass)}>
+                <div
+                  className={cn(
+                    "grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-x-1.5 px-2 pt-[6px] pb-1.5",
+                    "lg:h-auto lg:min-h-0 lg:flex lg:flex-col lg:gap-1.5",
+                    "max-[455px]:px-1"
+                  )}
+                >
+                  <button type="button" onClick={() => onOpenIntake("add_record")} className={intakeAddRecordButtonClassName}>
+                    <FileText className={intakeAddRecordIconClassName} />
+                    Add Record
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenIntake("report_issue")}
+                    className={intakeReportIssueButtonClassName}
+                  >
+                    <Plus className={intakeReportIssueIconClassName} />
+                    Report Issue
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1061,7 +1066,7 @@ export function TaskPanel({
                                     ? [
                                         {
                                           id: "report-issue",
-                                          label: "Report issue",
+                                          label: "Report Issue",
                                           onClick: () => {
                                             onOpenIntake?.("report_issue");
                                             resolveAttentionItem(item.id);
@@ -1084,18 +1089,18 @@ export function TaskPanel({
                                           },
                                         },
                                         {
-                                          id: "report-issue",
-                                          label: "Report issue",
+                                          id: "add-record",
+                                          label: "Add Record",
                                           onClick: () => {
-                                            onOpenIntake?.("report_issue");
+                                            onOpenIntake?.("add_record");
                                             resolveAttentionItem(item.id);
                                           },
                                         },
                                         {
-                                          id: "add-record",
-                                          label: "Add record",
+                                          id: "report-issue",
+                                          label: "Report Issue",
                                           onClick: () => {
-                                            onOpenIntake?.("add_record");
+                                            onOpenIntake?.("report_issue");
                                             resolveAttentionItem(item.id);
                                           },
                                         },
@@ -1159,7 +1164,6 @@ export function TaskPanel({
                       WebkitBackgroundClip: "unset",
                     }}
                   >
-                    <p className="mb-2 ml-3 text-sm font-semibold text-[rgb(42,41,62)]">Attention Summary</p>
                     <div className="grid grid-cols-3 gap-2">
                       <div
                         className={cn(
@@ -1227,7 +1231,7 @@ export function TaskPanel({
                   </div>
 
                   <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Potential Risks</p>
+                    <PanelSectionTitle as="h3">Potential Risks</PanelSectionTitle>
                     <div className="space-y-1.5">
                       {riskSignals.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No critical risks detected.</p>
@@ -1255,27 +1259,29 @@ export function TaskPanel({
                   </div>
 
                   <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <p className="text-sm font-semibold text-[rgb(42,41,62)] mb-2">Quick Actions</p>
-                    <div className="flex flex-col items-start justify-start gap-1.5">
+                    <PanelSectionTitle as="h3">Quick Actions</PanelSectionTitle>
+                    <div className="flex flex-row flex-nowrap items-start justify-start gap-1.5">
                       <button
                         type="button"
                         onClick={() => onOpenIntake?.("add_record")}
                         className={intakeAddRecordCompactClassName}
                       >
-                        Add record
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
+                        Add Record
                       </button>
                       <button
                         type="button"
                         onClick={() => onOpenIntake?.("report_issue")}
                         className={intakeReportIssueCompactClassName}
                       >
-                        Report issue
+                        <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
+                        Report Issue
                       </button>
                     </div>
                   </div>
 
                   <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <p className="mb-1 text-sm font-semibold text-[rgb(42,41,62)]">Filla Insights</p>
+                    <PanelSectionTitle as="h3">Filla Insights</PanelSectionTitle>
                     <p className="text-xs text-foreground/90">
                       Most signals today relate to: <span className="font-medium">{dominantAttentionProperty}</span>
                     </p>
@@ -1430,18 +1436,75 @@ export function TaskPanel({
                 </div>
 
                 <div className="lg:sticky lg:top-3 self-start space-y-3">
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Health</p>
-                    <div className="space-y-1 text-xs">
-                      <p>Healthy: {complianceHealth.healthy}</p>
-                      <p>Expiring: {complianceHealth.expiring}</p>
-                      <p>Overdue: {complianceHealth.overdue}</p>
-                      <p>Missing: {complianceHealth.missing}</p>
+                  <div
+                    className="rounded-xl px-0 py-0"
+                    style={{
+                      marginLeft: 0,
+                      marginRight: 0,
+                      boxShadow: "none",
+                      background: "unset",
+                      backgroundColor: "rgba(42, 41, 62, 0)",
+                      backgroundClip: "unset",
+                      WebkitBackgroundClip: "unset",
+                    }}
+                  >
+                    <PanelSectionTitle as="h3" className="ml-2">
+                      Compliance Health
+                    </PanelSectionTitle>
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                      {(
+                        [
+                          {
+                            label: "Healthy",
+                            value: complianceHealth.healthy,
+                            color: "rgba(16, 185, 129, 1)",
+                          },
+                          {
+                            label: "Expiring",
+                            value: complianceHealth.expiring,
+                            color: "rgba(255, 184, 77, 1)",
+                          },
+                          {
+                            label: "Overdue",
+                            value: complianceHealth.overdue,
+                            color: "rgba(235, 104, 52, 1)",
+                          },
+                          {
+                            label: "Missing",
+                            value: complianceHealth.missing,
+                            color: "rgba(100, 116, 139, 1)",
+                          },
+                        ] as const
+                      ).map((metric) => (
+                        <div
+                          key={metric.label}
+                          className={cn(
+                            "flex min-w-0 flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px] px-0.5",
+                            "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                          )}
+                        >
+                          <p
+                            className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu tabular-nums"
+                            style={{
+                              maxWidth: "100%",
+                              fontSize: 34,
+                              color: metric.color,
+                              fontFamily: '"Inter Tight"',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {metric.value}
+                          </p>
+                          <p className="mt-1 text-[11px] sm:text-[12px] text-muted-foreground leading-tight">
+                            {metric.label}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Property Compliance Status</p>
+                    <PanelSectionTitle as="h3">Property Compliance Status</PanelSectionTitle>
                     <div className="space-y-1.5">
                       {propertyComplianceStatus.map((row) => {
                         const statusText =
@@ -1465,7 +1528,7 @@ export function TaskPanel({
                   </div>
 
                   <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Upcoming Expiry</p>
+                    <PanelSectionTitle as="h3">Upcoming Expiry</PanelSectionTitle>
                     <div className="space-y-1.5">
                       {upcomingExpiry.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No upcoming expiries.</p>
@@ -1481,7 +1544,7 @@ export function TaskPanel({
 
                   {selectedComplianceRecord && (
                     <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Compliance Record Detail</p>
+                      <PanelSectionTitle as="h3">Compliance Record Detail</PanelSectionTitle>
                       <div className="space-y-1.5 text-xs">
                         <p>
                           <span className="text-muted-foreground">Compliance Type:</span>{" "}
@@ -1516,13 +1579,15 @@ export function TaskPanel({
                       </div>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         <button type="button" onClick={() => onOpenIntake?.("add_record")} className={intakeAddRecordMicroClassName}>
-                          Add record
+                          <FileText className="h-3 w-3 shrink-0 text-white" aria-hidden />
+                          Add Record
                         </button>
                         <button
                           type="button"
                           onClick={() => onOpenIntake?.("report_issue")}
                           className={intakeReportIssueMicroClassName}
                         >
+                          <Plus className="h-3 w-3 shrink-0 text-white" aria-hidden />
                           Create Inspection Task
                         </button>
                         <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">

@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { PanelSectionTitle } from '@/components/ui/panel-section-title';
 import { Badge } from '@/components/ui/badge';
 import { Building2 } from 'lucide-react';
 
@@ -39,7 +40,9 @@ export default function PropertyDriftHeatmap({ data }: PropertyDriftHeatmapProps
     <Card className="shadow-e1">
       <CardContent className="p-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Property Compliance Status</h3>
+          <PanelSectionTitle as="h3" className="mb-0">
+            Property Compliance Status
+          </PanelSectionTitle>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {data.map((property) => {

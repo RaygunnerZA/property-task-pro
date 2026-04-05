@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { PanelSectionTitle } from '@/components/ui/panel-section-title';
 
 interface StatusData {
   status: string;
@@ -18,7 +19,9 @@ export default function RuleStatusDistribution({ data }: RuleStatusDistributionP
     <Card className="shadow-e1">
       <CardContent className="p-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Rule Status Distribution</h3>
+          <PanelSectionTitle as="h3" className="mb-0">
+            Rule Status Distribution
+          </PanelSectionTitle>
           
           {/* Horizontal bar */}
           <div className="h-8 rounded-lg overflow-hidden flex shadow-engraved">

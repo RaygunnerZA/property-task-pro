@@ -5,6 +5,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Plus, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +108,9 @@ export function MediaGallerySection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Media Gallery</h3>
+        <PanelSectionTitle as="h3" className="mb-0">
+          Media Gallery
+        </PanelSectionTitle>
         <input
           ref={fileInputRef}
           type="file"

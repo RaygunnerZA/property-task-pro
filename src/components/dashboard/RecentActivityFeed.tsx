@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { PanelSectionTitle } from '@/components/ui/panel-section-title';
 import { CheckCircle2, AlertTriangle, FileText, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -45,7 +46,9 @@ export default function RecentActivityFeed({ data }: RecentActivityFeedProps) {
     <Card className="shadow-e1">
       <CardContent className="p-6">
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Recent Activity</h3>
+          <PanelSectionTitle as="h3" className="mb-0">
+            Recent Activity
+          </PanelSectionTitle>
           
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {data.map((event) => {

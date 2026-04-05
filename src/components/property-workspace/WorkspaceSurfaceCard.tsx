@@ -1,4 +1,6 @@
 import { ReactNode } from "react";
+
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 
 export interface WorkspaceSurfaceCardProps {
@@ -28,7 +30,11 @@ export function WorkspaceSurfaceCard({
     >
       {(title || description) && (
         <div className="px-4 pt-4 pb-2">
-          {title && <h3 className="text-sm font-semibold text-foreground tracking-tight">{title}</h3>}
+          {title && (
+            <PanelSectionTitle as="h3" className="mb-0">
+              {title}
+            </PanelSectionTitle>
+          )}
           {description && (
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
           )}

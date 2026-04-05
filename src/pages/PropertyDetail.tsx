@@ -42,6 +42,7 @@ import { FillaIcon } from "@/components/filla/FillaIcon";
 // Lazy load PropertyImageDialog to isolate any import errors
 const PropertyImageDialog = lazy(() => import("@/components/property/PropertyImageDialog").then(module => ({ default: module.PropertyImageDialog })));
 import { Button } from "@/components/ui/button";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -854,7 +855,9 @@ if (!error) {
                   {/* Zones Section */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-foreground">Organise your Spaces</h2>
+                      <PanelSectionTitle as="h2" className="mb-0">
+                        Organise your Spaces
+                      </PanelSectionTitle>
                       {id && (
                         <Button
                           variant="ghost"
@@ -871,7 +874,9 @@ if (!error) {
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+                      <PanelSectionTitle as="h2" className="mb-0">
+                        Documents
+                      </PanelSectionTitle>
                       {id && (
                         <Button
                           variant="ghost"
@@ -899,7 +904,9 @@ if (!error) {
                   </div>
 
                   <div className="space-y-4">
-                    <h2 className="text-lg font-semibold text-foreground">Property Graph</h2>
+                    <PanelSectionTitle as="h2" className="mb-0">
+                      Property Graph
+                    </PanelSectionTitle>
                     {id && (
                       <>
                         <GraphInsightPanel start={{ type: "property", id }} depth={3} variant="full" />
@@ -912,7 +919,9 @@ if (!error) {
 
               {activeHeaderTab === "tasks" && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-foreground">Property Tasks</h2>
+                  <PanelSectionTitle as="h2" className="mb-0">
+                    Property Tasks
+                  </PanelSectionTitle>
                   <PropertyTasksSection
                     propertyId={id || ""}
                     tasks={propertyTasks}
@@ -928,7 +937,9 @@ if (!error) {
               {activeHeaderTab === "assets" && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-foreground">Property Assets</h2>
+                    <PanelSectionTitle as="h2" className="mb-0">
+                      Property Assets
+                    </PanelSectionTitle>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -994,7 +1005,9 @@ if (!error) {
 
               {activeHeaderTab === "compliance" && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-foreground">Compliance Overview</h2>
+                  <PanelSectionTitle as="h2" className="mb-0">
+                    Compliance Overview
+                  </PanelSectionTitle>
                   <p className="text-xs text-muted-foreground">
                     {compliance.length} tracked item{compliance.length === 1 ? "" : "s"}
                   </p>

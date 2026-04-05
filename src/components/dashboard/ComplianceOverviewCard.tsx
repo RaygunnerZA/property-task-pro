@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card';
+import { PanelSectionTitle } from '@/components/ui/panel-section-title';
 import { FileText, Building2, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 interface ComplianceOverviewData {
@@ -53,7 +54,9 @@ export default function ComplianceOverviewCard({ data }: ComplianceOverviewCardP
       <CardContent className="p-6">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Compliance Overview</h3>
+            <PanelSectionTitle as="h3" className="mb-0">
+              Compliance Overview
+            </PanelSectionTitle>
             <p className="text-sm text-muted-foreground">
               Updated {data.lastUpdated}
             </p>

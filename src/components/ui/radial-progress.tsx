@@ -8,6 +8,8 @@ interface RadialProgressProps {
   innerDiscSize?: number;
   /** Horizontal offset for the center percentage label (compact layouts use a tighter value) */
   labelMarginLeft?: number;
+  /** Transparent outer surface (e.g. sidebar briefing) — no filled disc behind the ring */
+  embed?: boolean;
   className?: string;
   "aria-label"?: string;
 }
@@ -18,6 +20,7 @@ export function RadialProgress({
   thickness = 20,
   innerDiscSize: innerDiscSizeProp,
   labelMarginLeft,
+  embed = false,
   className,
   "aria-label": ariaLabel,
 }: RadialProgressProps) {
@@ -27,10 +30,44 @@ export function RadialProgress({
   const offset = circumference * (1 - clampedValue / 100);
   const innerDiscSize = innerDiscSizeProp ?? 80;
 
+  const rootSurfaceStyle = embed
+    ? {
+        background: "unset" as const,
+        backgroundImage: "none" as const,
+        backgroundColor: "unset" as const,
+        border: "none",
+        borderStyle: "none" as const,
+        borderColor: "transparent",
+        borderImage: "none" as const,
+        color: "rgba(41, 39, 53, 1)",
+      }
+    : {};
+
+  const baseDiscStyle = embed
+    ? {
+        background: "unset" as const,
+        backgroundImage: "none" as const,
+        backgroundColor: "unset" as const,
+        border: "none",
+        borderStyle: "none" as const,
+        borderColor: "transparent",
+      }
+    : {
+        background: "hsl(var(--background))",
+        backgroundImage: "var(--paper-texture)",
+        backgroundSize: "100%",
+      };
+
   return (
     <div
       className={cn("relative", className)}
-      style={{ width: size + 10, height: size + 10, display: "grid", placeItems: "center" }}
+      style={{
+        width: size + 10,
+        height: size + 10,
+        display: "grid",
+        placeItems: "center",
+        ...rootSurfaceStyle,
+      }}
       role="progressbar"
       aria-valuenow={clampedValue}
       aria-valuemin={0}
@@ -43,9 +80,7 @@ export function RadialProgress({
           position: "absolute",
           inset: 0,
           borderRadius: "50%",
-          background: "hsl(var(--background))",
-          backgroundImage: "var(--paper-texture)",
-          backgroundSize: "100%",
+          ...baseDiscStyle,
         }}
       />
 

@@ -138,25 +138,25 @@ export function MobileBottomNav() {
               </DrawerDescription>
             </DrawerHeader>
             <div className="p-4 space-y-3">
+              <button onClick={() => openIntake("add_record")} className={intakeAddRecordDrawerCardClassName}>
+                <div className="flex items-center gap-3">
+                  <div className={intakeDrawerIconWrapAddClassName}>
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">Add Record</div>
+                    <div className="text-sm text-white/85">File a certificate, inspection, or document</div>
+                  </div>
+                </div>
+              </button>
               <button onClick={() => openIntake("report_issue")} className={intakeReportIssueDrawerCardClassName}>
                 <div className="flex items-center gap-3">
                   <div className={intakeDrawerIconWrapReportClassName}>
                     <Plus className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold">Report issue</div>
+                    <div className="font-semibold">Report Issue</div>
                     <div className="text-sm text-white/85">Capture a problem or maintenance need</div>
-                  </div>
-                </div>
-              </button>
-              <button onClick={() => openIntake("add_record")} className={intakeAddRecordDrawerCardClassName}>
-                <div className="flex items-center gap-3">
-                  <div className={intakeDrawerIconWrapAddClassName}>
-                    <FileText className="h-5 w-5 text-primary-deep" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">Add record</div>
-                    <div className="text-sm text-primary-deep/80">File a certificate, inspection, or document</div>
                   </div>
                 </div>
               </button>

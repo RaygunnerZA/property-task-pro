@@ -9,6 +9,7 @@ import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { useCompliancePortfolioQuery } from '@/hooks/useCompliancePortfolioQuery';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import DashboardSection from '@/components/dashboard/DashboardSection';
+import { PanelSectionTitle } from '@/components/ui/panel-section-title';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -88,7 +89,9 @@ const Home = () => {
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <div className="text-sm font-semibold text-foreground">Your Compliance Health Today</div>
+                <PanelSectionTitle as="h3" className="mb-0">
+                  Your Compliance Health Today
+                </PanelSectionTitle>
                 <div className="flex items-center gap-3 mt-1 text-xs">
                   {complianceSummary.expired > 0 && (
                     <span className="text-destructive font-medium">{complianceSummary.expired} expired</span>

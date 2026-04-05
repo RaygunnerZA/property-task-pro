@@ -11,6 +11,7 @@ import { Plus, Home, Package, CheckSquare, FileText, Shield, Clock, Zap, Activit
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarConcertina } from "@/components/layout/SidebarConcertina";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import {
@@ -212,7 +213,7 @@ export function LeftColumn({
     >
       {/* Properties Section - Fixed at top */}
       <div className="flex-shrink-0 w-full">
-        <div className={cn("sticky top-0 z-10 bg-background px-0 pb-[7px]", properties.length === 1 ? "pt-[7px]" : "pt-4")}>
+        <div className="sticky top-0 z-10 bg-background px-0 pb-[7px] pt-[7px]">
           <div className="flex flex-col gap-0">
             {properties.length !== 1 && (
               <div
@@ -224,9 +225,9 @@ export function LeftColumn({
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">
+                  <PanelSectionTitle as="h2" className="mb-0">
                     {properties.length > 1 && isAllActive ? "All Properties" : "Properties"}
-                  </h2>
+                  </PanelSectionTitle>
                   <button
                     onClick={() => setShowAddProperty(true)}
                     className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
@@ -450,19 +451,19 @@ export function LeftColumn({
                     <>
                       <button
                         type="button"
-                        onClick={() => onOpenIntake("report_issue")}
-                        className={intakeReportIssueListRowClassName}
-                      >
-                        <Plus className={intakeListRowReportIconClassName} />
-                        Report issue
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => onOpenIntake("add_record")}
                         className={intakeAddRecordListRowClassName}
                       >
                         <FileText className={intakeListRowAddIconClassName} />
-                        Add record
+                        Add Record
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenIntake("report_issue")}
+                        className={intakeReportIssueListRowClassName}
+                      >
+                        <Plus className={intakeListRowReportIconClassName} />
+                        Report Issue
                       </button>
                     </>
                   )}

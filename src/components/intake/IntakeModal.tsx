@@ -1,10 +1,10 @@
 /**
- * IntakeModal — Unified composer for Report issue (task) and Add record (compliance filing).
+ * IntakeModal — Unified composer for Report Issue (task) and Add Record (compliance filing).
  * User picks intake mode first; baseline workflow follows mode. AI enriches in-mode only, never selects the tab.
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Plus, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -2745,8 +2745,8 @@ export function IntakeModal({
   const primaryLabel = primaryIsDocument
     ? "Save Document"
     : primaryIsCompliance
-      ? "Add record"
-      : "Report issue";
+      ? "Add Record"
+      : "Report Issue";
 
   const descriptionPlaceholder =
     intakeMode === "add_record"
@@ -2755,11 +2755,11 @@ export function IntakeModal({
 
   const intakeModeSwitcher = (
     <div
-      className="flex h-12 w-full max-w-full gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      className="flex h-12 w-[290px] max-w-full gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
       role="tablist"
       aria-label="Intake type"
     >
-      {(["report_issue", "add_record"] as const).map((m) => (
+      {(["add_record", "report_issue"] as const).map((m) => (
         <button
           key={m}
           type="button"
@@ -2767,15 +2767,20 @@ export function IntakeModal({
           aria-selected={intakeMode === m}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "flex-1 min-w-0 rounded-[12px] py-2 px-2 text-xs font-semibold transition-all sm:text-sm",
+            "flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-[12px] py-2 px-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
-                ? "bg-accent text-accent-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-                : "bg-primary/25 text-primary-deep shadow-e1"
+                ? "bg-[#ff6b6b] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
+                : "bg-[#8DC9CE] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {m === "report_issue" ? "Report issue" : "Add record"}
+          {m === "report_issue" ? (
+            <Plus className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+          ) : (
+            <FileText className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
+          )}
+          <span className="min-w-0 truncate">{m === "report_issue" ? "Report Issue" : "Add Record"}</span>
         </button>
       ))}
     </div>
@@ -2883,7 +2888,7 @@ export function IntakeModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Switch and clear draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              Switching between Report issue and Add record will clear your description, uploads, and checklist draft.
+              Switching between Report Issue and Add Record will clear your description, uploads, and checklist draft.
               Location selections can stay if you continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2966,7 +2971,7 @@ export function IntakeModal({
     <>
       {variant !== "column" && (
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
-          <DialogTitle className="sr-only">Report issue or add a record</DialogTitle>
+          <DialogTitle className="sr-only">Report Issue or add a record</DialogTitle>
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0 pt-0.5">{intakeModeSwitcher}</div>
             <button
@@ -3064,8 +3069,8 @@ export function IntakeModal({
             <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 shadow-e1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-foreground">
                 {intakeMode === "report_issue"
-                  ? "This upload looks like a compliance record. Switch to Add record?"
-                  : "This looks like an on-site issue. Switch to Report issue?"}
+                  ? "This upload looks like a compliance record. Switch to Add Record?"
+                  : "This looks like an on-site issue. Switch to Report Issue?"}
               </p>
               <div className="flex flex-wrap gap-2 shrink-0">
                 <button
@@ -3076,7 +3081,12 @@ export function IntakeModal({
                   )}
                   onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
                 >
-                  {intakeMode === "report_issue" ? "Add record" : "Report issue"}
+                  {intakeMode === "report_issue" ? (
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
+                  )}
+                  {intakeMode === "report_issue" ? "Add Record" : "Report Issue"}
                 </button>
                 <Button
                   type="button"
@@ -3158,7 +3168,7 @@ export function IntakeModal({
             onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
             className="text-xs text-muted-foreground hover:text-foreground underline"
           >
-            {intakeMode === "report_issue" ? "Switch to Add record" : "Switch to Report issue"}
+            {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Report Issue"}
           </button>
           {userChoseWorkflow !== null && (
             <button
@@ -3166,7 +3176,7 @@ export function IntakeModal({
               onClick={() => setUserChoseWorkflow(null)}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              Use {intakeMode === "report_issue" ? "Report issue" : "Add record"} defaults
+              Use {intakeMode === "report_issue" ? "Report Issue" : "Add Record"} defaults
             </button>
           )}
         </div>

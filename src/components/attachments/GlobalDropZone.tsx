@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, Inbox, Loader2, UploadCloud } from "lucide
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 
 interface GlobalDropZoneProps {
@@ -148,7 +149,9 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
     <section className={cn("rounded-[12px] bg-card/70 shadow-e1 p-4", className)}>
       <div className="flex items-center gap-2 mb-3">
         <Inbox className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Inbox Intake Bucket</h3>
+        <PanelSectionTitle as="h3" className="mb-0">
+          Inbox Intake Bucket
+        </PanelSectionTitle>
       </div>
 
       <input

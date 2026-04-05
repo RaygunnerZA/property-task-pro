@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Card } from "@/components/ui/card";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Users, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +98,7 @@ export function PropertyRelatedEntities({
     <div className="border-t border-border p-4 space-y-4">
       {relatedGroups.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">Groups</h3>
+          <PanelSectionTitle as="h3">Groups</PanelSectionTitle>
           <div className="space-y-2">
             {relatedGroups.map((group) => (
               <Card
@@ -116,7 +117,7 @@ export function PropertyRelatedEntities({
 
       {teamsData.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground mb-2">Teams</h3>
+          <PanelSectionTitle as="h3">Teams</PanelSectionTitle>
           <div className="space-y-2">
             {teamsData.map((team: any) => (
               <Card

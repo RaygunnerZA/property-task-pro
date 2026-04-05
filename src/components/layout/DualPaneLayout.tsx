@@ -59,7 +59,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {/* Right Column: Dynamic 1fr, max 652px */}
-        <div className="overflow-y-auto min-w-0 max-w-[652px]">
+        <div className="overflow-y-auto min-w-0 max-w-[652px] pt-3">
           {rightColumn}
         </div>
       </div>

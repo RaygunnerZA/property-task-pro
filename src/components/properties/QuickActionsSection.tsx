@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Repeat, FileSearch, FileText, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,7 @@ export function QuickActionsSection({ propertyId }: QuickActionsSectionProps) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Quick Actions</h3>
+      <PanelSectionTitle as="h3">Quick Actions</PanelSectionTitle>
       <div className="space-y-2">
         <Button
           variant="outline"

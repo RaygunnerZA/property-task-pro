@@ -1,4 +1,6 @@
-import { ReactNode } from 'react';
+import { ReactNode } from "react";
+
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 
 interface DashboardSectionProps {
   title: string;
@@ -10,7 +12,9 @@ export default function DashboardSection({ title, children, action }: DashboardS
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+        <PanelSectionTitle as="h2" className="mb-0">
+          {title}
+        </PanelSectionTitle>
         {action && <div>{action}</div>}
       </div>
       {children}

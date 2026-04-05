@@ -1,3 +1,5 @@
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
+
 import { QuickActionsSection } from "./QuickActionsSection";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 
@@ -14,7 +16,7 @@ export function PropertyInsightsPanel({ propertyId }: PropertyInsightsPanelProps
   return (
     <div className="space-y-4 p-[15px]">
       <div className="rounded-lg p-4 shadow-e1 bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Graph insights</h3>
+        <PanelSectionTitle as="h3">Graph insights</PanelSectionTitle>
         <GraphInsightPanel start={{ type: "property", id: propertyId }} depth={3} variant="full" />
       </div>
       <QuickActionsSection propertyId={propertyId} />

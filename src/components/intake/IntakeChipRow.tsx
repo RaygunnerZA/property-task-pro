@@ -93,7 +93,7 @@ function HorizontalOverflowRow({ children, className }: { children: ReactNode; c
 }
 
 const SCROLLER_ROW_CLASS = cn(
-  "flex min-h-7 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden py-1 no-scrollbar"
+  "flex min-h-7 flex-wrap items-center gap-1 overflow-x-auto overflow-y-hidden py-1 no-scrollbar"
 );
 
 export interface IntakeSlotPanelRows {

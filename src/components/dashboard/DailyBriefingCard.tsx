@@ -3,6 +3,7 @@ import { useTasksForBriefingQuery } from "@/hooks/useTasksForBriefingQuery";
 import { useCallback, useMemo, useState } from "react";
 import { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { RadialProgress } from "@/components/ui/radial-progress";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -153,19 +154,17 @@ export function DailyBriefingCard({
     return (
       <div
         className={cn(
-          "w-full rounded-xl bg-card/50 shadow-e1 px-3 py-3",
+          "w-full rounded-xl bg-transparent shadow-e1 px-3 py-3",
           "shadow-[3px_4px_12px_rgba(0,0,0,0.06),inset_1px_1px_2px_rgba(255,255,255,0.85)]"
         )}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <h2 className="text-sm font-semibold text-foreground tracking-tight">Overview</h2>
-        </div>
+        <PanelSectionTitle as="h2">Overview</PanelSectionTitle>
         <ul className="space-y-1.5 mb-3 min-w-0">
           {observations.length > 0 ? (
             observations.map((obs, index) => (
               <li key={index} className="text-xs text-muted-foreground flex items-start gap-2 leading-snug">
                 <span className="text-primary shrink-0 mt-0.5">•</span>
-                <span>{obs}</span>
+                <span className="text-[rgba(143,141,138,1)]">{obs}</span>
               </li>
             ))
           ) : (
@@ -183,6 +182,7 @@ export function DailyBriefingCard({
                   value={slide.value}
                   size={112}
                   thickness={11}
+                  embed
                   aria-label={`${slide.label}: ${slide.value}%`}
                 />
               </div>
@@ -204,9 +204,7 @@ export function DailyBriefingCard({
       <div className="grid grid-cols-[1fr_1fr] gap-4 h-[166px] max-h-[166px] items-start">
         {/* Left half: Title + bullet observations (briefing points) */}
         <div className="min-w-0 flex flex-col justify-start pt-1">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-lg font-semibold text-foreground">Overview</h2>
-          </div>
+          <PanelSectionTitle as="h2">Overview</PanelSectionTitle>
           <ul className="space-y-2">
             {observations.length > 0 ? (
               observations.map((obs, index) => (
