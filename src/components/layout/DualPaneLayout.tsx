@@ -14,7 +14,7 @@ interface DualPaneLayoutProps {
  * 
  * Desktop (md+): CSS Grid with 2 columns
  *   - Left: 265px fixed (Calendar + Properties)
- *   - Right: 1fr (Task Tabs) - flexible up to max 660px
+ *   - Right: 1fr (Task Tabs) - flexible up to max 652px
  * 
  * Desktop (min-[1380px]+): Flex layout with conditional third column
  *   - Without third column: [265px minmax(450px, 660px)]
@@ -58,8 +58,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
           {leftColumn}
         </div>
 
-        {/* Right Column: Dynamic 1fr, max 660px */}
-        <div className="overflow-y-auto min-w-0 max-w-[660px]">
+        {/* Right Column: Dynamic 1fr, max 652px */}
+        <div className="overflow-y-auto min-w-0 max-w-[652px]">
           {rightColumn}
         </div>
       </div>
@@ -83,7 +83,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
             </div>
 
             {/* Middle Column */}
-            <div className="overflow-y-auto min-w-0 px-[14px]">
+            <div className="overflow-y-auto min-w-0 px-[14px] pt-3">
               {rightColumn}
             </div>
           </div>

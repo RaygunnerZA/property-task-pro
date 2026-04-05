@@ -4,6 +4,10 @@ interface RadialProgressProps {
   value: number;
   size?: number;
   thickness?: number;
+  /** Inner paper disc diameter; defaults to 80 for larger gauges, use ~70 with size 90 for compact carousel */
+  innerDiscSize?: number;
+  /** Horizontal offset for the center percentage label (compact layouts use a tighter value) */
+  labelMarginLeft?: number;
   className?: string;
   "aria-label"?: string;
 }
@@ -12,6 +16,8 @@ export function RadialProgress({
   value,
   size = 112,
   thickness = 20,
+  innerDiscSize: innerDiscSizeProp,
+  labelMarginLeft,
   className,
   "aria-label": ariaLabel,
 }: RadialProgressProps) {
@@ -19,8 +25,7 @@ export function RadialProgress({
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - clampedValue / 100);
-  const fontSize = Math.round(size * 0.167);
-  const innerDiscSize = 63;
+  const innerDiscSize = innerDiscSizeProp ?? 80;
 
   return (
     <div
@@ -161,22 +166,35 @@ export function RadialProgress({
         className="text-shadow-neu-pressed"
         style={{
           position: "relative",
-          fontSize: 30,
-          fontWeight: 400,
+          width: 76,
           fontFamily: "'Inter Tight', system-ui, -apple-system, sans-serif",
           letterSpacing: "-0.9px",
-          marginLeft: 8,
-          marginRight: 2,
-          color: "rgba(42, 41, 62, 1)",
+          marginLeft: labelMarginLeft ?? 14,
+          marginRight: -3,
           lineHeight: 1,
           userSelect: "none",
           fontVariantNumeric: "tabular-nums",
-          display: "inline-flex",
+          display: "flex",
           alignItems: "flex-start",
-          gap: 1,
+          justifyContent: "center",
+          gap: 0,
         }}
       >
-        <span>{Math.round(clampedValue)}</span>
+        <span
+          style={{
+            height: 40,
+            fontSize: 43,
+            fontWeight: 300,
+            color: "rgba(102, 102, 102, 1)",
+            marginLeft: -6,
+            marginRight: 0,
+            marginTop: -5,
+            paddingTop: 0,
+            lineHeight: 1,
+          }}
+        >
+          {Math.round(clampedValue)}
+        </span>
         <span
           style={{
             fontSize: 15,
@@ -184,8 +202,8 @@ export function RadialProgress({
             lineHeight: 1.1,
             opacity: 0.95,
             transform: "translateY(1px)",
-            marginLeft: 3,
-            color: "rgba(255, 255, 255, 1)",
+            marginLeft: 0,
+            color: "rgba(133, 186, 188, 1)",
           }}
         >
           %

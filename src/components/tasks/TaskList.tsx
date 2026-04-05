@@ -527,10 +527,18 @@ export function TaskList({
         onClick: () => handleTaskClick(taskId),
       };
     };
-    
+
+    const doneSorted = [...groupedTasks.done]
+      .sort((a, b) => {
+        const tb = new Date(b.updated_at || b.created_at || 0).getTime();
+        const ta = new Date(a.updated_at || a.created_at || 0).getTime();
+        return tb - ta;
+      })
+      .slice(0, 6);
+
     return {
       todo: groupedTasks.todo.map(createCardProps),
-      done: groupedTasks.done.map(createCardProps),
+      done: doneSorted.map(createCardProps),
     };
   }, [groupedTasks.todo, groupedTasks.done, propertyMap, selectedTaskId, handleTaskClick]);
 
@@ -664,53 +672,27 @@ export function TaskList({
             </div>
           )}
 
-          {/* Done Section */}
+          {/* Done: one row per task, max 6 (most recently updated) */}
           {groupedTasks.done.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
-                Done ({groupedTasks.done.length})
+                <span>Done ({groupedTasks.done.length})</span>
+                {groupedTasks.done.length > 6 ? (
+                  <span className="normal-case font-normal text-muted-foreground/80">
+                    {" "}
+                    · showing 6 most recent
+                  </span>
+                ) : null}
               </h2>
-              {view === 'vertical' ? (
-                <>
-                  {/* Mobile: Horizontal scroll */}
-                  <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal md:hidden">
-                    <div className="flex gap-4 min-w-max">
-                      {memoizedTaskCards.done.map((props) => (
-                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
-                          <TaskCard
-                            {...props}
-                            layout="vertical"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Desktop: Grid layout - 4 columns */}
-                  <div className={cn(
-                    "hidden md:grid md:grid-cols-3 gap-3 mt-0",
-                    groupedTasks.done.length === 1 && "md:grid-cols-1",
-                    groupedTasks.done.length === 2 && "md:grid-cols-2"
-                  )}>
-                    {memoizedTaskCards.done.map((props) => (
-                      <TaskCard
-                        key={props.task.id}
-                        {...props}
-                        layout="vertical"
-                      />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  {memoizedTaskCards.done.map((props) => (
-                    <TaskCard
-                      key={props.task.id}
-                      {...props}
-                      layout="horizontal"
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-col gap-2">
+                {memoizedTaskCards.done.map((props) => (
+                  <TaskCard
+                    key={props.task.id}
+                    {...props}
+                    layout="horizontal"
+                  />
+                ))}
+              </div>
             </div>
           )}
           </div>

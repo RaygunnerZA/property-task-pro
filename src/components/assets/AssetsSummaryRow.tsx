@@ -27,14 +27,14 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
   }, [assets]);
 
   return (
-    <div className="flex w-full flex-wrap gap-x-6 gap-y-5">
+    <div className="flex h-[319px] w-[276px] flex-wrap gap-x-6 gap-y-5 px-0">
       <ContextSummaryCard
         title="Active Assets"
         count={counts.active}
         color="teal"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[120px]"
+        className="min-w-0 w-[118px]"
         onClick={onFilterClick ? () => onFilterClick("active") : undefined}
       />
       <ContextSummaryCard
@@ -43,7 +43,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="amber"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[120px]"
+        className="min-w-0 w-[118px]"
         onClick={onFilterClick ? () => onFilterClick("needsInspection") : undefined}
       />
       <ContextSummaryCard
@@ -52,7 +52,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="red"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[120px]"
+        className="min-w-0 w-[118px]"
         onClick={onFilterClick ? () => onFilterClick("nonCompliant") : undefined}
       />
       <ContextSummaryCard
@@ -61,7 +61,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="slate"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[120px]"
+        className="min-w-0 w-[118px]"
         onClick={onFilterClick ? () => onFilterClick("retired") : undefined}
       />
     </div>

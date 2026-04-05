@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Plus, Mic } from 'lucide-react';
+import { Plus, Mic, FileText } from 'lucide-react';
 import { IntakeModal } from '@/components/intake/IntakeModal';
+import type { IntakeMode } from '@/types/intake';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
+import { intakeFabSatelliteAddClassName, intakeFabSatelliteReportClassName } from '@/lib/intake-action-buttons';
 
 interface FloatingAddButtonProps {
   onTaskCreated?: (taskId: string) => void;
@@ -11,6 +13,7 @@ interface FloatingAddButtonProps {
 
 export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [fabIntakeMode, setFabIntakeMode] = useState<IntakeMode>('report_issue');
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -22,7 +25,8 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
     }
   };
 
-  const handleTaskClick = () => {
+  const openIntake = (mode: IntakeMode) => {
+    setFabIntakeMode(mode);
     setShowCreateModal(true);
     setExpanded(false);
   };
@@ -57,21 +61,18 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
           </button>
           {/* Task button - bottom */}
           <button
-            onClick={handleTaskClick}
-            className="w-12 h-12 rounded-full bg-card shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform active:scale-95"
-            style={{
-              backgroundColor: 'rgba(241, 238, 232, 0.95)',
-              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
-            }}
-            aria-label="Add task"
+            onClick={() => openIntake('add_record')}
+            className={intakeFabSatelliteAddClassName}
+            aria-label="Add record"
           >
-            <AnimatedIcon 
-              icon={Plus} 
-              size={20} 
-              animateOnHover 
-              animateOnTap 
-              animation="rotate"
-            />
+            <AnimatedIcon icon={FileText} size={20} animateOnHover animateOnTap animation="pulse" />
+          </button>
+          <button
+            onClick={() => openIntake('report_issue')}
+            className={intakeFabSatelliteReportClassName}
+            aria-label="Report issue"
+          >
+            <AnimatedIcon icon={Plus} size={20} animateOnHover animateOnTap animation="rotate" />
           </button>
         </div>
       )}
@@ -101,6 +102,7 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
         open={showCreateModal} 
         onOpenChange={setShowCreateModal}
         onTaskCreated={onTaskCreated}
+        initialIntakeMode={fabIntakeMode}
       />
 
       <AudioRecorder

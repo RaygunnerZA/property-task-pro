@@ -135,7 +135,7 @@ export default function SpaceGroupScreen() {
   );
 
   const thirdColumnContent = propertyId && groupSlug ? (
-    <div className="flex flex-col pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2 min-h-0">
       <ThirdColumnConcertina
         sections={[
           {

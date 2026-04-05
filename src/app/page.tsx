@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import type { IntakeMode } from "@/types/intake";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -40,14 +41,20 @@ export default function Dashboard() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
+  const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [activeTab, setActiveTab] = useState<string>("tasks");
+  const [activeTab, setActiveTab] = useState<string>("attention");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
-  const tabBeforeCreateTaskRef = useRef<string>("tasks");
+  const tabBeforeCreateTaskRef = useRef<string>("attention");
+  const prevPropertySelectionRef = useRef<{ size: number; singleId: string | null }>({
+    size: 0,
+    singleId: null,
+  });
 
   const queryClient = useQueryClient();
 
@@ -62,6 +69,26 @@ export default function Dashboard() {
       setSelectedPropertyIds(new Set(properties.map(p => p.id)));
     }
   }, [properties, selectedPropertyIds.size]);
+
+  // Single-property hub: open Attention when drilling into a property or switching which one is selected.
+  useEffect(() => {
+    const size = selectedPropertyIds.size;
+    const singleId =
+      size === 1 ? (Array.from(selectedPropertyIds)[0] as string | undefined) ?? null : null;
+    const prev = prevPropertySelectionRef.current;
+    let shouldReset = false;
+    if (size === 1 && singleId) {
+      if (prev.size === 1 && prev.singleId !== null && prev.singleId !== singleId) {
+        shouldReset = true;
+      } else if (prev.size !== 1) {
+        shouldReset = true;
+      }
+    }
+    prevPropertySelectionRef.current = { size, singleId };
+    if (shouldReset) {
+      setActiveTab("attention");
+    }
+  }, [selectedPropertyIds]);
 
   // Centralized aggregation: Calculate stats once at Dashboard level
   const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
@@ -209,12 +236,14 @@ export default function Dashboard() {
     setSelectedItem({ type: 'task', id: taskId });
   };
 
-  const handleOpenCreateTask = () => {
+  const handleOpenIntake = (mode: IntakeMode = "report_issue") => {
     tabBeforeCreateTaskRef.current = activeTab;
     if (isLargeScreen) {
+      setWorkbenchIntakeMode(mode);
       setExpandedSection(null);
       return;
     }
+    setModalInitialIntakeMode(mode);
     setShowCreateTask(true);
   };
 
@@ -290,8 +319,7 @@ export default function Dashboard() {
   }, [selectedPropertyIds]);
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pr-2 pb-0 pl-2">
-      <h2 className="text-lg font-semibold text-foreground px-2 pt-[15px] pb-[15px]">Task Workbench</h2>
+    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2">
       <div className="pb-[20px]">
         <IntakeModal
           open={true}
@@ -300,6 +328,8 @@ export default function Dashboard() {
           defaultPropertyId={intakeScopedPropertyId}
           variant="column"
           headless
+          intakeMode={workbenchIntakeMode}
+          onIntakeModeChange={setWorkbenchIntakeMode}
         />
       </div>
       <ThirdColumnConcertina
@@ -421,7 +451,7 @@ export default function Dashboard() {
             onFilterClick={handleFilterClick}
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={setSelectedPropertyIds}
-            onCreateTask={handleOpenCreateTask}
+            onOpenIntake={handleOpenIntake}
             onTaskClick={handleTaskClick}
           />
         }
@@ -439,7 +469,7 @@ export default function Dashboard() {
             filterToApply={filterToApply}
             filtersToApply={assistantFiltersToApply}
             selectedPropertyIds={selectedPropertyIds}
-            onCreateTask={handleOpenCreateTask}
+            onOpenIntake={handleOpenIntake}
           />
         }
         thirdColumn={thirdColumnContent}
@@ -452,6 +482,7 @@ export default function Dashboard() {
           onOpenChange={handleCreateTaskOpenChange}
           onTaskCreated={handleTaskCreated}
           defaultPropertyId={intakeScopedPropertyId}
+          initialIntakeMode={modalInitialIntakeMode}
         />
       )}
 

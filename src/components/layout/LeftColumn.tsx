@@ -7,11 +7,18 @@ import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
-import { Plus, Home, Package, CheckSquare, Shield, Clock, Zap, Activity, Check } from "lucide-react";
+import { Plus, Home, Package, CheckSquare, FileText, Shield, Clock, Zap, Activity, Check } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SidebarConcertina } from "@/components/layout/SidebarConcertina";
 import { cn } from "@/lib/utils";
+import type { IntakeMode } from "@/types/intake";
+import {
+  intakeAddRecordListRowClassName,
+  intakeListRowAddIconClassName,
+  intakeListRowReportIconClassName,
+  intakeReportIssueListRowClassName,
+} from "@/lib/intake-action-buttons";
 import { format } from "date-fns";
 
 interface LeftColumnProps {
@@ -32,7 +39,7 @@ interface LeftColumnProps {
   onFilterClick?: (filterId: string) => void;
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
-  onCreateTask?: () => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
   onTaskClick?: (taskId: string) => void;
 }
 
@@ -56,7 +63,7 @@ export function LeftColumn({
   onFilterClick,
   selectedPropertyIds: externalSelectedPropertyIds,
   onPropertySelectionChange,
-  onCreateTask,
+  onOpenIntake,
   onTaskClick,
 }: LeftColumnProps) {
   const navigate = useNavigate();
@@ -348,7 +355,7 @@ export function LeftColumn({
               <PropertyIdentityStrip
                 key={focusedProperty.id}
                 property={focusedProperty}
-                onAddTaskClick={onCreateTask}
+                onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
                 urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
               />
             </div>
@@ -439,15 +446,25 @@ export function LeftColumn({
                     <Package className="h-4 w-4 text-primary shrink-0" />
                     Add Asset
                   </button>
-                  {onCreateTask && (
-                    <button
-                      type="button"
-                      onClick={onCreateTask}
-                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm hover:bg-muted/50 transition-colors text-left"
-                    >
-                      <CheckSquare className="h-4 w-4 text-primary shrink-0" />
-                      Create Task
-                    </button>
+                  {onOpenIntake && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onOpenIntake("report_issue")}
+                        className={intakeReportIssueListRowClassName}
+                      >
+                        <Plus className={intakeListRowReportIconClassName} />
+                        Report issue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenIntake("add_record")}
+                        className={intakeAddRecordListRowClassName}
+                      >
+                        <FileText className={intakeListRowAddIconClassName} />
+                        Add record
+                      </button>
+                    </>
                   )}
                 </div>
               ),

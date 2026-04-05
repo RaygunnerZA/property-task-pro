@@ -1,5 +1,4 @@
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
-import { useGraphInsight } from "@/hooks/useGraphInsight";
 import { useTasksForBriefingQuery } from "@/hooks/useTasksForBriefingQuery";
 import { useCallback, useMemo, useState } from "react";
 import { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -12,8 +11,13 @@ interface DailyBriefingCardProps {
   tasks?: any[];
   selectedPropertyIds?: Set<string>;
   properties?: any[];
-  /** When set, shows property-specific insights (e.g. graph centrality) on the right */
+  /** When set, scopes task metrics (e.g. completion radial) to that property */
   propertyId?: string;
+  /**
+   * full: hub header layout (Overview + carousel radials).
+   * sidebar: stacked briefing + two radials for Attention column (single-property hub).
+   */
+  variant?: "full" | "sidebar";
 }
 
 /**
@@ -32,6 +36,7 @@ export function DailyBriefingCard({
   selectedPropertyIds,
   properties = [],
   propertyId,
+  variant = "full",
 }: DailyBriefingCardProps) {
   const [carouselApi, setCarouselApi] = useState<{ scrollPrev: () => void; scrollNext: () => void; canScrollPrev: boolean; canScrollNext: boolean } | null>(null);
 
@@ -61,11 +66,6 @@ export function DailyBriefingCard({
 
   const { focus, insight, context, loading } = useDailyBriefing(filteredTasks, {
     skipNetworkRequests: true,
-  });
-  const { centrality, loading: graphLoading } = useGraphInsight({
-    start: effectivePropertyId ? { type: "property", id: effectivePropertyId } : null,
-    depth: 3,
-    enabled: false,
   });
 
   // Use full API task list when available; otherwise use parent-provided tasks for radial metrics
@@ -113,16 +113,14 @@ export function DailyBriefingCard({
   // Call all hooks unconditionally to avoid "Rendered fewer hooks than expected"
   const carouselOpts = useMemo(() => ({ align: "start" as const, loop: true, skipSnaps: false }), []);
 
-  // Primary radial value: property context = centrality; homepage = completion %
-  const radialValue = effectivePropertyId
-    ? Math.round((centrality ?? 0) * 100)
-    : taskMetrics.completionPct;
-  const radialLabel = effectivePropertyId ? "Importance" : "Complete";
+  const radialValue = taskMetrics.completionPct;
+  const radialLabel = "Complete";
 
   if (loading) {
+    const h = variant === "sidebar" ? "min-h-[220px]" : "h-[166px]";
     return (
       <div className="animate-pulse">
-        <div className="h-[166px] rounded-lg bg-muted/50" />
+        <div className={cn("rounded-xl bg-muted/50", h)} />
       </div>
     );
   }
@@ -141,9 +139,7 @@ export function DailyBriefingCard({
       id: "radial",
       value: radialValue,
       label: radialLabel,
-      sublabel: effectivePropertyId
-        ? "Graph centrality"
-        : `${taskMetrics.done} of ${taskMetrics.total} tasks`,
+      sublabel: `${taskMetrics.done} of ${taskMetrics.total} tasks`,
     },
     {
       id: "focus",
@@ -152,6 +148,56 @@ export function DailyBriefingCard({
       sublabel: `${focus} of ${totalActive} tasks`,
     },
   ];
+
+  if (variant === "sidebar") {
+    return (
+      <div
+        className={cn(
+          "w-full rounded-xl bg-card/50 shadow-e1 px-3 py-3",
+          "shadow-[3px_4px_12px_rgba(0,0,0,0.06),inset_1px_1px_2px_rgba(255,255,255,0.85)]"
+        )}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-sm font-semibold text-foreground tracking-tight">Overview</h2>
+        </div>
+        <ul className="space-y-1.5 mb-3 min-w-0">
+          {observations.length > 0 ? (
+            observations.map((obs, index) => (
+              <li key={index} className="text-xs text-muted-foreground flex items-start gap-2 leading-snug">
+                <span className="text-primary shrink-0 mt-0.5">•</span>
+                <span>{obs}</span>
+              </li>
+            ))
+          ) : (
+            <li className="text-xs text-muted-foreground">No observations available</li>
+          )}
+        </ul>
+        <div className="flex w-full gap-2 pt-3 border-t border-border/30">
+          {slides.map((slide) => (
+            <div
+              key={slide.id}
+              className="flex min-w-0 flex-1 basis-0 flex-col items-center justify-start"
+            >
+              <div className="flex w-full justify-center">
+                <RadialProgress
+                  value={slide.value}
+                  size={112}
+                  thickness={11}
+                  aria-label={`${slide.label}: ${slide.value}%`}
+                />
+              </div>
+              <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider text-center mt-0.5 text-shadow-neu-pressed">
+                {slide.label}
+              </p>
+              <p className="text-[9px] text-muted-foreground/80 text-center leading-tight px-0.5 mt-0.5">
+                {slide.sublabel}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full">
@@ -189,16 +235,14 @@ export function DailyBriefingCard({
                   className="pl-0 basis-[115px] w-[115px] flex-none min-w-0 font-medium"
                 >
                   <div className="flex flex-col items-center justify-center w-[115px] h-[165px]">
-                    {effectivePropertyId && graphLoading && slide.id === "radial" ? (
-                      <div className="w-[7rem] h-[7rem] rounded-full bg-muted/50 animate-pulse" />
-                    ) : (
-                      <RadialProgress
-                        value={slide.value}
-                        size={90}
-                        thickness={10}
-                        aria-label={`${slide.label}: ${slide.value}%`}
-                      />
-                    )}
+                    <RadialProgress
+                      value={slide.value}
+                      size={90}
+                      thickness={10}
+                      innerDiscSize={70}
+                      labelMarginLeft={9}
+                      aria-label={`${slide.label}: ${slide.value}%`}
+                    />
                     <p
                       className={cn(
                         "text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider",

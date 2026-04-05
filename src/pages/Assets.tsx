@@ -76,45 +76,8 @@ const Assets = () => {
   const isWide = useWorkspaceWide();
   const railFormRef = useRef<HTMLDivElement>(null);
 
-  // #region agent log
-  fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4daed6" },
-    body: JSON.stringify({
-      sessionId: "4daed6",
-      runId: "pre-fix",
-      hypothesisId: "A",
-      location: "Assets.tsx:before-formSpaces-hook",
-      message: "About to run useSpaces for form; propertyId must exist before this line",
-      data: { filterPropertyId, filterPropertyIdDefined: true },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
-
   const { spaces: filterSpaces } = useSpaces(filterPropertyId || undefined);
   const { spaces: formSpaces } = useSpaces(propertyId || undefined);
-
-  // #region agent log
-  fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "4daed6" },
-    body: JSON.stringify({
-      sessionId: "4daed6",
-      runId: "post-fix",
-      hypothesisId: "A-verify",
-      location: "Assets.tsx:after-formSpaces-hooks",
-      message: "useSpaces(filter + form) completed without TDZ",
-      data: {
-        propertyId,
-        filterPropertyId,
-        formSpacesCount: formSpaces.length,
-        filterSpacesCount: filterSpaces.length,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   const openAddFlow = useCallback(() => {
     if (isWide) {

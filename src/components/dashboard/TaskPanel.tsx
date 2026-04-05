@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalS
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
+import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
 import { useMessages } from "@/hooks/useMessages";
@@ -27,6 +28,17 @@ import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { cn } from "@/lib/utils";
+import type { IntakeMode } from "@/types/intake";
+import {
+  intakeAddRecordButtonClassName,
+  intakeAddRecordCompactClassName,
+  intakeAddRecordIconClassName,
+  intakeAddRecordMicroClassName,
+  intakeReportIssueButtonClassName,
+  intakeReportIssueCompactClassName,
+  intakeReportIssueIconClassName,
+  intakeReportIssueMicroClassName,
+} from "@/lib/intake-action-buttons";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 
 interface TaskPanelProps {
@@ -42,7 +54,9 @@ interface TaskPanelProps {
   filterToApply?: string | null;
   filtersToApply?: string[] | null;
   selectedPropertyIds?: Set<string>;
-  onCreateTask?: () => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
+  /** When true, Daily Briefing + radials render inside Attention tab (single-property hub). */
+  embedBriefingInAttention?: boolean;
 }
 
 type TabBarDensity = "comfortable" | "compact" | "iconOnly";
@@ -187,13 +201,14 @@ export function TaskPanel({
   filterToApply,
   filtersToApply,
   selectedPropertyIds,
-  onCreateTask,
+  onOpenIntake,
+  embedBriefingInAttention = false,
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const { messages } = useMessages();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
 
-  const [internalActiveTab, setInternalActiveTab] = useState("tasks");
+  const [internalActiveTab, setInternalActiveTab] = useState("attention");
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
   const [attentionFilter, setAttentionFilter] = useState<AttentionGroup | "all">("all");
@@ -800,7 +815,7 @@ export function TaskPanel({
     effectiveTabBarDensity === "comfortable" ? undefined : label;
 
   const taskTabShell =
-    "rounded-[8px] transition-all text-sm font-medium shrink-0 group/task-tab inline-flex items-center justify-center " +
+    "rounded-[8px] transition-all text-sm font-medium min-w-0 group/task-tab inline-flex items-center justify-center " +
     "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
     "data-[state=active]:bg-card data-[state=inactive]:bg-transparent data-[state=active]:text-[rgb(20,184,166)]";
 
@@ -810,7 +825,7 @@ export function TaskPanel({
       : null;
 
   const taskTabIconOnly =
-    "min-w-9 max-w-9 px-0 overflow-hidden transition-[max-width,min-width,padding] duration-200 ease-out " +
+    "shrink-0 min-w-9 max-w-9 px-0 overflow-hidden transition-[max-width,min-width,padding] duration-200 ease-out " +
     "hover:z-20 hover:max-w-[min(220px,85vw)] hover:min-w-0 hover:px-3 " +
     "focus-visible:z-20 focus-visible:max-w-[min(220px,85vw)] focus-visible:min-w-0 focus-visible:px-3 " +
     "data-[state=active]:z-10 data-[state=active]:max-w-none data-[state=active]:min-w-0 data-[state=active]:px-3";
@@ -821,31 +836,39 @@ export function TaskPanel({
     "group-focus-visible/task-tab:max-w-[12rem] group-focus-visible/task-tab:opacity-100 " +
     "group-data-[state=active]/task-tab:max-w-[12rem] group-data-[state=active]/task-tab:opacity-100";
 
-  const taskTabPadLabeled = "px-2.5 max-[455px]:px-1.5";
+  /** Equal-width grid tabs (comfortable / compact); icon-only uses flex row + scroll instead */
+  const taskTabPadLabeled =
+    "w-full min-w-0 shrink-0 px-1.5 sm:px-2 lg:px-2.5 max-[455px]:px-1";
 
   return (
     <div className="h-full flex flex-col bg-transparent">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
         <div
           className={cn(
-            "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-[426px] justify-start items-start",
-            "ml-[8px] mr-[8px] gap-2 md:gap-3",
+            "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-full overflow-x-hidden",
+            /* Below lg the centre column is narrow (sidebar + ~652px cap): stack so intake actions stay in-flow */
+            "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
+            "px-[10px]",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
-            "max-[455px]:ml-1 max-[455px]:mr-1.5 max-[455px]:gap-1"
+            "max-[455px]:px-2 max-[455px]:gap-1"
           )}
         >
-          <div className="flex flex-1 min-w-0 flex-col gap-1">
+          <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
             <div
               className={cn(
-                "min-w-0 max-w-full rounded-[15px] bg-background overflow-visible",
+                "min-w-0 w-full max-w-[432px] rounded-[15px] bg-background overflow-visible",
                 "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]"
               )}
             >
               <TabsList
                 ref={tabsListRef}
                 className={cn(
-                  "h-12 min-w-0 w-full flex flex-nowrap items-center justify-end p-0 pt-[6px] pb-1.5 pl-[7px] pr-[7px] gap-x-[7px] rounded-none bg-transparent overflow-visible",
-                  "max-[455px]:pl-1 max-[455px]:pr-1 max-[455px]:gap-x-1"
+                  "h-12 min-w-0 w-full p-0 pt-[6px] pb-1.5 px-2 rounded-none bg-transparent overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                  iconOnly
+                    ? "flex flex-nowrap items-center justify-start gap-x-[7px] overflow-x-auto"
+                    : "grid grid-cols-4 items-center gap-x-1.5",
+                  "max-[455px]:pl-1 max-[455px]:pr-1",
+                  iconOnly && "max-[455px]:gap-x-1"
                 )}
               >
               <TabsTrigger
@@ -853,7 +876,7 @@ export function TaskPanel({
                 title={tabTitle("Attention")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
-                <span className="inline-flex items-center min-w-0">
+                <span className="inline-flex max-w-full items-center justify-center min-w-0">
                   {!compact && (
                     <AnimatedIcon
                       icon={AlertTriangle}
@@ -864,11 +887,11 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4 text-[#FF6B6B]",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-2 max-[455px]:mr-1"
+                          : "mr-1 max-[455px]:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal)}>Attention</span>
+                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Attention</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -876,7 +899,7 @@ export function TaskPanel({
                 title={tabTitle("Tasks")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
-                <span className="inline-flex items-center min-w-0">
+                <span className="inline-flex max-w-full items-center justify-center min-w-0">
                   {!compact && (
                     <CheckSquare
                       className={cn(
@@ -887,7 +910,7 @@ export function TaskPanel({
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal)}>Tasks</span>
+                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Tasks</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -895,7 +918,7 @@ export function TaskPanel({
                 title={tabTitle("Compliance")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
-                <span className="inline-flex items-center min-w-0">
+                <span className="inline-flex max-w-full items-center justify-center min-w-0">
                   {!compact && (
                     <ShieldCheck
                       className={cn(
@@ -906,7 +929,7 @@ export function TaskPanel({
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal)}>Compliance</span>
+                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Compliance</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -914,7 +937,7 @@ export function TaskPanel({
                 title={tabTitle("Schedule")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
-                <span className="inline-flex items-center min-w-0">
+                <span className="inline-flex max-w-full items-center justify-center min-w-0">
                   {!compact && (
                     <AnimatedIcon
                       icon={Calendar}
@@ -925,18 +948,18 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-2 max-[455px]:mr-1"
+                          : "mr-1 max-[455px]:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal)}>Schedule</span>
+                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Schedule</span>
                 </span>
               </TabsTrigger>
               </TabsList>
             </div>
             {!iconOnly && selectedTabMicrocopy != null && (
               <p
-                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-4 pt-8 pb-2 max-[455px]:px-1"
+                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-2 pt-8 pb-2 max-[455px]:px-1"
                 aria-live="polite"
               >
                 {selectedTabMicrocopy}
@@ -944,21 +967,33 @@ export function TaskPanel({
             )}
           </div>
 
-          {onCreateTask && (
-            <button
-              type="button"
-              onClick={onCreateTask}
-              className="hidden md:flex min-w-0 shrink-0 min-[1380px]:hidden self-center items-center gap-1.5 h-9 rounded-lg bg-[#85BABC] text-white font-medium leading-4 text-left pt-6 pb-6 pl-[10px] pr-3 shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] hover:bg-[#85BABC]/90 transition-all"
+          {onOpenIntake && (
+            <div
+              className={cn(
+                "hidden min-w-0 md:grid min-[1380px]:hidden",
+                /* Stacked toolbar: two-up row, full width of column */
+                "grid-cols-2 gap-2 lg:flex lg:w-[7.75rem] lg:shrink-0 lg:flex-col lg:gap-1.5 lg:self-start"
+              )}
             >
-              <Plus className="h-4 w-4 shrink-0" />
-              Create Task
-            </button>
+              <button
+                type="button"
+                onClick={() => onOpenIntake("report_issue")}
+                className={intakeReportIssueButtonClassName}
+              >
+                <Plus className={intakeReportIssueIconClassName} />
+                Report issue
+              </button>
+              <button type="button" onClick={() => onOpenIntake("add_record")} className={intakeAddRecordButtonClassName}>
+                <FileText className={intakeAddRecordIconClassName} />
+                Add record
+              </button>
+            </div>
           )}
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "attention" && (
-            <div className="h-full min-h-0 overflow-y-auto pt-[11px] pl-2 pr-2 pb-[11px]">
+            <div className="h-full min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-[455px]:px-2">
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                 <div className="space-y-3 min-w-0">
                   <div
@@ -993,11 +1028,11 @@ export function TaskPanel({
                     {([
                       ["URGENT", groupedAttentionItems.urgent],
                       ["NEEDS REVIEW", groupedAttentionItems.review],
-                      ["RECENT", groupedAttentionItems.recent],
+                      ["Recent", groupedAttentionItems.recent],
                     ] as const).map(([label, items]) =>
                       items.length > 0 ? (
                         <div key={label} className="space-y-2">
-                          <p className="text-[11px] font-semibold tracking-wide text-muted-foreground px-1">{label}</p>
+                          <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)] px-1">{label}</p>
                           <div className="space-y-2">
                             {items.map((item) => (
                               <OperationalStreamCard
@@ -1025,10 +1060,10 @@ export function TaskPanel({
                                   item.group === "urgent"
                                     ? [
                                         {
-                                          id: "create-task",
-                                          label: "Create Task",
+                                          id: "report-issue",
+                                          label: "Report issue",
                                           onClick: () => {
-                                            onCreateTask?.();
+                                            onOpenIntake?.("report_issue");
                                             resolveAttentionItem(item.id);
                                           },
                                         },
@@ -1049,10 +1084,18 @@ export function TaskPanel({
                                           },
                                         },
                                         {
-                                          id: "create-task",
-                                          label: "Create Task",
+                                          id: "report-issue",
+                                          label: "Report issue",
                                           onClick: () => {
-                                            onCreateTask?.();
+                                            onOpenIntake?.("report_issue");
+                                            resolveAttentionItem(item.id);
+                                          },
+                                        },
+                                        {
+                                          id: "add-record",
+                                          label: "Add record",
+                                          onClick: () => {
+                                            onOpenIntake?.("add_record");
                                             resolveAttentionItem(item.id);
                                           },
                                         },
@@ -1094,6 +1137,15 @@ export function TaskPanel({
                 </div>
 
                 <div className="lg:sticky lg:top-0 self-start align-top flex flex-wrap content-start items-start gap-3 [&>*]:w-full">
+                  {embedBriefingInAttention && (
+                    <DailyBriefingCard
+                      tasks={tasks}
+                      selectedPropertyIds={selectedPropertyIds}
+                      properties={properties}
+                      variant="sidebar"
+                      showGreeting={false}
+                    />
+                  )}
                   <div
                     className="rounded-xl px-0 py-0"
                     style={{
@@ -1107,52 +1159,69 @@ export function TaskPanel({
                       WebkitBackgroundClip: "unset",
                     }}
                   >
-                    <p className="mb-2 text-xs font-semibold text-muted-foreground">Attention Summary</p>
+                    <p className="mb-2 ml-3 text-sm font-semibold text-[rgb(42,41,62)]">Attention Summary</p>
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                      <div
+                        className={cn(
+                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
+                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                        )}
+                      >
                         <p
                           className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
                           style={{
                             width: 69,
                             fontSize: 46,
-                            color: "rgba(255, 255, 255, 0)",
+                            color: "rgba(235, 104, 52, 1)",
                             fontFamily: '"Inter Tight"',
                             fontWeight: 500,
                           }}
                         >
                           {attentionSummary.urgent}
                         </p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">Urgent</p>
+                        <p className="mt-1 text-[12px] text-muted-foreground">Urgent</p>
                       </div>
-                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                      <div
+                        className={cn(
+                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
+                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                        )}
+                      >
                         <p
                           className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
                           style={{
                             width: 69,
                             fontSize: 46,
-                            color: "rgba(255, 255, 255, 0)",
+                            color: "rgba(255, 184, 77, 1)",
                             fontFamily: '"Inter Tight"',
                             fontWeight: 500,
                           }}
                         >
                           {attentionSummary.review}
                         </p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">Needs review</p>
+                        <p className="mt-1 text-[12px] text-muted-foreground">Needs review</p>
                       </div>
-                      <div className="text-center rounded-xl bg-black/5 pt-2 pb-2">
+                      <div
+                        className={cn(
+                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
+                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                        )}
+                      >
                         <p
                           className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
                           style={{
                             width: 69,
                             fontSize: 46,
-                            color: "rgba(255, 255, 255, 0)",
+                            color: "rgba(133, 186, 188, 1)",
                             fontFamily: '"Inter Tight"',
                             fontWeight: 500,
                           }}
                         >
                           {attentionSummary.recent}
                         </p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">Recent signals</p>
+                        <p className="mt-1 w-[71px] text-[12px] leading-[14px] text-muted-foreground">
+                          Recent signals
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1186,25 +1255,27 @@ export function TaskPanel({
                   </div>
 
                   <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Quick Actions</p>
-                    <div className="space-y-1.5">
-                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
-                        Upload Document
+                    <p className="text-sm font-semibold text-[rgb(42,41,62)] mb-2">Quick Actions</p>
+                    <div className="flex flex-col items-start justify-start gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onOpenIntake?.("add_record")}
+                        className={intakeAddRecordCompactClassName}
+                      >
+                        Add record
                       </button>
-                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
-                        Report Issue
-                      </button>
-                      <button type="button" onClick={() => onCreateTask?.()} className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
-                        Create Task
-                      </button>
-                      <button type="button" className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background">
-                        Add Compliance Record
+                      <button
+                        type="button"
+                        onClick={() => onOpenIntake?.("report_issue")}
+                        className={intakeReportIssueCompactClassName}
+                      >
+                        Report issue
                       </button>
                     </div>
                   </div>
 
                   <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Filla Insights</p>
+                    <p className="mb-1 text-sm font-semibold text-[rgb(42,41,62)]">Filla Insights</p>
                     <p className="text-xs text-foreground/90">
                       Most signals today relate to: <span className="font-medium">{dominantAttentionProperty}</span>
                     </p>
@@ -1218,7 +1289,7 @@ export function TaskPanel({
           )}
 
           {activeTab === "tasks" && (
-            <div className="h-full flex flex-col min-h-0 pt-[8px] pl-2 pr-2 pb-0">
+            <div className="h-full flex flex-col min-h-0 px-[10px] pt-[8px] pb-0 max-[455px]:px-2">
               <TaskList
                 tasks={tasks}
                 properties={properties}
@@ -1235,9 +1306,9 @@ export function TaskPanel({
           {activeTab === "compliance" && (
             <div
               ref={compliancePanelInteractionRef}
-              className="h-full min-h-0 flex flex-col pt-[8px] pl-2 pr-2 pb-[11px]"
+              className="h-full min-h-0 flex flex-col px-[10px] pt-[8px] pb-[11px] max-[455px]:px-2"
             >
-              <div className="flex-shrink-0 mb-[18px]" style={{ marginLeft: "-3px" }}>
+              <div className="flex-shrink-0 mb-[18px]">
                 <FilterBar
                   primaryOptions={compliancePrimaryOptions}
                   secondaryGroups={complianceSecondaryGroups}
@@ -1334,7 +1405,7 @@ export function TaskPanel({
                           {
                             id: "create-inspection-task",
                             label: "Create Inspection Task",
-                            onClick: () => onCreateTask?.(),
+                            onClick: () => onOpenIntake?.("report_issue"),
                           },
                           {
                             id: "upload-certificate",
@@ -1444,10 +1515,14 @@ export function TaskPanel({
                         </p>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
-                          Upload Document
+                        <button type="button" onClick={() => onOpenIntake?.("add_record")} className={intakeAddRecordMicroClassName}>
+                          Add record
                         </button>
-                        <button type="button" onClick={() => onCreateTask?.()} className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
+                        <button
+                          type="button"
+                          onClick={() => onOpenIntake?.("report_issue")}
+                          className={intakeReportIssueMicroClassName}
+                        >
                           Create Inspection Task
                         </button>
                         <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
@@ -1465,14 +1540,14 @@ export function TaskPanel({
           {activeTab === "schedule" && (
             <div className="h-full min-h-0 overflow-hidden">
               {tasksLoading ? (
-                <div className="p-4 space-y-3">
+                <div className="px-[10px] py-4 space-y-3 max-[455px]:px-2">
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                 </div>
               ) : (
                 <div className="h-full flex flex-col min-h-0">
-                  <div className="px-4 pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10">
+                  <div className="px-[10px] pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10 max-[455px]:px-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <button
@@ -1544,7 +1619,7 @@ export function TaskPanel({
                         />
                       </div>
                     ) : (
-                      <div className="p-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center">
+                      <div className="px-[10px] py-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center max-[455px]:px-2">
                         <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
                         <p className="text-sm font-medium text-foreground mb-1">
                           {selectedDate && isDatePinned
@@ -1573,7 +1648,7 @@ export function TaskPanel({
 
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
-                      <div className="px-4 mb-3">
+                      <div className="px-[10px] mb-3 max-[455px]:px-2">
                         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           Unscheduled ({unscheduledTasks.length})
                         </h3>
@@ -1581,7 +1656,7 @@ export function TaskPanel({
                           Tasks without a due date
                         </p>
                       </div>
-                      <div className="space-y-2 px-4 pb-4">
+                      <div className="space-y-2 px-[10px] pb-4 max-[455px]:px-2">
                         {unscheduledTasks.slice(0, 5).map((task) => {
                           const property = task.property_id ? propertyMap.get(task.property_id) : undefined;
                           return (

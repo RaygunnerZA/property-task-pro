@@ -64,26 +64,32 @@ export function ContextSummaryCard({
           : undefined
       }
       className={cn(
-        "rounded-[12px] overflow-hidden shadow-e1 min-h-[100px] max-h-[150px] flex flex-col",
-        isCompact && "h-[150px]",
+        "rounded-[12px] overflow-hidden min-h-[100px] max-h-[150px] flex pl-0",
+        isCompact
+          ? "box-content flex-row h-[150px] shadow-[1.3px_2px_4px_0px_rgba(0,0,0,0.15),inset_2px_2px_2px_0px_rgba(255,255,255,1)]"
+          : "flex-col shadow-e1",
         "transition-all duration-150 ease-out",
         "hover:shadow-e2 hover:-translate-y-0.5",
         isClickable && "cursor-pointer active:scale-[0.99]",
         className
       )}
     >
-      {/* 15px tinted band */}
+      {/* 15px tinted band — top strip (default) or left strip (compact) */}
       <div
-        className={cn("h-[15px] flex-shrink-0", COLOR_BANDS[color])}
+        className={cn(
+          "flex-shrink-0",
+          isCompact ? "w-[15px] self-stretch min-h-0" : "h-[15px]",
+          COLOR_BANDS[color]
+        )}
         aria-hidden
       />
       {/* Body - neutral surface */}
       <div
         className={cn(
-          "flex-1 min-h-[136px] bg-card flex flex-col",
+          "flex flex-col",
           isCompact
-            ? "px-2.5 pt-[10px] pb-4 gap-[5px] justify-start items-center"
-            : "px-5 py-4 gap-2.5"
+            ? "flex-1 min-w-0 min-h-0 self-stretch bg-[rgba(255,255,255,0.6)] px-2.5 pt-[10px] pb-4 gap-[5px] justify-start items-end rounded-[0_12px_12px_0]"
+            : "flex-1 min-h-[136px] bg-card px-5 py-4 gap-2.5"
         )}
       >
         <span
@@ -93,8 +99,10 @@ export function ContextSummaryCard({
             isCompact
               ? "text-[rgba(133,186,188,1)]"
               : "text-foreground",
-            "rounded-[10px] px-3 py-1.5 bg-muted/25",
-            "shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_rgba(255,255,255,0.88)]",
+            "rounded-[10px] px-3 py-1.5",
+            isCompact
+              ? "bg-muted shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_2px_0px_rgba(255,255,255,1)]"
+              : "bg-muted/25 shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_rgba(255,255,255,0.88)]",
             isCompact && "text-center"
           )}
         >
@@ -103,7 +111,7 @@ export function ContextSummaryCard({
         <span
           className={cn(
             "text-sm font-medium text-foreground",
-            isCompact && "w-full text-center"
+            isCompact && "w-full text-left"
           )}
         >
           {title}
@@ -117,7 +125,7 @@ export function ContextSummaryCard({
           <span
             className={cn(
               "text-xs text-primary font-medium mt-auto",
-              isCompact ? "w-full pt-0.5 text-center" : "pt-2"
+              isCompact ? "w-full pt-0.5 text-right pr-2.5" : "pt-2"
             )}
           >
             {ctaLabel}

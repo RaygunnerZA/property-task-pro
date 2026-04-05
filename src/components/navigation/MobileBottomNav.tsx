@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Home, CheckSquare, Inbox, Calendar, Plus } from "lucide-react";
+import { Home, CheckSquare, Inbox, Calendar, Plus, FileText } from "lucide-react";
+import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
+import {
+  intakeAddRecordDrawerCardClassName,
+  intakeDrawerIconWrapAddClassName,
+  intakeDrawerIconWrapReportClassName,
+  intakeReportIssueDrawerCardClassName,
+} from "@/lib/intake-action-buttons";
 import {
   Drawer,
   DrawerContent,
@@ -23,6 +30,7 @@ export function MobileBottomNav() {
   const location = useLocation();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
+  const [mobileIntakeInitial, setMobileIntakeInitial] = useState<IntakeMode>("report_issue");
 
   const navItems = [
     { to: "/", icon: Home, label: "Home" },
@@ -43,7 +51,8 @@ export function MobileBottomNav() {
     setCreateView("menu");
   };
 
-  const handleCreateTask = () => {
+  const openIntake = (mode: IntakeMode) => {
+    setMobileIntakeInitial(mode);
     setCreateView("task");
   };
 
@@ -129,17 +138,25 @@ export function MobileBottomNav() {
               </DrawerDescription>
             </DrawerHeader>
             <div className="p-4 space-y-3">
-              <button
-                onClick={handleCreateTask}
-                className="w-full p-4 rounded-lg bg-card shadow-e1 border border-border hover:shadow-md transition-all text-left"
-              >
+              <button onClick={() => openIntake("report_issue")} className={intakeReportIssueDrawerCardClassName}>
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <CheckSquare className="h-5 w-5 text-primary" />
+                  <div className={intakeDrawerIconWrapReportClassName}>
+                    <Plus className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-foreground">Create Task</div>
-                    <div className="text-sm text-muted-foreground">Add a new task to your list</div>
+                    <div className="font-semibold">Report issue</div>
+                    <div className="text-sm text-white/85">Capture a problem or maintenance need</div>
+                  </div>
+                </div>
+              </button>
+              <button onClick={() => openIntake("add_record")} className={intakeAddRecordDrawerCardClassName}>
+                <div className="flex items-center gap-3">
+                  <div className={intakeDrawerIconWrapAddClassName}>
+                    <FileText className="h-5 w-5 text-primary-deep" />
+                  </div>
+                  <div>
+                    <div className="font-semibold">Add record</div>
+                    <div className="text-sm text-primary-deep/80">File a certificate, inspection, or document</div>
                   </div>
                 </div>
               </button>
@@ -171,6 +188,7 @@ export function MobileBottomNav() {
               handleCloseDrawer();
             }
           }}
+          initialIntakeMode={mobileIntakeInitial}
         />
       )}
 

@@ -31,7 +31,7 @@ import { ArrowDownToDot, ChevronDown, ChevronUp, Expand, Shrink } from "lucide-r
 import { cn } from "@/lib/utils";
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-const DOW_H    = 29;                       // weekday header height (px)
+const DOW_H    = 23;                       // weekday header height (px)
 const CELL_H   = 30;                       // each date row height (px)
 const SEP_H    = 1;                        // month separator row height (px)
 const ROWS_FULL = 6;                       // visible rows when expanded
@@ -551,7 +551,7 @@ export function DashboardCalendarV2({
             {/* Weekday labels sit above the neumorphic date card (not inside it) */}
             <div
               className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
-              style={{ height: DOW_H, paddingLeft: 15, paddingRight: 13 }}
+              style={{ height: DOW_H, paddingLeft: 15, paddingRight: 13, paddingBottom: 8 }}
             >
               {WEEK_DAYS.map(d => (
                 <div

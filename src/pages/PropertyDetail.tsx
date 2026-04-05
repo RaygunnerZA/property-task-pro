@@ -672,7 +672,7 @@ if (!error) {
 
   // Third column content - concertina with Create Task, Details, Filla AI
   const thirdColumnContent = id ? (
-    <div className="flex flex-col pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2 min-h-0">
       <ThirdColumnConcertina
         sections={[
           {

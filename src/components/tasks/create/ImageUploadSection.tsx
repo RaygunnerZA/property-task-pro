@@ -7,6 +7,7 @@ import { ImageAnnotationEditor } from "@/components/tasks/ImageAnnotationEditor"
 import type { Annotation } from "@/types/image-annotations";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import type { IntakeMode } from "@/types/intake";
 
 export interface PendingTaskFile {
   local_id: string;
@@ -26,6 +27,8 @@ interface ImageUploadSectionProps {
   files: PendingTaskFile[];
   onFilesChange: (files: PendingTaskFile[]) => void;
   taskId?: string; // Only set after task creation
+  /** Drives upload microcopy and file-picker emphasis in unified intake */
+  intakeMode?: IntakeMode;
 }
 
 export function ImageUploadSection({
@@ -36,6 +39,7 @@ export function ImageUploadSection({
   files,
   onFilesChange,
   taskId,
+  intakeMode = "report_issue",
 }: ImageUploadSectionProps) {
   const { toast } = useToast();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -365,7 +369,9 @@ export function ImageUploadSection({
       >
         <div className="text-left min-w-0 flex-1 pointer-events-none">
           <p className="text-[12px] font-normal text-muted-foreground pr-[5px] leading-[17px]">
-            Drag & Drop or Choose File to upload
+            {intakeMode === "add_record"
+              ? "Add certificate, inspection, or document — drag & drop or choose file"
+              : "Add photos or files — capture the issue (drag & drop or choose)"}
           </p>
           <p className="mt-1 text-[10px] text-primary">50 MB max file size</p>
         </div>
@@ -603,7 +609,11 @@ export function ImageUploadSection({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+        accept={
+          intakeMode === "add_record"
+            ? ".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,image/*"
+            : "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+        }
         multiple
         className="hidden"
         onChange={(e) => handleFileSelect(e.target.files)}

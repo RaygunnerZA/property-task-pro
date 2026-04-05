@@ -1,7 +1,6 @@
 /**
- * IntakeModal — Universal intake composer for task / compliance / document.
- * Single entry point: upload → understand → act. AI suggestions inline; never overwrites user text.
- * Reuses existing task/compliance creation underneath.
+ * IntakeModal — Unified composer for Report issue (task) and Add record (compliance filing).
+ * User picks intake mode first; baseline workflow follows mode. AI enriches in-mode only, never selects the tab.
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
@@ -31,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
+import type { IntakeMode } from "@/types/intake";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useChecklistTemplates, type ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
@@ -40,6 +40,7 @@ import { useAIExtract } from "@/hooks/useAIExtract";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { intakeAddRecordMicroClassName, intakeReportIssueMicroClassName } from "@/lib/intake-action-buttons";
 import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import {
@@ -162,6 +163,11 @@ export interface IntakeModalProps {
   defaultPropertyId?: string;
   variant?: "modal" | "column";
   headless?: boolean;
+  /** When the modal opens (uncontrolled), start in this mode. Ignored when `intakeMode` is controlled. */
+  initialIntakeMode?: IntakeMode;
+  /** Controlled intake tab (e.g. third column synced with task panel). Requires `onIntakeModeChange`. */
+  intakeMode?: IntakeMode;
+  onIntakeModeChange?: (mode: IntakeMode) => void;
 }
 
 interface UploadedAttachment {
@@ -181,6 +187,9 @@ export function IntakeModal({
   defaultPropertyId,
   variant = "modal",
   headless = false,
+  initialIntakeMode = "report_issue",
+  intakeMode: intakeModeProp,
+  onIntakeModeChange,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -193,6 +202,25 @@ export function IntakeModal({
   const [images, setImages] = useState<TempImage[]>([]);
   const [taskFiles, setTaskFiles] = useState<PendingTaskFile[]>([]);
   const [userChoseWorkflow, setUserChoseWorkflow] = useState<WorkflowHint | null>(null);
+
+  const isIntakeControlled =
+    intakeModeProp !== undefined && typeof onIntakeModeChange === "function";
+  const [intakeModeUncontrolled, setIntakeModeUncontrolled] = useState<IntakeMode>(initialIntakeMode);
+  const intakeMode = isIntakeControlled ? intakeModeProp! : intakeModeUncontrolled;
+
+  const commitIntakeMode = useCallback(
+    (next: IntakeMode) => {
+      if (isIntakeControlled) onIntakeModeChange!(next);
+      else setIntakeModeUncontrolled(next);
+    },
+    [isIntakeControlled, onIntakeModeChange]
+  );
+
+  const [showIntakeSwitchConfirm, setShowIntakeSwitchConfirm] = useState(false);
+  const [pendingIntakeMode, setPendingIntakeMode] = useState<IntakeMode | null>(null);
+  const [mismatchDismissed, setMismatchDismissed] = useState(false);
+  const [userManuallySwitchedIntake, setUserManuallySwitchedIntake] = useState(false);
+  const prevOpenRef = useRef(open);
   const [intakeComplianceType, setIntakeComplianceType] = useState("");
   const [intakeComplianceExpiry, setIntakeComplianceExpiry] = useState("");
   const [createReminderFromCompliance, setCreateReminderFromCompliance] = useState(false);
@@ -820,12 +848,63 @@ export function IntakeModal({
     userHasComposed: description.trim().length > 15,
   });
 
-  const effectiveWorkflow: WorkflowHint =
-    userChoseWorkflow ??
-    (hasDescriptionDraft ? "task" : analysis.workflow_confidence >= 0.65 ? analysis.workflow_hint : "uncertain");
+  /** User-facing mode maps to baseline workflow; AI does not choose the starting path. */
+  const baselineWorkflow: WorkflowHint = intakeMode === "add_record" ? "compliance" : "task";
+  const effectiveWorkflow: WorkflowHint = userChoseWorkflow ?? baselineWorkflow;
   const primaryIsTask = effectiveWorkflow === "task" || effectiveWorkflow === "uncertain";
   const primaryIsCompliance = effectiveWorkflow === "compliance";
   const primaryIsDocument = effectiveWorkflow === "document";
+
+  const hasComposerDraft = Boolean(
+    description.trim() ||
+      title.trim() ||
+      images.length > 0 ||
+      taskFiles.length > 0 ||
+      subtasks.length > 0
+  );
+
+  const hasUpload = images.length > 0 || taskFiles.length > 0;
+  const showMismatchSuggestion =
+    hasUpload &&
+    !mismatchDismissed &&
+    !userManuallySwitchedIntake &&
+    analysis.workflow_confidence >= 0.65 &&
+    (intakeMode === "report_issue"
+      ? analysis.workflow_hint === "compliance" || analysis.workflow_hint === "document"
+      : analysis.workflow_hint === "task");
+
+  const applyIntakeMode = useCallback(
+    (next: IntakeMode) => {
+      setUserChoseWorkflow(null);
+      commitIntakeMode(next);
+      setUserManuallySwitchedIntake(true);
+      setMismatchDismissed(true);
+    },
+    [commitIntakeMode]
+  );
+
+  const trySetIntakeMode = useCallback(
+    (next: IntakeMode) => {
+      if (next === intakeMode) return;
+      if (!hasComposerDraft) {
+        applyIntakeMode(next);
+        return;
+      }
+      setPendingIntakeMode(next);
+      setShowIntakeSwitchConfirm(true);
+    },
+    [intakeMode, hasComposerDraft, applyIntakeMode]
+  );
+
+  useEffect(() => {
+    if (!isIntakeControlled && open && !prevOpenRef.current) {
+      setIntakeModeUncontrolled(initialIntakeMode);
+      setMismatchDismissed(false);
+      setUserManuallySwitchedIntake(false);
+      setUserChoseWorkflow(null);
+    }
+    prevOpenRef.current = open;
+  }, [open, initialIntakeMode, isIntakeControlled]);
 
   useEffect(() => {
     if (primaryIsCompliance && analysis.document_type_hint && !intakeComplianceType) setIntakeComplianceType(analysis.document_type_hint);
@@ -2573,7 +2652,7 @@ export function IntakeModal({
     }
   };
 
-  const resetForm = useCallback(() => {
+  const resetForm = useCallback((opts?: { preserveWhere?: boolean }) => {
     setTitle("");
     setDescription("");
     setUserEditedTitle(false);
@@ -2594,9 +2673,11 @@ export function IntakeModal({
     setMilestones([]);
     setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
     setRepeatPreset("none");
-    setPropertyId(defaultPropertyId || "");
-    setSelectedSpaceIds([]);
-    setSelectedAssetIds([]);
+    if (!opts?.preserveWhere) {
+      setPropertyId(defaultPropertyId || "");
+      setSelectedSpaceIds([]);
+      setSelectedAssetIds([]);
+    }
     setPriority("medium");
     setPriorityDefined(false);
     setAssignedUserId(undefined);
@@ -2631,23 +2712,74 @@ export function IntakeModal({
     setTagCreateOpen(false);
     setTagCreateName("");
     setTagCreating(false);
+    setMismatchDismissed(false);
+    setUserManuallySwitchedIntake(false);
   }, [defaultPropertyId]);
 
   useEffect(() => {
-    if (!open) resetForm();
-  }, [open, resetForm]);
+    if (!open) {
+      resetForm();
+      if (!isIntakeControlled) {
+        setIntakeModeUncontrolled(initialIntakeMode);
+      }
+    }
+  }, [open, resetForm, isIntakeControlled, initialIntakeMode]);
 
-  const primaryLabel = primaryIsCompliance
-    ? "Add to Compliance"
-    : primaryIsDocument
-      ? "Save Document"
-      : "Create Task";
-  const secondaryLabel =
-    primaryIsCompliance
-      ? "Create task instead"
-      : primaryIsDocument
-        ? "Create task instead"
-        : "Add to Compliance instead";
+  const confirmIntakeSwitchWithClear = useCallback(() => {
+    if (pendingIntakeMode === null) return;
+    const next = pendingIntakeMode;
+    resetForm({ preserveWhere: true });
+    commitIntakeMode(next);
+    setUserChoseWorkflow(null);
+    setUserManuallySwitchedIntake(true);
+    setMismatchDismissed(true);
+    setShowIntakeSwitchConfirm(false);
+    setPendingIntakeMode(null);
+  }, [pendingIntakeMode, resetForm, commitIntakeMode]);
+
+  const cancelIntakeSwitch = useCallback(() => {
+    setShowIntakeSwitchConfirm(false);
+    setPendingIntakeMode(null);
+  }, []);
+
+  const primaryLabel = primaryIsDocument
+    ? "Save Document"
+    : primaryIsCompliance
+      ? "Add record"
+      : "Report issue";
+
+  const descriptionPlaceholder =
+    intakeMode === "add_record"
+      ? "What are you recording? Add a certificate, inspection, or note…"
+      : "What needs attention?";
+
+  const intakeModeSwitcher = (
+    <div
+      className="flex h-12 w-full max-w-full gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      role="tablist"
+      aria-label="Intake type"
+    >
+      {(["report_issue", "add_record"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="tab"
+          aria-selected={intakeMode === m}
+          onClick={() => trySetIntakeMode(m)}
+          className={cn(
+            "flex-1 min-w-0 rounded-[12px] py-2 px-2 text-xs font-semibold transition-all sm:text-sm",
+            intakeMode === m
+              ? m === "report_issue"
+                ? "bg-accent text-accent-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
+                : "bg-primary/25 text-primary-deep shadow-e1"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {m === "report_issue" ? "Report issue" : "Add record"}
+        </button>
+      ))}
+    </div>
+  );
 
   const confirmIntakeTagCreate = useCallback(async () => {
     const name = tagCreateName.trim();
@@ -2746,6 +2878,22 @@ export function IntakeModal({
 
   const renderAlertDialogs = () => (
     <>
+      <AlertDialog open={showIntakeSwitchConfirm} onOpenChange={(o) => !o && cancelIntakeSwitch()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch and clear draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Switching between Report issue and Add record will clear your description, uploads, and checklist draft.
+              Location selections can stay if you continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelIntakeSwitch}>Stay here</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmIntakeSwitchWithClear}>Switch and clear</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={!!pendingTemplateImport} onOpenChange={(openState) => !openState && setPendingTemplateImport(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -2818,12 +2966,14 @@ export function IntakeModal({
     <>
       {variant !== "column" && (
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold">Add item</DialogTitle>
+          <DialogTitle className="sr-only">Report issue or add a record</DialogTitle>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0 pt-0.5">{intakeModeSwitcher}</div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -2833,10 +2983,24 @@ export function IntakeModal({
 
       <div
         className={cn(
-          "flex-1 px-4 py-3 space-y-3 min-h-0",
-          variant === "column" && headless ? "overflow-visible" : "overflow-y-auto overscroll-contain"
+          "flex-1 py-3 space-y-3 min-h-0",
+          variant === "column" && headless
+            ? "overflow-visible px-2 rounded-[23px]"
+            : "overflow-y-auto overscroll-contain px-4"
         )}
+        style={
+          variant === "column" && headless
+            ? {
+                background:
+                  "linear-gradient(0deg, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, 0.5) 100%)",
+              }
+            : undefined
+        }
       >
+          {variant === "column" && headless && (
+            <div className="shrink-0 -mt-1 mb-1">{intakeModeSwitcher}</div>
+          )}
+
           {/* 1. Upload */}
           <ImageUploadSection
             images={images}
@@ -2846,6 +3010,7 @@ export function IntakeModal({
             files={taskFiles}
             onFilesChange={setTaskFiles}
             taskId={undefined}
+            intakeMode={intakeMode}
           />
 
           {/* 2. Composer: title (hidden until description; AI-generated) + main text */}
@@ -2867,7 +3032,7 @@ export function IntakeModal({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What needs doing? Or add a note…"
+                placeholder={descriptionPlaceholder}
                 rows={3}
                 className="w-full px-3 py-2 text-sm border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"
               />
@@ -2894,6 +3059,37 @@ export function IntakeModal({
               )}
             </div>
           </div>
+
+          {showMismatchSuggestion && (
+            <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 shadow-e1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-foreground">
+                {intakeMode === "report_issue"
+                  ? "This upload looks like a compliance record. Switch to Add record?"
+                  : "This looks like an on-site issue. Switch to Report issue?"}
+              </p>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                <button
+                  type="button"
+                  className={cn(
+                    "h-8 min-h-8 px-3",
+                    intakeMode === "report_issue" ? intakeAddRecordMicroClassName : intakeReportIssueMicroClassName
+                  )}
+                  onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
+                >
+                  {intakeMode === "report_issue" ? "Add record" : "Report issue"}
+                </button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setMismatchDismissed(true)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* 3. Compliance inline fields when path is compliance */}
           {primaryIsCompliance && (
@@ -2956,21 +3152,24 @@ export function IntakeModal({
             {isSubmitting ? "Saving…" : primaryLabel}
           </Button>
         </div>
-        {analysis.workflow_confidence >= 0.5 && (
-          <div className="text-center">
+        <div className="flex flex-col gap-1.5 text-center">
+          <button
+            type="button"
+            onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            {intakeMode === "report_issue" ? "Switch to Add record" : "Switch to Report issue"}
+          </button>
+          {userChoseWorkflow !== null && (
             <button
               type="button"
-              onClick={() =>
-                setUserChoseWorkflow(
-                  primaryIsCompliance ? "task" : primaryIsDocument ? "task" : "compliance"
-                )
-              }
+              onClick={() => setUserChoseWorkflow(null)}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              {secondaryLabel}
+              Use {intakeMode === "report_issue" ? "Report issue" : "Add record"} defaults
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {renderTemplateDialog()}
       {renderAlertDialogs()}
@@ -3064,8 +3263,8 @@ export function IntakeModal({
     return (
       <div
         className={cn(
-          "flex flex-col h-full min-h-0 p-0 gap-0 rounded-xl border-0",
-          "shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"
+          "flex flex-col h-full min-h-0 p-0 gap-0 rounded-[23px] border-0",
+          "shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
         )}
         style={{
           ...PAPER_TEXTURE_STYLE,

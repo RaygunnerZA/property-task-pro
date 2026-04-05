@@ -33,8 +33,8 @@ export function PropertyWorkspaceLayout({
     >
       <aside
         className={cn(
-          "min-w-0 space-y-4",
-          "min-[1100px]:max-h-[calc(100vh-var(--header-height)-48px)] min-[1100px]:sticky min-[1100px]:top-[calc(var(--header-height)+12px)]",
+          "min-w-0 w-full space-y-4 px-[3px] flex flex-wrap",
+          "min-[1100px]:h-[335px] min-[1100px]:max-h-[calc(100vh-var(--header-height)-48px)] min-[1100px]:sticky min-[1100px]:top-[calc(var(--header-height)+12px)]",
           "min-[1100px]:overflow-y-auto"
         )}
       >

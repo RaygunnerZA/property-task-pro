@@ -1,5 +1,9 @@
 import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import {
+  intakeAddRecordMicroClassName,
+  intakeReportIssueMicroClassName,
+} from "@/lib/intake-action-buttons";
 
 type CardAccent = "red" | "amber" | "green" | "slate" | "teal";
 
@@ -30,8 +34,18 @@ const accentClassMap: Record<CardAccent, string> = {
   amber: "bg-amber-500/80",
   green: "bg-emerald-500/80",
   slate: "bg-slate-400/80",
-  teal: "bg-[#8EC9CE]",
+  teal: "bg-primary/80",
 };
+
+function streamActionButtonClass(actionId: string) {
+  if (actionId === "report-issue" || actionId === "create-inspection-task") {
+    return intakeReportIssueMicroClassName;
+  }
+  if (actionId === "add-record") return intakeAddRecordMicroClassName;
+  return cn(
+    "text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2 transition-all"
+  );
+}
 
 export function OperationalStreamCard({
   id,
@@ -95,7 +109,7 @@ export function OperationalStreamCard({
                         event.stopPropagation();
                         action.onClick();
                       }}
-                      className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2 transition-all"
+                      className={streamActionButtonClass(action.id)}
                     >
                       {action.label}
                     </button>
