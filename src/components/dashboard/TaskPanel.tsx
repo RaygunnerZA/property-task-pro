@@ -996,9 +996,19 @@ export function TaskPanel({
           )}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden" style={{ height: 515 }}>
           {activeTab === "attention" && (
-            <div className="h-full min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-pane:px-2">
+            <div
+              className="min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-pane:px-2"
+              style={{
+                height: 522,
+                borderWidth: "0 0 10px",
+                borderStyle: "none none solid",
+                borderColor: "transparent transparent rgb(255, 255, 255)",
+                borderImage:
+                  "linear-gradient(90deg, rgba(255, 255, 255, 0.49) 0%, rgba(255, 255, 255, 0) 100%) 1 / 1 / 0 stretch",
+              }}
+            >
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                 <div className="space-y-3 min-w-0">
                   <div

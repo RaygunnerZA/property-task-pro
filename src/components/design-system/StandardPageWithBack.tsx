@@ -100,7 +100,7 @@ export function StandardPageWithBack({
       className={cn(
         "min-h-screen bg-background",
         showBottomNav ? "pb-20" : "pb-6",
-        /* Gradient + scope strip (~100px + ~48px) for workspace sticky columns */
+        /* Gradient + scope strip (~60px + ~48px) for workspace sticky columns */
         belowGradientRow != null && "property-workbench-scope-header",
         className
       )}
@@ -111,7 +111,7 @@ export function StandardPageWithBack({
       >
         <div
           className={cn(
-            "mx-auto flex h-[100px] min-h-[100px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-36",
+            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-32",
             maxWidthClasses[maxWidth]
           )}
           style={headerBarStyle}

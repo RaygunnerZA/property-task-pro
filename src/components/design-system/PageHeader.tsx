@@ -1,6 +1,4 @@
 import { ReactNode, lazy, Suspense } from "react";
-import { Link } from "react-router-dom";
-import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isDevBuild } from "@/context/DevModeContext";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
@@ -8,7 +6,7 @@ import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 const DevToolsDropdown = lazy(() => import("@/components/dev/DevToolsDropdown"));
 
 /**
- * Gradient / page headers: user management + dev tools + account on the header strip (not a separate app bar).
+ * Gradient / page headers: dev tools + account on the header strip (not a separate app bar).
  */
 function PageHeaderToolbar({
   className,
@@ -30,18 +28,6 @@ function PageHeaderToolbar({
           <DevToolsDropdown />
         </Suspense>
       )}
-      <Link
-        to="/manage/people"
-        className={cn(
-          "flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors shrink-0",
-          onGradient
-            ? "text-white/95 hover:bg-white/15"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-        )}
-      >
-        <Users className="h-4 w-4 shrink-0 opacity-90" />
-        <span className="hidden sm:inline">User management</span>
-      </Link>
       <HeaderAccountMenu variant={onGradient ? "onGradient" : "default"} />
     </div>
   );

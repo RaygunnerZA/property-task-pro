@@ -22,6 +22,8 @@ type PrimaryProps = {
   selectedPropertyIds: Set<string>;
   onSelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
+  /** Full-width band under the gradient (secondary pages) vs narrow strip in the 265px workbench column. */
+  placement?: "fullWidth" | "leftColumn";
 };
 
 type SecondaryProps = {
@@ -50,6 +52,7 @@ function PropertyScopeFilterBarPrimary({
   selectedPropertyIds,
   onSelectionChange,
   onFilterClick,
+  placement = "fullWidth",
 }: PrimaryProps) {
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -108,9 +111,23 @@ function PropertyScopeFilterBarPrimary({
 
   if (properties.length <= 1) return null;
 
+  const isLeftColumn = placement === "leftColumn";
+
   return (
-    <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm px-2 py-2">
-      <div className="flex flex-col gap-0.5 max-w-[1480px] mx-auto">
+    <div
+      className={cn(
+        "w-full max-w-full",
+        isLeftColumn
+          ? "bg-transparent px-1 py-1.5"
+          : "bg-background/80 px-2 py-2 shadow-sm backdrop-blur-sm"
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-col gap-0.5",
+          isLeftColumn ? "w-full max-w-full" : "max-w-[1480px] mx-auto"
+        )}
+      >
         <div
           className={cn(
             "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-300 ease-in-out",
@@ -315,7 +332,7 @@ function PropertyScopeFilterBarSecondary({
 
   if (properties.length <= 1) {
     return (
-      <div className="flex w-full min-w-0 items-center justify-start gap-2">
+      <div className="flex w-full min-w-0 items-center justify-start gap-0.5">
         <div
           className="flex items-center justify-center rounded-[10px] shrink-0"
           style={{
@@ -333,7 +350,7 @@ function PropertyScopeFilterBarSecondary({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 shrink-0 gap-1 px-2 text-foreground"
+          className="h-8 shrink-0 gap-1 px-px text-foreground"
           onClick={onBack}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -344,7 +361,7 @@ function PropertyScopeFilterBarSecondary({
   }
 
   return (
-    <div ref={containerRef} className="flex w-full min-w-0 items-center justify-start gap-2">
+    <div ref={containerRef} className="flex w-full min-w-0 items-center justify-start gap-0.5">
       <div
         className={cn(
           "relative flex items-center gap-1.5 overflow-hidden rounded-xl transition-[max-width] duration-300 ease-out",
@@ -353,7 +370,7 @@ function PropertyScopeFilterBarSecondary({
       >
         <div
           className={cn(
-            "flex flex-row items-center gap-1 transition-transform duration-300 ease-out",
+            "flex flex-row items-center gap-0 transition-transform duration-300 ease-out",
             expanded ? "translate-x-0" : "translate-x-[calc(100%-28px)]"
           )}
         >
@@ -447,7 +464,7 @@ function PropertyScopeFilterBarSecondary({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 shrink-0 gap-1 px-2 text-foreground"
+          className="h-8 shrink-0 gap-1 px-px text-foreground"
           onClick={onBack}
         >
           <ChevronLeft className="h-4 w-4" />

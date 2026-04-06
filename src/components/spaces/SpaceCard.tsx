@@ -58,14 +58,14 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[155px]",
+        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[121px]",
         "transition-all duration-200",
         className
       )}
     >
       {/* Thumbnail Image */}
       <div 
-        className="w-full h-[63px] overflow-hidden relative"
+        className="w-full h-[34px] overflow-hidden relative"
         style={{
           backgroundColor: iconColor,
         }}
@@ -101,14 +101,13 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
         />
       </div>
       
-      <div className="pt-2.5 pb-2.5 pl-2.5 pr-2.5 space-y-2 h-[96px]">
+      <div className="pt-1 pb-1 pl-2.5 pr-2.5 space-y-2 h-[84px]">
         {/* Top Section - Clickable for navigation */}
         <div 
           onClick={handleTopSectionClick}
-          style={{ verticalAlign: 'middle' }}
-          className="cursor-pointer active:scale-[0.99] mb-[22px] mt-[4px] h-[15px] flex flex-col justify-center items-start"
+          className="cursor-pointer active:scale-[0.99] mb-[5px] mt-1 h-[34px] flex flex-col justify-center items-start"
         >
-          <h3 className="font-semibold text-sm text-foreground leading-tight h-[16px]" style={{ verticalAlign: 'middle', lineHeight: '15px' }}>
+          <h3 className="font-semibold text-sm text-foreground h-[34px] w-[69px] flex flex-col justify-center items-start leading-[15px]">
             {displayName}
           </h3>
         </div>

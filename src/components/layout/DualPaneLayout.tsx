@@ -21,8 +21,8 @@ interface DualPaneLayoutProps {
  *   - Without third column: [265px minmax(450px, 660px)]
  *   - With third column: [265px 660px 1fr]
  *
- * When `header` is provided at the layout breakpoint, it spans the full width above
- * the left, middle, and third columns (sidebar remains outside this shell).
+ * When `header` is provided, it spans the full width above the grid; scope/filter rows
+ * that belong in the 265px column should be passed inside `leftColumn` instead.
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;

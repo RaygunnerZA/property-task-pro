@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
-import { Loader2, RotateCcw, UserPlus, UserRoundCog, KeyRound, Ban } from "lucide-react";
+import { Loader2, RotateCcw, UserRoundCog, KeyRound, Ban, Shield } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSettingsWorkbench } from "@/contexts/SettingsWorkbenchContext";
+import { InviteUserForm } from "@/components/invite/InviteUserForm";
+import {
+  WorkspaceSectionHeading,
+  WorkspaceSurfaceCard,
+  WorkspaceTabList,
+  WorkspaceTabTrigger,
+} from "@/components/property-workspace";
+import { EXTERNAL_ORG_ROLES, INTERNAL_ORG_ROLES } from "@/lib/orgRoles";
 
 type InvitationStatus = "pending" | "accepted" | "expired" | "cancelled";
 
@@ -26,10 +35,14 @@ interface InvitationRecord {
   property_ids: string[] | null;
 }
 
+type TeamWorkbenchTab = "members" | "invited" | "roles";
+
 export default function SettingsTeam() {
+  const queryClient = useQueryClient();
   const { members, loading, error } = useOrgMembers();
   const { orgId } = useActiveOrg();
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const { setRightPanel } = useSettingsWorkbench();
+  const [teamTab, setTeamTab] = useState<TeamWorkbenchTab>("members");
   const [invitations, setInvitations] = useState<InvitationRecord[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
@@ -52,8 +65,9 @@ export default function SettingsTeam() {
 
       if (inviteError) throw inviteError;
       setInvitations((data ?? []) as InvitationRecord[]);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load invitations");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load invitations";
+      toast.error(msg);
     } finally {
       setLoadingInvites(false);
     }
@@ -62,6 +76,40 @@ export default function SettingsTeam() {
   useEffect(() => {
     fetchInvitations();
   }, [fetchInvitations]);
+
+  useEffect(() => {
+    if (teamTab === "members" || teamTab === "invited") {
+      setRightPanel(
+        <InviteUserForm
+          variant="embedded"
+          onEmbeddedSuccess={() => {
+            void fetchInvitations();
+            void queryClient.invalidateQueries({ queryKey: ["org-members"] });
+          }}
+        />
+      );
+    } else if (teamTab === "roles") {
+      setRightPanel(
+        <WorkspaceSurfaceCard
+          title="Roles & permissions"
+          description="What each preset can do in Filla today. Fine-grained module toggles will layer on top of these."
+          className="bg-card/80"
+        >
+          <ul className="space-y-2 px-4 pb-4 text-xs text-muted-foreground leading-relaxed">
+            <li>
+              <span className="font-medium text-foreground">Invite flow</span> — assign a role when you send an
+              invitation (right column on Team / Invited users).
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Coming next</span> — custom org roles, per-module
+              permissions, and property-scoped overrides from this panel.
+            </li>
+          </ul>
+        </WorkspaceSurfaceCard>
+      );
+    }
+    return () => setRightPanel(null);
+  }, [teamTab, setRightPanel, fetchInvitations, queryClient]);
 
   const runInviteAction = useCallback(
     async (invitationId: string, action: string, newPassword?: string) => {
@@ -89,12 +137,13 @@ export default function SettingsTeam() {
   );
 
   const statusBadgeVariant = useMemo(
-    () => ({
-      pending: "secondary",
-      accepted: "default",
-      expired: "outline",
-      cancelled: "outline",
-    }) as const,
+    () =>
+      ({
+        pending: "secondary",
+        accepted: "default",
+        expired: "outline",
+        cancelled: "outline",
+      }) as const,
     []
   );
 
@@ -122,27 +171,47 @@ export default function SettingsTeam() {
   }
 
   return (
-    <>
-      <div className="space-y-4">
+    <div className="space-y-5">
+      <div>
+        <WorkspaceSectionHeading>Team workspace</WorkspaceSectionHeading>
+        <WorkspaceTabList className="mt-2">
+          <WorkspaceTabTrigger
+            selected={teamTab === "members"}
+            onClick={() => setTeamTab("members")}
+          >
+            Team members
+          </WorkspaceTabTrigger>
+          <WorkspaceTabTrigger
+            selected={teamTab === "invited"}
+            onClick={() => setTeamTab("invited")}
+          >
+            Invited users
+          </WorkspaceTabTrigger>
+          <WorkspaceTabTrigger
+            selected={teamTab === "roles"}
+            onClick={() => setTeamTab("roles")}
+          >
+            Roles & permissions
+          </WorkspaceTabTrigger>
+        </WorkspaceTabList>
+      </div>
+
+      {teamTab === "members" && (
         <Card className="shadow-e1">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Team Members</CardTitle>
-            <Button onClick={() => setInviteModalOpen(true)} size="sm">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Invite Member
-            </Button>
+          <CardHeader>
+            <CardTitle className="text-base">Team members</CardTitle>
           </CardHeader>
           <CardContent>
             {members.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-4">
-                No team members yet. Invite someone to get started.
+              <p className="py-4 text-sm text-muted-foreground">
+                No team members yet. Use <strong>Invite member</strong> on the right to add people.
               </p>
             ) : (
               <div className="space-y-3">
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-card border border-border"
+                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
@@ -152,9 +221,7 @@ export default function SettingsTeam() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium text-foreground">
-                          {member.display_name}
-                        </p>
+                        <p className="font-medium text-foreground">{member.display_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {member.email || `${member.user_id.slice(0, 8)}...`}
                         </p>
@@ -165,8 +232,8 @@ export default function SettingsTeam() {
                         member.role === "owner"
                           ? "default"
                           : member.role === "manager"
-                          ? "secondary"
-                          : "outline"
+                            ? "secondary"
+                            : "outline"
                       }
                       className={cn(
                         member.role === "owner" && "bg-primary text-primary-foreground",
@@ -181,11 +248,13 @@ export default function SettingsTeam() {
             )}
           </CardContent>
         </Card>
+      )}
 
+      {teamTab === "invited" && (
         <Card className="shadow-e1">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Invited Users</CardTitle>
-            <Button onClick={fetchInvitations} size="sm" variant="outline">
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <CardTitle className="text-base">Invited users</CardTitle>
+            <Button onClick={() => void fetchInvitations()} size="sm" variant="outline">
               <RotateCcw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
@@ -196,18 +265,15 @@ export default function SettingsTeam() {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : invitations.length === 0 ? (
-              <p className="text-muted-foreground text-sm py-4">
-                No invitations yet.
+              <p className="py-4 text-sm text-muted-foreground">
+                No invitations yet. Send one from the <strong>Invite member</strong> panel on the right.
               </p>
             ) : (
               <div className="space-y-3">
                 {invitations.map((invite) => {
                   const isBusy = actionBusyId === invite.id;
                   return (
-                    <div
-                      key={invite.id}
-                      className="rounded-lg bg-card p-3 shadow-e1"
-                    >
+                    <div key={invite.id} className="rounded-lg bg-card p-3 shadow-e1">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-medium text-foreground">{formatName(invite)}</p>
@@ -223,7 +289,9 @@ export default function SettingsTeam() {
                           </div>
                           <div className="mt-1 text-[11px] text-muted-foreground">
                             Sent {new Date(invite.created_at).toLocaleString()}
-                            {invite.accepted_at ? ` • Accepted ${new Date(invite.accepted_at).toLocaleString()}` : ""}
+                            {invite.accepted_at
+                              ? ` • Accepted ${new Date(invite.accepted_at).toLocaleString()}`
+                              : ""}
                           </div>
                         </div>
                         <Badge
@@ -248,8 +316,8 @@ export default function SettingsTeam() {
                                 await runInviteAction(invite.id, "resend_invite");
                                 toast.success("Invitation resent");
                                 await fetchInvitations();
-                              } catch (e: any) {
-                                toast.error(e?.message ?? "Failed to resend invitation");
+                              } catch (e: unknown) {
+                                toast.error(e instanceof Error ? e.message : "Failed to resend invitation");
                               } finally {
                                 setActionBusyId(null);
                               }
@@ -269,8 +337,8 @@ export default function SettingsTeam() {
                               setActionBusyId(invite.id);
                               await runInviteAction(invite.id, "send_password_reset");
                               toast.success("Password reset email sent");
-                            } catch (e: any) {
-                              toast.error(e?.message ?? "Failed to send password reset");
+                            } catch (e: unknown) {
+                              toast.error(e instanceof Error ? e.message : "Failed to send password reset");
                             } finally {
                               setActionBusyId(null);
                             }
@@ -298,8 +366,8 @@ export default function SettingsTeam() {
                               await runInviteAction(invite.id, "set_password_manual", password);
                               toast.success("Password set and access granted");
                               await fetchInvitations();
-                            } catch (e: any) {
-                              toast.error(e?.message ?? "Failed to set password");
+                            } catch (e: unknown) {
+                              toast.error(e instanceof Error ? e.message : "Failed to set password");
                             } finally {
                               setActionBusyId(null);
                             }
@@ -320,8 +388,8 @@ export default function SettingsTeam() {
                                 await runInviteAction(invite.id, "cancel_invite");
                                 toast.success("Invitation cancelled");
                                 await fetchInvitations();
-                              } catch (e: any) {
-                                toast.error(e?.message ?? "Failed to cancel invitation");
+                              } catch (e: unknown) {
+                                toast.error(e instanceof Error ? e.message : "Failed to cancel invitation");
                               } finally {
                                 setActionBusyId(null);
                               }
@@ -339,18 +407,51 @@ export default function SettingsTeam() {
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
 
-      <InviteUserModal
-        open={inviteModalOpen}
-        onOpenChange={(open) => {
-          setInviteModalOpen(open);
-          if (!open) {
-            fetchInvitations();
-          }
-        }}
-      />
-    </>
+      {teamTab === "roles" && (
+        <div className="space-y-6">
+          <WorkspaceSurfaceCard title="Internal roles" className="bg-card/80">
+            <div className="space-y-3 px-4 pb-4">
+              {INTERNAL_ORG_ROLES.map((r) => (
+                <div
+                  key={r.value}
+                  className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{r.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{r.description}</p>
+                </div>
+              ))}
+            </div>
+          </WorkspaceSurfaceCard>
+
+          <WorkspaceSurfaceCard title="External roles" className="bg-card/80">
+            <div className="space-y-3 px-4 pb-4">
+              {EXTERNAL_ORG_ROLES.map((r) => (
+                <div
+                  key={r.value}
+                  className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-3.5 w-3.5 shrink-0 text-accent" />
+                    <span className="text-sm font-medium text-foreground">{r.label}</span>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{r.description}</p>
+                </div>
+              ))}
+            </div>
+          </WorkspaceSurfaceCard>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong>User permissions</strong> — advanced overrides (per user, per module) will live here once
+            the policy layer ships. Until then, role + property access from invitations define what someone can
+            see and do.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
-

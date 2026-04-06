@@ -74,7 +74,7 @@ export default function SpaceOrganisationScreen() {
     <>
       <PageHeader>
         <div
-          className="flex h-[100px] items-center rounded-bl-[12px] px-4 pb-[18px] pr-20 pt-[63px]"
+          className="flex h-[60px] items-center rounded-bl-[12px] px-4 pr-20 py-2"
           style={{
             backgroundImage: `linear-gradient(90deg, ${headerAccent} 0%, ${headerAccent} 28%, transparent 97%, transparent 100%)`,
           }}

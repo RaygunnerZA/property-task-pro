@@ -119,16 +119,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
-
-  // Detect entity context from URL
+  // Detect entity context from URL (dashboard `/` uses the in-page scope bar, not sidebar context)
   const entityContext = useMemo(() => {
-    // Property workbench: /?property=<id>
-    if (currentPath === '/') {
-      const pid = searchParams.get('property');
-      if (pid) {
-        return { type: 'property' as const, id: pid };
-      }
-    }
     // Filtered property list: /properties?property=<id>
     if (currentPath === '/properties') {
       const pid = searchParams.get('property');

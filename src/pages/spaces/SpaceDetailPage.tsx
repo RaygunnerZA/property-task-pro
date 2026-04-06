@@ -118,7 +118,7 @@ export default function SpaceDetailPage() {
   const headerElement = (
     <PageHeader>
       <div
-        className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
+        className="px-4 py-2 h-[60px] flex items-center justify-between rounded-bl-[12px]"
         style={{
           backgroundImage: "linear-gradient(to right, #8EC9CE 0%, #8EC9CE 20%, transparent 70%, transparent 100%)",
         }}

@@ -34,7 +34,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="teal"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[118px]"
+        className="min-w-0 w-[110px]"
         onClick={onFilterClick ? () => onFilterClick("active") : undefined}
       />
       <ContextSummaryCard
@@ -43,7 +43,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="amber"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[118px]"
+        className="min-w-0 w-[110px]"
         onClick={onFilterClick ? () => onFilterClick("needsInspection") : undefined}
       />
       <ContextSummaryCard
@@ -52,7 +52,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="red"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[118px]"
+        className="min-w-0 w-[110px]"
         onClick={onFilterClick ? () => onFilterClick("nonCompliant") : undefined}
       />
       <ContextSummaryCard
@@ -61,7 +61,7 @@ export function AssetsSummaryRow({ assets, onFilterClick }: AssetsSummaryRowProp
         color="slate"
         ctaLabel="View"
         variant="compact"
-        className="min-w-0 w-[118px]"
+        className="min-w-0 w-[110px]"
         onClick={onFilterClick ? () => onFilterClick("retired") : undefined}
       />
     </div>

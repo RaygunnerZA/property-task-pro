@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
@@ -45,7 +45,6 @@ const WorkAutomations = lazy(() => import("./pages/work/WorkAutomations"));
 // MANAGE pillar
 const ManageProperties = lazy(() => import("./pages/manage/ManageProperties"));
 const ManageSpaces = lazy(() => import("./pages/manage/ManageSpaces"));
-const ManagePeople = lazy(() => import("./pages/manage/ManagePeople"));
 const ManageVendors = lazy(() => import("./pages/manage/ManageVendors"));
 const ManageTemplates = lazy(() => import("./pages/manage/ManageTemplates"));
 const ManageSettings = lazy(() => import("./pages/manage/ManageSettings"));
@@ -211,7 +210,7 @@ const App = () => {
                                 <Route path="/manage/properties" element={<ManageProperties />} />
                                 <Route path="/manage/spaces" element={<ManageSpaces />} />
                                 <Route path="/assets" element={<Assets />} />
-                                <Route path="/manage/people" element={<ManagePeople />} />
+                                <Route path="/manage/people" element={<Navigate to="/settings/team" replace />} />
                                 <Route path="/manage/vendors" element={<ManageVendors />} />
                                 <Route path="/manage/templates" element={<ManageTemplates />} />
                                 <Route path="/manage/settings" element={<ManageSettings />} />

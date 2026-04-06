@@ -10,7 +10,7 @@
 @layer base {
   :root {
     /* Layout */
-    --header-height: 100px;
+    --header-height: 60px;
 
     /* Spacing scale — matches Docs/04_UI_System (xs 4px … xl 24px) */
     --space-xs: 0.25rem;
@@ -97,14 +97,14 @@
     --sidebar-muted: 248 10% 40%;
   }
 
-  /* Dashboard: gradient strip + property scope bar (DualPaneLayout sticky offset) */
+  /* Dashboard: gradient strip only; property scope lives in the left column */
   .dashboard-workbench {
-    --header-height: 144px;
+    --header-height: 60px;
   }
 
   /* StandardPageWithBack + Spaces: gradient + property scope row under it */
   .property-workbench-scope-header {
-    --header-height: 152px;
+    --header-height: 112px;
   }
 
   .dark {
@@ -390,12 +390,12 @@
   /* Page Header Style */
   .page-header {
     @apply sticky top-0 z-40 shadow-paper-edge pl-0;
-    height: 100px;
+    height: 60px;
     border-radius: 0px 0px 0px 12px;
     background: linear-gradient(135deg, rgba(244, 243, 240, 1) 0%, rgba(239, 238, 235, 1) 50%, rgba(234, 233, 230, 1) 100%);
     box-sizing: content-box;
-    margin-top: 2px;
-    margin-bottom: 2px;
+    margin-top: 0;
+    margin-bottom: 0;
   }
   
   /* Icon with Primary Color (from compliance dashboard) */

@@ -102,7 +102,7 @@ export default function SpaceGroupScreen() {
     <>
       <PageHeader>
         <div
-          className="relative flex h-[100px] items-center rounded-bl-[12px] px-4 pb-[18px] pr-24 pt-[63px]"
+          className="relative flex h-[60px] items-center rounded-bl-[12px] px-4 pr-24 py-2"
           style={gradientStyle}
         >
           <div className="min-w-0 flex-1">
@@ -121,7 +121,7 @@ export default function SpaceGroupScreen() {
                   name: property?.nickname || property?.address || "Property",
                 })
               }
-              className="absolute right-[5.5rem] top-8 z-10 rounded-lg bg-white/20 p-2 transition-colors hover:bg-white/30"
+              className="absolute right-[5.5rem] top-1/2 z-10 -translate-y-1/2 rounded-lg bg-white/20 p-2 transition-colors hover:bg-white/30"
               aria-label="Open Assistant"
             >
               <FillaIcon size={20} className="brightness-0 invert" />

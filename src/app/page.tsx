@@ -58,6 +58,8 @@ export default function Dashboard() {
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const tabBeforeCreateTaskRef = useRef<string>("attention");
   const prevSearchStringRef = useRef<string | undefined>(undefined);
+  const workbenchPropertyInitRef = useRef(false);
+  const prevWorkbenchPropertyIdRef = useRef<string | null | undefined>(undefined);
 
   const queryClient = useQueryClient();
 
@@ -75,6 +77,15 @@ export default function Dashboard() {
 
     const pid = searchParams.get("property");
     const allIds = properties.map((p) => p.id);
+
+    // One-property org: "all properties" is still that single id — keep ?property= so sidebar
+    // (Compliance, Documents, …) and shared links stay scoped to the hub property.
+    if (!pid && allIds.length === 1) {
+      const next = new URLSearchParams(searchParams);
+      next.set("property", allIds[0]);
+      setSearchParams(next, { replace: true });
+      return;
+    }
 
     if (pid) {
       if (properties.some((p) => p.id === pid)) {
@@ -117,7 +128,11 @@ export default function Dashboard() {
         params.set("property", Array.from(next)[0]);
         setSearchParams(params, { replace: true });
       } else if (isAllPropertiesActive(next, allIds)) {
-        params.delete("property");
+        if (allIds.length === 1) {
+          params.set("property", allIds[0]);
+        } else {
+          params.delete("property");
+        }
         setSearchParams(params, { replace: true });
       } else {
         setSearchParams(params, { replace: true });
@@ -149,6 +164,29 @@ export default function Dashboard() {
     },
     [searchParams, setSearchParams]
   );
+
+  // When the workbench `property` param changes after load, default to Attention (strip stale panelTab).
+  // Skip the first transition that only injects `property` for single-property orgs so deep links keep ?panelTab=.
+  useEffect(() => {
+    if (properties.length === 0) return;
+    const pid = searchParams.get("property");
+    if (!workbenchPropertyInitRef.current) {
+      workbenchPropertyInitRef.current = true;
+      prevWorkbenchPropertyIdRef.current = pid;
+      return;
+    }
+    const prev = prevWorkbenchPropertyIdRef.current;
+    if (pid === prev) return;
+    prevWorkbenchPropertyIdRef.current = pid;
+    const singleId = properties.length === 1 ? properties[0].id : null;
+    const isImplicitSingleOrgFill =
+      singleId != null && (prev == null || prev === "") && pid === singleId;
+    if (isImplicitSingleOrgFill) return;
+    const params = new URLSearchParams(searchParams);
+    if (!params.has(WORKBENCH_PANEL_TAB_QUERY)) return;
+    params.delete(WORKBENCH_PANEL_TAB_QUERY);
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams, properties]);
 
   // Centralized aggregation: Calculate stats once at Dashboard level
   const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
@@ -224,19 +262,6 @@ export default function Dashboard() {
       overdueCount: overdue,
     };
   }, [tasks]);
-
-  /** Matches former DailyBriefingCard subtitle: all properties vs selected subset (hidden when only one property). */
-  const dashboardPropertyScopeTitle = useMemo(() => {
-    if (properties.length <= 1) return null;
-    const ids = selectedPropertyIds;
-    if (!ids || ids.size === 0 || ids.size === properties.length) {
-      return "All Properties";
-    }
-    const labels = properties
-      .filter((p) => ids.has(p.id))
-      .map((p) => p.nickname || p.address);
-    return labels.length > 0 ? labels.join(" | ") : null;
-  }, [properties, selectedPropertyIds]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -466,27 +491,17 @@ export default function Dashboard() {
   const headerElement = (
     <PageHeader>
       <div
-        className="flex h-[100px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
+        className="flex h-[60px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
         style={headerStyle}
       >
-        <div className="flex flex-col items-start justify-center gap-1 w-[248px] min-w-0 shrink-0">
-          {dashboardPropertyScopeTitle ? (
-            <p
-              className="text-[34px] font-normal text-transparent leading-tight truncate max-w-full text-shadow-neu-pressed bg-[linear-gradient(0deg,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.64)_100%)] bg-clip-text"
-              title={dashboardPropertyScopeTitle}
-            >
-              {dashboardPropertyScopeTitle}
-            </p>
-          ) : null}
-          <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0">
-            <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
-            <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
-            <div className="flex items-center justify-start gap-2 text-left">
-              <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
-              <span className="text-sm text-white/90 whitespace-nowrap">
-                {weather ? `${weather.temp}°C` : "--°C"}
-              </span>
-            </div>
+        <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
+          <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
+          <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
+          <div className="flex items-center justify-start gap-2 text-left">
+            <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
+            <span className="text-sm text-white/90 whitespace-nowrap">
+              {weather ? `${weather.temp}°C` : "--°C"}
+            </span>
           </div>
         </div>
       </div>
@@ -496,18 +511,7 @@ export default function Dashboard() {
   return (
     <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <DualPaneLayout
-        header={
-          <>
-            {headerElement}
-            <PropertyScopeFilterBar
-              variant="primary"
-              properties={properties}
-              selectedPropertyIds={selectedPropertyIds}
-              onSelectionChange={handlePropertySelectionChange}
-              onFilterClick={handleFilterClick}
-            />
-          </>
-        }
+        header={headerElement}
         leftColumn={
           <LeftColumn 
             tasks={tasks}
@@ -523,6 +527,16 @@ export default function Dashboard() {
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
+            scopeFilterBar={
+              <PropertyScopeFilterBar
+                variant="primary"
+                placement="leftColumn"
+                properties={properties}
+                selectedPropertyIds={selectedPropertyIds}
+                onSelectionChange={handlePropertySelectionChange}
+                onFilterClick={handleFilterClick}
+              />
+            }
           />
         }
         rightColumn={

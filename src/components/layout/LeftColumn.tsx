@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { DashboardCalendarV2 } from "@/components/dashboard/DashboardCalendarV2";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
@@ -26,6 +26,8 @@ interface LeftColumnProps {
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
+  /** e.g. workbench property scope chips — kept in the 265px column, not full workbench width */
+  scopeFilterBar?: ReactNode;
 }
 
 /**
@@ -49,6 +51,7 @@ export function LeftColumn({
   selectedPropertyIds: externalSelectedPropertyIds,
   onPropertySelectionChange,
   onOpenIntake,
+  scopeFilterBar,
 }: LeftColumnProps) {
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
@@ -117,9 +120,10 @@ export function LeftColumn({
       className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full px-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
-      {/* Properties: cards / identity strip (scope chips live in dashboard header) */}
+      {/* Properties: scope chips + cards / identity strip */}
       <div className="flex-shrink-0 w-full">
         <div className="sticky top-0 z-10 bg-background px-0 pb-[7px] pt-[7px]">
+        {scopeFilterBar}
         {!hideProperties && (
         <div
           className="px-0 w-full max-w-full overflow-x-hidden"

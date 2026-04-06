@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { Home, Building2, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { format } from "date-fns";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,17 +12,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
 
-const PROPERTY_ICONS = {
-  home: Home,
-  building: Building2,
-  hotel: Hotel,
-  warehouse: Warehouse,
-  store: Store,
-  castle: Castle,
-} as const;
-
 interface PropertyForIcon {
-  icon_name?: string | null;
   icon_color_hex?: string | null;
 }
 
@@ -36,12 +25,10 @@ interface AssetCardProps {
   onClick?: () => void;
 }
 
-export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, onClick }: AssetCardProps) {
+export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: AssetCardProps) {
   const queryClient = useQueryClient();
   const conditionScore = asset.condition_score ?? 100;
   const assetName = asset.name || asset.serial_number || "Unnamed Asset";
-  const propertyIconName = property?.icon_name || "home";
-  const PropertyIcon = PROPERTY_ICONS[propertyIconName as keyof typeof PROPERTY_ICONS] || Home;
   const AssetIcon = getAssetIcon(asset.icon_name);
   const iconColor = property?.icon_color_hex || "#8EC9CE";
   const [iconDialogOpen, setIconDialogOpen] = useState(false);
@@ -59,10 +46,10 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
 
   return (
     <div
-      className="rounded-[12px] bg-card shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[182px]"
+      className="rounded-[12px] bg-white/50 shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[126px]"
       onClick={onClick}
     >
-      {/* Top band: photo or solid property colour — property icon top-left only */}
+      {/* Top band: photo or solid property colour */}
       <div
         className="w-full h-[34px] relative flex-shrink-0"
         style={!imageUrl ? { backgroundColor: iconColor } : undefined}
@@ -88,29 +75,17 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
             />
           </>
         ) : null}
-        <div
-          className="absolute top-1.5 left-1.5 rounded-full flex items-center justify-center z-10 pointer-events-none bg-white/95"
-          style={{
-            width: "22px",
-            height: "22px",
-            boxShadow:
-              "2px 2px 5px rgba(0,0,0,0.12), -1px -1px 3px rgba(255,255,255,0.9), inset 1px 1px 2px rgba(255,255,255,0.85)",
-          }}
-          aria-hidden
-        >
-          <PropertyIcon className="h-3 w-3" style={{ color: iconColor }} />
-        </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 pt-2 pb-2 px-3 flex flex-col">
-        <div className="flex items-start gap-2 min-w-0 shrink-0">
+      <div className="flex-1 min-h-0 max-h-[143px] pt-2 pb-2 px-3 flex flex-col">
+        <div className="flex justify-start items-center gap-2 min-w-0 shrink-0">
           <h3 className="flex-1 min-w-0 text-[15px] font-semibold text-foreground leading-tight line-clamp-2">
             {assetName}
           </h3>
           <button
             type="button"
-            className="rounded-full flex items-center justify-center z-10 flex-shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-transform mt-0.5"
+            className="rounded-full flex items-center justify-center z-10 flex-shrink-0 cursor-pointer hover:scale-110 active:scale-95 transition-transform"
             style={{
               backgroundColor: iconColor,
               width: "28px",
@@ -129,7 +104,7 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
           </button>
         </div>
 
-        {/* Chips: space, date, condition (property icon lives in header) */}
+        {/* Chips: space, date, condition */}
         <div className="mt-1.5 flex gap-1.5 flex-wrap items-center shrink-0">
           {spaceName && (
             <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[22px]">
@@ -150,14 +125,14 @@ export function AssetCard({ asset, propertyName, property, spaceName, imageUrl, 
         </div>
 
         {/* Condition progress bar - bottom of card */}
-        <div className="mt-auto pt-2 border-t border-border/30 shrink-0">
-          <div className="flex items-center justify-between mb-0.5">
+        <div className="mt-1 pt-1 px-0.5 border-t border-border/30 shrink-0">
+          <div className="flex items-center justify-between mb-0.5 pb-1">
             <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Condition</span>
             <span className="text-[10px] font-medium text-muted-foreground tabular-nums">{conditionScore}/100</span>
           </div>
-          <div className="w-full bg-muted rounded-full h-1.5">
+          <div className="relative w-full h-3 bg-muted rounded-full overflow-hidden">
             <div
-              className={`h-1.5 rounded-full transition-all ${
+              className={`absolute left-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full transition-all ${
                 conditionScore >= 80 ? "bg-green-500" : conditionScore >= 60 ? "bg-yellow-500" : "bg-red-500"
               }`}
               style={{ width: `${conditionScore}%` }}

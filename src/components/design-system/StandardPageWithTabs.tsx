@@ -79,7 +79,7 @@ export function StandardPageWithTabs({
       <PageHeader className={headerClassName} toolbarSurface="plain">
         <div
           className={cn(
-            "mx-auto flex items-center justify-between px-gutter-page py-4 pr-24 sm:pr-32",
+            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between px-gutter-page py-2 pr-24 sm:pr-32",
             maxWidthClasses[maxWidth]
           )}
         >

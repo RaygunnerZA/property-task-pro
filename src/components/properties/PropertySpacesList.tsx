@@ -139,7 +139,7 @@ export function PropertySpacesList({
             className="relative w-full max-w-full overflow-hidden"
           >
             <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0" style={{ width: 'calc(100% + 15px)' }}>
-              <div className="flex gap-2.5 h-[165px]" style={{ width: 'max-content' }}>
+              <div className="flex gap-2.5 h-[129px] py-[5px]" style={{ width: 'max-content' }}>
                 {displaySpaces.map((space) => {
                   const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };
                   const effectiveIcon = space.icon_name ?? spaceWithTypes?.space_types?.default_icon ?? null;
@@ -168,7 +168,7 @@ export function PropertySpacesList({
               className="absolute top-0 right-0 bottom-0 pointer-events-none"
               style={{
                 width: '10px',
-                height: '155px',
+                height: '131px',
                 background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
                 zIndex: 20
               }}

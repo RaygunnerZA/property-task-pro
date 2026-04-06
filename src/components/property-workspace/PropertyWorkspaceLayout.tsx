@@ -27,14 +27,14 @@ export function PropertyWorkspaceLayout({
       className={cn(
         "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-start",
         "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(260px,300px)]",
-        "workspace:gap-6",
+        "workspace:gap-[24px]",
         className
       )}
     >
       <aside
         className={cn(
           "min-w-0 w-full space-y-4 px-1 flex flex-wrap",
-          "workspace:h-[335px] workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
+          "workspace:h-[482px] workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
           "workspace:overflow-y-auto"
         )}
       >

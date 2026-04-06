@@ -345,7 +345,7 @@ export function PropertyIdentityStrip({
 
         {/* Property name + optional facts line — bottom overlay */}
         <div className="absolute bottom-2 left-2.5 right-9 z-10 min-w-0">
-          <p className="text-white font-semibold text-[22px] leading-tight truncate drop-shadow-sm">
+          <p className="text-white font-semibold text-[30px] leading-tight truncate drop-shadow-sm">
             {displayName}
           </p>
           {identitySubtitle && (

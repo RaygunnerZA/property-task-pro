@@ -68,7 +68,7 @@ export function StandardPage({
       <PageHeader className={headerClassName} toolbarSurface="plain">
         <div
           className={cn(
-            "mx-auto flex h-[100px] min-h-[100px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-32",
+            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-32",
             maxWidthClasses[maxWidth]
           )}
         >
