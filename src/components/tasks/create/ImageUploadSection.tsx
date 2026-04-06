@@ -367,7 +367,7 @@ export function ImageUploadSection({
           dragActive && "bg-primary/15 border-white"
         )}
       >
-        <div className="text-left min-w-0 flex-1 pointer-events-none">
+        <div className="text-left min-w-0 flex-1 pointer-events-none pr-[9px]">
           <p className="text-[12px] font-normal text-muted-foreground pr-[5px] leading-[17px]">
             {intakeMode === "add_record"
               ? "Add certificate, inspection, or document — drag & drop or choose file"

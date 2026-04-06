@@ -51,6 +51,30 @@ export default function Dashboard() {
   const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
+
+  // #region agent log
+  useEffect(() => {
+    fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "1363a1",
+      },
+      body: JSON.stringify({
+        sessionId: "1363a1",
+        runId: "pre-fix",
+        hypothesisId: "H4",
+        location: "app/page.tsx:expandedSection",
+        message: "workbench concertina expandedSection changed",
+        data: {
+          expandedSection,
+          assistantPanelAriaHidden: expandedSection !== "assistant",
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }, [expandedSection]);
+  // #endregion
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [activeTab, setActiveTab] = useState<string>("attention");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
@@ -404,7 +428,7 @@ export default function Dashboard() {
   }, [selectedPropertyIds]);
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2">
+    <div className="flex flex-col pt-3 pr-2 pb-0 pl-2">
       <div className="pb-[20px]">
         <IntakeModal
           open={true}

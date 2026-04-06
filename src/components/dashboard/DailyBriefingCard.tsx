@@ -154,8 +154,8 @@ export function DailyBriefingCard({
     return (
       <div
         className={cn(
-          "w-full rounded-xl bg-transparent shadow-e1 px-3 py-3",
-          "shadow-[3px_4px_12px_rgba(0,0,0,0.06),inset_1px_1px_2px_rgba(255,255,255,0.85)]"
+          "w-full rounded-xl bg-transparent px-3 py-3",
+          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_8px_0px_rgba(255,255,255,0.9)]"
         )}
       >
         <PanelSectionTitle as="h2">Overview</PanelSectionTitle>

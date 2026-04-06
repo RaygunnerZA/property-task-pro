@@ -1,11 +1,13 @@
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 
 type PropertyPageScopeBarProps = {
   propertyId: string;
   hrefForProperty: (propertyId: string) => string;
   hrefForAll?: string;
-  onBack: () => void;
+  /** Defaults to property workbench hub (`/?property=`). */
+  backHref?: string;
 };
 
 /**
@@ -15,9 +17,11 @@ export function PropertyPageScopeBar({
   propertyId,
   hrefForProperty,
   hrefForAll = "/",
-  onBack,
+  backHref,
 }: PropertyPageScopeBarProps) {
   const { data: properties = [] } = usePropertiesQuery();
+  const propertyHubHref = propertyHubPath(propertyId);
+  const resolvedBackHref = backHref ?? propertyHubHref;
   return (
     <PropertyScopeFilterBar
       variant="secondary"
@@ -25,7 +29,8 @@ export function PropertyPageScopeBar({
       currentPropertyId={propertyId}
       hrefForProperty={hrefForProperty}
       hrefForAll={hrefForAll}
-      onBack={onBack}
+      propertyHubHref={propertyHubHref}
+      backHref={resolvedBackHref}
     />
   );
 }

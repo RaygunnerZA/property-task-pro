@@ -3,7 +3,6 @@
  * ~150px max height, 15px tinted band, shadow-e1
  * Used for: Expiring Soon, Expired, Missing (Documents), Active Assets, etc.
  */
-import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 export type ContextSummaryColor =
@@ -48,90 +47,95 @@ export function ContextSummaryCard({
   const isClickable = !!onClick;
   const isCompact = variant === "compact";
 
-  return (
+  const shellClassName = cn(
+    "rounded-[12px] overflow-hidden min-h-[100px] max-h-[150px] flex pl-0",
+    isCompact
+      ? "box-content flex-row h-[150px] shadow-[1.3px_2px_4px_0px_rgba(0,0,0,0.15),inset_2px_2px_2px_0px_rgba(255,255,255,1)]"
+      : "flex-col shadow-e1",
+    "transition-all duration-150 ease-out",
+    "hover:shadow-e2 hover:-translate-y-0.5",
+    isClickable && "cursor-pointer active:scale-[0.99]",
+    className
+  );
+
+  const band = (
     <div
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        isClickable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onClick?.();
-              }
-            }
-          : undefined
-      }
       className={cn(
-        "rounded-[12px] overflow-hidden min-h-[100px] max-h-[150px] flex pl-0",
+        "flex-shrink-0",
+        isCompact ? "w-[15px] self-stretch min-h-0" : "h-[15px]",
+        COLOR_BANDS[color]
+      )}
+      aria-hidden
+    />
+  );
+
+  const body = (
+    <div
+      className={cn(
+        "flex flex-col",
         isCompact
-          ? "box-content flex-row h-[150px] shadow-[1.3px_2px_4px_0px_rgba(0,0,0,0.15),inset_2px_2px_2px_0px_rgba(255,255,255,1)]"
-          : "flex-col shadow-e1",
-        "transition-all duration-150 ease-out",
-        "hover:shadow-e2 hover:-translate-y-0.5",
-        isClickable && "cursor-pointer active:scale-[0.99]",
-        className
+          ? "flex-1 min-w-0 min-h-0 self-stretch bg-[rgba(255,255,255,0.6)] px-2.5 pt-[10px] pb-4 gap-[5px] justify-start items-end rounded-[0_12px_12px_0]"
+          : "flex-1 min-h-[136px] bg-card px-5 py-4 gap-2.5"
       )}
     >
-      {/* 15px tinted band — top strip (default) or left strip (compact) */}
-      <div
+      <span
         className={cn(
-          "flex-shrink-0",
-          isCompact ? "w-[15px] self-stretch min-h-0" : "h-[15px]",
-          COLOR_BANDS[color]
-        )}
-        aria-hidden
-      />
-      {/* Body - neutral surface */}
-      <div
-        className={cn(
-          "flex flex-col",
+          "inline-flex w-fit max-w-full items-center justify-center tabular-nums",
+          "text-[37px] font-bold leading-none tracking-tight",
+          isCompact ? "text-[rgba(133,186,188,1)]" : "text-foreground",
+          "rounded-[10px] px-3 py-1.5",
           isCompact
-            ? "flex-1 min-w-0 min-h-0 self-stretch bg-[rgba(255,255,255,0.6)] px-2.5 pt-[10px] pb-4 gap-[5px] justify-start items-end rounded-[0_12px_12px_0]"
-            : "flex-1 min-h-[136px] bg-card px-5 py-4 gap-2.5"
+            ? "bg-muted shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_2px_0px_rgba(255,255,255,1)]"
+            : "bg-muted/25 shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_rgba(255,255,255,0.88)]",
+          isCompact && "text-center"
         )}
       >
+        {count}
+      </span>
+      <span
+        className={cn(
+          "text-sm font-medium text-foreground",
+          isCompact && "w-full text-left"
+        )}
+      >
+        {title}
+      </span>
+      {!isCompact && description && (
+        <span className="text-xs text-muted-foreground line-clamp-1">{description}</span>
+      )}
+      {ctaLabel && isClickable && (
         <span
           className={cn(
-            "inline-flex w-fit max-w-full items-center justify-center tabular-nums",
-            "text-[37px] font-bold leading-none tracking-tight",
-            isCompact
-              ? "text-[rgba(133,186,188,1)]"
-              : "text-foreground",
-            "rounded-[10px] px-3 py-1.5",
-            isCompact
-              ? "bg-muted shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_2px_0px_rgba(255,255,255,1)]"
-              : "bg-muted/25 shadow-[inset_2px_2px_5px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_rgba(255,255,255,0.88)]",
-            isCompact && "text-center"
+            "pointer-events-none text-xs text-primary font-medium mt-auto",
+            isCompact ? "w-full pt-0.5 text-right pr-2.5" : "pt-2"
           )}
         >
-          {count}
+          {ctaLabel}
         </span>
-        <span
-          className={cn(
-            "text-sm font-medium text-foreground",
-            isCompact && "w-full text-left"
-          )}
-        >
-          {title}
-        </span>
-        {!isCompact && description && (
-          <span className="text-xs text-muted-foreground line-clamp-1">
-            {description}
-          </span>
+      )}
+    </div>
+  );
+
+  if (isClickable) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          shellClassName,
+          "m-0 w-full border-0 bg-transparent p-0 text-left font-sans antialiased focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
         )}
-        {ctaLabel && isClickable && (
-          <span
-            className={cn(
-              "text-xs text-primary font-medium mt-auto",
-              isCompact ? "w-full pt-0.5 text-right pr-2.5" : "pt-2"
-            )}
-          >
-            {ctaLabel}
-          </span>
-        )}
-      </div>
+      >
+        {band}
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <div className={shellClassName}>
+      {band}
+      {body}
     </div>
   );
 }

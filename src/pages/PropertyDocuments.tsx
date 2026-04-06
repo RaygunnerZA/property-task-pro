@@ -314,8 +314,21 @@ export default function PropertyDocuments() {
     </div>
   );
 
+  const documentsPageHeading = (
+    <header className="mb-5 min-w-0 border-b border-border/15 pb-4">
+      <div className="flex items-start gap-3">
+        <FileText className="h-8 w-8 shrink-0 text-primary mt-0.5" />
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold leading-tight text-foreground heading-l">Property Documents</h1>
+          <p className="text-sm mt-1 text-muted-foreground">What you have, what expires, and where it belongs</p>
+        </div>
+      </div>
+    </header>
+  );
+
   const workColumn = (
     <div className="flex flex-col gap-5">
+      {documentsPageHeading}
       <div>
         <WorkspaceSectionHeading>View</WorkspaceSectionHeading>
         <WorkspaceTabList className="mb-3">
@@ -462,18 +475,19 @@ export default function PropertyDocuments() {
   return (
     <StandardPageWithBack
       title="Property Documents"
-      subtitle="What you have, what expires, and where it belongs"
+      subtitle={undefined}
       backTo={propertyId ? propertyHubPath(propertyId) : "/"}
       icon={<FileText className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-[1480px]"
       headerAccentColor={headerAccent}
       hideHeaderBack
+      hideTitleInHeader
       belowGradientRow={
         <PropertyPageScopeBar
           propertyId={propertyId}
           hrefForProperty={(pid) => propertySubPath(pid, "documents")}
-          onBack={() => navigate(propertyId ? propertyHubPath(propertyId) : "/")}
+          backHref={propertyId ? propertyHubPath(propertyId) : "/"}
         />
       }
     >

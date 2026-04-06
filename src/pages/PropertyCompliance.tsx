@@ -162,8 +162,21 @@ export default function PropertyCompliance() {
     </div>
   ) : null;
 
+  const compliancePageHeading = (
+    <header className="mb-5 min-w-0 border-b border-border/15 pb-4">
+      <div className="flex items-start gap-3">
+        <Shield className="h-8 w-8 shrink-0 text-primary mt-0.5" />
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold leading-tight text-foreground heading-l">Property Compliance</h1>
+          <p className="text-sm mt-1 text-muted-foreground">What is due, overdue, and what to do next</p>
+        </div>
+      </div>
+    </header>
+  );
+
   const workColumnInner = (
     <div className="flex flex-col gap-5">
+      {compliancePageHeading}
       <div>
         <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
         <WorkspaceTabList>
@@ -303,25 +316,28 @@ export default function PropertyCompliance() {
   return (
     <StandardPageWithBack
       title="Property Compliance"
-      subtitle="What is due, overdue, and what to do next"
+      subtitle={undefined}
       backTo={id ? propertyHubPath(id) : "/"}
       icon={<Shield className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-[1480px]"
       headerAccentColor={headerAccent}
       hideHeaderBack
+      hideTitleInHeader
       belowGradientRow={
         id ? (
           <PropertyPageScopeBar
             propertyId={id}
             hrefForProperty={(pid) => propertySubPath(pid, "compliance")}
-            onBack={() => navigate(propertyHubPath(id))}
           />
         ) : null
       }
     >
       {isLoading ? (
-        <LoadingState message="Loading property compliance..." />
+        <div className="max-w-[660px] w-full min-w-0">
+          {compliancePageHeading}
+          <LoadingState message="Loading property compliance..." />
+        </div>
       ) : (
         <>
           <div className="workspace:block hidden">

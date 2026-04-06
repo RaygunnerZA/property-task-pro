@@ -66,16 +66,26 @@ export function AIIconColorPicker({
   const effectiveSearchText = showSearchInput ? localSearchText : searchText;
   const debouncedSearch = useDebounce(effectiveSearchText.trim(), 400);
 
+  /** Stable string for deps when parent passes a new array reference with the same icon keys */
+  const takenPropertyIconsFingerprint = useMemo(
+    () => (takenPropertyIconNames ?? []).slice().sort().join("|"),
+    [takenPropertyIconNames]
+  );
   const iconTakenSet = useMemo(
     () => new Set((takenPropertyIconNames ?? []).map((k) => normalizePropertyIconKey(k))),
-    [takenPropertyIconNames]
+    [takenPropertyIconsFingerprint]
   );
   const colorTakenSet = useMemo(
     () => new Set(takenPropertyColorHexes ?? []),
     [takenPropertyColorHexes]
   );
 
-  const themeIcons = defaultIcons.slice(0, 5);
+  /** Content-keyed — parent often passes a fresh inline `defaultIcons` array each render. */
+  const defaultIconsKey = (defaultIcons ?? DEFAULT_FALLBACK).join("\0");
+  const themeIcons = useMemo(
+    () => (defaultIcons ?? DEFAULT_FALLBACK).slice(0, 5),
+    [defaultIconsKey]
+  );
 
   const rawDisplayIcons =
     aiIcons.length > 0
@@ -116,8 +126,6 @@ export function AIIconColorPicker({
     );
   }, [colorTakenSet, value.color]);
 
-  const takenIconsDep = (takenPropertyIconNames ?? []).slice().sort().join("|");
-
   useEffect(() => {
     const pickDefaultIcon = () =>
       firstFreeIconFromList(themeIcons, iconTakenSet) ??
@@ -132,7 +140,7 @@ export function AIIconColorPicker({
     const shouldAiSearch = !!debouncedSearch || refreshKey > 0;
 
     if (!shouldAiSearch) {
-      setAiIcons([]);
+      setAiIcons((prev) => (prev.length === 0 ? prev : []));
       setLoading(false);
       if (suggestedIcon) {
         const sKey = normalizePropertyIconKey(suggestedIcon);
@@ -144,7 +152,9 @@ export function AIIconColorPicker({
           iconTakenSet.has(normalizePropertyIconKey(value.iconName))
         ) {
           const d = pickDefaultIcon();
-          if (d) onChange(d, value.color);
+          if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
+            onChange(d, value.color);
+          }
         }
       } else if (
         !value.iconName ||
@@ -152,7 +162,9 @@ export function AIIconColorPicker({
         iconTakenSet.has(normalizePropertyIconKey(value.iconName))
       ) {
         const d = pickDefaultIcon();
-        if (d) onChange(d, value.color);
+        if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
+          onChange(d, value.color);
+        }
       }
       return;
     }
@@ -179,7 +191,7 @@ export function AIIconColorPicker({
               (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(value.iconName)
             ) &&
             !iconTakenSet.has(normalizePropertyIconKey(value.iconName));
-          if (!keepCurrent) {
+          if (!keepCurrent && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(next)) {
             onChange(next, value.color);
           }
         } else {
@@ -190,7 +202,9 @@ export function AIIconColorPicker({
             iconTakenSet.has(normalizePropertyIconKey(value.iconName))
           ) {
             const d = pickDefaultIcon();
-            if (d) onChange(d, value.color);
+            if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
+              onChange(d, value.color);
+            }
           }
         }
       })
@@ -212,8 +226,7 @@ export function AIIconColorPicker({
     fallbackSearch,
     effectiveSearchText,
     themeIcons,
-    takenIconsDep,
-    iconTakenSet,
+    takenPropertyIconsFingerprint,
     value.iconName,
     value.color,
   ]);

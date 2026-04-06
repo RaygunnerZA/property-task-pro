@@ -147,6 +147,9 @@ export function LeftColumn({
                 property={focusedProperty}
                 onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
                 urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
+                onOpenTasksClick={
+                  onFilterClick ? () => onFilterClick("show-tasks") : undefined
+                }
                 onPropertyArchived={() => {
                   setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
                   onFilterClick?.("show-tasks");

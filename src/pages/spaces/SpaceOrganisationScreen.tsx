@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -14,6 +14,7 @@ import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeB
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
+  WorkspaceScopeStrip,
   WorkspaceSurfaceCard,
   WorkspaceSectionHeading,
   WorkspaceTabList,
@@ -87,15 +88,12 @@ export default function SpaceOrganisationScreen() {
           </div>
         </div>
       </PageHeader>
-      <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
-        <div className="mx-auto flex max-w-[1480px] justify-start px-4 py-2">
-          <PropertyPageScopeBar
-            propertyId={propertyId}
-            hrefForProperty={(pid) => propertySubPath(pid, "spaces-organise")}
-            onBack={() => navigate(propertyHubPath(propertyId))}
-          />
-        </div>
-      </div>
+      <WorkspaceScopeStrip>
+        <PropertyPageScopeBar
+          propertyId={propertyId}
+          hrefForProperty={(pid) => propertySubPath(pid, "spaces-organise")}
+        />
+      </WorkspaceScopeStrip>
     </>
   );
 
@@ -247,7 +245,7 @@ export default function SpaceOrganisationScreen() {
   return (
     <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
-      <div className="mx-auto max-w-[1480px] px-4 py-6 w-full">{workspace}</div>
+      <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
     </div>
   );
 }

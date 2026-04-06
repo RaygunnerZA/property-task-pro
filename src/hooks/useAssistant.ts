@@ -79,6 +79,37 @@ export function useAssistant() {
         if (reasonerErr) throw reasonerErr;
         if (!reasonerData?.ok) throw new Error(reasonerData?.error ?? "Reasoner failed");
 
+        // #region agent log
+        {
+          const ans = String(reasonerData.answer ?? "");
+          const ql = query.trim().toLowerCase();
+          fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "1363a1",
+            },
+            body: JSON.stringify({
+              sessionId: "1363a1",
+              runId: "pre-fix",
+              hypothesisId: "H1-H3",
+              location: "useAssistant.ts:reasoner-ok",
+              message: "assistant-reasoner response shape",
+              data: {
+                queryLen: query.length,
+                queryHasCompliance: /\bcompliance\b|\bdocument\b/i.test(ql),
+                queryHasWhat: /\bwhat\b/i.test(ql),
+                contextType: context?.type ?? null,
+                answerHead: ans.slice(0, 120),
+                hasRelevantTasksLine: /relevant tasks/i.test(ans),
+                hasComplianceSummary: /compliance\s*:/i.test(ans),
+              },
+              timestamp: Date.now(),
+            }),
+          }).catch(() => {});
+        }
+        // #endregion
+
         setMessages((prev) => [
           ...prev,
           { role: "assistant", content: reasonerData.answer ?? "No response." },

@@ -33,9 +33,24 @@ import { FilterChip } from "@/components/chips/filter";
 import { PropertyWorkspaceLayout, WorkspaceSurfaceCard } from "@/components/property-workspace";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
+import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
+
+function PropertyAssetsWorkColumnHeading({ subtitle }: { subtitle: string }) {
+  return (
+    <header className="mb-5 min-w-0 border-b border-border/15 pb-4">
+      <div className="flex items-start gap-3">
+        <Package className="h-8 w-8 shrink-0 text-primary mt-0.5" />
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold leading-tight text-foreground heading-l">Property Assets</h1>
+          <p className="text-sm mt-1 text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 const STATUS_FILTERS = [
   { value: "active", label: "Active" },
@@ -90,15 +105,19 @@ const Assets = () => {
     (scopedPropertyForChrome as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
     "#8EC9CE";
 
-  const assetsScopeBelowRow =
+  const propertyScopeBar =
     isPropertyScoped && effectiveScopeId ? (
       <PropertyPageScopeBar
         propertyId={effectiveScopeId}
         hrefForProperty={(pid) => `/assets?property=${encodeURIComponent(pid)}`}
         hrefForAll="/assets"
-        onBack={() => navigate(propertyHubPath(effectiveScopeId))}
       />
     ) : null;
+  /** Wide workspace: scope row lives in column 1; narrow: full-width strip under gradient. */
+  const scopeBarBelowHeader = propertyScopeBar != null && !isWide ? propertyScopeBar : null;
+  const propertyScopedShellClass = cn(
+    isPropertyScoped && isWide && "[--header-height:60px]"
+  );
 
   const { spaces: filterSpaces } = useSpaces(filterPropertyId || undefined);
   const { spaces: formSpaces } = useSpaces(propertyId || undefined);
@@ -345,6 +364,20 @@ const Assets = () => {
     return list.filter((a) => a.property_id === filterPropertyId);
   }, [assets, filterPropertyId]);
 
+  /** Matches left-column metric tile to current filters (same grammar as attention chips). */
+  const assetsSummaryHighlightedFilter = useMemo(():
+    | "active"
+    | "needsInspection"
+    | "nonCompliant"
+    | "retired"
+    | undefined => {
+    if (needsInspectionOnly) return "needsInspection";
+    if (complianceOnly) return "nonCompliant";
+    if (statusFilters.length === 1 && statusFilters[0] === "retired") return "retired";
+    if (statusFilters.length === 1 && statusFilters[0] === "active") return "active";
+    return undefined;
+  }, [needsInspectionOnly, complianceOnly, statusFilters]);
+
   const propertyMap = useMemo(() => {
     const map = new Map(properties.map((p) => [p.id, p.address]));
     assets.forEach((asset: AssetViewRow) => {
@@ -405,6 +438,18 @@ const Assets = () => {
     (scopedPropertyForChrome as { nickname?: string | null; address?: string } | undefined)?.nickname ||
     (scopedPropertyForChrome as { address?: string } | undefined)?.address;
 
+  const wideWorkColumnSubtitle = useMemo(
+    () =>
+      scopedSubtitleLine
+        ? `${scopedSubtitleLine} · ${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`
+        : `${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`,
+    [scopedSubtitleLine, filteredAssets.length, assets.length]
+  );
+
+  const wideScopedLoadingSubtitle = scopedSubtitleLine
+    ? `${scopedSubtitleLine} · Loading…`
+    : "Loading assets…";
+
   const addAction = (
     <NeomorphicButton
       onClick={openAddFlow}
@@ -424,16 +469,21 @@ const Assets = () => {
       return (
         <StandardPageWithBack
           title="Property Assets"
-          subtitle={scopedSubtitleLine}
+          subtitle={undefined}
           backTo={propertyHubPath(effectiveScopeId)}
           headerAccentColor={propertyHeaderAccent}
           icon={<Package className="h-6 w-6" />}
           maxWidth="full"
           contentClassName="max-w-[1480px]"
           hideHeaderBack
-          belowGradientRow={assetsScopeBelowRow}
+          hideTitleInHeader
+          className={propertyScopedShellClass}
+          belowGradientRow={scopeBarBelowHeader}
         >
-          <LoadingState message="Loading assets..." />
+          <div className="max-w-[660px] w-full min-w-0">
+            <PropertyAssetsWorkColumnHeading subtitle={wideScopedLoadingSubtitle} />
+            <LoadingState message="Loading assets..." />
+          </div>
         </StandardPageWithBack>
       );
     }
@@ -449,19 +499,26 @@ const Assets = () => {
       return (
         <StandardPageWithBack
           title="Property Assets"
-          subtitle={scopedSubtitleLine}
+          subtitle={undefined}
           backTo={propertyHubPath(effectiveScopeId)}
           headerAccentColor={propertyHeaderAccent}
           icon={<Package className="h-6 w-6" />}
           maxWidth="full"
           contentClassName="max-w-[1480px]"
           hideHeaderBack
-          belowGradientRow={assetsScopeBelowRow}
+          hideTitleInHeader
+          className={propertyScopedShellClass}
+          belowGradientRow={scopeBarBelowHeader}
         >
-          <ErrorState
-            message={error?.message || String(error)}
-            onRetry={() => queryClient.invalidateQueries({ queryKey: ["assets"] })}
-          />
+          <div className="max-w-[660px] w-full min-w-0">
+            <PropertyAssetsWorkColumnHeading
+              subtitle={scopedSubtitleLine ?? "Something went wrong while loading assets"}
+            />
+            <ErrorState
+              message={error?.message || String(error)}
+              onRetry={() => queryClient.invalidateQueries({ queryKey: ["assets"] })}
+            />
+          </div>
         </StandardPageWithBack>
       );
     }
@@ -498,34 +555,43 @@ const Assets = () => {
       {isWide ? (
         <PropertyWorkspaceLayout
           contextColumn={
-            <AssetsSummaryRow
-              assets={contextAssets}
-              onFilterClick={(filter) => {
-                if (filter === "active") {
-                  setStatusFilters([]);
-                  setComplianceOnly(false);
-                  setNeedsInspectionOnly(false);
-                }
-                if (filter === "retired") {
-                  setStatusFilters(["retired"]);
-                  setComplianceOnly(false);
-                  setNeedsInspectionOnly(false);
-                }
-                if (filter === "needsInspection") {
-                  setStatusFilters(["active"]);
-                  setComplianceOnly(false);
-                  setNeedsInspectionOnly(true);
-                }
-                if (filter === "nonCompliant") {
-                  setStatusFilters(["active"]);
-                  setComplianceOnly(true);
-                  setNeedsInspectionOnly(false);
-                }
-              }}
-            />
+            <>
+              {propertyScopeBar != null ? (
+                <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
+                  {propertyScopeBar}
+                </div>
+              ) : null}
+              <AssetsSummaryRow
+                assets={contextAssets}
+                highlightedFilter={assetsSummaryHighlightedFilter}
+                onFilterClick={(filter) => {
+                  if (filter === "active") {
+                    setStatusFilters([]);
+                    setComplianceOnly(false);
+                    setNeedsInspectionOnly(false);
+                  }
+                  if (filter === "retired") {
+                    setStatusFilters(["retired"]);
+                    setComplianceOnly(false);
+                    setNeedsInspectionOnly(false);
+                  }
+                  if (filter === "needsInspection") {
+                    setStatusFilters(["active"]);
+                    setComplianceOnly(false);
+                    setNeedsInspectionOnly(true);
+                  }
+                  if (filter === "nonCompliant") {
+                    setStatusFilters(["active"]);
+                    setComplianceOnly(true);
+                    setNeedsInspectionOnly(false);
+                  }
+                }}
+              />
+            </>
           }
           workColumn={
             <>
+              <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
               <div className="space-y-4 mb-6">
                 <div className="flex flex-wrap gap-3 items-center">
                   <div className="relative flex-1 min-w-[200px]">
@@ -641,10 +707,16 @@ const Assets = () => {
           }
         />
       ) : (
-      <div className="flex flex-col gap-6">
+      <div
+        className={cn(
+          "flex flex-col gap-6",
+          isPropertyScoped && "max-w-[660px] w-full min-w-0"
+        )}
+      >
       {/* Health Snapshot Row - Framework V2 */}
       <AssetsSummaryRow
-        assets={assets as AssetViewRow[]}
+        assets={(isPropertyScoped ? contextAssets : assets) as AssetViewRow[]}
+        highlightedFilter={assetsSummaryHighlightedFilter}
         onFilterClick={(filter) => {
           if (filter === "active") {
             setStatusFilters([]);
@@ -668,6 +740,10 @@ const Assets = () => {
           }
         }}
       />
+
+      {isPropertyScoped ? (
+        <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
+      ) : null}
 
       {/* Filters row */}
       <div className="space-y-4 mb-6 pt-5">
@@ -771,11 +847,7 @@ const Assets = () => {
     return (
       <StandardPageWithBack
         title="Property Assets"
-        subtitle={
-          scopedSubtitleLine
-            ? `${scopedSubtitleLine} · ${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`
-            : `${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`
-        }
+        subtitle={undefined}
         backTo={propertyHubPath(effectiveScopeId)}
         headerAccentColor={propertyHeaderAccent}
         icon={<Package className="h-6 w-6" />}
@@ -783,7 +855,9 @@ const Assets = () => {
         maxWidth="full"
         contentClassName="max-w-[1480px]"
         hideHeaderBack
-        belowGradientRow={assetsScopeBelowRow}
+        hideTitleInHeader
+        className={propertyScopedShellClass}
+        belowGradientRow={scopeBarBelowHeader}
       >
         {mainInner}
       </StandardPageWithBack>

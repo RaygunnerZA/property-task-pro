@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ImagePlus, Upload, X } from "lucide-react";
+import { Camera, Upload, X } from "lucide-react";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 
@@ -103,30 +103,29 @@ export function AddAssetWorkspaceForm({
 }: AddAssetWorkspaceFormProps) {
   const I = (b: string) => idFor(b, variant);
 
+  /** Match Report Issue / `ImageUploadSection` icon-only capture + upload controls */
   const uploadButtons = (
     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-      <Button
-        size="sm"
+      <button
         type="button"
-        variant="outline"
-        className="btn-neomorphic h-8 px-3"
         onClick={() => imageInputRef.current?.click()}
         disabled={isUploadingFile}
+        title="Take photo"
+        aria-label="Take photo"
+        className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
       >
-        <ImagePlus className="h-4 w-4 mr-1.5" />
-        Add Image
-      </Button>
-      <Button
-        size="sm"
+        <Camera className="h-5 w-5 text-muted-foreground" />
+      </button>
+      <button
         type="button"
-        variant="outline"
-        className="btn-neomorphic h-8 px-3"
         onClick={() => fileInputRef.current?.click()}
         disabled={isUploadingFile}
+        title="Upload file"
+        aria-label="Upload file"
+        className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
       >
-        <Upload className="h-4 w-4 mr-1.5" />
-        Upload
-      </Button>
+        <Upload className="h-5 w-5 text-muted-foreground" />
+      </button>
     </div>
   );
 

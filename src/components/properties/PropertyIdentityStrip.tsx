@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { propertyHubPath } from "@/lib/propertyRoutes";
+import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
@@ -85,6 +85,8 @@ interface PropertyIdentityStripProps {
   urgentOpenTaskCount?: number;
   /** Called after a successful archive (e.g. reset hub selection to all properties). */
   onPropertyArchived?: () => void;
+  /** Hub workbench: open the centre Tasks tab instead of navigating away. */
+  onOpenTasksClick?: () => void;
 }
 
 /**
@@ -101,6 +103,7 @@ export function PropertyIdentityStrip({
   onAddTaskClick,
   urgentOpenTaskCount = 0,
   onPropertyArchived,
+  onOpenTasksClick,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
   const { details: propertyDetails } = usePropertyDetails(property.id);
@@ -454,11 +457,19 @@ export function PropertyIdentityStrip({
             <div
               role="button"
               tabIndex={0}
-              onClick={() => navigate(`/properties/${property.id}/tasks`)}
+              onClick={() =>
+                onOpenTasksClick
+                  ? onOpenTasksClick()
+                  : navigate(`/properties/${property.id}/tasks`)
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate(`/properties/${property.id}/tasks`);
+                  if (onOpenTasksClick) {
+                    onOpenTasksClick();
+                  } else {
+                    navigate(`/properties/${property.id}/tasks`);
+                  }
                 }
               }}
               className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -548,11 +559,11 @@ export function PropertyIdentityStrip({
             <div
               role="button"
               tabIndex={0}
-              onClick={() => navigate(propertyHubPath(property.id))}
+              onClick={() => navigate(propertySubPath(property.id, "spaces-organise"))}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate(propertyHubPath(property.id));
+                  navigate(propertySubPath(property.id, "spaces-organise"));
                 }
               }}
               className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"

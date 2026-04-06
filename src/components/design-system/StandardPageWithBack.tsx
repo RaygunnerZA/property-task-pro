@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "./PageHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ interface StandardPageWithBackProps {
   contentClassName?: string;
   /** Property-style horizontal gradient + light header text (matches dashboard / workbench). */
   headerAccentColor?: string;
+  /** Omit icon, title, and subtitle from the gradient row (e.g. title rendered in workspace column 2). */
+  hideTitleInHeader?: boolean;
 }
 
 /**
@@ -60,6 +63,7 @@ export function StandardPageWithBack({
   headerClassName,
   contentClassName,
   headerAccentColor,
+  hideTitleInHeader = false,
 }: StandardPageWithBackProps) {
   const navigate = useNavigate();
   const accent = headerAccentColor?.trim();
@@ -131,35 +135,39 @@ export function StandardPageWithBack({
                 Back
               </Button>
             )}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              {icon && (
-                <span
-                  className={cn("shrink-0", accent ? "text-white [&_svg]:text-white" : "icon-primary")}
-                >
-                  {icon}
-                </span>
-              )}
-              <div className="min-w-0">
-                <h1
-                  className={cn(
-                    "text-2xl font-semibold leading-tight truncate heading-l",
-                    accent ? "text-white" : "text-foreground"
-                  )}
-                >
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p
+            {!hideTitleInHeader ? (
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                {icon && (
+                  <span
+                    className={cn("shrink-0", accent ? "text-white [&_svg]:text-white" : "icon-primary")}
+                  >
+                    {icon}
+                  </span>
+                )}
+                <div className="min-w-0">
+                  <h1
                     className={cn(
-                      "text-sm mt-1 truncate",
-                      accent ? "text-white/85" : "text-muted-foreground"
+                      "text-2xl font-semibold leading-tight truncate heading-l",
+                      accent ? "text-white" : "text-foreground"
                     )}
                   >
-                    {subtitle}
-                  </p>
-                )}
+                    {title}
+                  </h1>
+                  {subtitle && (
+                    <p
+                      className={cn(
+                        "text-sm mt-1 truncate",
+                        accent ? "text-white/85" : "text-muted-foreground"
+                      )}
+                    >
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="min-w-0 flex-1" aria-hidden="true" />
+            )}
           </div>
           {action && (
             <div className={cn("flex shrink-0 items-center gap-2", accent && "[&_button]:text-white [&_button]:border-white/30")}>
@@ -170,11 +178,9 @@ export function StandardPageWithBack({
       </PageHeader>
 
       {belowGradientRow != null && (
-        <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
-          <div className={cn("mx-auto flex min-w-0 justify-start px-gutter-page py-2", maxWidthClasses[maxWidth])}>
-            {belowGradientRow}
-          </div>
-        </div>
+        <WorkspaceScopeStrip containerMaxWidthClass={maxWidthClasses[maxWidth]}>
+          {belowGradientRow}
+        </WorkspaceScopeStrip>
       )}
 
       <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>

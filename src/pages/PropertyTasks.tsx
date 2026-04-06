@@ -50,7 +50,7 @@ export default function PropertyTasks() {
             propertyId={id}
             hrefForProperty={(pid) => `/properties/${pid}/tasks`}
             hrefForAll="/tasks"
-            onBack={() => navigate(id ? propertyHubPath(id) : '/')}
+            backHref={id ? propertyHubPath(id) : "/"}
           />
         ) : null
       }

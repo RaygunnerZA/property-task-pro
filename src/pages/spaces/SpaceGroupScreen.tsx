@@ -19,6 +19,7 @@ import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
+import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { toast } from "sonner";
@@ -74,10 +75,6 @@ export default function SpaceGroupScreen() {
     }));
   }, [tasksData]);
 
-  const handleBack = () => {
-    navigate(`/properties/${propertyId}/spaces/organise`);
-  };
-
   // Must be before any early returns (Rules of Hooks)
   useEffect(() => {
     if (!propertyLoading && propertyId && groupSlug && !group) {
@@ -130,21 +127,19 @@ export default function SpaceGroupScreen() {
         </div>
       </PageHeader>
       {propertyId && groupSlug && (
-        <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
-          <div className="mx-auto flex max-w-[1480px] justify-start px-4 py-2">
-            <PropertyPageScopeBar
-              propertyId={propertyId}
-              hrefForProperty={(pid) => `/properties/${pid}/spaces/organise/${groupSlug}`}
-              onBack={handleBack}
-            />
-          </div>
-        </div>
+        <WorkspaceScopeStrip>
+          <PropertyPageScopeBar
+            propertyId={propertyId}
+            hrefForProperty={(pid) => `/properties/${pid}/spaces/organise/${groupSlug}`}
+            backHref={`/properties/${propertyId}/spaces/organise`}
+          />
+        </WorkspaceScopeStrip>
       )}
     </>
   );
 
   const thirdColumnContent = propertyId && groupSlug ? (
-    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex flex-col pt-3 pr-2 pb-0 pl-2 min-h-0">
       <ThirdColumnConcertina
         sections={[
           {

@@ -51,7 +51,7 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
     >
       {/* Top band: photo or solid property colour */}
       <div
-        className="w-full h-[34px] relative flex-shrink-0"
+        className="w-full h-[12px] relative flex-shrink-0"
         style={!imageUrl ? { backgroundColor: iconColor } : undefined}
       >
         {imageUrl ? (

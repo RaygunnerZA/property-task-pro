@@ -242,9 +242,10 @@ const App = () => {
                                 <Route path="/add-task" element={<AddTask />} />
                                 <Route path="/properties/:id" element={<PropertyHubRedirect />} />
                                 <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
-                                <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
-                                <Route path="/properties/:id/spaces/organise" element={<SpaceOrganisationScreen />} />
+                                {/* Static segments before :spaceId — otherwise "organise" is captured as a space id */}
                                 <Route path="/properties/:id/spaces/organise/:groupSlug" element={<SpaceGroupScreen />} />
+                                <Route path="/properties/:id/spaces/organise" element={<SpaceOrganisationScreen />} />
+                                <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
                                 <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
                                 <Route path="/properties/:id/photos" element={<PropertyPhotos />} />
                                 <Route path="/properties/:id/documents" element={<PropertyDocuments />} />

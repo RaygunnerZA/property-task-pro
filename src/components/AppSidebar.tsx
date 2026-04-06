@@ -2,13 +2,10 @@ import { useMemo } from 'react';
 import { 
   LayoutDashboard, 
   CheckSquare, 
-  Building2, 
   Package,
   FolderOpen,
   Shield,
   FileText,
-  Users,
-  StickyNote,
   Wrench,
   History,
   Camera,
@@ -17,8 +14,7 @@ import {
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { propertyHubPath, propertyHubTasksPath, WORKBENCH_PANEL_TAB_QUERY } from '@/lib/propertyRoutes';
-import { NavLink } from '@/components/NavLink';
+import { propertyHubTasksPath, propertySubPath, WORKBENCH_PANEL_TAB_QUERY } from '@/lib/propertyRoutes';
 import fillaLogo from '@/assets/filla-logo.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
@@ -39,37 +35,32 @@ const globalNavItems = [
   },
 ];
 
-// Property context items (from Appendix A: Overview, Spaces, Assets, Tasks, Compliance, Documents, People, Notes)
+// Property context — deep links (workbench home is global Hub + scope chips)
 const propertyContextItems = [
-  {
-    title: 'Overview',
-    icon: Building2,
-    getUrl: (id: string) => propertyHubPath(id),
-  },
-  {
-    title: 'Assets',
-    icon: Package,
-    getUrl: (id: string) => `/assets?property=${id}`,
-  },
   {
     title: 'Tasks',
     icon: CheckSquare,
     getUrl: (id: string) => propertyHubTasksPath(id),
   },
   {
+    title: 'Assets',
+    icon: Package,
+    getUrl: (id: string) => `/assets?property=${encodeURIComponent(id)}`,
+  },
+  {
     title: 'Compliance',
     icon: Shield,
-    getUrl: (id: string) => `/properties/${id}/compliance`,
+    getUrl: (id: string) => propertySubPath(id, 'compliance'),
   },
   {
     title: 'Documents',
     icon: FileText,
-    getUrl: (id: string) => `/properties/${id}/documents`,
+    getUrl: (id: string) => propertySubPath(id, 'documents'),
   },
   {
     title: 'Spaces',
     icon: FolderOpen,
-    getUrl: (id: string) => `/properties/${id}/spaces/organise`,
+    getUrl: (id: string) => propertySubPath(id, 'spaces-organise'),
   },
 ];
 
@@ -119,8 +110,14 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
-  // Detect entity context from URL (dashboard `/` uses the in-page scope bar, not sidebar context)
   const entityContext = useMemo(() => {
+    // Property workbench: /?property=<id> (Today hub scoped to one property)
+    if (currentPath === '/' || currentPath === '') {
+      const pid = searchParams.get('property');
+      if (pid) {
+        return { type: 'property' as const, id: pid };
+      }
+    }
     // Filtered property list: /properties?property=<id>
     if (currentPath === '/properties') {
       const pid = searchParams.get('property');
@@ -169,6 +166,14 @@ export function AppSidebar() {
     return [];
   }, [entityContext]);
 
+  /** Hub home (`/?property=`) already has property scope + card in LeftColumn — hide duplicate sidebar nav. */
+  const hidePropertyContextSidebar = useMemo(() => {
+    if (!entityContext || entityContext.type !== 'property') return false;
+    const path = currentPath === '' ? '/' : currentPath;
+    const isHubRoot = path === '/';
+    return isHubRoot && Boolean(searchParams.get('property'));
+  }, [currentPath, searchParams, entityContext]);
+
   const handleCreateNew = () => {
     // Trigger FAB - this will be handled by FloatingAddButton
     // For now, navigate to tasks with add param
@@ -193,15 +198,11 @@ export function AppSidebar() {
     const isHubNav = Boolean(item.url === '/' && !item.getUrl);
     const livePanelTab = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
     const isActive = isDashboardPropertyHub
-      ? item.title === 'Overview'
+      ? item.title === 'Tasks'
         ? currentPath === '/' &&
           searchParams.get('property') === hubPropertyId &&
-          (livePanelTab === null || livePanelTab === 'attention')
-        : item.title === 'Tasks'
-          ? currentPath === '/' &&
-            searchParams.get('property') === hubPropertyId &&
-            livePanelTab === 'tasks'
-          : currentPath === '/' && searchParams.get('property') === hubPropertyId
+          livePanelTab === 'tasks'
+        : false
       : isPropertyListHub
         ? currentPath === '/properties' &&
           searchParams.get('property') === hubPropertyId
@@ -217,20 +218,16 @@ export function AppSidebar() {
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
-          <NavLink 
-            to={url} 
+          <Link
+            to={url}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent",
-              isActive
-                ? "text-foreground font-semibold"
-                : "text-foreground/70"
+              "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent no-underline",
+              isActive ? "text-foreground font-semibold" : "text-foreground/70"
             )}
-            activeClassName=""
-            pendingClassName="opacity-50"
           >
             <IconComponent className="h-4 w-4 flex-shrink-0" />
             {open && <span className="text-sm tracking-tight">{item.title}</span>}
-          </NavLink>
+          </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -245,7 +242,7 @@ export function AppSidebar() {
         backgroundSize: '50%'
       }}
     >
-      <SidebarContent className="px-3 py-4 relative z-10 flex flex-col h-full">
+      <SidebarContent className="px-3 py-4 relative z-[60] flex flex-col h-full pointer-events-auto">
         {/* Logo & Brand */}
         <div className="pl-[11px] pr-0 pt-[9px] pb-0 mb-[15px]">
           <Link
@@ -266,8 +263,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Context Layer (Dynamic) */}
-        {entityContext && contextItems.length > 0 && (
+        {/* Context Layer (Dynamic) — omitted on property hub; shown on Assets / Compliance / Documents / Spaces etc. */}
+        {entityContext && contextItems.length > 0 && !hidePropertyContextSidebar && (
           <SidebarGroup className="mt-8">
             <SidebarGroupLabel className="px-3 text-[10px] font-mono uppercase tracking-[0.2em] text-foreground/50 mb-2">
               {entityContext.type === 'property' ? 'Property' : 'Asset'} Context

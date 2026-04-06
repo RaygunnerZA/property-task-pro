@@ -37,7 +37,6 @@ export default function PropertyPhotos() {
           <PropertyPageScopeBar
             propertyId={propertyId}
             hrefForProperty={(pid) => propertySubPath(pid, 'photos')}
-            onBack={() => navigate(propertyHubPath(propertyId))}
           />
         ) : null
       }

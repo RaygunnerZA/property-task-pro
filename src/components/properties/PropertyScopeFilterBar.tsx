@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Check, ChevronLeft, Plus } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
@@ -33,7 +33,10 @@ type SecondaryProps = {
   hrefForProperty: (propertyId: string) => string;
   /** When the user picks “all properties”. */
   hrefForAll: string;
-  onBack: () => void;
+  /** Property workbench hub — property icon (and chip when collapsed) navigate here. */
+  propertyHubHref: string;
+  /** “Back” row — may differ from hub (e.g. space group → organise). */
+  backHref: string;
 };
 
 export type PropertyScopeFilterBarProps = PrimaryProps | SecondaryProps;
@@ -247,7 +250,8 @@ function PropertyScopeFilterBarSecondary({
   currentPropertyId,
   hrefForProperty,
   hrefForAll,
-  onBack,
+  propertyHubHref,
+  backHref,
 }: SecondaryProps) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -255,6 +259,8 @@ function PropertyScopeFilterBarSecondary({
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
+  const chipPressStartRef = useRef(0);
+  const suppressChipClickRef = useRef(false);
 
   const ALL_IDS = useMemo(() => properties.map((p) => p.id), [properties]);
 
@@ -333,8 +339,9 @@ function PropertyScopeFilterBarSecondary({
   if (properties.length <= 1) {
     return (
       <div className="flex w-full min-w-0 items-center justify-start gap-0.5">
-        <div
-          className="flex items-center justify-center rounded-[10px] shrink-0"
+        <Link
+          to={propertyHubHref}
+          className="flex items-center justify-center rounded-[10px] shrink-0 outline-none ring-offset-2 ring-offset-background transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary/35"
           style={{
             width: 28,
             height: 28,
@@ -342,19 +349,15 @@ function PropertyScopeFilterBarSecondary({
             boxShadow:
               "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1)",
           }}
-          aria-hidden
+          aria-label="Open property hub"
         >
           <ActiveIcon className="h-[18px] w-[16px] text-white" />
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 shrink-0 gap-1 px-px text-foreground"
-          onClick={onBack}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
+        </Link>
+        <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-px text-foreground" asChild>
+          <Link to={backHref}>
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Link>
         </Button>
       </div>
     );
@@ -410,16 +413,50 @@ function PropertyScopeFilterBarSecondary({
               <button
                 key={property.id}
                 type="button"
-                onClick={() => {
+                onPointerDown={(e) => {
+                  if (expanded) return;
+                  if (isCurrent) {
+                    chipPressStartRef.current = e.timeStamp;
+                    onActivePointerDown();
+                  }
+                }}
+                onPointerUp={(e) => {
+                  cancelLongPress();
+                  if (expanded || !isCurrent) return;
+                  if (longPressTriggeredRef.current) {
+                    longPressTriggeredRef.current = false;
+                    return;
+                  }
+                  const elapsed = e.timeStamp - chipPressStartRef.current;
+                  if (elapsed >= 0 && elapsed < LONG_PRESS_MS - 50) {
+                    suppressChipClickRef.current = true;
+                    navigate(propertyHubHref);
+                  }
+                }}
+                onPointerLeave={cancelLongPress}
+                onClick={(ev) => {
+                  if (suppressChipClickRef.current) {
+                    suppressChipClickRef.current = false;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    return;
+                  }
+                  if (longPressTriggeredRef.current) {
+                    longPressTriggeredRef.current = false;
+                    return;
+                  }
+                  if (!expanded && isCurrent) {
+                    return;
+                  }
                   if (!expanded) return;
                   toggleDraft(property.id);
                 }}
-                onPointerDown={() => {
-                  if (expanded) return;
-                  if (isCurrent) onActivePointerDown();
+                onKeyDown={(e) => {
+                  if (!expanded && isCurrent && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    navigate(propertyHubHref);
+                  }
                 }}
-                onPointerUp={cancelLongPress}
-                onPointerLeave={cancelLongPress}
                 className={cn(
                   "flex items-center justify-center rounded-[10px] shrink-0 w-[28px] h-[28px] transition-all duration-200",
                   dimmed && "opacity-45",
@@ -460,15 +497,11 @@ function PropertyScopeFilterBarSecondary({
       </div>
 
       {!expanded && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 shrink-0 gap-1 px-px text-foreground"
-          onClick={onBack}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
+        <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-px text-foreground" asChild>
+          <Link to={backHref}>
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Link>
         </Button>
       )}
     </div>

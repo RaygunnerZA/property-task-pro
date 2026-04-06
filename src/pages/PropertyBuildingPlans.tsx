@@ -55,7 +55,6 @@ export default function PropertyBuildingPlans() {
     <PropertyPageScopeBar
       propertyId={propertyId}
       hrefForProperty={(pid) => propertySubPath(pid, "plans")}
-      onBack={() => navigate(propertyHubPath(propertyId))}
     />
   ) : null;
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);

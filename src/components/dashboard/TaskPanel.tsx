@@ -996,12 +996,16 @@ export function TaskPanel({
           )}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden" style={{ height: 515 }}>
+        <div
+          className={cn(
+            "flex-1 min-h-0 overflow-hidden",
+            activeTab === "attention" && "h-[515px] shrink-0"
+          )}
+        >
           {activeTab === "attention" && (
             <div
-              className="min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-pane:px-2"
+              className="box-border h-[857px] max-h-full min-h-0 w-full overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-pane:px-2"
               style={{
-                height: 522,
                 borderWidth: "0 0 10px",
                 borderStyle: "none none solid",
                 borderColor: "transparent transparent rgb(255, 255, 255)",
@@ -1178,7 +1182,7 @@ export function TaskPanel({
                       <div
                         className={cn(
                           "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
                         )}
                       >
                         <p
@@ -1198,7 +1202,7 @@ export function TaskPanel({
                       <div
                         className={cn(
                           "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
                         )}
                       >
                         <p
@@ -1218,7 +1222,7 @@ export function TaskPanel({
                       <div
                         className={cn(
                           "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
                         )}
                       >
                         <p
@@ -1490,7 +1494,7 @@ export function TaskPanel({
                           key={metric.label}
                           className={cn(
                             "flex min-w-0 flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px] px-0.5",
-                            "shadow-[3px_4px_2.4px_0px_rgba(0,0,0,0),inset_2px_2px_5px_0px_rgba(0,0,0,0.06),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
+                            "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
                           )}
                         >
                           <p
