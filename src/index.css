@@ -12,6 +12,21 @@
     /* Layout */
     --header-height: 100px;
 
+    /* Spacing scale — matches Docs/04_UI_System (xs 4px … xl 24px) */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 0.75rem;
+    --space-lg: 1rem;
+    --space-xl: 1.5rem;
+
+    /**
+     * Semantic horizontal gutters — use Tailwind `px-gutter-page`, `px-gutter-pane`, `px-gutter-rail`
+     * so shells stay aligned across StandardPage, DualPane, and dense rails.
+     */
+    --gutter-page: var(--space-lg);
+    --gutter-pane: var(--space-lg);
+    --gutter-rail: 0.625rem;
+
     /* Core Background & Foreground */
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
@@ -155,8 +170,8 @@
     flex-wrap: wrap;
     justify-content: flex-start;
     align-items: flex-end;
-    padding-bottom: 12px;
-    padding-left: 18px;
+    padding-bottom: var(--space-md);
+    padding-left: var(--gutter-page);
     box-sizing: border-box;
   }
 

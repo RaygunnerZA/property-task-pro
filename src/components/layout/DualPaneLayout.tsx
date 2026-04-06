@@ -81,7 +81,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
               }`}
             >
               <div className={stickyColClass}>{leftColumn}</div>
-              <div className="min-h-0 overflow-y-auto min-w-0 px-[14px] pt-3">
+              <div className="min-h-0 overflow-y-auto min-w-0 px-gutter-pane pt-3">
                 {rightColumn}
               </div>
             </div>

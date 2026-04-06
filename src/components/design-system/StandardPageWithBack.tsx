@@ -111,7 +111,7 @@ export function StandardPageWithBack({
       >
         <div
           className={cn(
-            "mx-auto px-4 pt-[63px] pb-[21px] h-[100px] flex items-center justify-between rounded-bl-[12px] pr-24 sm:pr-36",
+            "mx-auto flex h-[100px] min-h-[100px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-36",
             maxWidthClasses[maxWidth]
           )}
           style={headerBarStyle}
@@ -171,13 +171,13 @@ export function StandardPageWithBack({
 
       {belowGradientRow != null && (
         <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
-          <div className={cn("mx-auto flex min-w-0 justify-start px-4 py-2", maxWidthClasses[maxWidth])}>
+          <div className={cn("mx-auto flex min-w-0 justify-start px-gutter-page py-2", maxWidthClasses[maxWidth])}>
             {belowGradientRow}
           </div>
         </div>
       )}
 
-      <div className={cn("mx-auto px-4 py-6", maxWidthClasses[maxWidth], contentClassName)}>
+      <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
         {children}
       </div>
 

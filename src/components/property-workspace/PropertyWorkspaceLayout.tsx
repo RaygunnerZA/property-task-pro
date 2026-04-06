@@ -25,7 +25,7 @@ export function PropertyWorkspaceLayout({
   return (
     <div
       className={cn(
-        "grid w-full max-w-full min-w-0 grid-cols-1 gap-5 items-start",
+        "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-start",
         "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(260px,300px)]",
         "workspace:gap-6",
         className
@@ -33,7 +33,7 @@ export function PropertyWorkspaceLayout({
     >
       <aside
         className={cn(
-          "min-w-0 w-full space-y-4 px-[3px] flex flex-wrap",
+          "min-w-0 w-full space-y-4 px-1 flex flex-wrap",
           "workspace:h-[335px] workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
           "workspace:overflow-y-auto"
         )}

@@ -66,7 +66,12 @@ export function StandardPage({
       )}
     >
       <PageHeader className={headerClassName} toolbarSurface="plain">
-        <div className={cn("mx-auto flex h-[100px] items-center justify-between rounded-bl-[12px] px-4 pb-[21px] pr-24 pt-[63px] sm:pr-32", maxWidthClasses[maxWidth])}>
+        <div
+          className={cn(
+            "mx-auto flex h-[100px] min-h-[100px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-32",
+            maxWidthClasses[maxWidth]
+          )}
+        >
           <div className="flex items-center gap-3">
             {icon && <span className="icon-primary shrink-0">{icon}</span>}
             <div className="min-w-0">
@@ -80,7 +85,7 @@ export function StandardPage({
         </div>
       </PageHeader>
 
-      <div className={cn("mx-auto px-4 py-6", maxWidthClasses[maxWidth], contentClassName)}>
+      <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
         {children}
       </div>
 

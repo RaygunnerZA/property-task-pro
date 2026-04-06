@@ -77,13 +77,18 @@ export function StandardPageWithTabs({
       )}
     >
       <PageHeader className={headerClassName} toolbarSurface="plain">
-        <div className={cn("mx-auto px-4 py-4 pr-24 sm:pr-32 flex items-center justify-between", maxWidthClasses[maxWidth])}>
-          <div className="flex items-center gap-2">
-            {icon && <span className="icon-primary">{icon}</span>}
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        <div
+          className={cn(
+            "mx-auto flex items-center justify-between px-gutter-page py-4 pr-24 sm:pr-32",
+            maxWidthClasses[maxWidth]
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            {icon && <span className="icon-primary shrink-0">{icon}</span>}
+            <div className="min-w-0">
+              <h1 className="text-2xl font-semibold text-foreground heading-l leading-tight">{title}</h1>
               {subtitle && (
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
               )}
             </div>
           </div>
@@ -91,7 +96,7 @@ export function StandardPageWithTabs({
         </div>
       </PageHeader>
 
-      <div className={cn("mx-auto px-4 py-6", maxWidthClasses[maxWidth], contentClassName)}>
+      <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
         {children && <div className="mb-6">{children}</div>}
         
         <Tabs defaultValue={defaultTabValue} onValueChange={onTabChange} className="w-full">

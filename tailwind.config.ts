@@ -14,6 +14,16 @@ export default {
       },
     },
     extend: {
+      spacing: {
+        "gutter-page": "var(--gutter-page)",
+        "gutter-pane": "var(--gutter-pane)",
+        "gutter-rail": "var(--gutter-rail)",
+        "space-xs": "var(--space-xs)",
+        "space-sm": "var(--space-sm)",
+        "space-md": "var(--space-md)",
+        "space-lg": "var(--space-lg)",
+        "space-xl": "var(--space-xl)",
+      },
       screens: {
         /** Property workspace / compliance: stacked → three-column */
         workspace: `${LAYOUT_BREAKPOINTS.workspace}px`,

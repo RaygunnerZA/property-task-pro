@@ -1,6 +1,12 @@
 /**
- * Canonical layout breakpoints (keep in sync with tailwind.config.ts theme.extend.screens).
+ * Canonical layout breakpoints (keep in sync with `tailwind.config.ts` `theme.extend.screens`).
  * Use for dev tools readouts and any JS that mirrors CSS breakpoints.
+ *
+ * See `Docs/04_UI_System.md` → “Breakpoints (canonical)” for when to use each name:
+ * - `md` (Tailwind default): first wide step, e.g. dual-pane 2-column grid.
+ * - `workspace`: property hub modules (three columns).
+ * - `layout`: app shell three-column dashboard / property right rail.
+ * - `max-pane`: max-width query for very narrow inner panes (task rail density).
  */
 export const LAYOUT_BREAKPOINTS = {
   /** Narrow inner panes (task rail, tight padding) */

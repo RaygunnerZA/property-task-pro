@@ -63,7 +63,7 @@ export function PageHeader({
   toolbarSurface = "gradient",
 }: PageHeaderProps) {
   return (
-    <header className={cn("page-header relative pl-2", className)}>
+    <header className={cn("page-header relative pl-space-sm", className)}>
       <PageHeaderToolbar className={toolbarClassName} surface={toolbarSurface} />
       {children}
     </header>
