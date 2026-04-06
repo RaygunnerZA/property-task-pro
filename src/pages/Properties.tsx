@@ -1,8 +1,8 @@
 import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
-import { Building2, Plus } from 'lucide-react';
+import { Building2, Plus, Home } from 'lucide-react';
 import { getPropertyChipIcon } from '@/lib/propertyChipIcons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { PropertyCard } from '@/components/properties/PropertyCard';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { StandardPage } from '@/components/design-system/StandardPage';
@@ -12,10 +12,41 @@ import { LoadingState } from '@/components/design-system/LoadingState';
 
 const Properties = () => {
   const { data: properties = [], isLoading: loading } = usePropertiesQuery();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null);
+
+  const setFilteredPropertyId = useCallback(
+    (propertyId: string | null) => {
+      setActivePropertyId(propertyId);
+      const next = new URLSearchParams(searchParams);
+      next.delete("property");
+      next.delete("group");
+      if (propertyId) {
+        next.set("property", propertyId);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  // URL is source of truth for filter (?property=); wait until loaded so we do not strip a valid id while the list is empty.
+  useEffect(() => {
+    if (loading) return;
+    const pid = searchParams.get("property");
+    if (!pid) {
+      setActivePropertyId(null);
+      return;
+    }
+    const exists = properties.some((p: { id: string }) => p.id === pid);
+    if (exists) {
+      setActivePropertyId(pid);
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("property");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, properties, setSearchParams, loading]);
 
   // Check for ?add=true in URL
   useEffect(() => {
@@ -87,6 +118,22 @@ const Properties = () => {
               </button>
               {/* Property Icon Buttons */}
               <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setFilteredPropertyId(null)}
+                  className="flex items-center justify-center rounded-[8px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 hover:bg-muted/40"
+                  style={{
+                    minWidth: "35px",
+                    height: "35px",
+                    backgroundColor: !activePropertyId ? "rgba(142, 201, 206, 0.35)" : "transparent",
+                    boxShadow: !activePropertyId
+                      ? "2px 2px 4px 0px rgba(0, 0, 0, 0.08), inset 1px 1px 1px 0px rgba(255, 255, 255, 0.6)"
+                      : "none",
+                  }}
+                  aria-label="Show all properties"
+                >
+                  All
+                </button>
                 {properties.map((property) => {
                   const iconName = property.icon_name || "home";
                   const IconComponent = getPropertyChipIcon(iconName);
@@ -97,11 +144,10 @@ const Properties = () => {
                     <button
                       key={property.id}
                       onClick={() => {
-                        // Toggle active state
                         if (activePropertyId === property.id) {
-                          setActivePropertyId(null);
+                          setFilteredPropertyId(null);
                         } else {
-                          setActivePropertyId(property.id);
+                          setFilteredPropertyId(property.id);
                         }
                       }}
                       className="flex items-center justify-center rounded-[342px] transition-all duration-200 hover:scale-110 active:scale-95"

@@ -37,6 +37,7 @@ export interface DevModeState {
   simulateSlowNetwork: boolean;
   simulateTimeShiftDays: number;
   showAIDebugPanel: boolean;
+  showViewportSimulator: boolean;
   createTaskDiagnostics: boolean;
 }
 
@@ -47,6 +48,7 @@ interface DevModeActions {
   setSimulateSlowNetwork: (value: boolean) => void;
   setSimulateTimeShiftDays: (days: number) => void;
   setShowAIDebugPanel: (value: boolean) => void;
+  setShowViewportSimulator: (value: boolean) => void;
   setCreateTaskDiagnostics: (value: boolean) => void;
   reset: () => void;
 }
@@ -59,6 +61,7 @@ const DEFAULT_STATE: DevModeState = {
   simulateSlowNetwork: false,
   simulateTimeShiftDays: 0,
   showAIDebugPanel: false,
+  showViewportSimulator: false,
   createTaskDiagnostics: false,
 };
 
@@ -69,6 +72,7 @@ const NOOP_ACTIONS: DevModeActions = {
   setSimulateSlowNetwork: () => {},
   setSimulateTimeShiftDays: () => {},
   setShowAIDebugPanel: () => {},
+  setShowViewportSimulator: () => {},
   setCreateTaskDiagnostics: () => {},
   reset: () => {},
 };
@@ -171,6 +175,10 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, showAIDebugPanel: value }));
   }, []);
 
+  const setShowViewportSimulator = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, showViewportSimulator: value }));
+  }, []);
+
   const setCreateTaskDiagnostics = useCallback((value: boolean) => {
     setState((prev) => ({ ...prev, createTaskDiagnostics: value }));
   }, []);
@@ -189,6 +197,7 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
       setSimulateSlowNetwork,
       setSimulateTimeShiftDays,
       setShowAIDebugPanel,
+      setShowViewportSimulator,
       setCreateTaskDiagnostics,
       reset,
     }),
@@ -200,6 +209,7 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
       setSimulateSlowNetwork,
       setSimulateTimeShiftDays,
       setShowAIDebugPanel,
+      setShowViewportSimulator,
       setCreateTaskDiagnostics,
       reset,
     ]

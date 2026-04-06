@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -8,7 +9,8 @@ import { SpaceGroupLinkCard } from "@/components/spaces/SpaceGroupLinkCard";
 import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, FileUp, Sparkles } from "lucide-react";
+import { Layers, FileUp, Sparkles } from "lucide-react";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
@@ -65,28 +67,36 @@ export default function SpaceOrganisationScreen() {
     return <LoadingState />;
   }
 
+  const headerAccent =
+    (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() || "#8EC9CE";
+
   const header = (
-    <PageHeader>
-      <div className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px] bg-primary/10">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/properties/${propertyId}`)}
-            className="shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold text-foreground leading-tight">Spaces</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+    <>
+      <PageHeader>
+        <div
+          className="flex h-[100px] items-center rounded-bl-[12px] px-4 pb-[18px] pr-20 pt-[63px]"
+          style={{
+            backgroundImage: `linear-gradient(90deg, ${headerAccent} 0%, ${headerAccent} 28%, transparent 97%, transparent 100%)`,
+          }}
+        >
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-semibold leading-tight text-white">Spaces</h1>
+            <p className="mt-1 text-sm text-white/85">
               {property ? `${property.nickname || property.address}` : "Organise your spaces"}
             </p>
           </div>
         </div>
+      </PageHeader>
+      <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1480px] justify-start px-4 py-2">
+          <PropertyPageScopeBar
+            propertyId={propertyId}
+            hrefForProperty={(pid) => propertySubPath(pid, "spaces-organise")}
+            onBack={() => navigate(propertyHubPath(propertyId))}
+          />
+        </div>
       </div>
-    </PageHeader>
+    </>
   );
 
   const contextColumn = (
@@ -219,14 +229,14 @@ export default function SpaceOrganisationScreen() {
 
   const workspace = (
     <>
-      <div className="hidden min-[1100px]:block">
+      <div className="hidden workspace:block">
         <PropertyWorkspaceLayout
           contextColumn={contextColumn}
           workColumn={workColumn}
           actionColumn={actionColumn}
         />
       </div>
-      <div className="min-[1100px]:hidden flex flex-col gap-6">
+      <div className="workspace:hidden flex flex-col gap-6">
         {actionColumn}
         {workColumn}
         {contextColumn}
@@ -235,7 +245,7 @@ export default function SpaceOrganisationScreen() {
   );
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+    <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="mx-auto max-w-[1480px] px-4 py-6 w-full">{workspace}</div>
     </div>

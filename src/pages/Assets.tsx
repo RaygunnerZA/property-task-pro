@@ -22,6 +22,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { StandardPage } from "@/components/design-system/StandardPage";
+import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { FrameworkEmptyState } from "@/components/property-framework";
@@ -29,6 +31,7 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { FilterChip } from "@/components/chips/filter";
 import { PropertyWorkspaceLayout, WorkspaceSurfaceCard } from "@/components/property-workspace";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -75,6 +78,27 @@ const Assets = () => {
   const [isSaving, setIsSaving] = useState(false);
   const isWide = useWorkspaceWide();
   const railFormRef = useRef<HTMLDivElement>(null);
+
+  const propertyFromUrl = searchParams.get("property") ?? "";
+  const effectiveScopeId = propertyFromUrl || filterPropertyId;
+  const scopedPropertyForChrome = useMemo(
+    () => properties.find((p: { id: string }) => p.id === effectiveScopeId),
+    [properties, effectiveScopeId]
+  );
+  const isPropertyScoped = Boolean(effectiveScopeId);
+  const propertyHeaderAccent =
+    (scopedPropertyForChrome as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
+    "#8EC9CE";
+
+  const assetsScopeBelowRow =
+    isPropertyScoped && effectiveScopeId ? (
+      <PropertyPageScopeBar
+        propertyId={effectiveScopeId}
+        hrefForProperty={(pid) => `/assets?property=${encodeURIComponent(pid)}`}
+        hrefForAll="/assets"
+        onBack={() => navigate(propertyHubPath(effectiveScopeId))}
+      />
+    ) : null;
 
   const { spaces: filterSpaces } = useSpaces(filterPropertyId || undefined);
   const { spaces: formSpaces } = useSpaces(propertyId || undefined);
@@ -377,7 +401,42 @@ const Assets = () => {
     onSave: handleSave,
   };
 
+  const scopedSubtitleLine =
+    (scopedPropertyForChrome as { nickname?: string | null; address?: string } | undefined)?.nickname ||
+    (scopedPropertyForChrome as { address?: string } | undefined)?.address;
+
+  const addAction = (
+    <NeomorphicButton
+      onClick={openAddFlow}
+      className={
+        isPropertyScoped
+          ? "border-white/35 bg-white/10 text-white shadow-none hover:bg-white/20 hover:text-white"
+          : undefined
+      }
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      Add
+    </NeomorphicButton>
+  );
+
   if (loading) {
+    if (isPropertyScoped) {
+      return (
+        <StandardPageWithBack
+          title="Property Assets"
+          subtitle={scopedSubtitleLine}
+          backTo={propertyHubPath(effectiveScopeId)}
+          headerAccentColor={propertyHeaderAccent}
+          icon={<Package className="h-6 w-6" />}
+          maxWidth="full"
+          contentClassName="max-w-[1480px]"
+          hideHeaderBack
+          belowGradientRow={assetsScopeBelowRow}
+        >
+          <LoadingState message="Loading assets..." />
+        </StandardPageWithBack>
+      );
+    }
     return (
       <StandardPage title="Assets" icon={<Package className="h-6 w-6" />} maxWidth="md">
         <LoadingState message="Loading assets..." />
@@ -386,6 +445,26 @@ const Assets = () => {
   }
 
   if (error) {
+    if (isPropertyScoped) {
+      return (
+        <StandardPageWithBack
+          title="Property Assets"
+          subtitle={scopedSubtitleLine}
+          backTo={propertyHubPath(effectiveScopeId)}
+          headerAccentColor={propertyHeaderAccent}
+          icon={<Package className="h-6 w-6" />}
+          maxWidth="full"
+          contentClassName="max-w-[1480px]"
+          hideHeaderBack
+          belowGradientRow={assetsScopeBelowRow}
+        >
+          <ErrorState
+            message={error?.message || String(error)}
+            onRetry={() => queryClient.invalidateQueries({ queryKey: ["assets"] })}
+          />
+        </StandardPageWithBack>
+      );
+    }
     return (
       <StandardPage title="Assets" icon={<Package className="h-6 w-6" />} maxWidth="md">
         <ErrorState
@@ -396,20 +475,8 @@ const Assets = () => {
     );
   }
 
-  return (
-    <StandardPage
-      title="Assets"
-      subtitle={`${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
-      icon={<Package className="h-6 w-6" />}
-      action={
-        <NeomorphicButton onClick={openAddFlow}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add
-        </NeomorphicButton>
-      }
-      maxWidth="full"
-      contentClassName="max-w-[1480px]"
-    >
+  const mainInner = (
+    <>
       {!isWide && (
         <Dialog
           open={isDialogOpen}
@@ -697,6 +764,42 @@ const Assets = () => {
           onClose={() => setSelectedAssetId(null)}
         />
       )}
+    </>
+  );
+
+  if (isPropertyScoped) {
+    return (
+      <StandardPageWithBack
+        title="Property Assets"
+        subtitle={
+          scopedSubtitleLine
+            ? `${scopedSubtitleLine} · ${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`
+            : `${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`
+        }
+        backTo={propertyHubPath(effectiveScopeId)}
+        headerAccentColor={propertyHeaderAccent}
+        icon={<Package className="h-6 w-6" />}
+        action={addAction}
+        maxWidth="full"
+        contentClassName="max-w-[1480px]"
+        hideHeaderBack
+        belowGradientRow={assetsScopeBelowRow}
+      >
+        {mainInner}
+      </StandardPageWithBack>
+    );
+  }
+
+  return (
+    <StandardPage
+      title="Assets"
+      subtitle={`${filteredAssets.length} of ${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
+      icon={<Package className="h-6 w-6" />}
+      action={addAction}
+      maxWidth="full"
+      contentClassName="max-w-[1480px]"
+    >
+      {mainInner}
     </StandardPage>
   );
 };

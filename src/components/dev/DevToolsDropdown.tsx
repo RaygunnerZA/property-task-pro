@@ -24,7 +24,9 @@ import {
   Package,
   RotateCcw,
   Check,
+  MonitorSmartphone,
 } from "lucide-react";
+import { useDevEmbedLayout } from "@/hooks/useDevEmbedLayout";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -62,9 +64,12 @@ export function DevToolsDropdown() {
 }
 
 function DevToolsDropdownInner() {
+  const devEmbed = useDevEmbedLayout();
   const devMode = useDevMode();
   const queryClient = useQueryClient();
   const { orgId } = useOrgScope();
+
+  if (devEmbed) return null;
 
   const handleGenerateCompliance = useCallback(async () => {
     if (!orgId) {
@@ -221,6 +226,19 @@ function DevToolsDropdownInner() {
           >
             <Brain className="mr-2 h-4 w-4" />
             {devMode.showAIDebugPanel ? "Hide" : "Open"} AI Debug Panel
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              devMode.setShowViewportSimulator(!devMode.showViewportSimulator);
+              if (!devMode.enabled) devMode.setEnabled(true);
+            }}
+          >
+            <MonitorSmartphone className="mr-2 h-4 w-4" />
+            {devMode.showViewportSimulator ? "Hide" : "Open"} viewport simulator
+            {devMode.showViewportSimulator && (
+              <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+            )}
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

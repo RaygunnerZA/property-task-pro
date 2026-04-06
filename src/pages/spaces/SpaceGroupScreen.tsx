@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -16,7 +17,8 @@ import { SuggestedSpacesStrip } from "@/components/spaces/SuggestedSpacesStrip";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { toast } from "sonner";
@@ -97,41 +99,48 @@ export default function SpaceGroupScreen() {
   };
 
   const header = (
-    <PageHeader>
-      <div
-        className="px-4 pt-[63px] pb-[18px] h-[100px] flex items-center justify-between rounded-bl-[12px]"
-        style={gradientStyle}
-      >
-        <div className="flex items-center gap-3 w-[248px]">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="shrink-0 text-white hover:bg-white/20"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold text-white leading-tight">
-              {group.label}
-            </h1>
-            <p className="text-sm text-white/80 mt-1">
+    <>
+      <PageHeader>
+        <div
+          className="relative flex h-[100px] items-center rounded-bl-[12px] px-4 pb-[18px] pr-24 pt-[63px]"
+          style={gradientStyle}
+        >
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-semibold leading-tight text-white">{group.label}</h1>
+            <p className="mt-1 text-sm text-white/80">
               {property?.nickname || property?.address || "Add spaces"}
             </p>
           </div>
+          {propertyId && (
+            <button
+              type="button"
+              onClick={() =>
+                openAssistant({
+                  type: "property",
+                  id: propertyId,
+                  name: property?.nickname || property?.address || "Property",
+                })
+              }
+              className="absolute right-[5.5rem] top-8 z-10 rounded-lg bg-white/20 p-2 transition-colors hover:bg-white/30"
+              aria-label="Open Assistant"
+            >
+              <FillaIcon size={20} className="brightness-0 invert" />
+            </button>
+          )}
         </div>
-        {propertyId && (
-          <button
-            onClick={() => openAssistant({ type: "property", id: propertyId, name: property?.nickname || property?.address || "Property" })}
-            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-            aria-label="Open Assistant"
-          >
-            <FillaIcon size={20} className="brightness-0 invert" />
-          </button>
-        )}
-      </div>
-    </PageHeader>
+      </PageHeader>
+      {propertyId && groupSlug && (
+        <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
+          <div className="mx-auto flex max-w-[1480px] justify-start px-4 py-2">
+            <PropertyPageScopeBar
+              propertyId={propertyId}
+              hrefForProperty={(pid) => `/properties/${pid}/spaces/organise/${groupSlug}`}
+              onBack={handleBack}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 
   const thirdColumnContent = propertyId && groupSlug ? (
@@ -228,7 +237,7 @@ export default function SpaceGroupScreen() {
   ) : undefined;
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+    <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       <DualPaneLayout
         header={header}
         leftColumn={
@@ -245,7 +254,9 @@ export default function SpaceGroupScreen() {
                   setShowCreateTask(true);
                 }
               }}
-              onSeeTasks={() => navigate(`/properties/${propertyId}?group=${groupSlug}`)}
+              onSeeTasks={() =>
+                navigate(propertyHubPath(propertyId, { group: groupSlug }))
+              }
             />
           </div>
         }

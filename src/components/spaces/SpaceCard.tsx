@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
     if (space.property_id && space.id) {
       navigate(`/properties/${space.property_id}/spaces/${space.id}`);
     } else if (space.property_id) {
-      navigate(`/properties/${space.property_id}`);
+      navigate(propertyHubPath(space.property_id));
     }
   };
 

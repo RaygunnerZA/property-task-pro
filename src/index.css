@@ -82,6 +82,16 @@
     --sidebar-muted: 248 10% 40%;
   }
 
+  /* Dashboard: gradient strip + property scope bar (DualPaneLayout sticky offset) */
+  .dashboard-workbench {
+    --header-height: 144px;
+  }
+
+  /* StandardPageWithBack + Spaces: gradient + property scope row under it */
+  .property-workbench-scope-header {
+    --header-height: 152px;
+  }
+
   .dark {
     /* Dark mode - Adjusted for paper aesthetic */
     --background: 248 15% 12%;

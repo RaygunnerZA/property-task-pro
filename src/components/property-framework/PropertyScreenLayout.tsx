@@ -14,7 +14,7 @@ interface PropertyScreenLayoutProps {
   middleColumn: ReactNode;
   /** Right column content (1fr, only ≥1380px) - quick actions */
   rightColumn?: ReactNode;
-  /** Optional header spanning left + middle on md, left + middle only on lg */
+  /** Optional header spanning the full workbench width (above left, middle, and right columns). */
   header?: ReactNode;
 }
 

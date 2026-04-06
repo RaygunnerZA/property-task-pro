@@ -9,8 +9,8 @@ import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { isDevBuild } from '@/context/DevModeContext';
 import { cn } from '@/lib/utils';
 
-const DevToolsDropdown = lazy(() => import('@/components/dev/DevToolsDropdown'));
 const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
+const ViewportSimulator = lazy(() => import('@/components/dev/ViewportSimulator'));
 
 function MobileAssistantButton() {
   const { openAssistant } = useAssistantContext();
@@ -61,19 +61,13 @@ export function AppLayout({
         
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-h-screen min-w-0">
-          {/* Mobile header with sidebar trigger + Assistant */}
-          <header className="h-12 bg-background flex items-center justify-between px-4 sticky top-0 z-40 md:hidden">
-            <SidebarTrigger className="mr-4">
+          {/* Mobile only: sidebar + assistant (account & dev tools live on each page PageHeader) */}
+          <header className="sticky top-0 z-40 flex h-12 w-full shrink-0 items-center gap-3 border-b border-border/20 bg-background/90 px-4 shadow-sm backdrop-blur-sm md:hidden">
+            <SidebarTrigger className="shrink-0">
               <Menu className="h-5 w-5 text-foreground" />
             </SidebarTrigger>
-            <div className="flex items-center gap-2">
-              {isDevBuild && (
-                <Suspense fallback={null}>
-                  <DevToolsDropdown />
-                </Suspense>
-              )}
-              <MobileAssistantButton />
-            </div>
+            <div className="min-w-0 flex-1" />
+            <MobileAssistantButton />
           </header>
 
           {/* Main content with paper background and noise texture */}
@@ -97,6 +91,12 @@ export function AppLayout({
         {import.meta.env.DEV && (
           <Suspense fallback={null}>
             <AIDebugPanel />
+          </Suspense>
+        )}
+
+        {isDevBuild && (
+          <Suspense fallback={null}>
+            <ViewportSimulator />
           </Suspense>
         )}
       </div>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { propertyHubPath } from '@/lib/propertyRoutes';
 import { PropertyTaskCard } from '@/components/tasks/PropertyTaskCard';
 import { TaskListSectionHeader } from '@/components/tasks/TaskListSectionHeader';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
@@ -9,11 +10,16 @@ import { StandardPageWithBack } from '@/components/design-system/StandardPageWit
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { EmptyState } from '@/components/design-system/EmptyState';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
+import { PropertyPageScopeBar } from '@/components/properties/PropertyPageScopeBar';
 
 export default function PropertyTasks() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { data: tasks, loading, property } = usePropertyTasks(id);
+  const { data: tasks, loading, property, propertyRow } = usePropertyTasks(id);
+  const headerAccentColor = useMemo(() => {
+    const hex = propertyRow?.icon_color_hex?.trim();
+    return hex || '#8EC9CE';
+  }, [propertyRow?.icon_color_hex]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const groupedTasks = {
@@ -34,8 +40,20 @@ export default function PropertyTasks() {
     <StandardPageWithBack
       title="Property Tasks"
       subtitle={property ? property.nickname || property.address : undefined}
-      backTo="/properties"
+      backTo={id ? propertyHubPath(id) : '/'}
+      headerAccentColor={id ? headerAccentColor : undefined}
       icon={<CheckSquare className="h-6 w-6" />}
+      hideHeaderBack
+      belowGradientRow={
+        id ? (
+          <PropertyPageScopeBar
+            propertyId={id}
+            hrefForProperty={(pid) => `/properties/${pid}/tasks`}
+            hrefForAll="/tasks"
+            onBack={() => navigate(id ? propertyHubPath(id) : '/')}
+          />
+        ) : null
+      }
       action={
         <NeomorphicButton size="sm" onClick={() => navigate(`/add-task?propertyId=${id}`)}>
           <Plus className="w-4 h-4 mr-2" />

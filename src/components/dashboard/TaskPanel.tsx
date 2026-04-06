@@ -842,9 +842,9 @@ export function TaskPanel({
     "group-focus-visible/task-tab:max-w-[12rem] group-focus-visible/task-tab:opacity-100 " +
     "group-data-[state=active]/task-tab:max-w-[12rem] group-data-[state=active]/task-tab:opacity-100";
 
-  /** Equal-width grid tabs (comfortable / compact); icon-only uses flex row + scroll instead */
+  /** Content-width tabs (comfortable / compact); icon-only uses flex row + scroll instead */
   const taskTabPadLabeled =
-    "w-full min-w-0 shrink-0 px-1.5 sm:px-2 lg:px-2.5 max-[455px]:px-1";
+    "w-auto min-w-min shrink-0 px-1.5 sm:px-2 lg:px-2.5 max-pane:px-1";
 
   return (
     <div className="h-full flex flex-col bg-transparent">
@@ -856,7 +856,7 @@ export function TaskPanel({
             "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
             "px-[10px]",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
-            "max-[455px]:px-2 max-[455px]:gap-1"
+            "max-pane:px-2 max-pane:gap-1"
           )}
         >
           <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
@@ -867,9 +867,9 @@ export function TaskPanel({
                   "h-12 min-w-0 w-full p-0 pt-[6px] pb-1.5 px-2 rounded-none bg-transparent overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
                   iconOnly
                     ? "flex flex-nowrap items-center justify-start gap-x-[7px] overflow-x-auto"
-                    : "grid grid-cols-4 items-center gap-x-1.5",
-                  "max-[455px]:pl-1 max-[455px]:pr-1",
-                  iconOnly && "max-[455px]:gap-x-1"
+                    : "flex flex-nowrap items-center justify-start gap-x-1.5 overflow-x-auto",
+                  "max-pane:pl-1 max-pane:pr-1",
+                  iconOnly && "max-pane:gap-x-1"
                 )}
               >
               <TabsTrigger
@@ -888,11 +888,11 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4 text-[#FF6B6B]",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-1 max-[455px]:mr-0.5"
+                          : "mr-1 max-pane:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Attention</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Attention</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -907,11 +907,11 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-1 max-[455px]:mr-0.5"
+                          : "mr-1 max-pane:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Tasks</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Tasks</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -926,11 +926,11 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-1 max-[455px]:mr-0.5"
+                          : "mr-1 max-pane:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Compliance</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Compliance</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -949,18 +949,18 @@ export function TaskPanel({
                         "shrink-0 h-4 w-4",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-1 max-[455px]:mr-0.5"
+                          : "mr-1 max-pane:mr-0.5"
                       )}
                     />
                   )}
-                  <span className={cn(!iconOnly && "truncate", iconOnly && taskTabLabelReveal)}>Schedule</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal)}>Schedule</span>
                 </span>
               </TabsTrigger>
               </TabsList>
             </div>
             {!iconOnly && selectedTabMicrocopy != null && (
               <p
-                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-2 pt-8 pb-2 max-[455px]:px-1"
+                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-2 pt-8 pb-2 max-pane:px-1"
                 aria-live="polite"
               >
                 {selectedTabMicrocopy}
@@ -969,13 +969,13 @@ export function TaskPanel({
           </div>
 
           {onOpenIntake && (
-            <div className="hidden min-w-0 min-[1380px]:hidden md:block lg:w-[139px] lg:shrink-0 lg:self-start">
+            <div className="hidden min-w-0 layout:hidden md:block lg:w-[139px] lg:shrink-0 lg:self-start">
               <div className={cn("w-full min-w-0", taskToolbarRecessedClass)}>
                 <div
                   className={cn(
                     "grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-x-1.5 px-2 pt-[6px] pb-1.5",
                     "lg:h-auto lg:min-h-0 lg:flex lg:flex-col lg:gap-1.5",
-                    "max-[455px]:px-1"
+                    "max-pane:px-1"
                   )}
                 >
                   <button type="button" onClick={() => onOpenIntake("add_record")} className={intakeAddRecordButtonClassName}>
@@ -998,7 +998,7 @@ export function TaskPanel({
 
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === "attention" && (
-            <div className="h-full min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-[455px]:px-2">
+            <div className="h-full min-h-0 overflow-y-auto px-[10px] pt-[11px] pb-[11px] max-pane:px-2">
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
                 <div className="space-y-3 min-w-0">
                   <div
@@ -1295,7 +1295,7 @@ export function TaskPanel({
           )}
 
           {activeTab === "tasks" && (
-            <div className="h-full flex flex-col min-h-0 px-[10px] pt-[8px] pb-0 max-[455px]:px-2">
+            <div className="h-full flex flex-col min-h-0 px-[10px] pt-[8px] pb-0 max-pane:px-2">
               <TaskList
                 tasks={tasks}
                 properties={properties}
@@ -1312,7 +1312,7 @@ export function TaskPanel({
           {activeTab === "compliance" && (
             <div
               ref={compliancePanelInteractionRef}
-              className="h-full min-h-0 flex flex-col px-[10px] pt-[8px] pb-[11px] max-[455px]:px-2"
+              className="h-full min-h-0 flex flex-col px-[10px] pt-[8px] pb-[11px] max-pane:px-2"
             >
               <div className="flex-shrink-0 mb-[18px]">
                 <FilterBar
@@ -1605,14 +1605,14 @@ export function TaskPanel({
           {activeTab === "schedule" && (
             <div className="h-full min-h-0 overflow-hidden">
               {tasksLoading ? (
-                <div className="px-[10px] py-4 space-y-3 max-[455px]:px-2">
+                <div className="px-[10px] py-4 space-y-3 max-pane:px-2">
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                   <div className="h-20 bg-muted/50 rounded-xl animate-pulse" />
                 </div>
               ) : (
                 <div className="h-full flex flex-col min-h-0">
-                  <div className="px-[10px] pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10 max-[455px]:px-2">
+                  <div className="px-[10px] pt-4 pb-3 border-b border-border/50 bg-background/95 backdrop-blur-sm sticky top-0 z-10 max-pane:px-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <button
@@ -1684,7 +1684,7 @@ export function TaskPanel({
                         />
                       </div>
                     ) : (
-                      <div className="px-[10px] py-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center max-[455px]:px-2">
+                      <div className="px-[10px] py-4 flex flex-col items-center justify-center h-full min-h-[200px] text-center max-pane:px-2">
                         <Calendar className="h-12 w-12 text-muted-foreground/50 mb-3" />
                         <p className="text-sm font-medium text-foreground mb-1">
                           {selectedDate && isDatePinned
@@ -1713,7 +1713,7 @@ export function TaskPanel({
 
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
-                      <div className="px-[10px] mb-3 max-[455px]:px-2">
+                      <div className="px-[10px] mb-3 max-pane:px-2">
                         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                           Unscheduled ({unscheduledTasks.length})
                         </h3>
@@ -1721,7 +1721,7 @@ export function TaskPanel({
                           Tasks without a due date
                         </p>
                       </div>
-                      <div className="space-y-2 px-[10px] pb-4 max-[455px]:px-2">
+                      <div className="space-y-2 px-[10px] pb-4 max-pane:px-2">
                         {unscheduledTasks.slice(0, 5).map((task) => {
                           const property = task.property_id ? propertyMap.get(task.property_id) : undefined;
                           return (

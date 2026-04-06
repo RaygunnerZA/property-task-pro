@@ -44,7 +44,7 @@ export function StandardPage({
   action,
   children,
   maxWidth = "md",
-  showBottomNav = true,
+  showBottomNav = false,
   className,
   headerClassName,
   contentClassName
@@ -58,9 +58,15 @@ export function StandardPage({
   };
 
   return (
-    <div className={cn("min-h-screen bg-background pb-20", className)}>
-      <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 pt-[63px] pb-[21px] h-[100px] flex items-center justify-between rounded-bl-[12px]", maxWidthClasses[maxWidth])}>
+    <div
+      className={cn(
+        "min-h-screen bg-background",
+        showBottomNav ? "pb-20" : "pb-6",
+        className
+      )}
+    >
+      <PageHeader className={headerClassName} toolbarSurface="plain">
+        <div className={cn("mx-auto flex h-[100px] items-center justify-between rounded-bl-[12px] px-4 pb-[21px] pr-24 pt-[63px] sm:pr-32", maxWidthClasses[maxWidth])}>
           <div className="flex items-center gap-3">
             {icon && <span className="icon-primary shrink-0">{icon}</span>}
             <div className="min-w-0">

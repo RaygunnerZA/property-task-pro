@@ -13,12 +13,18 @@ interface StandardPageWithBackProps {
   action?: ReactNode;
   backTo?: string;
   onBack?: () => void;
+  /** Hide the header “Back” control (e.g. when using property scope row below). */
+  hideHeaderBack?: boolean;
+  /** Row directly under the gradient strip, left-aligned (matches workbench scope bar). */
+  belowGradientRow?: ReactNode;
   children: ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "full";
   showBottomNav?: boolean;
   className?: string;
   headerClassName?: string;
   contentClassName?: string;
+  /** Property-style horizontal gradient + light header text (matches dashboard / workbench). */
+  headerAccentColor?: string;
 }
 
 /**
@@ -31,7 +37,7 @@ interface StandardPageWithBackProps {
  * <StandardPageWithBack
  *   title="Property Details"
  *   subtitle="123 Main St"
- *   backTo="/properties"
+ *   backTo="/"
  *   icon={<Building2 className="h-6 w-6" />}
  * >
  *   <PropertyContent />
@@ -45,14 +51,18 @@ export function StandardPageWithBack({
   action,
   backTo,
   onBack,
+  hideHeaderBack = false,
+  belowGradientRow,
   children,
   maxWidth = "md",
-  showBottomNav = true,
+  showBottomNav = false,
   className,
   headerClassName,
-  contentClassName
+  contentClassName,
+  headerAccentColor,
 }: StandardPageWithBackProps) {
   const navigate = useNavigate();
+  const accent = headerAccentColor?.trim();
   
   const maxWidthClasses = {
     sm: "max-w-md",        // Mobile-first, single column
@@ -65,40 +75,107 @@ export function StandardPageWithBack({
   const handleBack = () => {
     if (onBack) {
       onBack();
-    } else if (backTo) {
+      return;
+    }
+    if (backTo) {
       navigate(backTo);
-    } else {
+      return;
+    }
+    // Direct landings or empty stack: avoid no-op / leaving the app unexpectedly
+    if (typeof window !== "undefined" && window.history.length > 1) {
       navigate(-1);
+    } else {
+      navigate("/");
     }
   };
 
+  const headerBarStyle = accent
+    ? {
+        backgroundImage: `linear-gradient(90deg, ${accent} 0%, ${accent} 28%, transparent 97%, transparent 100%)`,
+      }
+    : undefined;
+
   return (
-    <div className={cn("min-h-screen bg-background pb-20", className)}>
-      <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 pt-[63px] pb-[21px] h-[100px] flex items-center justify-between rounded-bl-[12px]", maxWidthClasses[maxWidth])}>
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
+    <div
+      className={cn(
+        "min-h-screen bg-background",
+        showBottomNav ? "pb-20" : "pb-6",
+        /* Gradient + scope strip (~100px + ~48px) for workspace sticky columns */
+        belowGradientRow != null && "property-workbench-scope-header",
+        className
+      )}
+    >
+      <PageHeader
+        className={cn(accent && "!bg-transparent shadow-none border-0", headerClassName)}
+        toolbarSurface={accent ? "gradient" : "plain"}
+      >
+        <div
+          className={cn(
+            "mx-auto px-4 pt-[63px] pb-[21px] h-[100px] flex items-center justify-between rounded-bl-[12px] pr-24 sm:pr-36",
+            maxWidthClasses[maxWidth]
+          )}
+          style={headerBarStyle}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            {!hideHeaderBack && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className={cn(
+                  "shrink-0",
+                  accent && "text-white hover:bg-white/15 hover:text-white"
+                )}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            )}
             <div className="flex items-center gap-3 min-w-0 flex-1">
-              {icon && <span className="icon-primary shrink-0">{icon}</span>}
+              {icon && (
+                <span
+                  className={cn("shrink-0", accent ? "text-white [&_svg]:text-white" : "icon-primary")}
+                >
+                  {icon}
+                </span>
+              )}
               <div className="min-w-0">
-                <h1 className="text-2xl font-semibold text-foreground leading-tight truncate heading-l">{title}</h1>
+                <h1
+                  className={cn(
+                    "text-2xl font-semibold leading-tight truncate heading-l",
+                    accent ? "text-white" : "text-foreground"
+                  )}
+                >
+                  {title}
+                </h1>
                 {subtitle && (
-                  <p className="text-sm text-muted-foreground mt-1 truncate">{subtitle}</p>
+                  <p
+                    className={cn(
+                      "text-sm mt-1 truncate",
+                      accent ? "text-white/85" : "text-muted-foreground"
+                    )}
+                  >
+                    {subtitle}
+                  </p>
                 )}
               </div>
             </div>
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {action && (
+            <div className={cn("flex shrink-0 items-center gap-2", accent && "[&_button]:text-white [&_button]:border-white/30")}>
+              {action}
+            </div>
+          )}
         </div>
       </PageHeader>
+
+      {belowGradientRow != null && (
+        <div className="w-full border-b border-border/20 bg-background/80 shadow-sm backdrop-blur-sm">
+          <div className={cn("mx-auto flex min-w-0 justify-start px-4 py-2", maxWidthClasses[maxWidth])}>
+            {belowGradientRow}
+          </div>
+        </div>
+      )}
 
       <div className={cn("mx-auto px-4 py-6", maxWidthClasses[maxWidth], contentClassName)}>
         {children}

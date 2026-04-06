@@ -19,7 +19,7 @@ export function usePropertyTasks(propertyId: string | undefined) {
     propertyId,
     { enabled: !!propertyId }
   );
-  const { property, loading: propertyLoading } = useProperty(propertyId);
+  const { property: propertyRow, loading: propertyLoading } = useProperty(propertyId);
 
   const data = useMemo(() => {
     return tasksRaw
@@ -27,17 +27,19 @@ export function usePropertyTasks(propertyId: string | undefined) {
       .map((row) => mapTasksViewToPropertyTask(row));
   }, [tasksRaw]);
 
-  const header: PropertyHeader | null = property
+  const header: PropertyHeader | null = propertyRow
     ? {
-        id: property.id,
-        address: property.address,
-        nickname: property.nickname,
+        id: propertyRow.id,
+        address: propertyRow.address,
+        nickname: propertyRow.nickname,
       }
     : null;
 
   return {
     data,
     property: header,
+    /** Full row for UI (e.g. property colour on scoped screens). */
+    propertyRow,
     loading: (!!propertyId && tasksLoading) || (!!propertyId && propertyLoading),
   };
 }

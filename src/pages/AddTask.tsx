@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreateTaskModal } from '@/components/tasks/CreateTaskModal';
+import { propertyHubPath } from '@/lib/propertyRoutes';
 
 /**
  * AddTask page - opens CreateTaskModal and returns to previous screen after
@@ -15,17 +16,23 @@ const AddTask = () => {
   const propertyId = searchParams.get('propertyId') || undefined;
   const dueDate = searchParams.get('dueDate') || undefined;
 
+  const leavePage = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(propertyId ? propertyHubPath(propertyId) : '/');
+    }
+  };
+
   const handleOpenChange = (open: boolean) => {
     setShowModal(open);
     if (!open) {
-      // Go back to the previous screen instead of a fixed route
-      navigate(-1);
+      leavePage();
     }
   };
 
   const handleTaskCreated = () => {
-    // Go back to the previous screen instead of navigating to /work/tasks
-    navigate(-1);
+    leavePage();
   };
 
   return (

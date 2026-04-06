@@ -67,7 +67,7 @@ const RecordLibrary = lazy(() => import("./pages/record/RecordLibrary"));
 // Legacy pages (kept for deep links)
 const TaskDetail = lazy(() => import("./pages/TaskDetail"));
 const AddTask = lazy(() => import("./pages/AddTask"));
-const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const PropertyHubRedirect = lazy(() => import("./pages/PropertyHubRedirect"));
 const PropertyCompliance = lazy(() => import("./pages/PropertyCompliance"));
 const PropertyTasks = lazy(() => import("./pages/PropertyTasks"));
 const PropertyPhotos = lazy(() => import("./pages/PropertyPhotos"));
@@ -241,7 +241,7 @@ const App = () => {
                                 {/* Legacy/deep-link routes */}
                                 <Route path="/task/:id" element={<TaskDetail />} />
                                 <Route path="/add-task" element={<AddTask />} />
-                                <Route path="/properties/:id" element={<PropertyDetail />} />
+                                <Route path="/properties/:id" element={<PropertyHubRedirect />} />
                                 <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
                                 <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
                                 <Route path="/properties/:id/spaces/organise" element={<SpaceOrganisationScreen />} />

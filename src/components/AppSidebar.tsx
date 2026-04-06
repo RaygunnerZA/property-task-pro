@@ -13,17 +13,15 @@ import {
   History,
   Camera,
   FileCheck,
-  Plus,
-  Settings,
-  LogOut
+  Plus
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { propertyHubPath, propertyHubTasksPath, WORKBENCH_PANEL_TAB_QUERY } from '@/lib/propertyRoutes';
 import { NavLink } from '@/components/NavLink';
 import fillaLogo from '@/assets/filla-logo.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { APP_VERSION } from '@/config/version';
 
@@ -46,7 +44,7 @@ const propertyContextItems = [
   {
     title: 'Overview',
     icon: Building2,
-    getUrl: (id: string) => `/properties/${id}`,
+    getUrl: (id: string) => propertyHubPath(id),
   },
   {
     title: 'Assets',
@@ -56,7 +54,7 @@ const propertyContextItems = [
   {
     title: 'Tasks',
     icon: CheckSquare,
-    getUrl: (id: string) => `/properties/${id}/tasks`,
+    getUrl: (id: string) => propertyHubTasksPath(id),
   },
   {
     title: 'Compliance',
@@ -117,12 +115,34 @@ const assetContextItems = [
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
 
   // Detect entity context from URL
   const entityContext = useMemo(() => {
+    // Property workbench: /?property=<id>
+    if (currentPath === '/') {
+      const pid = searchParams.get('property');
+      if (pid) {
+        return { type: 'property' as const, id: pid };
+      }
+    }
+    // Filtered property list: /properties?property=<id>
+    if (currentPath === '/properties') {
+      const pid = searchParams.get('property');
+      if (pid) {
+        return { type: 'property' as const, id: pid };
+      }
+    }
+    // Property-scoped assets: /assets?property=<id>
+    if (currentPath === '/assets') {
+      const pid = searchParams.get('property');
+      if (pid) {
+        return { type: 'property' as const, id: pid };
+      }
+    }
     // Check for property context: /properties/:id or /property/:id
     const propertyMatch = currentPath.match(/^\/(?:properties|property)\/([^/]+)/);
     if (propertyMatch) {
@@ -142,7 +162,7 @@ export function AppSidebar() {
     }
 
     return null;
-  }, [currentPath]);
+  }, [currentPath, searchParams]);
 
   // Get context items based on entity type
   const contextItems = useMemo(() => {
@@ -157,11 +177,6 @@ export function AppSidebar() {
     return [];
   }, [entityContext]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   const handleCreateNew = () => {
     // Trigger FAB - this will be handled by FloatingAddButton
     // For now, navigate to tasks with add param
@@ -175,7 +190,36 @@ export function AppSidebar() {
   ) => {
     const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
     const urlBase = url.split('?')[0];
-    const isActive = currentPath === urlBase || (isContextItem && currentPath.startsWith(urlBase + '/'));
+    const hubQuery = url.includes('?') ? new URLSearchParams(url.split('?')[1]) : null;
+    const hubPropertyId = hubQuery?.get('property');
+    const isDashboardPropertyHub =
+      isContextItem && urlBase === '/' && Boolean(hubPropertyId);
+    const isPropertyListHub =
+      isContextItem && urlBase === '/properties' && Boolean(hubPropertyId);
+    const isPropertyAssetsHub =
+      isContextItem && urlBase === '/assets' && Boolean(hubPropertyId);
+    const isHubNav = Boolean(item.url === '/' && !item.getUrl);
+    const livePanelTab = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
+    const isActive = isDashboardPropertyHub
+      ? item.title === 'Overview'
+        ? currentPath === '/' &&
+          searchParams.get('property') === hubPropertyId &&
+          (livePanelTab === null || livePanelTab === 'attention')
+        : item.title === 'Tasks'
+          ? currentPath === '/' &&
+            searchParams.get('property') === hubPropertyId &&
+            livePanelTab === 'tasks'
+          : currentPath === '/' && searchParams.get('property') === hubPropertyId
+      : isPropertyListHub
+        ? currentPath === '/properties' &&
+          searchParams.get('property') === hubPropertyId
+        : isPropertyAssetsHub
+          ? currentPath === '/assets' &&
+            searchParams.get('property') === hubPropertyId
+        : isHubNav
+          ? currentPath === '/' && !searchParams.get('property')
+          : currentPath === urlBase ||
+            (isContextItem && currentPath.startsWith(urlBase + '/'));
     const IconComponent = item.icon;
     
     return (
@@ -212,9 +256,13 @@ export function AppSidebar() {
       <SidebarContent className="px-3 py-4 relative z-10 flex flex-col h-full">
         {/* Logo & Brand */}
         <div className="pl-[11px] pr-0 pt-[9px] pb-0 mb-[15px]">
-          <div className="flex items-center gap-3 w-[121px]">
-            <img src={fillaLogo} alt="Filla" className="w-full h-auto" />
-          </div>
+          <Link
+            to="/"
+            className="flex items-center gap-3 w-[121px] rounded-md outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/40"
+            aria-label="Go to hub"
+          >
+            <img src={fillaLogo} alt="" className="w-full h-auto pointer-events-none" />
+          </Link>
         </div>
 
         {/* Global Navigation Layer */}
@@ -269,37 +317,6 @@ export function AppSidebar() {
                   >
                     <Plus className="h-4 w-4 flex-shrink-0" />
                     {open && <span className="text-sm tracking-tight">Create New</span>}
-                  </button>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Settings */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
-                  <NavLink 
-                    to="/settings" 
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent",
-                      currentPath === "/settings" ? "text-foreground font-semibold" : "text-foreground/70"
-                    )}
-                    activeClassName=""
-                    pendingClassName="opacity-50"
-                  >
-                    <Settings className="h-4 w-4 flex-shrink-0" />
-                    {open && <span className="text-sm tracking-tight">Settings</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Sign Out */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
-                  <button 
-                    onClick={handleSignOut} 
-                    className="flex items-center gap-2 px-3 py-2 rounded-[5px] text-foreground/70 w-full bg-transparent"
-                  >
-                    <LogOut className="h-4 w-4 flex-shrink-0" />
-                    {open && <span className="text-sm tracking-tight">Sign Out</span>}
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -17,6 +17,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDevMode } from "@/context/useDevMode";
 import { isDevBuild } from "@/context/DevModeContext";
+import { useDevEmbedLayout } from "@/hooks/useDevEmbedLayout";
 import {
   simulateCreateTask,
   evaluateProfileDiagnostics,
@@ -44,9 +45,11 @@ import {
 import { cn } from "@/lib/utils";
 
 export function AIDebugPanel() {
+  const devEmbed = useDevEmbedLayout();
   const devMode = useDevMode();
 
   if (!isDevBuild) return null;
+  if (devEmbed) return null;
   if (!devMode.enabled || !devMode.showAIDebugPanel) return null;
 
   return <AIDebugPanelInner />;

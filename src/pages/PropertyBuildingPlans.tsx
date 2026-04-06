@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { Building2, CheckCircle2, FileUp, Loader2, XCircle } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { EmptyState } from "@/components/design-system/EmptyState";
@@ -12,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { useBuildingPlans, usePlanExtraction } from "@/hooks/property/useBuildingPlans";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 
 type SectionKind = "spaces" | "assets" | "compliance" | "tasks";
 
@@ -41,6 +44,20 @@ export default function PropertyBuildingPlans() {
   const { id } = useParams<{ id: string }>();
   const propertyId = id || "";
   const navigate = useNavigate();
+  const { data: properties = [] } = usePropertiesQuery();
+  const headerAccent =
+    (
+      properties.find((p: { id: string }) => p.id === propertyId) as
+        | { icon_color_hex?: string | null }
+        | undefined
+    )?.icon_color_hex?.trim() || "#8EC9CE";
+  const plansScopeBelowRow = propertyId ? (
+    <PropertyPageScopeBar
+      propertyId={propertyId}
+      hrefForProperty={(pid) => propertySubPath(pid, "plans")}
+      onBack={() => navigate(propertyHubPath(propertyId))}
+    />
+  ) : null;
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
 
@@ -149,8 +166,11 @@ export default function PropertyBuildingPlans() {
       <StandardPageWithBack
         title="Building Plans"
         subtitle="Upload, review and import building intelligence"
-        backTo={`/properties/${propertyId}`}
+        backTo={propertyId ? propertyHubPath(propertyId) : "/"}
         icon={<Building2 className="h-6 w-6" />}
+        headerAccentColor={headerAccent}
+        hideHeaderBack
+        belowGradientRow={plansScopeBelowRow}
       >
         <LoadingState message="Loading building plans..." />
       </StandardPageWithBack>
@@ -161,8 +181,11 @@ export default function PropertyBuildingPlans() {
     <StandardPageWithBack
       title="Building Plans"
       subtitle="Upload plans and let Filla draft your building model"
-      backTo={`/properties/${propertyId}`}
+      backTo={propertyId ? propertyHubPath(propertyId) : "/"}
       icon={<Building2 className="h-6 w-6" />}
+      headerAccentColor={headerAccent}
+      hideHeaderBack
+      belowGradientRow={plansScopeBelowRow}
     >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_320px]">
         <Card className="shadow-e1 p-3 space-y-3">
@@ -264,7 +287,11 @@ export default function PropertyBuildingPlans() {
             {extraction.isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Import accepted items
           </Button>
-          <Button variant="ghost" className="w-full" onClick={() => navigate(`/properties/${propertyId}`)}>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => (propertyId ? navigate(propertyHubPath(propertyId)) : navigate("/"))}
+          >
             Back to property
           </Button>
         </Card>

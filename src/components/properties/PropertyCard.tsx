@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import { Shield, CheckSquare, AlertTriangle, Layers, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tables } from "@/integrations/supabase/types";
@@ -102,14 +103,14 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
     ? differenceInDays(new Date(), new Date(property.lastInspectedDate))
     : null;
 
-  const goToPropertyDetail = () => {
-    navigate(`/properties/${property.id}`);
+  const goToPropertyHub = () => {
+    navigate(propertyHubPath(property.id));
   };
 
   const handleCardKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      goToPropertyDetail();
+      goToPropertyHub();
     }
   };
 
@@ -181,7 +182,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
         role="link"
         tabIndex={0}
         aria-label={`Open property ${displayName}`}
-        onClick={goToPropertyDetail}
+        onClick={goToPropertyHub}
         onKeyDown={handleCardKeyDown}
         className={cn(
           "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 flex flex-row w-full h-[100px] items-stretch relative",
@@ -220,7 +221,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
       role="link"
       tabIndex={0}
       aria-label={`Open property ${displayName}`}
-      onClick={goToPropertyDetail}
+      onClick={goToPropertyHub}
       onKeyDown={handleCardKeyDown}
       className={cn(
         "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 h-[216px] flex flex-col",

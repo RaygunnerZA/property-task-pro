@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { FileText, Sparkles } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
@@ -39,6 +40,8 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 
 type WorkTab = "all" | "expiring" | "missing_links" | "compliance" | "asset_docs";
 
@@ -46,8 +49,16 @@ const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechan
 
 export default function PropertyDocuments() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyId = id || "";
+  const { data: properties = [] } = usePropertiesQuery();
+  const headerAccent =
+    (
+      properties.find((p: { id: string }) => p.id === propertyId) as
+        | { icon_color_hex?: string | null }
+        | undefined
+    )?.icon_color_hex?.trim() || "#8EC9CE";
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
@@ -290,13 +301,13 @@ export default function PropertyDocuments() {
 
   const contextColumn = (
     <div className="space-y-4">
-      <WorkspaceSurfaceCard title="Health snapshot" description="What exists on this property">
-        {contextLoading ? (
+      {contextLoading ? (
+        <div className="rounded-[12px] bg-card/60 shadow-e1 px-4 py-4">
           <p className="text-xs text-muted-foreground">Loading summary…</p>
-        ) : (
-          <DocumentHealthSummary propertyId={propertyId} documents={contextDocuments} className="!shadow-none !bg-transparent p-0" />
-        )}
-      </WorkspaceSurfaceCard>
+        </div>
+      ) : (
+        <DocumentHealthSummary propertyId={propertyId} documents={contextDocuments} />
+      )}
       <WorkspaceSurfaceCard title="Quick focus" description="Jump to common slices">
         <DocumentsSummaryRow propertyId={propertyId} />
       </WorkspaceSurfaceCard>
@@ -452,16 +463,25 @@ export default function PropertyDocuments() {
     <StandardPageWithBack
       title="Property Documents"
       subtitle="What you have, what expires, and where it belongs"
-      backTo={`/properties/${propertyId}`}
+      backTo={propertyId ? propertyHubPath(propertyId) : "/"}
       icon={<FileText className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-[1480px]"
+      headerAccentColor={headerAccent}
+      hideHeaderBack
+      belowGradientRow={
+        <PropertyPageScopeBar
+          propertyId={propertyId}
+          hrefForProperty={(pid) => propertySubPath(pid, "documents")}
+          onBack={() => navigate(propertyId ? propertyHubPath(propertyId) : "/")}
+        />
+      }
     >
-      <div className="min-[1100px]:block hidden">
+      <div className="workspace:block hidden">
         <PropertyWorkspaceLayout contextColumn={contextColumn} workColumn={workColumn} actionColumn={actionColumn} />
       </div>
 
-      <div className="min-[1100px]:hidden flex flex-col gap-6 max-w-[660px]">
+      <div className="workspace:hidden flex flex-col gap-6 max-w-[660px]">
         {actionColumn}
         {workColumn}
         {contextColumn}

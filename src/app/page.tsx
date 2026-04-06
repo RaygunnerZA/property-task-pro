@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
 import { LeftColumn } from "@/components/layout/LeftColumn";
@@ -17,6 +18,8 @@ import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import type { IntakeMode } from "@/types/intake";
+import { WORKBENCH_PANEL_TAB_QUERY } from "@/lib/propertyRoutes";
+import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -30,6 +33,8 @@ const createGradientHeaderStyle = (color: string) => {
 // Match DualPaneLayout third-column breakpoint (min-1380px)
 const LG_BREAKPOINT = 1380;
 
+const VALID_WORKBENCH_PANEL_TABS = new Set(["attention", "tasks", "compliance", "schedule"]);
+
 type SelectedItem = {
   type: 'task' | 'message';
   id: string;
@@ -38,6 +43,7 @@ type SelectedItem = {
 type ExpandedSection = 'details' | 'assistant' | null;
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
@@ -51,10 +57,7 @@ export default function Dashboard() {
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const tabBeforeCreateTaskRef = useRef<string>("attention");
-  const prevPropertySelectionRef = useRef<{ size: number; singleId: string | null }>({
-    size: 0,
-    singleId: null,
-  });
+  const prevSearchStringRef = useRef<string | undefined>(undefined);
 
   const queryClient = useQueryClient();
 
@@ -63,32 +66,89 @@ export default function Dashboard() {
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
   const { weather } = useDailyBriefing();
 
-  // Initialize selectedPropertyIds with all properties when properties load
+  // URL ↔ selection: ?property=id opens the single-property workbench; clearing the param (e.g. Hub) widens to all.
   useEffect(() => {
-    if (properties.length > 0 && selectedPropertyIds.size === 0) {
-      setSelectedPropertyIds(new Set(properties.map(p => p.id)));
-    }
-  }, [properties, selectedPropertyIds.size]);
+    if (properties.length === 0) return;
+    const curSearch = searchParams.toString();
+    const prevSearch = prevSearchStringRef.current;
+    prevSearchStringRef.current = curSearch;
 
-  // Single-property hub: open Attention when drilling into a property or switching which one is selected.
-  useEffect(() => {
-    const size = selectedPropertyIds.size;
-    const singleId =
-      size === 1 ? (Array.from(selectedPropertyIds)[0] as string | undefined) ?? null : null;
-    const prev = prevPropertySelectionRef.current;
-    let shouldReset = false;
-    if (size === 1 && singleId) {
-      if (prev.size === 1 && prev.singleId !== null && prev.singleId !== singleId) {
-        shouldReset = true;
-      } else if (prev.size !== 1) {
-        shouldReset = true;
+    const pid = searchParams.get("property");
+    const allIds = properties.map((p) => p.id);
+
+    if (pid) {
+      if (properties.some((p) => p.id === pid)) {
+        setSelectedPropertyIds((prev) => {
+          if (prev.size > 1 && !isAllPropertiesActive(prev, allIds)) {
+            return prev;
+          }
+          return new Set([pid]);
+        });
+      } else {
+        const next = new URLSearchParams(searchParams);
+        next.delete("property");
+        setSearchParams(next, { replace: true });
       }
+      return;
     }
-    prevPropertySelectionRef.current = { size, singleId };
-    if (shouldReset) {
+
+    if (
+      prevSearch !== undefined &&
+      prevSearch.includes("property=") &&
+      !curSearch.includes("property=")
+    ) {
+      setSelectedPropertyIds(new Set(allIds));
+      return;
+    }
+
+    setSelectedPropertyIds((prev) =>
+      prev.size === 0 ? new Set(allIds) : prev
+    );
+  }, [properties, searchParams, setSearchParams]);
+
+  const handlePropertySelectionChange = useCallback(
+    (next: Set<string>) => {
+      setSelectedPropertyIds(next);
+      if (properties.length === 0) return;
+      const allIds = properties.map((p) => p.id);
+      const params = new URLSearchParams(searchParams);
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      if (next.size === 1) {
+        params.set("property", Array.from(next)[0]);
+        setSearchParams(params, { replace: true });
+      } else if (isAllPropertiesActive(next, allIds)) {
+        params.delete("property");
+        setSearchParams(params, { replace: true });
+      } else {
+        setSearchParams(params, { replace: true });
+      }
+    },
+    [properties, searchParams, setSearchParams]
+  );
+
+  // Workbench tab ↔ URL (?panelTab=) — chip changes clear panelTab in handlePropertySelectionChange.
+  useEffect(() => {
+    const t = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
+    if (t && VALID_WORKBENCH_PANEL_TABS.has(t)) {
+      setActiveTab(t);
+    } else {
       setActiveTab("attention");
     }
-  }, [selectedPropertyIds]);
+  }, [searchParams]);
+
+  const handleWorkbenchTabChange = useCallback(
+    (tab: string) => {
+      setActiveTab(tab);
+      const params = new URLSearchParams(searchParams);
+      if (tab === "attention") {
+        params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      } else {
+        params.set(WORKBENCH_PANEL_TAB_QUERY, tab);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Centralized aggregation: Calculate stats once at Dashboard level
   const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
@@ -207,12 +267,12 @@ export default function Dashboard() {
         ? customEvent.detail.filterIds
         : [];
       setAssistantFiltersToApply(filterIds);
-      setActiveTab("tasks");
+      handleWorkbenchTabChange("tasks");
       window.setTimeout(() => setAssistantFiltersToApply(null), 100);
     };
     window.addEventListener("filla:assistant-apply-task-filters", onApplyFilters);
     return () => window.removeEventListener("filla:assistant-apply-task-filters", onApplyFilters);
-  }, []);
+  }, [handleWorkbenchTabChange]);
 
   useEffect(() => {
     const onOpenTask = (event: Event) => {
@@ -220,14 +280,14 @@ export default function Dashboard() {
       const taskId = customEvent.detail?.taskId;
       if (!taskId) return;
 
-      setActiveTab("tasks");
+      handleWorkbenchTabChange("tasks");
       setSelectedItem({ type: "task", id: taskId });
       if (isLargeScreen) setExpandedSection("details");
     };
 
     window.addEventListener("filla:assistant-open-task", onOpenTask);
     return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
-  }, [isLargeScreen]);
+  }, [isLargeScreen, handleWorkbenchTabChange]);
 
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
@@ -250,13 +310,13 @@ export default function Dashboard() {
   const handleCreateTaskOpenChange = (open: boolean) => {
     setShowCreateTask(open);
     if (!open) {
-      setActiveTab(tabBeforeCreateTaskRef.current); // Return to the tab user was on
+      handleWorkbenchTabChange(tabBeforeCreateTaskRef.current);
     }
   };
 
   const handleTaskCreated = () => {
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    setActiveTab(tabBeforeCreateTaskRef.current); // Stay on / return to same tab after creating
+    handleWorkbenchTabChange(tabBeforeCreateTaskRef.current);
   };
 
   const handleMessageClick = (messageId: string) => {
@@ -279,13 +339,13 @@ export default function Dashboard() {
     setSelectedDate(date);
     // Auto-switch to schedule tab when a date is selected
     if (date) {
-      setActiveTab("schedule");
+      handleWorkbenchTabChange("schedule");
     }
   };
 
   const handleFilterClick = (filterId: string) => {
     // Switch to tasks tab for any property/filter interaction.
-    setActiveTab("tasks");
+    handleWorkbenchTabChange("tasks");
     // "show-tasks" is a tab-switch signal only (no filter mutation).
     if (filterId === "show-tasks") return;
     // Set the filter to apply, which will trigger TaskList to apply it.
@@ -406,7 +466,7 @@ export default function Dashboard() {
   const headerElement = (
     <PageHeader>
       <div
-        className="pl-[18px] pr-4 pt-[18px] pb-[12px] h-[100px] flex items-end justify-start rounded-bl-[12px]"
+        className="flex h-[100px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
         style={headerStyle}
       >
         <div className="flex flex-col items-start justify-center gap-1 w-[248px] min-w-0 shrink-0">
@@ -434,9 +494,20 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+    <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <DualPaneLayout
-        header={headerElement}
+        header={
+          <>
+            {headerElement}
+            <PropertyScopeFilterBar
+              variant="primary"
+              properties={properties}
+              selectedPropertyIds={selectedPropertyIds}
+              onSelectionChange={handlePropertySelectionChange}
+              onFilterClick={handleFilterClick}
+            />
+          </>
+        }
         leftColumn={
           <LeftColumn 
             tasks={tasks}
@@ -450,9 +521,8 @@ export default function Dashboard() {
             overdueCount={overdueCount}
             onFilterClick={handleFilterClick}
             selectedPropertyIds={selectedPropertyIds}
-            onPropertySelectionChange={setSelectedPropertyIds}
+            onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
-            onTaskClick={handleTaskClick}
           />
         }
         rightColumn={
@@ -464,7 +534,7 @@ export default function Dashboard() {
             onMessageClick={handleMessageClick}
             selectedItem={selectedItem}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
+            onTabChange={handleWorkbenchTabChange}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
             filtersToApply={assistantFiltersToApply}

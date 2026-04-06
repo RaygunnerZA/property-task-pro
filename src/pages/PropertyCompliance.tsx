@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, useSearchParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
+import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
@@ -29,12 +30,22 @@ import {
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 
 type ComplianceWorkView = "due_soon" | "overdue" | "rules" | "history";
 
 export default function PropertyCompliance() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { data: properties = [] } = usePropertiesQuery();
+  const headerAccent =
+    (
+      properties.find((p: { id: string }) => p.id === id) as
+        | { icon_color_hex?: string | null }
+        | undefined
+    )?.icon_color_hex?.trim() || "#8EC9CE";
   const { orgId } = useActiveOrg();
   const { data: compliance = [], isLoading } = useComplianceQuery(id || undefined);
   const { data: recommendations = [] } = useComplianceRecommendations(id || undefined);
@@ -293,23 +304,34 @@ export default function PropertyCompliance() {
     <StandardPageWithBack
       title="Property Compliance"
       subtitle="What is due, overdue, and what to do next"
-      backTo={`/properties/${id}`}
+      backTo={id ? propertyHubPath(id) : "/"}
       icon={<Shield className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-[1480px]"
+      headerAccentColor={headerAccent}
+      hideHeaderBack
+      belowGradientRow={
+        id ? (
+          <PropertyPageScopeBar
+            propertyId={id}
+            hrefForProperty={(pid) => propertySubPath(pid, "compliance")}
+            onBack={() => navigate(propertyHubPath(id))}
+          />
+        ) : null
+      }
     >
       {isLoading ? (
         <LoadingState message="Loading property compliance..." />
       ) : (
         <>
-          <div className="min-[1100px]:block hidden">
+          <div className="workspace:block hidden">
             <PropertyWorkspaceLayout
               contextColumn={contextColumn}
               workColumn={workColumnInner}
               actionColumn={actionColumn}
             />
           </div>
-          <div className="min-[1100px]:hidden flex flex-col gap-6 max-w-[660px]">
+          <div className="workspace:hidden flex flex-col gap-6 max-w-[660px]">
             {actionColumn}
             {workColumnInner}
             {contextColumn}

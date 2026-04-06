@@ -4,28 +4,25 @@ interface DualPaneLayoutProps {
   leftColumn: ReactNode;
   rightColumn: ReactNode;
   thirdColumn?: ReactNode; // Optional third column for task details on desktop
-  header?: ReactNode; // Optional header that spans first two columns only (not third)
+  /** Spans the full main content width (all workbench columns), excluding the app sidebar. */
+  header?: ReactNode;
 }
 
 /**
  * Dual-Pane Command Centre Layout (with conditional third column on desktop)
- * 
+ *
  * Mobile: Single column stack
- * 
+ *
  * Desktop (md+): CSS Grid with 2 columns
  *   - Left: 265px fixed (Calendar + Properties)
  *   - Right: 1fr (Task Tabs) - flexible up to max 652px
- * 
- * Desktop (min-[1380px]+): Flex layout with conditional third column
+ *
+ * Desktop (layout / 1380px+): Flex layout with conditional third column
  *   - Without third column: [265px minmax(450px, 660px)]
  *   - With third column: [265px 660px 1fr]
- *   - Left: 265px fixed (Calendar + Properties)
- *   - Middle: 660px fixed (Task Tabs)
- *   - Right: 1fr flexible (Task Details) - fills remaining space, extends to top
- * 
- * When header prop is provided on min-[1380px]+ screens:
- *   - Header spans only the first two columns
- *   - Third column always extends to the top of the screen (not blocked by header)
+ *
+ * When `header` is provided at the layout breakpoint, it spans the full width above
+ * the left, middle, and third columns (sidebar remains outside this shell).
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
@@ -36,7 +33,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
     : "h-screen sticky top-0 w-[265px] px-0";
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen w-full min-w-0">
       {/* Mobile: Single column stack */}
       <div className="flex flex-col md:hidden w-full min-w-0 max-w-full overflow-x-hidden">
         {header && <div className="w-full">{header}</div>}
@@ -45,7 +42,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
       </div>
 
       {/* Desktop: Two-column layout (md+), shown until third-column breakpoint */}
-      <div className="hidden md:grid md:grid-cols-[265px_1fr] min-[1380px]:hidden min-h-screen">
+      <div className="hidden md:grid md:grid-cols-[265px_1fr] layout:hidden min-h-screen">
         {/* Header spans both columns on md screens */}
         {header && (
           <div className="col-span-2">
@@ -64,37 +61,36 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
       </div>
 
-      {/* Desktop: Conditional three-column layout (min-[1380px]+) */}
-      <div className="hidden min-[1380px]:flex min-h-screen">
-        {/* Left side: Header + first two columns */}
-        <div className={`flex flex-col ${hasThirdColumn ? 'w-[925px]' : 'flex-1'}`}>
-          {/* Header spans first two columns only */}
-          {header && header}
-          
-          {/* Two-column grid for left and middle columns */}
-          <div className={`grid flex-1 ${
-            hasThirdColumn 
-              ? 'grid-cols-[265px_660px]' 
-              : 'grid-cols-[265px_minmax(450px,_660px)]'
-          }`}>
-            {/* Left Column: Fixed 265px, sticky below header */}
-            <div className={stickyColClass}>
-              {leftColumn}
-            </div>
+      {/* Desktop: Conditional three-column layout (layout / 1380px+) */}
+      <div className="hidden layout:flex layout:flex-col w-full min-w-0 min-h-screen">
+        {header && <div className="w-full shrink-0">{header}</div>}
 
-            {/* Middle Column */}
-            <div className="overflow-y-auto min-w-0 px-[14px] pt-3">
-              {rightColumn}
+        <div className="flex flex-1 min-h-0 min-w-0 w-full">
+          <div
+            className={
+              hasThirdColumn
+                ? "flex w-[925px] shrink-0 flex-col min-h-0 min-w-0"
+                : "flex min-h-0 min-w-0 flex-1 flex-col"
+            }
+          >
+            <div
+              className={`grid min-h-0 flex-1 ${
+                hasThirdColumn
+                  ? "grid-cols-[265px_660px]"
+                  : "grid-cols-[265px_minmax(450px,_660px)]"
+              }`}
+            >
+              <div className={stickyColClass}>{leftColumn}</div>
+              <div className="min-h-0 overflow-y-auto min-w-0 px-[14px] pt-3">
+                {rightColumn}
+              </div>
             </div>
           </div>
+
+          {hasThirdColumn && (
+            <div className="min-h-0 flex-1 min-w-0 overflow-y-auto">{thirdColumn}</div>
+          )}
         </div>
-
-        {/* Third Column: Flexible width, top-padded to clear header */}
-        {hasThirdColumn && (
-          <div className={`overflow-y-auto flex-1 ${hasHeader ? 'pt-[var(--header-height)]' : ''}`}>
-            {thirdColumn}
-          </div>
-        )}
       </div>
     </div>
   );

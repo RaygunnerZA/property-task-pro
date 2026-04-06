@@ -53,7 +53,7 @@ export function StandardPageWithTabs({
   onTabChange,
   children,
   maxWidth = "md",
-  showBottomNav = true,
+  showBottomNav = false,
   className,
   headerClassName,
   contentClassName
@@ -69,9 +69,15 @@ export function StandardPageWithTabs({
   const defaultTabValue = defaultTab || tabs[0]?.value || "";
 
   return (
-    <div className={cn("min-h-screen bg-background pb-20", className)}>
-      <PageHeader className={headerClassName}>
-        <div className={cn("mx-auto px-4 py-4 flex items-center justify-between", maxWidthClasses[maxWidth])}>
+    <div
+      className={cn(
+        "min-h-screen bg-background",
+        showBottomNav ? "pb-20" : "pb-6",
+        className
+      )}
+    >
+      <PageHeader className={headerClassName} toolbarSurface="plain">
+        <div className={cn("mx-auto px-4 py-4 pr-24 sm:pr-32 flex items-center justify-between", maxWidthClasses[maxWidth])}>
           <div className="flex items-center gap-2">
             {icon && <span className="icon-primary">{icon}</span>}
             <div>

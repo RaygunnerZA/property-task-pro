@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { LAYOUT_BREAKPOINTS } from "./src/lib/layoutBreakpoints";
 
 export default {
   darkMode: ["class"],
@@ -13,6 +14,14 @@ export default {
       },
     },
     extend: {
+      screens: {
+        /** Property workspace / compliance: stacked → three-column */
+        workspace: `${LAYOUT_BREAKPOINTS.workspace}px`,
+        /** App shell: two-column tablet → three-column desktop */
+        layout: `${LAYOUT_BREAKPOINTS.layout}px`,
+        /** Very narrow panes (e.g. task rail) — max-width */
+        "max-pane": { max: `${LAYOUT_BREAKPOINTS.maxPane}px` },
+      },
       fontFamily: {
         sans: ['Inter Tight', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],

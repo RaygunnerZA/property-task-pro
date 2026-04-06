@@ -12,6 +12,7 @@ import {
   X,
   Plus,
   Upload,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
@@ -19,11 +20,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import {
+  StripMetricValue,
+  summaryActionCol,
+  summaryRowLabelClass,
+} from "@/components/properties/propertySnapshotMetrics";
+import { propertiesService } from "@/services/properties/properties";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 function humanizeSiteType(value: string): string {
   return value
@@ -53,75 +72,19 @@ export type PropertyForStrip = {
 const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
 type TabIndex = 0 | 1 | 2 | 3;
 
-const summaryRowLabelClass =
-  "flex w-[105px] shrink-0 items-center gap-2 text-xs text-muted-foreground";
-
-/** Full-width grid: primary column is track 1 (fixed 3rem, text-right) so 2 / 6 / 13 / — / 0 line up; track 2 = white bar; track 3 = secondary + ⚠. */
-const summaryMetricsGridClass =
-  "grid min-w-0 w-[86px] shrink-0 grid-cols-[minmax(0,3rem)_minmax(0,12px)_max-content_minmax(0,1fr)] items-center gap-x-0 gap-y-0 pr-1 text-xs tabular-nums";
-
-const metricVBarClass =
-  "h-[11px] w-0.5 shrink-0 rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.06)]";
-
 type AssetViewRow = {
   status?: string | null;
   condition_score?: number | null;
   open_tasks_count?: number | null;
 };
 
-/** Primary in fixed column (right-aligned); white bar; then secondary count + ⚠ when attention &gt; 0. */
-function StripMetricValue({
-  primary,
-  attention,
-  primaryMuted,
-  attentionTitle,
-  warnClassName = "text-red-600/85",
-}: {
-  primary: number | string;
-  attention: number;
-  primaryMuted?: boolean;
-  attentionTitle?: string;
-  warnClassName?: string;
-}) {
-  const showSecondary = attention > 0;
-  return (
-    <div className={summaryMetricsGridClass}>
-      <div className="flex h-6 w-6 min-w-0 flex-col items-center justify-center justify-self-end rounded-lg bg-[var(--tw-ring-offset-color)] font-semibold tabular-nums">
-        <span
-          className={
-            primaryMuted ? "text-muted-foreground" : "font-mono text-[rgb(42,41,62)]"
-          }
-        >
-          {primary}
-        </span>
-      </div>
-      <div className="flex items-center justify-center">
-        {showSecondary ? <span className={metricVBarClass} aria-hidden /> : null}
-      </div>
-      {showSecondary ? (
-        <div className="flex h-6 min-w-0 w-7 shrink-0 items-center justify-end gap-0.5 rounded-lg bg-[var(--tw-ring-offset-color)] px-0.5">
-          <span className="font-semibold font-mono tabular-nums text-[#EB6834]">{attention}</span>
-          <span
-            className={cn("font-medium", warnClassName)}
-            title={attentionTitle ?? ""}
-            aria-label={attentionTitle ?? "Attention"}
-          >
-            ⚠
-          </span>
-        </div>
-      ) : (
-        <div className="h-6 w-7 min-w-0 shrink-0" aria-hidden />
-      )}
-      <div className="min-w-0" aria-hidden />
-    </div>
-  );
-}
-
 interface PropertyIdentityStripProps {
   property: PropertyForStrip;
   onAddTaskClick?: () => void;
   /** Open tasks with priority urgent or high — shown as `total • urgent ⚠` on PROPERTY tab */
   urgentOpenTaskCount?: number;
+  /** Called after a successful archive (e.g. reset hub selection to all properties). */
+  onPropertyArchived?: () => void;
 }
 
 /**
@@ -137,6 +100,7 @@ export function PropertyIdentityStrip({
   property,
   onAddTaskClick,
   urgentOpenTaskCount = 0,
+  onPropertyArchived,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
   const { details: propertyDetails } = usePropertyDetails(property.id);
@@ -161,6 +125,8 @@ export function PropertyIdentityStrip({
 
   // Contacts edit state
   const [isEditingContacts, setIsEditingContacts] = useState(false);
+  const [showArchivePropertyDialog, setShowArchivePropertyDialog] = useState(false);
+  const [isArchivingProperty, setIsArchivingProperty] = useState(false);
   const [contactsForm, setContactsForm] = useState({
     owner_name: property.owner_name ?? "",
     owner_email: property.owner_email ?? "",
@@ -247,9 +213,6 @@ export function PropertyIdentityStrip({
     return parts.length > 0 ? parts.join(" · ") : null;
   }, [propertyDetails, bedroomCount]);
 
-  const summaryActionCol =
-    "flex h-6 shrink-0 w-[55px] items-center justify-end gap-1 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto";
-
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handlePhotoEditClick = () => fileInputRef.current?.click();
@@ -318,6 +281,22 @@ export function PropertyIdentityStrip({
       contact_email: property.contact_email ?? "",
       contact_phone: property.contact_phone ?? "",
     });
+  };
+
+  const handleConfirmArchiveProperty = async () => {
+    setIsArchivingProperty(true);
+    const { error } = await propertiesService.archiveProperty(property.id);
+    setIsArchivingProperty(false);
+    if (error) {
+      toast.error("Couldn't archive property", { description: error });
+      return;
+    }
+    setShowArchivePropertyDialog(false);
+    toast.success("Property archived", {
+      description: `${displayName} is no longer shown in your active list.`,
+    });
+    await queryClient.invalidateQueries({ queryKey: ["properties"] });
+    onPropertyArchived?.();
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -499,7 +478,7 @@ export function PropertyIdentityStrip({
                   <button
                     type="button"
                     aria-label="Add task"
-                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onAddTaskClick();
@@ -509,7 +488,7 @@ export function PropertyIdentityStrip({
                   </button>
                 )}
                 <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -546,7 +525,7 @@ export function PropertyIdentityStrip({
                 <button
                   type="button"
                   aria-label="Add asset"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(
@@ -557,7 +536,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -569,11 +548,11 @@ export function PropertyIdentityStrip({
             <div
               role="button"
               tabIndex={0}
-              onClick={() => navigate(`/properties/${property.id}`)}
+              onClick={() => navigate(propertyHubPath(property.id))}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigate(`/properties/${property.id}`);
+                  navigate(propertyHubPath(property.id));
                 }
               }}
               className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -591,7 +570,7 @@ export function PropertyIdentityStrip({
                 <button
                   type="button"
                   aria-label="Add or organise spaces"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/spaces/organise`);
@@ -600,7 +579,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -643,7 +622,7 @@ export function PropertyIdentityStrip({
                 <button
                   type="button"
                   aria-label="Add compliance rule"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/compliance?addRule=1`);
@@ -652,7 +631,7 @@ export function PropertyIdentityStrip({
                   <Plus className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -688,7 +667,7 @@ export function PropertyIdentityStrip({
                 <button
                   type="button"
                   aria-label="Upload document"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   onClick={(e) => {
                     e.stopPropagation();
                     navigate(`/properties/${property.id}/documents?upload=1`);
@@ -697,7 +676,7 @@ export function PropertyIdentityStrip({
                   <Upload className="h-3.5 w-3.5" />
                 </button>
                 <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-[var(--tw-ring-offset-color)] hover:text-foreground"
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                   aria-hidden
                 >
                   →
@@ -709,85 +688,99 @@ export function PropertyIdentityStrip({
           {/* 1 ── DETAILS ──────────────────────────────────────────────── */}
           <div
             className={cn(
-              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              "w-full flex-shrink-0 h-full min-h-0 flex flex-col px-3 py-2.5",
               activeTab === 1 ? "pointer-events-auto" : "pointer-events-none"
             )}
           >
-            {isEditingDetails ? (
-              <div className="space-y-2">
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    Nickname
-                  </label>
-                  <input
-                    type="text"
-                    value={detailsForm.nickname}
-                    onChange={(e) =>
-                      setDetailsForm((f) => ({ ...f, nickname: e.target.value }))
-                    }
-                    placeholder="e.g. The Bird"
-                    className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                    Address
-                  </label>
-                  <input
-                    type="text"
-                    value={detailsForm.address}
-                    onChange={(e) =>
-                      setDetailsForm((f) => ({ ...f, address: e.target.value }))
-                    }
-                    className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50"
-                  />
-                </div>
-                <div className="flex gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={handleSaveDetails}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-[11px] font-medium text-primary transition-colors"
-                  >
-                    <Check className="h-3 w-3" /> Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelDetails}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md hover:bg-muted/50 text-[11px] text-muted-foreground transition-colors"
-                  >
-                    <X className="h-3 w-3" /> Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-2 flex-1 min-w-0">
-                  {property.nickname && property.nickname !== property.address && (
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Nickname
-                      </p>
-                      <p className="text-xs font-medium text-foreground truncate">
-                        {property.nickname}
-                      </p>
-                    </div>
-                  )}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {isEditingDetails ? (
+                <div className="space-y-2">
                   <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                      Nickname
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.nickname}
+                      onChange={(e) =>
+                        setDetailsForm((f) => ({ ...f, nickname: e.target.value }))
+                      }
+                      placeholder="e.g. The Bird"
+                      className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
                       Address
-                    </p>
-                    <p className="text-xs text-foreground/80 leading-snug">
-                      {property.address}
-                    </p>
+                    </label>
+                    <input
+                      type="text"
+                      value={detailsForm.address}
+                      onChange={(e) =>
+                        setDetailsForm((f) => ({ ...f, address: e.target.value }))
+                      }
+                      className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={handleSaveDetails}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md bg-primary/15 hover:bg-primary/25 text-[11px] font-medium text-primary transition-colors"
+                    >
+                      <Check className="h-3 w-3" /> Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelDetails}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md hover:bg-muted/50 text-[11px] text-muted-foreground transition-colors"
+                    >
+                      <X className="h-3 w-3" /> Cancel
+                    </button>
                   </div>
                 </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    {property.nickname && property.nickname !== property.address && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          Nickname
+                        </p>
+                        <p className="text-xs font-medium text-foreground truncate">
+                          {property.nickname}
+                        </p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Address
+                      </p>
+                      <p className="text-xs text-foreground/80 leading-snug">
+                        {property.address}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingDetails(true)}
+                    className="shrink-0 p-1.5 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
+                    aria-label="Edit details"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            {!isEditingDetails && (
+              <div className="shrink-0 pt-2.5 mt-1 border-t border-border/30">
                 <button
                   type="button"
-                  onClick={() => setIsEditingDetails(true)}
-                  className="shrink-0 p-1.5 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Edit details"
+                  onClick={() => setShowArchivePropertyDialog(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-md py-2 px-2 text-[11px] font-medium text-muted-foreground shadow-sm transition-all hover:bg-muted/40 hover:text-[#EB6834] hover:shadow-md"
                 >
-                  <Edit2 className="h-3.5 w-3.5" />
+                  <Archive className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                  Archive property
                 </button>
               </div>
             )}
@@ -959,6 +952,31 @@ export function PropertyIdentityStrip({
 
         </div>
       </div>
+
+      <AlertDialog open={showArchivePropertyDialog} onOpenChange={setShowArchivePropertyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive this property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="block">
+                <span className="font-medium text-foreground">{displayName}</span> will be removed from your
+                active property list. Existing tasks and linked data are kept.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isArchivingProperty}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={isArchivingProperty}
+              className="bg-[#EB6834] text-white hover:bg-[#EB6834]/90 shadow-sm"
+              onClick={() => void handleConfirmArchiveProperty()}
+            >
+              {isArchivingProperty ? "Archiving…" : "Archive property"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

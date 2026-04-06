@@ -54,7 +54,7 @@ export function RightColumn({
     <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
       {/* Daily Briefing above tabs: all-properties (or single-property org) hub only */}
       {showBriefingAboveTabs && (
-        <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[10px] pt-[15px] min-h-[130px] max-[455px]:px-2">
+        <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[10px] pt-[15px] min-h-[130px] max-pane:px-2">
           <DailyBriefingCard
             tasks={tasks}
             selectedPropertyIds={selectedPropertyIds}
