@@ -1,5 +1,4 @@
 import { Link, useNavigate } from "react-router-dom";
-import type { User } from "@supabase/supabase-js";
 import { Bell, LogOut, Settings, UserCircle } from "lucide-react";
 import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,40 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-function displayName(user: User | null): string {
-  if (!user) return "Account";
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const full =
-    (typeof meta?.full_name === "string" && meta.full_name) ||
-    (typeof meta?.name === "string" && meta.name) ||
-    "";
-  if (full.trim()) return full.trim();
-  return user.email?.split("@")[0] || "Account";
-}
-
-function initials(user: User | null): string {
-  if (!user?.email) return "?";
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const name =
-    (typeof meta?.full_name === "string" && meta.full_name) ||
-    (typeof meta?.name === "string" && meta.name) ||
-    "";
-  if (name.trim()) {
-    const parts = name.trim().split(/\s+/);
-    const a = parts[0]?.[0] ?? "";
-    const b = parts[1]?.[0] ?? "";
-    return (a + b).toUpperCase() || user.email.slice(0, 2).toUpperCase();
-  }
-  return user.email.slice(0, 2).toUpperCase();
-}
-
-function avatarUrl(user: User | null): string | undefined {
-  if (!user) return undefined;
-  const meta = user.user_metadata as Record<string, unknown> | undefined;
-  const u = meta?.avatar_url;
-  return typeof u === "string" && u.trim() ? u.trim() : undefined;
-}
+import { userAvatarUrl, userDisplayName, userInitials } from "@/lib/userDisplayHelpers";
 
 type HeaderAccountMenuProps = {
   /** Sits on property / workbench gradient: light ring, readable on color. */
@@ -78,12 +44,12 @@ export function HeaderAccountMenu({ variant = "default" }: HeaderAccountMenuProp
           aria-label="Open account menu"
         >
           <Avatar className="h-8 w-8 rounded-full">
-            <AvatarImage src={avatarUrl(user)} alt="" className="object-cover" />
+            <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover" />
             <AvatarFallback
               className="rounded-full text-xs font-semibold"
               style={{ backgroundColor: "hsl(var(--primary) / 0.35)", color: "hsl(var(--foreground))" }}
             >
-              {initials(user)}
+              {userInitials(user)}
             </AvatarFallback>
           </Avatar>
         </button>
@@ -94,7 +60,7 @@ export function HeaderAccountMenu({ variant = "default" }: HeaderAccountMenuProp
         className="w-[min(100vw-2rem,280px)] rounded-[10px] border-border/40 p-1 shadow-md"
       >
         <DropdownMenuLabel className="space-y-0.5 px-2 py-2 font-normal">
-          <p className="truncate text-sm font-semibold text-foreground">{displayName(user)}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{userDisplayName(user)}</p>
           {user?.email && (
             <p className="truncate text-xs text-muted-foreground" title={user.email}>
               {user.email}

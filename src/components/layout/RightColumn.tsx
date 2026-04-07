@@ -51,10 +51,10 @@ export function RightColumn({
   const showBriefingAboveTabs = !embedBriefingInAttention;
 
   return (
-    <div className="h-full flex flex-col min-w-0 px-0 w-full md:w-auto">
+    <div className="h-full flex flex-col min-w-0 px-0 w-full sm:w-auto">
       {/* Daily Briefing above tabs: all-properties (or single-property org) hub only */}
       {showBriefingAboveTabs && (
-        <div className="mb-4 flex-shrink-0 w-full min-w-0 px-[10px] pt-[15px] min-h-[130px] max-pane:px-2">
+        <div className="mb-4 flex-shrink-0 w-full min-w-0 max-sm:px-0 sm:px-[10px] pt-[15px] min-h-[130px] max-pane:px-2">
           <DailyBriefingCard
             tasks={tasks}
             selectedPropertyIds={selectedPropertyIds}
@@ -66,7 +66,7 @@ export function RightColumn({
       
       {/* Task Panel or custom children — gradient only below Daily Briefing */}
       <div
-        className="flex-1 min-h-0 min-w-0 w-full md:w-auto rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]"
+        className="flex-1 min-h-0 min-w-0 w-full sm:w-auto rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]"
         style={{
           background:
             "linear-gradient(0deg, rgba(234, 233, 230, 0) 0%, rgba(239, 238, 235, 0) 77%, rgba(255, 255, 255, 0.5) 100%)",

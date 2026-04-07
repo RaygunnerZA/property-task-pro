@@ -10,7 +10,7 @@ import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { PageHeader } from "@/components/design-system/PageHeader";
-import { Cloud, CloudRain, Sun, CloudSun } from "lucide-react";
+import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
@@ -35,6 +35,14 @@ const LG_BREAKPOINT = 1380;
 
 const VALID_WORKBENCH_PANEL_TABS = new Set(["attention", "tasks", "compliance", "schedule"]);
 
+/** Use the live address bar when mutating query params so we never drop `property` or revert scope if React's `searchParams` is one frame behind (e.g. Hall selected then Compliance tab immediately). */
+function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchParams {
+  if (typeof window === "undefined") {
+    return new URLSearchParams(fallback);
+  }
+  return new URLSearchParams(window.location.search);
+}
+
 type SelectedItem = {
   type: 'task' | 'message';
   id: string;
@@ -52,31 +60,7 @@ export default function Dashboard() {
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
-  // #region agent log
-  useEffect(() => {
-    fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "1363a1",
-      },
-      body: JSON.stringify({
-        sessionId: "1363a1",
-        runId: "pre-fix",
-        hypothesisId: "H4",
-        location: "app/page.tsx:expandedSection",
-        message: "workbench concertina expandedSection changed",
-        data: {
-          expandedSection,
-          assistantPanelAriaHidden: expandedSection !== "assistant",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }, [expandedSection]);
-  // #endregion
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [activeTab, setActiveTab] = useState<string>("attention");
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
@@ -84,6 +68,8 @@ export default function Dashboard() {
   const prevSearchStringRef = useRef<string | undefined>(undefined);
   const workbenchPropertyInitRef = useRef(false);
   const prevWorkbenchPropertyIdRef = useRef<string | null | undefined>(undefined);
+  /** User chose ALL (multi-org); URL may still show ?property= for a frame — don't collapse selection until URL clears. */
+  const pendingPropertyParamClearRef = useRef(false);
 
   const queryClient = useQueryClient();
 
@@ -114,7 +100,13 @@ export default function Dashboard() {
     if (pid) {
       if (properties.some((p) => p.id === pid)) {
         setSelectedPropertyIds((prev) => {
-          if (prev.size > 1 && !isAllPropertiesActive(prev, allIds)) {
+          const skipStaleUrlWhileClearing =
+            pendingPropertyParamClearRef.current && isAllPropertiesActive(prev, allIds);
+          if (skipStaleUrlWhileClearing) {
+            return prev;
+          }
+          const skipMulti = prev.size > 1 && !isAllPropertiesActive(prev, allIds);
+          if (skipMulti) {
             return prev;
           }
           return new Set([pid]);
@@ -126,6 +118,8 @@ export default function Dashboard() {
       }
       return;
     }
+
+    pendingPropertyParamClearRef.current = false;
 
     if (
       prevSearch !== undefined &&
@@ -146,7 +140,12 @@ export default function Dashboard() {
       setSelectedPropertyIds(next);
       if (properties.length === 0) return;
       const allIds = properties.map((p) => p.id);
-      const params = new URLSearchParams(searchParams);
+      if (isAllPropertiesActive(next, allIds) && allIds.length > 1) {
+        pendingPropertyParamClearRef.current = true;
+      } else {
+        pendingPropertyParamClearRef.current = false;
+      }
+      const params = workbenchSearchParamsFromBrowser(searchParams);
       params.delete(WORKBENCH_PANEL_TAB_QUERY);
       if (next.size === 1) {
         params.set("property", Array.from(next)[0]);
@@ -165,20 +164,16 @@ export default function Dashboard() {
     [properties, searchParams, setSearchParams]
   );
 
-  // Workbench tab ↔ URL (?panelTab=) — chip changes clear panelTab in handlePropertySelectionChange.
-  useEffect(() => {
+  /** Single source of truth with the URL: no `panelTab` ⇒ Attention. */
+  const activeTab = useMemo(() => {
     const t = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
-    if (t && VALID_WORKBENCH_PANEL_TABS.has(t)) {
-      setActiveTab(t);
-    } else {
-      setActiveTab("attention");
-    }
+    if (t && VALID_WORKBENCH_PANEL_TABS.has(t)) return t;
+    return "attention";
   }, [searchParams]);
 
   const handleWorkbenchTabChange = useCallback(
     (tab: string) => {
-      setActiveTab(tab);
-      const params = new URLSearchParams(searchParams);
+      const params = workbenchSearchParamsFromBrowser(searchParams);
       if (tab === "attention") {
         params.delete(WORKBENCH_PANEL_TAB_QUERY);
       } else {
@@ -403,21 +398,10 @@ export default function Dashboard() {
     setTimeout(() => setFilterToApply(null), 100);
   };
 
-  // Get weather icon based on condition code
-  const getWeatherIcon = (conditionCode: number | null) => {
-    if (!conditionCode) return Cloud;
-    
-    // WMO Weather interpretation codes (simplified)
-    // 0: Clear sky, 1-3: Mainly clear/partly cloudy, 45-48: Fog
-    // 51-67: Drizzle/Rain, 71-77: Snow, 80-99: Rain showers/Thunderstorm
-    if (conditionCode === 0) return Sun;
-    if (conditionCode >= 1 && conditionCode <= 3) return CloudSun;
-    if (conditionCode >= 51 && conditionCode <= 67) return CloudRain;
-    if (conditionCode >= 80 && conditionCode <= 99) return CloudRain;
-    return Cloud;
-  };
+  const WeatherIcon = getWeatherLucideIcon(weather?.conditionCode ?? null);
 
-  const WeatherIcon = weather ? getWeatherIcon(weather.conditionCode) : Cloud;
+  /** Single-property workbench: Today + weather live on the property card thumbnail instead of the gradient header. */
+  const showTodayWeatherOnPropertyCard = selectedPropertyIds.size === 1;
 
   const selectedTaskId = selectedItem?.type === "task" ? selectedItem.id : null;
   const detailsSectionTitle = selectedTaskId ? "Task Details" : "Details";
@@ -513,21 +497,23 @@ export default function Dashboard() {
 
   // Header element that will be passed to DualPaneLayout
   const headerElement = (
-    <PageHeader>
+    <PageHeader showAccountMenu={false}>
       <div
         className="flex h-[60px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
         style={headerStyle}
       >
-        <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
-          <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
-          <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
-          <div className="flex items-center justify-start gap-2 text-left">
-            <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
-            <span className="text-sm text-white/90 whitespace-nowrap">
-              {weather ? `${weather.temp}°C` : "--°C"}
-            </span>
+        {!showTodayWeatherOnPropertyCard ? (
+          <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
+            <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
+            <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
+            <div className="flex items-center justify-start gap-2 text-left">
+              <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
+              <span className="text-sm text-white/90 whitespace-nowrap">
+                {weather ? `${weather.temp}°C` : "--°C"}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </PageHeader>
   );
@@ -551,6 +537,7 @@ export default function Dashboard() {
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
+            propertyCardWeather={showTodayWeatherOnPropertyCard ? weather : undefined}
             scopeFilterBar={
               <PropertyScopeFilterBar
                 variant="primary"

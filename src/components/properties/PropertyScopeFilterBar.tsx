@@ -5,6 +5,7 @@ import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
 import { cn } from "@/lib/utils";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
+import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Button } from "@/components/ui/button";
 
@@ -75,6 +76,31 @@ function PropertyScopeFilterBarPrimary({
     };
   }, []);
 
+  const [scopeSecondaryOpen, setScopeSecondaryOpen] = useState(false);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 639px)");
+    const update = () => setIsNarrowViewport(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    setScopeSecondaryOpen(false);
+  }, [selectedPropertyIds, isAllActive]);
+
+  const singleSelectedId = useMemo(() => {
+    if (isAllActive || selectedPropertyIds.size !== 1) return null;
+    return Array.from(selectedPropertyIds)[0];
+  }, [isAllActive, selectedPropertyIds]);
+
+  const focusedChipProperty = useMemo(() => {
+    if (!singleSelectedId) return null;
+    return properties.find((x) => x.id === singleSelectedId) ?? null;
+  }, [properties, singleSelectedId]);
+
   const cancelLongPress = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -116,12 +142,116 @@ function PropertyScopeFilterBarPrimary({
 
   const isLeftColumn = placement === "leftColumn";
 
+  /** Mobile-only (< sm): single active chip; expand shows ALL + others (active not duplicated). Desktop uses full row. */
+  const useCollapsedScopeChrome =
+    isLeftColumn &&
+    isNarrowViewport &&
+    !isMultiSelectMode &&
+    (isAllActive || selectedPropertyIds.size === 1);
+
+  const handlePrimaryAllClick = () => {
+    if (useCollapsedScopeChrome) {
+      setScopeSecondaryOpen((o) => !o);
+      return;
+    }
+    onSelectionChange(new Set(ALL_PROPERTY_IDS));
+    setIsMultiSelectMode(false);
+    onFilterClick?.("show-tasks");
+  };
+
+  const handlePrimaryPropertyClick = (propertyId: string) => {
+    if (useCollapsedScopeChrome && !scopeSecondaryOpen) {
+      setScopeSecondaryOpen(true);
+      return;
+    }
+    handlePropertyClick(propertyId);
+  };
+
+  const renderAllChip = (opts: { mode: "primary" | "secondary" }) => {
+    const isPrimary = opts.mode === "primary";
+    return (
+      <button
+        type="button"
+        onClick={
+          isPrimary
+            ? handlePrimaryAllClick
+            : () => {
+                onSelectionChange(new Set(ALL_PROPERTY_IDS));
+                setIsMultiSelectMode(false);
+                onFilterClick?.("show-tasks");
+                setScopeSecondaryOpen(false);
+              }
+        }
+        className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-[10px] font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
+        style={{
+          width: "28px",
+          height: "28px",
+          backgroundColor: isAllActive ? "#8EC9CE" : "transparent",
+          boxShadow: isAllActive
+            ? "2px 2px 5px 0px rgba(0, 0, 0, 0.06), -1px -1px 3px 0px rgba(255, 255, 255, 0.95), inset 1px 1px 2px 0px rgba(255, 255, 255, 1), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 255, 255, 0.75), 0 0 16px 5px rgba(255, 255, 255, 0.55)"
+            : "none",
+        }}
+        aria-label="Show all properties"
+      >
+        <span className={isAllActive ? "text-white drop-shadow-sm" : "text-muted-foreground"}>ALL</span>
+      </button>
+    );
+  };
+
+  const renderPropertyChip = (property: PropertyScopeChip, opts: { asPrimary: boolean }) => {
+    const iconName = property.icon_name || "home";
+    const IconComponent = getPropertyChipIcon(iconName);
+    const iconColor = property.icon_color_hex || "#8EC9CE";
+    const isPropertyChipActive = isAllActive || selectedPropertyIds.has(property.id);
+    const asPrimary = opts.asPrimary;
+
+    return (
+      <button
+        key={property.id}
+        type="button"
+        onClick={() => {
+          if (asPrimary) {
+            handlePrimaryPropertyClick(property.id);
+          } else {
+            handlePropertyClick(property.id);
+            setScopeSecondaryOpen(false);
+          }
+        }}
+        onPointerDown={asPrimary ? undefined : () => handlePropertyPointerDown(property.id)}
+        onPointerUp={asPrimary ? undefined : cancelLongPress}
+        onPointerLeave={asPrimary ? undefined : cancelLongPress}
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95",
+          isAllActive && !asPrimary && "opacity-70 hover:opacity-100"
+        )}
+        style={{
+          width: "28px",
+          height: "28px",
+          backgroundColor: isPropertyChipActive ? iconColor : "transparent",
+          boxShadow: isPropertyChipActive
+            ? isMultiSelectMode
+              ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
+              : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+            : "none",
+        }}
+        aria-label={`Filter by ${property.nickname || property.address || property.id}`}
+      >
+        <IconComponent
+          className={cn(
+            "h-[18px] w-[16px]",
+            isPropertyChipActive ? "text-white" : "text-muted-foreground"
+          )}
+        />
+      </button>
+    );
+  };
+
   return (
     <div
       className={cn(
         "w-full max-w-full",
         isLeftColumn
-          ? "bg-transparent px-1 py-1.5"
+          ? "bg-transparent px-0 py-1.5"
           : "bg-background/80 px-2 py-2 shadow-sm backdrop-blur-sm"
       )}
     >
@@ -175,68 +305,95 @@ function PropertyScopeFilterBarPrimary({
           className="w-full min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
           style={{ paddingLeft: "4px", paddingRight: "4px", paddingTop: "3px", paddingBottom: "3px" }}
         >
-          <div className="flex h-[32px] w-full min-w-max items-center gap-1 pr-0 mx-0">
-            <button
-              type="button"
-              onClick={() => {
-                onSelectionChange(new Set(ALL_PROPERTY_IDS));
-                setIsMultiSelectMode(false);
-                onFilterClick?.("show-tasks");
-              }}
-              className="flex items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95 text-[10px] font-mono font-semibold tracking-wide shrink-0"
-              style={{
-                width: "28px",
-                height: "28px",
-                backgroundColor: isAllActive ? "#8EC9CE" : "transparent",
-                boxShadow: isAllActive
-                  ? "2px 2px 5px 0px rgba(0, 0, 0, 0.06), -1px -1px 3px 0px rgba(255, 255, 255, 0.95), inset 1px 1px 2px 0px rgba(255, 255, 255, 1), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 255, 255, 0.75), 0 0 16px 5px rgba(255, 255, 255, 0.55)"
-                  : "none",
-              }}
-              aria-label="Show all properties"
-            >
-              <span className={isAllActive ? "text-white drop-shadow-sm" : "text-muted-foreground"}>ALL</span>
-            </button>
+          {useCollapsedScopeChrome ? (
+            <div className="group/primary mx-0 flex h-[32px] w-full min-w-0 items-center gap-[15px] pr-0">
+              <div className="shrink-0">
+                {isAllActive
+                  ? renderAllChip({ mode: "primary" })
+                  : focusedChipProperty
+                    ? renderPropertyChip(focusedChipProperty, { asPrimary: true })
+                    : null}
+              </div>
+              <div
+                className={cn(
+                  "flex min-h-0 min-w-0 flex-1 items-center gap-1 overflow-x-auto no-scrollbar transition-opacity duration-200",
+                  "pointer-events-none opacity-0",
+                  "group-hover/primary:pointer-events-auto group-hover/primary:opacity-100",
+                  scopeSecondaryOpen && "!pointer-events-auto !opacity-100"
+                )}
+              >
+                {!isAllActive && renderAllChip({ mode: "secondary" })}
+                {(isAllActive
+                  ? properties
+                  : properties.filter((p) => p.id !== singleSelectedId)
+                ).map((property) => renderPropertyChip(property, { asPrimary: false }))}
+              </div>
+              {isLeftColumn && <WorkbenchMobileNavCluster className="shrink-0 lg:hidden" />}
+            </div>
+          ) : (
+            <div className="mx-0 flex h-[32px] w-full min-w-max items-center gap-1 pr-0">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectionChange(new Set(ALL_PROPERTY_IDS));
+                  setIsMultiSelectMode(false);
+                  onFilterClick?.("show-tasks");
+                }}
+                className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-[10px] font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  backgroundColor: isAllActive ? "#8EC9CE" : "transparent",
+                  boxShadow: isAllActive
+                    ? "2px 2px 5px 0px rgba(0, 0, 0, 0.06), -1px -1px 3px 0px rgba(255, 255, 255, 0.95), inset 1px 1px 2px 0px rgba(255, 255, 255, 1), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.04), 0 0 0 3px rgba(255, 255, 255, 0.75), 0 0 16px 5px rgba(255, 255, 255, 0.55)"
+                    : "none",
+                }}
+                aria-label="Show all properties"
+              >
+                <span className={isAllActive ? "text-white drop-shadow-sm" : "text-muted-foreground"}>ALL</span>
+              </button>
 
-            {properties.map((property) => {
-              const iconName = property.icon_name || "home";
-              const IconComponent = getPropertyChipIcon(iconName);
-              const iconColor = property.icon_color_hex || "#8EC9CE";
-              const isPropertyChipActive = isAllActive || selectedPropertyIds.has(property.id);
+              {properties.map((property) => {
+                const iconName = property.icon_name || "home";
+                const IconComponent = getPropertyChipIcon(iconName);
+                const iconColor = property.icon_color_hex || "#8EC9CE";
+                const isPropertyChipActive = isAllActive || selectedPropertyIds.has(property.id);
 
-              return (
-                <button
-                  key={property.id}
-                  type="button"
-                  onClick={() => handlePropertyClick(property.id)}
-                  onPointerDown={() => handlePropertyPointerDown(property.id)}
-                  onPointerUp={cancelLongPress}
-                  onPointerLeave={cancelLongPress}
-                  className={cn(
-                    "flex items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95 shrink-0",
-                    isAllActive && "opacity-70 hover:opacity-100"
-                  )}
-                  style={{
-                    width: "28px",
-                    height: "28px",
-                    backgroundColor: isPropertyChipActive ? iconColor : "transparent",
-                    boxShadow: isPropertyChipActive
-                      ? isMultiSelectMode
-                        ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
-                        : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
-                      : "none",
-                  }}
-                  aria-label={`Filter by ${property.nickname || property.address || property.id}`}
-                >
-                  <IconComponent
+                return (
+                  <button
+                    key={property.id}
+                    type="button"
+                    onClick={() => handlePropertyClick(property.id)}
+                    onPointerDown={() => handlePropertyPointerDown(property.id)}
+                    onPointerUp={cancelLongPress}
+                    onPointerLeave={cancelLongPress}
                     className={cn(
-                      "h-[18px] w-[16px]",
-                      isPropertyChipActive ? "text-white" : "text-muted-foreground"
+                      "flex shrink-0 items-center justify-center rounded-[10px] p-0 transition-all duration-300 hover:scale-110 active:scale-95",
+                      isAllActive && "opacity-70 hover:opacity-100"
                     )}
-                  />
-                </button>
-              );
-            })}
-          </div>
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      backgroundColor: isPropertyChipActive ? iconColor : "transparent",
+                      boxShadow: isPropertyChipActive
+                        ? isMultiSelectMode
+                          ? "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05), 0 0 0 3px white"
+                          : "2px 2px 4px 0px rgba(0, 0, 0, 0.1), -1px -1px 2px 0px rgba(255, 255, 255, 0.3), inset 1px 1px 1px 0px rgba(255, 255, 255, 1), inset 0px -1px 3px 0px rgba(0, 0, 0, 0.05)"
+                        : "none",
+                    }}
+                    aria-label={`Filter by ${property.nickname || property.address || property.id}`}
+                  >
+                    <IconComponent
+                      className={cn(
+                        "h-[18px] w-[16px]",
+                        isPropertyChipActive ? "text-white" : "text-muted-foreground"
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

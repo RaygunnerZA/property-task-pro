@@ -11,9 +11,12 @@ const DevToolsDropdown = lazy(() => import("@/components/dev/DevToolsDropdown"))
 function PageHeaderToolbar({
   className,
   surface = "gradient",
+  showAccountMenu = true,
 }: {
   className?: string;
   surface?: "gradient" | "plain";
+  /** When false, account avatar is not shown in the header (e.g. hub uses workbench row + sidebar). */
+  showAccountMenu?: boolean;
 }) {
   const onGradient = surface === "gradient";
   return (
@@ -28,7 +31,11 @@ function PageHeaderToolbar({
           <DevToolsDropdown />
         </Suspense>
       )}
-      <HeaderAccountMenu variant={onGradient ? "onGradient" : "default"} />
+      {showAccountMenu && (
+        <div className="lg:hidden">
+          <HeaderAccountMenu variant={onGradient ? "onGradient" : "default"} />
+        </div>
+      )}
     </div>
   );
 }
@@ -40,6 +47,8 @@ interface PageHeaderProps {
   toolbarClassName?: string;
   /** Controls contrast for toolbar controls (gradient strip vs neutral header). */
   toolbarSurface?: "gradient" | "plain";
+  /** Omit on hub so account opens from the workbench row; desktop never shows header account (sidebar + settings). */
+  showAccountMenu?: boolean;
 }
 
 export function PageHeader({
@@ -47,10 +56,15 @@ export function PageHeader({
   className,
   toolbarClassName,
   toolbarSurface = "gradient",
+  showAccountMenu = true,
 }: PageHeaderProps) {
   return (
     <header className={cn("page-header relative pl-space-sm", className)}>
-      <PageHeaderToolbar className={toolbarClassName} surface={toolbarSurface} />
+      <PageHeaderToolbar
+        className={toolbarClassName}
+        surface={toolbarSurface}
+        showAccountMenu={showAccountMenu}
+      />
       {children}
     </header>
   );

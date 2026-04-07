@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useLayoutEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Camera,
@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -31,6 +32,7 @@ import {
   summaryActionCol,
   summaryRowLabelClass,
 } from "@/components/properties/propertySnapshotMetrics";
+import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { propertiesService } from "@/services/properties/properties";
 import { toast } from "sonner";
 import {
@@ -72,6 +74,9 @@ export type PropertyForStrip = {
 const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
 type TabIndex = 0 | 1 | 2 | 3;
 
+/** Summary column width at which attention badges can show words instead of ⚠️ (+ actions stay tappable). */
+const PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX = 312;
+
 type AssetViewRow = {
   status?: string | null;
   condition_score?: number | null;
@@ -87,6 +92,8 @@ interface PropertyIdentityStripProps {
   onPropertyArchived?: () => void;
   /** Hub workbench: open the centre Tasks tab instead of navigating away. */
   onOpenTasksClick?: () => void;
+  /** When provided (single-property workbench), Today + weather render on the thumbnail; parent hides the gradient header row. */
+  propertyCardWeather?: PropertyCardWeather;
 }
 
 /**
@@ -104,6 +111,7 @@ export function PropertyIdentityStrip({
   urgentOpenTaskCount = 0,
   onPropertyArchived,
   onOpenTasksClick,
+  propertyCardWeather,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
   const { details: propertyDetails } = usePropertyDetails(property.id);
@@ -118,6 +126,20 @@ export function PropertyIdentityStrip({
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const summaryMetricsViewportRef = useRef<HTMLDivElement>(null);
+  const [summaryWideEnoughForWords, setSummaryWideEnoughForWords] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = summaryMetricsViewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0]?.contentRect.width ?? 0);
+      setSummaryWideEnoughForWords(w >= PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX);
+    });
+    ro.observe(el);
+    setSummaryWideEnoughForWords(Math.round(el.getBoundingClientRect().width) >= PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX);
+    return () => ro.disconnect();
+  }, []);
 
   // Details edit state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -141,6 +163,7 @@ export function PropertyIdentityStrip({
   const displayName = property.nickname || property.address;
   const iconColor = property.icon_color_hex || "#8EC9CE";
   const IconComponent = getPropertyChipIcon(property.icon_name);
+  const WeatherIcon = getWeatherLucideIcon(propertyCardWeather?.conditionCode ?? null);
 
   const taskCount = property.open_tasks_count ?? 0;
   const assetsCount = property.assets_count ?? 0;
@@ -305,11 +328,11 @@ export function PropertyIdentityStrip({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[368px] flex flex-col">
+    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[358px] flex flex-col">
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
       <div
-        className="relative w-full shrink-0 overflow-hidden"
+        className="group relative w-full shrink-0 overflow-hidden"
         style={{
           height: "144px",
           backgroundColor: property.thumbnail_url ? undefined : iconColor,
@@ -328,29 +351,27 @@ export function PropertyIdentityStrip({
           className="absolute left-0 right-0 top-0 h-[146px] pointer-events-none"
           style={{
             background:
-              "linear-gradient(0deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 33%, rgba(0,0,0,0) 100%)",
+              "linear-gradient(0deg, rgba(0,0,0,0.6) 18%, rgba(0,0,0,0) 40%, rgba(0,0,0,0) 100%)",
           }}
         />
 
-        {/* Property icon badge — top left */}
+        {/* Property name + icon (icon matches title cap height, property colour — no badge box) */}
         <div
-          className="absolute top-2 left-2 rounded-full flex items-center justify-center z-10 flex-shrink-0"
-          style={{
-            backgroundColor: iconColor,
-            width: "24px",
-            height: "24px",
-            boxShadow:
-              "3px 3px 6px rgba(0,0,0,0.08), -2px -2px 4px rgba(255,255,255,0.5), inset 1px 1px 1px rgba(255,255,255,0.3)",
-          }}
+          className={cn(
+            "absolute bottom-2 left-2.5 right-2 z-10 min-w-0",
+            propertyCardWeather !== undefined && "pr-[5.75rem]"
+          )}
         >
-          <IconComponent className="h-3.5 w-3.5 text-white" />
-        </div>
-
-        {/* Property name + optional facts line — bottom overlay */}
-        <div className="absolute bottom-2 left-2.5 right-9 z-10 min-w-0">
-          <p className="text-white font-semibold text-[30px] leading-tight truncate drop-shadow-sm">
-            {displayName}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="min-w-0 truncate text-white font-semibold text-[30px] leading-tight drop-shadow-sm">
+              {displayName}
+            </p>
+            <IconComponent
+              className="h-[28px] w-[28px] shrink-0 drop-shadow-sm stroke-[1.75]"
+              style={{ color: iconColor }}
+              aria-hidden
+            />
+          </div>
           {identitySubtitle && (
             <p className="mt-0.5 truncate text-[11px] font-medium leading-tight text-white/90 drop-shadow-sm">
               {identitySubtitle}
@@ -358,17 +379,33 @@ export function PropertyIdentityStrip({
           )}
         </div>
 
-        {/* Edit photo button — bottom right */}
+        {/* Today + weather — bottom right (moved from dashboard gradient header) */}
+        {propertyCardWeather !== undefined && (
+          <div className="absolute bottom-2 right-2 z-10 flex flex-col items-end gap-0.5 text-right pointer-events-none">
+            <span className="text-[13px] font-semibold text-white leading-tight drop-shadow-sm">
+              Today
+            </span>
+            <div className="flex items-center justify-end gap-1.5 text-white/90">
+              <WeatherIcon className="h-4 w-4 shrink-0 drop-shadow-sm" aria-hidden />
+              <span className="text-xs font-medium whitespace-nowrap drop-shadow-sm">
+                {propertyCardWeather ? `${propertyCardWeather.temp}°C` : "--°C"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Edit photo — top right; visible on thumbnail hover or keyboard focus */}
         <button
           type="button"
           onClick={handlePhotoEditClick}
           disabled={isUploadingPhoto}
           className={cn(
-            "absolute bottom-2 right-2 z-10",
+            "absolute top-2 right-2 z-20",
             "flex items-center justify-center rounded-full",
             "bg-black/30 hover:bg-black/50 backdrop-blur-sm",
-            "transition-all duration-200",
-            isUploadingPhoto && "opacity-50 cursor-not-allowed"
+            "opacity-0 transition-opacity duration-200",
+            "group-hover:opacity-100 focus-visible:opacity-100",
+            isUploadingPhoto && "opacity-50 cursor-not-allowed group-hover:opacity-50"
           )}
           style={{ width: "26px", height: "26px" }}
           aria-label="Change property photo"
@@ -410,14 +447,14 @@ export function PropertyIdentityStrip({
       />
 
       {/* ── TAB STRIP ────────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex shrink-0 justify-center items-center gap-0 pt-[10px] pb-[6px] px-[6px] bg-muted/20">
+      <div className="relative z-10 flex w-full min-w-0 shrink-0 flex-nowrap justify-start items-start gap-0 overflow-x-auto overflow-y-hidden pt-[10px] pb-[6px] px-3 sm:px-2.5 bg-muted/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab, idx) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(idx as TabIndex)}
             className={cn(
-              "flex-1 rounded-[8px] h-6 flex items-center justify-center px-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide leading-none",
+              "shrink-0 rounded-[8px] h-6 flex items-center justify-center px-2 font-mono text-[10px] font-semibold uppercase tracking-wide leading-none",
               "transition-[color,background-color,box-shadow] duration-200 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
               activeTab === idx
@@ -448,8 +485,9 @@ export function PropertyIdentityStrip({
 
           {/* 0 ── SUMMARY ──────────────────────────────────────────────── */}
           <div
+            ref={summaryMetricsViewportRef}
             className={cn(
-              "w-full flex-shrink-0 h-full pl-1.5 pr-0 py-0 space-y-0.5 overflow-y-auto",
+              "w-full min-w-0 flex-shrink-0 h-full pl-1.5 pr-0 py-0 space-y-0.5 overflow-y-auto",
               activeTab === 0 ? "pointer-events-auto" : "pointer-events-none"
             )}
           >
@@ -472,7 +510,7 @@ export function PropertyIdentityStrip({
                   }
                 }
               }}
-              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <CheckSquare className="h-3.5 w-3.5 shrink-0" />
@@ -483,6 +521,8 @@ export function PropertyIdentityStrip({
                 attention={urgentCount}
                 primaryMuted={taskCount === 0}
                 attentionTitle={`${urgentCount} urgent task${urgentCount === 1 ? "" : "s"}`}
+                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
+                attentionShortLabel="Urgent"
               />
               <div className={summaryActionCol}>
                 {onAddTaskClick && (
@@ -520,7 +560,7 @@ export function PropertyIdentityStrip({
                   navigate(`/assets?property=${encodeURIComponent(property.id)}`);
                 }
               }}
-              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Package className="h-3.5 w-3.5 shrink-0" />
@@ -531,6 +571,8 @@ export function PropertyIdentityStrip({
                 attention={assetsAttentionCount}
                 primaryMuted={assetsCount === 0}
                 attentionTitle={`${assetsAttentionCount} asset${assetsAttentionCount === 1 ? "" : "s"} need attention`}
+                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
+                attentionShortLabel="Need Attention"
               />
               <div className={summaryActionCol}>
                 <button
@@ -566,7 +608,7 @@ export function PropertyIdentityStrip({
                   navigate(propertySubPath(property.id, "spaces-organise"));
                 }
               }}
-              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Layers className="h-3.5 w-3.5 shrink-0" />
@@ -609,7 +651,7 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}/compliance`);
                 }
               }}
-              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <Shield className="h-3.5 w-3.5 shrink-0" />
@@ -627,6 +669,8 @@ export function PropertyIdentityStrip({
                       : `${complianceStats.expiring} expiring within 30 days`
                   }
                   warnClassName="text-amber-600"
+                  attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
+                  attentionShortLabel="Due soon"
                 />
               )}
               <div className={summaryActionCol}>
@@ -661,7 +705,7 @@ export function PropertyIdentityStrip({
                   navigate(`/properties/${property.id}/documents`);
                 }
               }}
-              className="group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               <span className={summaryRowLabelClass}>
                 <FileText className="h-3.5 w-3.5 shrink-0" />
@@ -673,6 +717,8 @@ export function PropertyIdentityStrip({
                 primaryMuted={documentsCount === 0}
                 attentionTitle={`${documentsExpiringCount} document${documentsExpiringCount === 1 ? "" : "s"} expiring within 30 days`}
                 warnClassName="text-amber-600"
+                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
+                attentionShortLabel="Expiring"
               />
               <div className={summaryActionCol}>
                 <button
@@ -936,26 +982,36 @@ export function PropertyIdentityStrip({
                   <span className="text-xs text-muted-foreground">No photo yet</span>
                 </div>
               )}
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handlePhotoEditClick}
-                  disabled={isUploadingPhoto}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/20 disabled:opacity-50"
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                  {isUploadingPhoto
-                    ? "Uploading…"
-                    : property.thumbnail_url
-                    ? "Replace"
-                    : "Add photo"}
-                </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePhotoEditClick}
+                    disabled={isUploadingPhoto}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors border border-primary/20 shadow-sm disabled:opacity-50"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    {isUploadingPhoto
+                      ? "Uploading…"
+                      : property.thumbnail_url
+                        ? "Replace thumbnail"
+                        : "Add thumbnail"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/properties/${property.id}/photos`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium text-muted-foreground hover:bg-muted/30 transition-colors shadow-sm"
+                  >
+                    View all →
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => navigate(`/properties/${property.id}/photos`)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium text-muted-foreground hover:bg-muted/30 transition-colors"
+                  className="flex w-full items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium text-foreground bg-background/80 hover:bg-muted/40 transition-colors shadow-sm"
                 >
-                  View all →
+                  <Upload className="h-3.5 w-3.5 text-primary" />
+                  Upload other images
                 </button>
               </div>
             </div>

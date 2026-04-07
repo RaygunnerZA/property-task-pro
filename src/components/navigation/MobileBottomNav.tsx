@@ -23,7 +23,7 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
  * Mobile Bottom Navigation
  * 
  * Tabs: Home, Tasks, Inbox, Schedule, Create (Center, highlighted)
- * Only visible on screens smaller than md breakpoint
+ * Only visible when the app sidebar is offcanvas (below `lg` / 1024px)
  * Fixed at bottom with high z-index and glassmorphism background
  */
 export function MobileBottomNav() {
@@ -69,7 +69,7 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Mobile Bottom Navigation - Only visible on screens < md */}
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden">
         {/* Glassmorphism background */}
         <div className="absolute inset-0 bg-background/80 backdrop-blur-md border-t border-border/50" />
         

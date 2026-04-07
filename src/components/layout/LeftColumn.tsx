@@ -1,7 +1,10 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
+import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { DashboardCalendarV2 } from "@/components/dashboard/DashboardCalendarV2";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
+import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -28,6 +31,8 @@ interface LeftColumnProps {
   onOpenIntake?: (mode: IntakeMode) => void;
   /** e.g. workbench property scope chips — kept in the 265px column, not full workbench width */
   scopeFilterBar?: ReactNode;
+  /** When non-null, identity strip shows Today + weather on the thumbnail (dashboard passes briefing weather). */
+  propertyCardWeather?: PropertyCardWeather;
 }
 
 /**
@@ -52,7 +57,10 @@ export function LeftColumn({
   onPropertySelectionChange,
   onOpenIntake,
   scopeFilterBar,
+  propertyCardWeather,
 }: LeftColumnProps) {
+  const { pathname } = useLocation();
+  const isHubHome = pathname === "/" || pathname === "";
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [hideProperties, setHideProperties] = useState(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
@@ -117,13 +125,18 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full px-0"
+      className="h-auto sm:h-screen flex flex-col overflow-y-auto sm:overflow-hidden w-full max-w-full px-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties: scope chips + cards / identity strip */}
       <div className="flex-shrink-0 w-full">
         <div className="sticky top-0 z-10 bg-background px-0 pb-[7px] pt-[7px]">
         {scopeFilterBar}
+        {isHubHome && !scopeFilterBar && (
+          <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
+            <WorkbenchMobileNavCluster />
+          </div>
+        )}
         {!hideProperties && (
         <div
           className="px-0 w-full max-w-full overflow-x-hidden"
@@ -141,7 +154,7 @@ export function LeftColumn({
             </div>
           ) : focusedProperty ? (
             /* Single property in focus: show identity strip with sliding cards */
-            <div ref={propertiesRef} className="relative w-full max-w-full pt-[2px] pb-[7px] pr-[5px]">
+            <div ref={propertiesRef} className="relative w-full max-w-full min-w-0 pt-[2px] pb-[7px] max-sm:px-0 sm:pr-[5px]">
               <PropertyIdentityStrip
                 key={focusedProperty.id}
                 property={focusedProperty}
@@ -154,6 +167,7 @@ export function LeftColumn({
                   setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
                   onFilterClick?.("show-tasks");
                 }}
+                propertyCardWeather={propertyCardWeather}
               />
             </div>
           ) : (

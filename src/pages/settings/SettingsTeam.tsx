@@ -174,7 +174,7 @@ export default function SettingsTeam() {
     <div className="space-y-5">
       <div>
         <WorkspaceSectionHeading>Team workspace</WorkspaceSectionHeading>
-        <WorkspaceTabList className="mt-2">
+        <WorkspaceTabList className="mt-2 max-sm:[&_button]:px-2 max-sm:[&_button]:text-[11px]">
           <WorkspaceTabTrigger
             selected={teamTab === "members"}
             onClick={() => setTeamTab("members")}
@@ -204,25 +204,27 @@ export default function SettingsTeam() {
           <CardContent>
             {members.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
-                No team members yet. Use <strong>Invite member</strong> on the right to add people.
+                No team members yet. Use <strong>Invite member</strong>{" "}
+                <span className="lg:hidden">below</span>
+                <span className="hidden lg:inline">on the right</span> to add people.
               </p>
             ) : (
               <div className="space-y-3">
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
+                    className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={member.avatar_url || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary">
                           {member.display_name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-foreground">{member.display_name}</p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="break-all text-xs text-muted-foreground">
                           {member.email || `${member.user_id.slice(0, 8)}...`}
                         </p>
                       </div>
@@ -236,6 +238,7 @@ export default function SettingsTeam() {
                             : "outline"
                       }
                       className={cn(
+                        "w-fit shrink-0",
                         member.role === "owner" && "bg-primary text-primary-foreground",
                         member.role === "manager" && "bg-secondary text-secondary-foreground"
                       )}
@@ -252,9 +255,14 @@ export default function SettingsTeam() {
 
       {teamTab === "invited" && (
         <Card className="shadow-e1">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-base">Invited users</CardTitle>
-            <Button onClick={() => void fetchInvitations()} size="sm" variant="outline">
+            <Button
+              onClick={() => void fetchInvitations()}
+              size="sm"
+              variant="outline"
+              className="w-full shrink-0 sm:w-auto"
+            >
               <RotateCcw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
@@ -266,7 +274,9 @@ export default function SettingsTeam() {
               </div>
             ) : invitations.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
-                No invitations yet. Send one from the <strong>Invite member</strong> panel on the right.
+                No invitations yet. Send one from the <strong>Invite member</strong> panel{" "}
+                <span className="lg:hidden">below</span>
+                <span className="hidden lg:inline">on the right</span>.
               </p>
             ) : (
               <div className="space-y-3">
@@ -274,10 +284,10 @@ export default function SettingsTeam() {
                   const isBusy = actionBusyId === invite.id;
                   return (
                     <div key={invite.id} className="rounded-lg bg-card p-3 shadow-e1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                        <div className="min-w-0">
                           <p className="font-medium text-foreground">{formatName(invite)}</p>
-                          <p className="text-xs text-muted-foreground">{invite.email}</p>
+                          <p className="break-all text-xs text-muted-foreground">{invite.email}</p>
                           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                             <span className="capitalize">{invite.role}</span>
                             <span>•</span>
@@ -297,6 +307,7 @@ export default function SettingsTeam() {
                         <Badge
                           variant={statusBadgeVariant[invite.status]}
                           className={cn(
+                            "w-fit shrink-0",
                             invite.status === "accepted" && "bg-primary text-primary-foreground"
                           )}
                         >
@@ -304,7 +315,7 @@ export default function SettingsTeam() {
                         </Badge>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2 [&_button]:min-h-[40px]">
                         {invite.status !== "accepted" && (
                           <Button
                             size="sm"

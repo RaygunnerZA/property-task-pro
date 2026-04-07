@@ -3,30 +3,31 @@ import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
-import { FillaIcon } from '@/components/filla/FillaIcon';
 import { AssistantProvider, useAssistantContext } from '@/contexts/AssistantContext';
-import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
-import { isDevBuild } from '@/context/DevModeContext';
+import { FillaIcon } from '@/components/filla/FillaIcon';
 import { cn } from '@/lib/utils';
-
-const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
-const ViewportSimulator = lazy(() => import('@/components/dev/ViewportSimulator'));
 
 function MobileAssistantButton() {
   const { openAssistant } = useAssistantContext();
   return (
     <button
+      type="button"
       onClick={() => openAssistant()}
       className={cn(
-        "w-9 h-9 rounded-full bg-card shadow-e1 flex items-center justify-center",
-        "hover:shadow-e2 transition-shadow"
+        'flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-e1',
+        'transition-shadow hover:shadow-e2'
       )}
-      aria-label="Open Assistant"
+      aria-label="Open Filla AI"
     >
       <FillaIcon size={16} />
     </button>
   );
 }
+import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
+import { isDevBuild } from '@/context/DevModeContext';
+
+const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
+const ViewportSimulator = lazy(() => import('@/components/dev/ViewportSimulator'));
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -36,6 +37,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
+  const isHubHome = pathname === '/' || pathname === '';
 
   useEffect(() => {
     if ('scrollRestoration' in history) {
@@ -61,19 +63,21 @@ export function AppLayout({
         
         {/* Main content area */}
         <div className="flex-1 flex flex-col min-h-screen min-w-0">
-          {/* Mobile only: sidebar + assistant (account & dev tools live on each page PageHeader) */}
-          <header className="sticky top-0 z-40 flex h-12 w-full shrink-0 items-center gap-3 border-b border-border/20 bg-background/90 px-4 shadow-sm backdrop-blur-sm md:hidden">
-            <SidebarTrigger className="shrink-0">
-              <Menu className="h-5 w-5 text-foreground" />
-            </SidebarTrigger>
-            <div className="min-w-0 flex-1" />
-            <MobileAssistantButton />
-          </header>
+          {/* Mobile: hub uses workbench row for nav + AI; other routes keep menu + assistant here */}
+          {!isHubHome && (
+            <header className="sticky top-0 z-40 flex h-12 w-full shrink-0 items-center gap-3 border-b border-border/20 bg-background/90 px-4 shadow-sm backdrop-blur-sm lg:hidden">
+              <SidebarTrigger className="shrink-0">
+                <Menu className="h-5 w-5 text-foreground" />
+              </SidebarTrigger>
+              <div className="min-w-0 flex-1" />
+              <MobileAssistantButton />
+            </header>
+          )}
 
           {/* Main content with paper background and noise texture */}
           <main 
             ref={mainRef}
-            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-16 md:pb-0"
+            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-16 lg:pb-0"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,
               backgroundRepeat: 'repeat',

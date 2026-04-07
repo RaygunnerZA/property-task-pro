@@ -110,7 +110,7 @@ export default function SettingsAutomationPanel() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2 p-1 bg-surface-gradient rounded-[8px] shadow-e1">
+            <div className="flex flex-col gap-2 p-1 bg-surface-gradient rounded-[8px] shadow-e1 sm:flex-row">
               {(["conservative", "recommended", "aggressive"] as const).map((m) => (
                 <button
                   key={m}
@@ -118,7 +118,7 @@ export default function SettingsAutomationPanel() {
                   onClick={() => handleModeChange(m)}
                   disabled={isUpdating}
                   className={cn(
-                    "flex-1 py-3 px-4 rounded-[6px] text-sm font-medium transition-all capitalize",
+                    "min-h-[44px] w-full min-w-0 flex-1 py-3 px-3 rounded-[6px] text-sm font-medium transition-all capitalize sm:px-4",
                     mode === m
                       ? "bg-card shadow-e1 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -147,7 +147,7 @@ export default function SettingsAutomationPanel() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Label>Auto-create tasks</Label>
                   <Switch
                     checked={settings?.auto_task_generation ?? settings?.auto_task_creation ?? false}
@@ -187,7 +187,7 @@ export default function SettingsAutomationPanel() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Label>Assign contractors automatically</Label>
                   <Switch
                     checked={settings?.auto_assign_contractors ?? settings?.auto_assignment ?? false}
@@ -207,7 +207,7 @@ export default function SettingsAutomationPanel() {
                       <TooltipContent>Only assign when contractor match confidence meets this threshold.</TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <Slider
                       value={[Math.round((settings?.auto_assign_confidence ?? 0.8) * 100)]}
                       min={50}
@@ -234,7 +234,7 @@ export default function SettingsAutomationPanel() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Label>Allow AI to update expiry and next due date</Label>
                   <Switch
                     checked={settings?.auto_expiry_update ?? false}
@@ -252,7 +252,7 @@ export default function SettingsAutomationPanel() {
                       <TooltipContent>Never overwrite expiry dates with low confidence.</TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <Slider
                       value={[Math.round((settings?.auto_expiry_confidence ?? 0.85) * 100)]}
                       min={50}
@@ -292,7 +292,7 @@ export default function SettingsAutomationPanel() {
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-3 pt-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Label>Auto-link to assets when confidence ≥ threshold</Label>
                   <Switch
                     checked={settings?.auto_link_assets ?? false}
@@ -300,7 +300,7 @@ export default function SettingsAutomationPanel() {
                     onCheckedChange={async (c) => updateSettings({ auto_link_assets: c })}
                   />
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <Slider
                     value={[Math.round((settings?.auto_link_asset_confidence ?? 0.75) * 100)]}
                     min={50}
@@ -312,7 +312,7 @@ export default function SettingsAutomationPanel() {
                   />
                   <span className="text-sm w-12">{(settings?.auto_link_asset_confidence ?? 0.75) * 100}%</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                   <Label>Auto-link to spaces when confidence ≥ threshold</Label>
                   <Switch
                     checked={settings?.auto_link_spaces ?? false}
@@ -320,7 +320,7 @@ export default function SettingsAutomationPanel() {
                     onCheckedChange={async (c) => updateSettings({ auto_link_spaces: c })}
                   />
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <Slider
                     value={[Math.round((settings?.auto_link_space_confidence ?? 0.7) * 100)]}
                     min={50}
@@ -438,7 +438,7 @@ export default function SettingsAutomationPanel() {
                 <Sparkles className="h-4 w-4 text-primary" />
                 <Label className="text-base font-medium">Icon Automation</Label>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <Label>Enable AI icon suggestions</Label>
                 <Switch
                   checked={settings?.ai_icon_suggestions ?? true}
@@ -446,7 +446,7 @@ export default function SettingsAutomationPanel() {
                   onCheckedChange={async (c) => updateSettings({ ai_icon_suggestions: c })}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <Label>Allow AI to override icons</Label>
                 <Switch
                   checked={settings?.ai_icon_override ?? false}

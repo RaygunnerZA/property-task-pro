@@ -31,6 +31,8 @@ interface AISuggestionChipsProps {
   onChipSelect: (chip: SuggestedChip) => void;
   onGhostGroupSelect: (group: GhostGroup) => void;
   onChipRemove?: (chip: SuggestedChip) => void;
+  /** When set, resolved (fact) chips become tappable to apply them to the form (e.g. unified intake). */
+  onFactChipPress?: (chip: SuggestedChip) => void;
   selectedChipIds?: string[];
   loading?: boolean;
   className?: string;
@@ -98,6 +100,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   onChipSelect,
   onGhostGroupSelect,
   onChipRemove,
+  onFactChipPress,
   selectedChipIds = [],
   loading = false,
   className
@@ -175,6 +178,8 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
                     pending={isAIPreFilled}
                     removable={!!onChipRemove}
                     onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
+                    onPress={onFactChipPress ? () => onFactChipPress(chip) : undefined}
+                    pressOnPointerDown={Boolean(onFactChipPress)}
                     animateIn
                     className={cn(
                       'animate-in fade-in slide-in-from-bottom-1'

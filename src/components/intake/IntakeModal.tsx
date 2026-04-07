@@ -3,7 +3,7 @@
  * User picks intake mode first; baseline workflow follows mode. AI enriches in-mode only, never selects the tab.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, FileText, Plus, X } from "lucide-react";
 import {
   Dialog,
@@ -39,8 +39,15 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
+import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
-import { intakeAddRecordMicroClassName, intakeReportIssueMicroClassName } from "@/lib/intake-action-buttons";
+import {
+  intakeAddRecordMicroClassName,
+  intakeFooterSubmitAddRecordClassName,
+  intakeFooterSubmitReportIssueClassName,
+  intakeReportIssueMicroClassName,
+} from "@/lib/intake-action-buttons";
 import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import {
@@ -49,6 +56,7 @@ import {
   type IntakeChipSlotId,
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
+import { AISuggestionChips } from "@/components/tasks/create/AISuggestionChips";
 import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
 import type { SubtaskData } from "@/components/tasks/subtasks";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
@@ -229,15 +237,18 @@ export function IntakeModal({
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
+  const [collapseIntakeTabIcons, setCollapseIntakeTabIcons] = useState(false);
+  const [truncateIntakeTabLabels, setTruncateIntakeTabLabels] = useState(false);
+  const intakeTabListRef = useRef<HTMLDivElement>(null);
 
-  const { result: aiResult, loading: aiLoading } = useAIExtract(description);
+  const { result: aiResult, loading: aiLoading, error: aiExtractError } = useAIExtract(description);
 
   const isUsableGeneratedTitle = useCallback((rawTitle: string) => {
     const trimmed = rawTitle.trim().replace(/[.!?,:;]+$/, "");
-    if (trimmed.length < 8) return false;
+    if (trimmed.length < 5) return false;
 
     const words = trimmed.split(/\s+/).filter(Boolean);
-    if (words.length < 3) return false;
+    if (words.length < 2) return false;
 
     const lastWord = words[words.length - 1]?.toLowerCase() ?? "";
     if (TITLE_TRAILING_STOP_WORDS.has(lastWord)) return false;
@@ -257,7 +268,8 @@ export function IntakeModal({
     if (!chosen) return;
     const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
     setAiTitleGenerated(processed);
-    if (!title.trim()) setTitle(processed);
+    const t = title.trim();
+    if (!t || t.length <= 1) setTitle(processed);
     setShowTitleField(true);
   }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, title]);
 
@@ -385,10 +397,11 @@ export function IntakeModal({
     [images]
   );
 
-  const { chips: chipSuggestions } = useChipSuggestions(
+  const { chips: chipSuggestions, ghostCategories } = useChipSuggestions(
     {
       description,
       propertyId: propertyId || undefined,
+      selectedSpaceIds,
       imageOcrText,
       detectedLabels,
       detectedObjects,
@@ -835,11 +848,36 @@ export function IntakeModal({
       const v = dateChip.resolvedEntityId;
       if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v.split("T")[0] || v);
     }
-    const personChip = chipSuggestions.find((c) => (c.type === "person" || c.type === "team") && c.resolvedEntityId);
+    const personChip = chipSuggestions.find((c) => c.type === "person" && c.resolvedEntityId);
     if (!assignedUserId && personChip?.resolvedEntityId && typeof personChip.resolvedEntityId === "string") {
       setAssignedUserId(personChip.resolvedEntityId);
     }
+    const teamChip = chipSuggestions.find((c) => c.type === "team" && c.resolvedEntityId);
+    if (teamChip?.resolvedEntityId && typeof teamChip.resolvedEntityId === "string") {
+      const tid = teamChip.resolvedEntityId;
+      setAssignedTeamIds((prev) => (prev.includes(tid) ? prev : [...prev, tid]));
+    }
   }, [chipSuggestions, dueDate, assignedUserId]);
+
+  useEffect(() => {
+    if (priorityDefined || intakeMode !== "report_issue") return;
+    const p = aiResult?.priority;
+    if (!p) return;
+    const raw = String(p).toUpperCase();
+    if (raw.includes("URGENT")) {
+      setPriority("urgent");
+      setPriorityDefined(true);
+    } else if (raw.includes("HIGH")) {
+      setPriority("high");
+      setPriorityDefined(true);
+    } else if (raw.includes("LOW")) {
+      setPriority("low");
+      setPriorityDefined(true);
+    } else if (raw.includes("MEDIUM") || raw.includes("NORMAL")) {
+      setPriority("medium");
+      setPriorityDefined(true);
+    }
+  }, [aiResult?.priority, intakeMode, priorityDefined]);
 
   const analysis = useIntakeAnalysis({
     images,
@@ -1100,6 +1138,189 @@ export function IntakeModal({
       prev.includes(spaceId) ? prev.filter((id) => id !== spaceId) : [...prev, spaceId]
     );
   }, []);
+
+  const applyResolvedChipToIntake = useCallback(
+    (chip: SuggestedChip, resolutionEntityId: string) => {
+      switch (chip.type) {
+        case "person":
+          setAssignedUserId(resolutionEntityId);
+          break;
+        case "team":
+          setAssignedTeamIds((prev) => (prev.includes(resolutionEntityId) ? prev : [...prev, resolutionEntityId]));
+          break;
+        case "space": {
+          const sp = spaces.find((s) => s.id === resolutionEntityId);
+          if (sp) {
+            if (sp.property_id && sp.property_id !== propertyId) {
+              setPropertyId(sp.property_id);
+              setSelectedSpaceIds([sp.id]);
+            } else {
+              toggleSpaceSelection(sp.id);
+            }
+          }
+          break;
+        }
+        case "asset":
+          setSelectedAssetIds((prev) => (prev.includes(resolutionEntityId) ? prev : [...prev, resolutionEntityId]));
+          break;
+        case "category":
+        case "theme":
+          setSelectedThemeIds((prev) => (prev.includes(resolutionEntityId) ? prev : [...prev, resolutionEntityId]));
+          break;
+        case "date": {
+          const v = resolutionEntityId.split("T")[0] ?? resolutionEntityId;
+          if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v);
+          break;
+        }
+        case "priority": {
+          const raw = (chip.label || chip.value || "").toLowerCase();
+          if (raw.includes("urgent")) setPriority("urgent");
+          else if (raw.includes("high")) setPriority("high");
+          else if (raw.includes("low")) setPriority("low");
+          else setPriority("medium");
+          setPriorityDefined(true);
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [propertyId, spaces, toggleSpaceSelection]
+  );
+
+  const handleIntakeGhostGroup = useCallback(
+    (group: GhostCategory) => {
+      const match = categories.find((c) => c.name.trim().toLowerCase() === group.name.trim().toLowerCase());
+      if (match) {
+        setSelectedThemeIds((prev) => (prev.includes(match.id) ? prev : [...prev, match.id]));
+      } else {
+        setIntakeTagQuery(group.name);
+        setIntakeTagEditing(true);
+      }
+      setOpenChipSlot("category");
+    },
+    [categories]
+  );
+
+  const handleIntakeSuggestedChip = useCallback(
+    async (chip: SuggestedChip) => {
+      if (!orgId) return;
+
+      if (chip.resolvedEntityId) {
+        applyResolvedChipToIntake(chip, chip.resolvedEntityId);
+        return;
+      }
+
+      let assets: Array<{ id: string; name: string; property_id: string; space_id?: string }> = [];
+      if (chip.type === "asset" && propertyId) {
+        try {
+          const { data } = await supabase
+            .from("assets")
+            .select("id, name, property_id, space_id")
+            .eq("org_id", orgId)
+            .eq("property_id", propertyId);
+          assets =
+            (data || []).map((a) => ({
+              id: a.id,
+              name: a.name || "",
+              property_id: a.property_id,
+              space_id: a.space_id || undefined,
+            })) ?? [];
+        } catch {
+          /* non-blocking */
+        }
+      }
+
+      const entities: AvailableEntities = {
+        spaces: spaces.map((s) => ({ id: s.id, name: s.name, property_id: s.property_id })),
+        members: members.map((m) => ({ id: m.id, user_id: m.user_id, display_name: m.display_name || "" })),
+        teams: teams.map((t) => ({ id: t.id, name: t.name || "" })),
+        assets,
+        categories: categories.map((c) => ({ id: c.id, name: c.name, parent_id: c.parent_id || undefined })),
+        properties: properties.map((p) => ({
+          id: p.id,
+          nickname: p.nickname ?? undefined,
+          address: p.address || "",
+        })),
+      };
+
+      const resolution = await resolveChip(chip, entities, {
+        propertyId: propertyId || undefined,
+        spaceId: selectedSpaceIds[0],
+        orgId,
+      });
+
+      if (resolution.resolved && resolution.entityId) {
+        applyResolvedChipToIntake(chip, resolution.entityId);
+        return;
+      }
+
+      if (resolution.requiresUserChoice && resolution.candidates?.length) {
+        toast({
+          title: "Multiple matches",
+          description: "Open the matching section below to choose one.",
+        });
+        const openSlotFor: Partial<Record<string, IntakeChipSlotId>> = {
+          person: "who",
+          team: "who",
+          space: "where",
+          asset: "asset",
+          category: "category",
+          theme: "category",
+          date: "when",
+          priority: "priority",
+        };
+        const slot = openSlotFor[chip.type];
+        if (slot) setOpenChipSlot(slot);
+        return;
+      }
+
+      if (resolution.requiresCreation) {
+        if (chip.type === "person") {
+          setOpenChipSlot("who");
+          setIntakeWhoMode("person");
+          setIntakeWhoQuery(chip.label || chip.value || "");
+        } else if (chip.type === "team") {
+          setOpenChipSlot("who");
+          setIntakeWhoMode("team");
+          setIntakeWhoQuery(chip.label || chip.value || "");
+        } else if (chip.type === "space") {
+          setOpenChipSlot("where");
+          if (propertyId) {
+            setIntakeWhereSpaceEditing(true);
+            setIntakeWhereSpaceQuery(chip.label || chip.value || "");
+          }
+        } else if (chip.type === "asset") {
+          setOpenChipSlot("asset");
+          setIntakeAssetQuery(chip.label || chip.value || "");
+        } else if (chip.type === "category" || chip.type === "theme") {
+          setOpenChipSlot("category");
+          setIntakeTagQuery(chip.label || chip.value || "");
+          setIntakeTagEditing(true);
+        } else if (chip.type === "date") {
+          setOpenChipSlot("when");
+          setWhenTab("due");
+        } else if (chip.type === "priority") {
+          setOpenChipSlot("priority");
+        } else if (chip.type === "recurrence") {
+          setOpenChipSlot("when");
+          setWhenTab("repeat");
+        }
+      }
+    },
+    [
+      orgId,
+      propertyId,
+      selectedSpaceIds,
+      spaces,
+      members,
+      teams,
+      categories,
+      properties,
+      toast,
+      applyResolvedChipToIntake,
+    ]
+  );
 
   const renderSlotContent = useCallback(
     (slot: IntakeChipSlotId, onClose: () => void): IntakeSlotPanelRows => {
@@ -2742,6 +2963,65 @@ export function IntakeModal({
     setPendingIntakeMode(null);
   }, []);
 
+  useLayoutEffect(() => {
+    const root = intakeTabListRef.current;
+    if (!open || !root) {
+      setCollapseIntakeTabIcons(false);
+      setTruncateIntakeTabLabels(false);
+      return;
+    }
+
+    let raf = 0;
+
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = intakeTabListRef.current;
+        if (!el) return;
+
+        const iconNodes = el.querySelectorAll<HTMLElement>("[data-intake-tab-icon]");
+        iconNodes.forEach((node) => {
+          node.style.setProperty("display", "inline-flex", "important");
+        });
+        void el.offsetWidth;
+
+        let collapseIcons = el.scrollWidth > el.clientWidth + 1;
+        el.querySelectorAll<HTMLButtonElement>("button[role='tab']").forEach((btn) => {
+          if (btn.scrollWidth > btn.clientWidth + 1) collapseIcons = true;
+        });
+
+        if (collapseIcons) {
+          iconNodes.forEach((node) => {
+            node.style.setProperty("display", "none", "important");
+          });
+          void el.offsetWidth;
+        }
+
+        const needTruncate =
+          collapseIcons &&
+          (el.scrollWidth > el.clientWidth + 1 ||
+            [...el.querySelectorAll<HTMLButtonElement>("button[role='tab']")].some(
+              (btn) => btn.scrollWidth > btn.clientWidth + 1
+            ));
+
+        iconNodes.forEach((node) => {
+          node.style.removeProperty("display");
+        });
+
+        setCollapseIntakeTabIcons(collapseIcons);
+        setTruncateIntakeTabLabels(needTruncate);
+      });
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    measure();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [open, intakeMode]);
+
   const primaryLabel = primaryIsDocument
     ? "Save Document"
     : primaryIsCompliance
@@ -2755,7 +3035,8 @@ export function IntakeModal({
 
   const intakeModeSwitcher = (
     <div
-      className="flex h-12 w-[290px] max-w-full gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      ref={intakeTabListRef}
+      className="flex h-12 w-full min-w-0 flex-nowrap items-stretch justify-center gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
       role="tablist"
       aria-label="Intake type"
     >
@@ -2767,7 +3048,7 @@ export function IntakeModal({
           aria-selected={intakeMode === m}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "flex flex-1 min-w-0 items-center justify-center gap-1.5 rounded-[12px] py-2 px-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex max-w-full min-w-0 shrink flex-[0_1_auto] items-center justify-center gap-1.5 rounded-[12px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
                 ? "bg-[#ff6b6b] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
@@ -2775,12 +3056,24 @@ export function IntakeModal({
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {m === "report_issue" ? (
-            <Plus className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-          ) : (
-            <FileText className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden />
-          )}
-          <span className="min-w-0 truncate">{m === "report_issue" ? "Report Issue" : "Add Record"}</span>
+          <span
+            data-intake-tab-icon
+            className={cn(
+              "inline-flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4",
+              collapseIntakeTabIcons && "hidden"
+            )}
+            aria-hidden
+          >
+            {m === "report_issue" ? <Plus aria-hidden /> : <FileText aria-hidden />}
+          </span>
+          <span
+            className={cn(
+              "min-w-0 whitespace-nowrap text-center",
+              truncateIntakeTabLabels && "truncate"
+            )}
+          >
+            {m === "report_issue" ? "Report Issue" : "Add Record"}
+          </span>
         </button>
       ))}
     </div>
@@ -3021,17 +3314,26 @@ export function IntakeModal({
           {/* 2. Composer: title (hidden until description; AI-generated) + main text */}
           <div className="space-y-2">
             {shouldShowTitleField && (
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setUserEditedTitle(true);
-                  setTitle(e.target.value);
-                  if (!e.target.value.trim()) setUserEditedTitle(false);
-                }}
-                placeholder="Generated title…"
-                className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
-              />
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setTitle(v);
+                    const t = v.trim();
+                    if (!t) setUserEditedTitle(false);
+                    else if (t.length >= 2) setUserEditedTitle(true);
+                  }}
+                  placeholder="Generated title…"
+                  className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
+                />
+                {aiExtractError && !aiLoading && description.trim().length >= 8 && (
+                  <p className="text-[11px] text-muted-foreground px-0.5">
+                    AI title hint unavailable — you can still edit the title above.
+                  </p>
+                )}
+              </div>
             )}
             <div className="rounded-lg bg-input shadow-engraved overflow-hidden">
               <textarea
@@ -3064,6 +3366,22 @@ export function IntakeModal({
               )}
             </div>
           </div>
+
+          {intakeMode === "report_issue" && primaryIsTask && hasDescriptionDraft && (
+            <AISuggestionChips
+              chips={chipSuggestions}
+              ghostGroups={ghostCategories}
+              onChipSelect={(c) => {
+                void handleIntakeSuggestedChip(c);
+              }}
+              onGhostGroupSelect={handleIntakeGhostGroup}
+              onFactChipPress={(c) => {
+                void handleIntakeSuggestedChip(c);
+              }}
+              loading={false}
+              className="px-0 pt-0.5"
+            />
+          )}
 
           {showMismatchSuggestion && (
             <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 shadow-e1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -3158,7 +3476,16 @@ export function IntakeModal({
           <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button className="flex-1 shadow-primary-btn" onClick={handleSubmit} disabled={isSubmitting}>
+          <Button
+            className={cn(
+              "flex-1 border-0",
+              primaryIsDocument && "shadow-primary-btn",
+              primaryIsCompliance && intakeFooterSubmitAddRecordClassName,
+              !primaryIsDocument && !primaryIsCompliance && intakeFooterSubmitReportIssueClassName
+            )}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Saving…" : primaryLabel}
           </Button>
         </div>

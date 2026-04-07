@@ -11,9 +11,9 @@ interface DualPaneLayoutProps {
 /**
  * Dual-Pane Command Centre Layout (with conditional third column on desktop)
  *
- * Mobile: Single column stack
+ * Narrow (< sm / 640px): Single column stack (calendar + tasks)
  *
- * Desktop (md+): CSS Grid with 2 columns
+ * Tablet up (sm+): CSS Grid with 2 columns — independent of app sidebar (offcanvas until lg)
  *   - Left: 265px fixed (Calendar + Properties)
  *   - Right: 1fr (Task Tabs) - flexible up to max 652px
  *
@@ -28,22 +28,23 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
 
+  /** Below lg the app nav is offcanvas but the hub can still be two columns (sm–lg); inset left content 12px from the screen edge. */
   const stickyColClass = hasHeader
-    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px] px-0"
-    : "h-screen sticky top-0 w-[265px] px-0";
+    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px] px-0 sm:max-lg:pl-[12px]"
+    : "h-screen sticky top-0 w-[265px] px-0 sm:max-lg:pl-[12px]";
 
   return (
     <div className="min-h-screen w-full min-w-0">
-      {/* Mobile: Single column stack */}
-      <div className="flex flex-col md:hidden w-full min-w-0 max-w-full overflow-x-hidden">
+      {/* Very narrow: Single column stack */}
+      <div className="flex flex-col sm:hidden w-full min-w-0 max-w-full overflow-x-hidden">
         {header && <div className="w-full">{header}</div>}
-        <div className="w-full min-w-0 max-w-full">{leftColumn}</div>
-        <div className="w-full min-w-0 max-w-full">{rightColumn}</div>
+        <div className="w-full min-w-0 max-w-full px-[12px]">{leftColumn}</div>
+        <div className="w-full min-w-0 max-w-full px-[12px]">{rightColumn}</div>
       </div>
 
-      {/* Desktop: Two-column layout (md+), shown until third-column breakpoint */}
-      <div className="hidden md:grid md:grid-cols-[265px_1fr] layout:hidden min-h-screen">
-        {/* Header spans both columns on md screens */}
+      {/* Two-column hub (sm+), until wide layout / third-column breakpoint */}
+      <div className="hidden sm:grid sm:grid-cols-[265px_1fr] layout:hidden min-h-screen">
+        {/* Header spans both columns */}
         {header && (
           <div className="col-span-2">
             {header}

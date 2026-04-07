@@ -14,7 +14,7 @@
  * Scrolling the dates spinner drives the month/year drums via translateY.
  * Original: DashboardCalendar.tsx (unchanged)
  */
-import { useState, useRef, useMemo, useCallback, useEffect, CSSProperties } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, useLayoutEffect, CSSProperties } from "react";
 import {
   format,
   startOfMonth,
@@ -28,12 +28,14 @@ import {
   isSameMonth,
 } from "date-fns";
 import { ArrowDownToDot, ChevronDown, ChevronUp, Expand, Shrink } from "lucide-react";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { cn } from "@/lib/utils";
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 const DOW_H    = 23;                       // weekday header height (px)
 const CELL_H   = 30;                       // each date row height (px)
-const SEP_H    = 1;                        // month separator row height (px)
+/** Month separator row — must match the rendered sep block (border-box total height) for scroll + drum sync */
+const SEP_H    = 10;
 const ROWS_FULL = 6;                       // visible rows when expanded
 const ROWS_MINIMIZED = 2;                  // visible rows when minimize control is active
 /** Neumorphic date card: inner scroll viewport height */
@@ -166,7 +168,36 @@ export function DashboardCalendarV2({
   tasksByDate: providedTasksByDate,
 }: DashboardCalendarV2Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const wheelAccRef = useRef(0);
+  const wheelFrameRef = useRef<number | null>(null);
+  const [containerWidth, setContainerWidth] = useState(320);
   const baseMonth = useMemo(() => startOfMonth(new Date()), []);
+
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      if (w > 0) setContainerWidth(Math.round(w));
+    });
+    ro.observe(el);
+    const w = el.getBoundingClientRect().width;
+    if (w > 0) setContainerWidth(Math.round(w));
+    return () => ro.disconnect();
+  }, []);
+
+  /** Day cell cap scales with column width; keeps the grid readable on phones. */
+  const dayCellMaxPx = useMemo(() => {
+    const usable = Math.max(0, containerWidth - 36);
+    return Math.min(32, Math.max(22, Math.floor(usable / 7)));
+  }, [containerWidth]);
+
+  const dayBtnSizePx = useMemo(
+    () => Math.min(24, Math.max(20, dayCellMaxPx - 4)),
+    [dayCellMaxPx]
+  );
 
   // ── All months in range ────────────────────────────────────────────────────
   const allMonths = useMemo<Date[]>(() => {
@@ -247,7 +278,10 @@ export function DashboardCalendarV2({
   // ── Current visible month key (drives drum positions) ─────────────────────
   const [currentMonthKey, setCurrentMonthKey] = useState(() => format(baseMonth, "yyyy-MM"));
   /** Minimize: shrink date card to two visible rows (still scrollable); does not hide the panel. */
-  const [calendarCollapsed, setCalendarCollapsed] = useState(false);
+  const [calendarCollapsed, setCalendarCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < LAYOUT_BREAKPOINTS.workbenchTwoColumn;
+  });
   const visibleFrameH = calendarCollapsed ? FRAME_H_MIN : FRAME_H_FULL;
 
   // Derived indices for drum animation
@@ -272,30 +306,42 @@ export function DashboardCalendarV2({
     [dateRows],
   );
 
-  // ── Scroll handler — updates current month from center of viewport ─────────
+  // ── Scroll handler — updates current month from center of viewport (rAF-batched for smooth touch scroll) ─────────
   const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const centerY = el.scrollTop + visibleFrameH / 2;
-    let acc = 0;
-    for (let i = 0; i < dateRows.length; i++) {
-      const row = dateRows[i];
-      const h = row.type === "sep" ? SEP_H : CELL_H;
-      if (centerY >= acc && centerY < acc + h) {
-        if (row.type === "week") {
-          const k = format(row.month, "yyyy-MM");
-          setCurrentMonthKey(prev => (prev === k ? prev : k));
+    if (scrollFrameRef.current != null) return;
+    scrollFrameRef.current = requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      const el = scrollRef.current;
+      if (!el) return;
+      const centerY = el.scrollTop + visibleFrameH / 2;
+      let acc = 0;
+      for (let i = 0; i < dateRows.length; i++) {
+        const row = dateRows[i];
+        const h = row.type === "sep" ? SEP_H : CELL_H;
+        if (centerY >= acc && centerY < acc + h) {
+          if (row.type === "week") {
+            const k = format(row.month, "yyyy-MM");
+            setCurrentMonthKey((prev) => (prev === k ? prev : k));
+          }
+          return;
         }
-        return;
+        acc += h;
       }
-      acc += h;
-    }
-    const last = dateRows[dateRows.length - 1];
-    if (last?.type === "week") {
-      const k = format(last.month, "yyyy-MM");
-      setCurrentMonthKey(prev => (prev === k ? prev : k));
-    }
+      const last = dateRows[dateRows.length - 1];
+      if (last?.type === "week") {
+        const k = format(last.month, "yyyy-MM");
+        setCurrentMonthKey((prev) => (prev === k ? prev : k));
+      }
+    });
   }, [dateRows, visibleFrameH]);
+
+  useEffect(
+    () => () => {
+      if (scrollFrameRef.current != null) cancelAnimationFrame(scrollFrameRef.current);
+      if (wheelFrameRef.current != null) cancelAnimationFrame(wheelFrameRef.current);
+    },
+    []
+  );
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const scrollToMonth = useCallback(
@@ -305,7 +351,7 @@ export function DashboardCalendarV2({
       if (rowIdx !== undefined) {
         scrollRef.current?.scrollTo({
           top: scrollOffsetForRowIndex(rowIdx),
-          behavior: smooth ? "smooth" : "instant",
+          behavior: smooth ? "smooth" : "auto",
         });
       }
     },
@@ -326,17 +372,32 @@ export function DashboardCalendarV2({
     handleScroll();
   }, [calendarCollapsed, visibleFrameH, handleScroll]);
 
-  // Dampen wheel/trackpad on the date spinner so month rows don’t fly past.
+  // Dampen wheel/trackpad; batch deltas per frame to avoid scroll jank vs. drum sync.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const flushWheel = () => {
+      wheelFrameRef.current = null;
+      const acc = wheelAccRef.current;
+      if (acc === 0) return;
+      wheelAccRef.current = 0;
+      el.scrollTop += acc;
+    };
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) return; // let pinch-to-zoom pass through
+      if (e.ctrlKey) return;
       e.preventDefault();
-      el.scrollTop += e.deltaY * DATE_SPINNER_WHEEL_DAMPING;
+      wheelAccRef.current += e.deltaY * DATE_SPINNER_WHEEL_DAMPING;
+      if (wheelFrameRef.current == null) {
+        wheelFrameRef.current = requestAnimationFrame(flushWheel);
+      }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (wheelFrameRef.current != null) cancelAnimationFrame(wheelFrameRef.current);
+      wheelFrameRef.current = null;
+      wheelAccRef.current = 0;
+    };
   }, []);
 
   // ── Drum translateY — centers the selected item inside DRUM_VIEWPORT_H ─────
@@ -349,6 +410,7 @@ export function DashboardCalendarV2({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
+      ref={rootRef}
       className={cn(
         "dashboard-calendar-v2 w-full max-w-full min-w-0 overflow-x-hidden touch-pan-y",
         className,
@@ -356,7 +418,7 @@ export function DashboardCalendarV2({
     >
       <div
         className="flex flex-col mx-auto w-full min-w-0 max-w-full"
-        style={{ gap: COL_GAP, width: 265, maxWidth: "100%", marginLeft: 0, marginRight: 0 }}
+        style={{ gap: COL_GAP }}
       >
         {/* ═══════════════ Month + year drums (above dates) ═════════════════ */}
         <div
@@ -550,14 +612,14 @@ export function DashboardCalendarV2({
         >
             {/* Weekday labels sit above the neumorphic date card (not inside it) */}
             <div
-              className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono"
-              style={{ height: DOW_H, paddingLeft: 15, paddingRight: 13, paddingBottom: 8 }}
+              className="flex justify-around items-center shrink-0 w-full min-w-0 font-mono px-3"
+              style={{ height: DOW_H, paddingBottom: 8 }}
             >
               {WEEK_DAYS.map(d => (
                 <div
                   key={d}
-                  className="flex-1 text-center text-[10px] font-mono text-muted-foreground"
-                  style={{ maxWidth: 28 }}
+                  className="flex-1 min-w-0 text-center text-[10px] font-mono text-muted-foreground"
+                  style={{ maxWidth: dayCellMaxPx }}
                 >
                   {d}
                 </div>
@@ -567,21 +629,23 @@ export function DashboardCalendarV2({
             {/* ═══════════════ Dates spinner (full width, card surface) ═══════════ */}
             <div
               className="w-full min-w-0 flex flex-col overflow-hidden transition-[height] duration-300 ease-out"
-              style={{ ...PRESSED, height: visibleFrameH, paddingLeft: 10, paddingRight: 10 }}
+              style={{ ...PRESSED, height: visibleFrameH, paddingLeft: 8, paddingRight: 8 }}
             >
               <div
                 ref={scrollRef}
                 onScroll={handleScroll}
                 style={{
                   height:                visibleFrameH,
-                  overflowY:             "scroll",
+                  overflowY:             "auto",
                   overflowX:             "hidden",
-                  scrollSnapType:        "y mandatory",
+                  scrollSnapType:        "y proximity",
                   scrollbarWidth:        "none",
                   flexShrink:            0,
                   transition:            "height 300ms ease-out",
                   touchAction:           "pan-y",
+                  overscrollBehaviorY:   "auto",
                   overscrollBehaviorX:   "contain",
+                  WebkitOverflowScrolling: "touch",
                 }}
               >
                 {dateRows.map((row, rowIdx) => {
@@ -590,23 +654,22 @@ export function DashboardCalendarV2({
                   <div
                     key={row.id}
                     style={{
-                      height: 5,
+                      height: SEP_H,
+                      boxSizing: "border-box",
                       flexShrink: 0,
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      paddingInline: 4,
-                      padding: "2px 0px",
-                      borderWidth: "1px 0px 0px",
-                      borderColor: "rgba(0, 0, 0, 0.05) rgba(0, 0, 0, 0) rgba(0, 0, 0, 0)",
+                      padding: "2px 4px",
+                      borderTop: "1px solid rgba(0, 0, 0, 0.05)",
                       boxShadow: "inset 1px 1px 1px 0px rgba(255, 255, 255, 0.51)",
                     }}
                   >
                     {Array.from({ length: 7 }).map((_, i) => (
                       <div
                         key={i}
-                        className="flex-1"
-                        style={{ maxWidth: 28, backgroundColor: "unset", background: "unset", height: 2 }}
+                        className="flex-1 min-w-0"
+                        style={{ maxWidth: dayCellMaxPx, backgroundColor: "unset", background: "unset", height: 2 }}
                       />
                     ))}
                   </div>
@@ -641,8 +704,8 @@ export function DashboardCalendarV2({
                     return (
                       <div
                         key={key}
-                        className="flex-1 flex items-center justify-center"
-                        style={{ maxWidth: 28 }}
+                        className="flex-1 min-w-0 flex items-center justify-center"
+                        style={{ maxWidth: dayCellMaxPx }}
                       >
                         <button
                           onClick={() => onDateSelect?.(date)}
@@ -652,8 +715,8 @@ export function DashboardCalendarV2({
                             outside   && !selected && "text-transparent",
                           )}
                           style={{
-                            width:           24,
-                            height:          24,
+                            width:           dayBtnSizePx,
+                            height:          dayBtnSizePx,
                             marginTop:       0,
                             marginBottom:    0,
                             paddingLeft:     0,
@@ -667,7 +730,7 @@ export function DashboardCalendarV2({
                             borderTopWidth:  0,
                             borderImage:     "none",
                             backgroundColor: selected ? "rgba(255, 255, 255, 0.66)" : fill || undefined,
-                            borderRadius:    showMarkers && todayDate ? 7 : hasTasks ? 8 : 9999,
+                            borderRadius:    showMarkers && todayDate ? Math.min(7, dayBtnSizePx / 3) : hasTasks ? Math.min(8, dayBtnSizePx / 3) : 9999,
                             boxShadow:       showMarkers && hasTasks && !selected
                               ? "1px 1px 1px 0px rgba(255, 255, 255, 1), inset 3px 5px 3px -1.5px rgba(0, 0, 0, 0.2), -1px -1px 1px 0px rgba(0, 0, 0, 0.15)"
                               : undefined,
@@ -686,7 +749,7 @@ export function DashboardCalendarV2({
                             <span
                               aria-hidden
                               className="absolute rounded-[12px] bg-white/90 border-[3px] border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                              style={{ width: 24, height: 24, pointerEvents: "none" }}
+                              style={{ width: dayBtnSizePx, height: dayBtnSizePx, pointerEvents: "none" }}
                             />
                           )}
                         </button>

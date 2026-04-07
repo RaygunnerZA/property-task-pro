@@ -117,3 +117,19 @@ export const intakeAddRecordMicroClassName = cn(
   addRecordBg,
   "shadow-e1 transition-all hover:shadow-md hover:bg-[#8DC9CE]/90"
 );
+
+/** Intake modal/column footer primary — matches active tab pill (Report Issue = coral). */
+export const intakeFooterSubmitReportIssueClassName = cn(
+  reportBg,
+  onCta,
+  reportNeuShadow,
+  "hover:bg-[#ff6b6b]/90 hover:text-white"
+);
+
+/** Intake modal/column footer primary when saving compliance / Add Record path — matches Add Record tab. */
+export const intakeFooterSubmitAddRecordClassName = cn(
+  addRecordBg,
+  onCta,
+  addNeuShadow,
+  "hover:bg-[#8DC9CE]/90 hover:text-white"
+);

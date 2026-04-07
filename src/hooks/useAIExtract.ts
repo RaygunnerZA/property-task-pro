@@ -3,8 +3,8 @@ import { useDebounce } from "./useDebounce";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
-// Minimum description length before making expensive AI calls
-const MIN_DESCRIPTION_LENGTH = 10;
+// Minimum description length before making expensive AI calls (aligned with useful chip context)
+const MIN_DESCRIPTION_LENGTH = 8;
 
 // Cooldown period between AI calls (ms) - prevents rapid successive calls
 const AI_CALL_COOLDOWN = 2000;

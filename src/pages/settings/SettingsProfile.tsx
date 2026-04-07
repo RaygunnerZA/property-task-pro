@@ -173,8 +173,8 @@ export default function SettingsProfile() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Avatar */}
-          <div className="flex items-center gap-5">
-            <div className="relative group">
+          <div className="flex w-full min-w-0 flex-col items-stretch gap-5 sm:flex-row sm:items-center">
+            <div className="relative group shrink-0">
               <Avatar className="h-20 w-20 shadow-e1">
                 {avatarPreview || avatarUrl ? (
                   <AvatarImage src={avatarPreview || avatarUrl || undefined} />
@@ -197,8 +197,8 @@ export default function SettingsProfile() {
                 </button>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap gap-1.5">
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex max-w-full flex-wrap gap-1.5">
                 {AVATAR_COLORS.map((color) => (
                   <button
                     key={color}
@@ -250,7 +250,7 @@ export default function SettingsProfile() {
               onChange={(e) => setEditNickname(e.target.value)}
               placeholder="Your name or nickname"
               disabled={saving}
-              className="shadow-engraved border-0 max-w-sm"
+              className="w-full max-w-full shadow-engraved border-0 sm:max-w-sm"
             />
           </div>
 
@@ -263,7 +263,7 @@ export default function SettingsProfile() {
             <Input
               value={userEmail}
               disabled
-              className="bg-muted max-w-sm"
+              className="w-full max-w-full bg-muted sm:max-w-sm"
             />
             <p className="text-xs text-muted-foreground">
               Email changes require re-authentication. Contact support to update.

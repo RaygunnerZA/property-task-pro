@@ -305,19 +305,19 @@ export default function SettingsGeneral() {
           {/* User Profile Card - With Edit Button */}
           <Card className="shadow-e1">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                  <Avatar className="h-16 w-16 shrink-0">
                     <AvatarImage src={userAvatarUrl || undefined} />
                     <AvatarFallback>
                       <UserIcon className="h-8 w-8" />
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
                       {userNickname || "User"}
                     </h2>
-                    <p className="text-sm mt-0.5 text-muted-foreground">
+                    <p className="text-sm mt-0.5 break-all text-muted-foreground">
                       {userEmail || "No email"}
                     </p>
                   </div>
@@ -326,6 +326,7 @@ export default function SettingsGeneral() {
                   variant="outline"
                   size="sm"
                   onClick={handleEditProfile}
+                  className="w-full shrink-0 sm:w-auto"
                 >
                   <Edit className="mr-2 h-4 w-4" />
                   Edit
@@ -504,19 +505,19 @@ export default function SettingsGeneral() {
         {/* User Profile Card - With Edit Button */}
         <Card className="shadow-e1">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <Avatar className="h-16 w-16 shrink-0">
                   <AvatarImage src={userAvatarUrl || undefined} />
                   <AvatarFallback>
                     <UserIcon className="h-8 w-8" />
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
                     {userNickname || "User"}
                   </h2>
-                  <p className="text-sm mt-0.5 text-muted-foreground">
+                  <p className="text-sm mt-0.5 break-all text-muted-foreground">
                     {userEmail || "No email"}
                   </p>
                 </div>
@@ -525,6 +526,7 @@ export default function SettingsGeneral() {
                 variant="outline"
                 size="sm"
                 onClick={handleEditProfile}
+                className="w-full shrink-0 sm:w-auto"
               >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
@@ -578,10 +580,10 @@ export default function SettingsGeneral() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="auto-schedule" className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-0.5 pr-0 sm:pr-4">
+              <Label htmlFor="auto-schedule" className="flex flex-wrap items-center gap-2">
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
                 Auto-schedule compliance tasks
               </Label>
               <p className="text-xs text-muted-foreground">
@@ -590,6 +592,7 @@ export default function SettingsGeneral() {
             </div>
             <Switch
               id="auto-schedule"
+              className="shrink-0 sm:mt-0"
               checked={orgSettings?.auto_schedule_compliance ?? false}
               disabled={orgSettingsUpdating}
               onCheckedChange={async (checked) => {

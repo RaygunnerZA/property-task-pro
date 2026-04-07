@@ -1,7 +1,7 @@
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { useTasksForBriefingQuery } from "@/hooks/useTasksForBriefingQuery";
 import { useCallback, useMemo, useState } from "react";
-import { type CarouselApi, Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { type CarouselApi, Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
@@ -28,8 +28,8 @@ interface DailyBriefingCardProps {
  * - Homepage/Hub: observations on all properties
  * - Property detail: observations specific to that property
  *
- * Layout: Left = title + bullet observations. Right = carousel of graphic data
- * (radial progress, graphs). Merges Property Insights into the right side.
+ * Layout: Left = title + bullet observations. Right = one radial at a time (carousel)
+ * with chevrons between Complete and Due today. Sidebar variant keeps two radials stacked row.
  */
 export function DailyBriefingCard({
   showGreeting = true,
@@ -111,8 +111,10 @@ export function DailyBriefingCard({
     });
   }, []);
 
-  // Call all hooks unconditionally to avoid "Rendered fewer hooks than expected"
-  const carouselOpts = useMemo(() => ({ align: "start" as const, loop: true, skipSnaps: false }), []);
+  const carouselOptsSingle = useMemo(
+    () => ({ align: "center" as const, loop: true, skipSnaps: false }),
+    []
+  );
 
   const radialValue = taskMetrics.completionPct;
   const radialLabel = "Complete";
@@ -149,6 +151,28 @@ export function DailyBriefingCard({
       sublabel: `${focus} of ${totalActive} tasks`,
     },
   ];
+
+  const renderHubRadialSlide = (slide: (typeof slides)[number]) => (
+    <div className="flex flex-col items-center justify-center w-[115px] h-[165px] mx-auto">
+      <RadialProgress
+        value={slide.value}
+        size={90}
+        thickness={10}
+        innerDiscSize={70}
+        labelMarginLeft={9}
+        aria-label={`${slide.label}: ${slide.value}%`}
+      />
+      <p
+        className={cn(
+          "text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider",
+          "text-shadow-neu-pressed"
+        )}
+      >
+        {slide.label}
+      </p>
+      <p className="text-[10px] text-muted-foreground/80 mt-0.5">{slide.sublabel}</p>
+    </div>
+  );
 
   if (variant === "sidebar") {
     return (
@@ -201,16 +225,28 @@ export function DailyBriefingCard({
 
   return (
     <div className="w-full max-w-full">
-      <div className="grid grid-cols-[1fr_1fr] gap-4 h-[166px] max-h-[166px] items-start">
-        {/* Left half: Title + bullet observations (briefing points) */}
-        <div className="min-w-0 flex flex-col justify-start pt-1">
-          <PanelSectionTitle as="h2">Overview</PanelSectionTitle>
-          <ul className="space-y-2">
+      <div
+        className={cn(
+          "grid items-start",
+          /* Mobile: 50% Overview + bullets | 50% one radial + < >; md+: same split, fixed right width */
+          "grid-cols-2 gap-2 md:gap-4 md:grid-cols-[1fr_1fr]",
+          "md:h-[166px] md:max-h-[166px]"
+        )}
+      >
+        {/* Left: Title + bullet observations (briefing points) */}
+        <div className="min-w-0 flex flex-col justify-start pt-1 pr-1 md:pr-0">
+          <PanelSectionTitle as="h2" className="max-md:mb-1 max-md:text-sm">
+            Overview
+          </PanelSectionTitle>
+          <ul className="space-y-1.5 md:space-y-2">
             {observations.length > 0 ? (
               observations.map((obs, index) => (
-                <li key={index} className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span className="text-primary">•</span>
-                  <span>{obs}</span>
+                <li
+                  key={index}
+                  className="text-sm text-muted-foreground flex items-start gap-1.5 md:items-center md:gap-2 leading-snug"
+                >
+                  <span className="text-primary shrink-0 mt-0.5 md:mt-0">•</span>
+                  <span className="min-w-0 break-words">{obs}</span>
                 </li>
               ))
             ) : (
@@ -219,63 +255,58 @@ export function DailyBriefingCard({
           </ul>
         </div>
 
-        {/* Right half: Carousel with graphic data (radial, charts) + discrete chevrons */}
-        <div className="min-w-0 flex w-[300px] gap-0 items-start justify-center relative">
+        {/* Right: one radial at a time; < > switch Complete vs Due today */}
+        <div
+          className={cn(
+            "min-w-0 flex gap-0 items-start justify-center relative",
+            "w-full shrink-0 max-md:max-w-none md:max-w-[300px] md:w-[300px] md:mx-0"
+          )}
+        >
           <Carousel
-            opts={carouselOpts}
+            key="briefing-carousel-single"
+            opts={carouselOptsSingle}
             setApi={handleCarouselApi}
-            className="w-full max-w-[300px]"
+            className="w-full min-w-0"
           >
-            <CarouselContent className="ml-0 justify-center items-center gap-1 w-[300px]">
+            <CarouselContent className="ml-0 -ml-0 justify-center items-center w-full min-w-0">
               {slides.map((slide) => (
                 <CarouselItem
                   key={slide.id}
-                  className="pl-0 basis-[115px] w-[115px] flex-none min-w-0 font-medium"
+                  className="pl-0 basis-full min-w-0 flex-none font-medium"
                 >
-                  <div className="flex flex-col items-center justify-center w-[115px] h-[165px]">
-                    <RadialProgress
-                      value={slide.value}
-                      size={90}
-                      thickness={10}
-                      innerDiscSize={70}
-                      labelMarginLeft={9}
-                      aria-label={`${slide.label}: ${slide.value}%`}
-                    />
-                    <p
-                      className={cn(
-                        "text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider",
-                        "text-shadow-neu-pressed"
-                      )}
-                    >
-                      {slide.label}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/80 mt-0.5">
-                      {slide.sublabel}
-                    </p>
-                  </div>
+                  {renderHubRadialSlide(slide)}
                 </CarouselItem>
               ))}
             </CarouselContent>
           </Carousel>
-          {/* Discrete chevrons to select previous/next slide */}
+
           <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none px-0 pb-[38px]">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); carouselApi?.scrollPrev(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                carouselApi?.scrollPrev();
+              }}
               disabled={!carouselApi?.canScrollPrev}
               aria-label="Previous slide"
-              className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
+              className={cn(
+                "pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none",
+                "bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
+              )}
             >
               <ChevronLeft className="h-[35px] w-[35px] text-primary" />
             </button>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); carouselApi?.scrollNext(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                carouselApi?.scrollNext();
+              }}
               disabled={!carouselApi?.canScrollNext}
               aria-label="Next slide"
               className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full border-0 shadow-none bg-transparent hover:bg-muted/50 disabled:opacity-40 disabled:pointer-events-none transition-opacity"
             >
-              <ChevronRight className="h-4 w-5 text-white" />
+              <ChevronRight className="h-[35px] w-[35px] text-primary" />
             </button>
           </div>
         </div>
