@@ -876,7 +876,15 @@ export function TaskPanel({
           )}
         >
           <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
-            <div className={cn("min-w-0 w-full max-w-[417px] max-sm:max-w-none", taskToolbarRecessedClass)}>
+            <div
+              className={cn(
+                taskToolbarRecessedClass,
+                "min-w-0 max-w-[417px] max-sm:max-w-none",
+                /* Hug tab content so horizontal padding matches left/right; full width only when icon strip scrolls */
+                iconOnly ? "w-full" : "w-max self-start",
+                "max-sm:w-full max-sm:self-auto"
+              )}
+            >
               {/* Intrinsic-width probes: pick the least compressed density that fits (avoids icon-only when the track is actually wide). */}
               <div
                 aria-hidden
@@ -969,10 +977,11 @@ export function TaskPanel({
               <TabsList
                 ref={tabsListRef}
                 className={cn(
-                  "h-12 min-w-0 w-full p-0 pt-[6px] pb-1.5 px-2 rounded-none bg-transparent overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                  "h-12 min-w-0 p-0 pt-[6px] pb-1.5 px-2 rounded-none bg-transparent overflow-y-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+                  iconOnly ? "w-full" : "w-max max-w-full",
                   iconOnly
                     ? "flex flex-nowrap items-center justify-start gap-x-[7px] overflow-x-auto"
-                    : "flex flex-nowrap items-center justify-start gap-x-1.5 overflow-x-auto max-sm:justify-between max-sm:gap-1 max-sm:overflow-x-hidden",
+                    : "flex flex-nowrap items-center justify-start gap-x-1.5 overflow-x-auto max-sm:w-full max-sm:justify-between max-sm:gap-1 max-sm:overflow-x-hidden",
                   "max-pane:pl-1 max-pane:pr-1",
                   iconOnly && "max-pane:gap-x-1"
                 )}

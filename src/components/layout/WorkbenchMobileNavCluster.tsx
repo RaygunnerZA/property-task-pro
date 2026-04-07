@@ -20,7 +20,7 @@ export function WorkbenchMobileNavCluster({ className }: { className?: string })
         type="button"
         onClick={() => openAssistant()}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-full bg-card shadow-e1",
+          "flex h-9 w-9 items-center justify-center rounded-[12px] bg-card shadow-e1",
           "transition-shadow hover:shadow-e2"
         )}
         aria-label="Open Filla AI"
@@ -31,16 +31,16 @@ export function WorkbenchMobileNavCluster({ className }: { className?: string })
         type="button"
         onClick={() => setOpenMobile(true)}
         className={cn(
-          "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full outline-none transition-shadow",
+          "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] outline-none transition-shadow",
           "bg-card shadow-e1 ring-2 ring-background hover:shadow-e2",
           "focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-label="Open navigation menu"
       >
-        <Avatar className="h-8 w-8 rounded-full">
-          <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover" />
+        <Avatar className="h-8 w-8 rounded-[11px]">
+          <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover rounded-none" />
           <AvatarFallback
-            className="rounded-full text-xs font-semibold"
+            className="rounded-[11px] text-xs font-semibold"
             style={{ backgroundColor: "hsl(var(--primary) / 0.35)", color: "hsl(var(--foreground))" }}
           >
             {userInitials(user)}

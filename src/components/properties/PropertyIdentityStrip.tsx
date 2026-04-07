@@ -328,7 +328,7 @@ export function PropertyIdentityStrip({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[358px] flex flex-col">
+    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[358px] flex flex-col px-0">
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
       <div
@@ -447,7 +447,7 @@ export function PropertyIdentityStrip({
       />
 
       {/* ── TAB STRIP ────────────────────────────────────────────────────── */}
-      <div className="relative z-10 flex w-full min-w-0 shrink-0 flex-nowrap justify-start items-start gap-0 overflow-x-auto overflow-y-hidden pt-[10px] pb-[6px] px-3 sm:px-2.5 bg-muted/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative z-10 mx-0 flex w-full min-w-0 shrink-0 flex-nowrap justify-start items-start gap-0 overflow-x-auto overflow-y-hidden pt-[10px] pb-[6px] px-3 sm:px-2.5 bg-muted/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab, idx) => (
           <button
             key={tab}
