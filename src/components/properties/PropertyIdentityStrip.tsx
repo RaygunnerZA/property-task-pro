@@ -1,11 +1,7 @@
-import { useState, useRef, useMemo, useLayoutEffect } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Camera,
-  CheckSquare,
-  Package,
-  Layers,
-  Shield,
   FileText,
   Edit2,
   Check,
@@ -21,17 +17,13 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getWeatherLucideIcon } from "@/lib/weatherIcon";
-import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
-import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
-import {
-  StripMetricValue,
-  summaryActionCol,
-  summaryRowLabelClass,
-} from "@/components/properties/propertySnapshotMetrics";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { PropertySummaryDashboardGrid } from "@/components/properties/PropertySummaryDashboardGrid";
 import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { propertiesService } from "@/services/properties/properties";
 import { toast } from "sonner";
@@ -74,9 +66,6 @@ export type PropertyForStrip = {
 const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
 type TabIndex = 0 | 1 | 2 | 3;
 
-/** Summary column width at which attention badges can show words instead of ⚠️ (+ actions stay tappable). */
-const PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX = 312;
-
 type AssetViewRow = {
   status?: string | null;
   condition_score?: number | null;
@@ -117,29 +106,15 @@ export function PropertyIdentityStrip({
   const { details: propertyDetails } = usePropertyDetails(property.id);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { data: complianceList = [] } = useComplianceQuery(property.id);
   const { documents: propertyDocuments = [] } = usePropertyDocuments(property.id, undefined, {
     limit: 500,
   });
   const { data: propertyAssets = [] } = useAssetsQuery(property.id);
+  const { data: propertyTasksView = [] } = useTasksQuery(property.id);
 
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const summaryMetricsViewportRef = useRef<HTMLDivElement>(null);
-  const [summaryWideEnoughForWords, setSummaryWideEnoughForWords] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = summaryMetricsViewportRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const w = Math.round(entries[0]?.contentRect.width ?? 0);
-      setSummaryWideEnoughForWords(w >= PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX);
-    });
-    ro.observe(el);
-    setSummaryWideEnoughForWords(Math.round(el.getBoundingClientRect().width) >= PROPERTY_SUMMARY_METRICS_WORDS_MIN_PX);
-    return () => ro.disconnect();
-  }, []);
 
   // Details edit state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -180,28 +155,75 @@ export function PropertyIdentityStrip({
     }).length;
   }, [propertyAssets]);
 
-  const complianceStats = useMemo(() => {
-    const expiring = complianceList.filter((c: { expiry_status?: string }) => c.expiry_status === "expiring")
-      .length;
-    const expired = complianceList.filter((c: { expiry_status?: string }) => c.expiry_status === "expired")
-      .length;
-    return { total: complianceList.length, expiring, expired };
-  }, [complianceList]);
-
-  const complianceAttentionCount = complianceStats.expired + complianceStats.expiring;
-
   const documentsCount = propertyDocuments.length;
   const documentsCountLabel = documentsCount >= 500 ? "500+" : String(documentsCount);
 
-  const documentsExpiringCount = useMemo(() => {
-    const now = new Date();
-    const thirty = new Date(now);
-    thirty.setDate(thirty.getDate() + 30);
-    const nowStr = now.toISOString().split("T")[0];
-    const thirtyStr = thirty.toISOString().split("T")[0];
-    return propertyDocuments.filter(
-      (d) => d.expiry_date != null && d.expiry_date >= nowStr && d.expiry_date <= thirtyStr
-    ).length;
+  const taskDashboardMetrics = useMemo(() => {
+    const list = propertyTasksView as Record<string, unknown>[];
+    const isCompleted = (t: Record<string, unknown>) =>
+      String(t?.status ?? "").toLowerCase() === "completed";
+    const isArchived = (t: Record<string, unknown>) =>
+      String(t?.status ?? "").toLowerCase() === "archived";
+    const active = list.filter((t) => !isArchived(t));
+    const total = active.length;
+    const done = active.filter(isCompleted).length;
+    const completionPct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+    const parseSpaces = (t: Record<string, unknown>): { id?: string }[] => {
+      try {
+        const raw = t.spaces;
+        const s = typeof raw === "string" ? JSON.parse(raw || "[]") : raw;
+        return Array.isArray(s) ? s : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const spaceIdsWithUrgent = new Set<string>();
+    for (const t of list) {
+      const st = String(t.status ?? "").toLowerCase();
+      if (st === "completed" || st === "archived") continue;
+      const pr = String(t.priority ?? "").toLowerCase();
+      if (pr !== "urgent" && pr !== "high") continue;
+      for (const s of parseSpaces(t)) {
+        if (s?.id) spaceIdsWithUrgent.add(s.id);
+      }
+    }
+
+    return {
+      completionPct,
+      completedLabel: `${done} of ${total} complete`,
+      spacesWithUrgentIssueCount: spaceIdsWithUrgent.size,
+    };
+  }, [propertyTasksView]);
+
+  const documentDashboardBuckets = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split("T")[0];
+    const in7 = new Date(today);
+    in7.setDate(in7.getDate() + 7);
+    const in7Str = in7.toISOString().split("T")[0];
+    const in30 = new Date(today);
+    in30.setDate(in30.getDate() + 30);
+    const in30Str = in30.toISOString().split("T")[0];
+
+    let dueSoon = 0;
+    let expiring = 0;
+    let missing = 0;
+
+    for (const d of propertyDocuments) {
+      if (!d.file_url) {
+        missing++;
+        continue;
+      }
+      const exp = d.expiry_date;
+      if (!exp) continue;
+      if (exp < todayStr || exp <= in7Str) expiring++;
+      else if (exp <= in30Str) dueSoon++;
+    }
+
+    return { dueSoon, expiring, missing };
   }, [propertyDocuments]);
 
   const { data: bedroomCount = 0 } = useQuery({
@@ -328,7 +350,7 @@ export function PropertyIdentityStrip({
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[358px] flex flex-col px-0">
+    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[438px] flex flex-col px-0">
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
       <div
@@ -477,269 +499,42 @@ export function PropertyIdentityStrip({
       </div>
 
       {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="relative z-0 flex-1 min-h-0 overflow-hidden">
+      <div className="relative z-0 max-h-[251px] min-h-0 flex-1 overflow-visible">
         <div
-          className="flex h-full pointer-events-none transition-transform duration-300 ease-out"
+          className="flex h-full min-h-0 pointer-events-none transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${activeTab * 100}%)` }}
         >
 
-          {/* 0 ── SUMMARY ──────────────────────────────────────────────── */}
+          {/* 0 ── PROPERTY dashboard (3×2 grid) ─────────────────────────── */}
           <div
-            ref={summaryMetricsViewportRef}
             className={cn(
-              "w-full min-w-0 flex-shrink-0 h-full pl-1.5 pr-0 py-0 space-y-0.5 overflow-y-auto",
+              "w-full min-w-0 flex-shrink-0 h-full min-h-0 overflow-hidden",
               activeTab === 0 ? "pointer-events-auto" : "pointer-events-none"
             )}
           >
-            {/* Open Tasks */}
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() =>
-                onOpenTasksClick
-                  ? onOpenTasksClick()
-                  : navigate(`/properties/${property.id}/tasks`)
+            <PropertySummaryDashboardGrid
+              openTasksCount={taskCount}
+              urgentOpenTaskCount={urgentCount}
+              completionPct={taskDashboardMetrics.completionPct}
+              completedLabel={taskDashboardMetrics.completedLabel}
+              onOpenTasks={() =>
+                onOpenTasksClick ? onOpenTasksClick() : navigate(`/properties/${property.id}/tasks`)
               }
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  if (onOpenTasksClick) {
-                    onOpenTasksClick();
-                  } else {
-                    navigate(`/properties/${property.id}/tasks`);
-                  }
-                }
-              }}
-              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <span className={summaryRowLabelClass}>
-                <CheckSquare className="h-3.5 w-3.5 shrink-0" />
-                Open Tasks
-              </span>
-              <StripMetricValue
-                primary={taskCount}
-                attention={urgentCount}
-                primaryMuted={taskCount === 0}
-                attentionTitle={`${urgentCount} urgent task${urgentCount === 1 ? "" : "s"}`}
-                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
-                attentionShortLabel="Urgent"
-              />
-              <div className={summaryActionCol}>
-                {onAddTaskClick && (
-                  <button
-                    type="button"
-                    aria-label="Add task"
-                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAddTaskClick();
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                )}
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  aria-hidden
-                >
-                  →
-                </span>
-              </div>
-            </div>
-
-            {/* Assets */}
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() =>
+              onAddTask={onAddTaskClick}
+              spacesCount={spacesCount}
+              spaceUrgentIssuesCount={taskDashboardMetrics.spacesWithUrgentIssueCount}
+              onOpenSpaces={() => navigate(propertySubPath(property.id, "spaces-organise"))}
+              assetsCount={assetsCount}
+              assetsUrgentIssuesCount={assetsAttentionCount}
+              onOpenAssets={() =>
                 navigate(`/assets?property=${encodeURIComponent(property.id)}`)
               }
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  navigate(`/assets?property=${encodeURIComponent(property.id)}`);
-                }
-              }}
-              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <span className={summaryRowLabelClass}>
-                <Package className="h-3.5 w-3.5 shrink-0" />
-                Assets
-              </span>
-              <StripMetricValue
-                primary={assetsCount}
-                attention={assetsAttentionCount}
-                primaryMuted={assetsCount === 0}
-                attentionTitle={`${assetsAttentionCount} asset${assetsAttentionCount === 1 ? "" : "s"} need attention`}
-                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
-                attentionShortLabel="Need Attention"
-              />
-              <div className={summaryActionCol}>
-                <button
-                  type="button"
-                  aria-label="Add asset"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(
-                      `/assets?property=${encodeURIComponent(property.id)}&add=true`
-                    );
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  aria-hidden
-                >
-                  →
-                </span>
-              </div>
-            </div>
-
-            {/* Spaces */}
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(propertySubPath(property.id, "spaces-organise"))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  navigate(propertySubPath(property.id, "spaces-organise"));
-                }
-              }}
-              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <span className={summaryRowLabelClass}>
-                <Layers className="h-3.5 w-3.5 shrink-0" />
-                Spaces
-              </span>
-              <StripMetricValue
-                primary={spacesCount}
-                attention={0}
-                primaryMuted={spacesCount === 0}
-              />
-              <div className={summaryActionCol}>
-                <button
-                  type="button"
-                  aria-label="Add or organise spaces"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/properties/${property.id}/spaces/organise`);
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  aria-hidden
-                >
-                  →
-                </span>
-              </div>
-            </div>
-
-            {/* Compliance */}
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/properties/${property.id}/compliance`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  navigate(`/properties/${property.id}/compliance`);
-                }
-              }}
-              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <span className={summaryRowLabelClass}>
-                <Shield className="h-3.5 w-3.5 shrink-0" />
-                Compliance
-              </span>
-              {complianceStats.total === 0 ? (
-                <StripMetricValue primary="—" attention={0} primaryMuted />
-              ) : (
-                <StripMetricValue
-                  primary={complianceStats.total}
-                  attention={complianceAttentionCount}
-                  attentionTitle={
-                    complianceStats.expired > 0
-                      ? `${complianceStats.expired} expired, ${complianceStats.expiring} expiring within 30 days`
-                      : `${complianceStats.expiring} expiring within 30 days`
-                  }
-                  warnClassName="text-amber-600"
-                  attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
-                  attentionShortLabel="Due soon"
-                />
-              )}
-              <div className={summaryActionCol}>
-                <button
-                  type="button"
-                  aria-label="Add compliance rule"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/properties/${property.id}/compliance?addRule=1`);
-                  }}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  aria-hidden
-                >
-                  →
-                </span>
-              </div>
-            </div>
-
-            {/* Documents */}
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/properties/${property.id}/documents`)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  navigate(`/properties/${property.id}/documents`);
-                }
-              }}
-              className="group flex h-[30px] w-full min-w-0 cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              <span className={summaryRowLabelClass}>
-                <FileText className="h-3.5 w-3.5 shrink-0" />
-                Documents
-              </span>
-              <StripMetricValue
-                primary={documentsCountLabel}
-                attention={documentsExpiringCount}
-                primaryMuted={documentsCount === 0}
-                attentionTitle={`${documentsExpiringCount} document${documentsExpiringCount === 1 ? "" : "s"} expiring within 30 days`}
-                warnClassName="text-amber-600"
-                attentionBadgeVariant={summaryWideEnoughForWords ? "words" : "symbol"}
-                attentionShortLabel="Expiring"
-              />
-              <div className={summaryActionCol}>
-                <button
-                  type="button"
-                  aria-label="Upload document"
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/properties/${property.id}/documents?upload=1`);
-                  }}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                </button>
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
-                  aria-hidden
-                >
-                  →
-                </span>
-              </div>
-            </div>
+              documentsCountLabel={documentsCountLabel}
+              docDueSoon={documentDashboardBuckets.dueSoon}
+              docExpiring={documentDashboardBuckets.expiring}
+              docMissing={documentDashboardBuckets.missing}
+              onOpenDocuments={() => navigate(`/properties/${property.id}/documents`)}
+            />
           </div>
 
           {/* 1 ── DETAILS ──────────────────────────────────────────────── */}

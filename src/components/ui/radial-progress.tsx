@@ -29,6 +29,10 @@ export function RadialProgress({
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - clampedValue / 100);
   const innerDiscSize = innerDiscSizeProp ?? 80;
+  /** Property dashboard grid uses a small embed gauge; keep larger embeds (e.g. briefing) on the default scale. */
+  const compactEmbedLabel = embed && size < 90;
+  const labelNumberHeight = compactEmbedLabel ? 31 : 40;
+  const labelNumberFontSize = compactEmbedLabel ? 30 : 43;
 
   const rootSurfaceStyle = embed
     ? {
@@ -217,8 +221,8 @@ export function RadialProgress({
       >
         <span
           style={{
-            height: 40,
-            fontSize: 43,
+            height: labelNumberHeight,
+            fontSize: labelNumberFontSize,
             fontWeight: 300,
             color: "rgba(102, 102, 102, 1)",
             marginLeft: -6,

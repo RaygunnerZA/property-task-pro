@@ -168,6 +168,7 @@ export function DashboardCalendarV2({
   tasksByDate: providedTasksByDate,
 }: DashboardCalendarV2Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const monthDrumRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<number | null>(null);
   const wheelAccRef = useRef(0);
@@ -306,34 +307,49 @@ export function DashboardCalendarV2({
     [dateRows],
   );
 
+  /** Map scroll position → visible month key (handles separator rows; must match row heights in the DOM). */
+  const getMonthKeyAtScrollCenter = useCallback((): string | null => {
+    const el = scrollRef.current;
+    if (!el || dateRows.length === 0) return null;
+    const centerY = el.scrollTop + visibleFrameH / 2;
+    let acc = 0;
+    for (let i = 0; i < dateRows.length; i++) {
+      const row = dateRows[i];
+      const h = row.type === "sep" ? SEP_H : CELL_H;
+      if (centerY >= acc && centerY < acc + h) {
+        if (row.type === "week") {
+          return format(row.month, "yyyy-MM");
+        }
+        if (row.type === "sep") {
+          for (let j = i + 1; j < dateRows.length; j++) {
+            if (dateRows[j].type === "week") return format(dateRows[j].month, "yyyy-MM");
+          }
+          for (let j = i - 1; j >= 0; j--) {
+            if (dateRows[j].type === "week") return format(dateRows[j].month, "yyyy-MM");
+          }
+        }
+        return null;
+      }
+      acc += h;
+    }
+    const last = dateRows[dateRows.length - 1];
+    if (last?.type === "week") return format(last.month, "yyyy-MM");
+    return null;
+  }, [dateRows, visibleFrameH]);
+
+  const syncMonthFromScrollPosition = useCallback(() => {
+    const k = getMonthKeyAtScrollCenter();
+    if (k) setCurrentMonthKey((prev) => (prev === k ? prev : k));
+  }, [getMonthKeyAtScrollCenter]);
+
   // ── Scroll handler — updates current month from center of viewport (rAF-batched for smooth touch scroll) ─────────
   const handleScroll = useCallback(() => {
     if (scrollFrameRef.current != null) return;
     scrollFrameRef.current = requestAnimationFrame(() => {
       scrollFrameRef.current = null;
-      const el = scrollRef.current;
-      if (!el) return;
-      const centerY = el.scrollTop + visibleFrameH / 2;
-      let acc = 0;
-      for (let i = 0; i < dateRows.length; i++) {
-        const row = dateRows[i];
-        const h = row.type === "sep" ? SEP_H : CELL_H;
-        if (centerY >= acc && centerY < acc + h) {
-          if (row.type === "week") {
-            const k = format(row.month, "yyyy-MM");
-            setCurrentMonthKey((prev) => (prev === k ? prev : k));
-          }
-          return;
-        }
-        acc += h;
-      }
-      const last = dateRows[dateRows.length - 1];
-      if (last?.type === "week") {
-        const k = format(last.month, "yyyy-MM");
-        setCurrentMonthKey((prev) => (prev === k ? prev : k));
-      }
+      syncMonthFromScrollPosition();
     });
-  }, [dateRows, visibleFrameH]);
+  }, [syncMonthFromScrollPosition]);
 
   useEffect(
     () => () => {
@@ -353,9 +369,14 @@ export function DashboardCalendarV2({
           top: scrollOffsetForRowIndex(rowIdx),
           behavior: smooth ? "smooth" : "auto",
         });
+        const bumpSync = () => {
+          syncMonthFromScrollPosition();
+          requestAnimationFrame(syncMonthFromScrollPosition);
+        };
+        requestAnimationFrame(bumpSync);
       }
     },
-    [monthFirstRow, scrollOffsetForRowIndex],
+    [monthFirstRow, scrollOffsetForRowIndex, syncMonthFromScrollPosition],
   );
 
   const goToToday = useCallback(() => {
@@ -372,6 +393,9 @@ export function DashboardCalendarV2({
     handleScroll();
   }, [calendarCollapsed, visibleFrameH, handleScroll]);
 
+  const syncMonthFromScrollPositionRef = useRef(syncMonthFromScrollPosition);
+  syncMonthFromScrollPositionRef.current = syncMonthFromScrollPosition;
+
   // Dampen wheel/trackpad; batch deltas per frame to avoid scroll jank vs. drum sync.
   useEffect(() => {
     const el = scrollRef.current;
@@ -382,6 +406,7 @@ export function DashboardCalendarV2({
       if (acc === 0) return;
       wheelAccRef.current = 0;
       el.scrollTop += acc;
+      syncMonthFromScrollPositionRef.current();
     };
     const onWheel = (e: WheelEvent) => {
       if (e.ctrlKey) return;
@@ -398,6 +423,31 @@ export function DashboardCalendarV2({
       wheelFrameRef.current = null;
       wheelAccRef.current = 0;
     };
+  }, []);
+
+  // Wheel over month drum should scroll dates (drum is not scrollable) and update the month readout.
+  useEffect(() => {
+    const drum = monthDrumRef.current;
+    if (!drum) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) return;
+      const sc = scrollRef.current;
+      if (!sc) return;
+      e.preventDefault();
+      e.stopPropagation();
+      wheelAccRef.current += e.deltaY * DATE_SPINNER_WHEEL_DAMPING;
+      if (wheelFrameRef.current == null) {
+        wheelFrameRef.current = requestAnimationFrame(() => {
+          wheelFrameRef.current = null;
+          const acc = wheelAccRef.current;
+          wheelAccRef.current = 0;
+          sc.scrollTop += acc;
+          syncMonthFromScrollPositionRef.current();
+        });
+      }
+    };
+    drum.addEventListener("wheel", onWheel, { passive: false });
+    return () => drum.removeEventListener("wheel", onWheel);
   }, []);
 
   // ── Drum translateY — centers the selected item inside DRUM_VIEWPORT_H ─────
@@ -427,6 +477,7 @@ export function DashboardCalendarV2({
         >
           {/* Month drum */}
           <div
+            ref={monthDrumRef}
             className="relative overflow-hidden shrink-0"
             style={{
               ...PRESSED_DRUM,
