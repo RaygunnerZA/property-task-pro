@@ -1,10 +1,19 @@
-import { useState, useMemo, useEffect, useLayoutEffect, useRef, useSyncExternalStore, useCallback } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+  useCallback,
+} from "react";
+import type { MutableRefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
-import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
+import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
 import { useMessages } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
@@ -15,12 +24,13 @@ import {
   ChevronRight,
   Plus,
   AlertTriangle,
+  HelpCircle,
   ShieldCheck,
+  ClipboardList,
   Waves,
   Upload,
   FileText,
   ClipboardCheck,
-  MessageSquare,
   Building2,
   Search,
 } from "lucide-react";
@@ -42,6 +52,7 @@ import {
 } from "@/lib/intake-action-buttons";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
+import type { WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -55,10 +66,11 @@ interface TaskPanelProps {
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
   filtersToApply?: string[] | null;
+  /** Issues sub-filter (URL-backed on dashboard). */
+  issuesFilter?: WorkbenchIssuesFilter;
+  onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
-  /** When true, Daily Briefing + radials render inside Attention tab (single-property hub). */
-  embedBriefingInAttention?: boolean;
 }
 
 type TabBarDensity = "comfortable" | "compact" | "iconOnly";
@@ -73,11 +85,246 @@ const TASK_TAB_MOBILE_STACK_MAX_PX = 767;
 const TASK_TAB_MEASURE_TOLERANCE_PX = 4;
 
 const TASK_TAB_MICROCOPY = {
-  attention: "Things that need a decision",
-  tasks: "Work in progress",
-  compliance: "Records and requirements",
+  issues: "Signals, decisions, and tasks — not the same thing",
+  records: "Evidence, compliance, and obligations",
   schedule: "What's coming up",
 } as const;
+
+const ISSUES_SLICE_FILTERS: { id: WorkbenchIssuesFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "urgent", label: "Urgent" },
+  { id: "review", label: "Needs review" },
+  { id: "open", label: "Open" },
+  { id: "done", label: "Done" },
+  { id: "recent", label: "Recent" },
+];
+
+type IssuesSignalCardProps = {
+  item: AttentionItem;
+  attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
+  resolveAttentionItem: (id: string) => void;
+  addAttentionItemToCompliance: (item: AttentionItem) => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
+  onMessageClick?: (messageId: string) => void;
+};
+
+type RecentNeedsReviewColumnsProps = {
+  recentItems: AttentionItem[];
+  reviewItems: AttentionItem[];
+  attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
+  resolveAttentionItem: (id: string) => void;
+  addAttentionItemToCompliance: (item: AttentionItem) => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
+  onMessageClick?: (messageId: string) => void;
+};
+
+const SIGNAL_COLUMN_RECENT = {
+  title: "Recent signals",
+  subtitle:
+    "Raw timeline — what just entered the system. Not judged or filtered; inbox-style. This is not your task list.",
+  emptyTitle: "Nothing new in the timeline",
+  emptyDescription:
+    "When photos, messages, uploads, or system events arrive, they show up here first. Open Tasks below when you are ready to execute work.",
+} as const;
+
+const SIGNAL_COLUMN_REVIEW = {
+  title: "Needs review",
+  subtitle:
+    "Decision queue — Filla is not sure what to do with these yet. Classify, assign, or convert; this is not urgent work by default.",
+  emptyTitle: "Nothing in the decision queue",
+  emptyDescription:
+    "If this stays empty while a lot is happening, items may be auto-classified too aggressively. Surfacing uncertainty (e.g. a review_state in your pipeline) will fill this column when the system needs your judgment.",
+} as const;
+
+const SIGNAL_STACK_SECTIONS = [
+  {
+    key: "urgent",
+    title: "Urgent",
+    subtitle: "Time-sensitive signals — still not tasks until you act on them below.",
+    itemsKey: "urgent" as const,
+  },
+  {
+    key: "review",
+    title: SIGNAL_COLUMN_REVIEW.title,
+    subtitle: SIGNAL_COLUMN_REVIEW.subtitle,
+    itemsKey: "review" as const,
+  },
+  {
+    key: "recent",
+    title: SIGNAL_COLUMN_RECENT.title,
+    subtitle: SIGNAL_COLUMN_RECENT.subtitle,
+    itemsKey: "recent" as const,
+  },
+] as const;
+
+/** Two-column row: recent signals (left) and needs review (right). */
+function RecentNeedsReviewColumns({
+  recentItems,
+  reviewItems,
+  attentionCardRefs,
+  resolveAttentionItem,
+  addAttentionItemToCompliance,
+  onOpenIntake,
+  onMessageClick,
+}: RecentNeedsReviewColumnsProps) {
+  const renderSignal = (item: AttentionItem) => (
+    <IssuesSignalCard
+      item={item}
+      attentionCardRefs={attentionCardRefs}
+      resolveAttentionItem={resolveAttentionItem}
+      addAttentionItemToCompliance={addAttentionItemToCompliance}
+      onOpenIntake={onOpenIntake}
+      onMessageClick={onMessageClick}
+    />
+  );
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
+      <IssuesScrollColumn
+        title={SIGNAL_COLUMN_RECENT.title}
+        subtitle={SIGNAL_COLUMN_RECENT.subtitle}
+        items={recentItems}
+        emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
+        emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
+        renderCard={renderSignal}
+      />
+      <IssuesScrollColumn
+        title={SIGNAL_COLUMN_REVIEW.title}
+        subtitle={SIGNAL_COLUMN_REVIEW.subtitle}
+        items={reviewItems}
+        emptyTitle={SIGNAL_COLUMN_REVIEW.emptyTitle}
+        emptyDescription={SIGNAL_COLUMN_REVIEW.emptyDescription}
+        renderCard={renderSignal}
+      />
+    </div>
+  );
+}
+
+function IssuesSignalCard({
+  item,
+  attentionCardRefs,
+  resolveAttentionItem,
+  addAttentionItemToCompliance,
+  onOpenIntake,
+  onMessageClick,
+}: IssuesSignalCardProps) {
+  if (item.group === "urgent") {
+    return (
+      <OperationalStreamCard
+        id={`issues-signal-${item.id}`}
+        cardRef={(node) => {
+          attentionCardRefs.current[item.id] = node;
+        }}
+        icon={<AlertTriangle className="h-4 w-4 text-amber-600" />}
+        title={item.title}
+        context={item.context}
+        hint={item.hint}
+        description={item.description}
+        imageUrl={item.imageUrl}
+        accent="red"
+        emphasis="standard"
+        actionsVisibility="hover"
+        actions={[
+          {
+            id: "report-issue",
+            label: "Report Issue",
+            onClick: () => {
+              onOpenIntake?.("report_issue");
+              resolveAttentionItem(item.id);
+            },
+          },
+          {
+            id: "ignore",
+            label: "Ignore",
+            onClick: () => resolveAttentionItem(item.id),
+          },
+        ]}
+      />
+    );
+  }
+
+  if (item.group === "review") {
+    return (
+      <OperationalStreamCard
+        id={`issues-signal-${item.id}`}
+        cardRef={(node) => {
+          attentionCardRefs.current[item.id] = node;
+        }}
+        icon={<HelpCircle className="h-4 w-4 text-teal-800" />}
+        title={item.title}
+        context={item.context}
+        hint={item.hint}
+        labels={item.signalLabels}
+        description={item.description}
+        imageUrl={item.imageUrl}
+        accent="teal"
+        emphasis="elevated"
+        actionsVisibility="always"
+        actions={[
+          {
+            id: "signal-review",
+            label: "Review",
+            onClick: () => {
+              onOpenIntake?.("add_record");
+              resolveAttentionItem(item.id);
+            },
+          },
+          {
+            id: "signal-assign",
+            label: "Assign",
+            onClick: () => {
+              onOpenIntake?.("report_issue");
+              resolveAttentionItem(item.id);
+            },
+          },
+          {
+            id: "signal-convert",
+            label: "Convert",
+            onClick: () => {
+              addAttentionItemToCompliance(item);
+              resolveAttentionItem(item.id);
+            },
+          },
+        ]}
+      />
+    );
+  }
+
+  // Recent = raw timeline signals (not tasks)
+  return (
+    <OperationalStreamCard
+      id={`issues-signal-${item.id}`}
+      cardRef={(node) => {
+        attentionCardRefs.current[item.id] = node;
+      }}
+      icon={<Upload className="h-4 w-4 text-muted-foreground" />}
+      title={item.title}
+      context={item.context}
+      hint={item.hint ?? "Signal"}
+      labels={item.signalLabels}
+      description={item.description}
+      imageUrl={item.imageUrl}
+      accent="slate"
+      emphasis="minimal"
+      actionsVisibility="hover"
+      actions={[
+        {
+          id: "signal-open",
+          label: item.messageId ? "Open" : "View",
+          onClick: () => {
+            if (item.messageId) onMessageClick?.(item.messageId);
+            resolveAttentionItem(item.id);
+          },
+        },
+        {
+          id: "dismiss",
+          label: "Dismiss",
+          onClick: () => resolveAttentionItem(item.id),
+        },
+      ]}
+    />
+  );
+}
 
 function useTaskTabNarrowViewport() {
   const query = `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`;
@@ -118,6 +365,8 @@ interface AttentionItem {
   title: string;
   context: string;
   hint?: string;
+  /** Triage chips for the decision queue (from existing signal data only — no invented DB fields). */
+  signalLabels?: string[];
   description?: string;
   imageUrl?: string | null;
   messageId?: string;
@@ -190,10 +439,9 @@ function formatAuthorDisplayName(rawAuthor?: string | null): string {
 /**
  * Task Panel Component
  *
- * Desktop centre-column panel with 4 tabs:
- * - Attention: triage queue for incoming signals
- * - Tasks: full task list
- * - Compliance: status-driven compliance records
+ * Desktop centre-column panel with 3 tabs:
+ * - Issues: operational feed (signals + tasks)
+ * - Records: compliance / evidence portfolio
  * - Schedule: upcoming agenda
  */
 export function TaskPanel({
@@ -208,18 +456,24 @@ export function TaskPanel({
   selectedDate: selectedDateProp,
   filterToApply,
   filtersToApply,
+  issuesFilter: issuesFilterProp,
+  onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake,
-  embedBriefingInAttention = false,
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
   const { messages } = useMessages();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
 
-  const [internalActiveTab, setInternalActiveTab] = useState("attention");
+  const [internalActiveTab, setInternalActiveTab] = useState("issues");
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
-  const [attentionFilter, setAttentionFilter] = useState<AttentionGroup | "all">("all");
+  const [internalIssuesFilter, setInternalIssuesFilter] = useState<WorkbenchIssuesFilter>("all");
+  const issuesFilter = issuesFilterProp ?? internalIssuesFilter;
+  const setIssuesFilter = (next: WorkbenchIssuesFilter) => {
+    onIssuesFilterChange?.(next);
+    if (onIssuesFilterChange == null) setInternalIssuesFilter(next);
+  };
   const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
   const [complianceSearch, setComplianceSearch] = useState("");
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
@@ -365,36 +619,51 @@ export function TaskPanel({
     const review: AttentionItem[] = complianceRecords
       .filter((record) => record.status === "expiring" || record.status === "missing")
       .slice(0, 8)
-      .map((record) => ({
-        id: `review-${record.id}`,
-        group: "review",
-        title: `${record.complianceType} detected`,
-        context: `${record.propertyName}`,
-        hint:
+      .map((record) => {
+        const signalLabels =
           record.status === "missing"
-            ? "Possible missing record"
-            : `Possible expiry: ${formatDueText(record.nextDueDate || record.expiryDate)}`,
-        description: "Filla suggests classifying this into compliance tracking.",
-        complianceSeed: {
-          title: record.title,
-          propertyName: record.propertyName,
-          propertyId: record.propertyId,
-          complianceType: record.complianceType,
-        },
-      }));
+            ? (["Missing or unclear record", "Needs classification"] as const)
+            : ([
+                "Timing / status unclear",
+                "Needs classification",
+              ] as const);
+        return {
+          id: `review-${record.id}`,
+          group: "review" as const,
+          title: `${record.complianceType} — needs a decision`,
+          context: record.propertyName,
+          hint: "Decision queue — not a task yet",
+          signalLabels: [...signalLabels],
+          description:
+            record.status === "missing"
+              ? "The system is not sure this belongs in compliance tracking yet. Classify it, assign an owner, or convert it into a stored record."
+              : `Expiry or renewal timing may need confirmation before it becomes a tracked obligation. Decide how Filla should treat it.`,
+          complianceSeed: {
+            title: record.title,
+            propertyName: record.propertyName,
+            propertyId: record.propertyId,
+            complianceType: record.complianceType,
+          },
+        };
+      });
 
     const recent: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
       const authorName = formatAuthorDisplayName(message.author_name);
+      const body = message.body ? String(message.body).replace(/\s+/g, " ").trim() : "";
+      const titleFromBody =
+        body.length > 0
+          ? body.slice(0, 72) + (body.length > 72 ? "…" : "")
+          : `Message from ${authorName}`;
       return {
         id: `recent-msg-${message.id}`,
-        group: "recent",
+        group: "recent" as const,
         messageId: message.id,
-        title: "Incoming feed item",
+        title: titleFromBody,
         context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
-        hint: "New upload/message signal",
-        description: message.body
-          ? String(message.body).slice(0, 120)
-          : "Incoming message requires triage.",
+        hint: "Inbound signal",
+        signalLabels: ["Message or note"],
+        description:
+          body.length > 120 ? `${body.slice(0, 120)}…` : body || "Something new arrived — open it when you are ready to triage.",
       };
     });
 
@@ -402,11 +671,13 @@ export function TaskPanel({
       return [
         {
           id: "recent-empty-seed",
-          group: "recent",
-          title: "Photo uploaded",
-          context: "Bird property • Today 09:14",
-          hint: "Incoming feed item",
-          description: "Use Attention to triage uploads into tasks or compliance.",
+          group: "recent" as const,
+          title: "No signals in your timeline yet",
+          context: "This is your inbox of “something happened”",
+          hint: "Signal",
+          signalLabels: ["Getting started"],
+          description:
+            "Uploads, messages, documents, and system events will appear here as a raw feed — before they become tasks or records. Use Report Issue or Add Record when you want to log something manually.",
         },
       ];
     }
@@ -418,12 +689,28 @@ export function TaskPanel({
     return attentionItems.filter((item) => !resolvedAttentionIds.has(item.id));
   }, [attentionItems, resolvedAttentionIds]);
 
+  const showSignalFeed =
+    issuesFilter === "all" ||
+    issuesFilter === "urgent" ||
+    issuesFilter === "review" ||
+    issuesFilter === "recent";
+
+  const showTaskList =
+    issuesFilter === "all" || issuesFilter === "open" || issuesFilter === "done";
+
   const filteredAttentionItems = useMemo(() => {
+    if (!showSignalFeed) return [];
     return unresolvedAttentionItems.filter((item) => {
-      if (attentionFilter !== "all" && item.group !== attentionFilter) return false;
-      return true;
+      if (issuesFilter === "all") return true;
+      if (issuesFilter === "recent") {
+        return item.group === "recent" || item.group === "review";
+      }
+      if (issuesFilter === "urgent" || issuesFilter === "review") {
+        return item.group === issuesFilter;
+      }
+      return false;
     });
-  }, [attentionFilter, unresolvedAttentionItems]);
+  }, [issuesFilter, unresolvedAttentionItems, showSignalFeed]);
 
   const groupedAttentionItems = useMemo(() => {
     const urgent = filteredAttentionItems.filter((item) => item.group === "urgent");
@@ -431,28 +718,6 @@ export function TaskPanel({
     const recent = filteredAttentionItems.filter((item) => item.group === "recent");
     return { urgent, review, recent };
   }, [filteredAttentionItems]);
-
-  const attentionSummary = useMemo(() => {
-    const urgent = unresolvedAttentionItems.filter((item) => item.group === "urgent").length;
-    const review = unresolvedAttentionItems.filter((item) => item.group === "review").length;
-    const recent = unresolvedAttentionItems.filter((item) => item.group === "recent").length;
-    return { urgent, review, recent };
-  }, [unresolvedAttentionItems]);
-
-  const riskSignals = useMemo(() => {
-    return unresolvedAttentionItems.filter((item) => item.group === "urgent").slice(0, 5);
-  }, [unresolvedAttentionItems]);
-
-  const dominantAttentionProperty = useMemo(() => {
-    const counts = new Map<string, number>();
-    unresolvedAttentionItems.forEach((item) => {
-      const property = item.context.split("•")[0]?.trim();
-      if (!property) return;
-      counts.set(property, (counts.get(property) || 0) + 1);
-    });
-    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-    return sorted[0]?.[0] || "No dominant property";
-  }, [unresolvedAttentionItems]);
 
   const filteredComplianceRecords = useMemo(() => {
     const query = complianceSearch.trim().toLowerCase();
@@ -663,9 +928,9 @@ export function TaskPanel({
       nextDueDate: null,
       status: "missing",
       linkedDocument: "Pending document",
-      inspectionHistory: ["Created from Attention tab"],
+      inspectionHistory: ["Created from Issues"],
       linkedTasks: [],
-      notes: "Promoted from Attention for compliance tracking.",
+      notes: "Promoted from Issues for compliance tracking.",
     };
 
     setAttentionComplianceDrafts((prev) => {
@@ -896,20 +1161,14 @@ export function TaskPanel({
                 >
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
                     <span className="inline-flex min-w-0 items-center justify-center">
-                      <AlertTriangle className="mr-1 h-4 w-4 shrink-0 text-[#FF6B6B] max-pane:mr-0.5" />
-                      <span>Attention</span>
-                    </span>
-                  </div>
-                  <div className={cn(taskTabShell, taskTabMeasurePad)}>
-                    <span className="inline-flex min-w-0 items-center justify-center">
-                      <CheckSquare className="mr-1 h-4 w-4 shrink-0 max-pane:mr-0.5" />
-                      <span>Tasks</span>
+                      <ClipboardList className="mr-1 h-4 w-4 shrink-0 text-[#FF6B6B] max-pane:mr-0.5" />
+                      <span>Issues</span>
                     </span>
                   </div>
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
                     <span className="inline-flex min-w-0 items-center justify-center">
                       <ShieldCheck className="mr-1 h-4 w-4 shrink-0 max-pane:mr-0.5" />
-                      <span>Compliance</span>
+                      <span>Records</span>
                     </span>
                   </div>
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
@@ -924,13 +1183,10 @@ export function TaskPanel({
                   className="flex w-max shrink-0 flex-nowrap items-center gap-x-1.5 px-2 text-sm font-medium max-pane:pl-1 max-pane:pr-1"
                 >
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
-                    <span className="inline-flex min-w-0 items-center justify-center">Attention</span>
+                    <span className="inline-flex min-w-0 items-center justify-center">Issues</span>
                   </div>
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
-                    <span className="inline-flex min-w-0 items-center justify-center">Tasks</span>
-                  </div>
-                  <div className={cn(taskTabShell, taskTabMeasurePad)}>
-                    <span className="inline-flex min-w-0 items-center justify-center">Compliance</span>
+                    <span className="inline-flex min-w-0 items-center justify-center">Records</span>
                   </div>
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
                     <span className="inline-flex min-w-0 items-center justify-center">Schedule</span>
@@ -946,15 +1202,7 @@ export function TaskPanel({
                       "inline-flex min-w-9 max-w-9 shrink-0 items-center justify-center px-0 text-sm font-medium"
                     )}
                   >
-                    <AlertTriangle className="h-4 w-4 text-[#FF6B6B]" />
-                  </div>
-                  <div
-                    className={cn(
-                      taskTabShell,
-                      "inline-flex min-w-9 max-w-9 shrink-0 items-center justify-center px-0 text-sm font-medium"
-                    )}
-                  >
-                    <CheckSquare className="h-4 w-4" />
+                    <ClipboardList className="h-4 w-4 text-[#FF6B6B]" />
                   </div>
                   <div
                     className={cn(
@@ -987,14 +1235,14 @@ export function TaskPanel({
                 )}
               >
               <TabsTrigger
-                value="attention"
-                title={tabTitle("Attention")}
+                value="issues"
+                title={tabTitle("Issues")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
                 <span className="inline-flex max-w-full max-sm:w-full items-center justify-center min-w-0 max-sm:min-w-0">
                   {!compact && (
                     <AnimatedIcon
-                      icon={AlertTriangle}
+                      icon={ClipboardList}
                       size={16}
                       animateOnHover
                       animation="shake"
@@ -1006,31 +1254,12 @@ export function TaskPanel({
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal, "max-sm:min-w-0 max-sm:truncate")}>Attention</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal, "max-sm:min-w-0 max-sm:truncate")}>Issues</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
-                value="tasks"
-                title={tabTitle("Tasks")}
-                className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
-              >
-                <span className="inline-flex max-w-full max-sm:w-full items-center justify-center min-w-0 max-sm:min-w-0">
-                  {!compact && (
-                    <CheckSquare
-                      className={cn(
-                        "shrink-0 h-4 w-4",
-                        iconOnly
-                          ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
-                          : "mr-1 max-pane:mr-0.5"
-                      )}
-                    />
-                  )}
-                  <span className={cn(iconOnly && taskTabLabelReveal, "max-sm:min-w-0 max-sm:truncate")}>Tasks</span>
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="compliance"
-                title={tabTitle("Compliance")}
+                value="records"
+                title={tabTitle("Records")}
                 className={cn(taskTabShell, iconOnly ? taskTabIconOnly : taskTabPadLabeled)}
               >
                 <span className="inline-flex max-w-full max-sm:w-full items-center justify-center min-w-0 max-sm:min-w-0">
@@ -1044,7 +1273,7 @@ export function TaskPanel({
                       )}
                     />
                   )}
-                  <span className={cn(iconOnly && taskTabLabelReveal, "max-sm:min-w-0 max-sm:truncate")}>Compliance</span>
+                  <span className={cn(iconOnly && taskTabLabelReveal, "max-sm:min-w-0 max-sm:truncate")}>Records</span>
                 </span>
               </TabsTrigger>
               <TabsTrigger
@@ -1113,12 +1342,12 @@ export function TaskPanel({
         <div
           className={cn(
             "flex-1 min-h-0 overflow-hidden",
-            activeTab === "attention" && "h-[515px] shrink-0"
+            activeTab === "issues" && "h-[515px] shrink-0"
           )}
         >
-          {activeTab === "attention" && (
+          {activeTab === "issues" && (
             <div
-              className="box-border h-[857px] max-h-full min-h-0 w-full overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
+              className="box-border max-h-full min-h-0 w-full max-w-[660px] overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
               style={{
                 borderWidth: "0 0 10px",
                 borderStyle: "none none solid",
@@ -1127,317 +1356,130 @@ export function TaskPanel({
                   "linear-gradient(90deg, rgba(255, 255, 255, 0.49) 0%, rgba(255, 255, 255, 0) 100%) 1 / 1 / 0 stretch",
               }}
             >
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
-                <div className="space-y-3 min-w-0">
-                  <div
-                    className="rounded-xl px-0 py-0 ml-0 mr-0 flex flex-wrap gap-2 items-center"
-                    style={{
-                      boxShadow: "none",
-                      background: "unset",
-                      backgroundColor: "rgba(42, 41, 62, 0)",
-                    }}
-                  >
-                    {(["all", "urgent", "review", "recent"] as const).map((filterKey) => (
-                      <FilterChip
-                        key={filterKey}
-                        label={
-                          filterKey === "all"
-                          ? "All"
-                          : filterKey === "urgent"
-                          ? "Urgent"
-                          : filterKey === "review"
-                          ? "Needs Review"
-                          : "Recent"
-                        }
-                        selected={attentionFilter === filterKey}
-                        onSelect={() => setAttentionFilter(filterKey)}
-                        className="h-[24px] gap-[9px]"
-                      />
-                    ))}
+              <div className="min-w-0 space-y-3">
+                <div
+                  className="rounded-xl px-0 py-0 flex flex-wrap gap-2 items-center"
+                  style={{
+                    boxShadow: "none",
+                    background: "unset",
+                    backgroundColor: "rgba(42, 41, 62, 0)",
+                  }}
+                >
+                  {ISSUES_SLICE_FILTERS.map(({ id, label }) => (
+                    <FilterChip
+                      key={id}
+                      label={label}
+                      selected={issuesFilter === id}
+                      onSelect={() => setIssuesFilter(id)}
+                      className="h-[24px] gap-[9px] !normal-case font-sans tracking-normal"
+                    />
+                  ))}
+                </div>
 
-                  </div>
-
+                {showSignalFeed && (
                   <div className="space-y-4">
-                    {([
-                      ["URGENT", groupedAttentionItems.urgent],
-                      ["NEEDS REVIEW", groupedAttentionItems.review],
-                      ["Recent", groupedAttentionItems.recent],
-                    ] as const).map(([label, items]) =>
-                      items.length > 0 ? (
-                        <div key={label} className="space-y-2">
-                          <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)] px-1">{label}</p>
+                    {issuesFilter === "recent" || issuesFilter === "all" ? (
+                      <>
+                        {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
                           <div className="space-y-2">
-                            {items.map((item) => (
-                              <OperationalStreamCard
-                                key={item.id}
-                                id={`attention-card-${item.id}`}
-                                cardRef={(node) => {
-                                  attentionCardRefs.current[item.id] = node;
-                                }}
-                                icon={
-                                  item.group === "urgent" ? (
-                                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                                  ) : item.group === "review" ? (
-                                    <ShieldCheck className="h-4 w-4 text-teal-700" />
-                                  ) : (
-                                    <Upload className="h-4 w-4 text-muted-foreground" />
-                                  )
-                                }
-                                title={item.title}
-                                context={item.context}
-                                hint={item.hint}
-                                description={item.description}
-                                imageUrl={item.imageUrl}
-                                accent={item.group === "urgent" ? "red" : item.group === "review" ? "amber" : "slate"}
-                                actions={
-                                  item.group === "urgent"
-                                    ? [
-                                        {
-                                          id: "report-issue",
-                                          label: "Report Issue",
-                                          onClick: () => {
-                                            onOpenIntake?.("report_issue");
-                                            resolveAttentionItem(item.id);
-                                          },
-                                        },
-                                        {
-                                          id: "ignore",
-                                          label: "Ignore",
-                                          onClick: () => resolveAttentionItem(item.id),
-                                        },
-                                      ]
-                                    : item.group === "review"
-                                    ? [
-                                        {
-                                          id: "add-compliance",
-                                          label: "Add to Compliance",
-                                          onClick: () => {
-                                            addAttentionItemToCompliance(item);
-                                            resolveAttentionItem(item.id);
-                                          },
-                                        },
-                                        {
-                                          id: "add-record",
-                                          label: "Add Record",
-                                          onClick: () => {
-                                            onOpenIntake?.("add_record");
-                                            resolveAttentionItem(item.id);
-                                          },
-                                        },
-                                        {
-                                          id: "report-issue",
-                                          label: "Report Issue",
-                                          onClick: () => {
-                                            onOpenIntake?.("report_issue");
-                                            resolveAttentionItem(item.id);
-                                          },
-                                        },
-                                        {
-                                          id: "save-document",
-                                          label: "Save Document",
-                                          onClick: () => resolveAttentionItem(item.id),
-                                        },
-                                      ]
-                                    : [
-                                        {
-                                          id: "process",
-                                          label: "Process",
-                                          onClick: () => {
-                                            if (item.messageId) onMessageClick?.(item.messageId);
-                                            resolveAttentionItem(item.id);
-                                          },
-                                        },
-                                        {
-                                          id: "dismiss",
-                                          label: "Dismiss",
-                                          onClick: () => resolveAttentionItem(item.id),
-                                        },
-                                      ]
-                                }
-                              />
-                            ))}
+                            <div className="space-y-0.5 px-1">
+                              <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">Urgent</p>
+                              <p className="text-[11px] leading-snug text-muted-foreground">
+                                Time-sensitive signals — still not tasks until you act on them below.
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              {groupedAttentionItems.urgent.map((item) => (
+                                <IssuesSignalCard
+                                  key={item.id}
+                                  item={item}
+                                  attentionCardRefs={attentionCardRefs}
+                                  resolveAttentionItem={resolveAttentionItem}
+                                  addAttentionItemToCompliance={addAttentionItemToCompliance}
+                                  onOpenIntake={onOpenIntake}
+                                  onMessageClick={onMessageClick}
+                                />
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ) : null
+                        )}
+                        <RecentNeedsReviewColumns
+                          recentItems={groupedAttentionItems.recent}
+                          reviewItems={groupedAttentionItems.review}
+                          attentionCardRefs={attentionCardRefs}
+                          resolveAttentionItem={resolveAttentionItem}
+                          addAttentionItemToCompliance={addAttentionItemToCompliance}
+                          onOpenIntake={onOpenIntake}
+                          onMessageClick={onMessageClick}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {SIGNAL_STACK_SECTIONS.map(({ key, title, subtitle, itemsKey }) => {
+                          const items = groupedAttentionItems[itemsKey];
+                          return items.length > 0 ? (
+                            <div key={key} className="space-y-2">
+                              <div className="space-y-0.5 px-1">
+                                <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">{title}</p>
+                                <p className="text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+                              </div>
+                              <div className="space-y-2">
+                                {items.map((item) => (
+                                  <IssuesSignalCard
+                                    key={item.id}
+                                    item={item}
+                                    attentionCardRefs={attentionCardRefs}
+                                    resolveAttentionItem={resolveAttentionItem}
+                                    addAttentionItemToCompliance={addAttentionItemToCompliance}
+                                    onOpenIntake={onOpenIntake}
+                                    onMessageClick={onMessageClick}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ) : null;
+                        })}
+                        {filteredAttentionItems.length === 0 && (
+                          <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
+                            No signals match this slice. Try All or Recent to see the timeline, or Open for tasks.
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
+                )}
 
-                  {filteredAttentionItems.length === 0 && (
-                    <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
-                      No attention items match your current filters.
-                    </div>
-                  )}
-                </div>
-
-                <div className="lg:sticky lg:top-0 self-start align-top flex flex-wrap content-start items-start gap-3 [&>*]:w-full">
-                  {embedBriefingInAttention && (
-                    <DailyBriefingCard
-                      tasks={tasks}
-                      selectedPropertyIds={selectedPropertyIds}
-                      properties={properties}
-                      variant="sidebar"
-                      showGreeting={false}
-                    />
-                  )}
+                {showTaskList && (
                   <div
-                    className="rounded-xl px-0 py-0"
-                    style={{
-                      color: "rgba(255, 107, 107, 1)",
-                      marginLeft: 0,
-                      marginRight: 0,
-                      boxShadow: "none",
-                      background: "unset",
-                      backgroundColor: "rgba(42, 41, 62, 0)",
-                      backgroundClip: "unset",
-                      WebkitBackgroundClip: "unset",
-                    }}
+                    className={cn(
+                      "min-h-0",
+                      showSignalFeed && "mt-6 border-t border-border/40 pt-4"
+                    )}
                   >
-                    <div className="grid grid-cols-3 gap-2">
-                      <div
-                        className={cn(
-                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
-                        )}
-                      >
-                        <p
-                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
-                          style={{
-                            width: 69,
-                            fontSize: 46,
-                            color: "rgba(235, 104, 52, 1)",
-                            fontFamily: '"Inter Tight"',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {attentionSummary.urgent}
-                        </p>
-                        <p className="mt-1 text-[12px] text-muted-foreground">Urgent</p>
-                      </div>
-                      <div
-                        className={cn(
-                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
-                        )}
-                      >
-                        <p
-                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
-                          style={{
-                            width: 69,
-                            fontSize: 46,
-                            color: "rgba(255, 184, 77, 1)",
-                            fontFamily: '"Inter Tight"',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {attentionSummary.review}
-                        </p>
-                        <p className="mt-1 text-[12px] text-muted-foreground">Needs review</p>
-                      </div>
-                      <div
-                        className={cn(
-                          "flex flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px]",
-                          "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
-                        )}
-                      >
-                        <p
-                          className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu"
-                          style={{
-                            width: 69,
-                            fontSize: 46,
-                            color: "rgba(133, 186, 188, 1)",
-                            fontFamily: '"Inter Tight"',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {attentionSummary.recent}
-                        </p>
-                        <p className="mt-1 w-[71px] text-[12px] leading-[14px] text-muted-foreground">
-                          Recent signals
-                        </p>
-                      </div>
+                    {issuesFilter === "all" && (
+                      <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)] px-1 mb-2">Tasks</p>
+                    )}
+                    <div className="h-full flex flex-col min-h-0">
+                      <TaskList
+                        key={`issues-tasklist-${issuesFilter}`}
+                        tasks={tasks}
+                        properties={properties}
+                        tasksLoading={tasksLoading}
+                        onTaskClick={onTaskClick}
+                        selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
+                        filterToApply={filterToApply}
+                        filtersToApply={filtersToApply}
+                        selectedPropertyIds={selectedPropertyIds}
+                        hidePrimaryUrgentChip
+                      />
                     </div>
                   </div>
-
-                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <PanelSectionTitle as="h3">Potential Risks</PanelSectionTitle>
-                    <div className="space-y-1.5">
-                      {riskSignals.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No critical risks detected.</p>
-                      ) : (
-                        riskSignals.map((signal) => (
-                          <button
-                            key={signal.id}
-                            type="button"
-                            onClick={() =>
-                              attentionCardRefs.current[signal.id]?.scrollIntoView({
-                                behavior: "smooth",
-                                block: "center",
-                              })
-                            }
-                            className="w-full flex text-left text-xs rounded-[8px] px-2 py-1 bg-background"
-                          >
-                            <span className="inline-flex items-center gap-1">
-                              <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                              {signal.title}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <PanelSectionTitle as="h3">Quick Actions</PanelSectionTitle>
-                    <div className="flex flex-row flex-nowrap items-start justify-start gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onOpenIntake?.("add_record")}
-                        className={intakeAddRecordCompactClassName}
-                      >
-                        <FileText className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
-                        Add Record
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenIntake?.("report_issue")}
-                        className={intakeReportIssueCompactClassName}
-                      >
-                        <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
-                        Report Issue
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-card/70 px-3 py-[15px]">
-                    <PanelSectionTitle as="h3">Filla Insights</PanelSectionTitle>
-                    <p className="text-xs text-foreground/90">
-                      Most signals today relate to: <span className="font-medium">{dominantAttentionProperty}</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {attentionSummary.urgent + attentionSummary.review} safety and compliance signals detected.
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
 
-          {activeTab === "tasks" && (
-            <div className="h-full flex flex-col min-h-0 px-[10px] max-sm:px-0 pt-[8px] pb-0 max-pane:px-2">
-              <TaskList
-                tasks={tasks}
-                properties={properties}
-                tasksLoading={tasksLoading}
-                onTaskClick={onTaskClick}
-                selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
-                filterToApply={filterToApply}
-                filtersToApply={filtersToApply}
-                selectedPropertyIds={selectedPropertyIds}
-              />
-            </div>
-          )}
-
-          {activeTab === "compliance" && (
+          {activeTab === "records" && (
             <div
               ref={compliancePanelInteractionRef}
               className="h-full min-h-0 flex flex-col px-[10px] max-sm:px-0 pt-[8px] pb-[11px] max-pane:px-2"

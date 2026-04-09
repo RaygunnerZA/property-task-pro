@@ -18,7 +18,15 @@ import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { format } from "date-fns";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import type { IntakeMode } from "@/types/intake";
-import { WORKBENCH_PANEL_TAB_QUERY } from "@/lib/propertyRoutes";
+import {
+  ISSUES_OPEN_TASK_FILTER_IDS,
+  WORKBENCH_ISSUES_FILTER_QUERY,
+  WORKBENCH_PANEL_TAB_QUERY,
+  normalizeWorkbenchIssuesFilter,
+  normalizeWorkbenchPanelTab,
+  type WorkbenchIssuesFilter,
+  type WorkbenchPanelTab,
+} from "@/lib/propertyRoutes";
 import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
 
 // Helper function to create gradient header style
@@ -32,8 +40,6 @@ const createGradientHeaderStyle = (color: string) => {
 
 // Match DualPaneLayout third-column breakpoint (min-1380px)
 const LG_BREAKPOINT = 1380;
-
-const VALID_WORKBENCH_PANEL_TABS = new Set(["attention", "tasks", "compliance", "schedule"]);
 
 /** Use the live address bar when mutating query params so we never drop `property` or revert scope if React's `searchParams` is one frame behind (e.g. Hall selected then Compliance tab immediately). */
 function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchParams {
@@ -64,7 +70,7 @@ export default function Dashboard() {
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
-  const tabBeforeCreateTaskRef = useRef<string>("attention");
+  const tabBeforeCreateTaskRef = useRef<string>("issues");
   const prevSearchStringRef = useRef<string | undefined>(undefined);
   const workbenchPropertyInitRef = useRef(false);
   const prevWorkbenchPropertyIdRef = useRef<string | null | undefined>(undefined);
@@ -164,27 +170,52 @@ export default function Dashboard() {
     [properties, searchParams, setSearchParams]
   );
 
-  /** Single source of truth with the URL: no `panelTab` ⇒ Attention. */
-  const activeTab = useMemo(() => {
+  /** Single source of truth with the URL: no `panelTab` ⇒ Issues. */
+  const activeTab = useMemo((): WorkbenchPanelTab => {
     const t = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
-    if (t && VALID_WORKBENCH_PANEL_TABS.has(t)) return t;
-    return "attention";
+    return normalizeWorkbenchPanelTab(t);
+  }, [searchParams]);
+
+  const issuesFilter = useMemo((): WorkbenchIssuesFilter => {
+    return normalizeWorkbenchIssuesFilter(searchParams.get(WORKBENCH_ISSUES_FILTER_QUERY));
   }, [searchParams]);
 
   const handleWorkbenchTabChange = useCallback(
     (tab: string) => {
+      const normalized = normalizeWorkbenchPanelTab(tab);
       const params = workbenchSearchParamsFromBrowser(searchParams);
-      if (tab === "attention") {
+      if (normalized === "issues") {
         params.delete(WORKBENCH_PANEL_TAB_QUERY);
       } else {
-        params.set(WORKBENCH_PANEL_TAB_QUERY, tab);
+        params.set(WORKBENCH_PANEL_TAB_QUERY, normalized);
       }
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams]
   );
 
-  // When the workbench `property` param changes after load, default to Attention (strip stale panelTab).
+  const handleIssuesFilterChange = useCallback(
+    (next: WorkbenchIssuesFilter) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      if (next === "all") {
+        params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
+      } else {
+        params.set(WORKBENCH_ISSUES_FILTER_QUERY, next);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const effectiveTaskListFiltersToApply = useMemo(() => {
+    if (assistantFiltersToApply != null) return assistantFiltersToApply;
+    if (activeTab !== "issues") return undefined;
+    if (issuesFilter === "open") return [...ISSUES_OPEN_TASK_FILTER_IDS];
+    if (issuesFilter === "done") return ["filter-status-done"];
+    return undefined;
+  }, [assistantFiltersToApply, activeTab, issuesFilter]);
+
+  // When the workbench `property` param changes after load, default to Issues (strip stale panelTab).
   // Skip the first transition that only injects `property` for single-property orgs so deep links keep ?panelTab=.
   useEffect(() => {
     if (properties.length === 0) return;
@@ -311,7 +342,7 @@ export default function Dashboard() {
         ? customEvent.detail.filterIds
         : [];
       setAssistantFiltersToApply(filterIds);
-      handleWorkbenchTabChange("tasks");
+      handleWorkbenchTabChange("issues");
       window.setTimeout(() => setAssistantFiltersToApply(null), 100);
     };
     window.addEventListener("filla:assistant-apply-task-filters", onApplyFilters);
@@ -324,7 +355,7 @@ export default function Dashboard() {
       const taskId = customEvent.detail?.taskId;
       if (!taskId) return;
 
-      handleWorkbenchTabChange("tasks");
+      handleWorkbenchTabChange("issues");
       setSelectedItem({ type: "task", id: taskId });
       if (isLargeScreen) setExpandedSection("details");
     };
@@ -388,10 +419,11 @@ export default function Dashboard() {
   };
 
   const handleFilterClick = (filterId: string) => {
-    // Switch to tasks tab for any property/filter interaction.
-    handleWorkbenchTabChange("tasks");
-    // "show-tasks" is a tab-switch signal only (no filter mutation).
-    if (filterId === "show-tasks") return;
+    handleWorkbenchTabChange("issues");
+    if (filterId === "show-tasks") {
+      handleIssuesFilterChange("open");
+      return;
+    }
     // Set the filter to apply, which will trigger TaskList to apply it.
     setFilterToApply(filterId);
     // Reset filterToApply after a brief moment to allow the filter to be toggled again
@@ -562,7 +594,9 @@ export default function Dashboard() {
             onTabChange={handleWorkbenchTabChange}
             selectedDate={selectedDate}
             filterToApply={filterToApply}
-            filtersToApply={assistantFiltersToApply}
+            filtersToApply={effectiveTaskListFiltersToApply}
+            issuesFilter={issuesFilter}
+            onIssuesFilterChange={handleIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={handleOpenIntake}
           />

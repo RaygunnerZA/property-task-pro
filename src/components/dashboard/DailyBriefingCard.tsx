@@ -15,8 +15,8 @@ interface DailyBriefingCardProps {
   /** When set, scopes task metrics (e.g. completion radial) to that property */
   propertyId?: string;
   /**
-   * full: hub header layout (Overview + carousel radials).
-   * sidebar: stacked briefing + two radials for Attention column (single-property hub).
+   * full: hub header layout (Overview + carousel radials) above workbench tabs.
+   * sidebar: compact stacked layout (used where space is tight).
    */
   variant?: "full" | "sidebar";
 }

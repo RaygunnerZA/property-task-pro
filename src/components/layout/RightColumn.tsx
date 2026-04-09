@@ -2,6 +2,8 @@ import { ReactNode, useMemo } from "react";
 import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import type { IntakeMode } from "@/types/intake";
+import type { WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
+import { isAllPropertiesActive } from "@/utils/propertyFilter";
 
 interface RightColumnProps {
   children?: ReactNode;
@@ -16,13 +18,15 @@ interface RightColumnProps {
   selectedDate?: Date | undefined;
   filterToApply?: string | null;
   filtersToApply?: string[] | null;
+  issuesFilter?: WorkbenchIssuesFilter;
+  onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
 }
 
 /**
  * Right Column Component
- * Task Panel with Tabs (Attention, Tasks, Compliance, Schedule)
+ * Task Panel with Tabs (Issues, Records, Schedule)
  * 
  * Desktop: Dynamic width (1fr), visible
  * Mobile: Full width, stacked below LeftColumn
@@ -40,20 +44,21 @@ export function RightColumn({
   selectedDate,
   filterToApply,
   filtersToApply,
+  issuesFilter,
+  onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake
 }: RightColumnProps) {
-  const embedBriefingInAttention = useMemo(() => {
-    if (!selectedPropertyIds || properties.length <= 1) return false;
-    return selectedPropertyIds.size === 1;
-  }, [selectedPropertyIds, properties.length]);
-
-  const showBriefingAboveTabs = !embedBriefingInAttention;
+  const showDailyBriefing = useMemo(() => {
+    const ids = (properties ?? []).map((p: { id: string }) => p.id);
+    if (ids.length === 0) return false;
+    const active = selectedPropertyIds ?? new Set(ids);
+    return isAllPropertiesActive(active, ids);
+  }, [properties, selectedPropertyIds]);
 
   return (
     <div className="h-full flex flex-col min-w-0 px-0 w-full sm:w-auto">
-      {/* Daily Briefing above tabs: all-properties (or single-property org) hub only */}
-      {showBriefingAboveTabs && (
+      {showDailyBriefing && (
         <div className="mb-4 flex-shrink-0 w-full min-w-0 max-sm:px-0 sm:px-[10px] pt-[15px] min-h-[130px] max-pane:px-2">
           <DailyBriefingCard
             tasks={tasks}
@@ -63,8 +68,8 @@ export function RightColumn({
           />
         </div>
       )}
-      
-      {/* Task Panel or custom children — gradient only below Daily Briefing */}
+
+      {/* Task Panel or custom children */}
       <div
         className="flex-1 min-h-0 min-w-0 w-full sm:w-auto rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]"
         style={{
@@ -85,9 +90,10 @@ export function RightColumn({
             selectedDate={selectedDate}
             filterToApply={filterToApply}
             filtersToApply={filtersToApply}
+            issuesFilter={issuesFilter}
+            onIssuesFilterChange={onIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={onOpenIntake}
-            embedBriefingInAttention={embedBriefingInAttention}
           />
         )}
       </div>

@@ -27,6 +27,8 @@ interface TaskListProps {
   filtersToApply?: string[] | null; // Replace current selected filters programmatically
   /** When provided, property filter uses this set (ALL = size === properties.length → show all). */
   selectedPropertyIds?: Set<string>;
+  /** Omits primary-row Urgent (Issues tab already has an Urgent slice). */
+  hidePrimaryUrgentChip?: boolean;
 }
 
 export function TaskList({ 
@@ -38,6 +40,7 @@ export function TaskList({
   filterToApply,
   filtersToApply,
   selectedPropertyIds: selectedPropertyIdsProp,
+  hidePrimaryUrgentChip = false,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -324,25 +327,30 @@ export function TaskList({
     return { todo, done };
   }, [filteredTasks]);
 
-  // Filter options
-  const primaryOptions: FilterOption[] = [
-    {
-      id: "filter-due",
-      label: "Due",
-      icon: <Calendar className="h-4 w-4" />,
-    },
-    {
-      id: "filter-urgent",
-      label: "Urgent",
-      icon: <AlertTriangle className="h-4 w-4" />,
-      color: "#EB6834", // Accent color
-    },
-    {
-      id: "filter-assigned-me",
-      label: "My Tasks",
-      icon: <User className="h-4 w-4" />,
-    },
-  ];
+  const primaryOptions: FilterOption[] = useMemo(() => {
+    const opts: FilterOption[] = [
+      {
+        id: "filter-due",
+        label: "Due",
+        icon: <Calendar className="h-4 w-4" />,
+      },
+      {
+        id: "filter-urgent",
+        label: "Urgent",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        color: "#EB6834",
+      },
+      {
+        id: "filter-assigned-me",
+        label: "My Tasks",
+        icon: <User className="h-4 w-4" />,
+      },
+    ];
+    if (hidePrimaryUrgentChip) {
+      return opts.filter((o) => o.id !== "filter-urgent");
+    }
+    return opts;
+  }, [hidePrimaryUrgentChip]);
 
   const secondaryGroups: FilterGroup[] = [
     {

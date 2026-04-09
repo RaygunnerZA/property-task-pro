@@ -42,7 +42,7 @@ export const intakeAddRecordButtonClassName = cn(
 export const intakeReportIssueIconClassName = "h-4 w-4 shrink-0 text-white";
 export const intakeAddRecordIconClassName = "h-4 w-4 shrink-0 text-white";
 
-/** Narrow sidebar quick actions (Attention column) */
+/** Narrow sidebar quick actions (workbench / Issues column) */
 export const intakeReportIssueCompactClassName = cn(
   "flex h-auto w-[85px] items-center justify-start gap-2 rounded-[8px] border-0 px-2 py-1 text-left text-xs font-semibold text-white",
   reportBg,

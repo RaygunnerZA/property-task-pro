@@ -15,7 +15,12 @@ import {
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { propertyHubTasksPath, propertySubPath, WORKBENCH_PANEL_TAB_QUERY } from '@/lib/propertyRoutes';
+import {
+  propertyHubTasksPath,
+  propertySubPath,
+  WORKBENCH_PANEL_TAB_QUERY,
+  normalizeWorkbenchPanelTab,
+} from '@/lib/propertyRoutes';
 import fillaLogo from '@/assets/filla-logo.svg';
 import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
@@ -40,7 +45,7 @@ const globalNavItems = [
 // Property context — deep links (workbench home is global Hub + scope chips)
 const propertyContextItems = [
   {
-    title: 'Tasks',
+    title: 'Issues',
     icon: CheckSquare,
     getUrl: (id: string) => propertyHubTasksPath(id),
   },
@@ -212,10 +217,10 @@ export function AppSidebar() {
     const isHubNav = Boolean(item.url === '/' && !item.getUrl);
     const livePanelTab = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
     const isActive = isDashboardPropertyHub
-      ? item.title === 'Tasks'
+      ? item.title === 'Issues'
         ? currentPath === '/' &&
           searchParams.get('property') === hubPropertyId &&
-          livePanelTab === 'tasks'
+          normalizeWorkbenchPanelTab(livePanelTab) === 'issues'
         : false
       : isPropertyListHub
         ? currentPath === '/properties' &&
