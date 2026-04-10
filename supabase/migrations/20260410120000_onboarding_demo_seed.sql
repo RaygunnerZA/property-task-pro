@@ -36,8 +36,6 @@ BEGIN
     RETURN;
   END IF;
 
-  SAVEPOINT onboarding_demo_seed;
-
   BEGIN
   UPDATE properties
   SET thumbnail_url = '/onboarding/placeholder-property-hero.svg'
@@ -265,7 +263,6 @@ BEGIN
 
   EXCEPTION
     WHEN OTHERS THEN
-      ROLLBACK TO SAVEPOINT onboarding_demo_seed;
       RAISE WARNING 'seed_onboarding_demo_for_property failed for %: %', p_property_id, SQLERRM;
   END;
 END;
