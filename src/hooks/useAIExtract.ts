@@ -1,20 +1,36 @@
-import { useState, useEffect, useRef } from "react";
-import { useDebounce } from "./useDebounce";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
-// Minimum description length before making expensive AI calls (aligned with useful chip context)
+
+/** Minimum trimmed length before calling ai-extract */
 const MIN_DESCRIPTION_LENGTH = 8;
 
-// Cooldown period between AI calls (ms) - prevents rapid successive calls
-const AI_CALL_COOLDOWN = 2000;
+/** Minimum gap between completed API calls (ms) */
+const AI_CALL_COOLDOWN_MS = 2000;
+
+/** After sentence-ending punctuation (. ? ! …), user likely finished a clause — shorter wait */
+const DEBOUNCE_AFTER_SENTENCE_MS = 650;
+
+/** After normal typing (incl. spaces mid-word), wait for a typing pause */
+const DEBOUNCE_IDLE_MS = 2300;
+
+/** Collapse whitespace for dedupe — avoids re-calling on `word` vs `word ` vs `word  ` */
+function normalizeForDedupe(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ");
+}
+
+/** Sentence / clause boundary cue (not comma — often mid-list) */
+function endsWithSentenceCue(raw: string): boolean {
+  return /[.!?…][\s]*$/u.test(raw);
+}
 
 export interface ThemeSuggestion {
   name: string;
   exists: boolean;
   id?: string;
-  type?: 'category' | 'project' | 'tag' | 'group'; // AI-suggested subtype
-  authority?: number; // Internal authority score (0-1)
+  type?: "category" | "project" | "tag" | "group";
+  authority?: number;
 }
 
 export interface AIExtractResponse {
@@ -25,7 +41,7 @@ export interface AIExtractResponse {
     people: Array<{ name: string; exists: boolean; id?: string; authority?: number }>;
     teams: Array<{ name: string; exists: boolean; id?: string; authority?: number }>;
     themes: ThemeSuggestion[];
-    assets: Array<{ name: string; authority?: number }> | string[]; // Support both formats for backward compatibility
+    assets: Array<{ name: string; authority?: number }> | string[];
     priority: string | null;
     date: string | null;
     yes_no: boolean;
@@ -35,74 +51,53 @@ export interface AIExtractResponse {
 }
 
 export function useAIExtract(input: string) {
-  const debouncedInput = useDebounce(input, 500); // 500ms debounce
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [result, setResult] = useState<AIExtractResponse["combined"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Track last processed description to avoid reprocessing the same text
-  const lastProcessedRef = useRef<string>("");
+
+  const inputRef = useRef(input);
+  inputRef.current = input;
+
+  /** Normalized form of last successful extract — skip identical content */
+  const lastSuccessNormalizedRef = useRef<string>("");
   const lastCallTimeRef = useRef<number>(0);
-  const isProcessingRef = useRef<boolean>(false);
+  const isProcessingRef = useRef(false);
+  const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    const trimmedInput = debouncedInput.trim();
-    
-    // Clear result if input is empty
-    if (!trimmedInput || !orgId || orgLoading) {
-      if (trimmedInput === "") {
-        // Only clear when description is actually empty, not on loading states
-        lastProcessedRef.current = "";
-      }
-      setResult(null);
-      setLoading(false);
-      return;
+  const clearPendingTimer = useCallback(() => {
+    if (pendingTimerRef.current != null) {
+      clearTimeout(pendingTimerRef.current);
+      pendingTimerRef.current = null;
     }
+  }, []);
 
-    // Skip if description hasn't actually changed (content comparison, not reference)
-    if (lastProcessedRef.current === trimmedInput) {
-      return;
-    }
+  const extractNow = useCallback(
+    async (inputToProcess: string) => {
+      const trimmed = inputToProcess.trim();
+      const normalized = normalizeForDedupe(inputToProcess);
 
-    // Skip if description is too short (not enough context for AI)
-    if (trimmedInput.length < MIN_DESCRIPTION_LENGTH) {
-      return;
-    }
+      if (trimmed.length < MIN_DESCRIPTION_LENGTH) return;
+      if (isProcessingRef.current) return;
+      if (normalized === lastSuccessNormalizedRef.current) return;
 
-    // Skip if already processing to prevent duplicate calls
-    if (isProcessingRef.current) {
-      return;
-    }
-
-    // Define extract function that can be called immediately or from setTimeout
-    async function extractNow(inputToProcess: string) {
-      // Double-check we're not already processing and input hasn't changed
-      if (isProcessingRef.current || lastProcessedRef.current === inputToProcess) {
-        return;
-      }
-
-      // Mark as processing and update last call time
       isProcessingRef.current = true;
       lastCallTimeRef.current = Date.now();
-      
-      // Update last processed BEFORE the async call to prevent duplicates
-      // if the component re-renders during the call
-      lastProcessedRef.current = inputToProcess;
-      
+
       setLoading(true);
       setError(null);
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) {
           setError("Not authenticated");
           isProcessingRef.current = false;
-          lastProcessedRef.current = "";
+          setLoading(false);
           return;
         }
 
-        // Get Supabase URL from environment
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const functionUrl = `${supabaseUrl}/functions/v1/ai-extract`;
 
@@ -113,23 +108,24 @@ export function useAIExtract(input: string) {
             Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
-            description: inputToProcess,
+            description: trimmed,
             org_id: orgId,
           }),
         });
 
         const responseText = await response.text();
-        let responseData;
+        let responseData: unknown;
         try {
           responseData = JSON.parse(responseText);
         } catch {
           responseData = { raw: responseText };
         }
 
-        const data: AIExtractResponse = responseData as AIExtractResponse;
+        const data = responseData as AIExtractResponse;
 
         if (data.ok && data.combined) {
           setResult(data.combined);
+          lastSuccessNormalizedRef.current = normalized;
           track("ai_task_generated", {
             org_id: orgId,
             chip_count:
@@ -142,45 +138,89 @@ export function useAIExtract(input: string) {
         } else {
           setError(data.error || "AI extraction failed");
           setResult(null);
-          // Reset last processed on error so user can retry
-          lastProcessedRef.current = "";
+          lastSuccessNormalizedRef.current = "";
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("AI extract error:", err);
-        setError(err.message || "Failed to extract");
+        setError(err instanceof Error ? err.message : "Failed to extract");
         setResult(null);
-        // Reset last processed on error so user can retry
-        lastProcessedRef.current = "";
+        lastSuccessNormalizedRef.current = "";
       } finally {
         setLoading(false);
         isProcessingRef.current = false;
       }
+    },
+    [orgId]
+  );
+
+  useEffect(() => {
+    clearPendingTimer();
+
+    const raw = input;
+    const trimmed = raw.trim();
+
+    if (!trimmed || !orgId || orgLoading) {
+      if (!trimmed) {
+        lastSuccessNormalizedRef.current = "";
+      }
+      setResult(null);
+      setLoading(false);
+      return;
     }
 
-    // Rate limiting: Check if we're within cooldown period
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCallTimeRef.current;
-    if (timeSinceLastCall < AI_CALL_COOLDOWN) {
-      // Schedule call after cooldown expires
-      const remainingCooldown = AI_CALL_COOLDOWN - timeSinceLastCall;
-      const inputToProcess = trimmedInput; // Capture current input
-      const timeoutId = setTimeout(() => {
-        // Re-check conditions before processing
-        if (lastProcessedRef.current !== inputToProcess &&
-            inputToProcess.length >= MIN_DESCRIPTION_LENGTH &&
-            !isProcessingRef.current) {
-          // Process the input that was pending
-          extractNow(inputToProcess);
+    if (trimmed.length < MIN_DESCRIPTION_LENGTH) {
+      return;
+    }
+
+    const normalized = normalizeForDedupe(raw);
+    if (normalized === lastSuccessNormalizedRef.current) {
+      return;
+    }
+
+    const delayMs = endsWithSentenceCue(raw) ? DEBOUNCE_AFTER_SENTENCE_MS : DEBOUNCE_IDLE_MS;
+
+    const runAfterDebounce = () => {
+      const tryExtract = () => {
+        pendingTimerRef.current = null;
+
+        const latestRaw = inputRef.current;
+        const latestTrimmed = latestRaw.trim();
+
+        if (!latestTrimmed || !orgId || orgLoading) {
+          return;
         }
-      }, remainingCooldown);
-      
-      return () => clearTimeout(timeoutId);
-    }
+        if (latestTrimmed.length < MIN_DESCRIPTION_LENGTH) {
+          return;
+        }
 
-    // Call immediately if not in cooldown
-    extractNow(trimmedInput);
-  }, [debouncedInput, orgId, orgLoading]);
+        const latestNorm = normalizeForDedupe(latestRaw);
+        if (latestNorm === lastSuccessNormalizedRef.current) {
+          return;
+        }
+
+        const elapsed = Date.now() - lastCallTimeRef.current;
+        if (elapsed < AI_CALL_COOLDOWN_MS && lastCallTimeRef.current > 0) {
+          pendingTimerRef.current = setTimeout(tryExtract, AI_CALL_COOLDOWN_MS - elapsed);
+          return;
+        }
+
+        if (isProcessingRef.current) {
+          pendingTimerRef.current = setTimeout(tryExtract, 280);
+          return;
+        }
+
+        void extractNow(latestRaw);
+      };
+
+      tryExtract();
+    };
+
+    pendingTimerRef.current = setTimeout(runAfterDebounce, delayMs);
+
+    return () => {
+      clearPendingTimer();
+    };
+  }, [input, orgId, orgLoading, clearPendingTimer, extractNow]);
 
   return { result, loading, error };
 }
-

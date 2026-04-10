@@ -14,7 +14,7 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
-import { useMessages } from "@/hooks/useMessages";
+import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
   CheckSquare,
@@ -34,6 +34,17 @@ import {
   Building2,
   Search,
 } from "lucide-react";
+import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
+import {
+  SIGNAL_UI_FIXTURES_RECENT,
+  SIGNAL_UI_FIXTURES_REVIEW,
+  SIGNAL_UI_FIXTURES_URGENT,
+  fixtureReviewBanner,
+  type SignalUiFixture,
+} from "@/fixtures/signalUiSamples";
+import type { SignalKind } from "@/types/workbenchSignals";
+import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
+import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
@@ -85,7 +96,7 @@ const TASK_TAB_MOBILE_STACK_MAX_PX = 767;
 const TASK_TAB_MEASURE_TOLERANCE_PX = 4;
 
 const TASK_TAB_MICROCOPY = {
-  issues: "Signals, decisions, and tasks — not the same thing",
+  issues: "Recent signals → Needs review → Open work (tasks). Each stage is different.",
   records: "Evidence, compliance, and obligations",
   schedule: "What's coming up",
 } as const;
@@ -120,8 +131,7 @@ type RecentNeedsReviewColumnsProps = {
 
 const SIGNAL_COLUMN_RECENT = {
   title: "Recent signals",
-  subtitle:
-    "Raw timeline — what just entered the system. Not judged or filtered; inbox-style. This is not your task list.",
+  subtitle: "What just entered the system — a timeline of events, not your task list.",
   emptyTitle: "Nothing new in the timeline",
   emptyDescription:
     "When photos, messages, uploads, or system events arrive, they show up here first. Open Tasks below when you are ready to execute work.",
@@ -130,7 +140,7 @@ const SIGNAL_COLUMN_RECENT = {
 const SIGNAL_COLUMN_REVIEW = {
   title: "Needs review",
   subtitle:
-    "Decision queue — Filla is not sure what to do with these yet. Classify, assign, or convert; this is not urgent work by default.",
+    "Things Filla cannot safely classify or assign yet — your judgment before they become work or records.",
   emptyTitle: "Nothing in the decision queue",
   emptyDescription:
     "If this stays empty while a lot is happening, items may be auto-classified too aggressively. Surfacing uncertainty (e.g. a review_state in your pipeline) will fill this column when the system needs your judgment.",
@@ -200,6 +210,48 @@ function RecentNeedsReviewColumns({
   );
 }
 
+function runFixtureAction(
+  actionId: string,
+  item: AttentionItem,
+  ctx: {
+    resolveAttentionItem: (id: string) => void;
+    addAttentionItemToCompliance: (item: AttentionItem) => void;
+    onOpenIntake?: (mode: IntakeMode) => void;
+    onMessageClick?: (messageId: string) => void;
+  }
+) {
+  const { resolveAttentionItem, addAttentionItemToCompliance, onOpenIntake, onMessageClick } = ctx;
+  switch (actionId) {
+    case "report-issue":
+      onOpenIntake?.("report_issue");
+      resolveAttentionItem(item.id);
+      break;
+    case "ignore":
+    case "dismiss":
+      resolveAttentionItem(item.id);
+      break;
+    case "signal-open":
+      if (item.messageId) onMessageClick?.(item.messageId);
+      resolveAttentionItem(item.id);
+      break;
+    case "signal-review":
+      onOpenIntake?.("add_record");
+      resolveAttentionItem(item.id);
+      break;
+    case "signal-assign":
+      onOpenIntake?.("report_issue");
+      resolveAttentionItem(item.id);
+      break;
+    case "signal-convert":
+      if (item.complianceSeed) addAttentionItemToCompliance(item);
+      else onOpenIntake?.("add_record");
+      resolveAttentionItem(item.id);
+      break;
+    default:
+      resolveAttentionItem(item.id);
+  }
+}
+
 function IssuesSignalCard({
   item,
   attentionCardRefs,
@@ -208,120 +260,182 @@ function IssuesSignalCard({
   onOpenIntake,
   onMessageClick,
 }: IssuesSignalCardProps) {
+  const ctx = {
+    resolveAttentionItem,
+    addAttentionItemToCompliance,
+    onOpenIntake,
+    onMessageClick,
+  };
+
   if (item.group === "urgent") {
+    const icon = item.signalKind
+      ? signalKindIcon(item.signalKind, "text-amber-700")
+      : <AlertTriangle className="h-4 w-4 text-amber-600" />;
+    const actions =
+      item.fixtureActions != null
+        ? [
+            {
+              id: item.fixtureActions.primary.id,
+              label: item.fixtureActions.primary.label,
+              onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
+            },
+            ...(item.fixtureActions.secondary ?? []).map((a) => ({
+              id: a.id,
+              label: a.label,
+              onClick: () => runFixtureAction(a.id, item, ctx),
+            })),
+          ]
+        : [
+            {
+              id: "report-issue",
+              label: "Report Issue",
+              onClick: () => runFixtureAction("report-issue", item, ctx),
+            },
+            {
+              id: "ignore",
+              label: "Ignore",
+              onClick: () => runFixtureAction("ignore", item, ctx),
+            },
+          ];
+
     return (
       <OperationalStreamCard
         id={`issues-signal-${item.id}`}
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
-        icon={<AlertTriangle className="h-4 w-4 text-amber-600" />}
+        footChip={item.footChipLabel}
+        typeChip={item.footChipLabel ? undefined : item.typeChipLabel}
+        reviewBanner={item.reviewBanner}
+        whyHere={item.whyHere}
+        icon={icon}
         title={item.title}
         context={item.context}
-        hint={item.hint}
+        hint={item.footChipLabel ? undefined : item.hint}
+        labels={item.signalLabels ?? []}
         description={item.description}
         imageUrl={item.imageUrl}
         accent="red"
         emphasis="standard"
         actionsVisibility="hover"
-        actions={[
-          {
-            id: "report-issue",
-            label: "Report Issue",
-            onClick: () => {
-              onOpenIntake?.("report_issue");
-              resolveAttentionItem(item.id);
-            },
-          },
-          {
-            id: "ignore",
-            label: "Ignore",
-            onClick: () => resolveAttentionItem(item.id),
-          },
-        ]}
+        actions={actions}
       />
     );
   }
 
   if (item.group === "review") {
+    const icon = item.signalKind
+      ? signalKindIcon(item.signalKind, "text-teal-800")
+      : <HelpCircle className="h-4 w-4 text-teal-800" />;
+    const actions =
+      item.fixtureActions != null
+        ? [
+            {
+              id: item.fixtureActions.primary.id,
+              label: item.fixtureActions.primary.label,
+              onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
+            },
+            ...(item.fixtureActions.secondary ?? []).map((a) => ({
+              id: a.id,
+              label: a.label,
+              onClick: () => runFixtureAction(a.id, item, ctx),
+            })),
+          ]
+        : [
+            {
+              id: "signal-review",
+              label: "Classify",
+              onClick: () => runFixtureAction("signal-review", item, ctx),
+            },
+            {
+              id: "signal-assign",
+              label: "Assign",
+              onClick: () => runFixtureAction("signal-assign", item, ctx),
+            },
+            {
+              id: "signal-convert",
+              label: "Convert",
+              onClick: () => runFixtureAction("signal-convert", item, ctx),
+            },
+          ];
+
     return (
       <OperationalStreamCard
         id={`issues-signal-${item.id}`}
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
-        icon={<HelpCircle className="h-4 w-4 text-teal-800" />}
+        footChip={undefined}
+        typeChip={item.typeChipLabel}
+        reviewBanner={item.reviewBanner}
+        whyHere={item.whyHere}
+        icon={icon}
         title={item.title}
         context={item.context}
         hint={item.hint}
-        labels={item.signalLabels}
+        labels={item.signalLabels ?? []}
         description={item.description}
         imageUrl={item.imageUrl}
         accent="teal"
         emphasis="elevated"
         actionsVisibility="always"
-        actions={[
-          {
-            id: "signal-review",
-            label: "Review",
-            onClick: () => {
-              onOpenIntake?.("add_record");
-              resolveAttentionItem(item.id);
-            },
-          },
-          {
-            id: "signal-assign",
-            label: "Assign",
-            onClick: () => {
-              onOpenIntake?.("report_issue");
-              resolveAttentionItem(item.id);
-            },
-          },
-          {
-            id: "signal-convert",
-            label: "Convert",
-            onClick: () => {
-              addAttentionItemToCompliance(item);
-              resolveAttentionItem(item.id);
-            },
-          },
-        ]}
+        actions={actions}
       />
     );
   }
 
   // Recent = raw timeline signals (not tasks)
+  const icon = item.signalKind
+    ? signalKindIcon(item.signalKind)
+    : <Upload className="h-4 w-4 text-muted-foreground" />;
+  const actions =
+    item.fixtureActions != null
+      ? [
+          {
+            id: item.fixtureActions.primary.id,
+            label: item.fixtureActions.primary.label,
+            onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
+          },
+          ...(item.fixtureActions.secondary ?? []).map((a) => ({
+            id: a.id,
+            label: a.label,
+            onClick: () => runFixtureAction(a.id, item, ctx),
+          })),
+        ]
+      : [
+          {
+            id: "signal-open",
+            label: item.messageId ? "Open" : "View",
+            onClick: () => runFixtureAction("signal-open", item, ctx),
+          },
+          {
+            id: "dismiss",
+            label: "Dismiss",
+            onClick: () => runFixtureAction("dismiss", item, ctx),
+          },
+        ];
+
   return (
     <OperationalStreamCard
       id={`issues-signal-${item.id}`}
       cardRef={(node) => {
         attentionCardRefs.current[item.id] = node;
       }}
-      icon={<Upload className="h-4 w-4 text-muted-foreground" />}
+      footChip={item.footChipLabel}
+      typeChip={item.footChipLabel ? undefined : item.typeChipLabel}
+      reviewBanner={item.reviewBanner}
+      whyHere={item.whyHere}
+      icon={icon}
       title={item.title}
       context={item.context}
-      hint={item.hint ?? "Signal"}
-      labels={item.signalLabels}
+      hint={item.footChipLabel ? undefined : item.hint ?? "Signal"}
+      labels={item.footChipLabel ? [] : item.signalLabels ?? []}
       description={item.description}
       imageUrl={item.imageUrl}
       accent="slate"
       emphasis="minimal"
       actionsVisibility="hover"
-      actions={[
-        {
-          id: "signal-open",
-          label: item.messageId ? "Open" : "View",
-          onClick: () => {
-            if (item.messageId) onMessageClick?.(item.messageId);
-            resolveAttentionItem(item.id);
-          },
-        },
-        {
-          id: "dismiss",
-          label: "Dismiss",
-          onClick: () => resolveAttentionItem(item.id),
-        },
-      ]}
+      actions={actions}
     />
   );
 }
@@ -375,6 +489,41 @@ interface AttentionItem {
     propertyName: string;
     propertyId?: string | null;
     complianceType: string;
+  };
+  /** UI taxonomy fixtures / future typed ingestion */
+  signalKind?: SignalKind;
+  /** @deprecated Prefer footChipLabel for feed-layout cards */
+  typeChipLabel?: string;
+  /** Bottom chip on feed cards (e.g. UPLOADED PHOTO) — not duplicate of title */
+  footChipLabel?: string;
+  reviewBanner?: string;
+  whyHere?: string;
+  isUiFixture?: boolean;
+  fixtureActions?: {
+    primary: { id: string; label: string };
+    secondary?: { id: string; label: string }[];
+  };
+}
+
+function mapSignalFixtureToAttentionItem(f: SignalUiFixture): AttentionItem {
+  const group: AttentionGroup =
+    f.disposition === "needs_review" ? "review" : f.disposition === "urgent" ? "urgent" : "recent";
+  return {
+    id: f.id,
+    group,
+    title: f.title,
+    context: f.contextLine,
+    description: f.explanation,
+    whyHere: f.whyHere,
+    footChipLabel: group === "review" ? undefined : SIGNAL_KIND_FOOT_LABEL[f.kind],
+    reviewBanner: group === "review" ? fixtureReviewBanner(f) : undefined,
+    signalKind: f.kind,
+    isUiFixture: true,
+    fixtureActions: {
+      primary: f.primaryAction,
+      secondary: f.secondaryActions,
+    },
+    hint: group === "review" ? "Filla needs your judgment before this becomes work or a record." : undefined,
   };
 }
 
@@ -462,7 +611,27 @@ export function TaskPanel({
   onOpenIntake,
 }: TaskPanelProps = {}) {
   const navigate = useNavigate();
-  const { messages } = useMessages();
+
+  const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
+    const n = properties.length;
+    if (n === 0) return undefined;
+    if (
+      !selectedPropertyIds ||
+      selectedPropertyIds.size === 0 ||
+      selectedPropertyIds.size >= n
+    ) {
+      return undefined;
+    }
+    return {
+      propertyScope: {
+        selectedIds: Array.from(selectedPropertyIds),
+        totalPropertyCount: n,
+      },
+    };
+  }, [properties.length, selectedPropertyIds]);
+
+  const { messages } = useMessages(messagesOptions);
+  const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
 
   const [internalActiveTab, setInternalActiveTab] = useState("issues");
@@ -604,36 +773,43 @@ export function TaskPanel({
   }, [attentionComplianceDrafts, compliancePortfolio]);
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
-    const urgent: AttentionItem[] = complianceRecords
+    const fixtureUrgent = signalUiFixturesEnabled
+      ? SIGNAL_UI_FIXTURES_URGENT.map(mapSignalFixtureToAttentionItem)
+      : [];
+    const fixtureReview = signalUiFixturesEnabled
+      ? SIGNAL_UI_FIXTURES_REVIEW.map(mapSignalFixtureToAttentionItem)
+      : [];
+    const fixtureRecent = signalUiFixturesEnabled
+      ? SIGNAL_UI_FIXTURES_RECENT.map(mapSignalFixtureToAttentionItem)
+      : [];
+
+    const urgentFromData: AttentionItem[] = complianceRecords
       .filter((record) => record.status === "overdue")
       .slice(0, 4)
       .map((record) => ({
         id: `urgent-${record.id}`,
-        group: "urgent",
+        group: "urgent" as const,
         title: `Possible ${record.complianceType.toLowerCase()} risk`,
         context: `${record.propertyName} • ${formatDueText(record.nextDueDate || record.expiryDate)}`,
-        hint: "Urgent signal",
+        footChipLabel: "COMPLIANCE RISK",
         description: `${record.title} is overdue and may need immediate attention.`,
       }));
 
-    const review: AttentionItem[] = complianceRecords
+    const reviewFromData: AttentionItem[] = complianceRecords
       .filter((record) => record.status === "expiring" || record.status === "missing")
       .slice(0, 8)
       .map((record) => {
-        const signalLabels =
+        const reviewBanner =
           record.status === "missing"
-            ? (["Missing or unclear record", "Needs classification"] as const)
-            : ([
-                "Timing / status unclear",
-                "Needs classification",
-              ] as const);
+            ? "COMPLIANCE • NEEDS CLASSIFICATION"
+            : "COMPLIANCE • TIMING UNCLEAR";
         return {
           id: `review-${record.id}`,
           group: "review" as const,
           title: `${record.complianceType} — needs a decision`,
           context: record.propertyName,
-          hint: "Decision queue — not a task yet",
-          signalLabels: [...signalLabels],
+          reviewBanner,
+          hint: "Filla needs your judgment before this becomes work or a record.",
           description:
             record.status === "missing"
               ? "The system is not sure this belongs in compliance tracking yet. Classify it, assign an owner, or convert it into a stored record."
@@ -647,7 +823,7 @@ export function TaskPanel({
         };
       });
 
-    const recent: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
+    const recentFromData: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
       const authorName = formatAuthorDisplayName(message.author_name);
       const body = message.body ? String(message.body).replace(/\s+/g, " ").trim() : "";
       const titleFromBody =
@@ -658,14 +834,17 @@ export function TaskPanel({
         id: `recent-msg-${message.id}`,
         group: "recent" as const,
         messageId: message.id,
+        footChipLabel: "TENANT MESSAGE",
         title: titleFromBody,
         context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
-        hint: "Inbound signal",
-        signalLabels: ["Message or note"],
         description:
           body.length > 120 ? `${body.slice(0, 120)}…` : body || "Something new arrived — open it when you are ready to triage.",
       };
     });
+
+    const urgent = [...fixtureUrgent, ...urgentFromData];
+    const review = [...fixtureReview, ...reviewFromData];
+    const recent = [...fixtureRecent, ...recentFromData];
 
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
       return [
@@ -674,8 +853,7 @@ export function TaskPanel({
           group: "recent" as const,
           title: "No signals in your timeline yet",
           context: "This is your inbox of “something happened”",
-          hint: "Signal",
-          signalLabels: ["Getting started"],
+          footChipLabel: "GETTING STARTED",
           description:
             "Uploads, messages, documents, and system events will appear here as a raw feed — before they become tasks or records. Use Report Issue or Add Record when you want to log something manually.",
         },
@@ -683,7 +861,7 @@ export function TaskPanel({
     }
 
     return [...urgent, ...review, ...recent];
-  }, [complianceRecords, messages]);
+  }, [complianceRecords, messages, signalUiFixturesEnabled]);
 
   const unresolvedAttentionItems = useMemo(() => {
     return attentionItems.filter((item) => !resolvedAttentionIds.has(item.id));
@@ -1457,7 +1635,12 @@ export function TaskPanel({
                     )}
                   >
                     {issuesFilter === "all" && (
-                      <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)] px-1 mb-2">Tasks</p>
+                      <div className="mb-2 px-1">
+                        <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">Open work</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Approved, actionable issues and tasks — not the raw signal feed above.
+                        </p>
+                      </div>
                     )}
                     <div className="h-full flex flex-col min-h-0">
                       <TaskList

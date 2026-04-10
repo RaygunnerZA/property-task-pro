@@ -19,6 +19,12 @@ interface CardAction {
 interface OperationalStreamCardProps {
   id: string;
   icon: ReactNode;
+  /** Legacy top chip (non-feed layout only). Prefer `footChip` for Recent / urgent feed cards. */
+  typeChip?: string;
+  /** Second line for review queue, e.g. “AI SUGGESTION • NEEDS CLASSIFICATION” */
+  reviewBanner?: string;
+  /** “Why this is here:” explanation for judgment queue */
+  whyHere?: string;
   title: string;
   context: string;
   hint?: string;
@@ -35,6 +41,11 @@ interface OperationalStreamCardProps {
   onClick?: () => void;
   cardRef?: (node: HTMLDivElement | null) => void;
   className?: string;
+  /**
+   * Feed-style cards: title → (description on hover) → meta → bottom type chip; actions on hover.
+   * Set with `actionsVisibility="hover"` for Recent timeline + urgent strip.
+   */
+  footChip?: string;
 }
 
 const accentClassMap: Record<CardAccent, string> = {
@@ -53,6 +64,12 @@ const emphasisShellMap: Record<StreamCardEmphasis, string> = {
     "rounded-xl bg-card/85 shadow-md hover:shadow-lg px-3 py-2.5 ring-1 ring-[#8EC9CE]/22 transition-all duration-[180ms]",
 };
 
+/** Secondary micro CTA — matches Needs review row (e.g. Assign location): Inter Tight via `sans`, 11px, semibold (600). */
+const streamSecondaryMicroClassName = cn(
+  "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
+  "bg-background shadow-e1 transition-all hover:shadow-md"
+);
+
 function streamActionButtonClass(actionId: string) {
   if (actionId === "report-issue" || actionId === "create-inspection-task") {
     return intakeReportIssueMicroClassName;
@@ -60,26 +77,44 @@ function streamActionButtonClass(actionId: string) {
   if (actionId === "add-record") return intakeAddRecordMicroClassName;
   if (actionId === "signal-review") return intakeAddRecordMicroClassName;
   if (actionId === "signal-convert") return intakeAddRecordMicroClassName;
-  if (actionId === "signal-assign") {
-    return cn(
-      "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
-      "bg-background shadow-e1 transition-all hover:shadow-md"
-    );
+  if (actionId === "signal-assign" || actionId === "dismiss") {
+    return streamSecondaryMicroClassName;
   }
   if (actionId === "signal-open") {
-    return cn(
-      "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-medium text-foreground/90",
-      "bg-muted/45 shadow-sm transition-all hover:bg-muted/60 hover:shadow-e1"
-    );
+    return intakeAddRecordMicroClassName;
   }
   return cn(
-    "text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2 transition-all"
+    "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
+    "bg-background shadow-e1 transition-all hover:shadow-md"
+  );
+}
+
+function ActionRow({ actions }: { actions: CardAction[] }) {
+  return (
+    <>
+      {actions.map((action) => (
+        <button
+          key={action.id}
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            action.onClick();
+          }}
+          className={streamActionButtonClass(action.id)}
+        >
+          {action.label}
+        </button>
+      ))}
+    </>
   );
 }
 
 export function OperationalStreamCard({
   id,
   icon,
+  typeChip,
+  reviewBanner,
+  whyHere,
   title,
   context,
   hint,
@@ -94,11 +129,78 @@ export function OperationalStreamCard({
   onClick,
   cardRef,
   className,
+  footChip,
 }: OperationalStreamCardProps) {
+  const feedLayout = Boolean(footChip?.trim()) && actionsVisibility === "hover";
+
   const footerVisible =
     actionsVisibility === "always"
       ? "opacity-100 pt-2"
       : "max-h-0 opacity-0 overflow-hidden transition-all duration-[140ms] group-hover:max-h-48 group-hover:opacity-100 group-focus-within:max-h-48 group-focus-within:opacity-100 pt-0 group-hover:pt-2 group-focus-within:pt-2";
+
+  if (feedLayout) {
+    return (
+      <div
+        id={id}
+        ref={cardRef}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : -1}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (!onClick) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+        className={cn(
+          "group relative overflow-hidden cursor-default",
+          emphasisShellMap[emphasis],
+          onClick && "cursor-pointer",
+          className
+        )}
+      >
+        <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent])} />
+
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+            {icon}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground leading-snug">{title}</p>
+
+            {description ? (
+              <p className="mt-1 hidden text-xs leading-snug text-foreground/90 group-hover:block">
+                <span className="font-medium text-muted-foreground">Description:</span> {description}
+              </p>
+            ) : null}
+
+            <p className={cn("text-xs text-muted-foreground", description ? "mt-1 group-hover:mt-1" : "mt-1")}>
+              {context}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground shadow-sm">
+                {footChip}
+              </span>
+              {actions.length > 0 && (
+                <div className="hidden flex-wrap gap-1.5 group-hover:flex group-focus-within:flex">
+                  <ActionRow actions={actions} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {imageUrl && (
+            <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+              <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -129,8 +231,23 @@ export function OperationalStreamCard({
         </div>
 
         <div className="min-w-0 flex-1">
+          {typeChip && (
+            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
+              {typeChip}
+            </span>
+          )}
+          {reviewBanner && (
+            <p className="mb-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-[#0d9488]">
+              {reviewBanner}
+            </p>
+          )}
           <p className="text-sm font-semibold text-foreground truncate">{title}</p>
           <p className="text-xs text-muted-foreground truncate">{context}</p>
+          {whyHere && (
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+              <span className="font-medium text-foreground/80">Why this is here:</span> {whyHere}
+            </p>
+          )}
           {labels.length > 0 && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {labels.map((label) => (
@@ -149,23 +266,7 @@ export function OperationalStreamCard({
             <div className={cn(footerVisible, actionsVisibility !== "always" && "overflow-hidden")}>
               {description && <p className="text-xs text-foreground/90 mb-1.5">{description}</p>}
               {statusText && <p className="text-[11px] text-muted-foreground mb-2">{statusText}</p>}
-              {actions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {actions.map((action) => (
-                    <button
-                      key={action.id}
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        action.onClick();
-                      }}
-                      className={streamActionButtonClass(action.id)}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {actions.length > 0 && <ActionRow actions={actions} />}
             </div>
           )}
         </div>
