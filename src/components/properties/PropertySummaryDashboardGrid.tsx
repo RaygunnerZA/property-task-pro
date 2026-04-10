@@ -81,7 +81,7 @@ export function PropertySummaryDashboardGrid({
         tabIndex={0}
         className={cn(
           neuTileClass,
-          "relative row-span-2 flex h-[122px] min-h-0 min-w-0 w-[80px] flex-col items-center justify-start gap-0 bg-white/75 px-1 pb-[6px] pt-[9px] shadow-none",
+          "relative row-span-2 flex h-[243px] min-h-0 min-w-0 w-[80px] flex-col items-center justify-start gap-0 bg-white/75 px-1 pb-[6px] pt-[9px] shadow-none",
           onAddTask && "max-md:pb-7"
         )}
         onClick={onOpenTasks}
@@ -96,7 +96,7 @@ export function PropertySummaryDashboardGrid({
           <button
             type="button"
             aria-label="Report Issue"
-            className="absolute bottom-1 left-1/2 z-10 flex h-6 w-[79px] -translate-x-1/2 items-center justify-center rounded-lg font-semibold text-muted-foreground transition-colors hover:bg-[rgb(255,107,107)] hover:text-white md:hidden"
+            className="absolute bottom-1 left-1/2 z-10 flex h-6 w-[79px] -translate-x-1/2 items-center justify-center align-bottom rounded-lg font-semibold text-muted-foreground transition-colors hover:bg-[rgb(255,107,107)] hover:text-white md:hidden"
             onClick={(e) => {
               e.stopPropagation();
               onAddTask();

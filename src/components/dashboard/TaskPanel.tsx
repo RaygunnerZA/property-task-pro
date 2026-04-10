@@ -1312,12 +1312,12 @@ export function TaskPanel({
           </div>
 
           {onOpenIntake && (
-            <div className="hidden min-w-0 layout:hidden sm:block lg:w-[139px] lg:shrink-0 lg:self-start">
-              <div className={cn("w-full min-w-0", taskToolbarRecessedClass)}>
+            <div className="hidden min-w-0 layout:hidden sm:block lg:w-[255px] lg:shrink-0 lg:self-start lg:h-12 lg:min-h-12">
+              <div className={cn("w-full min-w-0 lg:h-12 lg:min-h-12", taskToolbarRecessedClass)}>
                 <div
                   className={cn(
                     "grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-x-1.5 px-2 pt-[6px] pb-1.5",
-                    "lg:h-auto lg:min-h-0 lg:flex lg:flex-col lg:gap-1.5",
+                    "lg:h-12 lg:min-h-12 lg:flex lg:flex-row lg:items-center lg:justify-center lg:gap-1.5 lg:px-2 lg:py-1.5",
                     "max-pane:px-1"
                   )}
                 >

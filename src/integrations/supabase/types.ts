@@ -3704,6 +3704,10 @@ export type Database = {
         Args: { p_org_id: string; p_property_id: string }
         Returns: undefined
       }
+      seed_onboarding_demo_for_property: {
+        Args: { p_property_id: string }
+        Returns: undefined
+      }
       test_user_org_membership: {
         Args: { p_org_id: string }
         Returns: {

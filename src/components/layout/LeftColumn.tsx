@@ -9,6 +9,8 @@ import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
+import { OnboardingDemoBanner } from "@/components/onboarding/OnboardingDemoBanner";
+import { propertyHasOnboardingDemoContent } from "@/lib/onboardingDemo";
 
 interface LeftColumnProps {
   tasks?: any[];
@@ -122,6 +124,11 @@ export function LeftColumn({
     return (properties as any[]).find((p) => p.id === id) ?? null;
   }, [selectedPropertyIds, properties]);
 
+  const showOnboardingDemoBanner = useMemo(() => {
+    if (!focusedProperty?.id) return false;
+    return propertyHasOnboardingDemoContent(tasks, focusedProperty.id);
+  }, [tasks, focusedProperty?.id]);
+
   return (
     <div 
       ref={leftColumnRef}
@@ -155,6 +162,12 @@ export function LeftColumn({
           ) : focusedProperty ? (
             /* Single property in focus: show identity strip with sliding cards */
             <div ref={propertiesRef} className="relative w-full max-w-full min-w-0 pt-[2px] pb-[7px] max-sm:px-0 sm:pr-[5px]">
+              {showOnboardingDemoBanner && (
+                <OnboardingDemoBanner
+                  propertyId={focusedProperty.id}
+                  className="mx-0 mb-2 max-sm:px-[12px] sm:mx-0"
+                />
+              )}
               <PropertyIdentityStrip
                 key={focusedProperty.id}
                 property={focusedProperty}

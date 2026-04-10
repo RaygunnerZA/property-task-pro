@@ -9,6 +9,8 @@ import {
   Plus,
   Upload,
   Archive,
+  ChevronsUp,
+  ChevronsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
@@ -37,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 function humanizeSiteType(value: string): string {
   return value
@@ -127,6 +130,10 @@ export function PropertyIdentityStrip({
   const [isEditingContacts, setIsEditingContacts] = useState(false);
   const [showArchivePropertyDialog, setShowArchivePropertyDialog] = useState(false);
   const [isArchivingProperty, setIsArchivingProperty] = useState(false);
+  /** Hides tab panels (all tabs) until expanded again — state is shared across PROPERTY / DETAILS / CONTACTS / MEDIA. */
+  const [isBelowTabsCollapsed, setIsBelowTabsCollapsed] = useState(false);
+  const [isBelowTabsHovered, setIsBelowTabsHovered] = useState(false);
+  const isMobile = useIsMobile();
   const [contactsForm, setContactsForm] = useState({
     owner_name: property.owner_name ?? "",
     owner_email: property.owner_email ?? "",
@@ -349,8 +356,23 @@ export function PropertyIdentityStrip({
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  const collapseStripPx = 30;
+  const cardHeightExpanded = 438;
+  const cardHeightWithStrip = cardHeightExpanded + collapseStripPx;
+  const cardHeightCollapsed = 230;
+  const showCollapseStrip =
+    !isBelowTabsCollapsed && (isMobile || isBelowTabsHovered);
+  const cardHeightPx = isBelowTabsCollapsed
+    ? cardHeightCollapsed
+    : showCollapseStrip
+      ? cardHeightWithStrip
+      : cardHeightExpanded;
+
   return (
-    <div className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full h-[438px] flex flex-col px-0">
+    <div
+      className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full flex flex-col px-0 transition-[height,box-shadow] duration-300 ease-out"
+      style={{ height: `${cardHeightPx}px` }}
+    >
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
       <div
@@ -498,12 +520,34 @@ export function PropertyIdentityStrip({
         ))}
       </div>
 
-      {/* ── SLIDING CARD CONTENT ─────────────────────────────────────────── */}
-      <div className="relative z-0 max-h-[251px] min-h-0 flex-1 overflow-visible">
+      {/* ── SLIDING CARD CONTENT + collapse affordance (all tabs) ───────── */}
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+        onMouseEnter={() => {
+          if (!isBelowTabsCollapsed) setIsBelowTabsHovered(true);
+        }}
+        onMouseLeave={() => setIsBelowTabsHovered(false)}
+      >
         <div
-          className="flex h-full min-h-0 pointer-events-none transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(-${activeTab * 100}%)` }}
+          id="property-identity-below-tabs-panel"
+          className={cn(
+            "min-h-0 min-w-0 w-full overflow-hidden transition-[max-height] duration-300 ease-out",
+            isBelowTabsCollapsed ? "max-h-0" : "max-h-[251px] flex-1"
+          )}
         >
+          <div
+            className={cn(
+              "relative z-0 h-full min-h-0 max-h-[251px] flex-1 overflow-visible transition-[opacity,transform,box-shadow] duration-300 ease-out",
+              isBelowTabsCollapsed && "pointer-events-none opacity-0 -translate-y-3",
+              !isBelowTabsCollapsed &&
+                isBelowTabsHovered &&
+                "shadow-md ring-2 ring-[#8EC9CE]/30 ring-offset-0"
+            )}
+          >
+            <div
+              className="flex h-full min-h-0 pointer-events-none transition-transform duration-300 ease-out"
+              style={{ transform: `translateX(-${activeTab * 100}%)` }}
+            >
 
           {/* 0 ── PROPERTY dashboard (3×2 grid) ─────────────────────────── */}
           <div
@@ -812,7 +856,56 @@ export function PropertyIdentityStrip({
             </div>
           </div>
 
+            </div>
+          </div>
         </div>
+
+        {!isBelowTabsCollapsed && (
+          <div
+            className={cn(
+              "flex w-full shrink-0 items-center justify-center overflow-hidden transition-[height] duration-300 ease-out",
+              showCollapseStrip ? "h-[30px]" : "h-0"
+            )}
+          >
+            <button
+              type="button"
+              className={cn(
+                "flex h-7 w-full max-w-[120px] items-center justify-center rounded-[10px] bg-white text-muted-foreground transition-all duration-200",
+                "shadow-sm hover:bg-background/70 hover:text-foreground hover:shadow-md",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EC9CE]/40 focus-visible:ring-offset-0"
+              )}
+              aria-expanded={!isBelowTabsCollapsed}
+              aria-controls="property-identity-below-tabs-panel"
+              aria-label="Collapse section below tabs"
+              onClick={() => {
+                setIsBelowTabsCollapsed(true);
+                setIsBelowTabsHovered(false);
+              }}
+            >
+              <ChevronsUp className="h-4 w-4 opacity-80" strokeWidth={2.25} aria-hidden />
+            </button>
+          </div>
+        )}
+
+        {isBelowTabsCollapsed && (
+          <div className="flex min-h-[36px] shrink-0 items-center justify-center px-2 py-1">
+            <button
+              type="button"
+              className={cn(
+                "flex h-8 w-full max-w-[97px] items-center justify-center gap-1.5 rounded-[10px] text-xs font-medium text-muted-foreground transition-all duration-200",
+                "shadow-sm hover:bg-background/70 hover:text-foreground hover:shadow-md",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EC9CE]/40 focus-visible:ring-offset-0"
+              )}
+              aria-expanded={false}
+              aria-controls="property-identity-below-tabs-panel"
+              aria-label="Expand section below tabs"
+              onClick={() => setIsBelowTabsCollapsed(false)}
+            >
+              <ChevronsDown className="h-4 w-4 opacity-80" strokeWidth={2.25} aria-hidden />
+              <span className="font-mono text-[10px] uppercase tracking-wide">Show panel</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={showArchivePropertyDialog} onOpenChange={setShowArchivePropertyDialog}>

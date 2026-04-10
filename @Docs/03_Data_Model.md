@@ -25,6 +25,10 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `compliance_sources` (raw files)
 *   `compliance_documents` (expiry_date, status)
 *   `compliance_rules` (logic)
+*   `compliance_recommendations` (AI-style suggested actions per document)
+
+**Onboarding demo (new properties):**
+*   `seed_onboarding_demo_for_property(property_id)` runs in the same trigger as `seed_property_defaults` after each `properties` INSERT. Seeds sample tasks, assets, compliance documents, one compliance rule, one `compliance_recommendations` row, and an org-level checklist template (once per org). Demo copy includes `[onboarding_demo]` for UI detection; placeholder images use `/onboarding/*.svg`.
 
 **Media:**
 *   `attachments` (file_url, parent_type, parent_id)

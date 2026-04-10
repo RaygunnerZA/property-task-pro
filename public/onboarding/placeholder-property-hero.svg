@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8f4f5"/>
+      <stop offset="100%" style="stop-color:#dce8ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="80" y="80" width="1040" height="515" rx="16" fill="#fff" opacity="0.65"/>
+  <text x="600" y="300" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="28" font-weight="600" fill="#0d9488">Property photo placeholder</text>
+  <text x="600" y="345" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="16" fill="#64748b">Replace with a bright exterior or hero shot of this site</text>
+  <text x="600" y="380" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#94a3b8">Golden hour, clear sky  matches premium SaaS empty states (Notion, Linear)</text>
+</svg>

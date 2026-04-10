@@ -227,7 +227,7 @@ export function RadialProgress({
             color: "rgba(102, 102, 102, 1)",
             marginLeft: -6,
             marginRight: 0,
-            marginTop: -5,
+            marginTop: 0,
             paddingTop: 0,
             lineHeight: 1,
           }}

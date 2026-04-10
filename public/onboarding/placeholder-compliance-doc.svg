@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="660" viewBox="0 0 520 660" role="img" aria-label="Placeholder document">
+  <rect width="520" height="660" fill="#f8fafc"/>
+  <rect x="32" y="32" width="456" height="596" rx="8" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="260" y="280" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="20" font-weight="600" fill="#334155">Certificate / PDF placeholder</text>
+  <text x="260" y="318" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="14" fill="#64748b">Show a blurred preview of Gas Safety, EICR, or FRA</text>
+  <text x="260" y="348" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="13" fill="#94a3b8">First page + verified chip in corner</text>
+</svg>

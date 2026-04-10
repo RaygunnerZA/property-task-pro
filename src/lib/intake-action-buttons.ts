@@ -21,22 +21,22 @@ const addNeuShadow =
 
 export const intakeReportIssueButtonClassName = cn(
   "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
-  "lg:h-auto lg:min-h-[40px] lg:py-2",
+  "lg:h-8 lg:min-h-8 lg:max-h-8 lg:py-0 lg:flex-1",
   onCta,
   reportBg,
   toolbarRaisedShadow,
   "transition-all hover:bg-[#ff6b6b]/90",
-  "lg:justify-start lg:px-2.5"
+  "lg:justify-start lg:px-1.5 lg:gap-1"
 );
 
 export const intakeAddRecordButtonClassName = cn(
   "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
-  "lg:h-auto lg:min-h-[40px] lg:py-2",
+  "lg:h-8 lg:min-h-8 lg:max-h-8 lg:py-0 lg:flex-1",
   onCta,
   addRecordBg,
   toolbarRaisedShadow,
   "transition-all hover:bg-[#8DC9CE]/90",
-  "lg:justify-start lg:px-2.5"
+  "lg:justify-start lg:px-1.5 lg:gap-1"
 );
 
 export const intakeReportIssueIconClassName = "h-4 w-4 shrink-0 text-white";
