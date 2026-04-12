@@ -7,6 +7,7 @@ import EmptyState from "./EmptyState";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { MessageSquare, User, CheckSquare, Clock } from "lucide-react";
+import type { Tables } from "@/integrations/supabase/types";
 
 interface MessageListProps {
   onMessageClick?: (messageId: string) => void;
@@ -20,13 +21,15 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
 
   // Fetch conversation task mappings
   useEffect(() => {
-    if (messages.length === 0) {
+    if (loading || error || messages.length === 0) {
       setConversationTaskMap(new Map());
       return;
     }
 
     const fetchConversationTasks = async () => {
-      const conversationIds = [...new Set(messages.map(m => m.conversation_id).filter(Boolean))];
+      const conversationIds = [
+        ...new Set(messages.map((m) => m.conversation_id).filter(Boolean)),
+      ] as string[];
       if (conversationIds.length === 0) return;
 
       const { data } = await supabase
@@ -36,7 +39,7 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
 
       if (data) {
         const taskMap = new Map<string, string>();
-        data.forEach((conv: any) => {
+        data.forEach((conv: Pick<Tables<"conversations">, "id" | "task_id">) => {
           if (conv.task_id) {
             taskMap.set(conv.id, conv.task_id);
           }
@@ -46,7 +49,7 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
     };
 
     fetchConversationTasks();
-  }, [messages]);
+  }, [messages, loading, error]);
 
   // Get unique authors for filtering
   const authors = useMemo(() => {
@@ -66,7 +69,9 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
     // Primary filters
     if (selectedFilters.has("filter-unread")) {
       // Assume messages without a read_at timestamp are unread
-      filtered = filtered.filter((msg) => !(msg as any).read_at);
+      filtered = filtered.filter(
+        (msg) => !("read_at" in msg) || !(msg as { read_at?: string | null }).read_at,
+      );
     }
 
     if (selectedFilters.has("filter-today")) {
