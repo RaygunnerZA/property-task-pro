@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
+import { ActiveOrgProvider } from "@/providers/ActiveOrgProvider";
 import { DataProvider, useAuth, useOrg } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
 import { AuthHashHandler } from "@/components/AuthHashHandler";
@@ -155,8 +156,9 @@ const App = () => {
             <SystemStatusProvider>
               <StatusBanner />
               <DataProvider>
-                <AnalyticsIdentifier />
-                <AppInitializer>
+                <ActiveOrgProvider>
+                  <AnalyticsIdentifier />
+                  <AppInitializer>
                   <Suspense fallback={<LoadingState message="Loading..." />}>
                     <Routes>
                       {/* Onboarding routes (no layout) */}
@@ -279,7 +281,8 @@ const App = () => {
                       } />
                     </Routes>
                   </Suspense>
-                </AppInitializer>
+                  </AppInitializer>
+                </ActiveOrgProvider>
               </DataProvider>
             </SystemStatusProvider>
           </BrowserRouter>

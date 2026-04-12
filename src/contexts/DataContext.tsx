@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,21 +220,38 @@ export function DataProvider({ children }: DataProviderProps) {
     };
   }, [fetchOrganisation]);
 
-  const value: DataContextValue = {
-    session,
-    user,
-    isAuthenticated,
-    orgId,
-    organisation,
-    userId,
-    isOrgUser,
-    contractorToken,
-    isContractor,
-    loading,
-    error,
-    refresh,
-    clearError,
-  };
+  const value: DataContextValue = useMemo(
+    () => ({
+      session,
+      user,
+      isAuthenticated,
+      orgId,
+      organisation,
+      userId,
+      isOrgUser,
+      contractorToken,
+      isContractor,
+      loading,
+      error,
+      refresh,
+      clearError,
+    }),
+    [
+      session,
+      user,
+      isAuthenticated,
+      orgId,
+      organisation,
+      userId,
+      isOrgUser,
+      contractorToken,
+      isContractor,
+      loading,
+      error,
+      refresh,
+      clearError,
+    ],
+  );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
