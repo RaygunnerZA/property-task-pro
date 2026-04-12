@@ -4,6 +4,12 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  propertyHubPath,
+  WORKBENCH_PANEL_TAB_QUERY,
+  WORKBENCH_RECORDS_VIEW_QUERY,
+  type RecordsView,
+} from "@/lib/propertyRoutes";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, AlertCircle, AlertTriangle, Link2, Shield, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,9 +80,18 @@ export function DocumentHealthSummary({
   const total = documents.length;
   const expiryAttention = expired + dueSoon;
 
-  const base = `/properties/${propertyId}/documents`;
-
-  const go = (query: string) => navigate(query ? `${base}?${query}` : base);
+  const hubRecords = (view?: RecordsView, extra?: Record<string, string>) => {
+    const q: Record<string, string> = { [WORKBENCH_PANEL_TAB_QUERY]: "records" };
+    if (view && view !== "all") {
+      q[WORKBENCH_RECORDS_VIEW_QUERY] = view;
+    }
+    if (extra) {
+      for (const [k, v] of Object.entries(extra)) {
+        if (v) q[k] = v;
+      }
+    }
+    return propertyHubPath(propertyId, q);
+  };
 
   const rowClass =
     "group flex h-[30px] w-full cursor-pointer items-center gap-0 rounded-md py-0 pl-1 pr-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
@@ -88,7 +103,7 @@ export function DocumentHealthSummary({
           key: "total",
           label: "Total documents",
           icon: FileText,
-          onRowClick: () => go(""),
+          onRowClick: () => navigate(hubRecords("documents")),
           metric: (
             <StripMetricValue
               primary={total}
@@ -110,7 +125,7 @@ export function DocumentHealthSummary({
                 className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/90 hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
-                  go("upload=1");
+                  navigate(hubRecords("documents", { upload: "1" }));
                 }}
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -128,7 +143,7 @@ export function DocumentHealthSummary({
           key: "expired",
           label: "Expired",
           icon: AlertCircle,
-          onRowClick: () => go("filter=expired"),
+          onRowClick: () => navigate(hubRecords("overdue")),
           metric: (
             <StripMetricValue
               primary={expired}
@@ -152,7 +167,7 @@ export function DocumentHealthSummary({
           key: "dueSoon",
           label: "Due soon",
           icon: AlertTriangle,
-          onRowClick: () => go("filter=expiring"),
+          onRowClick: () => navigate(hubRecords("expiring")),
           metric: (
             <StripMetricValue
               primary={dueSoon}
@@ -176,7 +191,7 @@ export function DocumentHealthSummary({
           key: "unlinked",
           label: "Unlinked",
           icon: Link2,
-          onRowClick: () => go("filter=unlinked"),
+          onRowClick: () => navigate(hubRecords("documents", { filter: "unlinked" })),
           metric: (
             <StripMetricValue primary={unlinked} attention={0} primaryMuted={unlinked === 0} />
           ),
@@ -195,7 +210,7 @@ export function DocumentHealthSummary({
           key: "hazards",
           label: "With hazards",
           icon: Shield,
-          onRowClick: () => go("filter=hazards"),
+          onRowClick: () => navigate(hubRecords("documents", { filter: "hazards" })),
           metric: (
             <StripMetricValue
               primary={withHazards}

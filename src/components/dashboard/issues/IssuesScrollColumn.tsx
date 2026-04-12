@@ -47,7 +47,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
         <div
           ref={scrollRootRef}
           className={cn(
-            "min-h-0 max-h-[min(52vh,400px)] space-y-2 overflow-y-auto overscroll-y-contain pr-0.5",
+            "min-h-0 max-h-[min(52vh,400px)] space-y-2 overflow-y-auto overscroll-y-contain p-0.5",
             "[scrollbar-width:thin]",
             "[&::-webkit-scrollbar]:w-1.5",
             "[&::-webkit-scrollbar-thumb]:rounded-full",

@@ -22,12 +22,19 @@ import {
   ISSUES_OPEN_TASK_FILTER_IDS,
   WORKBENCH_ISSUES_FILTER_QUERY,
   WORKBENCH_PANEL_TAB_QUERY,
+  WORKBENCH_RECORDS_VIEW_QUERY,
+  WORKBENCH_TAB_ALIAS_QUERY,
+  normalizeRecordsView,
   normalizeWorkbenchIssuesFilter,
   normalizeWorkbenchPanelTab,
+  type RecordsView,
   type WorkbenchIssuesFilter,
   type WorkbenchPanelTab,
 } from "@/lib/propertyRoutes";
 import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
+import { RecordsActionRail } from "@/components/records/RecordsActionRail";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { supabase } from "@/integrations/supabase/client";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -78,6 +85,8 @@ export default function Dashboard() {
   const pendingPropertyParamClearRef = useRef(false);
 
   const queryClient = useQueryClient();
+  const { orgId } = useActiveOrg();
+  const [recordsReanalyseBusy, setRecordsReanalyseBusy] = useState(false);
 
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
@@ -153,6 +162,7 @@ export default function Dashboard() {
       }
       const params = workbenchSearchParamsFromBrowser(searchParams);
       params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
       if (next.size === 1) {
         params.set("property", Array.from(next)[0]);
         setSearchParams(params, { replace: true });
@@ -170,10 +180,15 @@ export default function Dashboard() {
     [properties, searchParams, setSearchParams]
   );
 
-  /** Single source of truth with the URL: no `panelTab` ⇒ Issues. */
+  /** Single source of truth with the URL: no `panelTab` ⇒ Issues. Optional `tab` alias. */
   const activeTab = useMemo((): WorkbenchPanelTab => {
-    const t = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
-    return normalizeWorkbenchPanelTab(t);
+    const panel = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
+    const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
+    return normalizeWorkbenchPanelTab(panel, alias);
+  }, [searchParams]);
+
+  const recordsView = useMemo((): RecordsView => {
+    return normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
   }, [searchParams]);
 
   const issuesFilter = useMemo((): WorkbenchIssuesFilter => {
@@ -188,6 +203,25 @@ export default function Dashboard() {
         params.delete(WORKBENCH_PANEL_TAB_QUERY);
       } else {
         params.set(WORKBENCH_PANEL_TAB_QUERY, normalized);
+      }
+      if (normalized !== "records") {
+        params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const handleRecordsViewChange = useCallback(
+    (next: RecordsView) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      if (!params.has(WORKBENCH_PANEL_TAB_QUERY)) {
+        params.set(WORKBENCH_PANEL_TAB_QUERY, "records");
+      }
+      if (next === "all") {
+        params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
+      } else {
+        params.set(WORKBENCH_RECORDS_VIEW_QUERY, next);
       }
       setSearchParams(params, { replace: true });
     },
@@ -215,6 +249,24 @@ export default function Dashboard() {
     return undefined;
   }, [assistantFiltersToApply, activeTab, issuesFilter]);
 
+  /** Fold `tab=` into canonical `panelTab` once so refresh and bookmarks stay consistent. */
+  useEffect(() => {
+    const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
+    if (!alias) return;
+    const merged = normalizeWorkbenchPanelTab(
+      searchParams.get(WORKBENCH_PANEL_TAB_QUERY),
+      alias
+    );
+    const params = new URLSearchParams(searchParams);
+    params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+    if (merged === "issues") {
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+    } else {
+      params.set(WORKBENCH_PANEL_TAB_QUERY, merged);
+    }
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   // When the workbench `property` param changes after load, default to Issues (strip stale panelTab).
   // Skip the first transition that only injects `property` for single-property orgs so deep links keep ?panelTab=.
   useEffect(() => {
@@ -235,6 +287,7 @@ export default function Dashboard() {
     const params = new URLSearchParams(searchParams);
     if (!params.has(WORKBENCH_PANEL_TAB_QUERY)) return;
     params.delete(WORKBENCH_PANEL_TAB_QUERY);
+    params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams, properties]);
 
@@ -443,20 +496,53 @@ export default function Dashboard() {
     return Array.from(selectedPropertyIds)[0];
   }, [selectedPropertyIds]);
 
+  const handleRecordsReanalyse = useCallback(async () => {
+    if (!orgId || !intakeScopedPropertyId) return;
+    setRecordsReanalyseBusy(true);
+    try {
+      const { error } = await supabase.functions.invoke("ai-doc-reanalyse", {
+        body: { org_id: orgId, property_id: intakeScopedPropertyId, overwrite: false },
+      });
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["property-documents"] });
+    } catch {
+      // Non-blocking: errors surface when user opens a document
+    } finally {
+      setRecordsReanalyseBusy(false);
+    }
+  }, [orgId, intakeScopedPropertyId, queryClient]);
+
   const thirdColumnContent = isLargeScreen ? (
     <div className="flex flex-col pt-3 pr-2 pb-0 pl-2">
-      <div className="pb-[20px]">
-        <IntakeModal
-          open={true}
-          onOpenChange={() => undefined}
-          onTaskCreated={handleTaskCreated}
-          defaultPropertyId={intakeScopedPropertyId}
-          variant="column"
-          headless
-          intakeMode={workbenchIntakeMode}
-          onIntakeModeChange={setWorkbenchIntakeMode}
-        />
-      </div>
+      {activeTab === "records" && intakeScopedPropertyId ? (
+        <div className="pb-[16px] shrink-0">
+          <RecordsActionRail
+            propertyId={intakeScopedPropertyId}
+            onOpenIntake={handleOpenIntake}
+            onAddComplianceRule={() =>
+              window.dispatchEvent(new CustomEvent("filla:records-open-rule-modal"))
+            }
+            onUploadClick={() =>
+              window.dispatchEvent(new CustomEvent("filla:records-open-upload"))
+            }
+            onReanalyse={handleRecordsReanalyse}
+            reanalyseBusy={recordsReanalyseBusy}
+          />
+        </div>
+      ) : (
+        <div className="pb-[20px]">
+          <IntakeModal
+            open={true}
+            onOpenChange={() => undefined}
+            onTaskCreated={handleTaskCreated}
+            defaultPropertyId={intakeScopedPropertyId}
+            variant="column"
+            headless
+            intakeMode={workbenchIntakeMode}
+            onIntakeModeChange={setWorkbenchIntakeMode}
+          />
+        </div>
+      )}
       <ThirdColumnConcertina
         sections={[
           ...(selectedTaskId
@@ -599,6 +685,8 @@ export default function Dashboard() {
             onIssuesFilterChange={handleIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={handleOpenIntake}
+            recordsView={recordsView}
+            onRecordsViewChange={handleRecordsViewChange}
           />
         }
         thirdColumn={thirdColumnContent}

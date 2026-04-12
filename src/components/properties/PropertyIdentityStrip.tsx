@@ -577,7 +577,7 @@ export function PropertyIdentityStrip({
               docDueSoon={documentDashboardBuckets.dueSoon}
               docExpiring={documentDashboardBuckets.expiring}
               docMissing={documentDashboardBuckets.missing}
-              onOpenDocuments={() => navigate(`/properties/${property.id}/documents`)}
+              onOpenDocuments={() => navigate(propertySubPath(property.id, "documents"))}
             />
           </div>
 

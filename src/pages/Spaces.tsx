@@ -1,6 +1,7 @@
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { mockProperties, mockTasks } from '@/data/mockData';
 import { useNavigate } from 'react-router-dom';
+import { propertySubPath } from '@/lib/propertyRoutes';
 import { Building2, MapPin, CheckCircle2 } from 'lucide-react';
 import { StandardPage } from '@/components/design-system/StandardPage';
 
@@ -25,7 +26,7 @@ const Spaces = () => {
           return (
             <button
               key={property.id}
-              onClick={() => navigate(`/properties/${property.id}/compliance`)}
+              onClick={() => navigate(propertySubPath(property.id, 'compliance'))}
               className="w-full text-left rounded-lg p-4 bg-card shadow-e1 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
             >
               <div className="flex items-start gap-3 mb-3">

@@ -2,7 +2,7 @@ import { ReactNode, useMemo } from "react";
 import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import type { IntakeMode } from "@/types/intake";
-import type { WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
+import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 
 interface RightColumnProps {
@@ -22,6 +22,8 @@ interface RightColumnProps {
   onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
+  recordsView?: RecordsView;
+  onRecordsViewChange?: (view: RecordsView) => void;
 }
 
 /**
@@ -47,7 +49,9 @@ export function RightColumn({
   issuesFilter,
   onIssuesFilterChange,
   selectedPropertyIds,
-  onOpenIntake
+  onOpenIntake,
+  recordsView,
+  onRecordsViewChange,
 }: RightColumnProps) {
   const showDailyBriefing = useMemo(() => {
     const ids = (properties ?? []).map((p: { id: string }) => p.id);
@@ -94,6 +98,8 @@ export function RightColumn({
             onIssuesFilterChange={onIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={onOpenIntake}
+            recordsView={recordsView}
+            onRecordsViewChange={onRecordsViewChange}
           />
         )}
       </div>

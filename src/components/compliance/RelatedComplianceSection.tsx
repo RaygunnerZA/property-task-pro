@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { Shield, ChevronRight } from "lucide-react";
 import { HazardBadge } from "./HazardBadge";
 import { cn } from "@/lib/utils";
@@ -68,7 +69,10 @@ export function RelatedComplianceSection({
             <button
               key={item.id}
               type="button"
-              onClick={() => navigate(`/properties/${item.property_id || ""}/compliance`)}
+              onClick={() => {
+                if (!item.property_id) return;
+                navigate(propertySubPath(item.property_id, "compliance"));
+              }}
               className={cn(
                 "w-full text-left p-2 rounded-lg",
                 "bg-card shadow-e1 border border-border/50",

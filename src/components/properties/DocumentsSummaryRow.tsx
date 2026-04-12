@@ -3,6 +3,7 @@
  * Expiring Soon (Amber), Expired (Red), Missing (Slate)
  */
 import { useNavigate } from "react-router-dom";
+import { propertyHubPath, WORKBENCH_PANEL_TAB_QUERY, WORKBENCH_RECORDS_VIEW_QUERY } from "@/lib/propertyRoutes";
 import { ContextSummaryCard } from "@/components/property-framework";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +57,12 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         color="amber"
         ctaLabel="View"
         onClick={() =>
-          navigate(`/properties/${propertyId}/documents?filter=expiring`)
+          navigate(
+            propertyHubPath(propertyId, {
+              [WORKBENCH_PANEL_TAB_QUERY]: "records",
+              [WORKBENCH_RECORDS_VIEW_QUERY]: "expiring",
+            })
+          )
         }
       />
       <ContextSummaryCard
@@ -66,7 +72,12 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         color="red"
         ctaLabel="View"
         onClick={() =>
-          navigate(`/properties/${propertyId}/documents?filter=expired`)
+          navigate(
+            propertyHubPath(propertyId, {
+              [WORKBENCH_PANEL_TAB_QUERY]: "records",
+              [WORKBENCH_RECORDS_VIEW_QUERY]: "overdue",
+            })
+          )
         }
       />
       <ContextSummaryCard
@@ -76,7 +87,12 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         color="slate"
         ctaLabel="View"
         onClick={() =>
-          navigate(`/properties/${propertyId}/documents?filter=missing`)
+          navigate(
+            propertyHubPath(propertyId, {
+              [WORKBENCH_PANEL_TAB_QUERY]: "records",
+              [WORKBENCH_RECORDS_VIEW_QUERY]: "missing",
+            })
+          )
         }
       />
     </div>

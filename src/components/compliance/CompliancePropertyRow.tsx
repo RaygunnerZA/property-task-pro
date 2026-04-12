@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { Building2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ export function CompliancePropertyRow({
   return (
     <button
       type="button"
-      onClick={() => navigate(`/properties/${propertyId}/compliance`)}
+      onClick={() => navigate(propertySubPath(propertyId, "compliance"))}
       className={cn(
         "w-full flex items-center gap-4 p-4 rounded-lg",
         "bg-card shadow-e1 border border-border/50",

@@ -7,6 +7,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { AlertTriangle, CheckCircle2, Clock, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HazardBadge } from "./HazardBadge";
@@ -53,7 +54,7 @@ export function ComplianceDetailDrawer({
   const handleViewProperty = () => {
     if (compliance?.property_id) {
       onOpenChange(false);
-      navigate(`/properties/${compliance.property_id}/compliance`);
+      navigate(propertySubPath(compliance.property_id, "compliance"));
     }
   };
 

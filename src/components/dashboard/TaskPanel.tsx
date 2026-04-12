@@ -8,7 +8,6 @@ import {
   useCallback,
 } from "react";
 import type { MutableRefObject } from "react";
-import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
@@ -19,7 +18,6 @@ import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery
 import {
   CheckSquare,
   Calendar,
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -27,12 +25,8 @@ import {
   HelpCircle,
   ShieldCheck,
   ClipboardList,
-  Waves,
   Upload,
   FileText,
-  ClipboardCheck,
-  Building2,
-  Search,
 } from "lucide-react";
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import {
@@ -47,8 +41,7 @@ import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
-import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
-import { PanelSectionTitle } from "@/components/ui/panel-section-title";
+import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import {
@@ -63,7 +56,7 @@ import {
 } from "@/lib/intake-action-buttons";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
-import type { WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
+import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -82,6 +75,8 @@ interface TaskPanelProps {
   onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
+  recordsView?: RecordsView;
+  onRecordsViewChange?: (view: RecordsView) => void;
 }
 
 type TabBarDensity = "comfortable" | "compact" | "iconOnly";
@@ -97,7 +92,7 @@ const TASK_TAB_MEASURE_TOLERANCE_PX = 4;
 
 const TASK_TAB_MICROCOPY = {
   issues: "Recent signals → Needs review → Open work (tasks). Each stage is different.",
-  records: "Evidence, compliance, and obligations",
+  records: "What you have, what expires, and where it belongs",
   schedule: "What's coming up",
 } as const;
 
@@ -455,9 +450,6 @@ function useTaskTabNarrowViewport() {
 
 type AttentionGroup = "urgent" | "review" | "recent";
 type ComplianceStatus = "healthy" | "expiring" | "overdue" | "missing";
-type ComplianceFilter = "all" | "expiring" | "overdue" | "missing";
-type ExpiryRange = "all" | "30" | "90" | "365";
-
 interface ComplianceRecord {
   id: string;
   title: string;
@@ -526,13 +518,6 @@ function mapSignalFixtureToAttentionItem(f: SignalUiFixture): AttentionItem {
     hint: group === "review" ? "Filla needs your judgment before this becomes work or a record." : undefined,
   };
 }
-
-const STATUS_LABEL: Record<ComplianceStatus, string> = {
-  healthy: "Healthy",
-  expiring: "Expiring",
-  overdue: "Overdue",
-  missing: "Missing",
-};
 
 function normalizeStatus(rawState?: string | null): ComplianceStatus {
   const state = String(rawState || "").toLowerCase();
@@ -609,8 +594,9 @@ export function TaskPanel({
   onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake,
+  recordsView: recordsViewProp,
+  onRecordsViewChange,
 }: TaskPanelProps = {}) {
-  const navigate = useNavigate();
 
   const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
     const n = properties.length;
@@ -644,13 +630,6 @@ export function TaskPanel({
     if (onIssuesFilterChange == null) setInternalIssuesFilter(next);
   };
   const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
-  const [complianceSearch, setComplianceSearch] = useState("");
-  const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>("all");
-  const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
-  const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
-  const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
-  const [complianceSearchOpen, setComplianceSearchOpen] = useState(false);
-  const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
   const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
   const [tabBarDensity, setTabBarDensity] = useState<TabBarDensity>("comfortable");
   const narrowTaskTabViewport = useTaskTabNarrowViewport();
@@ -659,7 +638,6 @@ export function TaskPanel({
   const measureTabComfortableRef = useRef<HTMLDivElement | null>(null);
   const measureTabCompactRef = useRef<HTMLDivElement | null>(null);
   const measureTabIconOnlyRef = useRef<HTMLDivElement | null>(null);
-  const compliancePanelInteractionRef = useRef<HTMLDivElement | null>(null);
 
   const selectedDate = selectedDateProp ?? internalSelectedDate;
 
@@ -897,195 +875,6 @@ export function TaskPanel({
     return { urgent, review, recent };
   }, [filteredAttentionItems]);
 
-  const filteredComplianceRecords = useMemo(() => {
-    const query = complianceSearch.trim().toLowerCase();
-    return complianceRecords.filter((record) => {
-      if (
-        query &&
-        !`${record.title} ${record.propertyName} ${record.complianceType}`
-          .toLowerCase()
-          .includes(query)
-      ) {
-        return false;
-      }
-
-      if (complianceFilter !== "all") {
-        if (complianceFilter === "expiring" && record.status !== "expiring") return false;
-        if (complianceFilter === "overdue" && record.status !== "overdue") return false;
-        if (complianceFilter === "missing" && record.status !== "missing") return false;
-      }
-
-      if (compliancePropertyFilter !== "all") {
-        const opt = propertyOptions.find((p) => p.id === compliancePropertyFilter);
-        if (!opt) return false;
-        if (record.propertyId) {
-          if (record.propertyId !== compliancePropertyFilter) return false;
-        } else if (record.propertyName !== opt.name) {
-          return false;
-        }
-      }
-      if (complianceTypeFilter !== "all" && record.complianceType !== complianceTypeFilter)
-        return false;
-
-      if (complianceExpiryRange !== "all") {
-        const due = daysUntil(record.nextDueDate || record.expiryDate);
-        const max = Number(complianceExpiryRange);
-        if (due === null || due < 0 || due > max) return false;
-      }
-
-      return true;
-    });
-  }, [
-    complianceSearch,
-    complianceRecords,
-    complianceFilter,
-    compliancePropertyFilter,
-    complianceTypeFilter,
-    complianceExpiryRange,
-    propertyOptions,
-  ]);
-
-  const complianceTypeOptions = useMemo(() => {
-    const typeSet = new Set<string>();
-    complianceRecords.forEach((record) => {
-      if (record.complianceType) typeSet.add(record.complianceType);
-    });
-    return Array.from(typeSet).sort((a, b) => a.localeCompare(b));
-  }, [complianceRecords]);
-
-  const compliancePrimaryOptions: FilterOption[] = useMemo(
-    () => [
-      { id: "cstat-all", label: "All", icon: <CheckSquare className="h-4 w-4" /> },
-      { id: "cstat-expiring", label: "Expiring", icon: <CalendarClock className="h-4 w-4" /> },
-      { id: "cstat-overdue", label: "Overdue", icon: <AlertTriangle className="h-4 w-4" />, color: "#EB6834" },
-      { id: "cstat-missing", label: "Missing", icon: <FileText className="h-4 w-4" /> },
-    ],
-    []
-  );
-
-  const complianceSecondaryGroups: FilterGroup[] = useMemo(
-    () => [
-      {
-        id: "compliance-property",
-        label: "Property",
-        options: propertyOptions.map((p) => ({
-          id: `cprop-${p.id}`,
-          label: p.name,
-          icon: <Building2 className="h-4 w-4" />,
-        })),
-      },
-      {
-        id: "compliance-type",
-        label: "Compliance Type",
-        options: complianceTypeOptions.map((t) => ({
-          id: `ctype-${encodeURIComponent(t)}`,
-          label: t,
-          icon: <ClipboardCheck className="h-4 w-4" />,
-        })),
-      },
-      {
-        id: "compliance-expiry",
-        label: "Expiry Range",
-        options: [
-          { id: "cexp-30", label: "Within 30 days", icon: <Calendar className="h-4 w-4" /> },
-          { id: "cexp-90", label: "Within 90 days", icon: <Calendar className="h-4 w-4" /> },
-          { id: "cexp-365", label: "Within 1 year", icon: <Calendar className="h-4 w-4" /> },
-        ],
-      },
-    ],
-    [propertyOptions, complianceTypeOptions]
-  );
-
-  const complianceSelectedFilters = useMemo(() => {
-    const s = new Set<string>();
-    s.add(`cstat-${complianceFilter}`);
-    if (compliancePropertyFilter !== "all") s.add(`cprop-${compliancePropertyFilter}`);
-    if (complianceTypeFilter !== "all") s.add(`ctype-${encodeURIComponent(complianceTypeFilter)}`);
-    if (complianceExpiryRange !== "all") s.add(`cexp-${complianceExpiryRange}`);
-    return s;
-  }, [complianceFilter, compliancePropertyFilter, complianceTypeFilter, complianceExpiryRange]);
-
-  const handleComplianceFilterChange = useCallback(
-    (filterId: string, selected: boolean) => {
-      if (filterId.startsWith("cstat-")) {
-        const key = filterId.slice(6) as ComplianceFilter;
-        if (selected) setComplianceFilter(key);
-        else if (complianceFilter === key) setComplianceFilter("all");
-        return;
-      }
-      if (filterId.startsWith("cprop-")) {
-        const id = filterId.slice(6);
-        if (selected) setCompliancePropertyFilter(id);
-        else setCompliancePropertyFilter("all");
-        return;
-      }
-      if (filterId.startsWith("ctype-")) {
-        const t = decodeURIComponent(filterId.slice(6));
-        if (selected) setComplianceTypeFilter(t);
-        else setComplianceTypeFilter("all");
-        return;
-      }
-      if (filterId.startsWith("cexp-")) {
-        const range = filterId.slice(5) as ExpiryRange;
-        if (selected) setComplianceExpiryRange(range);
-        else setComplianceExpiryRange("all");
-        return;
-      }
-    },
-    [complianceFilter]
-  );
-
-  const complianceHealth = useMemo(() => {
-    return {
-      healthy: complianceRecords.filter((record) => record.status === "healthy").length,
-      expiring: complianceRecords.filter((record) => record.status === "expiring").length,
-      overdue: complianceRecords.filter((record) => record.status === "overdue").length,
-      missing: complianceRecords.filter((record) => record.status === "missing").length,
-    };
-  }, [complianceRecords]);
-
-  const propertyComplianceStatus = useMemo(() => {
-    const byProperty = new Map<
-      string,
-      { healthy: number; expiring: number; overdue: number; missing: number }
-    >();
-    complianceRecords.forEach((record) => {
-      const key = record.propertyName || "Unassigned property";
-      if (!byProperty.has(key)) byProperty.set(key, { healthy: 0, expiring: 0, overdue: 0, missing: 0 });
-      byProperty.get(key)![record.status] += 1;
-    });
-    return Array.from(byProperty.entries())
-      .map(([propertyName, counts]) => ({ propertyName, counts }))
-      .sort((a, b) => b.counts.overdue + b.counts.expiring - (a.counts.overdue + a.counts.expiring))
-      .slice(0, 6);
-  }, [complianceRecords]);
-
-  const upcomingExpiry = useMemo(() => {
-    return complianceRecords
-      .map((record) => ({
-        ...record,
-        dueIn: daysUntil(record.nextDueDate || record.expiryDate),
-      }))
-      .filter((record) => record.dueIn !== null && record.dueIn >= 0)
-      .sort((a, b) => (a.dueIn as number) - (b.dueIn as number))
-      .slice(0, 6);
-  }, [complianceRecords]);
-
-  const selectedComplianceRecord = useMemo(() => {
-    if (!selectedComplianceId) return filteredComplianceRecords[0];
-    return filteredComplianceRecords.find((record) => record.id === selectedComplianceId) || filteredComplianceRecords[0];
-  }, [filteredComplianceRecords, selectedComplianceId]);
-
-  useEffect(() => {
-    if (!filteredComplianceRecords.length) {
-      setSelectedComplianceId(null);
-      return;
-    }
-    if (!selectedComplianceId || !filteredComplianceRecords.some((record) => record.id === selectedComplianceId)) {
-      setSelectedComplianceId(filteredComplianceRecords[0].id);
-    }
-  }, [filteredComplianceRecords, selectedComplianceId]);
-
   const resolveAttentionItem = (itemId: string) => {
     setResolvedAttentionIds((prev) => {
       const next = new Set(prev);
@@ -1115,17 +904,8 @@ export function TaskPanel({
       if (prev.some((record) => record.id === newRecord.id)) return prev;
       return [newRecord, ...prev];
     });
-    setSelectedComplianceId(newRecord.id);
-  };
-
-  const getComplianceStatusText = (record: ComplianceRecord): string => {
-    const due = record.nextDueDate || record.expiryDate;
-    const dayDelta = daysUntil(due);
-    if (record.status === "missing") return "Status: Missing record";
-    if (dayDelta === null) return `Status: ${STATUS_LABEL[record.status]}`;
-    if (dayDelta < 0) return `Status: Overdue by ${Math.abs(dayDelta)} day${Math.abs(dayDelta) === 1 ? "" : "s"}`;
-    if (dayDelta <= 30) return `Status: Expiring in ${dayDelta} day${dayDelta === 1 ? "" : "s"}`;
-    return `Status: ${STATUS_LABEL[record.status]}`;
+    setActiveTab("records");
+    onRecordsViewChange?.("missing");
   };
 
   const scheduleTasks = useMemo(() => {
@@ -1663,296 +1443,14 @@ export function TaskPanel({
           )}
 
           {activeTab === "records" && (
-            <div
-              ref={compliancePanelInteractionRef}
-              className="h-full min-h-0 flex flex-col px-[10px] max-sm:px-0 pt-[8px] pb-[11px] max-pane:px-2"
-            >
-              <div className="flex-shrink-0 mb-[18px]">
-                <FilterBar
-                  primaryOptions={compliancePrimaryOptions}
-                  secondaryGroups={complianceSecondaryGroups}
-                  selectedFilters={complianceSelectedFilters}
-                  onFilterChange={handleComplianceFilterChange}
-                  primaryOptionLimit={4}
-                  clearPreservePrefixes={[]}
-                  collapseFilterChipAfterMs={2000}
-                  collapseInteractionRootRef={compliancePanelInteractionRef}
-                  showClearButton={
-                    complianceFilter !== "all" ||
-                    compliancePropertyFilter !== "all" ||
-                    complianceTypeFilter !== "all" ||
-                    complianceExpiryRange !== "all" ||
-                    complianceSearch.trim().length > 0
-                  }
-                  onClearAll={() => {
-                    setComplianceFilter("all");
-                    setCompliancePropertyFilter("all");
-                    setComplianceTypeFilter("all");
-                    setComplianceExpiryRange("all");
-                    setComplianceSearch("");
-                    setComplianceSearchOpen(false);
-                  }}
-                  primaryTrailing={
-                    <FilterChip
-                      label="Search"
-                      icon={<Search className="h-4 w-4" />}
-                      selected={
-                        complianceSearchOpen || complianceSearch.trim().length > 0
-                      }
-                      onSelect={() => setComplianceSearchOpen((open) => !open)}
-                      className="h-[24px]"
-                    />
-                  }
-                />
-                <div
-                  className={cn(
-                    "grid transition-[grid-template-rows] duration-200 ease-out",
-                    complianceSearchOpen || complianceSearch.trim().length > 0
-                      ? "grid-rows-[1fr]"
-                      : "grid-rows-[0fr]"
-                  )}
-                >
-                  <div className="overflow-hidden min-h-0">
-                    <input
-                      type="search"
-                      value={complianceSearch}
-                      onChange={(event) => setComplianceSearch(event.target.value)}
-                      placeholder="Search certificates or inspections"
-                      className={cn(
-                        "mt-2 w-full rounded-[10px] bg-background shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.6)]",
-                        "px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                      )}
-                      aria-label="Search compliance records"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] gap-3 items-start">
-                  <div className="space-y-3 min-w-0">
-                    {filteredComplianceRecords.map((record) => (
-                      <OperationalStreamCard
-                        key={record.id}
-                        id={`compliance-card-${record.id}`}
-                        onClick={() => setSelectedComplianceId(record.id)}
-                        icon={
-                          record.status === "overdue" ? (
-                            <AlertTriangle className="h-4 w-4 text-destructive" />
-                          ) : record.status === "expiring" ? (
-                            <Waves className="h-4 w-4 text-amber-600" />
-                          ) : record.status === "missing" ? (
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                          )
-                        }
-                        title={record.title}
-                        context={record.propertyName}
-                        hint={`Expires: ${formatDueText(record.nextDueDate || record.expiryDate)}`}
-                        statusText={getComplianceStatusText(record)}
-                        accent={
-                          record.status === "overdue"
-                            ? "red"
-                            : record.status === "expiring"
-                            ? "amber"
-                            : record.status === "healthy"
-                            ? "green"
-                            : "slate"
-                        }
-                        actions={[
-                          {
-                            id: "create-inspection-task",
-                            label: "Create Inspection Task",
-                            onClick: () => onOpenIntake?.("report_issue"),
-                          },
-                          {
-                            id: "upload-certificate",
-                            label: "Upload New Certificate",
-                            onClick: () => navigate("/compliance"),
-                          },
-                          {
-                            id: "view-record",
-                            label: "View Record",
-                            onClick: () => setSelectedComplianceId(record.id),
-                          },
-                        ]}
-                        className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-[#8EC9CE]")}
-                      />
-                    ))}
-
-                    {filteredComplianceRecords.length === 0 && (
-                      <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
-                        No compliance records match your current filters.
-                      </div>
-                    )}
-                </div>
-
-                <div className="lg:sticky lg:top-3 self-start space-y-3">
-                  <div
-                    className="rounded-xl px-0 py-0"
-                    style={{
-                      marginLeft: 0,
-                      marginRight: 0,
-                      boxShadow: "none",
-                      background: "unset",
-                      backgroundColor: "rgba(42, 41, 62, 0)",
-                      backgroundClip: "unset",
-                      WebkitBackgroundClip: "unset",
-                    }}
-                  >
-                    <PanelSectionTitle as="h3" className="ml-2">
-                      Compliance Health
-                    </PanelSectionTitle>
-                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                      {(
-                        [
-                          {
-                            label: "Healthy",
-                            value: complianceHealth.healthy,
-                            color: "rgba(16, 185, 129, 1)",
-                          },
-                          {
-                            label: "Expiring",
-                            value: complianceHealth.expiring,
-                            color: "rgba(255, 184, 77, 1)",
-                          },
-                          {
-                            label: "Overdue",
-                            value: complianceHealth.overdue,
-                            color: "rgba(235, 104, 52, 1)",
-                          },
-                          {
-                            label: "Missing",
-                            value: complianceHealth.missing,
-                            color: "rgba(100, 116, 139, 1)",
-                          },
-                        ] as const
-                      ).map((metric) => (
-                        <div
-                          key={metric.label}
-                          className={cn(
-                            "flex min-w-0 flex-col items-center justify-center text-center rounded-xl bg-transparent h-[98px] pt-[13px] pb-[18px] px-0.5",
-                            "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
-                          )}
-                        >
-                          <p
-                            className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu tabular-nums"
-                            style={{
-                              maxWidth: "100%",
-                              fontSize: 34,
-                              color: metric.color,
-                              fontFamily: '"Inter Tight"',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {metric.value}
-                          </p>
-                          <p className="mt-1 text-[11px] sm:text-[12px] text-muted-foreground leading-tight">
-                            {metric.label}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <PanelSectionTitle as="h3">Property Compliance Status</PanelSectionTitle>
-                    <div className="space-y-1.5">
-                      {propertyComplianceStatus.map((row) => {
-                        const statusText =
-                          row.counts.overdue > 0
-                            ? `${row.counts.overdue} Overdue`
-                            : row.counts.expiring > 0
-                            ? `${row.counts.expiring} Expiring`
-                            : row.counts.missing > 0
-                            ? `${row.counts.missing} Missing`
-                            : "Healthy";
-                        return (
-                          <p key={row.propertyName} className="text-xs text-foreground/90">
-                            {row.propertyName} - {statusText}
-                          </p>
-                        );
-                      })}
-                      {propertyComplianceStatus.length === 0 && (
-                        <p className="text-xs text-muted-foreground">No property compliance records yet.</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                    <PanelSectionTitle as="h3">Upcoming Expiry</PanelSectionTitle>
-                    <div className="space-y-1.5">
-                      {upcomingExpiry.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No upcoming expiries.</p>
-                      ) : (
-                        upcomingExpiry.slice(0, 3).map((record) => (
-                          <p key={record.id} className="text-xs text-foreground/90">
-                            {record.complianceType} - {record.dueIn} day{record.dueIn === 1 ? "" : "s"}
-                          </p>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {selectedComplianceRecord && (
-                    <div className="rounded-xl bg-card/70 shadow-e1 p-3">
-                      <PanelSectionTitle as="h3">Compliance Record Detail</PanelSectionTitle>
-                      <div className="space-y-1.5 text-xs">
-                        <p>
-                          <span className="text-muted-foreground">Compliance Type:</span>{" "}
-                          {selectedComplianceRecord.complianceType}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Linked Property:</span>{" "}
-                          {selectedComplianceRecord.propertyName}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Expiry Date:</span>{" "}
-                          {formatDueText(
-                            selectedComplianceRecord.nextDueDate || selectedComplianceRecord.expiryDate
-                          )}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Linked Document:</span>{" "}
-                          {selectedComplianceRecord.linkedDocument}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Inspection History:</span>{" "}
-                          {selectedComplianceRecord.inspectionHistory.join(", ")}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Linked Tasks:</span>{" "}
-                          {selectedComplianceRecord.linkedTasks.length || 0}
-                        </p>
-                        <p>
-                          <span className="text-muted-foreground">Notes:</span>{" "}
-                          {selectedComplianceRecord.notes}
-                        </p>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        <button type="button" onClick={() => onOpenIntake?.("add_record")} className={intakeAddRecordMicroClassName}>
-                          <FileText className="h-3 w-3 shrink-0 text-white" aria-hidden />
-                          Add Record
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenIntake?.("report_issue")}
-                          className={intakeReportIssueMicroClassName}
-                        >
-                          <Plus className="h-3 w-3 shrink-0 text-white" aria-hidden />
-                          Create Inspection Task
-                        </button>
-                        <button type="button" className="text-[11px] rounded-[8px] px-2 py-1 bg-background shadow-e1 hover:shadow-e2">
-                          Update Expiry
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              </div>
-            </div>
+            <PropertyRecordsTab
+              properties={properties}
+              selectedPropertyIds={selectedPropertyIds}
+              recordsView={recordsViewProp ?? "all"}
+              onRecordsViewChange={onRecordsViewChange ?? (() => {})}
+              onOpenIntake={onOpenIntake}
+              extraComplianceRecords={attentionComplianceDrafts}
+            />
           )}
 
           {activeTab === "schedule" && (

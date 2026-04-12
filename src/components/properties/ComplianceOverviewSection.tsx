@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { propertySubPath } from "@/lib/propertyRoutes";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
 import { LoadingState } from "@/components/design-system/LoadingState";
@@ -94,7 +95,7 @@ export function ComplianceOverviewSection({
           variant="ghost"
           size="sm"
           className="text-primary hover:text-primary/90"
-          onClick={() => navigate(`/properties/${propertyId}/compliance`)}
+          onClick={() => navigate(propertySubPath(propertyId, "compliance"))}
         >
           View full schedule
           <ChevronRight className="h-4 w-4 ml-1" />

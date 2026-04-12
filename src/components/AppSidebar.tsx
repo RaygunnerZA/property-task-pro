@@ -19,6 +19,9 @@ import {
   propertyHubTasksPath,
   propertySubPath,
   WORKBENCH_PANEL_TAB_QUERY,
+  WORKBENCH_RECORDS_VIEW_QUERY,
+  WORKBENCH_TAB_ALIAS_QUERY,
+  normalizeRecordsView,
   normalizeWorkbenchPanelTab,
 } from '@/lib/propertyRoutes';
 import fillaLogo from '@/assets/filla-logo.svg';
@@ -216,12 +219,25 @@ export function AppSidebar() {
       isContextItem && urlBase === '/assets' && Boolean(hubPropertyId);
     const isHubNav = Boolean(item.url === '/' && !item.getUrl);
     const livePanelTab = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
+    const liveTabAlias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
+    const liveWorkbenchTab = normalizeWorkbenchPanelTab(livePanelTab, liveTabAlias);
+    const liveRecordsView = normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
     const isActive = isDashboardPropertyHub
       ? item.title === 'Issues'
         ? currentPath === '/' &&
           searchParams.get('property') === hubPropertyId &&
-          normalizeWorkbenchPanelTab(livePanelTab) === 'issues'
-        : false
+          liveWorkbenchTab === 'issues'
+        : item.title === 'Compliance'
+          ? currentPath === '/' &&
+            searchParams.get('property') === hubPropertyId &&
+            liveWorkbenchTab === 'records' &&
+            liveRecordsView === 'compliance'
+          : item.title === 'Documents'
+            ? currentPath === '/' &&
+              searchParams.get('property') === hubPropertyId &&
+              liveWorkbenchTab === 'records' &&
+              liveRecordsView === 'documents'
+            : false
       : isPropertyListHub
         ? currentPath === '/properties' &&
           searchParams.get('property') === hubPropertyId
