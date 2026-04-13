@@ -107,7 +107,21 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
   };
 
   const handleSend = async () => {
-    if ((!messageText.trim() && attachments.length === 0) || !orgId || !userId) {
+    if (!messageText.trim() && attachments.length === 0) {
+      toast({
+        title: "Nothing to send",
+        description: "Type a message or attach a file.",
+      });
+      return;
+    }
+    if (!orgId || !userId) {
+      toast({
+        title: "Can't send yet",
+        description: !orgId
+          ? "No active organisation — try refreshing the page."
+          : "You're not signed in — sign in and try again.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -227,12 +241,23 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
             title: "Message sent",
             description: `Sent with ${uploadedAttachments.length} attachment${uploadedAttachments.length > 1 ? 's' : ''}`,
           });
+        } else if (attachments.length > 0) {
+          toast({
+            title: "Message saved",
+            description: "Your text was saved, but files failed to upload. Try again or pick smaller files.",
+            variant: "destructive",
+          });
         }
+      } else {
+        toast({
+          title: "Message sent",
+          description: "Your message was added to this task.",
+        });
       }
 
       setMessageText("");
       setAttachments([]);
-      refresh();
+      await refresh();
     } catch (err: any) {
       console.error("Error sending message:", err);
       toast({

@@ -20,14 +20,17 @@ export function useTaskMessages(taskId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMessages = useCallback(async () => {
+  const fetchMessages = useCallback(async (mode: "initial" | "refresh" = "initial") => {
     if (!orgId || !taskId) {
       setMessages([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const showFullSpinner = mode === "initial";
+    if (showFullSpinner) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -83,16 +86,20 @@ export function useTaskMessages(taskId: string | undefined) {
       setError(err.message || "Failed to fetch messages");
       setMessages([]);
     } finally {
-      setLoading(false);
+      if (showFullSpinner) {
+        setLoading(false);
+      }
     }
   }, [orgId, taskId]);
 
   useEffect(() => {
     if (!orgLoading) {
-      fetchMessages();
+      void fetchMessages("initial");
     }
   }, [fetchMessages, orgLoading]);
 
-  return { messages, loading, error, refresh: fetchMessages };
+  const refresh = useCallback(() => fetchMessages("refresh"), [fetchMessages]);
+
+  return { messages, loading, error, refresh };
 }
 
