@@ -280,7 +280,7 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
   if (error) {
     return (
       <div className="p-4 text-center text-destructive">
-        <p>Error loading messages: {error?.message || String(error)}</p>
+        <p>Error loading messages: {error}</p>
       </div>
     );
   }

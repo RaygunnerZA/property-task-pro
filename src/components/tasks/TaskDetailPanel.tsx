@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, MessageSquare, FileText, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, User } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -10,7 +10,7 @@ import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useTaskMessages } from "@/hooks/useTaskMessages";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
@@ -49,6 +50,7 @@ import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import { SemanticChip } from "@/components/chips/semantic";
+import { format, isValid, parseISO } from "date-fns";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
@@ -66,7 +68,7 @@ interface TaskDetailPanelProps {
  * 
  * Modal/column panel for viewing and editing task details.
  * Create Task aesthetic: image slider, description 18pt, multi-column metadata, CTA at bottom.
- * - Tabs: Summary, Messaging, Files, Logs
+ * - Inline summary (title, key facts, chips), messaging, collapsible activity
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
@@ -94,15 +96,21 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { members } = useOrgMembers();
+  const { messages: conversationMessages } = useTaskMessages(taskId);
+  const latestConversationMessage = useMemo(() => {
+    if (conversationMessages.length === 0) return null;
+    return conversationMessages[conversationMessages.length - 1];
+  }, [conversationMessages]);
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [messagesOpen, setMessagesOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const thumbnailScrollRef = useRef<HTMLDivElement>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -384,6 +392,110 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const hasCategoryFacts = selectedThemeIds.length > 0;
   const hasComplianceFacts = isCompliance || Boolean(complianceLevel);
 
+  const dueDateSummaryLabel = useMemo(() => {
+    if (!dueDate) return "No due date";
+    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
+    return isValid(d) ? format(d, "MMM d, yyyy") : dueDate;
+  }, [dueDate]);
+
+  const assigneeSummaryLabel = useMemo(() => {
+    if (selectedUserId) {
+      const m = members.find((x) => x.user_id === selectedUserId);
+      return m?.display_name || m?.nickname || m?.email || "Assignee";
+    }
+    if (selectedTeamIds.length > 0) return "Team";
+    return "Unassigned";
+  }, [members, selectedUserId, selectedTeamIds]);
+
+  const prioritySummaryLabel = useMemo(() => {
+    return (
+      ({ low: "Low", normal: "Normal", high: "High", urgent: "Urgent" } as Record<string, string>)[priority] ||
+      priority
+    );
+  }, [priority]);
+
+  /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
+  const whereChipLabel = useMemo(() => {
+    if (!task) return "PLACE";
+    const propName =
+      (task as any).property?.nickname ||
+      (task as any).property_name ||
+      "";
+    const spacesRaw = (task as any).spaces;
+    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
+    const spaceNames = spacesArr
+      .filter((s: { id?: string }) => selectedSpaceIds.length === 0 || (s.id && selectedSpaceIds.includes(s.id)))
+      .map((s: { name?: string }) => s.name)
+      .filter(Boolean) as string[];
+    const spacePart = spaceNames.join(", ");
+    if (propName && spacePart) return `${propName} · ${spacePart}`;
+    if (propName) return propName;
+    if (spacePart) return spacePart;
+    return "PLACE";
+  }, [task, selectedSpaceIds]);
+
+  const whenChipLabel = useMemo(() => {
+    if (!dueDate && milestones.length === 0) return "DATE";
+    let datePart = "";
+    if (dueDate) {
+      const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
+      datePart = isValid(d) ? format(d, "MMM d, yyyy") : dueDate;
+    }
+    if (milestones.length > 0) {
+      const m = `${milestones.length} milestone${milestones.length === 1 ? "" : "s"}`;
+      return datePart ? `${datePart} · ${m}` : m;
+    }
+    return datePart || "DATE";
+  }, [dueDate, milestones]);
+
+  const personChipLabel = useMemo(() => {
+    if (!hasWhoFacts) return "+PERSON";
+    if (selectedUserId) return assigneeSummaryLabel;
+    if (selectedTeamIds.length > 0 && task) {
+      const teamsRaw = (task as any).teams;
+      let teamsArr: { id?: string; name?: string }[] = [];
+      if (Array.isArray(teamsRaw)) teamsArr = teamsRaw;
+      else if (typeof teamsRaw === "string") {
+        try {
+          teamsArr = JSON.parse(teamsRaw || "[]");
+        } catch {
+          teamsArr = [];
+        }
+      }
+      const names = teamsArr
+        .filter((t) => t.id && selectedTeamIds.includes(t.id))
+        .map((t) => t.name)
+        .filter(Boolean) as string[];
+      if (names.length > 0) return names.join(", ");
+      return assigneeSummaryLabel;
+    }
+    if (pendingInvitations.length > 0) return "Invited";
+    return "PERSON";
+  }, [hasWhoFacts, selectedUserId, assigneeSummaryLabel, selectedTeamIds, task, pendingInvitations]);
+
+  const assetChipLabel = useMemo(() => {
+    if (!hasAssetFacts) return "+ASSET";
+    const names = taskAssets
+      .filter((a) => selectedAssetIds.includes(a.id))
+      .map((a) => a.name)
+      .filter(Boolean);
+    return names.length > 0 ? names.join(", ") : "ASSET";
+  }, [hasAssetFacts, taskAssets, selectedAssetIds]);
+
+  const categoryChipLabel = useMemo(() => {
+    if (!hasCategoryFacts) return "+TAG";
+    const cats = (task as any)?.categories;
+    const arr = Array.isArray(cats) ? cats : [];
+    const names = arr.map((c: { name?: string }) => c.name).filter(Boolean) as string[];
+    return names.length > 0 ? names.join(", ") : "TAG";
+  }, [hasCategoryFacts, task]);
+
+  const complianceChipLabel = useMemo(() => {
+    if (!hasComplianceFacts) return "+RULE";
+    if (complianceLevel) return complianceLevel.toUpperCase();
+    return "RULE";
+  }, [hasComplianceFacts, complianceLevel]);
+
   const { userId } = useDataContext();
   const allAttachments = (task as any)?.images ?? [];
   const imageAttachments = useMemo(
@@ -510,50 +622,54 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const panelContent = (
     <>
       <div ref={panelScrollRef} className="flex-1 overflow-y-auto min-h-0">
-        {/* Image section - thumbnails at top + Camera/Upload buttons (Create Task style) */}
+        {/* Image section — main preview (≤70% width) + vertical thumbnails + actions */}
         <div className="p-4 pb-0 space-y-3">
           {imageAttachments.length > 0 ? (
-            <div className="space-y-2">
-              {/* Full-width selected image preview */}
+            <div className="flex gap-3 items-start w-full">
               {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
-                <button
-                  type="button"
-                  className="relative w-full rounded-[10px] overflow-hidden bg-muted shadow-none cursor-pointer hover:shadow-none transition-shadow"
-                  onClick={() => {
-                    const selectedImage = imageAttachments[selectedImageIndex];
-                    if (selectedImage?.id) {
-                      setEditingImageId(selectedImage.id);
-                      setShowAnnotationEditor(true);
-                      return;
-                    }
-                    setLightboxOpen(true);
-                  }}
-                >
-                  <img
-                    src={imageAttachments[selectedImageIndex].optimized_url || imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].thumbnail_url}
-                    alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
-                    className="w-full max-h-[300px] object-contain bg-muted/40"
-                    onError={(e) => {
-                      const img = imageAttachments[selectedImageIndex];
-                      if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
-                        (e.target as HTMLImageElement).src = img.file_url;
+                <div className="w-[70%] max-w-[70%] min-w-0 shrink-0">
+                  <button
+                    type="button"
+                    className="relative w-full max-w-full rounded-[10px] overflow-hidden bg-muted shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => {
+                      const selectedImage = imageAttachments[selectedImageIndex];
+                      if (selectedImage?.id) {
+                        setEditingImageId(selectedImage.id);
+                        setShowAnnotationEditor(true);
+                        return;
                       }
+                      setLightboxOpen(true);
                     }}
-                  />
-                  <TaskImageAnnotationOverlay
-                    annotations={imageAttachments[selectedImageIndex].annotation_json}
-                  />
-                </button>
+                  >
+                    <img
+                      src={
+                        imageAttachments[selectedImageIndex].optimized_url ||
+                        imageAttachments[selectedImageIndex].file_url ||
+                        imageAttachments[selectedImageIndex].thumbnail_url
+                      }
+                      alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
+                      className="w-full max-h-[min(45vh,340px)] object-contain bg-muted/40"
+                      onError={(e) => {
+                        const img = imageAttachments[selectedImageIndex];
+                        if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
+                          (e.target as HTMLImageElement).src = img.file_url;
+                        }
+                      }}
+                    />
+                    <TaskImageAnnotationOverlay
+                      annotations={imageAttachments[selectedImageIndex].annotation_json}
+                    />
+                  </button>
+                </div>
               )}
-              {/* Thumbnail strip + action buttons */}
-              <div className="flex gap-3 items-end">
-                <div className="flex gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden flex-1 min-w-0" ref={thumbnailScrollRef}>
+              <div className="flex-1 min-w-0 flex gap-2 justify-end items-stretch">
+                <div className="flex flex-col gap-1.5 max-h-[min(45vh,340px)] overflow-y-auto overflow-x-hidden pr-0.5 [&::-webkit-scrollbar]:w-1.5">
                   {imageAttachments.map((image: any, index: number) => (
                     <button
                       key={image.id}
                       type="button"
                       className={cn(
-                        "aspect-square w-14 h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-80 transition-opacity relative border-2 shadow-e1",
+                        "aspect-square w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative border-2 shadow-e1",
                         selectedImageIndex === index ? "border-primary" : "border-transparent"
                       )}
                       onClick={() => setSelectedImageIndex(index)}
@@ -571,7 +687,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-2 items-end shrink-0">
+                <div className="flex flex-col gap-2 shrink-0 pt-0.5">
                   <button
                     type="button"
                     onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
@@ -657,296 +773,382 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           />
         </div>
 
-        {/* Content - p-4 matching Create Task */}
+        {/* Content — title, key facts, description, chips, messaging, activity */}
         <div className="p-4 space-y-4">
-          {/* Description 18pt - replaces title */}
+          <h2 className="text-sm font-semibold text-foreground tracking-tight line-clamp-2">
+            {title.trim() || "Untitled task"}
+          </h2>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveSection(activeSection === "when" ? null : "when")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
+                "bg-muted/70 hover:shadow-md text-foreground"
+              )}
+            >
+              <Calendar className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
+              <span className="truncate max-w-[11rem]">{dueDateSummaryLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection(activeSection === "who" ? null : "who")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
+                "bg-muted/70 hover:shadow-md text-foreground"
+              )}
+            >
+              <User className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
+              <span className="truncate max-w-[11rem]">{assigneeSummaryLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSection(activeSection === "priority" ? null : "priority")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
+                "bg-muted/70 hover:shadow-md text-foreground",
+                priority === "urgent" && "text-destructive"
+              )}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+              <span>{prioritySummaryLabel}</span>
+            </button>
+          </div>
+
           <p className="text-[18px] text-foreground leading-relaxed">
             {(task as any)?.description || "No description provided"}
           </p>
 
-          {/* Tabs - below description: Summary | Messaging | Activity */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-0 rounded-[15px]">
-              <TabsList className="w-full grid grid-cols-3 h-12 bg-transparent px-[7px] py-1 gap-1 rounded-[15px] mx-0 shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.23),inset_0px_-5.7px_9.4px_0px_rgba(255,255,255,0.62)]">
-                <TabsTrigger
-                  value="summary"
-                  className={cn(
-                    "rounded-[8px] data-[state=active]:bg-card",
-                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                  )}
-                >
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger
-                  value="messaging"
-                  className={cn(
-                    "rounded-[8px] data-[state=active]:bg-card",
-                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                  )}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Messaging
-                </TabsTrigger>
-                <TabsTrigger
-                  value="activity"
-                  className={cn(
-                    "rounded-[8px] data-[state=active]:bg-card",
-                    "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]"
-                  )}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Activity
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <SemanticChip
+              epistemic={hasWhoFacts ? "fact" : "proposal"}
+              label={personChipLabel}
+              truncate={hasWhoFacts}
+              className={hasWhoFacts ? "max-w-[min(280px,85vw)]" : undefined}
+              onPress={() => setActiveSection("who")}
+            />
+            <SemanticChip
+              epistemic={hasWhereFacts ? "fact" : "proposal"}
+              label={hasWhereFacts ? whereChipLabel : "+PLACE"}
+              truncate={hasWhereFacts}
+              className={hasWhereFacts ? "max-w-[min(280px,85vw)]" : undefined}
+              onPress={() => setActiveSection("where")}
+            />
+            <SemanticChip
+              epistemic={hasWhenFacts ? "fact" : "proposal"}
+              label={hasWhenFacts ? whenChipLabel : "+DATE"}
+              truncate={hasWhenFacts}
+              className={hasWhenFacts ? "max-w-[min(280px,85vw)]" : undefined}
+              onPress={() => setActiveSection("when")}
+            />
+            <SemanticChip
+              epistemic={hasAssetFacts ? "fact" : "proposal"}
+              label={hasAssetFacts ? assetChipLabel : "+ASSET"}
+              truncate={hasAssetFacts}
+              className={hasAssetFacts ? "max-w-[min(280px,85vw)]" : undefined}
+              onPress={() => setActiveSection("what")}
+            />
+            <SemanticChip epistemic="fact" label={priority.toUpperCase()} truncate={false} onPress={() => setActiveSection("priority")} />
+            <SemanticChip epistemic="fact" label={statusFactChips[0]?.label ?? "OPEN"} truncate={false} onPress={() => setActiveSection("status")} />
+            <SemanticChip
+              epistemic={hasCategoryFacts ? "fact" : "proposal"}
+              label={hasCategoryFacts ? categoryChipLabel : "+TAG"}
+              truncate={hasCategoryFacts}
+              className={hasCategoryFacts ? "max-w-[min(280px,85vw)]" : undefined}
+              onPress={() => setActiveSection("category")}
+            />
+            <SemanticChip
+              epistemic={hasComplianceFacts ? "fact" : "proposal"}
+              label={complianceChipLabel}
+              truncate={hasComplianceFacts}
+              className={hasComplianceFacts ? "max-w-[min(240px,85vw)]" : undefined}
+              onPress={() => setActiveSection("compliance")}
+            />
+          </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-hidden flex flex-col">
-              <TabsContent value="summary" className="mt-0 flex-1 overflow-y-auto">
-              <div className="space-y-0 flex flex-col mt-[15px]">
-                <GraphInsightPanel
-                  start={{ type: "task", id: taskId }}
-                  depth={2}
-                  variant="minimal"
-                  className="mb-3"
-                />
-                <div className="flex flex-wrap justify-end gap-2 pb-2">
-                  <SemanticChip epistemic={hasWhoFacts ? "fact" : "proposal"} label={hasWhoFacts ? "PERSON" : "+PERSON"} truncate={false} onPress={() => setActiveSection("who")} />
-                  <SemanticChip epistemic={hasWhereFacts ? "fact" : "proposal"} label={hasWhereFacts ? "PLACE" : "+PLACE"} truncate={false} onPress={() => setActiveSection("where")} />
-                  <SemanticChip epistemic={hasWhenFacts ? "fact" : "proposal"} label={hasWhenFacts ? "DATE" : "+DATE"} truncate={false} onPress={() => setActiveSection("when")} />
-                  <SemanticChip epistemic={hasAssetFacts ? "fact" : "proposal"} label={hasAssetFacts ? "ASSET" : "+ASSET"} truncate={false} onPress={() => setActiveSection("what")} />
-                  <SemanticChip epistemic="fact" label={priority.toUpperCase()} truncate={false} onPress={() => setActiveSection("priority")} />
-                  <SemanticChip epistemic="fact" label={statusFactChips[0]?.label ?? "OPEN"} truncate={false} onPress={() => setActiveSection("status")} />
-                  <SemanticChip epistemic={hasCategoryFacts ? "fact" : "proposal"} label={hasCategoryFacts ? "TAG" : "+TAG"} truncate={false} onPress={() => setActiveSection("category")} />
-                  <SemanticChip epistemic={hasComplianceFacts ? "fact" : "proposal"} label={hasComplianceFacts ? "RULE" : "+RULE"} truncate={false} onPress={() => setActiveSection("compliance")} />
-                </div>
+          {activeSection === "who" && (
+            <WhoSection
+              isActive
+              onActivate={() => setActiveSection("who")}
+              assignedUserId={selectedUserId}
+              assignedTeamIds={selectedTeamIds}
+              onUserChange={(userId) => handleUserChange(userId)}
+              onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
+              pendingInvitations={pendingInvitations}
+              onPendingInvitationsChange={setPendingInvitations}
+              onInviteToOrg={(prefill) => {
+                setInvitePrefill(prefill ?? null);
+                setInviteModalOpen(true);
+              }}
+              onAddAsContractor={() => {
+                setInvitePrefill(null);
+                setInviteModalOpen(true);
+              }}
+            />
+          )}
 
-                {activeSection === "who" && (
-                  <WhoSection
-                    isActive
-                    onActivate={() => setActiveSection("who")}
-                    assignedUserId={selectedUserId}
-                    assignedTeamIds={selectedTeamIds}
-                    onUserChange={(userId) => handleUserChange(userId)}
-                    onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
-                    pendingInvitations={pendingInvitations}
-                    onPendingInvitationsChange={setPendingInvitations}
-                    onInviteToOrg={(prefill) => {
-                      setInvitePrefill(prefill ?? null);
-                      setInviteModalOpen(true);
-                    }}
-                    onAddAsContractor={() => {
-                      setInvitePrefill(null);
-                      setInviteModalOpen(true);
-                    }}
-                  />
-                )}
+          {activeSection === "where" && (
+            <WhereSection
+              propertyId={localPropertyId}
+              selectedPropertyIds={selectedPropertyIds}
+              selectedSpaceIds={selectedSpaceIds}
+              onPropertyChange={handlePropertyChangeSection}
+              onSpacesChange={handleSpacesChange}
+              showFactsByDefault
+            />
+          )}
 
-                {activeSection === "where" && (
-                  <WhereSection
-                    propertyId={localPropertyId}
-                    selectedPropertyIds={selectedPropertyIds}
-                    selectedSpaceIds={selectedSpaceIds}
-                    onPropertyChange={handlePropertyChangeSection}
-                    onSpacesChange={handleSpacesChange}
-                    showFactsByDefault
-                  />
-                )}
+          {activeSection === "when" && (
+            <WhenSection
+              isActive
+              onActivate={() => setActiveSection("when")}
+              onDeactivate={() => setActiveSection(null)}
+              dueDate={dueDate}
+              repeatRule={repeatRule}
+              onDueDateChange={handleDueDateChange}
+              onRepeatRuleChange={setRepeatRule}
+              milestones={milestones}
+              onMilestonesChange={setMilestones}
+            />
+          )}
 
-                {activeSection === "when" && (
-                  <WhenSection
-                    isActive
-                    onActivate={() => setActiveSection("when")}
-                    onDeactivate={() => setActiveSection(null)}
-                    dueDate={dueDate}
-                    repeatRule={repeatRule}
-                    onDueDateChange={handleDueDateChange}
-                    onRepeatRuleChange={setRepeatRule}
-                    milestones={milestones}
-                    onMilestonesChange={setMilestones}
-                  />
-                )}
+          {activeSection === "what" && (
+            <AssetSection
+              isActive
+              onActivate={() => setActiveSection("what")}
+              propertyId={localPropertyId || undefined}
+              spaceId={selectedSpaceIds[0]}
+              selectedAssetIds={selectedAssetIds}
+              onAssetsChange={handleAssetsChange}
+            />
+          )}
 
-                {activeSection === "what" && (
-                  <AssetSection
-                    isActive
-                    onActivate={() => setActiveSection("what")}
-                    propertyId={localPropertyId || undefined}
-                    spaceId={selectedSpaceIds[0]}
-                    selectedAssetIds={selectedAssetIds}
-                    onAssetsChange={handleAssetsChange}
-                  />
-                )}
+          {activeSection === "priority" && (
+            <CreateTaskRow
+              sectionId="priority"
+              icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+              instruction="Add Priority"
+              valueLabel="+Priority"
+              isActive
+              onActivate={() => setActiveSection("priority")}
+              factChips={priorityFactChips}
+              hoverChips={[
+                { id: "low", label: "LOW", onPress: () => setPriority("low") },
+                { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
+                { id: "high", label: "HIGH", onPress: () => setPriority("high") },
+                { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
+              ]}
+            />
+          )}
 
-                {activeSection === "priority" && (
-                  <CreateTaskRow
-                    sectionId="priority"
-                    icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-                    instruction="Add Priority"
-                    valueLabel="+Priority"
-                    isActive
-                    onActivate={() => setActiveSection("priority")}
-                    factChips={priorityFactChips}
-                    hoverChips={[
-                      { id: "low", label: "LOW", onPress: () => setPriority("low") },
-                      { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
-                      { id: "high", label: "HIGH", onPress: () => setPriority("high") },
-                      { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
-                    ]}
-                  />
-                )}
+          {activeSection === "status" && (
+            <CreateTaskRow
+              sectionId="status"
+              icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
+              instruction="Set Status"
+              valueLabel="+Status"
+              isActive
+              onActivate={() => setActiveSection("status")}
+              factChips={statusFactChips}
+              hoverChips={[
+                { id: "open", label: "OPEN", onPress: () => setStatus("open") },
+                { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
+                { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
+                { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
+              ]}
+            />
+          )}
 
-                {activeSection === "status" && (
-                  <CreateTaskRow
-                    sectionId="status"
-                    icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
-                    instruction="Set Status"
-                    valueLabel="+Status"
-                    isActive
-                    onActivate={() => setActiveSection("status")}
-                    factChips={statusFactChips}
-                    hoverChips={[
-                      { id: "open", label: "OPEN", onPress: () => setStatus("open") },
-                      { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
-                      { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
-                      { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
-                    ]}
-                  />
-                )}
+          {activeSection === "category" && (
+            <CategorySection
+              isActive
+              onActivate={() => setActiveSection("category")}
+              selectedThemeIds={selectedThemeIds}
+              onThemesChange={handleThemesChange}
+            />
+          )}
 
-                {activeSection === "category" && (
-                  <CategorySection
-                    isActive
-                    onActivate={() => setActiveSection("category")}
-                    selectedThemeIds={selectedThemeIds}
-                    onThemesChange={handleThemesChange}
-                  />
-                )}
-
-                {activeSection === "compliance" && (
-                  <CreateTaskRow
-                    sectionId="compliance"
-                    icon={<Shield className="h-4 w-4 text-muted-foreground" />}
-                    instruction="Add Compliance Rule"
-                    valueLabel="+Rule"
-                    isActive
-                    onActivate={() => setActiveSection("compliance")}
-                    factChips={[]}
-                  >
-                    <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
-                      <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
-                      <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
-                      {isCompliance && (
-                        <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                          <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
-                            <SelectValue placeholder="Level" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="critical">Critical</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </CreateTaskRow>
+          {activeSection === "compliance" && (
+            <CreateTaskRow
+              sectionId="compliance"
+              icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+              instruction="Add Compliance Rule"
+              valueLabel="+Rule"
+              isActive
+              onActivate={() => setActiveSection("compliance")}
+              factChips={[]}
+            >
+              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
+                <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+                {isCompliance && (
+                  <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                    <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                      <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="critical">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
-              </TabsContent>
+            </CreateTaskRow>
+          )}
 
-              <TabsContent value="messaging" className="mt-0 flex-1 flex flex-col min-h-0">
-                <TaskMessaging taskId={taskId} />
-              </TabsContent>
-
-              <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
-                <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
-                  <FileUploadZone
-                    taskId={taskId}
-                    propertyId={propertyId}
-                    onUploadComplete={() => {
-                      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-                      queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
-                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                      refreshTask();
-                      setSelectedImageIndex(0);
-                    }}
-                    accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
+          <Collapsible open={messagesOpen} onOpenChange={setMessagesOpen}>
+            <CollapsibleTrigger
+              className={cn(
+                "flex w-full items-stretch gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium",
+                "bg-muted/40 shadow-sm hover:shadow-md transition-shadow text-foreground"
+              )}
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
+                <div className="flex w-full items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-base leading-none" aria-hidden>
+                      💬
+                    </span>
+                    <span className="truncate">Start a Conversation</span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                      messagesOpen && "rotate-180"
+                    )}
+                    aria-hidden
                   />
                 </div>
-                {imageAttachments.length > 0 && (() => {
-                  const img = imageAttachments[selectedImageIndex ?? 0] as any;
-                  const orgId = (task as any)?.org_id;
-                  if (!orgId) return null;
-                  return (
-                    <ImageAiActions
-                      attachment={img}
-                      assets={assets}
-                      complianceItems={complianceItems.map((c: any) => ({
-                        id: c.id,
-                        title: c.title,
-                        expiry_date: c.expiry_date,
-                      }))}
-                      orgId={orgId}
-                      propertyId={propertyId}
-                      taskId={taskId}
-                      onRefresh={() => {
-                        refreshTask();
-                        queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
-                        queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
-                        queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
-                      }}
-                    />
-                  );
-                })()}
-                {imageAttachments.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({imageAttachments.length})</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {imageAttachments.map((image: any) => (
-                        <button
-                          key={image.id}
-                          type="button"
-                          className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
-                          onClick={() => {
-                            if (!image?.id) return;
-                            setEditingImageId(image.id);
-                            setShowAnnotationEditor(true);
-                          }}
-                        >
-                          <img
-                            src={image.thumbnail_url || image.file_url}
-                            alt={image.file_name || "Task image"}
-                            className="w-full h-full object-contain bg-muted/40"
-                            onError={(e) => {
-                              if (image.thumbnail_url && image.file_url) {
-                                (e.target as HTMLImageElement).src = image.file_url;
-                              }
-                            }}
-                          />
-                          <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Logs section - combined with Files in Activity */}
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Logs
-                  </h3>
-                  <p className="text-muted-foreground text-sm">
-                    Audit logs and activity history will appear here
+                {latestConversationMessage && (
+                  <p className="line-clamp-2 pl-7 text-left text-xs font-normal leading-snug text-muted-foreground">
+                    <span className="font-medium text-foreground/90">
+                      {latestConversationMessage.author_name || "Someone"}
+                    </span>
+                    {latestConversationMessage.body?.trim() ? (
+                      <>
+                        <span className="text-muted-foreground/80"> · </span>
+                        <span>{latestConversationMessage.body.trim()}</span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/80"> · Sent an attachment</span>
+                    )}
                   </p>
+                )}
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3 data-[state=closed]:animate-out">
+              <div className="flex max-h-[280px] min-h-0 h-[min(280px,42dvh)] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
+                <TaskMessaging taskId={taskId} />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
+            <CollapsibleTrigger
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium",
+                "bg-muted/40 shadow-sm hover:shadow-md transition-shadow text-foreground"
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+                View activity
+              </span>
+              <ChevronDown
+                className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", activityOpen && "rotate-180")}
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3 space-y-4 data-[state=closed]:animate-out">
+              <GraphInsightPanel
+                start={{ type: "task", id: taskId }}
+                depth={2}
+                variant="minimal"
+                className="mb-1"
+              />
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
+                <FileUploadZone
+                  taskId={taskId}
+                  propertyId={propertyId}
+                  onUploadComplete={() => {
+                    queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+                    queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
+                    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                    refreshTask();
+                    setSelectedImageIndex(0);
+                  }}
+                  accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
+                />
+              </div>
+              {imageAttachments.length > 0 && (() => {
+                const img = imageAttachments[selectedImageIndex ?? 0] as any;
+                const orgId = (task as any)?.org_id;
+                if (!orgId) return null;
+                return (
+                  <ImageAiActions
+                    attachment={img}
+                    assets={assets}
+                    complianceItems={complianceItems.map((c: any) => ({
+                      id: c.id,
+                      title: c.title,
+                      expiry_date: c.expiry_date,
+                    }))}
+                    orgId={orgId}
+                    propertyId={propertyId}
+                    taskId={taskId}
+                    onRefresh={() => {
+                      refreshTask();
+                      queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+                      queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
+                      queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
+                    }}
+                  />
+                );
+              })()}
+              {imageAttachments.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({imageAttachments.length})</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {imageAttachments.map((image: any) => (
+                      <button
+                        key={image.id}
+                        type="button"
+                        className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
+                        onClick={() => {
+                          if (!image?.id) return;
+                          setEditingImageId(image.id);
+                          setShowAnnotationEditor(true);
+                        }}
+                      >
+                        <img
+                          src={image.thumbnail_url || image.file_url}
+                          alt={image.file_name || "Task image"}
+                          className="w-full h-full object-contain bg-muted/40"
+                          onError={(e) => {
+                            if (image.thumbnail_url && image.file_url) {
+                              (e.target as HTMLImageElement).src = image.file_url;
+                            }
+                          }}
+                        />
+                        <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
+              )}
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Logs
+                </h3>
+                <p className="text-muted-foreground text-sm">Audit logs and activity history will appear here</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
 

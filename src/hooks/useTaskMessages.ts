@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
-import { supabase } from "../integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Message {
+export interface TaskMessage {
   id: string;
   org_id: string;
   conversation_id: string;
@@ -14,92 +14,77 @@ interface Message {
   created_at: string;
 }
 
-export function useTaskMessages(taskId: string | undefined) {
-  const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+async function fetchTaskMessages(orgId: string, taskId: string): Promise<TaskMessage[]> {
+  let { data: conversation, error: convError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("task_id", taskId)
+    .maybeSingle();
 
-  const fetchMessages = useCallback(async (mode: "initial" | "refresh" = "initial") => {
-    if (!orgId || !taskId) {
-      setMessages([]);
-      setLoading(false);
-      return;
+  if (convError && convError.code !== "PGRST116") {
+    throw convError;
+  }
+
+  let conversationId: string | null = null;
+
+  if (!conversation) {
+    const { data: newConv, error: createError } = await supabase
+      .from("conversations")
+      .insert({
+        org_id: orgId,
+        task_id: taskId,
+        channel: "task",
+        subject: `Task ${taskId}`,
+      } as any)
+      .select("id")
+      .single();
+
+    if (createError) {
+      throw createError;
     }
+    conversationId = newConv.id;
+  } else {
+    conversationId = conversation.id;
+  }
 
-    const showFullSpinner = mode === "initial";
-    if (showFullSpinner) {
-      setLoading(true);
-    }
-    setError(null);
+  const { data, error: err } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
 
-    try {
-      // First, find or create conversation for this task
-      let { data: conversation, error: convError } = await supabase
-        .from("conversations")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("task_id", taskId)
-        .maybeSingle();
+  if (err) {
+    throw err;
+  }
 
-      if (convError && convError.code !== "PGRST116") {
-        throw convError;
-      }
-
-      let conversationId: string | null = null;
-
-      if (!conversation) {
-        // Create conversation if it doesn't exist
-        const { data: newConv, error: createError } = await supabase
-          .from("conversations")
-          .insert({
-            org_id: orgId,
-            task_id: taskId,
-            channel: "task",
-            subject: `Task ${taskId}`,
-          } as any)
-          .select("id")
-          .single();
-
-        if (createError) {
-          throw createError;
-        }
-        conversationId = newConv.id;
-      } else {
-        conversationId = conversation.id;
-      }
-
-      // Fetch messages for this conversation
-      const { data, error: err } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("org_id", orgId)
-        .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
-
-      if (err) {
-        throw err;
-      }
-
-      setMessages((data as Message[]) ?? []);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch messages");
-      setMessages([]);
-    } finally {
-      if (showFullSpinner) {
-        setLoading(false);
-      }
-    }
-  }, [orgId, taskId]);
-
-  useEffect(() => {
-    if (!orgLoading) {
-      void fetchMessages("initial");
-    }
-  }, [fetchMessages, orgLoading]);
-
-  const refresh = useCallback(() => fetchMessages("refresh"), [fetchMessages]);
-
-  return { messages, loading, error, refresh };
+  return (data as TaskMessage[]) ?? [];
 }
 
+export function useTaskMessages(taskId: string | undefined) {
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["task-messages", orgId, taskId],
+    queryFn: () => fetchTaskMessages(orgId!, taskId!),
+    enabled: !!orgId && !!taskId && !orgLoading,
+    staleTime: 30_000,
+  });
+
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ["task-messages", orgId, taskId] });
+  }, [queryClient, orgId, taskId]);
+
+  const err = query.error;
+  const errorMessage =
+    err == null ? null : err instanceof Error ? err.message : String(err);
+
+  return {
+    messages: query.data ?? [],
+    loading: query.isLoading,
+    error: errorMessage,
+    refresh,
+  };
+}
