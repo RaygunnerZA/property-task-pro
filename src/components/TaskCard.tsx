@@ -79,13 +79,16 @@ function TaskCardComponent({
   property, 
   onClick,
   isSelected = false,
-  layout = 'horizontal'
+  layout = 'horizontal',
+  metaDensity = 'default',
 }: { 
   task: any; 
   property?: any; 
   onClick?: () => void;
   isSelected?: boolean;
   layout?: 'horizontal' | 'vertical';
+  /** "compact" = fewer badges (Issues Open work). */
+  metaDensity?: 'default' | 'compact';
 }) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
@@ -248,6 +251,9 @@ function TaskCardComponent({
   };
 
   const priorityColor = getPriorityColor(task?.priority);
+  const metaCompact = metaDensity === "compact";
+  const showPriorityDot =
+    !metaCompact || task?.priority === "high" || task?.priority === "urgent";
 
   // Horizontal layout (image on right)
   if (layout === 'horizontal') {
@@ -264,16 +270,18 @@ function TaskCardComponent({
         onClick={onClick}
       >
         {/* Priority Indicator Circle - Top Left Corner */}
+        {showPriorityDot ? (
         <div 
           className={cn(
             "absolute top-[4px] left-[4px] w-[10px] h-[10px] rounded-full",
             priorityColor
           )}
         />
+        ) : null}
         {/* Content */}
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
           {/* Theme/Category */}
-          {themes.length > 0 && (
+          {!metaCompact && themes.length > 0 && (
             <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
               {themes[0].name}
             </div>
@@ -291,29 +299,51 @@ function TaskCardComponent({
             {property && (
               <PropertyIconChips properties={[property]} />
             )}
-            {spaces.length > 0 && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
-                {spaces[0].name}
-              </Badge>
-            )}
-            {t.due_at && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
-                <Clock className="h-3 w-3" />
-                {formatTaskDate(t.due_at)}
-              </Badge>
-            )}
-            {teams.length > 0 && teams.map((team: any) => (
-              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
-                {team.name}
-              </Badge>
-            ))}
-            {assignedUsers.length > 0 && (
-              <OverlappingAvatars 
-                users={assignedUsers}
-                size={24}
-                overlap={20}
-                className="ml-auto"
-              />
+            {metaCompact ? (
+              <>
+                {(spaces[0]?.name || t.due_at) && (
+                  <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">
+                    {spaces[0]?.name ? `${spaces[0].name}` : ""}
+                    {spaces[0]?.name && t.due_at ? " · " : ""}
+                    {t.due_at ? formatTaskDate(t.due_at) : ""}
+                  </span>
+                )}
+                {assignedUsers.length > 0 && (
+                  <OverlappingAvatars
+                    users={assignedUsers}
+                    size={24}
+                    overlap={20}
+                    className="ml-auto shrink-0"
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                {spaces.length > 0 && (
+                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+                    {spaces[0].name}
+                  </Badge>
+                )}
+                {t.due_at && (
+                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
+                    <Clock className="h-3 w-3" />
+                    {formatTaskDate(t.due_at)}
+                  </Badge>
+                )}
+                {teams.length > 0 && teams.map((team: any) => (
+                  <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+                    {team.name}
+                  </Badge>
+                ))}
+                {assignedUsers.length > 0 && (
+                  <OverlappingAvatars 
+                    users={assignedUsers}
+                    size={24}
+                    overlap={20}
+                    className="ml-auto"
+                  />
+                )}
+              </>
             )}
           </div>
         </div>
@@ -350,7 +380,7 @@ function TaskCardComponent({
             </div>
           )}
           {/* DONE chip - appears on hover, bottom right corner */}
-          {showDoneButton && (
+          {showDoneButton && !metaCompact && (
             <div 
               className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
               onClick={(e) => {
@@ -386,6 +416,7 @@ function TaskCardComponent({
       {/* Image Zone - Top */}
       <div className="w-full h-[170px] relative flex-shrink-0">
         {/* Priority Indicator Circle - Top Left Corner of Image */}
+        {showPriorityDot ? (
         <div 
           className={cn(
             "absolute top-[4px] left-[4px] w-[15px] h-[15px] rounded-full z-10",
@@ -395,8 +426,9 @@ function TaskCardComponent({
             boxShadow: "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -2px 2px 0px rgba(0, 0, 0, 0.34)",
           }}
         />
+        ) : null}
         {/* Theme/Category chip - overlays the thumbnail */}
-        {themes.length > 0 && (
+        {!metaCompact && themes.length > 0 && (
           <div className="absolute bottom-2 left-2 z-10">
             <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
               {themes[0].name}
@@ -432,7 +464,7 @@ function TaskCardComponent({
           </div>
         )}
         {/* DONE chip - appears on hover, top right corner */}
-        {showDoneButton && (
+        {showDoneButton && !metaCompact && (
           <div 
             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
             onClick={(e) => {
@@ -464,32 +496,56 @@ function TaskCardComponent({
             {property && (
               <PropertyIconChips properties={[property]} />
             )}
-            {spaces.length > 0 && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
-                {spaces[0].name}
-              </Badge>
-            )}
-            {t.due_at && (
-              <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px] flex-shrink-0">
-                <Clock className="h-3 w-3" />
-                {formatTaskDate(t.due_at)}
-              </Badge>
-            )}
-            {teams.length > 0 && teams.map((team: any) => (
-              <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
-                {team.name}
-              </Badge>
-            ))}
-            {assignedUsers.length > 0 && (
-              <OverlappingAvatars 
-                users={assignedUsers}
-                size={24}
-                overlap={20}
-                className="ml-auto flex-shrink-0"
-              />
+            {metaCompact ? (
+              <>
+                {(spaces[0]?.name || t.due_at) && (
+                  <span className="text-xs text-muted-foreground truncate min-w-0">
+                    {spaces[0]?.name ? `${spaces[0].name}` : ""}
+                    {spaces[0]?.name && t.due_at ? " · " : ""}
+                    {t.due_at ? formatTaskDate(t.due_at) : ""}
+                  </span>
+                )}
+                {assignedUsers.length > 0 && (
+                  <OverlappingAvatars
+                    users={assignedUsers}
+                    size={24}
+                    overlap={20}
+                    className="ml-auto flex-shrink-0"
+                  />
+                )}
+              </>
+            ) : (
+              <>
+                {spaces.length > 0 && (
+                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
+                    {spaces[0].name}
+                  </Badge>
+                )}
+                {t.due_at && (
+                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px] flex-shrink-0">
+                    <Clock className="h-3 w-3" />
+                    {formatTaskDate(t.due_at)}
+                  </Badge>
+                )}
+                {teams.length > 0 && teams.map((team: any) => (
+                  <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
+                    {team.name}
+                  </Badge>
+                ))}
+                {assignedUsers.length > 0 && (
+                  <OverlappingAvatars 
+                    users={assignedUsers}
+                    size={24}
+                    overlap={20}
+                    className="ml-auto flex-shrink-0"
+                  />
+                )}
+              </>
             )}
           </div>
+          {!metaCompact ? (
           <div className="absolute right-0 top-0 bottom-0 w-[5px] pointer-events-none bg-gradient-to-l from-card to-transparent" />
+          ) : null}
         </div>
       </div>
     </div>
@@ -510,6 +566,8 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
   
   // If layout changed, re-render
   if (prevProps.layout !== nextProps.layout) return false;
+
+  if (prevProps.metaDensity !== nextProps.metaDensity) return false;
   
   // If property changed, re-render
   if (prevProps.property?.id !== nextProps.property?.id) return false;

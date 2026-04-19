@@ -49,7 +49,6 @@ import { WhereSection } from "./create/WhereSection";
 import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
-import { SemanticChip } from "@/components/chips/semantic";
 import { format, isValid, parseISO } from "date-fns";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
@@ -385,9 +384,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
   }, [status]);
 
-  const hasWhoFacts = Boolean(selectedUserId) || selectedTeamIds.length > 0 || pendingInvitations.length > 0;
-  const hasWhereFacts = selectedPropertyIds.length > 0 || selectedSpaceIds.length > 0;
-  const hasWhenFacts = Boolean(dueDate) || milestones.length > 0;
   const hasAssetFacts = selectedAssetIds.length > 0;
   const hasCategoryFacts = selectedThemeIds.length > 0;
   const hasComplianceFacts = isCompliance || Boolean(complianceLevel);
@@ -414,6 +410,19 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }, [priority]);
 
+  const statusDisplayLabel = useMemo(() => {
+    return (
+      ({ open: "Open", in_progress: "In progress", completed: "Done", archived: "Archived" } as Record<string, string>)[
+        status
+      ] || status
+    );
+  }, [status]);
+
+  const detailMetaLinkClass = cn(
+    "text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline",
+    "bg-transparent border-0 p-0 cursor-pointer text-left font-normal"
+  );
+
   /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
   const whereChipLabel = useMemo(() => {
     if (!task) return "PLACE";
@@ -433,45 +442,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     if (spacePart) return spacePart;
     return "PLACE";
   }, [task, selectedSpaceIds]);
-
-  const whenChipLabel = useMemo(() => {
-    if (!dueDate && milestones.length === 0) return "DATE";
-    let datePart = "";
-    if (dueDate) {
-      const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
-      datePart = isValid(d) ? format(d, "MMM d, yyyy") : dueDate;
-    }
-    if (milestones.length > 0) {
-      const m = `${milestones.length} milestone${milestones.length === 1 ? "" : "s"}`;
-      return datePart ? `${datePart} · ${m}` : m;
-    }
-    return datePart || "DATE";
-  }, [dueDate, milestones]);
-
-  const personChipLabel = useMemo(() => {
-    if (!hasWhoFacts) return "+PERSON";
-    if (selectedUserId) return assigneeSummaryLabel;
-    if (selectedTeamIds.length > 0 && task) {
-      const teamsRaw = (task as any).teams;
-      let teamsArr: { id?: string; name?: string }[] = [];
-      if (Array.isArray(teamsRaw)) teamsArr = teamsRaw;
-      else if (typeof teamsRaw === "string") {
-        try {
-          teamsArr = JSON.parse(teamsRaw || "[]");
-        } catch {
-          teamsArr = [];
-        }
-      }
-      const names = teamsArr
-        .filter((t) => t.id && selectedTeamIds.includes(t.id))
-        .map((t) => t.name)
-        .filter(Boolean) as string[];
-      if (names.length > 0) return names.join(", ");
-      return assigneeSummaryLabel;
-    }
-    if (pendingInvitations.length > 0) return "Invited";
-    return "PERSON";
-  }, [hasWhoFacts, selectedUserId, assigneeSummaryLabel, selectedTeamIds, task, pendingInvitations]);
 
   const assetChipLabel = useMemo(() => {
     if (!hasAssetFacts) return "+ASSET";
@@ -779,40 +749,34 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             {title.trim() || "Untitled task"}
           </h2>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveSection(activeSection === "when" ? null : "when")}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
-                "bg-muted/70 hover:shadow-md text-foreground"
-              )}
-            >
-              <Calendar className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
-              <span className="truncate max-w-[11rem]">{dueDateSummaryLabel}</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "when" ? null : "when")}>
+              <span className="inline-flex items-center gap-1">
+                <Calendar className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                <span className="truncate max-w-[10rem]">{dueDateSummaryLabel}</span>
+              </span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection(activeSection === "who" ? null : "who")}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
-                "bg-muted/70 hover:shadow-md text-foreground"
-              )}
-            >
-              <User className="h-3.5 w-3.5 text-primary shrink-0" aria-hidden />
-              <span className="truncate max-w-[11rem]">{assigneeSummaryLabel}</span>
+            <span className="text-muted-foreground/40 select-none" aria-hidden>
+              ·
+            </span>
+            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "who" ? null : "who")}>
+              <span className="inline-flex items-center gap-1">
+                <User className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                <span className="truncate max-w-[10rem]">{assigneeSummaryLabel}</span>
+              </span>
             </button>
+            <span className="text-muted-foreground/40 select-none" aria-hidden>
+              ·
+            </span>
             <button
               type="button"
+              className={cn(detailMetaLinkClass, priority === "urgent" && "text-destructive hover:text-destructive")}
               onClick={() => setActiveSection(activeSection === "priority" ? null : "priority")}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm transition-shadow",
-                "bg-muted/70 hover:shadow-md text-foreground",
-                priority === "urgent" && "text-destructive"
-              )}
             >
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-              <span>{prioritySummaryLabel}</span>
+              <span className="inline-flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                {prioritySummaryLabel}
+              </span>
             </button>
           </div>
 
@@ -820,51 +784,35 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             {(task as any)?.description || "No description provided"}
           </p>
 
-          <div className="flex flex-wrap justify-end gap-2">
-            <SemanticChip
-              epistemic={hasWhoFacts ? "fact" : "proposal"}
-              label={personChipLabel}
-              truncate={hasWhoFacts}
-              className={hasWhoFacts ? "max-w-[min(280px,85vw)]" : undefined}
-              onPress={() => setActiveSection("who")}
-            />
-            <SemanticChip
-              epistemic={hasWhereFacts ? "fact" : "proposal"}
-              label={hasWhereFacts ? whereChipLabel : "+PLACE"}
-              truncate={hasWhereFacts}
-              className={hasWhereFacts ? "max-w-[min(280px,85vw)]" : undefined}
-              onPress={() => setActiveSection("where")}
-            />
-            <SemanticChip
-              epistemic={hasWhenFacts ? "fact" : "proposal"}
-              label={hasWhenFacts ? whenChipLabel : "+DATE"}
-              truncate={hasWhenFacts}
-              className={hasWhenFacts ? "max-w-[min(280px,85vw)]" : undefined}
-              onPress={() => setActiveSection("when")}
-            />
-            <SemanticChip
-              epistemic={hasAssetFacts ? "fact" : "proposal"}
-              label={hasAssetFacts ? assetChipLabel : "+ASSET"}
-              truncate={hasAssetFacts}
-              className={hasAssetFacts ? "max-w-[min(280px,85vw)]" : undefined}
-              onPress={() => setActiveSection("what")}
-            />
-            <SemanticChip epistemic="fact" label={priority.toUpperCase()} truncate={false} onPress={() => setActiveSection("priority")} />
-            <SemanticChip epistemic="fact" label={statusFactChips[0]?.label ?? "OPEN"} truncate={false} onPress={() => setActiveSection("status")} />
-            <SemanticChip
-              epistemic={hasCategoryFacts ? "fact" : "proposal"}
-              label={hasCategoryFacts ? categoryChipLabel : "+TAG"}
-              truncate={hasCategoryFacts}
-              className={hasCategoryFacts ? "max-w-[min(280px,85vw)]" : undefined}
-              onPress={() => setActiveSection("category")}
-            />
-            <SemanticChip
-              epistemic={hasComplianceFacts ? "fact" : "proposal"}
-              label={complianceChipLabel}
-              truncate={hasComplianceFacts}
-              className={hasComplianceFacts ? "max-w-[min(240px,85vw)]" : undefined}
-              onPress={() => setActiveSection("compliance")}
-            />
+          <div className="rounded-[10px] bg-muted/30 px-3 py-2.5 shadow-sm space-y-2">
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Property & location</p>
+              <button
+                type="button"
+                className="w-full text-left text-sm font-medium text-foreground leading-snug hover:underline"
+                onClick={() => setActiveSection("where")}
+              >
+                {whereChipLabel}
+              </button>
+            </div>
+            <div className="flex flex-row flex-wrap items-baseline justify-between gap-2 border-t border-border/20 pt-2">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
+              <button type="button" className={cn(detailMetaLinkClass, "text-sm font-medium text-foreground")} onClick={() => setActiveSection("status")}>
+                {statusDisplayLabel}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-border/15 pb-3">
+            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "what" ? null : "what")}>
+              {hasAssetFacts ? assetChipLabel : "+ Asset"}
+            </button>
+            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection("category")}>
+              {hasCategoryFacts ? categoryChipLabel : "+ Tags"}
+            </button>
+            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection("compliance")}>
+              {hasComplianceFacts ? complianceChipLabel : "+ Rule"}
+            </button>
           </div>
 
           {activeSection === "who" && (
@@ -1152,23 +1100,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         </div>
       </div>
 
-      {/* CTA panel - [Update][Mark Complete][Options] */}
+      {/* CTA panel — primary: Mark Complete; secondary: Update + overflow */}
       <div className="flex flex-col gap-3 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
-        <div className="flex gap-3 items-center">
-          {hasEdits && canManageTask && (
-            <Button
-              className="flex-1 shadow-primary-btn"
-              onClick={handleUpdateTask}
-              disabled={isUpdating}
-            >
-              {isUpdating ? "Updating..." : "Update"}
-            </Button>
-          )}
+        <div className="flex gap-2 items-center min-w-0">
           {canManageTask && (
             <Button
               variant={status === "completed" ? "secondary" : "default"}
               className={cn(
-                "flex-1",
+                "min-w-0 flex-1 shrink",
                 status !== "completed" && "shadow-primary-btn"
               )}
               onClick={async () => {
@@ -1183,8 +1122,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   setStatus("completed");
                   await refreshTask();
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                  // Keep briefing radial correct: add or update this task as completed so "done" goes up, not "total" down.
-                  // Do not invalidate/refetch tasks-briefing here or the refetch can overwrite with server data that excludes completed.
                   if (orgId) {
                     const updateBriefingCache = (key: (string | undefined)[]) => {
                       queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
@@ -1211,8 +1148,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }}
               disabled={isUpdating}
             >
-              <CheckSquare className="h-4 w-4 mr-1.5" />
+              <CheckSquare className="h-4 w-4 mr-1.5 shrink-0" />
               {status === "completed" ? "Completed" : "Mark Complete"}
+            </Button>
+          )}
+          {hasEdits && canManageTask && (
+            <Button variant="outline" className="shrink-0 shadow-e1" onClick={handleUpdateTask} disabled={isUpdating}>
+              {isUpdating ? "…" : "Update"}
             </Button>
           )}
           {canManageTask && (

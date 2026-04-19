@@ -12,6 +12,8 @@ interface SegmentControlProps {
   selectedId: string;
   onChange: (id: string) => void;
   className?: string;
+  /** Tighter padding and type for dense toolbars (e.g. Issues mode row). */
+  compact?: boolean;
 }
 
 /**
@@ -22,11 +24,12 @@ export const SegmentControl: React.FC<SegmentControlProps> = ({
   options, 
   selectedId, 
   onChange, 
-  className = '' 
+  className = '',
+  compact = false,
 }) => {
   return (
     <div 
-      className={cn('p-1.5 rounded-lg flex items-center gap-1', className)}
+      className={cn('rounded-lg flex items-center gap-0.5', compact ? 'p-1' : 'p-1.5 gap-1', className)}
       style={{ 
         backgroundColor: colors.background,
         boxShadow: shadows.inset 
@@ -39,9 +42,8 @@ export const SegmentControl: React.FC<SegmentControlProps> = ({
             key={opt.id}
             onClick={() => onChange(opt.id)}
             className={cn(
-              'flex-1 px-4 py-2 text-sm font-semibold rounded-md',
-              'transition-all duration-200',
-              'active:scale-95'
+              'flex-1 font-semibold rounded-md transition-all duration-200 active:scale-95',
+              compact ? 'px-1.5 py-1.5 text-[11px] leading-tight min-w-0' : 'px-4 py-2 text-sm',
             )}
             style={{
               color: isActive ? colors.ink : colors.textMuted,

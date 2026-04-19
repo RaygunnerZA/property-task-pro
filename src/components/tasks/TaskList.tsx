@@ -29,6 +29,10 @@ interface TaskListProps {
   selectedPropertyIds?: Set<string>;
   /** Omits primary-row Urgent (Issues tab already has an Urgent slice). */
   hidePrimaryUrgentChip?: boolean;
+  /** Dashboard Issues “Open work”: lighter filter chrome + field-style search. */
+  embeddedInIssuesWorkbench?: boolean;
+  /** Fewer badges on each task card (title + image + 2–3 facts). */
+  compactTaskMeta?: boolean;
 }
 
 export function TaskList({ 
@@ -41,6 +45,8 @@ export function TaskList({
   filtersToApply,
   selectedPropertyIds: selectedPropertyIdsProp,
   hidePrimaryUrgentChip = false,
+  embeddedInIssuesWorkbench = false,
+  compactTaskMeta = false,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -582,7 +588,22 @@ export function TaskList({
   return (
     <div ref={tasksPanelInteractionRef} className="flex flex-col h-full min-h-0">
       {/* Filter Bar - fixed at top, does not scroll with list */}
-      <div className="flex-shrink-0 mt-0 mb-[18px] pb-0" style={{ marginLeft: '-3px' }}>
+      <div
+        className={cn("flex-shrink-0 mt-0 mb-[18px] pb-0", !embeddedInIssuesWorkbench && "ml-[-3px]")}
+      >
+        {embeddedInIssuesWorkbench ? (
+          <div className="relative mb-2 flex items-center gap-2 rounded-[10px] bg-background/80 px-2 py-1.5 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              value={taskSearchQuery}
+              onChange={(e) => setTaskSearchQuery(e.target.value)}
+              placeholder="Search tasks…"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+              aria-label="Search tasks"
+            />
+          </div>
+        ) : null}
         <FilterBar
           primaryOptions={primaryOptions}
           secondaryGroups={secondaryGroups}
@@ -592,15 +613,18 @@ export function TaskList({
           collapseFilterChipAfterMs={2000}
           collapseInteractionRootRef={tasksPanelInteractionRef}
           primaryTrailing={
-            <FilterChip
-              label="Search"
-              icon={<Search className="h-4 w-4" />}
-              selected={taskSearchOpen || taskSearchQuery.trim().length > 0}
-              onSelect={() => setTaskSearchOpen((open) => !open)}
-              className="h-[24px]"
-            />
+            embeddedInIssuesWorkbench ? undefined : (
+              <FilterChip
+                label="Search"
+                icon={<Search className="h-4 w-4" />}
+                selected={taskSearchOpen || taskSearchQuery.trim().length > 0}
+                onSelect={() => setTaskSearchOpen((open) => !open)}
+                className="h-[24px]"
+              />
+            )
           }
         />
+        {!embeddedInIssuesWorkbench ? (
         <div
           className={cn(
             "grid transition-[grid-template-rows] duration-200 ease-out",
@@ -621,6 +645,7 @@ export function TaskList({
             />
           </div>
         </div>
+        ) : null}
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}
@@ -646,6 +671,7 @@ export function TaskList({
                           <TaskCard
                             {...props}
                             layout="vertical"
+                            metaDensity={compactTaskMeta ? "compact" : "default"}
                           />
                         </div>
                       ))}
@@ -662,6 +688,7 @@ export function TaskList({
                         key={props.task.id}
                         {...props}
                         layout="vertical"
+                        metaDensity={compactTaskMeta ? "compact" : "default"}
                       />
                     ))}
                   </div>
@@ -673,6 +700,7 @@ export function TaskList({
                       key={props.task.id}
                       {...props}
                       layout="horizontal"
+                      metaDensity={compactTaskMeta ? "compact" : "default"}
                     />
                   ))}
                 </div>
@@ -698,6 +726,7 @@ export function TaskList({
                     key={props.task.id}
                     {...props}
                     layout="horizontal"
+                    metaDensity={compactTaskMeta ? "compact" : "default"}
                   />
                 ))}
               </div>

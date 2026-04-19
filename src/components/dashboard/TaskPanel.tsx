@@ -33,14 +33,13 @@ import {
   SIGNAL_UI_FIXTURES_RECENT,
   SIGNAL_UI_FIXTURES_REVIEW,
   SIGNAL_UI_FIXTURES_URGENT,
-  fixtureReviewBanner,
   type SignalUiFixture,
 } from "@/fixtures/signalUiSamples";
 import type { SignalKind } from "@/types/workbenchSignals";
 import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
-import { FilterChip } from "@/components/chips/filter";
+import { SegmentControl } from "@/components/filla/SegmentControl";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
@@ -48,15 +47,14 @@ import {
   intakeAddRecordButtonClassName,
   intakeAddRecordCompactClassName,
   intakeAddRecordIconClassName,
-  intakeAddRecordMicroClassName,
   intakeReportIssueButtonClassName,
   intakeReportIssueCompactClassName,
   intakeReportIssueIconClassName,
-  intakeReportIssueMicroClassName,
 } from "@/lib/intake-action-buttons";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
+import { buildRecentUnifiedSignalMetaLine } from "@/lib/recentSignalMetaLine";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -91,7 +89,7 @@ const TASK_TAB_MOBILE_STACK_MAX_PX = 767;
 const TASK_TAB_MEASURE_TOLERANCE_PX = 4;
 
 const TASK_TAB_MICROCOPY = {
-  issues: "Recent signals → Needs review → Open work (tasks). Each stage is different.",
+  issues: "Urgent → Recent signals → Needs review → Open work. Each stage is different.",
   records: "What you have, what expires, and where it belongs",
   schedule: "What's coming up",
 } as const;
@@ -149,16 +147,16 @@ const SIGNAL_STACK_SECTIONS = [
     itemsKey: "urgent" as const,
   },
   {
-    key: "review",
-    title: SIGNAL_COLUMN_REVIEW.title,
-    subtitle: SIGNAL_COLUMN_REVIEW.subtitle,
-    itemsKey: "review" as const,
-  },
-  {
     key: "recent",
     title: SIGNAL_COLUMN_RECENT.title,
     subtitle: SIGNAL_COLUMN_RECENT.subtitle,
     itemsKey: "recent" as const,
+  },
+  {
+    key: "review",
+    title: SIGNAL_COLUMN_REVIEW.title,
+    subtitle: SIGNAL_COLUMN_REVIEW.subtitle,
+    itemsKey: "review" as const,
   },
 ] as const;
 
@@ -266,7 +264,7 @@ function IssuesSignalCard({
     const icon = item.signalKind
       ? signalKindIcon(item.signalKind, "text-amber-700")
       : <AlertTriangle className="h-4 w-4 text-amber-600" />;
-    const actions =
+    const actionsList =
       item.fixtureActions != null
         ? [
             {
@@ -283,7 +281,7 @@ function IssuesSignalCard({
         : [
             {
               id: "report-issue",
-              label: "Report Issue",
+              label: "Report issue",
               onClick: () => runFixtureAction("report-issue", item, ctx),
             },
             {
@@ -292,28 +290,27 @@ function IssuesSignalCard({
               onClick: () => runFixtureAction("ignore", item, ctx),
             },
           ];
+    const minor = actionsList.find((a) => a.id === "ignore" || a.id === "dismiss");
+    const primaryOnly = actionsList.filter((a) => a.id !== "ignore" && a.id !== "dismiss");
+    const primaryAction = primaryOnly[0];
+    const minorFromExtras = !minor && primaryOnly.length > 1 ? primaryOnly[1] : undefined;
 
     return (
       <OperationalStreamCard
         id={`issues-signal-${item.id}`}
+        issuesStreamKind="urgent"
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
-        footChip={item.footChipLabel}
-        typeChip={item.footChipLabel ? undefined : item.typeChipLabel}
-        reviewBanner={item.reviewBanner}
-        whyHere={item.whyHere}
         icon={icon}
         title={item.title}
         context={item.context}
-        hint={item.footChipLabel ? undefined : item.hint}
-        labels={item.signalLabels ?? []}
         description={item.description}
         imageUrl={item.imageUrl}
         accent="red"
         emphasis="standard"
-        actionsVisibility="hover"
-        actions={actions}
+        actions={primaryAction ? [primaryAction] : actionsList.slice(0, 1)}
+        minorLinkAction={minor ?? minorFromExtras}
       />
     );
   }
@@ -322,7 +319,7 @@ function IssuesSignalCard({
     const icon = item.signalKind
       ? signalKindIcon(item.signalKind, "text-teal-800")
       : <HelpCircle className="h-4 w-4 text-teal-800" />;
-    const actions =
+    const actionsList =
       item.fixtureActions != null
         ? [
             {
@@ -354,27 +351,29 @@ function IssuesSignalCard({
             },
           ];
 
+    const reviewShortReason =
+      item.whyHere?.trim() || item.context?.trim() || item.description?.trim() || undefined;
+
     return (
       <OperationalStreamCard
         id={`issues-signal-${item.id}`}
+        issuesStreamKind="review"
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
-        footChip={undefined}
-        typeChip={item.typeChipLabel}
-        reviewBanner={item.reviewBanner}
-        whyHere={item.whyHere}
+        reviewShortReason={reviewShortReason}
         icon={icon}
         title={item.title}
         context={item.context}
-        hint={item.hint}
-        labels={item.signalLabels ?? []}
-        description={item.description}
-        imageUrl={item.imageUrl}
+        whyHere={item.whyHere}
         accent="teal"
         emphasis="elevated"
-        actionsVisibility="always"
-        actions={actions}
+        actions={actionsList}
+        dismissAction={{
+          id: "dismiss",
+          label: "Dismiss",
+          onClick: () => runFixtureAction("dismiss", item, ctx),
+        }}
       />
     );
   }
@@ -383,7 +382,7 @@ function IssuesSignalCard({
   const icon = item.signalKind
     ? signalKindIcon(item.signalKind)
     : <Upload className="h-4 w-4 text-muted-foreground" />;
-  const actions =
+  const actionsList =
     item.fixtureActions != null
       ? [
           {
@@ -400,7 +399,7 @@ function IssuesSignalCard({
       : [
           {
             id: "signal-open",
-            label: item.messageId ? "Open" : "View",
+            label: "View",
             onClick: () => runFixtureAction("signal-open", item, ctx),
           },
           {
@@ -410,27 +409,31 @@ function IssuesSignalCard({
           },
         ];
 
+  const viewAction = actionsList.find((a) => a.id === "signal-open") ?? actionsList[0];
+  const dismissAction = actionsList.find((a) => a.id === "dismiss" || a.id === "ignore");
+
+  const recentSignalMetaLine = buildRecentUnifiedSignalMetaLine({
+    kind: item.signalKind,
+    context: item.context,
+    footChipLabel: item.footChipLabel,
+  });
+
   return (
     <OperationalStreamCard
       id={`issues-signal-${item.id}`}
+      issuesStreamKind="recent"
       cardRef={(node) => {
         attentionCardRefs.current[item.id] = node;
       }}
-      footChip={item.footChipLabel}
-      typeChip={item.footChipLabel ? undefined : item.typeChipLabel}
-      reviewBanner={item.reviewBanner}
-      whyHere={item.whyHere}
+      recentSignalMetaLine={recentSignalMetaLine}
       icon={icon}
       title={item.title}
       context={item.context}
-      hint={item.footChipLabel ? undefined : item.hint ?? "Signal"}
-      labels={item.footChipLabel ? [] : item.signalLabels ?? []}
       description={item.description}
       imageUrl={item.imageUrl}
       accent="slate"
       emphasis="minimal"
-      actionsVisibility="hover"
-      actions={actions}
+      actions={viewAction ? [viewAction, ...(dismissAction ? [dismissAction] : [])] : actionsList}
     />
   );
 }
@@ -508,14 +511,14 @@ function mapSignalFixtureToAttentionItem(f: SignalUiFixture): AttentionItem {
     description: f.explanation,
     whyHere: f.whyHere,
     footChipLabel: group === "review" ? undefined : SIGNAL_KIND_FOOT_LABEL[f.kind],
-    reviewBanner: group === "review" ? fixtureReviewBanner(f) : undefined,
+    reviewBanner: undefined,
     signalKind: f.kind,
     isUiFixture: true,
     fixtureActions: {
       primary: f.primaryAction,
       secondary: f.secondaryActions,
     },
-    hint: group === "review" ? "Filla needs your judgment before this becomes work or a record." : undefined,
+    hint: undefined,
   };
 }
 
@@ -777,17 +780,16 @@ export function TaskPanel({
       .filter((record) => record.status === "expiring" || record.status === "missing")
       .slice(0, 8)
       .map((record) => {
-        const reviewBanner =
+        const whyHere =
           record.status === "missing"
-            ? "COMPLIANCE • NEEDS CLASSIFICATION"
-            : "COMPLIANCE • TIMING UNCLEAR";
+            ? "Not sure this belongs in compliance tracking yet."
+            : "Expiry or renewal timing needs confirmation.";
         return {
           id: `review-${record.id}`,
           group: "review" as const,
           title: `${record.complianceType} — needs a decision`,
           context: record.propertyName,
-          reviewBanner,
-          hint: "Filla needs your judgment before this becomes work or a record.",
+          whyHere,
           description:
             record.status === "missing"
               ? "The system is not sure this belongs in compliance tracking yet. Classify it, assign an owner, or convert it into a stored record."
@@ -811,6 +813,7 @@ export function TaskPanel({
       return {
         id: `recent-msg-${message.id}`,
         group: "recent" as const,
+        signalKind: "message" as const,
         messageId: message.id,
         footChipLabel: "TENANT MESSAGE",
         title: titleFromBody,
@@ -1315,23 +1318,17 @@ export function TaskPanel({
               }}
             >
               <div className="min-w-0 space-y-3">
-                <div
-                  className="rounded-xl px-0 py-0 flex flex-wrap gap-2 items-center"
-                  style={{
-                    boxShadow: "none",
-                    background: "unset",
-                    backgroundColor: "rgba(42, 41, 62, 0)",
-                  }}
-                >
-                  {ISSUES_SLICE_FILTERS.map(({ id, label }) => (
-                    <FilterChip
-                      key={id}
-                      label={label}
-                      selected={issuesFilter === id}
-                      onSelect={() => setIssuesFilter(id)}
-                      className="h-[24px] gap-[9px] !normal-case font-sans tracking-normal"
-                    />
-                  ))}
+                <div className="min-w-0 px-0.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
+                    View
+                  </p>
+                  <SegmentControl
+                    compact
+                    className="w-full min-w-0"
+                    options={ISSUES_SLICE_FILTERS.map(({ id, label }) => ({ id, label }))}
+                    selectedId={issuesFilter}
+                    onChange={(id) => setIssuesFilter(id as WorkbenchIssuesFilter)}
+                  />
                 </div>
 
                 {showSignalFeed && (
@@ -1411,7 +1408,7 @@ export function TaskPanel({
                   <div
                     className={cn(
                       "min-h-0",
-                      showSignalFeed && "mt-6 border-t border-border/40 pt-4"
+                      showSignalFeed && "mt-6 border-t border-border/50 pt-4"
                     )}
                   >
                     {issuesFilter === "all" && (
@@ -1422,7 +1419,10 @@ export function TaskPanel({
                         </p>
                       </div>
                     )}
-                    <div className="h-full flex flex-col min-h-0">
+                    <div className="h-full flex flex-col min-h-0 rounded-xl bg-muted/20 p-2 shadow-sm">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground px-1 mb-1.5">
+                        Filter tasks
+                      </p>
                       <TaskList
                         key={`issues-tasklist-${issuesFilter}`}
                         tasks={tasks}
@@ -1434,6 +1434,8 @@ export function TaskPanel({
                         filtersToApply={filtersToApply}
                         selectedPropertyIds={selectedPropertyIds}
                         hidePrimaryUrgentChip
+                        embeddedInIssuesWorkbench
+                        compactTaskMeta
                       />
                     </div>
                   </div>

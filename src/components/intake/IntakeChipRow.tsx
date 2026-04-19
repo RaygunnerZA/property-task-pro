@@ -188,7 +188,11 @@ export function IntakeChipRow({
 
   return (
     <div className={cn("min-w-0 space-y-2", className)}>
-      <div className="relative w-full min-w-0">
+      <div
+        className="relative w-full min-w-0 rounded-[10px] bg-muted/25 px-1 py-0.5 shadow-sm"
+        role="toolbar"
+        aria-label="Intake field shortcuts"
+      >
         <div ref={railScrollRef} className={SCROLLER_ROW_CLASS}>
           {SLOTS.map(({ id, icon: Icon, title }) => {
             const isOpen = openSlot === id;
@@ -220,7 +224,7 @@ export function IntakeChipRow({
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-y-0 right-0 z-[2] flex w-10 items-center justify-end pr-0.5 transition-opacity duration-200",
+            "pointer-events-none absolute inset-y-0 right-0 z-[2] flex w-10 items-center justify-end pr-0.5 transition-opacity duration-200 rounded-r-[10px]",
             railShowRightFade ? "opacity-100" : "opacity-0"
           )}
           style={RAIL_FADE_TEXTURE_STYLE}

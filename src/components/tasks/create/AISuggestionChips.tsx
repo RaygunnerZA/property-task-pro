@@ -192,23 +192,32 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
         </div>
       )}
 
-      {/* Verb chips (unresolved/ambiguous entities) - separate row */}
+      {/* Suggestions: text actions (+ prefix), not pill chips */}
       {verbChips.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {verbChips.map((chip, index) => {
-            // Render as verb chip (white bg, dashed border, orange text, no shadow, no removal)
-            const verbLabel = generateVerbLabel(chip);
+        <div className="flex flex-col items-start gap-1 pt-1">
+          {verbChips.map((chip) => {
+            const raw = generateVerbLabel(chip).replace(/^(INVITE|CHOOSE|ADD|SET)\s+/i, "").trim();
+            const short =
+              chip.type === "person"
+                ? `Invite ${chip.value || chip.label}`
+                : chip.type === "space"
+                  ? `Add ${chip.value || chip.label}`
+                  : chip.type === "asset"
+                    ? `Add ${chip.value || chip.label}`
+                    : raw;
             return (
-              <SemanticChip
+              <button
                 key={chip.id}
-                epistemic="proposal"
-                label={verbLabel}
-                onPress={() => onChipSelect(chip)}
-                animateIn
+                type="button"
+                onClick={() => onChipSelect(chip)}
                 className={cn(
-                  'animate-in fade-in slide-in-from-bottom-1'
+                  "text-left text-[11px] font-medium text-muted-foreground underline-offset-2",
+                  "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer",
+                  "animate-in fade-in slide-in-from-bottom-1"
                 )}
-              />
+              >
+                + {short}
+              </button>
             );
           })}
         </div>
@@ -216,27 +225,26 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
 
       {/* Ghost groups - semantic suggestions */}
       {ghostGroups.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/20">
-          <span className="text-[10px] text-muted-foreground font-mono mr-1 self-center">
-            Quick groups:
-          </span>
+        <div className="flex flex-col items-start gap-1 pt-1 border-t border-border/20">
+          <span className="text-[10px] text-muted-foreground font-mono">Quick groups</span>
           {ghostGroups.map((group, index) => (
-            <div
+            <button
               key={group.id}
-              className="animate-in fade-in slide-in-from-bottom-1"
+              type="button"
+              onClick={() => onGhostGroupSelect(group)}
+              className={cn(
+                "text-left text-[11px] font-medium text-muted-foreground underline-offset-2",
+                "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer",
+                "inline-flex items-center gap-1 animate-in fade-in slide-in-from-bottom-1"
+              )}
               style={{
                 animationDelay: `${(chips.length + index) * 20}ms`,
-                animationDuration: '120ms',
+                animationDuration: "120ms",
               }}
             >
-              <SemanticChip
-                epistemic="proposal"
-                label={group.name}
-                icon={<Folder className="w-3 h-3" />}
-                onPress={() => onGhostGroupSelect(group)}
-                animateIn={false}
-              />
-            </div>
+              <Folder className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
+              + {group.name}
+            </button>
           ))}
         </div>
       )}

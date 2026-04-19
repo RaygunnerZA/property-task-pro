@@ -10,6 +10,9 @@ type CardAccent = "red" | "amber" | "green" | "slate" | "teal";
 /** Timeline = lightweight; standard = default; elevated = decision-queue emphasis */
 type StreamCardEmphasis = "minimal" | "standard" | "elevated";
 
+/** Issues-tab layouts: calmer hierarchy, fewer pill controls */
+export type IssuesStreamCardKind = "recent" | "review" | "urgent";
+
 interface CardAction {
   id: string;
   label: string;
@@ -46,6 +49,18 @@ interface OperationalStreamCardProps {
    * Set with `actionsVisibility="hover"` for Recent timeline + urgent strip.
    */
   footChip?: string;
+  /** Issues tab: dedicated calmer layouts (bypasses legacy feed / chip rows). */
+  issuesStreamKind?: IssuesStreamCardKind;
+  /** Single muted type line for Issues “Recent signals” (not a chip). */
+  timelineTypeLabel?: string;
+  /** Issues “Recent signals”: one all-caps mono line above the title (source • time). */
+  recentSignalMetaLine?: string;
+  /** Issues “Needs review”: inline text dismiss (separate from `actions`). */
+  dismissAction?: CardAction | null;
+  /** Issues “Needs review”: one line only (prefer why over context). */
+  reviewShortReason?: string;
+  /** Issues “Urgent”: secondary inline text (e.g. Ignore). */
+  minorLinkAction?: CardAction | null;
 }
 
 const accentClassMap: Record<CardAccent, string> = {
@@ -68,6 +83,11 @@ const emphasisShellMap: Record<StreamCardEmphasis, string> = {
 const streamSecondaryMicroClassName = cn(
   "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
   "bg-background shadow-e1 transition-all hover:shadow-md"
+);
+
+const inlineMinorLinkClass = cn(
+  "text-[11px] font-medium text-muted-foreground underline-offset-2",
+  "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer shrink-0"
 );
 
 function streamActionButtonClass(actionId: string) {
@@ -109,6 +129,260 @@ function ActionRow({ actions }: { actions: CardAction[] }) {
   );
 }
 
+function IssuesRecentCard({
+  id,
+  cardRef,
+  className,
+  accent,
+  emphasis,
+  icon,
+  title,
+  description,
+  imageUrl,
+  recentSignalMetaLine,
+  actions,
+}: Pick<
+  OperationalStreamCardProps,
+  | "id"
+  | "cardRef"
+  | "className"
+  | "accent"
+  | "emphasis"
+  | "icon"
+  | "title"
+  | "description"
+  | "imageUrl"
+  | "recentSignalMetaLine"
+  | "actions"
+>) {
+  const viewAction = actions.find((a) => a.id === "signal-open");
+  const dismissAction = actions.find((a) => a.id === "dismiss" || a.id === "ignore");
+  const shell = emphasisShellMap[emphasis ?? "minimal"];
+
+  return (
+    <div id={id} ref={cardRef} className={cn("group relative overflow-hidden", shell, className)}>
+      <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "slate"])} />
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          {recentSignalMetaLine?.trim() ? (
+            <p className="text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1">
+              {recentSignalMetaLine.trim()}
+            </p>
+          ) : null}
+          <p
+            className={cn(
+              "text-sm font-semibold text-foreground leading-snug",
+              recentSignalMetaLine?.trim() ? "mt-1.5" : ""
+            )}
+          >
+            {title}
+          </p>
+          {description ? (
+            <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{description}</p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {viewAction ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  viewAction.onClick();
+                }}
+                className={streamActionButtonClass(viewAction.id)}
+              >
+                {viewAction.label === "Open" ? "View" : viewAction.label}
+              </button>
+            ) : null}
+            {dismissAction ? (
+              <button type="button" className={inlineMinorLinkClass} onClick={(e) => {
+                e.stopPropagation();
+                dismissAction.onClick();
+              }}>
+                {dismissAction.label}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {imageUrl ? (
+          <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function IssuesReviewCard({
+  id,
+  cardRef,
+  className,
+  accent,
+  emphasis,
+  icon,
+  title,
+  reviewShortReason,
+  actions,
+  dismissAction,
+}: Pick<
+  OperationalStreamCardProps,
+  | "id"
+  | "cardRef"
+  | "className"
+  | "accent"
+  | "emphasis"
+  | "icon"
+  | "title"
+  | "reviewShortReason"
+  | "actions"
+  | "dismissAction"
+>) {
+  const shell = emphasisShellMap[emphasis ?? "elevated"];
+  const core = actions.filter((a) => a.id !== "dismiss" && a.id !== "ignore");
+  const primary = core[0];
+  const secondary = core[1];
+
+  return (
+    <div id={id} ref={cardRef} className={cn("relative overflow-hidden", shell, className)}>
+      <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "teal"])} />
+      <div className="min-w-0 pl-0.5">
+        <div className="flex items-start gap-2 min-w-0">
+          <div className="mt-0.5 h-7 w-7 shrink-0 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center">
+            {icon}
+          </div>
+          <p className="min-w-0 flex-1 text-sm font-semibold text-foreground leading-snug pt-0.5">{title}</p>
+        </div>
+        {reviewShortReason?.trim() ? (
+          <p className="mt-1.5 text-xs text-muted-foreground leading-snug line-clamp-1 pl-[calc(1.75rem+0.5rem)]">
+            {reviewShortReason.trim()}
+          </p>
+        ) : null}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 pl-[calc(1.75rem+0.5rem)]">
+          {primary ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                primary.onClick();
+              }}
+              className={streamActionButtonClass(primary.id)}
+            >
+              {primary.label}
+            </button>
+          ) : null}
+          {secondary ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                secondary.onClick();
+              }}
+              className={streamActionButtonClass(secondary.id)}
+            >
+              {secondary.label}
+            </button>
+          ) : null}
+          {dismissAction ? (
+            <button
+              type="button"
+              className={streamSecondaryMicroClassName}
+              onClick={(e) => {
+                e.stopPropagation();
+                dismissAction.onClick();
+              }}
+            >
+              {dismissAction.label}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IssuesUrgentCard({
+  id,
+  cardRef,
+  className,
+  accent,
+  emphasis,
+  icon,
+  title,
+  context,
+  description,
+  imageUrl,
+  actions,
+  minorLinkAction,
+}: Pick<
+  OperationalStreamCardProps,
+  | "id"
+  | "cardRef"
+  | "className"
+  | "accent"
+  | "emphasis"
+  | "icon"
+  | "title"
+  | "context"
+  | "description"
+  | "imageUrl"
+  | "actions"
+  | "minorLinkAction"
+>) {
+  const primary = actions[0];
+  const minor =
+    minorLinkAction ??
+    actions.find((a) => a.id === "ignore" || a.id === "dismiss");
+  const shell = emphasisShellMap[emphasis ?? "standard"];
+
+  return (
+    <div id={id} ref={cardRef} className={cn("group relative overflow-hidden", shell, className)}>
+      <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "red"])} />
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground leading-snug">{title}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{context}</p>
+          {description ? (
+            <p className="mt-1 hidden text-xs leading-snug text-foreground/90 group-hover:block">{description}</p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {primary ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  primary.onClick();
+                }}
+                className={streamActionButtonClass(primary.id)}
+              >
+                {primary.label}
+              </button>
+            ) : null}
+            {minor && minor.id !== primary?.id ? (
+              <button type="button" className={inlineMinorLinkClass} onClick={(e) => {
+                e.stopPropagation();
+                minor.onClick();
+              }}>
+                {minor.label}
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {imageUrl ? (
+          <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function OperationalStreamCard({
   id,
   icon,
@@ -130,7 +404,73 @@ export function OperationalStreamCard({
   cardRef,
   className,
   footChip,
+  issuesStreamKind,
+  timelineTypeLabel,
+  dismissAction,
+  minorLinkAction,
+  reviewShortReason,
+  recentSignalMetaLine,
 }: OperationalStreamCardProps) {
+  if (issuesStreamKind === "recent") {
+    return (
+      <IssuesRecentCard
+        id={id}
+        cardRef={cardRef}
+        className={className}
+        accent={accent}
+        emphasis={emphasis}
+        icon={icon}
+        title={title}
+        description={description}
+        imageUrl={imageUrl}
+        recentSignalMetaLine={recentSignalMetaLine}
+        actions={actions}
+      />
+    );
+  }
+
+  if (issuesStreamKind === "review") {
+    const reason =
+      (reviewShortReason ?? "").trim() ||
+      (whyHere ?? "").trim() ||
+      (context ?? "").trim() ||
+      undefined;
+    return (
+      <IssuesReviewCard
+        id={id}
+        cardRef={cardRef}
+        className={className}
+        accent={accent}
+        emphasis={emphasis}
+        icon={icon}
+        title={title}
+        reviewShortReason={reason}
+        actions={actions}
+        dismissAction={dismissAction}
+      />
+    );
+  }
+
+  if (issuesStreamKind === "urgent") {
+    const primaryActions = actions.filter((a) => a.id !== "ignore" && a.id !== "dismiss");
+    return (
+      <IssuesUrgentCard
+        id={id}
+        cardRef={cardRef}
+        className={className}
+        accent={accent}
+        emphasis={emphasis}
+        icon={icon}
+        title={title}
+        context={context}
+        description={description}
+        imageUrl={imageUrl}
+        actions={primaryActions.length > 0 ? primaryActions : actions}
+        minorLinkAction={minorLinkAction}
+      />
+    );
+  }
+
   const feedLayout = Boolean(footChip?.trim()) && actionsVisibility === "hover";
 
   const footerVisible =
