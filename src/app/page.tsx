@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
 import { LeftColumn } from "@/components/layout/LeftColumn";
@@ -24,6 +24,7 @@ import {
   WORKBENCH_PANEL_TAB_QUERY,
   WORKBENCH_RECORDS_VIEW_QUERY,
   WORKBENCH_TAB_ALIAS_QUERY,
+  WORKBENCH_TASK_PRIORITY_QUERY,
   normalizeRecordsView,
   normalizeWorkbenchIssuesFilter,
   normalizeWorkbenchPanelTab,
@@ -64,6 +65,7 @@ type SelectedItem = {
 type ExpandedSection = 'details' | 'assistant' | null;
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
@@ -195,6 +197,8 @@ export default function Dashboard() {
     return normalizeWorkbenchIssuesFilter(searchParams.get(WORKBENCH_ISSUES_FILTER_QUERY));
   }, [searchParams]);
 
+  const taskPriorityUrgent = searchParams.get(WORKBENCH_TASK_PRIORITY_QUERY) === "urgent";
+
   const handleWorkbenchTabChange = useCallback(
     (tab: string) => {
       const normalized = normalizeWorkbenchPanelTab(tab);
@@ -231,6 +235,7 @@ export default function Dashboard() {
   const handleIssuesFilterChange = useCallback(
     (next: WorkbenchIssuesFilter) => {
       const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
       if (next === "all") {
         params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
       } else {
@@ -244,10 +249,14 @@ export default function Dashboard() {
   const effectiveTaskListFiltersToApply = useMemo(() => {
     if (assistantFiltersToApply != null) return assistantFiltersToApply;
     if (activeTab !== "issues") return undefined;
-    if (issuesFilter === "open") return [...ISSUES_OPEN_TASK_FILTER_IDS];
+    if (issuesFilter === "open") {
+      const ids = [...ISSUES_OPEN_TASK_FILTER_IDS];
+      if (taskPriorityUrgent) ids.push("filter-urgent");
+      return ids;
+    }
     if (issuesFilter === "done") return ["filter-status-done"];
     return undefined;
-  }, [assistantFiltersToApply, activeTab, issuesFilter]);
+  }, [assistantFiltersToApply, activeTab, issuesFilter, taskPriorityUrgent]);
 
   /** Fold `tab=` into canonical `panelTab` once so refresh and bookmarks stay consistent. */
   useEffect(() => {
@@ -472,9 +481,34 @@ export default function Dashboard() {
   };
 
   const handleFilterClick = (filterId: string) => {
+    if (filterId === "show-spaces-urgent") {
+      const pid =
+        selectedPropertyIds.size === 1
+          ? Array.from(selectedPropertyIds)[0]
+          : searchParams.get("property");
+      if (pid) navigate(`/properties/${pid}/spaces/organise?workTab=issues&urgent=1`);
+      return;
+    }
+    if (filterId === "show-assets-attention") {
+      const pid =
+        selectedPropertyIds.size === 1
+          ? Array.from(selectedPropertyIds)[0]
+          : searchParams.get("property");
+      if (pid) navigate(`/assets?property=${encodeURIComponent(pid)}&attention=1`);
+      return;
+    }
+
     handleWorkbenchTabChange("issues");
     if (filterId === "show-tasks") {
       handleIssuesFilterChange("open");
+      return;
+    }
+    if (filterId === "show-tasks-urgent") {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.set(WORKBENCH_ISSUES_FILTER_QUERY, "open");
+      params.set(WORKBENCH_TASK_PRIORITY_QUERY, "urgent");
+      setSearchParams(params, { replace: true });
       return;
     }
     // Set the filter to apply, which will trigger TaskList to apply it.

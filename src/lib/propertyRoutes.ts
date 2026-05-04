@@ -10,6 +10,9 @@ export const WORKBENCH_RECORDS_VIEW_QUERY = "recordsView";
 /** Issues sub-filter inside the workbench (`/?property=&issuesFilter=`). */
 export const WORKBENCH_ISSUES_FILTER_QUERY = "issuesFilter";
 
+/** When `issuesFilter=open`, narrows the task list to urgent/high priority (`/?taskPriority=urgent`). */
+export const WORKBENCH_TASK_PRIORITY_QUERY = "taskPriority";
+
 export type WorkbenchPanelTab = "issues" | "records" | "schedule";
 
 /** Primary slices inside the Records workspace (URL-backed on the hub). */

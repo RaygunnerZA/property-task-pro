@@ -39,6 +39,8 @@ export function useDocumentUpload(propertyId: string) {
         const fileUrl = urlData.publicUrl;
         const title = file.name.replace(/\.[^/.]+$/, "") || "Untitled";
 
+        // Insert only columns present in the shipped Supabase schema (see types + migrations).
+        // Extended doc fields (title, category, expiry, …) live in `metadata` until DB columns exist everywhere.
         const { data: ins, error: insError } = await supabase
           .from("attachments")
           .insert({
@@ -49,13 +51,15 @@ export function useDocumentUpload(propertyId: string) {
             file_name: file.name,
             file_type: file.type || null,
             file_size: file.size,
-            title,
-            category: null,
-            document_type: null,
-            expiry_date: null,
-            renewal_frequency: null,
-            status: null,
-            notes: null,
+            metadata: {
+              title,
+              category: null,
+              document_type: null,
+              expiry_date: null,
+              renewal_frequency: null,
+              status: null,
+              notes: null,
+            },
           })
           .select("id")
           .single();

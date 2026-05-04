@@ -269,7 +269,8 @@ export function IntakeModal({
     const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
     setAiTitleGenerated(processed);
     const t = title.trim();
-    if (!t || t.length <= 1) setTitle(processed);
+    // Replace junk/short AI titles (e.g. "Ja") until the user has committed a usable title.
+    if (!userEditedTitle && (!t || !isUsableGeneratedTitle(t))) setTitle(processed);
     setShowTitleField(true);
   }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, title]);
 
@@ -1204,12 +1205,85 @@ export function IntakeModal({
 
   const handleIntakeSuggestedChip = useCallback(
     async (chip: SuggestedChip) => {
-      if (!orgId) return;
-
       if (chip.resolvedEntityId) {
         applyResolvedChipToIntake(chip, chip.resolvedEntityId);
         return;
       }
+
+      // Verb chips: run explicit flows immediately (Invite / Create asset / Add space).
+      // Do not rely on resolveChip + inline row alone — those links must feel like primary actions.
+      if (chip.blockingRequired && !chip.resolvedEntityId) {
+        if (chip.type === "person") {
+          if (!orgId) {
+            toast({
+              title: "Organisation not ready",
+              description: "Wait for your organisation to load, then try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          const raw = (chip.value || chip.label || "").trim();
+          if (!raw) return;
+          const parsed = splitName(raw);
+          setInvitePrefill({
+            firstName: parsed.firstName || raw,
+            lastName: parsed.lastName ?? "",
+          });
+          setInviteModalOpen(true);
+          setIntakeWhoInviteDraft(null);
+          return;
+        }
+        if (chip.type === "asset") {
+          if (!orgId) {
+            toast({
+              title: "Organisation not ready",
+              description: "Wait for your organisation to load, then try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          const name = (chip.value || chip.label || "").trim();
+          if (!name) return;
+          if (!propertyId) {
+            setOpenChipSlot("where");
+            toast({
+              title: "Choose a property first",
+              description: "Pick a property before adding an asset.",
+              variant: "destructive",
+            });
+            return;
+          }
+          setAssetDraftName(name);
+          setShowCreateAssetDialog(true);
+          return;
+        }
+        if (chip.type === "space") {
+          if (!orgId) {
+            toast({
+              title: "Organisation not ready",
+              description: "Wait for your organisation to load, then try again.",
+              variant: "destructive",
+            });
+            return;
+          }
+          const name = (chip.value || chip.label || "").trim();
+          if (!name) return;
+          if (!propertyId) {
+            setOpenChipSlot("where");
+            toast({
+              title: "Choose a property first",
+              description: "Pick a property before adding a space.",
+              variant: "destructive",
+            });
+            return;
+          }
+          setSpaceDraftName(name);
+          setShowAddSpaceDialog(true);
+          return;
+        }
+      }
+
+      if (!orgId) return;
 
       let assets: Array<{ id: string; name: string; property_id: string; space_id?: string }> = [];
       if (chip.type === "asset" && propertyId) {
@@ -1319,6 +1393,7 @@ export function IntakeModal({
       properties,
       toast,
       applyResolvedChipToIntake,
+      splitName,
     ]
   );
 

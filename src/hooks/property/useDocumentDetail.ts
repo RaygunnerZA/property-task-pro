@@ -29,6 +29,7 @@ export function useDocumentDetail(documentId: string | null) {
       if (attError || !att) return null;
 
       const attachment = att as PropertyDocument & Record<string, unknown>;
+      const meta = (attachment.metadata as Record<string, unknown> | null) ?? {};
 
       const [spacesRes, assetsRes, contractorsRes, complianceRes] = await Promise.all([
         supabase.from("attachment_spaces").select("space_id").eq("attachment_id", documentId).eq("org_id", orgId),
@@ -56,6 +57,14 @@ export function useDocumentDetail(documentId: string | null) {
 
       return {
         ...attachment,
+        title: (meta.title as string) ?? (attachment.title as string | null) ?? null,
+        category: (meta.category as string) ?? (attachment.category as string | null) ?? null,
+        document_type: (meta.document_type as string) ?? (attachment.document_type as string | null) ?? null,
+        expiry_date: (meta.expiry_date as string) ?? (attachment.expiry_date as string | null) ?? null,
+        renewal_frequency:
+          (meta.renewal_frequency as string) ?? (attachment.renewal_frequency as string | null) ?? null,
+        status: (meta.status as string) ?? (attachment.status as string | null) ?? null,
+        notes: (meta.notes as string) ?? (attachment.notes as string | null) ?? null,
         linked_spaces: linkedSpaces,
         linked_assets: linkedAssets,
         linked_contractors: linkedContractors,
@@ -75,9 +84,34 @@ export function useDocumentDetail(documentId: string | null) {
       notes: string | null;
     }>) => {
       if (!documentId || !orgId) return;
+      const { data: row, error: fetchErr } = await supabase
+        .from("attachments")
+        .select("metadata")
+        .eq("id", documentId)
+        .eq("org_id", orgId)
+        .single();
+      if (fetchErr) throw fetchErr;
+      const prev =
+        row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : {};
+      const nextMeta: Record<string, unknown> = { ...prev };
+      const keys = [
+        "title",
+        "category",
+        "document_type",
+        "expiry_date",
+        "renewal_frequency",
+        "notes",
+      ] as const;
+      for (const k of keys) {
+        if (k in updates) {
+          nextMeta[k] = updates[k as keyof typeof updates] ?? null;
+        }
+      }
       const { error } = await supabase
         .from("attachments")
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ metadata: nextMeta, updated_at: new Date().toISOString() })
         .eq("id", documentId)
         .eq("org_id", orgId);
       if (error) throw error;

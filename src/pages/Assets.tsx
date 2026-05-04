@@ -88,6 +88,8 @@ const Assets = () => {
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [complianceOnly, setComplianceOnly] = useState(false);
   const [needsInspectionOnly, setNeedsInspectionOnly] = useState(false);
+  /** `?attention=1` — active assets with poor condition or open tasks (matches property hub tile). */
+  const [attentionIssuesOnly, setAttentionIssuesOnly] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -157,6 +159,10 @@ const Assets = () => {
     if (propertyParam) {
       setFilterPropertyId(propertyParam);
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    setAttentionIssuesOnly(searchParams.get("attention") === "1");
   }, [searchParams]);
 
   useEffect(() => {
@@ -355,8 +361,26 @@ const Assets = () => {
     if (needsInspectionOnly) {
       list = list.filter((a) => (a.condition_score ?? 100) < 60);
     }
+    if (attentionIssuesOnly) {
+      list = list.filter((a) => {
+        const active = (a.status || "active") === "active";
+        if (!active) return false;
+        const score = a.condition_score ?? 100;
+        const openTasks = a.open_tasks_count ?? 0;
+        return score < 60 || openTasks > 0;
+      });
+    }
     return list;
-  }, [assets, searchQuery, filterPropertyId, filterSpaceId, statusFilters, complianceOnly, needsInspectionOnly]);
+  }, [
+    assets,
+    searchQuery,
+    filterPropertyId,
+    filterSpaceId,
+    statusFilters,
+    complianceOnly,
+    needsInspectionOnly,
+    attentionIssuesOnly,
+  ]);
 
   const contextAssets = useMemo(() => {
     const list = assets as AssetViewRow[];

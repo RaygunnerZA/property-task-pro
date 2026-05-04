@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { propertySubPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -29,12 +29,19 @@ type SpacesWorkTab = "groups" | "issues";
 export default function SpaceOrganisationScreen() {
   const { id: propertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { property, loading: propertyLoading } = useProperty(propertyId);
   const { spaces } = useSpaces(propertyId);
   const { data: tasksData = [] } = useTasksQuery(propertyId);
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
+
+  useEffect(() => {
+    if (searchParams.get("workTab") === "issues" || searchParams.get("urgent") === "1") {
+      setWorkTab("issues");
+    }
+  }, [searchParams]);
 
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
@@ -58,6 +65,30 @@ export default function SpaceOrganisationScreen() {
     }
     return ids;
   }, [tasks]);
+
+  /** Spaces linked to at least one non-done task with urgent/high priority (matches property hub tile). */
+  const urgentPrioritySpaceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of tasks) {
+      if (t.status === "completed" || t.status === "archived") continue;
+      const pr = String(t.priority ?? "").toLowerCase();
+      if (pr !== "urgent" && pr !== "high") continue;
+      for (const s of t.spaces || []) {
+        if (s?.id) ids.add(s.id);
+      }
+    }
+    return ids;
+  }, [tasks]);
+
+  const urgentOnly = searchParams.get("urgent") === "1";
+
+  const spacesForIssuesList = useMemo(() => {
+    return spaces.filter((s) => {
+      if (!openTaskSpaceIds.has(s.id)) return false;
+      if (urgentOnly && !urgentPrioritySpaceIds.has(s.id)) return false;
+      return true;
+    });
+  }, [spaces, openTaskSpaceIds, urgentPrioritySpaceIds, urgentOnly]);
 
   const spacesWithIssuesCount = useMemo(
     () => spaces.filter((s) => openTaskSpaceIds.has(s.id)).length,
@@ -171,24 +202,26 @@ export default function SpaceOrganisationScreen() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Spaces linked to at least one open task — open a space to work it in detail.
+            {urgentOnly
+              ? "Spaces linked to at least one urgent or high-priority open task."
+              : "Spaces linked to at least one open task — open a space to work it in detail."}
           </p>
           <ul className="space-y-2">
-            {spaces
-              .filter((s) => openTaskSpaceIds.has(s.id))
-              .map((s) => (
-                <li key={s.id}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/properties/${propertyId}/spaces/${s.id}`)}
-                    className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
-                  >
-                    {s.name}
-                  </button>
-                </li>
-              ))}
-            {spacesWithIssuesCount === 0 && (
-              <p className="text-sm text-muted-foreground py-6">No spaces with open tasks.</p>
+            {spacesForIssuesList.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/properties/${propertyId}/spaces/${s.id}`)}
+                  className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
+                >
+                  {s.name}
+                </button>
+              </li>
+            ))}
+            {spacesForIssuesList.length === 0 && (
+              <p className="text-sm text-muted-foreground py-6">
+                {urgentOnly ? "No spaces with urgent-priority open tasks." : "No spaces with open tasks."}
+              </p>
             )}
           </ul>
         </div>

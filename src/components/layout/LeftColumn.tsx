@@ -176,6 +176,7 @@ export function LeftColumn({
                 onOpenTasksClick={
                   onFilterClick ? () => onFilterClick("show-tasks") : undefined
                 }
+                onFilterClick={onFilterClick}
                 onPropertyArchived={() => {
                   setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
                   onFilterClick?.("show-tasks");

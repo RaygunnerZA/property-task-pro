@@ -10,6 +10,8 @@ interface RadialProgressProps {
   labelMarginLeft?: number;
   /** Transparent outer surface (e.g. sidebar briefing) — no filled disc behind the ring */
   embed?: boolean;
+  /** Lighter shadows and label treatment (e.g. property summary strip). */
+  visualWeight?: "default" | "soft";
   className?: string;
   "aria-label"?: string;
 }
@@ -21,10 +23,12 @@ export function RadialProgress({
   innerDiscSize: innerDiscSizeProp,
   labelMarginLeft,
   embed = false,
+  visualWeight = "default",
   className,
   "aria-label": ariaLabel,
 }: RadialProgressProps) {
   const clampedValue = Math.min(100, Math.max(0, value));
+  const softVisual = visualWeight === "soft";
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - clampedValue / 100);
@@ -116,7 +120,9 @@ export function RadialProgress({
           inset: 0,
           overflow: "visible",
           transform: "rotate(-90deg)",
-          filter: "drop-shadow(0px 2px 6px rgba(142,201,206,0.5))",
+          filter: softVisual
+            ? "drop-shadow(0px 1px 2px rgba(142,201,206,0.22))"
+            : "drop-shadow(0px 2px 6px rgba(142,201,206,0.5))",
           opacity: 1,
           paddingTop: 5,
           paddingBottom: 5,
@@ -146,7 +152,9 @@ export function RadialProgress({
           inset: 0,
           borderRadius: "50%",
           pointerEvents: "none",
-          boxShadow: "inset -1px -2px 3.9px 0px rgba(255, 255, 255, 0.66), inset 1.2px 3.8px 7.6px 0px rgba(0, 0, 0, 0.15)",
+          boxShadow: softVisual
+            ? "inset -1px -1px 2px 0px rgba(255, 255, 255, 0.5), inset 1px 2px 4px 0px rgba(0, 0, 0, 0.08)"
+            : "inset -1px -2px 3.9px 0px rgba(255, 255, 255, 0.66), inset 1.2px 3.8px 7.6px 0px rgba(0, 0, 0, 0.15)",
           filter: "none",
         }}
       />
@@ -165,7 +173,9 @@ export function RadialProgress({
           backgroundImage: "var(--paper-texture)",
           backgroundSize: "100%",
           pointerEvents: "none",
-          boxShadow: "0px -1px 2px rgba(255,255,255,0.7), 0px 3px 6px rgba(0,0,0,0.12), inset 0px 1px 1px rgba(255,255,255,0.45)",
+          boxShadow: softVisual
+            ? "0px -1px 1px rgba(255,255,255,0.55), 0px 2px 4px rgba(0,0,0,0.06), inset 0px 1px 1px rgba(255,255,255,0.35)"
+            : "0px -1px 2px rgba(255,255,255,0.7), 0px 3px 6px rgba(0,0,0,0.12), inset 0px 1px 1px rgba(255,255,255,0.45)",
         }}
       />
 
@@ -180,8 +190,10 @@ export function RadialProgress({
           transform: "translate(-50%, -50%)",
           borderRadius: "50%",
           pointerEvents: "none",
-          boxShadow: "0px -2px 4px 0px rgba(255, 255, 255, 0.5), 1.2px 3.8px 3.4px 0px rgba(0, 0, 0, 0.1)",
-          opacity: 0.86,
+          boxShadow: softVisual
+            ? "0px -1px 2px 0px rgba(255, 255, 255, 0.4), 1px 2px 2px 0px rgba(0, 0, 0, 0.06)"
+            : "0px -2px 4px 0px rgba(255, 255, 255, 0.5), 1.2px 3.8px 3.4px 0px rgba(0, 0, 0, 0.1)",
+          opacity: softVisual ? 0.72 : 0.86,
           paddingTop: 0,
           paddingBottom: 0,
         }}
@@ -202,7 +214,7 @@ export function RadialProgress({
 
       {/* Percentage label — neumorphic pressed numerals */}
       <span
-        className="text-shadow-neu-pressed"
+        className={softVisual ? undefined : "text-shadow-neu-pressed"}
         style={{
           position: "relative",
           width: 76,

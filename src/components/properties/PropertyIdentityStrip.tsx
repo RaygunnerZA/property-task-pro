@@ -19,7 +19,12 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getWeatherLucideIcon } from "@/lib/weatherIcon";
-import { propertySubPath } from "@/lib/propertyRoutes";
+import {
+  propertyHubPath,
+  propertySubPath,
+  WORKBENCH_ISSUES_FILTER_QUERY,
+  WORKBENCH_TASK_PRIORITY_QUERY,
+} from "@/lib/propertyRoutes";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
@@ -84,6 +89,8 @@ interface PropertyIdentityStripProps {
   onPropertyArchived?: () => void;
   /** Hub workbench: open the centre Tasks tab instead of navigating away. */
   onOpenTasksClick?: () => void;
+  /** Hub workbench: urgent / attention slices (`show-tasks-urgent`, `show-spaces-urgent`, `show-assets-attention`). */
+  onFilterClick?: (filterId: string) => void;
   /** When provided (single-property workbench), Today + weather render on the thumbnail; parent hides the gradient header row. */
   propertyCardWeather?: PropertyCardWeather;
 }
@@ -103,6 +110,7 @@ export function PropertyIdentityStrip({
   urgentOpenTaskCount = 0,
   onPropertyArchived,
   onOpenTasksClick,
+  onFilterClick,
   propertyCardWeather,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
@@ -370,7 +378,7 @@ export function PropertyIdentityStrip({
 
   return (
     <div
-      className="bg-card/60 rounded-[12px] overflow-hidden shadow-e1 w-full flex flex-col px-0 transition-[height,box-shadow] duration-300 ease-out"
+      className="bg-card/60 rounded-[12px] overflow-hidden border border-border/20 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)] w-full flex flex-col px-0 transition-[height,box-shadow] duration-300 ease-out"
       style={{ height: `${cardHeightPx}px` }}
     >
 
@@ -498,7 +506,7 @@ export function PropertyIdentityStrip({
             type="button"
             onClick={() => setActiveTab(idx as TabIndex)}
             className={cn(
-              "shrink-0 rounded-[8px] h-6 flex items-center justify-center px-2 font-mono text-[10px] font-semibold uppercase tracking-wide leading-none",
+              "shrink-0 rounded-[8px] h-6 flex items-center justify-center px-2 font-mono text-[10px] font-medium uppercase tracking-wide leading-none",
               "transition-[color,background-color,box-shadow] duration-200 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
               activeTab === idx
@@ -510,7 +518,7 @@ export function PropertyIdentityStrip({
                 ? {
                     backgroundColor: "rgba(255, 255, 255, 1)",
                     boxShadow:
-                      "-1px -2px 2px 0px rgba(0, 0, 0, 0.16), -1px -1px 2px 0px rgba(255, 255, 255, 0.45)",
+                      "-1px -1px 2px 0px rgba(0, 0, 0, 0.07), 0 1px 1px 0px rgba(255, 255, 255, 0.55)",
                   }
                 : undefined
             }
@@ -541,7 +549,7 @@ export function PropertyIdentityStrip({
               isBelowTabsCollapsed && "pointer-events-none opacity-0 -translate-y-3",
               !isBelowTabsCollapsed &&
                 isBelowTabsHovered &&
-                "shadow-md ring-2 ring-[#8EC9CE]/30 ring-offset-0"
+                "shadow-sm ring-1 ring-primary/15 ring-offset-0"
             )}
           >
             <div
@@ -564,14 +572,36 @@ export function PropertyIdentityStrip({
               onOpenTasks={() =>
                 onOpenTasksClick ? onOpenTasksClick() : navigate(`/properties/${property.id}/tasks`)
               }
+              onOpenUrgentTasks={() =>
+                onFilterClick
+                  ? onFilterClick("show-tasks-urgent")
+                  : navigate(
+                      propertyHubPath(property.id, {
+                        [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+                        [WORKBENCH_TASK_PRIORITY_QUERY]: "urgent",
+                      })
+                    )
+              }
               onAddTask={onAddTaskClick}
               spacesCount={spacesCount}
               spaceUrgentIssuesCount={taskDashboardMetrics.spacesWithUrgentIssueCount}
               onOpenSpaces={() => navigate(propertySubPath(property.id, "spaces-organise"))}
+              onOpenUrgentSpaces={() =>
+                onFilterClick
+                  ? onFilterClick("show-spaces-urgent")
+                  : navigate(
+                      `/properties/${property.id}/spaces/organise?workTab=issues&urgent=1`
+                    )
+              }
               assetsCount={assetsCount}
               assetsUrgentIssuesCount={assetsAttentionCount}
               onOpenAssets={() =>
                 navigate(`/assets?property=${encodeURIComponent(property.id)}`)
+              }
+              onOpenAttentionAssets={() =>
+                onFilterClick
+                  ? onFilterClick("show-assets-attention")
+                  : navigate(`/assets?property=${encodeURIComponent(property.id)}&attention=1`)
               }
               documentsCountLabel={documentsCountLabel}
               docDueSoon={documentDashboardBuckets.dueSoon}

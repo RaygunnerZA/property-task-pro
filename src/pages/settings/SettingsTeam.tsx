@@ -136,6 +136,24 @@ export default function SettingsTeam() {
     []
   );
 
+  /** Removes a pending invite via PostgREST (avoids Edge Function fetch failures). */
+  const deleteInvitationRow = useCallback(
+    async (invitationId: string) => {
+      if (!orgId) throw new Error("No organisation selected");
+      const { data, error } = await supabase
+        .from("invitations")
+        .delete()
+        .eq("id", invitationId)
+        .eq("org_id", orgId)
+        .select("id");
+      if (error) throw error;
+      if (!data?.length) {
+        throw new Error("Couldn't remove invitation. You may not have permission.");
+      }
+    },
+    [orgId]
+  );
+
   const statusBadgeVariant = useMemo(
     () =>
       ({
@@ -394,13 +412,15 @@ export default function SettingsTeam() {
                             variant="outline"
                             disabled={isBusy}
                             onClick={async () => {
+                              const snapshot = invitations;
                               try {
                                 setActionBusyId(invite.id);
-                                await runInviteAction(invite.id, "cancel_invite");
-                                toast.success("Invitation cancelled");
-                                await fetchInvitations();
+                                setInvitations((prev) => prev.filter((i) => i.id !== invite.id));
+                                await deleteInvitationRow(invite.id);
+                                toast.success("Invitation removed");
                               } catch (e: unknown) {
-                                toast.error(e instanceof Error ? e.message : "Failed to cancel invitation");
+                                setInvitations(snapshot);
+                                toast.error(e instanceof Error ? e.message : "Failed to remove invitation");
                               } finally {
                                 setActionBusyId(null);
                               }

@@ -169,11 +169,13 @@ Deno.serve(async (req) => {
     await ensureManagerOrOwner(invitation.org_id, actor.id);
 
     if (action === "cancel_invite") {
-      const { error: cancelError } = await supabaseAdmin
+      const { data: deletedRows, error: cancelError } = await supabaseAdmin
         .from("invitations")
-        .update({ status: "cancelled", updated_at: new Date().toISOString() })
-        .eq("id", invitation.id);
+        .delete()
+        .eq("id", invitation.id)
+        .select("id");
       if (cancelError) return err(cancelError.message, 500);
+      if (!deletedRows?.length) return err("Failed to delete invitation", 500);
       return ok({ success: true });
     }
 

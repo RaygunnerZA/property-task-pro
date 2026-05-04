@@ -28,11 +28,11 @@ import { DocumentSearchFilters } from "@/components/properties/DocumentSearchFil
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
+import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { ComplianceRulesSection } from "@/components/compliance/ComplianceRulesSection";
 import { ComplianceRuleModal } from "@/components/compliance/ComplianceRuleModal";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
 import { ComplianceAutomationPanel } from "@/components/compliance/ComplianceAutomationPanel";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { RecordsView } from "@/lib/propertyRoutes";
 import type { IntakeMode } from "@/types/intake";
@@ -45,6 +45,15 @@ import {
 import { RecordsContextSummary } from "./RecordsContextSummary";
 
 const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
+
+const RECORDS_FILE_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
+
+/**
+ * When `?upload=1` is handled, React Strict Mode (dev) or batched re-renders can run the effect
+ * twice before `upload` is stripped from the URL — each run would call `input.click()`, so the
+ * native file sheet reopens right after the user confirms, which looks like a failed upload.
+ */
+let recordsUploadDeepLinkNonce = 0;
 
 type ExpiryRange = "all" | "30" | "90" | "365";
 type ComplianceFilter = "all" | "expiring" | "overdue" | "missing";
@@ -119,17 +128,22 @@ export function PropertyRecordsTab({
   const [hazards, setHazards] = useState(false);
   const [unlinked, setUnlinked] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [showUploadMobile, setShowUploadMobile] = useState(false);
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<unknown | null>(null);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const lastRailPickerOpenMs = useRef(0);
   const legacyFilterAppliedRef = useRef(false);
 
   const scopedPropertyId =
     selectedPropertyIds && selectedPropertyIds.size === 1
       ? Array.from(selectedPropertyIds)[0]
       : null;
+
+  const { upload: uploadPropertyDocuments, uploading: recordsUploading } = useDocumentUpload(
+    scopedPropertyId ?? ""
+  );
 
   useEffect(() => {
     if (!legacyDocFilter || legacyFilterAppliedRef.current) return;
@@ -148,11 +162,28 @@ export function PropertyRecordsTab({
 
   useEffect(() => {
     if (searchParams.get("upload") !== "1") return;
-    setShowUploadMobile(true);
+
+    const myNonce = ++recordsUploadDeepLinkNonce;
     const next = new URLSearchParams(searchParams);
     next.delete("upload");
     setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+
+    if (!scopedPropertyId) {
+      toast({
+        title: "Select a property",
+        description: "Pick one property on the workbench, then upload documents from Records.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const t = window.setTimeout(() => {
+      if (myNonce !== recordsUploadDeepLinkNonce) return;
+      recordsUploadInputRef.current?.click();
+    }, 0);
+
+    return () => window.clearTimeout(t);
+  }, [searchParams, setSearchParams, scopedPropertyId, toast]);
 
   useEffect(() => {
     if (searchParams.get("addRule") !== "1" || !scopedPropertyId) return;
@@ -173,11 +204,28 @@ export function PropertyRecordsTab({
     return () => window.removeEventListener("filla:records-open-rule-modal", onOpenRule);
   }, [scopedPropertyId]);
 
+  const openRecordsFilePicker = useCallback(() => {
+    if (!scopedPropertyId) {
+      toast({
+        title: "Select a property",
+        description: "Select exactly one property to upload documents.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const now = Date.now();
+    if (now - lastRailPickerOpenMs.current < 1200) return;
+    lastRailPickerOpenMs.current = now;
+    window.requestAnimationFrame(() => {
+      recordsUploadInputRef.current?.click();
+    });
+  }, [scopedPropertyId, toast]);
+
   useEffect(() => {
-    const onOpenUpload = () => setShowUploadMobile(true);
+    const onOpenUpload = () => openRecordsFilePicker();
     window.addEventListener("filla:records-open-upload", onOpenUpload);
     return () => window.removeEventListener("filla:records-open-upload", onOpenUpload);
-  }, []);
+  }, [openRecordsFilePicker]);
 
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
   const { data: propertyCompliance = [] } = useComplianceQuery(scopedPropertyId || undefined);
@@ -386,6 +434,26 @@ export function PropertyRecordsTab({
     queryClient.invalidateQueries({ queryKey: ["compliance_portfolio"] });
   };
 
+  const runRecordsFileUpload = useCallback(
+    async (fileList: FileList | null) => {
+      if (!fileList?.length || !scopedPropertyId) return;
+      try {
+        const created = await uploadPropertyDocuments(Array.from(fileList));
+        toast({
+          title: "Upload complete",
+          description: `${created.length} document(s) uploaded`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["property-documents"] });
+        queryClient.invalidateQueries({ queryKey: ["document-detail"] });
+        queryClient.invalidateQueries({ queryKey: ["compliance_portfolio"] });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast({ title: "Upload failed", description: msg, variant: "destructive" });
+      }
+    },
+    [scopedPropertyId, uploadPropertyDocuments, toast, queryClient]
+  );
+
   const handleLinkSpace = async (docId: string, spaceId: string) => {
     if (!orgId) return;
     try {
@@ -461,6 +529,12 @@ export function PropertyRecordsTab({
         docUnlinked={scopedPropertyId ? unlinkedDocCount : undefined}
         className="mb-3"
       />
+
+      {recordsUploading && (
+        <p className="text-xs text-muted-foreground mb-2" aria-live="polite">
+          Uploading…
+        </p>
+      )}
 
       <div className="mb-3">
         <WorkspaceSectionHeading>View</WorkspaceSectionHeading>
@@ -586,7 +660,7 @@ export function PropertyRecordsTab({
                     {
                       id: "upload-certificate",
                       label: "Upload document",
-                      onClick: () => (scopedPropertyId ? setShowUploadMobile(true) : onOpenIntake?.("add_record")),
+                      onClick: () => (scopedPropertyId ? openRecordsFilePicker() : onOpenIntake?.("add_record")),
                     },
                     {
                       id: "view-record",
@@ -627,6 +701,11 @@ export function PropertyRecordsTab({
         {showDocumentsPanel && (
           <section className="space-y-3">
             <WorkspaceSectionHeading>Stored documents</WorkspaceSectionHeading>
+            <DocumentUploadZone
+              propertyId={scopedPropertyId!}
+              onUploadComplete={handleRefresh}
+              accept={RECORDS_FILE_ACCEPT}
+            />
             <DocumentCategoryChips selected={category} onSelect={setCategory} />
             <DocumentSearchFilters
               search={search}
@@ -700,21 +779,29 @@ export function PropertyRecordsTab({
 
       <DocumentDetailDrawer
         documentId={selectedDocId}
-        propertyId={scopedPropertyId}
+        propertyId={scopedPropertyId ?? ""}
         onClose={() => setSelectedDocId(null)}
         onRefresh={handleRefresh}
       />
 
-      <Dialog open={showUploadMobile} onOpenChange={setShowUploadMobile}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Upload documents</DialogTitle>
-          </DialogHeader>
-          {scopedPropertyId ? (
-            <DocumentUploadZone propertyId={scopedPropertyId} onUploadComplete={() => { setShowUploadMobile(false); handleRefresh(); }} />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      <input
+        ref={recordsUploadInputRef}
+        type="file"
+        multiple
+        className="sr-only"
+        accept={RECORDS_FILE_ACCEPT}
+        aria-hidden
+        tabIndex={-1}
+        onChange={(e) => {
+          const files = e.target.files;
+          void runRecordsFileUpload(files);
+          // Defer reset so the browser fully closes the sheet before we clear the value (avoids
+          // some WebKit builds immediately re-focusing / re-querying the picker).
+          window.requestAnimationFrame(() => {
+            e.target.value = "";
+          });
+        }}
+      />
     </div>
   );
 }
