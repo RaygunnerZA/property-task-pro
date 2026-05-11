@@ -1,9 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Search, ArrowUpDown } from "lucide-react";
+import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useAdminOrgList, AdminOrg } from "@/hooks/admin/useAdminOrgList";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+
+const PAGE_SIZE = 25;
 
 type SortKey = keyof AdminOrg;
 type SortDir = "asc" | "desc";
@@ -42,6 +45,7 @@ export default function AdminOrgList() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -65,6 +69,23 @@ export default function AdminOrgList() {
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [orgs, search, sortKey, sortDir]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, sortKey, sortDir]);
+
+  useEffect(() => {
+    const tp = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    setPage((p) => Math.min(p, tp));
+  }, [filtered.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageSlice = useMemo(
+    () => filtered.slice(pageStart, pageStart + PAGE_SIZE),
+    [filtered, pageStart]
+  );
 
   const thClass = "px-4 py-3 text-left text-xs font-mono text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
   const tdClass = "px-4 py-3 text-sm";
@@ -136,7 +157,7 @@ export default function AdminOrgList() {
                 </td>
               </tr>
             ) : (
-              filtered.map((org) => (
+              pageSlice.map((org) => (
                 <tr
                   key={org.org_id}
                   className="hover:bg-muted/30 transition-colors cursor-pointer"
@@ -165,6 +186,45 @@ export default function AdminOrgList() {
           </tbody>
         </table>
       </div>
+
+      {!isLoading && filtered.length > PAGE_SIZE && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-muted/30 px-4 py-3 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Showing{" "}
+            <span className="font-medium text-foreground">
+              {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)}
+            </span>{" "}
+            of <span className="font-medium text-foreground">{filtered.length}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shadow-sm"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            <span className="text-xs font-mono text-muted-foreground tabular-nums px-1">
+              {safePage} / {totalPages}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shadow-sm"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
