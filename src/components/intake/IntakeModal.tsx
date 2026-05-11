@@ -38,7 +38,10 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateTaskMutation } from "@/hooks/mutations/useCreateTaskMutation";
+import {
+  useCreateTaskMutation,
+  type TaskCreatedSource,
+} from "@/hooks/mutations/useCreateTaskMutation";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
@@ -177,6 +180,8 @@ export interface IntakeModalProps {
   /** Controlled intake tab (e.g. third column synced with task panel). Requires `onIntakeModeChange`. */
   intakeMode?: IntakeMode;
   onIntakeModeChange?: (mode: IntakeMode) => void;
+  /** `task_created` analytics `source` when this modal creates a task (defaults to `manual`). */
+  taskCreatedSource?: TaskCreatedSource;
 }
 
 interface UploadedAttachment {
@@ -199,6 +204,7 @@ export function IntakeModal({
   initialIntakeMode = "report_issue",
   intakeMode: intakeModeProp,
   onIntakeModeChange,
+  taskCreatedSource,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -2846,7 +2852,7 @@ export function IntakeModal({
       }
 
       const newTask = await createTaskMutation.mutateAsync({
-        source: "manual",
+        source: taskCreatedSource ?? "manual",
         insert: {
           org_id: orgId,
           title: finalTitle,

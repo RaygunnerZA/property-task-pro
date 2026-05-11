@@ -11,10 +11,22 @@
  * No references to assistant-intent remain in the codebase.
  */
 import { useState, useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { useDevMode } from "@/context/useDevMode";
 import { supabase } from "@/integrations/supabase/client";
+import { track } from "@/lib/analytics";
 import type { AssistantMessage, ProposedAction } from "@/components/assistant/AssistantPanel";
+
+type AssistantExecutorType = "create_task" | "link_compliance";
+
+type AssistantExecutorVariables = {
+  executorType: AssistantExecutorType;
+  payload: unknown;
+  orgId: string;
+};
+
+type AssistantExecutorResponse = { ok: boolean; task_id?: string; error?: string };
 
 export interface AssistantContextInput {
   type: "property" | "space" | "asset" | "task" | "document" | null;
@@ -23,10 +35,38 @@ export interface AssistantContextInput {
 
 export function useAssistant() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const queryClient = useQueryClient();
   const devMode = useDevMode();
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [proposedAction, setProposedAction] = useState<ProposedAction | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const assistantActionMutation = useMutation({
+    mutationFn: async ({ executorType, payload, orgId: oid }: AssistantExecutorVariables) => {
+      const { data, error } = await supabase.functions.invoke("assistant-action-executor", {
+        body: {
+          type: executorType,
+          payload,
+          org_id: oid,
+        },
+      });
+      if (error) throw error;
+      const body = data as AssistantExecutorResponse | null;
+      if (!body?.ok) throw new Error(body?.error ?? "Action failed");
+      return { body, executorType, orgId: oid };
+    },
+    onSuccess: (result) => {
+      if (result.executorType === "create_task" && result.body.task_id) {
+        track("task_created", {
+          org_id: result.orgId,
+          task_id: result.body.task_id,
+          source: "assistant",
+        });
+      }
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+    },
+  });
 
   const sendMessage = useCallback(
     async (query: string, context?: AssistantContextInput | null) => {
@@ -119,27 +159,24 @@ export function useAssistant() {
       return;
     }
 
+    const pa = proposedAction;
+    const executorType: AssistantExecutorType =
+      pa.type === "task" ? "create_task" : "link_compliance";
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("assistant-action-executor", {
-        body: {
-          type: proposedAction.type === "task" ? "create_task" : "link_compliance",
-          payload: proposedAction.payload,
-          org_id: orgId,
-        },
+      await assistantActionMutation.mutateAsync({
+        executorType,
+        payload: pa.payload,
+        orgId,
       });
-
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error ?? "Action failed");
 
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content:
-            proposedAction.type === "task"
-              ? `Task created successfully.`
-              : `Document linked to compliance.`,
+            pa.type === "task" ? `Task created successfully.` : `Document linked to compliance.`,
         },
       ]);
       setProposedAction(null);
@@ -149,7 +186,7 @@ export function useAssistant() {
     } finally {
       setLoading(false);
     }
-  }, [proposedAction, orgId]);
+  }, [proposedAction, orgId, assistantActionMutation]);
 
   const rejectAction = useCallback(() => {
     setProposedAction(null);
