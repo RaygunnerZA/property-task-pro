@@ -25,7 +25,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 
 1. **Phase B.1–B.2** — Admin pagination design + RPC/migrations (requires types regen).
 2. **Phase E.2–E.3** — `document_uploaded` / any remaining UI `track` → mutation `onSuccess` (compliance complete already uses mutation `onSuccess`).
-3. **Phase C.1–C.3** — Property timeline product decision + first real hook (highest user-visible value).
+3. **Phase C.1–C.3** — Property timeline: **`usePropertyTimeline`** now loads tasks + task `audit_logs` (see `PropertyActivityTimeline` in Insights). Remaining: **`usePropertyDrift`** / **`usePropertyVendors`** real data or hide tabs.
 
 Re-sequence if product prioritises compliance analytics or property hub over admin scale.
 
@@ -39,5 +39,6 @@ Re-sequence if product prioritises compliance analytics or property hub over adm
 | Pre | Vitest scoped to `src`; `useVendor` build fix | merged `main` |
 | Pre | `@Docs/Rollout_Checklist_1-2_Sprints.md` | merged `main` |
 | Sprint 1 | Execution plan, README § Engineering, identity §8a, `AppLayout` `ErrorBoundary` | merged `main` |
+| Sprint 2 (partial) | Property timeline: `usePropertyTimeline` + `PropertyActivityTimeline` in Insights; cache invalidation | merged `main` |
 
 Update the **Done** table whenever a checklist phase ships.

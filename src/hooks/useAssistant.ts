@@ -65,6 +65,7 @@ export function useAssistant() {
       }
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       void queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+      void queryClient.invalidateQueries({ queryKey: ["property-timeline", result.orgId] });
     },
   });
 

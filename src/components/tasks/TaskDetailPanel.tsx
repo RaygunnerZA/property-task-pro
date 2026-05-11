@@ -1164,6 +1164,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   await refreshTask();
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
                   queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
+                  if (orgId && propId) {
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-timeline", orgId, propId],
+                    });
+                  }
                   if (orgId) {
                     const updateBriefingCache = (key: (string | undefined)[]) => {
                       queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
