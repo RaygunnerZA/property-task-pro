@@ -1,16 +1,10 @@
-// Thin wrapper for identity state: orgId from useActiveOrg, session/contractor from DataContext
+/**
+ * Thin convenience hook over `DataContext` identity fields.
+ * `orgId` is membership-backed (same resolution as `useActiveOrg`).
+ */
 import { useDataContext } from "@/contexts/DataContext";
-import { useActiveOrg } from "./useActiveOrg";
 
 export function useFillaIdentity() {
-  const { userId, contractorToken, isContractor } = useDataContext();
-  const { orgId } = useActiveOrg();
-
-  return {
-    orgId,
-    userId,
-    contractorToken,
-    isOrgUser: !!orgId && !!userId,
-    isContractor,
-  };
+  const { orgId, userId, contractorToken, isContractor, isOrgUser } = useDataContext();
+  return { orgId, userId, contractorToken, isOrgUser, isContractor };
 }

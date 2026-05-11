@@ -1,4 +1,13 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  ReactNode,
+} from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,21 +26,25 @@ interface DataContextValue {
   session: Session | null;
   user: User | null;
   isAuthenticated: boolean;
-  
-  // Organisation state
+
+  /**
+   * Active organisation for org-scoped data — same source as `useActiveOrg`:
+   * derived from `organisation_members` (first non-personal org, else first membership).
+   * Do not use JWT `app_metadata.org_id` for queries; it can lag or diverge from membership.
+   */
   orgId: string | null;
   organisation: Organisation | null;
-  
+
   // Identity flags
   userId: string | null;
   isOrgUser: boolean;
   contractorToken: string | null;
   isContractor: boolean;
-  
+
   // Loading/error states
   loading: boolean;
   error: string | null;
-  
+
   // Actions
   refresh: () => Promise<void>;
   clearError: () => void;
@@ -47,16 +60,15 @@ export function useDataContext() {
   return context;
 }
 
-// Thin wrapper hooks for convenience
 export function useAuth() {
   const { session, user, isAuthenticated, loading } = useDataContext();
   return { session, user, isAuthenticated, loading };
 }
 
 export function useOrg() {
-  const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const { loading } = useDataContext();
-  return { orgId, organisation: null, loading: loading || orgLoading };
+  const { orgId, organisation, loading } = useDataContext();
+  const { isLoading: orgLoading } = useActiveOrg();
+  return { orgId, organisation, loading: loading || orgLoading };
 }
 
 export function useCurrentUser() {
@@ -69,156 +81,135 @@ interface DataProviderProps {
 }
 
 export function DataProvider({ children }: DataProviderProps) {
+  const queryClient = useQueryClient();
+  const { orgId: activeOrgId } = useActiveOrg();
+
   const [session, setSession] = useState<Session | null>(null);
   const [organisation, setOrganisation] = useState<Organisation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Derived values
   const user = session?.user ?? null;
   const userId = user?.id ?? null;
   const isAuthenticated = !!session;
-  
-  // Get org_id from JWT claims (set by Supabase trigger or updateUser)
-  const orgId = session?.user?.app_metadata?.org_id || 
-                session?.user?.user_metadata?.org_id || 
-                null;
-  
-  // Contractor token from JWT claims
-  const contractorToken = session?.user?.app_metadata?.contractor_token || null;
+
+  const jwtOrgId =
+    session?.user?.app_metadata?.org_id ?? session?.user?.user_metadata?.org_id ?? null;
+
+  const orgId = activeOrgId;
+  const contractorToken = session?.user?.app_metadata?.contractor_token ?? null;
   const isOrgUser = !!orgId && !!userId;
   const isContractor = !!contractorToken && !orgId;
 
-  // Fetch organisation details when orgId changes
   const fetchOrganisation = useCallback(async (id: string) => {
     try {
       const { data, error: fetchError } = await supabase
-        .from('organisations')
-        .select('*')
-        .eq('id', id)
+        .from("organisations")
+        .select("*")
+        .eq("id", id)
         .single();
-      
+
       if (fetchError) {
-        // 406 (Not Acceptable) / PGRST116 errors are expected when user isn't a member yet
-        // This is common during invitation acceptance flow
-        if (fetchError.code === 'PGRST116' || fetchError.message?.includes('0 rows')) {
-          console.debug('Cannot fetch organisation - user not yet a member (expected during invitation acceptance):', fetchError);
+        if (fetchError.code === "PGRST116" || fetchError.message?.includes("0 rows")) {
+          console.debug(
+            "Cannot fetch organisation - user not yet a member (expected during invitation acceptance):",
+            fetchError
+          );
         } else {
-          console.error('Failed to fetch organisation:', fetchError);
+          console.error("Failed to fetch organisation:", fetchError);
         }
         return null;
       }
       return data as Organisation;
     } catch (err) {
-      console.error('Error fetching organisation:', err);
+      console.error("Error fetching organisation:", err);
       return null;
     }
   }, []);
 
-  // Main refresh function - uses refreshSession to ensure fresh JWT with org_id claim
+  useEffect(() => {
+    if (!activeOrgId) {
+      setOrganisation(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchOrganisation(activeOrgId).then((org) => {
+      if (!cancelled) setOrganisation(org);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeOrgId, fetchOrganisation]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (jwtOrgId && activeOrgId && jwtOrgId !== activeOrgId) {
+      console.warn("[DataContext] JWT org_id differs from membership active org", {
+        jwtOrgId,
+        activeOrgId,
+      });
+    }
+  }, [jwtOrgId, activeOrgId]);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Use refreshSession instead of getSession to get fresh JWT with updated claims
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      
+
       if (refreshError) {
-        // If refresh fails, try getSession as fallback (might be a new session)
-        const { data: { session: fallbackSession }, error: sessionError } = await supabase.auth.getSession();
-        
+        const {
+          data: { session: fallbackSession },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
         if (sessionError) {
           setError(sessionError.message);
           setSession(null);
           setOrganisation(null);
           return;
         }
-        
+
         setSession(fallbackSession);
-        
-        const newOrgId = fallbackSession?.user?.app_metadata?.org_id || 
-                         fallbackSession?.user?.user_metadata?.org_id;
-        
-        if (newOrgId) {
-          const org = await fetchOrganisation(newOrgId);
-          setOrganisation(org);
-        } else {
-          setOrganisation(null);
-        }
-        return;
-      }
-      
-      const newSession = refreshData.session;
-      setSession(newSession);
-      
-      // If we have an org_id in claims, fetch the organisation
-      const newOrgId = newSession?.user?.app_metadata?.org_id || 
-                       newSession?.user?.user_metadata?.org_id;
-      
-      if (newOrgId) {
-        const org = await fetchOrganisation(newOrgId);
-        setOrganisation(org);
       } else {
-        setOrganisation(null);
+        setSession(refreshData.session);
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to refresh session');
+
+      void queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      void queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to refresh session");
     } finally {
       setLoading(false);
     }
-  }, [fetchOrganisation]);
+  }, [queryClient]);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
-  // Initialize on mount - try to get a fresh session
   useEffect(() => {
-    // Use getSession for initialization to avoid competing refresh calls across providers.
-    // Supabase auto-refresh and auth events keep session current.
-    supabase.auth.getSession().then((result) => {
-      const initialSession = result?.data?.session ?? null;
-      setSession(initialSession);
-      
-      const initialOrgId = initialSession?.user?.app_metadata?.org_id || 
-                           initialSession?.user?.user_metadata?.org_id;
-      
-      if (initialOrgId) {
-        fetchOrganisation(initialOrgId).then(setOrganisation);
-      }
-      setLoading(false);
-    }).catch(() => {});
-
-    // Listen for auth state changes
-    // IMPORTANT: Do NOT use async callback or make Supabase calls directly inside
-    // This prevents auth deadlock issues
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
-        void event;
-        // Only synchronous state updates here
-        setSession(newSession);
-        
-        // Defer Supabase calls with setTimeout to prevent deadlock
-        const newOrgId = newSession?.user?.app_metadata?.org_id || 
-                         newSession?.user?.user_metadata?.org_id;
-        
-        if (newOrgId) {
-          setTimeout(() => {
-            fetchOrganisation(newOrgId).then(setOrganisation);
-          }, 0);
-        } else {
-          setOrganisation(null);
-        }
-        
+    supabase.auth
+      .getSession()
+      .then((result) => {
+        const initialSession = result?.data?.session ?? null;
+        setSession(initialSession);
         setLoading(false);
-      }
-    );
+      })
+      .catch(() => {});
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setLoading(false);
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [fetchOrganisation]);
+  }, []);
 
   const value: DataContextValue = useMemo(
     () => ({
@@ -250,7 +241,7 @@ export function DataProvider({ children }: DataProviderProps) {
       error,
       refresh,
       clearError,
-    ],
+    ]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

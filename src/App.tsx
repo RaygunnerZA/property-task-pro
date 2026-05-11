@@ -127,7 +127,8 @@ const queryClient = new QueryClient({
 });
 
 /**
- * Sits inside DataProvider so it has access to auth + org context.
+ * Renders under `ActiveOrgProvider` → `DataProvider`.
+ * `useDataContext().orgId` is membership-backed (same as `useActiveOrg`), not JWT alone.
  * Calls identifyUser once the session and org are both resolved.
  * Calls resetAnalyticsUser on sign-out.
  */
@@ -161,8 +162,8 @@ const App = () => {
             <AuthHashHandler />
             <SystemStatusProvider>
               <StatusBanner />
-              <DataProvider>
-                <ActiveOrgProvider>
+              <ActiveOrgProvider>
+                <DataProvider>
                   <AnalyticsIdentifier />
                   <AppInitializer>
                   <Suspense fallback={<LoadingState message="Loading..." />}>
@@ -302,8 +303,8 @@ const App = () => {
                     </Routes>
                   </Suspense>
                   </AppInitializer>
-                </ActiveOrgProvider>
-              </DataProvider>
+                </DataProvider>
+              </ActiveOrgProvider>
             </SystemStatusProvider>
           </BrowserRouter>
         </TooltipProvider>

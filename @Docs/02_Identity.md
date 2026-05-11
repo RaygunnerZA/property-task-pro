@@ -11,19 +11,30 @@ The Identity & Organisation backbone determines what mode a user sees, what prop
 *   `organisations`: id, name, org_type (personal|business|contractor).
 *   `organisation_members`: user_id, org_id, role, assigned_properties.
 
-**4. MULTI-ORG SUPPORT**
-Users have an `active_org_id` in their session. All queries filter by this ID.
+**4. ACTIVE ORGAN (CANONICAL FOR DATA)**
 
-**5. INVISIBLE ORG (PERSONAL MODE)**
+The org that gates all org-scoped queries and RLS-backed reads is **not** inferred from JWT `app_metadata.org_id` alone. The app resolves it from **`organisation_members`** (see `useActiveOrg` / `ActiveOrgProvider`): first membership in `created_at` order, preferring a non-`personal` org when one exists.
+
+*   **`DataContext.orgId`** matches that same membership resolution (provider order: `ActiveOrgProvider` wraps `DataProvider`).
+*   **JWT** may still carry `org_id` for Supabase triggers and legacy paths; it must not be the only source for UI data loading. In development, if JWT `org_id` and membership `orgId` both exist and differ, the app logs a console warning.
+
+**5. MULTI-ORG SUPPORT**
+
+Users may belong to multiple orgs; the active org above determines which org’s rows are visible. Switching org (when the product adds a selector) must invalidate `["activeOrg", userId]` and dependent queries.
+
+**6. INVISIBLE ORG (PERSONAL MODE)**
+
 "I manage my own home" creates a `personal` org where the user is Owner.
 
-**6. JWT CLAIMS**
-Tokens contain: `identity_type`, `active_org_id`, `org_roles`, `assigned_properties`.
+**7. JWT CLAIMS**
 
-**7. SESSION HYDRATION**
-1. Read JWT -> 2. Resolve Org -> 3. Load Memberships -> 4. Resolve Identity -> 5. Derive Permissions.
+Tokens may contain: `identity_type`, `org_id` / `active_org_id`, `org_roles`, `assigned_properties`, `contractor_token`, etc. **Use claims for contractor token and auth**, but treat **`useActiveOrg` / `DataContext.orgId`** as the source of truth for which organisation’s data to load.
 
-**8-13. GATES & FLOWS**
+**8. SESSION HYDRATION**
+
+1. Read session (JWT) → 2. Resolve user id → 3. Load active org from `organisation_members` → 4. Fetch `organisations` row for display (name, etc.) → 5. Derive permissions from membership role.
+
+**9. GATES & FLOWS**
 *   **Identity Gate:** Blocks access until mode is known.
 *   **Org Gate:** Ensures user belongs to active org.
 *   **Staff:** Restricted to `assigned_properties`.

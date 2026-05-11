@@ -25,4 +25,4 @@
     2.  Show tabs: Overview, Tasks, Assets, Compliance.
     3.  Ensure clicking a Task in the "Tasks Tab" opens the Panel from Phase B.
 
-**RULE:** Do not implement JWT Claims or Advanced Identity logic yet. Stick to the existing `useActiveOrg` + `check_user_org_membership` security model.
+**RULE:** Do not implement JWT Claims or Advanced Identity logic yet. Stick to the existing `useActiveOrg` + `check_user_org_membership` security model. **`DataContext.orgId`** is aligned with `useActiveOrg` (membership-based); do not load org-scoped data using JWT `org_id` alone.

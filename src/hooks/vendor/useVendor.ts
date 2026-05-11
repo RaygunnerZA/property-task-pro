@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useDataContext } from "@/contexts/DataContext";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Vendor {
@@ -11,7 +12,8 @@ export interface Vendor {
 }
 
 export const useVendor = (vendorId?: string) => {
-  const { userId, orgId } = useDataContext();
+  const { userId } = useDataContext();
+  const { orgId } = useActiveOrg();
   const targetId = vendorId ?? userId;
 
   const { data: vendor = null, isLoading } = useQuery({
