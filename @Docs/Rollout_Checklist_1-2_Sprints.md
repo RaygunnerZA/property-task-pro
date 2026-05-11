@@ -1,5 +1,7 @@
 # Rollout checklist — 1–2 sprints (nothing missed)
 
+**Active execution order / sprint focus:** [`Rollout_Execution_Plan.md`](./Rollout_Execution_Plan.md)
+
 **Purpose:** Track delivery of the agreed backlog: strict TypeScript, admin scale, property hub data, `CreateTaskModal` decomposition, analytics consistency, error boundaries, docs discoverability, identity hook clarity, and observability follow-through.
 
 **How to use:** Copy rows into your tracker (Linear/Jira). Set **Owner** before starting. Check **Verify** when merged. Do not skip **Dependencies** — order reduces rework.

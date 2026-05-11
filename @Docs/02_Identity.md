@@ -34,6 +34,12 @@ Tokens may contain: `identity_type`, `org_id` / `active_org_id`, `org_roles`, `a
 
 1. Read session (JWT) → 2. Resolve user id → 3. Load active org from `organisation_members` → 4. Fetch `organisations` row for display (name, etc.) → 5. Derive permissions from membership role.
 
+**8a. PREFERRED HOOKS (APPLICATION CODE)**
+
+*   **Org-scoped data, query keys, guards:** use **`useActiveOrg()`** or **`useOrgScope()`** (same membership-backed `org_id`). Do not derive the active org solely from JWT `app_metadata.org_id` for Supabase filters.
+*   **Active org id + organisation display row:** **`useOrg()`** from `@/contexts/DataContext` — exposes membership-aligned `orgId` and loaded `organisation` (name, etc.).
+*   **Thin convenience:** **`useFillaIdentity()`** — reads the same context fields; new feature code should still prefer **`useActiveOrg` / `useOrgScope`** for anything that touches `org_id` in RPCs or RLS-scoped tables.
+
 **9. GATES & FLOWS**
 *   **Identity Gate:** Blocks access until mode is known.
 *   **Org Gate:** Ensures user belongs to active org.

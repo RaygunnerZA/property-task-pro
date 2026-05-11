@@ -25,6 +25,7 @@ function MobileAssistantButton() {
 }
 import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { isDevBuild } from '@/context/DevModeContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
 const ViewportSimulator = lazy(() => import('@/components/dev/ViewportSimulator'));
@@ -86,7 +87,9 @@ export function AppLayout({
           >
             {/* Content */}
             <div className="relative z-10 w-full max-w-full">
-              {children}
+              <ErrorBoundary regionTitle="Main workspace">
+                {children}
+              </ErrorBoundary>
             </div>
           </main>
         </div>

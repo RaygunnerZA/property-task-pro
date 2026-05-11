@@ -70,6 +70,13 @@ npm run gen:types
 
 Requires the Supabase CLI and a linked project (`supabase link`), or run the generator manually with your project ID and redirect output to `src/types/supabase.ts`.
 
+## Engineering (FILLA)
+
+- **Canonical docs:** [`@Docs/`](./@Docs/) — data model, identity, observability, admin (see repo `.cursorrules`).
+- **Rollout backlog (1–2 sprints):** [`@Docs/Rollout_Checklist_1-2_Sprints.md`](./@Docs/Rollout_Checklist_1-2_Sprints.md)
+- **What we’re executing now:** [`@Docs/Rollout_Execution_Plan.md`](./@Docs/Rollout_Execution_Plan.md)
+- **First platform admin:** insert your auth user into `platform_admins` via Supabase SQL — see the comment in `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md) §25.2.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21) and click on Share -> Publish.
