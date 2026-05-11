@@ -33,9 +33,9 @@ export const useVendor = (vendorId?: string) => {
         name:
           meta.full_name ??
           meta.name ??
-          [meta.first_name, meta.last_name].filter(Boolean).join(" ") ||
-          user.email?.split("@")[0] ??
-          "Vendor",
+          ([meta.first_name, meta.last_name].filter(Boolean).join(" ") ||
+            user.email?.split("@")[0] ||
+            "Vendor"),
         email: user.email ?? "",
         phone: meta.phone ?? "",
       } satisfies Vendor;

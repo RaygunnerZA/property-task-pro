@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: "node",
+    /** Only app tests; avoids duplicate dependency trees (e.g. `node_modules.nosync`). */
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
