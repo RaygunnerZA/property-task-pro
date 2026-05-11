@@ -1,3 +1,7 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
+npm warn exec The following package was not found and will be installed: supabase@2.98.2
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+Initialising login role...
 export type Json =
   | string
   | number
@@ -14,6 +18,112 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_requests: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          function_name: string
+          id: string
+          input_tokens: number | null
+          latency_ms: number | null
+          metadata: Json
+          model_used: string
+          org_id: string
+          output_tokens: number | null
+          prompt_version: string | null
+          provider: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          metadata?: Json
+          model_used: string
+          org_id: string
+          output_tokens?: number | null
+          prompt_version?: string | null
+          provider: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          input_tokens?: number | null
+          latency_ms?: number | null
+          metadata?: Json
+          model_used?: string
+          org_id?: string
+          output_tokens?: number | null
+          prompt_version?: string | null
+          provider?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_resolution_audit: {
+        Row: {
+          chosen_payload: Json
+          created_at: string
+          id: string
+          org_id: string
+          suggestion_payload: Json
+          task_temp_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chosen_payload: Json
+          created_at?: string
+          id?: string
+          org_id: string
+          suggestion_payload: Json
+          task_temp_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chosen_payload?: Json
+          created_at?: string
+          id?: string
+          org_id?: string
+          suggestion_payload?: Json
+          task_temp_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_resolution_audit_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_resolution_memory: {
         Row: {
           confidence: number | null
@@ -2515,6 +2625,27 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       properties: {
         Row: {
           address: string
@@ -4111,6 +4242,70 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: Json }
+      admin_get_org: {
+        Args: { p_org_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          org_id: string
+          org_name: string
+          org_type: string
+        }[]
+      }
+      admin_get_org_activity: {
+        Args: { p_limit?: number; p_org_id: string }
+        Returns: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+        }[]
+      }
+      admin_get_org_ai_requests: {
+        Args: { p_limit?: number; p_org_id: string }
+        Returns: {
+          cost_usd: number
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error_message: string
+          function_name: string
+          id: string
+          input_tokens: number
+          latency_ms: number
+          model_used: string
+          output_tokens: number
+          provider: string
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_list_org_members: {
+        Args: { p_org_id: string }
+        Returns: {
+          email: string
+          joined_at: string
+          last_sign_in_at: string
+          role: string
+          user_id: string
+        }[]
+      }
+      admin_list_orgs: {
+        Args: never
+        Returns: {
+          created_at: string
+          last_activity: string
+          member_count: number
+          org_id: string
+          org_name: string
+          org_type: string
+          property_count: number
+          task_count: number
+        }[]
+      }
       ai_icon_search: {
         Args: { query_text?: string }
         Returns: {
@@ -4356,6 +4551,7 @@ export type Database = {
       }
       is_org_member: { Args: { org_uuid: string }; Returns: boolean }
       is_org_owner_or_manager: { Args: { p_org_id: string }; Returns: boolean }
+      is_platform_admin: { Args: never; Returns: boolean }
       map_internal_external: {
         Args: { p_value: string }
         Returns: Database["public"]["Enums"]["internal_external"]
@@ -4377,12 +4573,12 @@ export type Database = {
         Args: { p_org: string; p_task_id: string }
         Returns: boolean
       }
-      seed_property_defaults: {
-        Args: { p_org_id: string; p_property_id: string }
-        Returns: undefined
-      }
       seed_onboarding_demo_for_property: {
         Args: { p_property_id: string }
+        Returns: undefined
+      }
+      seed_property_defaults: {
+        Args: { p_org_id: string; p_property_id: string }
         Returns: undefined
       }
       seed_property_plan_fixture: {

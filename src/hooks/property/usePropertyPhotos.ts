@@ -1,5 +1,5 @@
-// Frontend-only placeholder hook for property photos
-import { useState } from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface PropertyPhoto {
   id: string;
@@ -9,32 +9,28 @@ export interface PropertyPhoto {
 }
 
 export const usePropertyPhotos = (propertyId: string) => {
-  const [photos] = useState<PropertyPhoto[]>([
-    {
-      id: '1',
-      url: '/placeholder.svg',
-      caption: 'Front entrance',
-      uploaded_at: '2025-01-15T10:30:00Z'
-    },
-    {
-      id: '2',
-      url: '/placeholder.svg',
-      caption: 'Living room',
-      uploaded_at: '2025-01-15T10:35:00Z'
-    },
-    {
-      id: '3',
-      url: '/placeholder.svg',
-      caption: 'Kitchen',
-      uploaded_at: '2025-01-15T10:40:00Z'
-    },
-    {
-      id: '4',
-      url: '/placeholder.svg',
-      caption: 'Bedroom',
-      uploaded_at: '2025-01-15T10:45:00Z'
-    }
-  ]);
+  const { data: photos = [], isLoading } = useQuery({
+    queryKey: ["property-photos", propertyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("property_image_versions")
+        .select("id, storage_path, thumbnail_path, annotation_summary, created_at")
+        .eq("property_id", propertyId)
+        .neq("is_archived", true)
+        .order("version_number", { ascending: false });
 
-  return { photos, isLoading: false };
+      if (error) throw error;
+
+      return (data ?? []).map((row): PropertyPhoto => ({
+        id: row.id,
+        url: row.thumbnail_path || row.storage_path,
+        caption: row.annotation_summary ?? undefined,
+        uploaded_at: row.created_at ?? new Date().toISOString(),
+      }));
+    },
+    enabled: !!propertyId,
+    staleTime: 60000,
+  });
+
+  return { photos, isLoading };
 };

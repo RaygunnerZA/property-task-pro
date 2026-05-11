@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from "@tanstack/react-query";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { supabase } from "@/integrations/supabase/client";
 
-interface PropertyStatus {
+export interface PropertyStatus {
   id: string;
   name: string;
-  status: 'compliant' | 'pending' | 'non_compliant';
+  status: "compliant" | "pending" | "non_compliant";
   driftCount: number;
 }
 
@@ -14,28 +16,51 @@ interface UsePropertyDriftHeatmapResult {
 }
 
 export const usePropertyDriftHeatmap = (): UsePropertyDriftHeatmapResult => {
-  const [data, setData] = useState<PropertyStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { orgId, isLoading: orgLoading } = useActiveOrg();
 
-  useEffect(() => {
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      setData([
-        { id: '1', name: 'Sunrise Tower', status: 'compliant', driftCount: 0 },
-        { id: '2', name: 'Harbor View', status: 'compliant', driftCount: 0 },
-        { id: '3', name: 'Oak Street Apartments', status: 'pending', driftCount: 2 },
-        { id: '4', name: 'Park Plaza', status: 'non_compliant', driftCount: 5 },
-        { id: '5', name: 'Downtown Lofts', status: 'compliant', driftCount: 0 },
-        { id: '6', name: 'Riverside Complex', status: 'pending', driftCount: 1 },
-        { id: '7', name: 'Metro Heights', status: 'compliant', driftCount: 0 },
-        { id: '8', name: 'Garden Estates', status: 'non_compliant', driftCount: 3 },
-      ]);
-      setLoading(false);
-    }, 500);
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["property-drift-heatmap", orgId],
+    queryFn: async () => {
+      const { data: rows, error: qErr } = await supabase
+        .from("compliance_portfolio_view")
+        .select("property_id, property_name, expiry_state")
+        .eq("org_id", orgId!);
 
-    return () => clearTimeout(timer);
-  }, []);
+      if (qErr) throw qErr;
 
-  return { data, loading, error };
+      // Group by property_id and derive status
+      const byProperty = new Map<
+        string,
+        { name: string; expired: number; expiring: number; total: number }
+      >();
+
+      for (const row of rows ?? []) {
+        const pid = row.property_id ?? "unknown";
+        const entry = byProperty.get(pid) ?? {
+          name: row.property_name ?? "Unknown property",
+          expired: 0,
+          expiring: 0,
+          total: 0,
+        };
+        entry.total += 1;
+        if (row.expiry_state === "expired") entry.expired += 1;
+        else if (row.expiry_state === "expiring") entry.expiring += 1;
+        byProperty.set(pid, entry);
+      }
+
+      return Array.from(byProperty.entries()).map(([id, v]): PropertyStatus => {
+        const status: PropertyStatus["status"] =
+          v.expired > 0 ? "non_compliant" : v.expiring > 0 ? "pending" : "compliant";
+        return { id, name: v.name, status, driftCount: v.expired + v.expiring };
+      });
+    },
+    enabled: !!orgId && !orgLoading,
+    staleTime: 60000,
+  });
+
+  return {
+    data,
+    loading: isLoading || orgLoading,
+    error: error as Error | null,
+  };
 };

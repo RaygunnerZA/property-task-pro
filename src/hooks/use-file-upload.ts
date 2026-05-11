@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "./useActiveOrg";
+import { track } from "@/lib/analytics";
 
 interface UseFileUploadOptions {
   taskId?: string;
@@ -198,6 +199,11 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
           p.fileName === file.name ? { ...p, progress: 100, status: "complete" } : p
         )
       );
+
+      track("document_uploaded", {
+        org_id: orgId,
+        via_ai: false,
+      });
 
       onUploadComplete?.(attachment.id, urlData.publicUrl);
 

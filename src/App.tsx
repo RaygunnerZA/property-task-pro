@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
 import { ActiveOrgProvider } from "@/providers/ActiveOrgProvider";
-import { DataProvider, useAuth, useOrg } from "@/contexts/DataContext";
+import { DataProvider, useAuth, useDataContext } from "@/contexts/DataContext";
 import { AppInitializer } from "@/components/AppInitializer";
 import { AuthHashHandler } from "@/components/AuthHashHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -109,6 +109,12 @@ const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
 const SettingsProfile = lazy(() => import("./pages/settings/SettingsProfile"));
 const DebugData = lazy(() => import("./pages/DebugData"));
 
+// Admin panel (lazy, guarded by AdminLayout)
+const AdminLayout         = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminOrgList        = lazy(() => import("./pages/admin/AdminOrgList"));
+const AdminOrgDetail      = lazy(() => import("./pages/admin/AdminOrgDetail"));
+const AdminOrgAiRequests  = lazy(() => import("./pages/admin/AdminOrgAiRequests"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -127,13 +133,13 @@ const queryClient = new QueryClient({
  */
 function AnalyticsIdentifier() {
   const { user } = useAuth();
-  const { orgId } = useOrg();
+  const { orgId, organisation } = useDataContext();
 
   useEffect(() => {
     if (user?.id && orgId) {
-      identifyUser(user.id, orgId, "");
+      identifyUser(user.id, orgId, organisation?.name ?? "");
     }
-  }, [user?.id, orgId]);
+  }, [user?.id, orgId, organisation?.name]);
 
   useEffect(() => {
     if (!user) {
@@ -182,6 +188,20 @@ const App = () => {
                       <Route path="/contractor/access" element={<ContractorAccess />} />
                       <Route path="/contractor/task/:id" element={<ContractorTask />} />
                       
+                      {/* Admin panel — own layout, own guard, no AppLayout */}
+                      <Route path="/admin" element={
+                        <ProtectedRoute>
+                          <Suspense fallback={<LoadingState message="Loading..." />}>
+                            <AdminLayout />
+                          </Suspense>
+                        </ProtectedRoute>
+                      }>
+                        <Route index element={<Navigate to="/admin/orgs" replace />} />
+                        <Route path="orgs" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgList /></Suspense>} />
+                        <Route path="orgs/:orgId" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgDetail /></Suspense>} />
+                        <Route path="orgs/:orgId/ai" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgAiRequests /></Suspense>} />
+                      </Route>
+
                       {/* All main app routes wrapped in AppLayout */}
                       <Route path="/*" element={
                         <ProtectedRoute>
