@@ -1,7 +1,7 @@
 import React from 'react';
 import { Surface, Text, Heading, Badge } from '@/components/filla';
 import { VendorSLA } from '@/hooks/vendor/useVendorReporting';
-import { CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Eye } from 'lucide-react';
 
 interface VendorSLABreakdownProps {
   sla: VendorSLA;
@@ -27,6 +27,14 @@ export const VendorSLABreakdown: React.FC<VendorSLABreakdownProps> = ({ sla }) =
             <Text variant="body">Late</Text>
           </div>
           <Badge variant="warning" size="bold">{sla.late}</Badge>
+        </div>
+
+        <div className="flex items-center justify-between p-3 bg-warning/5 rounded-lg">
+          <div className="flex items-center gap-3">
+            <Eye className="w-5 h-5 text-warning" />
+            <Text variant="body">Awaiting manager review</Text>
+          </div>
+          <Badge variant="warning" size="bold">{sla.awaitingReview}</Badge>
         </div>
 
         <div className="flex items-center justify-between p-3 bg-danger/5 rounded-lg">

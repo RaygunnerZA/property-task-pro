@@ -3754,7 +3754,7 @@ export type Database = {
         | "industrial"
         | "land"
         | "other"
-      task_status: "open" | "in_progress" | "completed" | "archived"
+      task_status: "open" | "in_progress" | "waiting_review" | "completed" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3920,7 +3920,7 @@ export const Constants = {
         "land",
         "other",
       ],
-      task_status: ["open", "in_progress", "completed", "archived"],
+      task_status: ["open", "in_progress", "waiting_review", "completed", "archived"],
     },
   },
 } as const

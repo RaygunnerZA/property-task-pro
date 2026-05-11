@@ -2,7 +2,7 @@
 
 **5.1 — TASK MODEL (V2 Enhanced)**
 The central operational object.
-*   **Core:** `id`, `org_id`, `title`, `description`, `status`, `priority`.
+*   **Core:** `id`, `org_id`, `title`, `description`, `status` (`open` \| `in_progress` \| `waiting_review` \| `completed` \| `archived`), `priority`.
 *   **Context:** `property_id` (Parent), `space_ids` (Many-to-Many), `asset_ids` (Many-to-Many).
 *   **People:** `assigned_user_id` (Primary), `assigned_team_ids` (Support).
 *   **Categorization:** `group_ids` (Work types like Plumbing/Compliance).

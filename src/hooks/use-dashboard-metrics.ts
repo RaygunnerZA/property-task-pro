@@ -51,12 +51,12 @@ export function useDashboardMetrics() {
           .select("id", { count: "exact", head: true })
           .eq("org_id", orgId),
 
-        // Open tasks (status = 'open' or 'in_progress')
+        // Open tasks (active work + awaiting manager review)
         supabase
           .from("tasks")
           .select("id, due_date, status")
           .eq("org_id", orgId)
-          .in("status", ["open", "in_progress"]),
+          .in("status", ["open", "in_progress", "waiting_review"]),
 
         // Compliance documents expiring in next 30 days
         supabase

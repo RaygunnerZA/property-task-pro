@@ -87,10 +87,12 @@ export function PropertyTasksSection({
         break;
 
       case 'open':
-        // Open: status is 'open' or 'in_progress', and not completed
+        // Open: active work + awaiting manager review
         filtered = filtered.filter(
           (task) =>
-            (task.status === 'open' || task.status === 'in_progress') &&
+            (task.status === 'open' ||
+              task.status === 'in_progress' ||
+              task.status === 'waiting_review') &&
             task.status !== 'completed' &&
             task.status !== 'archived'
         );

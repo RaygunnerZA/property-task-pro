@@ -388,7 +388,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   }, [priority]);
 
   const statusFactChips: SuggestedChip[] = useMemo(() => {
-    const label = ({ open: "OPEN", in_progress: "IN PROGRESS", completed: "DONE", archived: "ARCHIVED" } as Record<string, string>)[status] || status.toUpperCase();
+    const label = (
+      {
+        open: "OPEN",
+        in_progress: "IN PROGRESS",
+        waiting_review: "WAITING REVIEW",
+        completed: "DONE",
+        archived: "ARCHIVED",
+      } as Record<string, string>
+    )[status] || status.toUpperCase();
     return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
   }, [status]);
 
@@ -420,9 +428,15 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const statusDisplayLabel = useMemo(() => {
     return (
-      ({ open: "Open", in_progress: "In progress", completed: "Done", archived: "Archived" } as Record<string, string>)[
-        status
-      ] || status
+      (
+        {
+          open: "Open",
+          in_progress: "In progress",
+          waiting_review: "Waiting review",
+          completed: "Done",
+          archived: "Archived",
+        } as Record<string, string>
+      )[status] || status
     );
   }, [status]);
 
@@ -910,6 +924,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               hoverChips={[
                 { id: "open", label: "OPEN", onPress: () => setStatus("open") },
                 { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
+                { id: "waiting_review", label: "WAITING REVIEW", onPress: () => setStatus("waiting_review") },
                 { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
                 { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
               ]}

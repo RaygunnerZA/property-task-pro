@@ -16,7 +16,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `assets` (property_id, space_id, serial, condition_score)
 
 **Tasks & Schedule:**
-*   `tasks` (status, priority, due_date)
+*   `tasks` — `status` enum: `open` | `in_progress` | `waiting_review` (vendor work submitted; manager sign-off pending) | `completed` | `archived`; plus `priority`, `due_date`, assignments, property/spaces/assets links.
 *   `schedule_items` (frequency, next_occurrence)
 *   `task_instances` (generated from schedule)
 *   `issues` (captured anomalies)

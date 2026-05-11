@@ -5,19 +5,28 @@ import type { VendorTask } from "./useVendorTasks";
 
 function mapDbStatus(s: string | null): VendorTask["status"] {
   switch (s) {
-    case "in_progress": return "In Progress";
+    case "in_progress":
+      return "In Progress";
+    case "waiting_review":
+      return "Waiting Review";
     case "completed":
-    case "archived": return "Completed";
-    default: return "Assigned";
+    case "archived":
+      return "Completed";
+    default:
+      return "Assigned";
   }
 }
 
-function mapVendorStatusToDb(s: VendorTask["status"]): "open" | "in_progress" | "completed" {
+function mapVendorStatusToDb(s: VendorTask["status"]): "open" | "in_progress" | "waiting_review" | "completed" {
   switch (s) {
     case "In Progress":
-    case "Waiting Review": return "in_progress";
-    case "Completed": return "completed";
-    default: return "open";
+      return "in_progress";
+    case "Waiting Review":
+      return "waiting_review";
+    case "Completed":
+      return "completed";
+    default:
+      return "open";
   }
 }
 

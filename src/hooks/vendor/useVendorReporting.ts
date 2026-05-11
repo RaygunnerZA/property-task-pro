@@ -12,6 +12,8 @@ export interface VendorSLA {
   within: number;
   late: number;
   critical: number;
+  /** Tasks in waiting_review — vendor submitted, manager sign-off pending */
+  awaitingReview: number;
 }
 
 export interface VendorDrift {
@@ -50,9 +52,11 @@ export const useVendorReporting = () => {
       const onTime =
         completed.length > 0 ? Math.round((onTimeCount / completed.length) * 100) : 0;
 
+      const awaitingReview = tasks.filter((t) => t.status === "waiting_review").length;
+
       // SLA breakdown by priority among all non-archived tasks
       const urgentTasks = tasks.filter(
-        (t) => (t.priority === "urgent") && t.status !== "archived"
+        (t) => (t.priority === "urgent") && t.status !== "archived" && t.status !== "waiting_review"
       );
       const sla: VendorSLA = {
         within: tasks.filter(
@@ -70,6 +74,7 @@ export const useVendorReporting = () => {
             new Date(t.updated_at) > new Date(t.due_date)
         ).length,
         critical: urgentTasks.length,
+        awaitingReview,
       };
 
       // Weekly completion chart — last 4 weeks
@@ -118,7 +123,7 @@ export const useVendorReporting = () => {
 
   return {
     performance: data?.performance ?? { score: 0, onTime: 0 },
-    sla: data?.sla ?? { within: 0, late: 0, critical: 0 },
+    sla: data?.sla ?? { within: 0, late: 0, critical: 0, awaitingReview: 0 },
     completion: data?.completion ?? [],
     drift: data?.drift ?? { resolved: 0, avgTime: 0 },
     isLoading,

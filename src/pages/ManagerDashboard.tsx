@@ -183,13 +183,17 @@ const ManagerDashboard = () => {
                             variant={
                               task.status === "completed"
                                 ? "success"
+                                : task.status === "waiting_review"
+                                  ? "warning"
                                 : task.status === "in_progress"
                                 ? "default"
                                 : "secondary"
                             }
                             className="text-xs"
                           >
-                            {task.status || "open"}
+                            {task.status === "waiting_review"
+                              ? "waiting review"
+                              : task.status || "open"}
                           </Badge>
                         </div>
                       </div>

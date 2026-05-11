@@ -14,7 +14,7 @@ import EmptyState from "@/components/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
-import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search } from "lucide-react";
+import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search, Eye } from "lucide-react";
 import { FilterChip } from "@/components/chips/filter";
 
 interface TaskListProps {
@@ -157,12 +157,19 @@ export function TaskList({
     }
 
     // Secondary filters - Status
-    const statusFilters = ["filter-status-todo", "filter-status-in-progress", "filter-status-blocked", "filter-status-done"];
-    const hasStatusFilter = statusFilters.some(f => selectedFilters.has(f));
+    const statusFilters = [
+      "filter-status-todo",
+      "filter-status-in-progress",
+      "filter-status-waiting-review",
+      "filter-status-blocked",
+      "filter-status-done",
+    ];
+    const hasStatusFilter = statusFilters.some((f) => selectedFilters.has(f));
     if (hasStatusFilter) {
       filtered = filtered.filter((task) => {
         if (selectedFilters.has("filter-status-todo") && task.status === "open") return true;
         if (selectedFilters.has("filter-status-in-progress") && task.status === "in_progress") return true;
+        if (selectedFilters.has("filter-status-waiting-review") && task.status === "waiting_review") return true;
         if (selectedFilters.has("filter-status-blocked") && task.status === "blocked") return true;
         if (selectedFilters.has("filter-status-done") && task.status === "completed") return true;
         return false;
@@ -326,7 +333,10 @@ export function TaskList({
   // Group filtered tasks by status
   const groupedTasks = useMemo(() => {
     const todo = filteredTasks.filter(
-      (task) => task.status === "open" || task.status === "in_progress"
+      (task) =>
+        task.status === "open" ||
+        task.status === "in_progress" ||
+        task.status === "waiting_review"
     );
     const done = filteredTasks.filter((task) => task.status === "completed");
 
@@ -372,6 +382,11 @@ export function TaskList({
           id: "filter-status-in-progress",
           label: "In Progress",
           icon: <Clock className="h-4 w-4" />,
+        },
+        {
+          id: "filter-status-waiting-review",
+          label: "Waiting review",
+          icon: <Eye className="h-4 w-4" />,
         },
         {
           id: "filter-status-blocked",

@@ -14,10 +14,15 @@ export interface VendorTask {
 
 function mapDbStatus(s: string | null): VendorTask["status"] {
   switch (s) {
-    case "in_progress": return "In Progress";
+    case "in_progress":
+      return "In Progress";
+    case "waiting_review":
+      return "Waiting Review";
     case "completed":
-    case "archived": return "Completed";
-    default: return "Assigned";
+    case "archived":
+      return "Completed";
+    default:
+      return "Assigned";
   }
 }
 
@@ -53,6 +58,7 @@ export const useVendorTasks = () => {
   const stats = {
     assigned: tasks.filter((t) => t.status === "Assigned").length,
     inProgress: tasks.filter((t) => t.status === "In Progress").length,
+    waitingReview: tasks.filter((t) => t.status === "Waiting Review").length,
     completed: tasks.filter((t) => t.status === "Completed").length,
   };
 

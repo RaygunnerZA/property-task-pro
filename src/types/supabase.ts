@@ -1,7 +1,3 @@
-npm warn Unknown env config "devdir". This will stop working in the next major version of npm.
-npm warn exec The following package was not found and will be installed: supabase@2.98.2
-npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
-Initialising login role...
 export type Json =
   | string
   | number
@@ -4647,7 +4643,7 @@ export type Database = {
         | "industrial"
         | "land"
         | "other"
-      task_status: "open" | "in_progress" | "completed" | "archived"
+      task_status: "open" | "in_progress" | "waiting_review" | "completed" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4826,7 +4822,7 @@ export const Constants = {
         "land",
         "other",
       ],
-      task_status: ["open", "in_progress", "completed", "archived"],
+      task_status: ["open", "in_progress", "waiting_review", "completed", "archived"],
     },
   },
 } as const

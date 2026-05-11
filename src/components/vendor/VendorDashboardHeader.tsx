@@ -6,13 +6,14 @@ interface VendorDashboardHeaderProps {
   stats?: {
     assigned: number;
     inProgress: number;
+    waitingReview: number;
     completed: number;
   };
 }
 
 export const VendorDashboardHeader: React.FC<VendorDashboardHeaderProps> = ({ 
   vendorName = 'Vendor',
-  stats = { assigned: 0, inProgress: 0, completed: 0 }
+  stats = { assigned: 0, inProgress: 0, waitingReview: 0, completed: 0 }
 }) => {
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
@@ -29,7 +30,7 @@ export const VendorDashboardHeader: React.FC<VendorDashboardHeaderProps> = ({
         {today}
       </Text>
       
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-accent">{stats.assigned}</div>
           <Text variant="caption">Assigned</Text>
@@ -37,6 +38,10 @@ export const VendorDashboardHeader: React.FC<VendorDashboardHeaderProps> = ({
         <div className="text-center">
           <div className="text-2xl font-bold text-primary">{stats.inProgress}</div>
           <Text variant="caption">In Progress</Text>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-warning">{stats.waitingReview}</div>
+          <Text variant="caption">Awaiting Review</Text>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-success">{stats.completed}</div>
