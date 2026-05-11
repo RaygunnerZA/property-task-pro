@@ -20,6 +20,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `schedule_items` (frequency, next_occurrence)
 *   `task_instances` (generated from schedule)
 *   `issues` (captured anomalies)
+*   `audit_logs` — append-only: `id`, `org_id`, `actor_id`, `entity_type`, `entity_id`, `action`, `metadata`, `created_at`. Task detail “Logs” reads rows where `entity_type = 'task'` and `entity_id = tasks.id` (org-scoped RLS).
 
 **Compliance:**
 *   `compliance_sources` (raw files)

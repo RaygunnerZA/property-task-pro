@@ -1,8 +1,11 @@
 import React from "react";
+import { RegionErrorFallback } from "@/components/errors/RegionErrorFallback";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  /** Short label for the wrapped region (used in the default fallback). */
+  regionTitle?: string;
 }
 
 interface ErrorBoundaryState {
@@ -28,18 +31,26 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     console.error("Error caught by boundary:", error, errorInfo);
   }
 
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
+
+      const title = this.props.regionTitle ?? "Something went wrong";
+      const message = this.state.error?.message ?? this.state.error?.toString() ?? "";
+
       return (
-        <div style={{ padding: "20px", fontFamily: "monospace" }}>
-          <h1>Something went wrong</h1>
-          <pre>{this.state.error?.toString()}</pre>
-          <button onClick={() => window.location.reload()}>Reload</button>
-        </div>
+        <RegionErrorFallback
+          title={title}
+          description={message || "Unexpected error."}
+          onRetry={this.handleRetry}
+          className="m-3"
+        />
       );
     }
 

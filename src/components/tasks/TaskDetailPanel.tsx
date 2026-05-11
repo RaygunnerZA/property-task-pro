@@ -55,6 +55,8 @@ import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTaskTimeline } from "@/hooks/useTaskTimeline";
+import { TaskTimeline } from "./TaskTimeline";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -71,6 +73,12 @@ interface TaskDetailPanelProps {
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
+  const {
+    data: timelineEvents,
+    isLoading: timelineLoading,
+    error: timelineError,
+    refetch: refetchTimeline,
+  } = useTaskTimeline(taskId);
   const propertyId = (task as any)?.property_id;
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
@@ -1093,7 +1101,25 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <Clock className="h-4 w-4" />
                   Logs
                 </h3>
-                <p className="text-muted-foreground text-sm">Audit logs and activity history will appear here</p>
+                {timelineLoading ? (
+                  <div className="space-y-2 py-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                ) : timelineError ? (
+                  <p className="text-muted-foreground text-sm">
+                    Couldn’t load audit log.{" "}
+                    <button
+                      type="button"
+                      className="text-primary underline-offset-2 hover:underline"
+                      onClick={() => void refetchTimeline()}
+                    >
+                      Retry
+                    </button>
+                  </p>
+                ) : (
+                  <TaskTimeline events={timelineEvents} />
+                )}
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -1122,6 +1148,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   setStatus("completed");
                   await refreshTask();
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
                   if (orgId) {
                     const updateBriefingCache = (key: (string | undefined)[]) => {
                       queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {

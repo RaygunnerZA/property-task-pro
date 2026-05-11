@@ -36,6 +36,7 @@ import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFil
 import { RecordsActionRail } from "@/components/records/RecordsActionRail";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -675,6 +676,7 @@ export default function Dashboard() {
       <DualPaneLayout
         header={headerElement}
         leftColumn={
+          <ErrorBoundary regionTitle="Today & sidebar">
           <LeftColumn 
             tasks={tasks}
             properties={properties}
@@ -701,8 +703,10 @@ export default function Dashboard() {
               />
             }
           />
+          </ErrorBoundary>
         }
         rightColumn={
+          <ErrorBoundary regionTitle="Workbench">
           <RightColumn 
             tasks={tasks}
             properties={properties}
@@ -722,8 +726,13 @@ export default function Dashboard() {
             recordsView={recordsView}
             onRecordsViewChange={handleRecordsViewChange}
           />
+          </ErrorBoundary>
         }
-        thirdColumn={thirdColumnContent}
+        thirdColumn={
+          thirdColumnContent ? (
+            <ErrorBoundary regionTitle="Details & Filla AI">{thirdColumnContent}</ErrorBoundary>
+          ) : undefined
+        }
       />
       
       {/* Universal Intake Modal - primary entry on smaller layouts */}

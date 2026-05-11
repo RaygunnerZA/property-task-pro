@@ -3,6 +3,7 @@ import { useNavigate, NavLink, Outlet } from "react-router-dom";
 import { Building2, Shield } from "lucide-react";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface AdminLayoutProps {
   children?: ReactNode;
@@ -56,7 +57,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </header>
 
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 py-6">
-        {children ?? <Outlet />}
+        <ErrorBoundary regionTitle="Admin panel">{children ?? <Outlet />}</ErrorBoundary>
       </main>
     </div>
   );

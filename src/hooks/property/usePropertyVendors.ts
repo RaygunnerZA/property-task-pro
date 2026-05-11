@@ -1,4 +1,7 @@
-// Frontend-only placeholder hook for property vendor activity
+/**
+ * Property hub — vendors tab (Phase 0 inventory).
+ * Stub / placeholder data only. Not imported by any route yet.
+ */
 import { useState } from 'react';
 
 export interface PropertyVendorActivity {

@@ -1,4 +1,8 @@
-// Frontend-only placeholder hook for property timeline
+/**
+ * Property hub — timeline tab (Phase 0 inventory).
+ * Stub / placeholder data only. Not imported by any route yet; replace with
+ * org-scoped queries (e.g. tasks + compliance events) before shipping the tab.
+ */
 import { useState } from 'react';
 
 export interface PropertyTimelineEvent {

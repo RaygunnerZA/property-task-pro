@@ -22,11 +22,20 @@ import { useComplianceOverview } from "@/hooks/useComplianceOverview";
 import { useRuleStatusDistribution } from "@/hooks/useRuleStatusDistribution";
 import { usePropertyDriftHeatmap } from "@/hooks/usePropertyDriftHeatmap";
 import { useRecentActivity } from "@/hooks/useRecentActivity";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const Compliance = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { data: documentsData = [], isLoading: loading, error } = useComplianceQuery();
+  const {
+    data: documentsData = [],
+    isLoading: loading,
+    error,
+    refetch: refetchCompliance,
+  } = useComplianceQuery();
+  const refresh = () => {
+    void refetchCompliance();
+  };
   const queryClient = useQueryClient();
   const [showUploadDialog, setShowUploadDialog] = useState(false);
 
@@ -100,6 +109,7 @@ const Compliance = () => {
       }
       maxWidth="xl"
     >
+      <ErrorBoundary regionTitle="Compliance overview">
       <div className="space-y-6">
         {/* Dashboard Section */}
         {/* Overview Section */}
@@ -224,6 +234,7 @@ const Compliance = () => {
           )}
         </DashboardSection>
       </div>
+      </ErrorBoundary>
     </StandardPage>
   );
 };

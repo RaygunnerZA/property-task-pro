@@ -3,6 +3,9 @@
 -- The sentinel organisation row (00000000-...) is required so that admin RPCs
 -- can write to audit_logs (which has org_id NOT NULL REFERENCES organisations(id)).
 -- platform_admins can only be inserted directly in the DB — no API path exists.
+--
+-- Bootstrap the first admin (Supabase SQL editor or `psql`; use auth.users.id for that login):
+--   INSERT INTO public.platform_admins (user_id) VALUES ('YOUR_AUTH_USER_UUID'::uuid);
 
 -- Sentinel organisation for platform-level audit log entries.
 -- ON CONFLICT DO NOTHING makes this migration idempotent.

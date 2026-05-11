@@ -3,6 +3,7 @@ import { StandardPage } from "@/components/design-system/StandardPage";
 import { Shield, BarChart3, User, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useComplianceRecommendations } from "@/hooks/useComplianceRecommendations";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const complianceNavItems = [
   { path: "/record/compliance", label: "Dashboard", icon: BarChart3 },
@@ -55,7 +56,9 @@ export default function RecordCompliance() {
           );
         })}
       </div>
-      <Outlet />
+      <ErrorBoundary regionTitle="Compliance workspace">
+        <Outlet />
+      </ErrorBoundary>
     </StandardPage>
   );
 }
