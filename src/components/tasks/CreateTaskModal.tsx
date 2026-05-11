@@ -48,7 +48,6 @@ import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { logChipResolution } from "@/services/ai/resolutionAudit";
-import { track } from "@/lib/analytics";
 import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
@@ -65,6 +64,9 @@ import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
+import { useCreateTaskMutation, type TaskCreatedSource } from "@/hooks/mutations/useCreateTaskMutation";
+
+export type { TaskCreatedSource };
 export interface CreateTaskPrefill {
   title?: string;
   description?: string;
@@ -86,6 +88,8 @@ interface CreateTaskModalProps {
   defaultSpaceIds?: string[];
   defaultAssetIds?: string[];
   prefill?: CreateTaskPrefill | null;
+  /** Overrides inferred `task_created` analytics source (default: `ai` if `prefill` set, else `manual`). */
+  taskCreatedSource?: TaskCreatedSource;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
   headless?: boolean; // when true with variant="column", render only content (concertina provides header)
   collapseDetails?: boolean; // keeps top composer visible while hiding lower sections/actions
@@ -110,6 +114,7 @@ export function CreateTaskModal({
   defaultSpaceIds,
   defaultAssetIds,
   prefill,
+  taskCreatedSource,
   variant = "modal",
   headless = false,
   collapseDetails = false,
@@ -132,6 +137,7 @@ export function CreateTaskModal({
   const { data: existingTasks = [] } = useTasksQuery();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const createTaskMutation = useCreateTaskMutation();
 
   // Form state
   const [title, setTitle] = useState("");
@@ -1444,13 +1450,11 @@ export function CreateTaskModal({
       }
       // If it's a pending invitation, we'll handle it after task creation
       
-      // Simplified: Use direct insert instead of RPC for reliability
-      // RLS is now fixed, so we can use standard Supabase client
-      // Debug logging: wrap in if (import.meta.env.DEV) { console.log(...) }
-      // Never log raw user data unguarded in production.
-      const { data: newTask, error: createError } = await supabase
-        .from("tasks")
-        .insert({
+      // Simplified: direct insert with RLS; analytics + cache updates live in useCreateTaskMutation.
+      const analyticsSource = taskCreatedSource ?? (prefill ? "ai" : "manual");
+      const newTask = await createTaskMutation.mutateAsync({
+        source: analyticsSource,
+        insert: {
           org_id: orgId,
           title: finalTitle,
           property_id: propertyId || null,
@@ -1459,48 +1463,15 @@ export function CreateTaskModal({
           milestones: milestones.length > 0 ? milestones : [],
           description: description.trim() || null,
           assigned_user_id: finalAssignedUserId,
-          status: 'open',
+          status: "open",
           icon_name: chipSuggestedIcon || null,
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("[CreateTaskModal] Task creation error:", createError);
-        throw createError;
-      }
-
-      if (!newTask) {
-        throw new Error("Couldn't create task: no data returned");
-      }
+        },
+      });
 
       const taskId = newTask.id;
 
-      // Update briefing radial immediately so "total" goes up (e.g. 1 of 8)
-      if (orgId) {
-        const propId = propertyId || undefined;
-        const entry = {
-          id: taskId,
-          status: "open",
-          property_id: propId,
-          priority: (newTask as any).priority ?? "normal",
-          due_date: (newTask as any).due_date ?? null,
-        };
-        queryClient.setQueryData(
-          ["tasks-briefing", orgId, null],
-          (old: { id: string; status: string; property_id?: string }[] | undefined) =>
-            [...(Array.isArray(old) ? old : []), entry]
-        );
-        if (propId) {
-          queryClient.setQueryData(
-            ["tasks-briefing", orgId, propId],
-            (old: { id: string; status: string; property_id?: string }[] | undefined) =>
-              [...(Array.isArray(old) ? old : []), entry]
-          );
-        }
-      }
-
-      // Upload attachments in background (non-blocking)
+      // Briefing + task list invalidation handled in mutation onSuccess; keep task-detail/attachment
+      // invalidations below after uploads and junction writes.
       // Use snapshots so async updates never repopulate cleared draft state.
       const imagesToUpload = [...images];
       const filesToUpload = [...taskFiles];
@@ -1764,18 +1735,10 @@ export function CreateTaskModal({
           queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
         }, 2000);
       } else {
-        // Immediate invalidation if no images
-        queryClient.invalidateQueries({ queryKey: ["tasks"] });
-        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
         queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
         queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
       }
-      
-      track("task_created", {
-        org_id: orgId,
-        task_id: taskId,
-        source: prefill ? "ai" : "manual",
-      });
+
       toast({
         title: "Task created",
         description: createdEntities.length > 0 

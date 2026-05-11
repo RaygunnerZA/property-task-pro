@@ -38,6 +38,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCreateTaskMutation } from "@/hooks/mutations/useCreateTaskMutation";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
@@ -202,6 +203,7 @@ export function IntakeModal({
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const createTaskMutation = useCreateTaskMutation();
   const { templates, refresh: refreshChecklistTemplates } = useChecklistTemplates(open);
   const { data: properties = [] } = usePropertiesQuery();
 
@@ -2843,9 +2845,9 @@ export function IntakeModal({
         dueDateValue = dateObj.toISOString();
       }
 
-      const { data: newTask, error } = await supabase
-        .from("tasks")
-        .insert({
+      const newTask = await createTaskMutation.mutateAsync({
+        source: "manual",
+        insert: {
           org_id: orgId,
           title: finalTitle,
           description: description.trim() || null,
@@ -2861,11 +2863,9 @@ export function IntakeModal({
           priority: priority === "medium" ? "normal" : priority,
           assigned_user_id: assignedUserId || null,
           status: "open",
-        })
-        .select("id")
-        .single();
+        },
+      });
 
-      if (error) throw error;
       if (!newTask?.id) throw new Error("No task id returned");
 
       const themeIdsForTask = selectedThemeIds.filter((id) => !id.startsWith("ghost-"));
@@ -2930,8 +2930,6 @@ export function IntakeModal({
         taskId: newTask.id,
       });
 
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
       queryClient.invalidateQueries({ queryKey: ["task-attachments", newTask.id] });
       toast({ title: "Task created" });
       onTaskCreated?.(newTask.id);

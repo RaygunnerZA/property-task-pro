@@ -31,7 +31,7 @@ import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { Upload, X } from "lucide-react";
-import { track } from "@/lib/analytics";
+import { useCreatePropertyMutation } from "@/hooks/mutations/useCreatePropertyMutation";
 
 interface AddPropertyDialogProps {
   open: boolean;
@@ -48,6 +48,7 @@ interface AddPropertyDialogProps {
 export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddPropertyDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const createPropertyMutation = useCreatePropertyMutation();
   const { data: orgProperties = [] } = usePropertiesQuery();
 
   const { takenIconsArr, takenColorsArr } = useMemo(() => {
@@ -172,26 +173,15 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
         return;
       }
 
-      // Create property first (without image)
-      const { data: newProperty, error: createError } = await supabase.rpc("create_property_v2", {
+      const { propertyId } = await createPropertyMutation.mutateAsync({
         p_org_id: orgId,
         p_address: finalAddress,
         p_nickname: nickname.trim() || null,
         p_icon_name: iconName || "building",
         p_icon_color_hex: iconColor,
-        p_thumbnail_url: null, // Will be set after thumbnail generation
+        p_thumbnail_url: null,
       });
 
-      if (createError) {
-        console.error("Property creation error:", createError);
-        throw createError;
-      }
-
-      if (!newProperty) {
-        throw new Error("Failed to create property: no data returned");
-      }
-
-      const propertyId = (newProperty as any).id;
       const created = {
         id: propertyId,
         address: finalAddress,
@@ -223,7 +213,6 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
       }
 
       toast.success("Property created!");
-      track("property_created", { org_id: orgId, property_id: propertyId });
       onCreated?.(created);
       // Reset form
       setAddress("");
@@ -236,7 +225,6 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
         fileInputRef.current.value = "";
       }
       onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
     } catch (err: any) {
       console.error("Create property failed:", err);
       toast.error(err.message || "Failed to create property");

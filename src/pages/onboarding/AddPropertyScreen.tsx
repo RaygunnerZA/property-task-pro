@@ -11,7 +11,7 @@ import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCreatePropertyMutation } from "@/hooks/mutations/useCreatePropertyMutation";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
@@ -29,7 +29,7 @@ import {
 export default function AddPropertyScreen() {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
+  const createPropertyMutation = useCreatePropertyMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { orgId: orgIdFromQuery, isLoading: orgLoading, error: orgError } = useActiveOrg();
   const { organization } = useOrganization();
@@ -244,9 +244,7 @@ export default function AddPropertyScreen() {
         return;
       }
 
-      // Use RPC function to create property (bypasses RLS with SECURITY DEFINER).
-      // Pass all 6 params so PostgreSQL picks the single overload (avoids ambiguity with 2-param version).
-      const { data: newProperty, error } = await supabase.rpc('create_property_v2', {
+      const { propertyId } = await createPropertyMutation.mutateAsync({
         p_org_id: orgId,
         p_address: finalAddress,
         p_nickname: propertyNickname?.trim() || null,
@@ -254,21 +252,6 @@ export default function AddPropertyScreen() {
         p_icon_color_hex: propertyIconColor || "#8EC9CE",
         p_thumbnail_url: null,
       });
-
-      if (error) {
-        console.error("Property insert error:", error);
-        console.error("OrgId:", orgId);
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        console.error("UserId:", currentUser?.id);
-        throw error;
-      }
-
-      if (!newProperty) {
-        throw new Error("Property was not created");
-      }
-
-      const propertyPayload = newProperty as { id?: string };
-      const propertyId = propertyPayload?.id ?? null;
 
       if (propertyImage && propertyId && orgId) {
         try {
@@ -283,10 +266,6 @@ export default function AddPropertyScreen() {
             "Property saved but photo upload failed — you can add a photo later from the property page."
           );
         }
-      }
-
-      if (orgId) {
-        queryClient.invalidateQueries({ queryKey: ["properties", orgId] });
       }
 
       toast.success("Property added!");
