@@ -33,6 +33,9 @@ interface TaskListProps {
   embeddedInIssuesWorkbench?: boolean;
   /** Fewer badges on each task card (title + image + 2–3 facts). */
   compactTaskMeta?: boolean;
+  /** Parent-controlled search when embedded in Issues (omits inline search in TaskList). */
+  externalTaskSearchQuery?: string;
+  onExternalTaskSearchQueryChange?: (value: string) => void;
 }
 
 export function TaskList({ 
@@ -47,6 +50,8 @@ export function TaskList({
   hidePrimaryUrgentChip = false,
   embeddedInIssuesWorkbench = false,
   compactTaskMeta = false,
+  externalTaskSearchQuery,
+  onExternalTaskSearchQueryChange,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -71,8 +76,11 @@ export function TaskList({
   });
   const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
   const [taskSearchOpen, setTaskSearchOpen] = useState(false);
-  const [taskSearchQuery, setTaskSearchQuery] = useState("");
+  const [internalTaskSearchQuery, setInternalTaskSearchQuery] = useState("");
   const tasksPanelInteractionRef = useRef<HTMLDivElement | null>(null);
+  const taskSearchQuery =
+    externalTaskSearchQuery !== undefined ? externalTaskSearchQuery : internalTaskSearchQuery;
+  const setTaskSearchQuery = onExternalTaskSearchQueryChange ?? setInternalTaskSearchQuery;
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
   const tasks = useMemo(() => {
@@ -606,7 +614,7 @@ export function TaskList({
       <div
         className={cn("flex-shrink-0 mt-0 mb-[18px] pb-0", !embeddedInIssuesWorkbench && "ml-[-3px]")}
       >
-        {embeddedInIssuesWorkbench ? (
+        {embeddedInIssuesWorkbench && externalTaskSearchQuery === undefined ? (
           <div className="relative mb-2 flex items-center gap-2 rounded-[10px] bg-background/80 px-2 py-1.5 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <input

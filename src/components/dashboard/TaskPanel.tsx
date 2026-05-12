@@ -16,11 +16,11 @@ import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollCo
 import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
-  CheckSquare,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Plus,
+  Search,
   AlertTriangle,
   HelpCircle,
   ShieldCheck,
@@ -39,7 +39,7 @@ import type { SignalKind } from "@/types/workbenchSignals";
 import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
-import { SegmentControl } from "@/components/filla/SegmentControl";
+import { FilterChip } from "@/components/chips/filter";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
@@ -88,19 +88,11 @@ const TASK_TAB_MOBILE_STACK_MAX_PX = 767;
 /** Subpixel / rounding slack when comparing intrinsic tab row width to `TabsList` clientWidth. */
 const TASK_TAB_MEASURE_TOLERANCE_PX = 4;
 
-const TASK_TAB_MICROCOPY = {
-  issues: "Urgent → Recent signals → Needs review → Open work. Each stage is different.",
-  records: "What you have, what expires, and where it belongs",
-  schedule: "What's coming up",
-} as const;
-
-const ISSUES_SLICE_FILTERS: { id: WorkbenchIssuesFilter; label: string }[] = [
+const ISSUES_CHIP_FILTERS: { id: WorkbenchIssuesFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "urgent", label: "Urgent" },
-  { id: "review", label: "Needs review" },
   { id: "open", label: "Open" },
   { id: "done", label: "Done" },
-  { id: "recent", label: "Recent" },
 ];
 
 type IssuesSignalCardProps = {
@@ -627,6 +619,7 @@ export function TaskPanel({
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
   const [internalIssuesFilter, setInternalIssuesFilter] = useState<WorkbenchIssuesFilter>("all");
+  const [issuesWorkbenchSearch, setIssuesWorkbenchSearch] = useState("");
   const issuesFilter = issuesFilterProp ?? internalIssuesFilter;
   const setIssuesFilter = (next: WorkbenchIssuesFilter) => {
     onIssuesFilterChange?.(next);
@@ -848,28 +841,30 @@ export function TaskPanel({
     return attentionItems.filter((item) => !resolvedAttentionIds.has(item.id));
   }, [attentionItems, resolvedAttentionIds]);
 
-  const showSignalFeed =
-    issuesFilter === "all" ||
-    issuesFilter === "urgent" ||
-    issuesFilter === "review" ||
-    issuesFilter === "recent";
+  const showSignalFeed = issuesFilter === "all" || issuesFilter === "urgent";
 
   const showTaskList =
     issuesFilter === "all" || issuesFilter === "open" || issuesFilter === "done";
 
   const filteredAttentionItems = useMemo(() => {
     if (!showSignalFeed) return [];
-    return unresolvedAttentionItems.filter((item) => {
+    let items = unresolvedAttentionItems.filter((item) => {
       if (issuesFilter === "all") return true;
-      if (issuesFilter === "recent") {
-        return item.group === "recent" || item.group === "review";
-      }
-      if (issuesFilter === "urgent" || issuesFilter === "review") {
-        return item.group === issuesFilter;
-      }
+      if (issuesFilter === "urgent") return item.group === "urgent";
       return false;
     });
-  }, [issuesFilter, unresolvedAttentionItems, showSignalFeed]);
+    const q = issuesWorkbenchSearch.trim().toLowerCase();
+    if (q) {
+      items = items.filter((item) => {
+        const text = [item.title, item.context, item.description, item.whyHere]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return text.includes(q);
+      });
+    }
+    return items;
+  }, [issuesFilter, unresolvedAttentionItems, showSignalFeed, issuesWorkbenchSearch]);
 
   const groupedAttentionItems = useMemo(() => {
     const urgent = filteredAttentionItems.filter((item) => item.group === "urgent");
@@ -1010,11 +1005,6 @@ export function TaskPanel({
     "rounded-[8px] transition-all text-sm font-medium min-w-0 group/task-tab inline-flex items-center justify-center " +
     "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
     "data-[state=active]:bg-card data-[state=inactive]:bg-transparent data-[state=active]:text-[rgb(20,184,166)]";
-
-  const selectedTabMicrocopy =
-    activeTab in TASK_TAB_MICROCOPY
-      ? TASK_TAB_MICROCOPY[activeTab as keyof typeof TASK_TAB_MICROCOPY]
-      : null;
 
   const taskTabIconOnly =
     "shrink-0 min-w-9 max-w-9 px-0 overflow-hidden transition-[max-width,min-width,padding] duration-200 ease-out " +
@@ -1262,14 +1252,6 @@ export function TaskPanel({
               </TabsTrigger>
               </TabsList>
             </div>
-            {!iconOnly && selectedTabMicrocopy != null && (
-              <p
-                className="flex flex-col justify-center items-start text-center text-base leading-tight text-[rgb(42,41,62)] px-2 pt-8 pb-2 max-pane:px-1"
-                aria-live="polite"
-              >
-                {selectedTabMicrocopy}
-              </p>
-            )}
           </div>
 
           {onOpenIntake && (
@@ -1317,23 +1299,34 @@ export function TaskPanel({
                   "linear-gradient(90deg, rgba(255, 255, 255, 0.49) 0%, rgba(255, 255, 255, 0) 100%) 1 / 1 / 0 stretch",
               }}
             >
-              <div className="min-w-0 space-y-3">
-                <div className="min-w-0 px-0.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
-                    View
-                  </p>
-                  <SegmentControl
-                    compact
-                    className="w-full min-w-0"
-                    options={ISSUES_SLICE_FILTERS.map(({ id, label }) => ({ id, label }))}
-                    selectedId={issuesFilter}
-                    onChange={(id) => setIssuesFilter(id as WorkbenchIssuesFilter)}
-                  />
+                <div className="min-w-0 space-y-3">
+                <div className="min-w-0 space-y-2 px-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {ISSUES_CHIP_FILTERS.map(({ id, label }) => (
+                      <FilterChip
+                        key={id}
+                        label={label}
+                        selected={issuesFilter === id}
+                        onSelect={() => setIssuesFilter(id)}
+                      />
+                    ))}
+                  </div>
+                  <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
+                    <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <input
+                      type="search"
+                      value={issuesWorkbenchSearch}
+                      onChange={(e) => setIssuesWorkbenchSearch(e.target.value)}
+                      placeholder="Search signals and tasks…"
+                      className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+                      aria-label="Search issues"
+                    />
+                  </div>
                 </div>
 
                 {showSignalFeed && (
                   <div className="space-y-4">
-                    {issuesFilter === "recent" || issuesFilter === "all" ? (
+                    {issuesFilter === "all" ? (
                       <>
                         {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
                           <div className="space-y-2">
@@ -1396,7 +1389,7 @@ export function TaskPanel({
                         })}
                         {filteredAttentionItems.length === 0 && (
                           <div className="rounded-xl bg-card/70 shadow-e1 p-4 text-sm text-muted-foreground">
-                            No signals match this slice. Try All or Recent to see the timeline, or Open for tasks.
+                            No signals match this slice. Try All to see the full feed, or Open for tasks.
                           </div>
                         )}
                       </>
@@ -1420,9 +1413,6 @@ export function TaskPanel({
                       </div>
                     )}
                     <div className="h-full flex flex-col min-h-0 rounded-xl bg-muted/20 p-2 shadow-sm">
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground px-1 mb-1.5">
-                        Filter tasks
-                      </p>
                       <TaskList
                         key={`issues-tasklist-${issuesFilter}`}
                         tasks={tasks}
@@ -1435,6 +1425,8 @@ export function TaskPanel({
                         selectedPropertyIds={selectedPropertyIds}
                         hidePrimaryUrgentChip
                         embeddedInIssuesWorkbench
+                        externalTaskSearchQuery={issuesWorkbenchSearch}
+                        onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
                         compactTaskMeta
                       />
                     </div>

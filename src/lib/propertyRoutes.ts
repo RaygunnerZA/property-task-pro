@@ -42,7 +42,7 @@ export function normalizeRecordsView(raw: string | null | undefined): RecordsVie
   return "all";
 }
 
-export type WorkbenchIssuesFilter = "all" | "urgent" | "review" | "open" | "done" | "recent";
+export type WorkbenchIssuesFilter = "all" | "urgent" | "open" | "done";
 
 const LEGACY_PANEL_TAB_MAP: Record<string, WorkbenchPanelTab> = {
   attention: "issues",
@@ -66,11 +66,12 @@ export function normalizeWorkbenchPanelTab(
   return "issues";
 }
 
-const VALID_ISSUES_FILTERS = new Set<string>(["all", "urgent", "review", "open", "done", "recent"]);
+const VALID_ISSUES_FILTERS = new Set<string>(["all", "urgent", "open", "done"]);
 
 export function normalizeWorkbenchIssuesFilter(raw: string | null | undefined): WorkbenchIssuesFilter {
   if (!raw) return "all";
   const f = raw.toLowerCase();
+  if (f === "review" || f === "recent") return "all";
   if (VALID_ISSUES_FILTERS.has(f)) return f as WorkbenchIssuesFilter;
   return "all";
 }

@@ -6,6 +6,7 @@ import {
   Calendar,
   ClipboardCheck,
   FileText,
+  Filter,
   Search,
   ShieldCheck,
   Waves,
@@ -21,8 +22,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { FilterChip } from "@/components/chips/filter";
+import { IconButton } from "@/components/ui/IconButton";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
-import { WorkspaceTabList, WorkspaceTabTrigger, WorkspaceSectionHeading } from "@/components/property-workspace";
+import { WorkspaceSectionHeading } from "@/components/property-workspace";
 import { DocumentCategoryChips } from "@/components/properties/DocumentCategoryChips";
 import { DocumentSearchFilters } from "@/components/properties/DocumentSearchFilters";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
@@ -42,7 +44,6 @@ import {
   getComplianceStatusText,
   type ComplianceRecord,
 } from "./complianceRecordModel";
-import { RecordsContextSummary } from "./RecordsContextSummary";
 
 const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
 
@@ -58,7 +59,7 @@ let recordsUploadDeepLinkNonce = 0;
 type ExpiryRange = "all" | "30" | "90" | "365";
 type ComplianceFilter = "all" | "expiring" | "overdue" | "missing";
 
-const RECORDS_VIEWS: { id: RecordsView; label: string }[] = [
+const RECORDS_TOP_CHIPS: { id: RecordsView; label: string }[] = [
   { id: "all", label: "All" },
   { id: "expiring", label: "Expiring" },
   { id: "overdue", label: "Overdue" },
@@ -76,13 +77,6 @@ export type PropertyRecordsTabProps = {
   onOpenIntake?: (mode: IntakeMode) => void;
   extraComplianceRecords?: ComplianceRecord[];
 };
-
-function docIsUnlinked(d: PropertyDocument): boolean {
-  const ls = d.linked_spaces?.length ?? 0;
-  const la = d.linked_assets?.length ?? 0;
-  const lc = d.linked_compliance?.length ?? 0;
-  return ls + la + lc === 0;
-}
 
 function docExpiryState(d: PropertyDocument): "overdue" | "expiring" | "none" {
   if (!d.expiry_date) return "none";
@@ -113,7 +107,7 @@ export function PropertyRecordsTab({
   const legacyDocFilter = searchParams.get("filter");
 
   const [complianceSearch, setComplianceSearch] = useState("");
-  const [complianceSearchOpen, setComplianceSearchOpen] = useState(false);
+  const [recordsAdvancedBarOpen, setRecordsAdvancedBarOpen] = useState(false);
   const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
   const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
@@ -279,11 +273,6 @@ export function PropertyRecordsTab({
     enabled: !!scopedPropertyId,
   });
 
-  const { documents: contextDocuments = [] } = usePropertyDocuments(scopedPropertyId || undefined, {}, {
-    limit: 500,
-    enabled: !!scopedPropertyId,
-  });
-
   const { spaces } = useSpaces(scopedPropertyId || "");
   const { data: assets = [] } = useAssetsQuery(scopedPropertyId || undefined);
   const complianceOptions = propertyCompliance.map((c: { id: string; title?: string }) => ({
@@ -308,11 +297,6 @@ export function PropertyRecordsTab({
     }
     return documents;
   }, [documents, recordsView]);
-
-  const unlinkedDocCount = useMemo(
-    () => contextDocuments.filter(docIsUnlinked).length,
-    [contextDocuments]
-  );
 
   const filteredComplianceRecords = useMemo(() => {
     const query = complianceSearch.trim().toLowerCase();
@@ -508,98 +492,71 @@ export function PropertyRecordsTab({
     name: a.name || "Unnamed",
   }));
 
-  const subtitle =
-    "What you have, what expires, and where it belongs — obligations, evidence, and uploads in one place.";
-
   return (
     <div ref={panelRef} className="h-full min-h-0 flex flex-col px-[10px] max-sm:px-0 pt-[8px] pb-[11px] max-pane:px-2">
-      <header className="mb-3 min-w-0 border-b border-border/15 pb-3">
-        <div className="flex items-start gap-2">
-          <ShieldCheck className="h-6 w-6 shrink-0 text-primary mt-0.5" />
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold leading-tight text-foreground">Records</h2>
-            <p className="text-xs mt-1 text-muted-foreground leading-snug">{subtitle}</p>
-          </div>
-        </div>
-      </header>
-
-      <RecordsContextSummary
-        complianceRecords={scopedComplianceRecords}
-        documentTotal={scopedPropertyId ? contextDocuments.length : undefined}
-        docUnlinked={scopedPropertyId ? unlinkedDocCount : undefined}
-        className="mb-3"
-      />
-
       {recordsUploading && (
         <p className="text-xs text-muted-foreground mb-2" aria-live="polite">
           Uploading…
         </p>
       )}
 
-      <div className="mb-3">
-        <WorkspaceSectionHeading>View</WorkspaceSectionHeading>
-        <WorkspaceTabList className="flex-wrap">
-          {RECORDS_VIEWS.map(({ id, label }) => (
-            <WorkspaceTabTrigger key={id} selected={recordsView === id} onClick={() => onRecordsViewChange(id)}>
-              {label}
-            </WorkspaceTabTrigger>
-          ))}
-        </WorkspaceTabList>
-      </div>
-
-      <div className="flex-shrink-0 mb-3">
-        <FilterBar
-          primaryOptions={[] as FilterOption[]}
-          secondaryGroups={complianceSecondaryGroups}
-          selectedFilters={complianceSelectedFilters}
-          onFilterChange={handleComplianceFilterChange}
-          primaryOptionLimit={0}
-          clearPreservePrefixes={[]}
-          collapseFilterChipAfterMs={2000}
-          collapseInteractionRootRef={panelRef}
-          showClearButton={
-            compliancePropertyFilter !== "all" ||
-            complianceTypeFilter !== "all" ||
-            complianceExpiryRange !== "all" ||
-            complianceSearch.trim().length > 0
-          }
-          onClearAll={() => {
-            setCompliancePropertyFilter("all");
-            setComplianceTypeFilter("all");
-            setComplianceExpiryRange("all");
-            setComplianceSearch("");
-            setComplianceSearchOpen(false);
-          }}
-          primaryTrailing={
+      <div className="mb-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <IconButton
+            role="filter-toggle"
+            icon={<Filter className="h-4 w-4" />}
+            active={recordsAdvancedBarOpen}
+            onClick={() => setRecordsAdvancedBarOpen((o) => !o)}
+            aria-label={recordsAdvancedBarOpen ? "Hide record filters" : "Property and type filters"}
+            tooltip={recordsAdvancedBarOpen ? "Hide filters" : "Record filters"}
+          />
+          {RECORDS_TOP_CHIPS.map(({ id, label }) => (
             <FilterChip
-              label="Search"
-              icon={<Search className="h-4 w-4" />}
-              selected={complianceSearchOpen || complianceSearch.trim().length > 0}
-              onSelect={() => setComplianceSearchOpen((open) => !open)}
-              className="h-[24px]"
+              key={id}
+              label={label}
+              selected={recordsView === id}
+              onSelect={() => onRecordsViewChange(id)}
             />
-          }
-        />
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows] duration-200 ease-out",
-            complianceSearchOpen || complianceSearch.trim().length > 0 ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-          )}
-        >
-          <div className="overflow-hidden min-h-0">
-            <input
-              type="search"
-              value={complianceSearch}
-              onChange={(event) => setComplianceSearch(event.target.value)}
-              placeholder="Search records, certificates, or types"
-              className={cn(
-                "mt-2 w-full rounded-[10px] bg-background shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.6)]",
-                "px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              )}
-              aria-label="Search records"
-            />
-          </div>
+          ))}
         </div>
+
+        <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
+          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <input
+            type="search"
+            value={complianceSearch}
+            onChange={(event) => setComplianceSearch(event.target.value)}
+            placeholder="Search records, certificates, or types"
+            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+            aria-label="Search records"
+          />
+        </div>
+
+        {recordsAdvancedBarOpen ? (
+          <FilterBar
+            primaryOptions={[] as FilterOption[]}
+            secondaryGroups={complianceSecondaryGroups}
+            selectedFilters={complianceSelectedFilters}
+            onFilterChange={handleComplianceFilterChange}
+            primaryOptionLimit={0}
+            clearPreservePrefixes={[]}
+            collapseFilterChipAfterMs={2000}
+            collapseInteractionRootRef={panelRef}
+            hideFilterByButton
+            defaultNavigationLevel="categories"
+            onExitCategoriesLevel={() => setRecordsAdvancedBarOpen(false)}
+            showClearButton={
+              compliancePropertyFilter !== "all" ||
+              complianceTypeFilter !== "all" ||
+              complianceExpiryRange !== "all"
+            }
+            onClearAll={() => {
+              setCompliancePropertyFilter("all");
+              setComplianceTypeFilter("all");
+              setComplianceExpiryRange("all");
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">

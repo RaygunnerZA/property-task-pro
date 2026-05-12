@@ -82,6 +82,12 @@ interface FilterBarProps {
    */
   collapseFilterChipAfterMs?: number;
   collapseInteractionRootRef?: RefObject<HTMLElement | null>;
+  /** Hide the leading “FILTER” funnel control (e.g. parent toolbar already has a filter affordance). */
+  hideFilterByButton?: boolean;
+  /** Initial row: `categories` opens on Property / Type / Expiry groups without showing primary. */
+  defaultNavigationLevel?: "primary" | "categories";
+  /** When `hideFilterByButton` and user backs out of the category row, invoke instead of returning to primary. */
+  onExitCategoriesLevel?: () => void;
 }
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
@@ -123,8 +129,13 @@ export function FilterBar({
   showClearButton,
   collapseFilterChipAfterMs,
   collapseInteractionRootRef,
+  hideFilterByButton = false,
+  defaultNavigationLevel = "primary",
+  onExitCategoriesLevel,
 }: FilterBarProps) {
-  const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>('primary');
+  const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>(() =>
+    defaultNavigationLevel === "categories" ? "categories" : "primary"
+  );
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [animationDirection, setAnimationDirection] = useState<'right-to-left' | 'left-to-right' | null>(null);
   const [filterChipCollapsed, setFilterChipCollapsed] = useState(false);
@@ -163,6 +174,10 @@ export function FilterBar({
       setNavigationLevel('categories');
       setSelectedCategory(null);
     } else if (navigationLevel === 'categories') {
+      if (hideFilterByButton && onExitCategoriesLevel) {
+        onExitCategoriesLevel();
+        return;
+      }
       // Go back from categories to primary
       setAnimationDirection('right-to-left');
       setNavigationLevel('primary');
@@ -322,37 +337,39 @@ export function FilterBar({
           {/* Level 1: Primary filters + Filter By button */}
           {navigationLevel === 'primary' && (
             <>
-              <button
-                type="button"
-                data-filter-primary-trigger
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={handleFilterByClick}
-                aria-label={filterChipCollapsed ? "Filter — open categories" : "Filter by category"}
-                title="Filter"
-                className={cn(
-                  "inline-flex items-center py-1 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
-                  "font-mono text-[11px] uppercase tracking-wider",
-                  "select-none cursor-pointer",
-                  "bg-background",
-                  "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
-                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card",
-                  "transition-[gap,padding,min-width] duration-300 ease-out",
-                  filterChipCollapsed
-                    ? "justify-center gap-0 px-0 min-w-[24px]"
-                    : "justify-start gap-1.5 pl-2 pr-2.5 min-w-0"
-                )}
-              >
-                <Funnel className={cn("h-[14px] w-[14px] text-foreground shrink-0")} />
-                <span
+              {!hideFilterByButton ? (
+                <button
+                  type="button"
+                  data-filter-primary-trigger
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={handleFilterByClick}
+                  aria-label={filterChipCollapsed ? "Filter — open categories" : "Filter by category"}
+                  title="Filter"
                   className={cn(
-                    "whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ease-out",
-                    filterChipCollapsed ? "max-w-0 opacity-0" : "max-w-[5rem] opacity-100"
+                    "inline-flex items-center py-1 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
+                    "font-mono text-[11px] uppercase tracking-wider",
+                    "select-none cursor-pointer",
+                    "bg-background",
+                    "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
+                    "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card",
+                    "transition-[gap,padding,min-width] duration-300 ease-out",
+                    filterChipCollapsed
+                      ? "justify-center gap-0 px-0 min-w-[24px]"
+                      : "justify-start gap-1.5 pl-2 pr-2.5 min-w-0"
                   )}
-                  style={{ letterSpacing: filterChipCollapsed ? 0 : "0.325px" }}
                 >
-                  FILTER
-                </span>
-              </button>
+                  <Funnel className={cn("h-[14px] w-[14px] text-foreground shrink-0")} />
+                  <span
+                    className={cn(
+                      "whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ease-out",
+                      filterChipCollapsed ? "max-w-0 opacity-0" : "max-w-[5rem] opacity-100"
+                    )}
+                    style={{ letterSpacing: filterChipCollapsed ? 0 : "0.325px" }}
+                  >
+                    FILTER
+                  </span>
+                </button>
+              ) : null}
               {hasClearableFilters && (
                 renderIconButton(
                   <FunnelX className="h-[14px] w-[14px] text-foreground" />,
