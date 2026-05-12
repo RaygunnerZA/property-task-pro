@@ -70,6 +70,9 @@ export function useCreateTaskMutation() {
         void queryClient.invalidateQueries({
           queryKey: ["property-timeline", data.org_id, data.property_id],
         });
+        void queryClient.invalidateQueries({
+          queryKey: ["property-vendors", data.org_id, data.property_id],
+        });
       }
     },
   });

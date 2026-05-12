@@ -26,7 +26,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `schedule_items` (frequency, next_occurrence)
 *   `task_instances` (generated from schedule)
 *   `issues` (captured anomalies)
-*   `audit_logs` — append-only: `id`, `org_id`, `actor_id`, `entity_type`, `entity_id`, `action`, `metadata`, `created_at`. Task detail “Logs” reads rows where `entity_type = 'task'` and `entity_id = tasks.id` (org-scoped RLS). The property hub **activity** strip merges `tasks` rows for a `property_id` with those same task-scoped `audit_logs` (no new columns).
+*   `audit_logs` — append-only: `id`, `org_id`, `actor_id`, `entity_type`, `entity_id`, `action`, `metadata`, `created_at`. Task detail “Logs” reads rows where `entity_type = 'task'` and `entity_id = tasks.id` (org-scoped RLS). The property hub **activity** strip merges `tasks` rows for a `property_id` with those same task-scoped `audit_logs` (no new columns). **Insights → Compliance drift** uses `compliance_portfolio_view` for that property (`expiry_state` expired/expiring). **Insights → Field assignees** uses `tasks_view` (`assigned_user_id`) plus `organisation_members.role` for labels.
 
 **Compliance:**
 *   `compliance_sources` (raw files)

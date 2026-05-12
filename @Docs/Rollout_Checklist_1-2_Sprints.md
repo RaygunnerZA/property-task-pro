@@ -51,7 +51,7 @@
 
 ## Phase C — Property hub (timeline / drift / vendors)
 
-**Current state:** `usePropertyTimeline`, `usePropertyDrift`, `usePropertyVendors` are **stubs**; not wired to property hub tabs.
+**Current state:** `usePropertyTimeline`, **`usePropertyDrift`**, and **`usePropertyVendors`** are wired to **Insights** (real queries). Further polish (display names, vendor-org linkage) optional.
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|

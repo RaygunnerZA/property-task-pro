@@ -1168,6 +1168,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     queryClient.invalidateQueries({
                       queryKey: ["property-timeline", orgId, propId],
                     });
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-vendors", orgId, propId],
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-drift", orgId, propId],
+                    });
                   }
                   if (orgId) {
                     const updateBriefingCache = (key: (string | undefined)[]) => {

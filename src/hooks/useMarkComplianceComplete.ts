@@ -166,6 +166,9 @@ export function useMarkComplianceComplete() {
       queryClient.invalidateQueries({
         queryKey: ["compliance_recommendations", orgId, variables.propertyId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["property-drift", orgId, variables.propertyId],
+      });
     },
   });
 }
