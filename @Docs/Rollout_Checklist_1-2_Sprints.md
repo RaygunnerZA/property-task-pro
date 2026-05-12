@@ -71,7 +71,7 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| D.1 | Inventory sections (form, AI/chips, footer, attachments) and map to existing `create/` subcomponents | TBD | S | — | Markdown or issue attachment |
+| D.1 | Inventory sections (form, AI/chips, footer, attachments) and map to existing `create/` subcomponents | TBD | S | — | **Done** — [`26_CreateTaskModal_Inventory.md`](./26_CreateTaskModal_Inventory.md) |
 | D.2 | Extract **container + state hook(s)** (e.g. `useCreateTaskModalState`) — no behaviour change | TBD | L | D.1 | Same E2E/manual flows; diff mostly moves files |
 | D.3 | Extract **presentational** sections; keep **single** `mutateAsync` path to `useCreateTaskMutation` | TBD | L | D.2 | `task_created` still fires once with correct `source` |
 | D.4 | (Optional) Lazy-load heavy subtrees to shrink initial bundle | TBD | M | D.3 | Build chunk report improved |
@@ -96,7 +96,7 @@
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | F.1 | List **top 10 routes** by traffic / support tickets; mark which already wrapped | TBD | S | — | **Done** — [`Rollout_Execution_Plan.md`](./Rollout_Execution_Plan.md) Sprint 5 “Route ↔ ErrorBoundary coverage” |
-| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Partial** — `AppLayout` + admin + hub/compliance + **onboarding/auth no-layout routes** (`RouteBoundary` in `App.tsx`); login + contractor |
+| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Done** — `onRetryReset` on `ErrorBoundary`; **`AppLayout`** + **`AdminLayout`** invalidate on retry; other boundaries unchanged |
 | F.3 | **Work / Manage / Record** pillars: at least layout-level boundary if not per-page | TBD | M | F.2 | **Done** — `AppLayout` wraps all `/*` authenticated app routes (Sprint 1 + plan) |
 
 ---
@@ -129,7 +129,7 @@
 |---|------|-------|--------|----------------|--------|
 | I.1 | **`ai_requests`:** shared edge utility + batch rollouts per `@Docs/24` (if not already complete in repo) | TBD | L | migrations | Rows appear for hot functions |
 | I.2 | **`ai_resolution_audit` RLS** migration + types in client if still absent | TBD | M | `@Docs/24` | Inserts succeed for member user |
-| I.3 | Remove / guard any remaining **debug telemetry** in edge functions (§24 known bugs) | TBD | S | — | Grep `127.0.0.1` / ingest URLs in `supabase/functions` |
+| I.3 | Remove / guard any remaining **debug telemetry** in edge functions (§24 known bugs) | TBD | S | — | **N/A on grep** — no `127.0.0.1` / localhost ingest in `supabase/functions` (Sprint 6 triage) |
 
 ---
 

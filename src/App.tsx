@@ -389,13 +389,34 @@ const App = () => {
                                 <Route path="/vendor/tasks/:taskId" element={<VendorTaskDetail />} />
                                 <Route path="/vendor/profile" element={<VendorProfile />} />
                                 <Route path="/vendor/reporting" element={<VendorReporting />} />
-                                <Route path="/design-library" element={<DesignLibrary />} />
-                                
+                                <Route
+                                  path="/design-library"
+                                  element={
+                                    <RouteBoundary title="Design library">
+                                      <DesignLibrary />
+                                    </RouteBoundary>
+                                  }
+                                />
+
                                 {/* Debug route */}
-                                <Route path="/debug/data" element={<DebugData />} />
-                                
+                                <Route
+                                  path="/debug/data"
+                                  element={
+                                    <RouteBoundary title="Debug data">
+                                      <DebugData />
+                                    </RouteBoundary>
+                                  }
+                                />
+
                                 {/* 404 */}
-                                <Route path="*" element={<NotFound />} />
+                                <Route
+                                  path="*"
+                                  element={
+                                    <RouteBoundary title="Page not found">
+                                      <NotFound />
+                                    </RouteBoundary>
+                                  }
+                                />
                               </Routes>
                             </Suspense>
                           </AppLayout>

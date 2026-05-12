@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { useNavigate, NavLink, Outlet } from "react-router-dom";
 import { Building2, Shield } from "lucide-react";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -11,6 +12,7 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: isAdmin, isLoading } = useIsPlatformAdmin();
 
   useEffect(() => {
@@ -57,7 +59,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       </header>
 
       <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 py-6">
-        <ErrorBoundary regionTitle="Admin panel">{children ?? <Outlet />}</ErrorBoundary>
+        <ErrorBoundary
+          regionTitle="Admin panel"
+          onRetryReset={() => {
+            void queryClient.invalidateQueries();
+          }}
+        >
+          {children ?? <Outlet />}
+        </ErrorBoundary>
       </main>
     </div>
   );

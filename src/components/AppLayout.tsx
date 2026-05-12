@@ -1,5 +1,6 @@
 import { ReactNode, useRef, useEffect, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
@@ -36,6 +37,7 @@ interface AppLayoutProps {
 export function AppLayout({
   children
 }: AppLayoutProps) {
+  const queryClient = useQueryClient();
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const isHubHome = pathname === '/' || pathname === '';
@@ -87,7 +89,12 @@ export function AppLayout({
           >
             {/* Content */}
             <div className="relative z-10 w-full max-w-full">
-              <ErrorBoundary regionTitle="Main workspace">
+              <ErrorBoundary
+                regionTitle="Main workspace"
+                onRetryReset={() => {
+                  void queryClient.invalidateQueries();
+                }}
+              >
                 {children}
               </ErrorBoundary>
             </div>

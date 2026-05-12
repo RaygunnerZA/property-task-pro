@@ -67,6 +67,19 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | S5.3 | **F** — Onboarding + auth callback routes wrapped | **Done** | `App.tsx` `RouteBoundary` on 11 paths |
 | S5.4 | **B.6** — Admin cursor + audit clarity | **Done** | `@Docs/25_Admin_Cursor_Pagination_Design.md` Goals bullet |
 
+---
+
+## Sprint 6 (completed)
+
+**Theme:** Phase **D.1** (`CreateTaskModal` inventory) + **F.2** retry invalidation + remaining **RouteBoundary** routes + **I.3** triage.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S6.1 | Phase **D.1** — modal decomposition inventory | **Done** | [`26_CreateTaskModal_Inventory.md`](./26_CreateTaskModal_Inventory.md) |
+| S6.2 | **F.2** — `onRetryReset` on `ErrorBoundary` | **Done** | `AppLayout` + **`AdminLayout`** call `queryClient.invalidateQueries()` on retry |
+| S6.3 | **F** — `/design-library`, `/debug/data`, `*` 404 | **Done** | `App.tsx` `RouteBoundary` |
+| S6.4 | **I.3** — grep debug telemetry hosts | **Done** | No `127.0.0.1` in `supabase/functions` |
+
 ### Route ↔ `ErrorBoundary` coverage (F.1)
 
 | Area | Paths (representative) | Boundary |
@@ -80,7 +93,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sign-in | `/login` | **`App.tsx`** — `ErrorBoundary` |
 | Contractor | `/contractor/access`, `/contractor/task/:id` | **`App.tsx`** — `ErrorBoundary` |
 
-**Not wrapped** (by design / low traffic): `NotFound`, `DesignLibrary`, `/debug/data` — acceptable until F.2 expands again.
+**Not wrapped earlier (now wrapped in Sprint 6):** `/design-library`, `/debug/data`, catch-all **404** — each uses `RouteBoundary` in `App.tsx`.
 
 ---
 
@@ -95,6 +108,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sprint 2 | Property timeline + drift + field assignees (Insights) | merged `main` |
 | Sprint 3 | Admin B.1/B.2–B.5, `document_uploaded` (E.2), analytics E.4–E.6 (`ai_task_generated`, resolution payloads, track allowlist test) | merged `main` |
 | Sprint 4 | E.3 compliance `track` §24.5 alignment + ErrorBoundary on login / contractor routes | merged `main` |
-| Sprint 5 | E.1 analytics index; F.1 route map; onboarding RouteBoundary; B.6 admin audit note | this PR |
+| Sprint 5 | E.1 analytics index; F.1 route map; onboarding RouteBoundary; B.6 admin audit note | merged `main` |
+| Sprint 6 | D.1 CreateTaskModal inventory; F.2 `onRetryReset`; design-library/debug/404 boundaries; I.3 triage | this PR |
 
 Update the **Done** table whenever a checklist phase ships.

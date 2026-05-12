@@ -6,6 +6,8 @@ interface ErrorBoundaryProps {
   fallback?: React.ReactNode;
   /** Short label for the wrapped region (used in the default fallback). */
   regionTitle?: string;
+  /** Called when the user taps “Try again” before the boundary clears (e.g. `queryClient.invalidateQueries()`). */
+  onRetryReset?: () => void;
 }
 
 interface ErrorBoundaryState {
@@ -32,6 +34,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   private handleRetry = () => {
+    this.props.onRetryReset?.();
     this.setState({ hasError: false, error: null });
   };
 
