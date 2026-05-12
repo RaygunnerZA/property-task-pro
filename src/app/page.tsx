@@ -676,7 +676,12 @@ export default function Dashboard() {
       <DualPaneLayout
         header={headerElement}
         leftColumn={
-          <ErrorBoundary regionTitle="Today & sidebar">
+          <ErrorBoundary
+            regionTitle="Today & sidebar"
+            onRetryReset={() => {
+              void queryClient.invalidateQueries();
+            }}
+          >
           <LeftColumn 
             tasks={tasks}
             properties={properties}
@@ -706,7 +711,12 @@ export default function Dashboard() {
           </ErrorBoundary>
         }
         rightColumn={
-          <ErrorBoundary regionTitle="Workbench">
+          <ErrorBoundary
+            regionTitle="Workbench"
+            onRetryReset={() => {
+              void queryClient.invalidateQueries();
+            }}
+          >
           <RightColumn 
             tasks={tasks}
             properties={properties}
@@ -730,7 +740,14 @@ export default function Dashboard() {
         }
         thirdColumn={
           thirdColumnContent ? (
-            <ErrorBoundary regionTitle="Details & Filla AI">{thirdColumnContent}</ErrorBoundary>
+            <ErrorBoundary
+              regionTitle="Details & Filla AI"
+              onRetryReset={() => {
+                void queryClient.invalidateQueries();
+              }}
+            >
+              {thirdColumnContent}
+            </ErrorBoundary>
           ) : undefined
         }
       />

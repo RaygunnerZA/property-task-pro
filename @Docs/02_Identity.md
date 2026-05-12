@@ -38,7 +38,7 @@ Tokens may contain: `identity_type`, `org_id` / `active_org_id`, `org_roles`, `a
 
 *   **Org-scoped data, query keys, guards:** use **`useActiveOrg()`** or **`useOrgScope()`** (same membership-backed `org_id`). Do not derive the active org solely from JWT `app_metadata.org_id` for Supabase filters.
 *   **Active org id + organisation display row:** **`useOrg()`** from `@/contexts/DataContext` — exposes membership-aligned `orgId` and loaded `organisation` (name, etc.).
-*   **Thin convenience:** **`useFillaIdentity()`** — reads the same context fields; new feature code should still prefer **`useActiveOrg` / `useOrgScope`** for anything that touches `org_id` in RPCs or RLS-scoped tables.
+*   **Legacy aliases (deprecated):** **`useCurrentOrg()`** — use **`useOrg`** instead. **`useFillaIdentity()`** — prefer **`useActiveOrg` / `useOrgScope`** plus **`useOrg`** / **`useDataContext`** as needed; do not add new imports of these aliases.
 
 **9. GATES & FLOWS**
 *   **Identity Gate:** Blocks access until mode is known.

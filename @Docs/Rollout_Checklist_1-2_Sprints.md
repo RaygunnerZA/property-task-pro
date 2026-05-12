@@ -96,7 +96,7 @@
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | F.1 | List **top 10 routes** by traffic / support tickets; mark which already wrapped | TBD | S | — | **Done** — [`Rollout_Execution_Plan.md`](./Rollout_Execution_Plan.md) Sprint 5 “Route ↔ ErrorBoundary coverage” |
-| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Done** — `onRetryReset` on `ErrorBoundary`; **`AppLayout`** + **`AdminLayout`** invalidate on retry; other boundaries unchanged |
+| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Done** — `onRetryReset` on `ErrorBoundary`; **`AppLayout`**, **`AdminLayout`**, **hub** (`app/page.tsx`) invalidate on retry; other boundaries unchanged |
 | F.3 | **Work / Manage / Record** pillars: at least layout-level boundary if not per-page | TBD | M | F.2 | **Done** — `AppLayout` wraps all `/*` authenticated app routes (Sprint 1 + plan) |
 
 ---
@@ -113,12 +113,12 @@
 
 ## Phase H — Identity API consolidation (single preferred consumer story)
 
-**Current state:** Phase 4 aligned **`DataContext.orgId`** with **`useActiveOrg`**; `useOrgScope` / `useOrg` / `useFillaIdentity` still coexist.
+**Current state:** Phase 4 aligned **`DataContext.orgId`** with **`useActiveOrg`**; `useOrgScope` / `useOrg` preferred; **`useCurrentOrg`** / **`useFillaIdentity`** deprecated (JSDoc, Sprint 7).
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | H.1 | **Document** in `02_Identity`: recommended hook for **data fetch** (`useActiveOrg` / `useOrgScope`) vs **display** (`useOrg` for `organisation` name) | TBD | S | `@Docs/02_Identity.md` | **Done** — `02_Identity.md` §8a (preferred hooks) |
-| H.2 | **Deprecate or narrow:** e.g. `@deprecated` JSDoc on redundant hooks; eslint import restriction (optional) | TBD | M | H.1 | Grep shows new code uses preferred pattern |
+| H.2 | **Deprecate or narrow:** e.g. `@deprecated` JSDoc on redundant hooks; eslint import restriction (optional) | TBD | M | H.1 | **Done** — `@deprecated` on **`useCurrentOrg`** → `useOrg`; **`useFillaIdentity`** → `useActiveOrg` / `useOrgScope` / `useOrg` (no remaining imports in `src/`) |
 | H.3 | Migrate **highest-churn** files first (new PRs only if large migration deferred) | TBD | L | H.2 | No functional regression; dev warning still useful if JWT ≠ membership |
 
 ---
@@ -136,14 +136,14 @@
 ## Sign-off (before calling the program “done”)
 
 - [ ] Phase A: at least **A.1–A.2** complete or consciously deferred with written risk acceptance  
-- [ ] Phase B: **B.2–B.5** done **or** product accepts client-only admin until volume proof  
-- [ ] Phase C: **all three** hooks real or tabs removed/hidden with product sign-off  
+- [x] Phase B: **B.2–B.5** done **or** product accepts client-only admin until volume proof  
+- [x] Phase C: **all three** hooks real or tabs removed/hidden with product sign-off  
 - [ ] Phase D: **D.2** done or ticket explicitly deferred with reason  
-- [ ] Phase E: **E.2–E.4** addressed or exceptions documented in `@Docs/24`  
-- [ ] Phase F: **F.2** covers agreed route list  
-- [ ] Phase G: **G.2** cross-links live  
-- [ ] Phase H: **H.1** merged; **H.2** started or waived  
-- [ ] Phase I: triaged against actual `main` (close as N/A if already shipped)  
+- [x] Phase E: **E.2–E.4** addressed or exceptions documented in `@Docs/24`  
+- [x] Phase F: **F.2** covers agreed route list  
+- [x] Phase G: **G.2** cross-links live  
+- [x] Phase H: **H.1** merged; **H.2** started or waived  
+- [x] Phase I: triaged against actual `main` (close as N/A if already shipped)  
 - [ ] **0.3** manual matrix executed after last schema/status/identity PR  
 
 ---

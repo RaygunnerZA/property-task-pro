@@ -85,7 +85,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Area | Paths (representative) | Boundary |
 |------|-------------------------|----------|
 | Main app (Work / Manage / Record / settings / legacy) | `/*` under `ProtectedRoute` | **`AppLayout`** — `regionTitle="Main workspace"` |
-| Hub / dashboard columns | `/` (dashboard) | **`app/page.tsx`** — per-column regions |
+| Hub / dashboard columns | `/` (dashboard) | **`app/page.tsx`** — per-column regions + **`onRetryReset`** → `invalidateQueries()` (Sprint 7) |
 | Compliance overview | `/compliance` | **`Compliance.tsx`** |
 | Record compliance workspace | `/record/compliance` | **`RecordCompliance.tsx`** |
 | Admin | `/admin/*` | **`AdminLayout.tsx`** |
@@ -94,6 +94,17 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Contractor | `/contractor/access`, `/contractor/task/:id` | **`App.tsx`** — `ErrorBoundary` |
 
 **Not wrapped earlier (now wrapped in Sprint 6):** `/design-library`, `/debug/data`, catch-all **404** — each uses `RouteBoundary` in `App.tsx`.
+
+---
+
+## Sprint 7 (completed)
+
+**Theme:** Phase **H.2** — deprecate legacy identity aliases; **F.2** — hub column **`ErrorBoundary`** retry invalidates React Query.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S7.1 | **H.2** — `@deprecated` on `useCurrentOrg`, `useFillaIdentity` + **`02_Identity`** §8a | **Done** | No `src/` imports of those hooks; aliases retained for external/legacy |
+| S7.2 | **F.2** — Dashboard `ErrorBoundary` `onRetryReset` | **Done** | `app/page.tsx` — Today & sidebar, Workbench, Details columns |
 
 ---
 
@@ -109,6 +120,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sprint 3 | Admin B.1/B.2–B.5, `document_uploaded` (E.2), analytics E.4–E.6 (`ai_task_generated`, resolution payloads, track allowlist test) | merged `main` |
 | Sprint 4 | E.3 compliance `track` §24.5 alignment + ErrorBoundary on login / contractor routes | merged `main` |
 | Sprint 5 | E.1 analytics index; F.1 route map; onboarding RouteBoundary; B.6 admin audit note | merged `main` |
-| Sprint 6 | D.1 CreateTaskModal inventory; F.2 `onRetryReset`; design-library/debug/404 boundaries; I.3 triage | this PR |
+| Sprint 6 | D.1 CreateTaskModal inventory; F.2 `onRetryReset`; design-library/debug/404 boundaries; I.3 triage | merged `main` |
+| Sprint 7 | H.2 deprecated identity hooks; hub ErrorBoundary `onRetryReset` | merged `main` |
 
 Update the **Done** table whenever a checklist phase ships.
