@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -1959,5 +1958,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.67.1 (currently installed v2.65.5)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

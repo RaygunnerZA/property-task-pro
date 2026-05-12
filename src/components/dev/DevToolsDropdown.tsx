@@ -69,8 +69,6 @@ function DevToolsDropdownInner() {
   const queryClient = useQueryClient();
   const { orgId } = useOrgScope();
 
-  if (devEmbed) return null;
-
   const handleGenerateCompliance = useCallback(async () => {
     if (!orgId) {
       console.warn("[DevTools] No active org — cannot generate compliance pack");
@@ -100,6 +98,8 @@ function DevToolsDropdownInner() {
     devMode.reset();
     setTimeShiftDays(0);
   }, [devMode]);
+
+  if (devEmbed) return null;
 
   return (
     <DropdownMenu>

@@ -42,6 +42,5 @@ export async function safeCall<T>(fn: () => Promise<T>): Promise<T> {
 
 // Debug only
 if (import.meta.env.DEV) {
-  // @ts-ignore
-  window.supabase = supabase;
+  (window as unknown as { supabase: typeof supabase }).supabase = supabase;
 }

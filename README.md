@@ -77,6 +77,7 @@ Requires the Supabase CLI and a linked project (`supabase link`), or run the gen
 - **What we’re executing now:** [`@Docs/Rollout_Execution_Plan.md`](./@Docs/Rollout_Execution_Plan.md)
 - **First platform admin:** insert your auth user into `platform_admins` via Supabase SQL — see the comment in `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md) §25.2.
 - **Admin list scale:** [`@Docs/25_Admin_Cursor_Pagination_Design.md`](./@Docs/25_Admin_Cursor_Pagination_Design.md) — keyset pagination for org activity and AI requests (RPC + admin UI).
+- **Lint policy:** `npm run lint` runs **ESLint on `src/` only** (intended merge gate). `npm run lint:all` includes other TS files (e.g. root configs); **`supabase/functions/**` is ignored** (Deno — use `deno lint` there if needed). Several `@typescript-eslint` rules are **warnings** until strictness cleanup; see `eslint.config.js`.
 
 ## How can I deploy this project?
 

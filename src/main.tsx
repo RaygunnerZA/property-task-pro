@@ -11,11 +11,7 @@ const appGlobal = globalThis as typeof globalThis & {
 if (!appGlobal.__fillaRemoveChildPatched) {
   const originalRemoveChild = Node.prototype.removeChild;
   Node.prototype.removeChild = function patchedRemoveChild<T extends Node>(child: T): T {
-    try {
-      return originalRemoveChild.call(this, child) as T;
-    } catch (error) {
-      throw error;
-    }
+    return originalRemoveChild.call(this, child) as T;
   };
   appGlobal.__fillaRemoveChildPatched = true;
 }
