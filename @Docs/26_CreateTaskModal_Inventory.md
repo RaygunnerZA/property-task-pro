@@ -43,6 +43,7 @@
 | Step | Extract | Risk |
 |------|---------|------|
 | D.2a | `useCreateTaskModalState` — all `useState` / `useReducer` + derived memos; modal receives state + setters or dispatch | Medium — needs exhaustive prop drilling or context |
+| D.2a¹ *(done)* | `createTaskModalMeetingSignals.ts` — `minuteKeyFromDate`, `includesMeetingSignal` (pure) | Low |
 | D.2b | `useCreateTaskModalSubmit` — `handleSubmit` + upload follow-ups; depends on state hook | High — test property + attachments + invite |
 | D.3 | Move shell JSX into `CreateTaskModalShell.tsx`; keep mutation import only in one parent | Medium |
 
@@ -56,4 +57,4 @@
 
 ---
 
-**Revision:** Update this doc when D.2 lands (hook / file names).
+**Revision:** Update this doc when D.2 lands (hook / file names). **Sprint 8:** `create/createTaskModalMeetingSignals.ts` landed; full state hook still pending.

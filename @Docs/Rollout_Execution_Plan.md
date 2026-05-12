@@ -108,6 +108,27 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 
 ---
 
+## Sprint 8 (completed)
+
+**Theme:** Close checklist gaps — **Phase I** triage, **0.3** QA template, **Phase A** written deferral, **D.2** partial decomposition, **`28`** compiler debt note.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S8.1 | **I.1 / I.2** — verify `ai_requests` + `ai_resolution_audit` on `main` | **Done** | Checklist verify rows; `aiObservability.ts`, migrations, `resolutionAudit.ts` |
+| S8.2 | **0.3** — manual QA matrix template | **Done** | [`27_Manual_QA_Matrix_Template.md`](./27_Manual_QA_Matrix_Template.md) |
+| S8.3 | **A.1–A.2** — risk acceptance doc | **Done** | [`28_TypeScript_Strictness_Debt.md`](./28_TypeScript_Strictness_Debt.md) |
+| S8.4 | **D.2** — extract pure scheduling helpers from `CreateTaskModal` | **Done** | `create/createTaskModalMeetingSignals.ts` + Vitest |
+| S8.5 | **H.3** — program waive (checklist) | **Done** | Identity guidance + ESLint; no mass hook migration in this sprint |
+
+### Deferred (next program / discretionary)
+
+| Item | Reason |
+|------|--------|
+| **D.2** remainder (`useCreateTaskModalState` monolith) | High coupling between 25+ state branches, chip lane, and submit pipeline — schedule dedicated sprint |
+| **A.3–A.5** | Blocked on A.1–A.2 burn-down per **`28_TypeScript_Strictness_Debt.md`** |
+
+---
+
 ## Done (archive)
 
 | Sprint | Item | Completed |
@@ -122,5 +143,6 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sprint 5 | E.1 analytics index; F.1 route map; onboarding RouteBoundary; B.6 admin audit note | merged `main` |
 | Sprint 6 | D.1 CreateTaskModal inventory; F.2 `onRetryReset`; design-library/debug/404 boundaries; I.3 triage | merged `main` |
 | Sprint 7 | H.2 deprecated identity hooks; hub ErrorBoundary `onRetryReset` | merged `main` |
+| Sprint 8 | I.1/I.2 verify; 0.3 QA template; 28 TS debt doc; D.2 partial (meeting signals); H.3 waived | merged `main` |
 
 Update the **Done** table whenever a checklist phase ships.

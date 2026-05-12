@@ -16,7 +16,7 @@
 |---|------|-------|--------|----------------|--------|
 | 0.1 | Confirm `@Docs` is canonical for schema/identity/observability; PRs that change enums or org behaviour update **03_Data_Model**, **02_Identity**, **24 / 25** as applicable | TBD | S | — | Doc PRs linked in release notes |
 | 0.2 | CI runs **`npm test`** (Vitest scoped to `src`) + **`npm run build`** on every PR | TBD | S | `vite.config.ts` `test.include` | Green CI on `main` |
-| 0.3 | **Manual matrix** after any `task_status` or org-identity change: vendor flow, manager task list, filters, badges, materialized views if touched | TBD | S | relevant PR | Checklist signed in PR description |
+| 0.3 | **Manual matrix** after any `task_status` or org-identity change: vendor flow, manager task list, filters, badges, materialized views if touched | TBD | S | relevant PR | **Template** — [`27_Manual_QA_Matrix_Template.md`](./27_Manual_QA_Matrix_Template.md); copy table + sign in PR when schema / identity / status changes |
 
 ---
 
@@ -26,8 +26,8 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| A.1 | Enable **`noUnusedLocals`** / **`noUnusedParameters`** (`tsconfig.app.json` + fix fallout) | TBD | M | 0.2 | `npm run build` green |
-| A.2 | Enable **`noImplicitAny`**; replace latent `any` in `src/` (prioritise hooks, API boundaries) | TBD | L | A.1 | Build + spot grep `any` in touched paths |
+| A.1 | Enable **`noUnusedLocals`** / **`noUnusedParameters`** (`tsconfig.app.json` + fix fallout) | TBD | M | 0.2 | **Deferred** — [`28_TypeScript_Strictness_Debt.md`](./28_TypeScript_Strictness_Debt.md); `tsc` has large pre-existing error surface; CI uses **`npm run build`** + **`npm test`** |
+| A.2 | Enable **`noImplicitAny`**; replace latent `any` in `src/` (prioritise hooks, API boundaries) | TBD | L | A.1 | **Deferred** — follows A.1 burn-down per §28 |
 | A.3 | Enable **`strictNullChecks`**; fix null/undefined contracts (largest bucket — may split by folder) | TBD | L | A.2 | Build green; critical paths smoke-tested |
 | A.4 | Set **`"strict": true`** (or equivalent full strict bundle); burn down remainder | TBD | L | A.3 | Build green |
 | A.5 | (Optional) ESLint **`@typescript-eslint/no-explicit-any`**: `warn` → `error` on `src/` after A.2 | TBD | S | A.2 | Lint job green |
@@ -72,7 +72,7 @@
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | D.1 | Inventory sections (form, AI/chips, footer, attachments) and map to existing `create/` subcomponents | TBD | S | — | **Done** — [`26_CreateTaskModal_Inventory.md`](./26_CreateTaskModal_Inventory.md) |
-| D.2 | Extract **container + state hook(s)** (e.g. `useCreateTaskModalState`) — no behaviour change | TBD | L | D.1 | Same E2E/manual flows; diff mostly moves files |
+| D.2 | Extract **container + state hook(s)** (e.g. `useCreateTaskModalState`) — no behaviour change | TBD | L | D.1 | **Partial + deferred** — `create/createTaskModalMeetingSignals.ts` extracted from modal; full `useCreateTaskModalState` deferred (orchestration + effects tightly coupled — see [`26_CreateTaskModal_Inventory.md`](./26_CreateTaskModal_Inventory.md) §4) |
 | D.3 | Extract **presentational** sections; keep **single** `mutateAsync` path to `useCreateTaskMutation` | TBD | L | D.2 | `task_created` still fires once with correct `source` |
 | D.4 | (Optional) Lazy-load heavy subtrees to shrink initial bundle | TBD | M | D.3 | Build chunk report improved |
 
@@ -119,7 +119,7 @@
 |---|------|-------|--------|----------------|--------|
 | H.1 | **Document** in `02_Identity`: recommended hook for **data fetch** (`useActiveOrg` / `useOrgScope`) vs **display** (`useOrg` for `organisation` name) | TBD | S | `@Docs/02_Identity.md` | **Done** — `02_Identity.md` §8a (preferred hooks) |
 | H.2 | **Deprecate or narrow:** e.g. `@deprecated` JSDoc on redundant hooks; eslint import restriction (optional) | TBD | M | H.1 | **Done** — `@deprecated` on **`useCurrentOrg`** → `useOrg`; **`useFillaIdentity`** → `useActiveOrg` / `useOrgScope` / `useOrg` (no remaining imports in `src/`) |
-| H.3 | Migrate **highest-churn** files first (new PRs only if large migration deferred) | TBD | L | H.2 | No functional regression; dev warning still useful if JWT ≠ membership |
+| H.3 | Migrate **highest-churn** files first (new PRs only if large migration deferred) | TBD | L | H.2 | **Waived for program close** — H.2 + `no-restricted-imports` steer new code; discretionary refactors use `useActiveOrg` / `useOrgScope` per **`02_Identity`** §8a |
 
 ---
 
@@ -127,24 +127,24 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| I.1 | **`ai_requests`:** shared edge utility + batch rollouts per `@Docs/24` (if not already complete in repo) | TBD | L | migrations | Rows appear for hot functions |
-| I.2 | **`ai_resolution_audit` RLS** migration + types in client if still absent | TBD | M | `@Docs/24` | Inserts succeed for member user |
+| I.1 | **`ai_requests`:** shared edge utility + batch rollouts per `@Docs/24` (if not already complete in repo) | TBD | L | migrations | **Done** — `supabase/functions/_shared/aiObservability.ts` `logAiRequest`; used from `ai-extract`, `ai-image-analyse`, `ai-doc-analyse`, `compliance-clause-rewrite` + table migration `20260317000002_create_ai_requests.sql` |
+| I.2 | **`ai_resolution_audit` RLS** migration + types in client if still absent | TBD | M | `@Docs/24` | **Done** — migrations `20260107000001_create_ai_resolution_audit.sql`, `20260317000001_fix_ai_resolution_audit_rls.sql`; client insert `src/services/ai/resolutionAudit.ts` |
 | I.3 | Remove / guard any remaining **debug telemetry** in edge functions (§24 known bugs) | TBD | S | — | **N/A on grep** — no `127.0.0.1` / localhost ingest in `supabase/functions` (Sprint 6 triage) |
 
 ---
 
 ## Sign-off (before calling the program “done”)
 
-- [ ] Phase A: at least **A.1–A.2** complete or consciously deferred with written risk acceptance  
+- [x] Phase A: at least **A.1–A.2** complete or consciously deferred with written risk acceptance — **[deferred — `28_TypeScript_Strictness_Debt.md`](./28_TypeScript_Strictness_Debt.md)**  
 - [x] Phase B: **B.2–B.5** done **or** product accepts client-only admin until volume proof  
 - [x] Phase C: **all three** hooks real or tabs removed/hidden with product sign-off  
-- [ ] Phase D: **D.2** done or ticket explicitly deferred with reason  
+- [x] Phase D: **D.2** done or ticket explicitly deferred with reason — **partial extract + remainder deferred** (see checklist D.2 verify)  
 - [x] Phase E: **E.2–E.4** addressed or exceptions documented in `@Docs/24`  
 - [x] Phase F: **F.2** covers agreed route list  
 - [x] Phase G: **G.2** cross-links live  
 - [x] Phase H: **H.1** merged; **H.2** started or waived  
 - [x] Phase I: triaged against actual `main` (close as N/A if already shipped)  
-- [ ] **0.3** manual matrix executed after last schema/status/identity PR  
+- [ ] **0.3** manual matrix executed after last schema/status/identity PR *(template ready: [`27_Manual_QA_Matrix_Template.md`](./27_Manual_QA_Matrix_Template.md); check this box when a qualifying PR runs the matrix)*  
 
 ---
 

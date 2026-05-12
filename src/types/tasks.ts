@@ -1,4 +1,4 @@
-import { UUID, BaseEntity } from './shared';
+import { BaseEntity } from './shared';
 
 export interface Task extends BaseEntity {
   title: string;

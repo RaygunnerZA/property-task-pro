@@ -55,6 +55,7 @@ import { ImageUploadSection, type PendingTaskFile } from "./create/ImageUploadSe
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
+import { includesMeetingSignal, minuteKeyFromDate } from "./create/createTaskModalMeetingSignals";
 import { WhoSection } from "./create/WhoSection";
 import { WhenSection, type MilestoneItem } from "./create/WhenSection";
 import { WhereSection } from "./create/WhereSection";
@@ -232,36 +233,6 @@ export function CreateTaskModal({
   } | null>(null);
   // Pending archive confirmation
   const [showArchiveTemplateDialog, setShowArchiveTemplateDialog] = useState(false);
-
-  const minuteKeyFromDate = (date: Date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    const hh = String(date.getHours()).padStart(2, "0");
-    const mm = String(date.getMinutes()).padStart(2, "0");
-    return `${y}-${m}-${d}T${hh}:${mm}`;
-  };
-
-  const includesMeetingSignal = (task: any) => {
-    const text = `${task?.title ?? ""} ${task?.description ?? ""}`.toLowerCase();
-    if (/\bmeeting\b|\bmeet[-\s]?up\b|\bstandup\b|\bsync\b/.test(text)) return true;
-
-    let themes: any[] = [];
-    if (Array.isArray(task?.themes)) {
-      themes = task.themes;
-    } else if (typeof task?.themes === "string") {
-      try {
-        themes = JSON.parse(task.themes);
-      } catch {
-        themes = [];
-      }
-    }
-
-    return themes.some((theme) => {
-      const themeName = String(theme?.name ?? "").toLowerCase();
-      return themeName.includes("meeting");
-    });
-  };
 
   const scheduleConflictNote = useMemo(() => {
     if (!assignedUserId || assignedUserId.startsWith("pending-")) return null;
