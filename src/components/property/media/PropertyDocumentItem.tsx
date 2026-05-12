@@ -29,14 +29,14 @@ export default function PropertyDocumentItem({ document, onClick }: PropertyDocu
 
         <div className="flex-1 min-w-0">
           <Text variant="body" className="font-medium truncate">
-            {document.name}
+            {document.file_name ?? document.title ?? "Untitled"}
           </Text>
           <div className="flex items-center gap-3 mt-1">
             <Text variant="caption" className="text-neutral-600">
-              {formatFileSize(document.size)}
+              {document.file_size != null ? formatFileSize(document.file_size) : "—"}
             </Text>
             <Text variant="caption" className="text-neutral-600">
-              {format(new Date(document.uploaded_at), 'PP')}
+              {format(new Date(document.created_at), 'PP')}
             </Text>
           </div>
         </div>

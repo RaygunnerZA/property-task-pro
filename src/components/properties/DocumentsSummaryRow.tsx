@@ -24,12 +24,16 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
       if (!orgId || !propertyId) return [];
       const { data, error } = await supabase
         .from("attachments")
-        .select("id, expiry_date, file_url")
+        .select("id, file_url, metadata")
         .eq("org_id", orgId)
         .eq("parent_type", "property")
         .eq("parent_id", propertyId);
       if (error) throw error;
-      return (data || []) as PropertyDocument[];
+      // expiry_date is not a column on attachments; derive it from metadata
+      return (data || []).map((row) => ({
+        ...(row as unknown as PropertyDocument),
+        expiry_date: (row.metadata as Record<string, unknown> | null)?.expiry_date as string ?? null,
+      }));
     },
     enabled: !!orgId && !!propertyId,
   });

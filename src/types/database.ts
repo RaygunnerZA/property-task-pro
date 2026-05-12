@@ -1,6 +1,8 @@
 /**
- * Extended database types aligned with the new Supabase schema
- * These complement the auto-generated types in integrations/supabase/types.ts
+ * Extended database types aligned with the Supabase schema.
+ * Row types that exist in the generated schema use Tables<"x">.
+ * Tables that were planned but not yet migrated use hand-written interfaces
+ * (marked // pending-migration) to keep tsc clean without faking the schema.
  */
 
 import type { Tables } from "@/integrations/supabase/types";
@@ -37,32 +39,132 @@ export interface ComplianceMetadata {
 }
 
 // ===== CATEGORY TYPES =====
-export type CategoryRow = Tables<"categories">;
-export type CategoryMemberRow = Tables<"category_members">;
-export type TaskCategoryRow = Tables<"task_categories">;
+// pending-migration: categories / category_members / task_categories not in generated schema
+export interface CategoryRow {
+  id: string;
+  name: string;
+  org_id: string;
+  color?: string | null;
+  icon?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+export interface CategoryMemberRow {
+  id: string;
+  category_id: string;
+  user_id: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+export interface TaskCategoryRow {
+  id: string;
+  task_id: string;
+  category_id: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== CHECKLIST TYPES =====
 export type ChecklistTemplateRow = Tables<"checklist_templates">;
-export type ChecklistTemplateItemRow = Tables<"checklist_template_items">;
+// pending-migration: checklist_template_items are stored as JSONB in checklist_templates.items
+export interface ChecklistTemplateItemRow {
+  id: string;
+  template_id: string;
+  title: string;
+  is_yes_no?: boolean;
+  requires_signature?: boolean;
+  order_index?: number;
+  [key: string]: unknown;
+}
 
 // ===== SUBTASK TYPES =====
-export type SubtaskRow = Tables<"subtasks">;
+// pending-migration: subtasks table not in generated schema; subtasks stored as JSONB
+export interface SubtaskRow {
+  id: string;
+  task_id?: string;
+  title: string;
+  is_yes_no?: boolean;
+  requires_signature?: boolean;
+  is_complete?: boolean;
+  order_index?: number;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== AI TYPES =====
-export type AIModelRow = Tables<"ai_models">;
-export type AIPromptRow = Tables<"ai_prompts">;
-export type AIResponseRow = Tables<"ai_responses">;
-export type AIExtractionRow = Tables<"ai_extractions">;
+// pending-migration: ai_models / ai_prompts / ai_responses / ai_extractions not in generated schema
+export interface AIModelRow {
+  id: string;
+  name: string;
+  provider?: string | null;
+  [key: string]: unknown;
+}
+export interface AIPromptRow {
+  id: string;
+  name: string;
+  template?: string | null;
+  [key: string]: unknown;
+}
+export interface AIResponseRow {
+  id: string;
+  prompt_id?: string | null;
+  response?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+export interface AIExtractionRow {
+  id: string;
+  org_id?: string | null;
+  task_id?: string | null;
+  extracted_data?: Record<string, unknown> | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== LABEL TYPES =====
-export type LabelRow = Tables<"labels">;
-export type TaskLabelRow = Tables<"task_labels">;
+// pending-migration: labels / task_labels not in generated schema
+export interface LabelRow {
+  id: string;
+  name: string;
+  color?: string | null;
+  org_id?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+export interface TaskLabelRow {
+  id: string;
+  task_id: string;
+  label_id: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== ACTIVITY LOG =====
-export type ActivityLogRow = Tables<"activity_log">;
+// pending-migration: activity_log not in generated schema (audit_logs is the live equivalent)
+export interface ActivityLogRow {
+  id: string;
+  org_id?: string | null;
+  actor_id?: string | null;
+  action: string;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== COMPLIANCE TYPES =====
-export type TaskComplianceEventRow = Tables<"task_compliance_events">;
+// pending-migration: task_compliance_events not in generated schema (task_compliance is live)
+export interface TaskComplianceEventRow {
+  id: string;
+  task_id?: string | null;
+  event_type?: string | null;
+  occurred_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
 
 // ===== PROPERTY & SPACE =====
 export type PropertyRow = Tables<"properties">;
@@ -72,19 +174,69 @@ export type SpaceRow = Tables<"spaces">;
 export type TeamRow = Tables<"teams">;
 
 // ===== SIGNAL TYPES =====
-export type SignalRow = Tables<"signals">;
+// pending-migration: signals table not in generated schema
+export interface SignalRow {
+  id: string;
+  org_id?: string | null;
+  property_id?: string | null;
+  task_id?: string | null;
+  type?: string | null;
+  severity?: string | null;
+  message?: string | null;
+  resolved?: boolean | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 export type SignalSeverity = "info" | "warning" | "urgent" | "critical";
 export type SignalScope = "task" | "property" | "org-wide";
 
 // ===== ESCALATION TYPES =====
-export type EscalationRuleRow = Tables<"escalation_rules">;
-export type EscalationEventRow = Tables<"escalation_events">;
+// pending-migration: escalation_rules / escalation_events not in generated schema
+export interface EscalationRuleRow {
+  id: string;
+  org_id?: string | null;
+  name?: string | null;
+  conditions?: Record<string, unknown> | null;
+  actions?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+export interface EscalationEventRow {
+  id: string;
+  rule_id?: string | null;
+  task_id?: string | null;
+  fired_at?: string | null;
+  [key: string]: unknown;
+}
 
 // ===== TASK RECURRENCE =====
-export type TaskRecurrenceRow = Tables<"task_recurrence">;
+// pending-migration: task_recurrence not in generated schema (repeat rules stored in task metadata)
+export interface TaskRecurrenceRow {
+  id: string;
+  task_id?: string | null;
+  rule?: RepeatRule | null;
+  next_due_at?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 // ===== TASK ACTIVITY =====
-export type TaskActivityRow = Tables<"task_activity">;
+// pending-migration: task_activity not in generated schema
+export interface TaskActivityRow {
+  id: string;
+  task_id?: string | null;
+  actor_id?: string | null;
+  action?: string | null;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+// ===== GROUP ROW =====
+// Groups are backed by themes with type='group' (groups table replaced in migration 20251220000032).
+export interface GroupRow {
+  id: string;
+  name?: string | null;
+  [key: string]: unknown;
+}
 
 // ===== EXTENDED TASK WITH RELATIONS =====
 export interface TaskWithRelations extends TaskRow {

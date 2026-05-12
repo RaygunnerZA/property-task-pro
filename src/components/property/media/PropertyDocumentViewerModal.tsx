@@ -17,7 +17,7 @@ export default function PropertyDocumentViewerModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div className="flex-1 min-w-0 mr-4">
-            <Heading variant="l" className="truncate">{document.name}</Heading>
+            <Heading variant="l" className="truncate">{document.file_name ?? document.title ?? "Document"}</Heading>
             <Text variant="caption" className="text-neutral-600 mt-1">
               PDF Document
             </Text>
