@@ -171,7 +171,7 @@ export function useMarkComplianceComplete() {
         await createTask(orgId, propertyId, {
           title: String(config.title_template ?? "Compliance task"),
           description: `Auto-created compliance task. Due: ${nextDueDateStr}`,
-          priority: String(config.default_priority ?? "medium"),
+          priority: String(config.default_priority ?? "medium") as import("@/types/database").TaskPriority,
           assigned_user_id: config.assigned_user_id
             ? String(config.assigned_user_id)
             : undefined,

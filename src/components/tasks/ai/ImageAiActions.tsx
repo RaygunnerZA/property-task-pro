@@ -86,7 +86,8 @@ export function ImageAiActions({
 
   const handleLinkAsset = async (assetId: string) => {
     try {
-      const { error } = await supabase.from("attachment_assets").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attachment_assets").insert({
         attachment_id: attachment.id,
         asset_id: assetId,
         org_id: orgId,
@@ -110,7 +111,8 @@ export function ImageAiActions({
 
   const handleLinkCompliance = async (complianceId: string) => {
     try {
-      const { error } = await supabase.from("attachment_compliance").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attachment_compliance").insert({
         attachment_id: attachment.id,
         compliance_document_id: complianceId,
         org_id: orgId,

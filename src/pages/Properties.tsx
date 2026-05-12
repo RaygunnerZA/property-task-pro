@@ -191,10 +191,10 @@ const Properties = () => {
             <PropertyCard
               key={property.id}
               property={{
-                ...property,
+                ...(property as unknown as Parameters<typeof PropertyCard>[0]["property"]),
                 taskCount: taskCounts[property.id] || 0,
-                urgentTaskCount: 0, // TODO: Calculate from tasks if needed
-                lastInspectedDate: null, // TODO: Add last inspected date from compliance data
+                urgentTaskCount: 0,
+                lastInspectedDate: null,
               }}
             />
           ))}

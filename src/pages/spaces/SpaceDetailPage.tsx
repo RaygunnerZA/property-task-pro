@@ -108,11 +108,12 @@ export default function SpaceDetailPage() {
   }
 
   const spaceName = space.name || "Unnamed Space";
-  const propertyName = space.properties?.nickname || space.properties?.address || "Property";
+  const spaceWithProps = space as typeof space & { properties?: { nickname?: string; address?: string } };
+  const propertyName = spaceWithProps.properties?.nickname || spaceWithProps.properties?.address || "Property";
   const spaceProperty = {
     id: propertyId || "",
     name: propertyName,
-    address: space.properties?.address || propertyName,
+    address: spaceWithProps.properties?.address || propertyName,
   };
 
   const headerElement = (

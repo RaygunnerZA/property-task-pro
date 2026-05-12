@@ -77,7 +77,7 @@ export function StandardPage({
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold text-foreground leading-tight heading-l">{title}</h1>
               {subtitle && (
-                <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+                <p className="text-sm text-foreground/70 mt-1">{subtitle}</p>
               )}
             </div>
           </div>
@@ -85,7 +85,7 @@ export function StandardPage({
         </div>
       </PageHeader>
 
-      <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
+      <div className={cn("mx-auto px-gutter-page py-8", maxWidthClasses[maxWidth], contentClassName)}>
         {children}
       </div>
 

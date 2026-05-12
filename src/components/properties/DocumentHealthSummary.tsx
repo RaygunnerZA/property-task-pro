@@ -45,10 +45,13 @@ export function DocumentHealthSummary({
     queryKey: ["doc-health-linked", orgId, docIds.join(",")],
     queryFn: async () => {
       if (!orgId || docIds.length === 0) return new Set<string>();
+      // attachment_spaces/assets/compliance are pending-migration tables not in generated schema
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any;
       const [s, a, c] = await Promise.all([
-        supabase.from("attachment_spaces").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
-        supabase.from("attachment_assets").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
-        supabase.from("attachment_compliance").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
+        sb.from("attachment_spaces").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
+        sb.from("attachment_assets").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
+        sb.from("attachment_compliance").select("attachment_id").in("attachment_id", docIds).eq("org_id", orgId),
       ]);
       const set = new Set<string>();
       [...(s.data || []), ...(a.data || []), ...(c.data || [])].forEach((r: { attachment_id: string }) =>

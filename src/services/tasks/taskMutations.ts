@@ -1,4 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+// create_task_safe / delete_task_full / apply_checklist_template not in generated types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 import type { CreateTaskPayload } from "@/types/database";
 import type { Json } from "@/integrations/supabase/types";
 

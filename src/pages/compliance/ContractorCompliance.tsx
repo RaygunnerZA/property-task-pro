@@ -17,8 +17,9 @@ export default function ContractorCompliance() {
   const { data: allRecommendations = [] } = useComplianceRecommendations();
   const [selectedRecId, setSelectedRecId] = useState<string | null>(null);
 
-  const contractorRecs = contractorRecData?.contractorRecs ?? new Map();
-  const docMap = contractorRecData?.docMap ?? new Map();
+  const contractorRecObj = Array.isArray(contractorRecData) ? null : contractorRecData as { contractorRecs: Map<string, unknown[]>; docMap: Map<string, unknown>; recs: unknown[] } | undefined;
+  const contractorRecs = contractorRecObj?.contractorRecs ?? new Map();
+  const docMap = contractorRecObj?.docMap ?? new Map();
 
   const selectedRec = useMemo(
     () => allRecommendations.find((r) => r.id === selectedRecId) ?? null,

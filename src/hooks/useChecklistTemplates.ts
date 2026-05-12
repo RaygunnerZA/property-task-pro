@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
+import type { ChecklistTemplateItemRow } from "@/types/database";
 import { useActiveOrg } from "./useActiveOrg";
 
 type ChecklistTemplateRow = Tables<"checklist_templates">;
-type ChecklistTemplateItemRow = Tables<"checklist_template_items">;
 export type ChecklistTemplateCategory =
   | "compliance"
   | "maintenance"
@@ -16,7 +16,7 @@ export interface ChecklistTemplate extends ChecklistTemplateRow {
   category: ChecklistTemplateCategory;
 }
 
-export interface TemplateWithItems extends ChecklistTemplate {
+export interface TemplateWithItems extends Omit<ChecklistTemplate, "items"> {
   items: ChecklistTemplateItemRow[];
 }
 
@@ -92,7 +92,8 @@ export function useChecklistTemplateItems(templateId?: string) {
     setLoading(true);
     setError(null);
 
-    const { data, error: err } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: err } = await (supabase as any)
       .from("checklist_template_items")
       .select("*")
       .eq("template_id", templateId)
@@ -157,7 +158,8 @@ export function useTemplateWithItems(templateId?: string) {
     }
 
     // Fetch items
-    const { data: itemsData, error: itemsErr } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: itemsData, error: itemsErr } = await (supabase as any)
       .from("checklist_template_items")
       .select("*")
       .eq("template_id", templateId)
@@ -169,8 +171,8 @@ export function useTemplateWithItems(templateId?: string) {
       if (itemsErr.code === 'PGRST205') {
         setTemplate({
           ...templateData,
-          items: [],
-        });
+          items: [] as ChecklistTemplateItemRow[],
+        } as TemplateWithItems);
         setError(null);
       } else {
         setError(itemsErr.message);
@@ -181,8 +183,8 @@ export function useTemplateWithItems(templateId?: string) {
 
     setTemplate({
       ...templateData,
-      items: itemsData ?? [],
-    });
+      items: (itemsData ?? []) as ChecklistTemplateItemRow[],
+    } as TemplateWithItems);
 
     setLoading(false);
   }

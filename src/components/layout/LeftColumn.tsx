@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { DashboardCalendarV2 } from "@/components/dashboard/DashboardCalendarV2";
 import { PropertyCard } from "@/components/properties/PropertyCard";
@@ -11,6 +11,10 @@ import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import { OnboardingDemoBanner } from "@/components/onboarding/OnboardingDemoBanner";
 import { propertyHasOnboardingDemoContent } from "@/lib/onboardingDemo";
+import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
+import { Button } from "@/components/ui/button";
+
+const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
 interface LeftColumnProps {
   tasks?: any[];
@@ -62,8 +66,19 @@ export function LeftColumn({
   propertyCardWeather,
 }: LeftColumnProps) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isHubHome = pathname === "/" || pathname === "";
   const [showAddProperty, setShowAddProperty] = useState(false);
+  const [workbenchTipDismissed, setWorkbenchTipDismissed] = useState(() => {
+    try {
+      return (
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem(instructionPanelStorageKey(WORKBENCH_OVERVIEW_TIP_ID)) === "1"
+      );
+    } catch {
+      return false;
+    }
+  });
   const [hideProperties, setHideProperties] = useState(false);
   const [internalSelectedPropertyIds, setInternalSelectedPropertyIds] = useState<Set<string>>(
     () => new Set()
@@ -245,6 +260,31 @@ export function LeftColumn({
               </div>
             )}
           </div>
+          {isHubHome && !workbenchTipDismissed && (
+            <div className="mt-4 shrink-0 px-[12px] pb-3 sm:pr-[5px]">
+              <InstructionPanel
+                id={WORKBENCH_OVERVIEW_TIP_ID}
+                title="How this column works"
+                description="Pick a date to focus the task list in the middle. Use the property row above to narrow work to one building, or keep every property selected to see everything at once."
+                onDismiss={() => {
+                  try {
+                    localStorage.setItem(
+                      instructionPanelStorageKey(WORKBENCH_OVERVIEW_TIP_ID),
+                      "1",
+                    );
+                  } catch {
+                    /* ignore */
+                  }
+                  setWorkbenchTipDismissed(true);
+                }}
+                action={
+                  <Button type="button" size="sm" onClick={() => navigate("/work/tasks")}>
+                    Open tasks
+                  </Button>
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
 

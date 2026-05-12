@@ -1,4 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+// organisations.slug column may not be in generated types — cast until updated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 
 function baseSlugify(str: string): string {
   return str

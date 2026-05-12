@@ -7,6 +7,7 @@ interface ScheduleViewProps {
   selectedDate?: Date | undefined;
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
+  showDateHeaders?: boolean;
 }
 
 /**

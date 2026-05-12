@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+// attachment_spaces is a pending-migration table — cast until schema is generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 
 export function useSpaceDocumentsQuery(spaceId: string | undefined, propertyId: string | undefined) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();

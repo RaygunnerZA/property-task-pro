@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+import type { SubtaskRow } from "@/types/database";
 import { useActiveOrg } from "./useActiveOrg";
 
-type SubtaskRow = Tables<"subtasks">;
+// subtasks is a pending-migration table — cast until schema is generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 
 export function useSubtasks(taskId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();

@@ -29,7 +29,7 @@ interface WhoPanelProps {
   onPendingInvitationsChange?: (invitations: PendingInvitation[]) => void;
   instructionBlock?: { section: string; entityName: string; entityType: string } | null;
   onInstructionDismiss?: () => void;
-  onInviteToOrg?: () => void;
+  onInviteToOrg?: (prefill?: { firstName?: string; lastName?: string }) => void;
   onAddAsContractor?: () => void;
 }
 

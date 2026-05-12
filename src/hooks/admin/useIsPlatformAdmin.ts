@@ -8,7 +8,8 @@ export function useIsPlatformAdmin() {
   return useQuery({
     queryKey: ["platform-admin-check", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
         .from("platform_admins")
         .select("user_id")
         .eq("user_id", user!.id)

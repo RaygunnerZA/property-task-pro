@@ -26,9 +26,7 @@ export default function PropertyDocuments() {
   const q = new URLSearchParams();
   q.set("property", id);
   q.set(WORKBENCH_PANEL_TAB_QUERY, "records");
-  if (recordsView !== "all") {
-    q.set(WORKBENCH_RECORDS_VIEW_QUERY, recordsView);
-  }
+  q.set(WORKBENCH_RECORDS_VIEW_QUERY, recordsView);
   if (filter) {
     q.set("filter", filter);
   }

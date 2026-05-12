@@ -49,7 +49,8 @@
 
     /* Muted */
     --muted: 40 12% 92%;
-    --muted-foreground: 40 2% 55%;   /* #8C8C85 */
+    /* Darker than v3.3 for legibility on white neumorphic cards (still warm, not harsh) */
+    --muted-foreground: 40 6% 38%;
 
     /* Accent - Coral/Orange */
     --accent: 16 83% 56%;            /* #EB6834 */
@@ -126,7 +127,7 @@
     --secondary-foreground: 40 20% 94%;
 
     --muted: 248 10% 22%;
-    --muted-foreground: 40 5% 60%;
+    --muted-foreground: 40 12% 72%;
 
     --accent: 16 83% 56%;
     --accent-foreground: 0 0% 100%;

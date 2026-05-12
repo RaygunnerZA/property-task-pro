@@ -35,9 +35,9 @@ export const mockTasks: Task[] = [
     propertyId: '1',
     status: 'pending',
     priority: 'high',
-    dueDate: new Date(2025, 11, 30),
+    dueDate: '2025-12-30',
     assignedTo: 'John Smith',
-    createdAt: new Date(2025, 11, 25)
+    createdAt: '2025-12-25'
   },
   {
     id: '2',
@@ -46,9 +46,9 @@ export const mockTasks: Task[] = [
     propertyId: '1',
     status: 'in-progress',
     priority: 'medium',
-    dueDate: new Date(2025, 11, 28),
+    dueDate: '2025-12-28',
     assignedTo: 'Mike Johnson',
-    createdAt: new Date(2025, 11, 20)
+    createdAt: '2025-12-20'
   },
   {
     id: '3',
@@ -57,9 +57,9 @@ export const mockTasks: Task[] = [
     propertyId: '2',
     status: 'pending',
     priority: 'medium',
-    dueDate: new Date(2025, 12, 5),
+    dueDate: '2026-01-05',
     assignedTo: 'Sarah Davis',
-    createdAt: new Date(2025, 11, 22)
+    createdAt: '2025-12-22'
   },
   {
     id: '4',
@@ -68,9 +68,9 @@ export const mockTasks: Task[] = [
     propertyId: '3',
     status: 'completed',
     priority: 'low',
-    dueDate: new Date(2025, 11, 20),
+    dueDate: '2025-12-20',
     assignedTo: 'Tom Wilson',
-    createdAt: new Date(2025, 11, 10)
+    createdAt: '2025-12-10'
   },
   {
     id: '5',
@@ -79,9 +79,9 @@ export const mockTasks: Task[] = [
     propertyId: '4',
     status: 'completed',
     priority: 'low',
-    dueDate: new Date(2025, 11, 22),
+    dueDate: '2025-12-22',
     assignedTo: 'Lisa Brown',
-    createdAt: new Date(2025, 11, 15)
+    createdAt: '2025-12-15'
   },
   {
     id: '6',
@@ -90,8 +90,8 @@ export const mockTasks: Task[] = [
     propertyId: '3',
     status: 'pending',
     priority: 'high',
-    dueDate: new Date(2025, 11, 29),
+    dueDate: '2025-12-29',
     assignedTo: 'John Smith',
-    createdAt: new Date(2025, 11, 24)
+    createdAt: '2025-12-24'
   }
 ];

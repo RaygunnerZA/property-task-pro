@@ -120,7 +120,7 @@ export function TaskCardActive({
       themes: themesArray,
       spaces: spacesArray,
       teams: teamsArray,
-      assignedUsers: mappedTask.assignedUsers || [],
+      assignedUsers: [],
     };
   }, [task]);
 

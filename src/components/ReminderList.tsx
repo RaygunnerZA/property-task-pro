@@ -12,7 +12,7 @@ export default function ReminderList() {
     </div>
   );
 
-  if (error) return <EmptyState title="Unable to load reminders" subtitle={error?.message || String(error)} />;
+  if (error) return <EmptyState title="Unable to load reminders" subtitle={String(error)} />;
 
   if (!reminders.length) return (
     <EmptyState title="No reminders" subtitle="Scheduled reminders will appear here" />
@@ -22,8 +22,8 @@ export default function ReminderList() {
     <div className="space-y-3">
       {reminders.map(r => (
         <div key={r.id} className="p-4 rounded-[16px] bg-white/60 backdrop-blur-md shadow">
-          <div className="text-sm font-medium">{r.title}</div>
-          <div className="text-xs text-[#666] mt-1">{r.due_at ? new Date(r.due_at).toLocaleString() : "No due date"}</div>
+          <div className="text-sm font-medium">{r.title as string}</div>
+          <div className="text-xs text-[#666] mt-1">{r.due_at ? new Date(r.due_at as string).toLocaleString() : "No due date"}</div>
         </div>
       ))}
     </div>

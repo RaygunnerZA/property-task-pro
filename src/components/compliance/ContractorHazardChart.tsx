@@ -38,7 +38,7 @@ export function ContractorHazardChart({ items }: ContractorHazardChartProps) {
       }
       const hazards = Array.isArray(item.hazards) ? item.hazards : [];
       for (const h of hazards) {
-        if (HAZARD_CATEGORIES.includes(h)) {
+        if (HAZARD_CATEGORIES.includes(h as typeof HAZARD_CATEGORIES[number])) {
           row[h] = (row[h] as number) + 1;
         }
       }

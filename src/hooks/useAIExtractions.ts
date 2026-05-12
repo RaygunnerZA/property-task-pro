@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import type { AIExtractionRow, AIModelRow } from "@/types/database";
 import { useActiveOrg } from "./useActiveOrg";
-
-type AIExtractionRow = Tables<"ai_extractions">;
 
 export function useAIExtractions(taskId?: string) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
@@ -21,7 +19,8 @@ export function useAIExtractions(taskId?: string) {
     setLoading(true);
     setError(null);
 
-    let query = supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (supabase as any)
       .from("ai_extractions")
       .select("*")
       .eq("org_id", orgId)
@@ -64,7 +63,8 @@ export function useLatestAIExtraction(taskId?: string) {
     setLoading(true);
     setError(null);
 
-    const { data, error: err } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: err } = await (supabase as any)
       .from("ai_extractions")
       .select("*")
       .eq("org_id", orgId)
@@ -89,7 +89,7 @@ export function useLatestAIExtraction(taskId?: string) {
 }
 
 export function useAIModels() {
-  const [models, setModels] = useState<Tables<"ai_models">[]>([]);
+  const [models, setModels] = useState<AIModelRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +97,8 @@ export function useAIModels() {
     setLoading(true);
     setError(null);
 
-    const { data, error: err } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: err } = await (supabase as any)
       .from("ai_models")
       .select("*")
       .order("name", { ascending: true });

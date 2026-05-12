@@ -4,7 +4,10 @@
  * Enables trust, debugging, compliance later
  */
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from '@/integrations/supabase/client';
+// pending-migration tables — cast until schema is generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 import { track } from "@/lib/analytics";
 
 export interface ResolutionAuditEntry {

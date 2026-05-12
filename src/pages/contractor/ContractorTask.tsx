@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import EmptyState from "@/components/EmptyState";
 import { CheckSquare, MessageSquare, FileText } from "lucide-react";

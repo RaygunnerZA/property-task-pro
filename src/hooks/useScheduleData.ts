@@ -1,5 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+// signals is a pending-migration table — cast until schema is generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 import { ScheduleItemBase, ScheduleFilters } from "@/types/schedule";
 import { ScheduleViewMode } from "@/utils/scheduleRange";
 import { useActiveOrg } from "./useActiveOrg";

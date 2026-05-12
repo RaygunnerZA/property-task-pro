@@ -75,7 +75,7 @@ export function useMessages(options?: UseMessagesOptions) {
     if (err) {
       throw err;
     }
-    return (data ?? []) as MessageWithConversation[];
+    return (data ?? []) as unknown as MessageWithConversation[];
   };
 
   const query = useQuery({

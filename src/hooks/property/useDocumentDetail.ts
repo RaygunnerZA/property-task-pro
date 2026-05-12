@@ -28,14 +28,17 @@ export function useDocumentDetail(documentId: string | null) {
 
       if (attError || !att) return null;
 
-      const attachment = att as PropertyDocument & Record<string, unknown>;
+      const attachment = att as unknown as PropertyDocument & Record<string, unknown>;
       const meta = (attachment.metadata as Record<string, unknown> | null) ?? {};
 
+      // attachment_* junction tables are pending-migration (not in generated schema)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = supabase as any;
       const [spacesRes, assetsRes, contractorsRes, complianceRes] = await Promise.all([
-        supabase.from("attachment_spaces").select("space_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        supabase.from("attachment_assets").select("asset_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        supabase.from("attachment_contractors").select("contractor_org_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        supabase.from("attachment_compliance").select("compliance_document_id").eq("attachment_id", documentId).eq("org_id", orgId),
+        sb.from("attachment_spaces").select("space_id").eq("attachment_id", documentId).eq("org_id", orgId),
+        sb.from("attachment_assets").select("asset_id").eq("attachment_id", documentId).eq("org_id", orgId),
+        sb.from("attachment_contractors").select("contractor_org_id").eq("attachment_id", documentId).eq("org_id", orgId),
+        sb.from("attachment_compliance").select("compliance_document_id").eq("attachment_id", documentId).eq("org_id", orgId),
       ]);
 
       const spaceIds = (spacesRes.data || []).map((r: { space_id: string }) => r.space_id).filter(Boolean);
@@ -111,7 +114,7 @@ export function useDocumentDetail(documentId: string | null) {
       }
       const { error } = await supabase
         .from("attachments")
-        .update({ metadata: nextMeta, updated_at: new Date().toISOString() })
+        .update({ metadata: nextMeta as import("@/integrations/supabase/types").Json, updated_at: new Date().toISOString() })
         .eq("id", documentId)
         .eq("org_id", orgId);
       if (error) throw error;
@@ -131,29 +134,31 @@ export function useDocumentDetail(documentId: string | null) {
       compliance?: string[];
     }) => {
       if (!documentId || !orgId) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb2 = supabase as any;
 
       if (payload.spaces !== undefined) {
-        await supabase.from("attachment_spaces").delete().eq("attachment_id", documentId).eq("org_id", orgId);
+        await sb2.from("attachment_spaces").delete().eq("attachment_id", documentId).eq("org_id", orgId);
         if (payload.spaces.length > 0) {
-          await supabase.from("attachment_spaces").insert(
+          await sb2.from("attachment_spaces").insert(
             payload.spaces.map((space_id) => ({ attachment_id: documentId, space_id, org_id: orgId }))
           );
         }
       }
 
       if (payload.assets !== undefined) {
-        await supabase.from("attachment_assets").delete().eq("attachment_id", documentId).eq("org_id", orgId);
+        await sb2.from("attachment_assets").delete().eq("attachment_id", documentId).eq("org_id", orgId);
         if (payload.assets.length > 0) {
-          await supabase.from("attachment_assets").insert(
+          await sb2.from("attachment_assets").insert(
             payload.assets.map((asset_id) => ({ attachment_id: documentId, asset_id, org_id: orgId }))
           );
         }
       }
 
       if (payload.contractors !== undefined) {
-        await supabase.from("attachment_contractors").delete().eq("attachment_id", documentId).eq("org_id", orgId);
+        await sb2.from("attachment_contractors").delete().eq("attachment_id", documentId).eq("org_id", orgId);
         if (payload.contractors.length > 0) {
-          await supabase.from("attachment_contractors").insert(
+          await sb2.from("attachment_contractors").insert(
             payload.contractors.map((contractor_org_id) => ({
               attachment_id: documentId,
               contractor_org_id,
@@ -164,9 +169,9 @@ export function useDocumentDetail(documentId: string | null) {
       }
 
       if (payload.compliance !== undefined) {
-        await supabase.from("attachment_compliance").delete().eq("attachment_id", documentId).eq("org_id", orgId);
+        await sb2.from("attachment_compliance").delete().eq("attachment_id", documentId).eq("org_id", orgId);
         if (payload.compliance.length > 0) {
-          await supabase.from("attachment_compliance").insert(
+          await sb2.from("attachment_compliance").insert(
             payload.compliance.map((compliance_document_id) => ({
               attachment_id: documentId,
               compliance_document_id,

@@ -402,14 +402,16 @@ function AnimateIcon({
     },
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { ref: _propsRef, ...restProps } = props as typeof props & { ref?: unknown };
   const content = asChild ? (
     <Slot
-      ref={inViewRef}
+      ref={inViewRef as unknown as React.Ref<HTMLSpanElement>}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      {...props}
+      {...(restProps as Parameters<typeof Slot>[0])}
     >
       {children}
     </Slot>

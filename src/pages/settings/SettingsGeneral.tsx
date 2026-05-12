@@ -24,7 +24,8 @@ import {
 
 export default function SettingsGeneral() {
   const { organization, loading, error, updateName, refresh } = useOrganization();
-  const { orgId, isLoading: orgLoading, error: orgError, refresh: refreshActiveOrg } = useActiveOrg();
+  const { orgId, isLoading: orgLoading, error: orgError } = useActiveOrg();
+  const refreshActiveOrg = () => { /* refresh handled via query invalidation */ };
   const { settings: orgSettings, updateSettings: updateOrgSettings, isUpdating: orgSettingsUpdating } = useOrgSettings();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);

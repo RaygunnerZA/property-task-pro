@@ -1,5 +1,8 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as _supabase } from '@/integrations/supabase/client';
 import { tryCatch } from '../../lib/async';
+// compliance_clauses is a pending-migration table — cast until generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 
 export const complianceClauses = {
   async getById(clauseId: string) {

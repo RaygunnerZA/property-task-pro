@@ -37,7 +37,10 @@ import {
 import { TemplateDialog, CATEGORY_OPTIONS, type TemplateDialogValue } from "@/components/templates/TemplateDialog";
 import { PresetBrowser } from "@/components/templates/PresetBrowser";
 import { PRESET_TEMPLATES, type PresetTemplate } from "@/data/presetTemplates";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+// checklist_templates items column is Json in generated types — cast for seed inserts
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 import type { SubtaskData } from "@/components/tasks/subtasks";
 
 const FILTER_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: string }> = [
@@ -77,7 +80,7 @@ function parseItems(raw: unknown): SubtaskData[] {
       }
       return null;
     })
-    .filter((i): i is SubtaskData => i !== null);
+    .filter(Boolean) as SubtaskData[];
 }
 
 interface TemplateCardProps {

@@ -1,6 +1,8 @@
 import { Heading, Text, SectionHeader } from '@/components/filla';
 import AuditExportList from '@/components/audit/AuditExportList';
 import { FileBarChart } from 'lucide-react';
+import { StandardPage } from '@/components/design-system/StandardPage';
+import { Card } from '@/components/ui/card';
 
 export default function AuditExport() {
   return (

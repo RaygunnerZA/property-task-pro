@@ -151,7 +151,7 @@ export function useUpsertComplianceRule() {
           await createTask(orgId, propertyId, {
             title: cfg.title_template ?? values.name,
             description: `Auto-created compliance task for "${values.name}". Due: ${nextDueDateStr}`,
-            priority: cfg.default_priority ?? "medium",
+            priority: (cfg.default_priority ?? "medium") as import("@/types/database").TaskPriority,
             assigned_user_id: cfg.assigned_user_id,
             is_compliance: true,
           });

@@ -49,6 +49,21 @@ export function AppLayout({
   }, []);
 
   useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ef808d" },
+      body: JSON.stringify({
+        sessionId: "ef808d",
+        runId: "pre-fix",
+        hypothesisId: "H4",
+        location: "AppLayout.tsx:pathname",
+        message: "layout_route",
+        data: { pathname },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     window.scrollTo(0, 0);
     mainRef.current?.scrollTo(0, 0);
     // Also reset any overflow-y-auto child containers (e.g. DualPaneLayout columns)

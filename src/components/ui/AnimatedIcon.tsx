@@ -1,7 +1,7 @@
 import { motion, HTMLMotionProps } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ReactNode } from 'react';
+import { type ReactNode, type ElementType } from 'react';
 
 interface AnimatedIconProps extends Omit<HTMLMotionProps<'div'>, 'animate' | 'children'> {
   icon: LucideIcon | ReactNode;
@@ -141,7 +141,8 @@ export function AnimatedIcon({
     ? '[&_svg_path]:transition-all [&_svg_path]:duration-500 [&_svg_path]:ease-out group-hover:[&_svg_path]:stroke-dasharray-[1] group-hover:[&_svg_path]:stroke-dashoffset-0'
     : '';
 
-  const motionProps: HTMLMotionProps<'div'> = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const motionProps: any = {
     className: cn(
       'inline-flex items-center justify-center group', 
       spacingClasses, 
@@ -149,10 +150,14 @@ export function AnimatedIcon({
       pathDrawClass
     ),
     'data-animation': animation === 'path-draw' ? 'path-draw' : undefined,
-    whileHover: animateOnHover ? currentVariant?.hover : undefined,
-    whileTap: animateOnTap ? currentVariant?.tap : undefined,
-    animate: persistOnAnimateEnd ? currentVariant : undefined,
-    initial: animation === 'check' ? variants.check[initial] : currentVariant?.rest || {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    whileHover: animateOnHover ? (currentVariant as any)?.hover : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    whileTap: animateOnTap ? (currentVariant as any)?.tap : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    animate: persistOnAnimateEnd ? (currentVariant as any) : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    initial: animation === 'check' ? variants.check[initial] : (currentVariant as any)?.rest || {},
     style: { 
       pointerEvents: 'auto',
       ...props.style 
@@ -162,12 +167,12 @@ export function AnimatedIcon({
 
   return (
     <motion.div {...motionProps}>
-      {isComponent ? (
-        <Icon 
-          size={size} 
-          className={cn(colorClasses || undefined, 'pointer-events-none')} 
-        />
-      ) : (
+      {isComponent
+        ? (() => {
+            const I = Icon as ElementType<{ size?: number; className?: string }>;
+            return <I size={size} className={cn(colorClasses || undefined, 'pointer-events-none')} />;
+          })()
+        : (
         <div 
           style={{ width: size, height: size }} 
           className={cn(colorClasses || undefined, 'pointer-events-none')}

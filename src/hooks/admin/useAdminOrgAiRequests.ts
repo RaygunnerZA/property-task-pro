@@ -35,7 +35,8 @@ export function useAdminOrgAiRequests(orgId: string) {
     queryKey: ["admin-org-ai-requests", orgId],
     initialPageParam: null as AiCursor | null,
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await supabase.rpc("admin_get_org_ai_requests", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_get_org_ai_requests", {
         p_org_id: orgId,
         p_limit: 100,
         p_after_created_at: pageParam?.created_at ?? null,

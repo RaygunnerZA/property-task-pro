@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "../integrations/supabase/types";
+import { supabase as _supabase } from "@/integrations/supabase/client";
+import type { SignalRow } from "@/types/database";
+// signals is a pending-migration table — cast until schema is generated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = _supabase as any;
 import { useActiveOrg } from "./useActiveOrg";
-
-type SignalRow = Tables<"signals">;
 
 export function useReminders() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();

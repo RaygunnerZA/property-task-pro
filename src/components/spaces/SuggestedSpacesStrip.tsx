@@ -201,7 +201,8 @@ export function SuggestedSpacesStrip({
 
       const { data, error } = await supabase
         .from("spaces")
-        .insert(insert)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .insert(insert as any)
         .select("id, name, icon_name, space_type_id")
         .single();
       if (error) throw error;
@@ -347,7 +348,8 @@ export function SuggestedSpacesStrip({
       };
       if (typeId) insert.space_type_id = typeId;
 
-      const { error } = await supabase.from("spaces").insert(insert);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await supabase.from("spaces").insert(insert as any);
       if (error) throw error;
       toast.success(`${subName} added`);
       invalidateAll();

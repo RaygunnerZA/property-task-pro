@@ -264,6 +264,7 @@ export interface CreateTaskPayload {
   template_id?: string;
   subtasks?: CreateSubtaskPayload[];
   groups?: string[];
+  categories?: string[];
   images?: CreateTaskImagePayload[];
 }
 

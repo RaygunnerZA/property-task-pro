@@ -2783,7 +2783,8 @@ export function IntakeModal({
             compliance_document_id: data.id,
             org_id: orgId,
           }));
-          const { error: linkError } = await supabase.from("attachment_compliance").insert(links);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: linkError } = await (supabase as any).from("attachment_compliance").insert(links);
           if (linkError) throw linkError;
         }
 
@@ -2898,7 +2899,8 @@ export function IntakeModal({
         .filter((step) => step.title.length > 0);
 
       if (normalizedSubtasks.length > 0) {
-        const { error: subtaskError } = await supabase.from("subtasks").insert(normalizedSubtasks);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: subtaskError } = await (supabase as any).from("subtasks").insert(normalizedSubtasks);
         if (subtaskError) throw subtaskError;
       }
 

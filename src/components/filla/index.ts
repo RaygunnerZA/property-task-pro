@@ -24,6 +24,12 @@ export * from './SegmentedControl';
 export * from './SegmentControl';
 export * from './FilterRow';
 export * from './SectionHeader';
+export {
+  InstructionPanel,
+  WorkspaceOverviewIllustration,
+  instructionPanelStorageKey,
+} from './InstructionPanel';
+export type { InstructionPanelProps } from './InstructionPanel';
 
 // Mini Calendar - DEPRECATED: Use DashboardCalendar from @/components/dashboard/DashboardCalendar instead
 // export { MiniCalendar } from './MiniCalendar'; // DELETED

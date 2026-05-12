@@ -159,7 +159,8 @@ export function AudioRecorder({ open, onOpenChange, onRecordingComplete }: Audio
 
       // Try to insert into audio_files table if it exists
       try {
-        const { error: insertError } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: insertError } = await (supabase as any)
           .from("audio_files")
           .insert({
             org_id: orgId,

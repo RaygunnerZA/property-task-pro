@@ -10,7 +10,7 @@ interface DashboardSectionProps {
 
 export default function DashboardSection({ title, children, action }: DashboardSectionProps) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <div className="flex items-center justify-between">
         <PanelSectionTitle as="h2" className="mb-0">
           {title}

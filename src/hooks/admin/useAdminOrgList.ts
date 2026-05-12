@@ -16,7 +16,8 @@ export function useAdminOrgList() {
   return useQuery({
     queryKey: ["admin-orgs"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_list_orgs");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_list_orgs");
       if (error) throw error;
       return (data ?? []) as AdminOrg[];
     },

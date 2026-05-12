@@ -72,7 +72,7 @@ export default function ContractorAccess() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <EmptyState
           title="Access Denied"
-          subtitle={error?.message || String(error)}
+          subtitle={typeof error === "string" ? error : String(error)}
         />
       </div>
     );

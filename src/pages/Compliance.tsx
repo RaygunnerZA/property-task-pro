@@ -166,7 +166,7 @@ const Compliance = () => {
           {loading ? (
             <LoadingState message="Loading compliance documents..." />
           ) : error ? (
-            <ErrorState message={error} onRetry={refresh} />
+            <ErrorState message={error instanceof Error ? error.message : String(error)} onRetry={refresh} />
           ) : documents.length === 0 ? (
             <EmptyState
               icon={Shield}

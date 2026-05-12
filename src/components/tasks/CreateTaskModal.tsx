@@ -1509,7 +1509,8 @@ export function CreateTaskModal({
             if (tempImage.annotation_json && tempImage.annotation_json.length > 0 && attachment) {
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {
-                await supabase
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                await (supabase as any)
                   .from("task_image_annotations")
                   .insert({
                     task_id: taskId,

@@ -441,7 +441,8 @@ export function PropertyRecordsTab({
   const handleLinkSpace = async (docId: string, spaceId: string) => {
     if (!orgId) return;
     try {
-      const { error } = await supabase.from("attachment_spaces").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attachment_spaces").insert({
         attachment_id: docId,
         space_id: spaceId,
         org_id: orgId,
@@ -457,7 +458,8 @@ export function PropertyRecordsTab({
   const handleLinkAsset = async (docId: string, assetId: string) => {
     if (!orgId) return;
     try {
-      const { error } = await supabase.from("attachment_assets").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attachment_assets").insert({
         attachment_id: docId,
         asset_id: assetId,
         org_id: orgId,
@@ -473,7 +475,8 @@ export function PropertyRecordsTab({
   const handleLinkCompliance = async (docId: string, complianceId: string) => {
     if (!orgId) return;
     try {
-      const { error } = await supabase.from("attachment_compliance").insert({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attachment_compliance").insert({
         attachment_id: docId,
         compliance_document_id: complianceId,
         org_id: orgId,

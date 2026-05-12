@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSupabase } from "../integrations/supabase/useSupabase";
-import { useActiveOrg } from "./useActiveOrg";
-import { useRealtime } from "./useRealtime";
-import type { Tables } from "../integrations/supabase/types";
+import { useSupabase } from "@/integrations/supabase/useSupabase";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useRealtime } from "@/hooks/useRealtime";
+import type { Tables } from "@/integrations/supabase/types";
 
 type TaskRow = Tables<"tasks">;
 

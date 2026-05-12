@@ -51,7 +51,8 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
       throw new Error(`Upload failed for "${file.name}": ${uploadError.message}`);
     }
 
-    const { error: sourceError } = await supabase.rpc("create_compliance_source_from_inbox", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: sourceError } = await (supabase as any).rpc("create_compliance_source_from_inbox", {
       p_id: sourceId,
       p_storage_path: storagePath,
       p_file_name: file.name,

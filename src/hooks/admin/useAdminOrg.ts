@@ -46,7 +46,8 @@ export function useAdminOrg(orgId: string) {
   const orgQuery = useQuery({
     queryKey: ["admin-org", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_get_org", { p_org_id: orgId });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_get_org", { p_org_id: orgId });
       if (error) throw error;
       return (data?.[0] ?? null) as AdminOrgDetail | null;
     },
@@ -57,7 +58,8 @@ export function useAdminOrg(orgId: string) {
   const membersQuery = useQuery({
     queryKey: ["admin-org-members", orgId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("admin_list_org_members", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_list_org_members", {
         p_org_id: orgId,
       });
       if (error) throw error;
@@ -71,7 +73,8 @@ export function useAdminOrg(orgId: string) {
     queryKey: ["admin-org-activity", orgId],
     initialPageParam: null as ActivityCursor | null,
     queryFn: async ({ pageParam }) => {
-      const { data, error } = await supabase.rpc("admin_get_org_activity", {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_get_org_activity", {
         p_org_id: orgId,
         p_limit: 50,
         p_after_created_at: pageParam?.created_at ?? null,

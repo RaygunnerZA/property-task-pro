@@ -182,10 +182,13 @@ export function usePropertyDocuments(
       if (filters?.unlinked) {
         const ids = docs.map((d) => d.id);
         if (ids.length === 0) return [];
+        // attachment_* junction tables are pending-migration; cast to any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sb = supabase as any;
         const [spRes, aRes, cRes] = await Promise.all([
-          supabase.from("attachment_spaces").select("attachment_id").in("attachment_id", ids),
-          supabase.from("attachment_assets").select("attachment_id").in("attachment_id", ids),
-          supabase.from("attachment_compliance").select("attachment_id").in("attachment_id", ids),
+          sb.from("attachment_spaces").select("attachment_id").in("attachment_id", ids),
+          sb.from("attachment_assets").select("attachment_id").in("attachment_id", ids),
+          sb.from("attachment_compliance").select("attachment_id").in("attachment_id", ids),
         ]);
         const linkedIds = new Set([
           ...(spRes.data || []).map((r: { attachment_id: string }) => r.attachment_id),

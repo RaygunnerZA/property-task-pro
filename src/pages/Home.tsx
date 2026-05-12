@@ -67,9 +67,9 @@ const Home = () => {
       icon={<HomeIcon className="h-6 w-6" />}
       maxWidth="md"
     >
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Calendar */}
-        <div className="rounded-xl bg-transparent p-4 shadow-e1">
+        <div className="rounded-xl bg-transparent p-5 shadow-e1">
           <DashboardCalendarV2
             tasks={tasks}
             selectedDate={selectedDate}
@@ -113,7 +113,7 @@ const Home = () => {
         </button>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-5">
           {stats.map((stat) => (
             <button
               key={stat.label}
