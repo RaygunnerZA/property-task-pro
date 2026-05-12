@@ -90,45 +90,6 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     checkingProperties ||
     (needRoleForRedirect && memberRoleLoading);
 
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ef808d" },
-      body: JSON.stringify({
-        sessionId: "ef808d",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "ProtectedRoute.tsx:gate",
-        message: "protected_route_state",
-        data: {
-          showSkeleton,
-          loading,
-          orgLoading,
-          checkingProperties,
-          memberRoleLoading,
-          needRoleForRedirect,
-          isAuthenticated,
-          onboardingCompleted,
-          hasProperties,
-          path: typeof window !== "undefined" ? window.location.pathname : "",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [
-    showSkeleton,
-    loading,
-    orgLoading,
-    checkingProperties,
-    memberRoleLoading,
-    needRoleForRedirect,
-    isAuthenticated,
-    onboardingCompleted,
-    hasProperties,
-  ]);
-
   if (showSkeleton) {
     return <ProtectedRouteSkeleton />;
   }

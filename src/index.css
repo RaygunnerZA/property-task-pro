@@ -24,8 +24,8 @@
      * so shells stay aligned across StandardPage, DualPane, and dense rails.
      */
     --gutter-page: var(--space-lg);
-    --gutter-pane: var(--space-lg);
-    --gutter-rail: 0.625rem;
+    --gutter-pane: 1.25rem;
+    --gutter-rail: 0.75rem;
 
     /* Core Background & Foreground */
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */

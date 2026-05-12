@@ -56,7 +56,7 @@ const DRUM_TICK_H = 26;
 const MONTH_W  = 88;
 const YEAR_W   = 26;                       // year drum width (px)
 const SPINNER_GAP = 6;                     // gap between month/year spinners (px)
-const COL_GAP = 4;                         // gap between drums block and date panel (px)
+const COL_GAP = 6;                         // gap between drums block and date panel (px)
 
 /** <1 slightly dampens wheel/trackpad so rows don’t overshoot; higher = snappier. */
 const DATE_SPINNER_WHEEL_DAMPING = 0.72;
@@ -660,7 +660,7 @@ export function DashboardCalendarV2({
         </div>
 
         <div
-          className="flex flex-col w-full min-w-0 pt-0 pb-[4px] px-[3px]"
+          className="flex flex-col w-full min-w-0 pt-0 pb-2 px-1"
           style={{ gap: 0 }}
         >
             {/* Weekday labels sit above the neumorphic date card (not inside it) */}
@@ -682,7 +682,7 @@ export function DashboardCalendarV2({
             {/* ═══════════════ Dates spinner (full width, card surface) ═══════════ */}
             <div
               className="w-full min-w-0 flex flex-col overflow-hidden transition-[height] duration-300 ease-out"
-              style={{ ...PRESSED, height: visibleFrameH, paddingLeft: 8, paddingRight: 8 }}
+              style={{ ...PRESSED, height: visibleFrameH, paddingLeft: 10, paddingRight: 10 }}
             >
               <div
                 ref={scrollRef}
@@ -738,7 +738,7 @@ export function DashboardCalendarV2({
                     display:         "flex",
                     justifyContent:  "space-around",
                     alignItems:      "center",
-                    paddingInline:   4,
+                    paddingInline:   5,
                     flexShrink:      0,
                     scrollSnapAlign: "start",
                   }}

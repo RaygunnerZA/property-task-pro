@@ -35,6 +35,11 @@ export type InstructionPanelProps = {
   action?: ReactNode;
   onDismiss?: () => void;
   className?: string;
+  /**
+   * When true, layout stays stacked (no side‑by‑side row at `sm` viewport).
+   * Use inside fixed narrow rails (e.g. 265px hub column) so copy is not squeezed beside the illustration.
+   */
+  denseRail?: boolean;
 };
 
 /**
@@ -49,11 +54,13 @@ export function InstructionPanel({
   action,
   onDismiss,
   className,
+  denseRail = false,
 }: InstructionPanelProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-e1",
+        "relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 via-card to-card shadow-e1",
+        denseRail ? "px-4 py-5 sm:px-5 sm:py-6" : "p-5 sm:p-6",
         className,
       )}
       role="region"
@@ -64,22 +71,38 @@ export function InstructionPanel({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+          className="absolute right-1.5 top-1.5 h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
           onClick={onDismiss}
           aria-label="Dismiss tip"
         >
           <X className="h-4 w-4" />
         </Button>
       )}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-        <div className="min-w-0 flex-1 space-y-2 pr-8 sm:pr-2">
+      <div
+        className={cn(
+          "flex",
+          denseRail
+            ? "flex-col items-stretch gap-5"
+            : "flex-col gap-4 sm:flex-row sm:items-center sm:gap-6",
+        )}
+      >
+        {denseRail && illustration && (
+          <div className="flex justify-center pt-1">{illustration}</div>
+        )}
+        <div className={cn("min-w-0 flex-1 space-y-2.5", denseRail ? "pr-7" : "pr-8 sm:pr-2")}>
           <h2 id={`instruction-${id}-title`} className="text-base font-semibold tracking-tight text-ink heading-l">
             {title}
           </h2>
-          <p className="text-sm leading-relaxed text-foreground/80">{description}</p>
-          {action && <div className="pt-1">{action}</div>}
+          <p
+            className="text-sm leading-relaxed text-foreground/80"
+          >
+            {description}
+          </p>
+          {action && <div className="pt-2">{action}</div>}
         </div>
-        {illustration && <div className="flex justify-center sm:justify-end">{illustration}</div>}
+        {!denseRail && illustration && (
+          <div className="flex justify-center sm:justify-end">{illustration}</div>
+        )}
       </div>
     </div>
   );

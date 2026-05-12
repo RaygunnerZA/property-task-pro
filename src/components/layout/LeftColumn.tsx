@@ -152,7 +152,7 @@ export function LeftColumn({
     >
       {/* Properties: scope chips + cards / identity strip */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background px-0 pb-[7px] pt-[7px]">
+        <div className="sticky top-0 z-10 bg-background px-0 py-2">
         {scopeFilterBar}
         {isHubHome && !scopeFilterBar && (
           <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
@@ -207,7 +207,7 @@ export function LeftColumn({
               style={{ borderRadius: '13px 13px 10px 0px' }}
             >
               <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
-                <div className="flex gap-3 items-start py-2" style={{ width: 'max-content', height: '228px' }}>
+                <div className="flex gap-4 items-start py-2" style={{ width: 'max-content', height: '228px' }}>
                   {properties.map((property) => (
                     <div key={property.id} className="w-[195px] flex-shrink-0" style={{ maxHeight: '228px' }}>
                       <PropertyCard
@@ -246,11 +246,11 @@ export function LeftColumn({
         >
           <div className="px-0 w-full min-w-0 max-w-full overflow-x-hidden">
             {tasksLoading ? (
-              <div className="rounded-lg bg-transparent px-0 pt-[15px] pb-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 pt-4 pb-2 shadow-none w-full">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-transparent px-0 pt-[15px] pb-[5px] shadow-none w-full">
+              <div className="rounded-lg bg-transparent px-0 pt-4 pb-2 shadow-none w-full">
                 <DashboardCalendarV2
                   tasks={tasks}
                   selectedDate={selectedDate}
@@ -261,9 +261,10 @@ export function LeftColumn({
             )}
           </div>
           {isHubHome && !workbenchTipDismissed && (
-            <div className="mt-4 shrink-0 px-[12px] pb-3 sm:pr-[5px]">
+            <div className="mt-5 shrink-0 px-gutter-rail pb-4 sm:pr-2">
               <InstructionPanel
                 id={WORKBENCH_OVERVIEW_TIP_ID}
+                denseRail
                 title="How this column works"
                 description="Pick a date to focus the task list in the middle. Use the property row above to narrow work to one building, or keep every property selected to see everything at once."
                 onDismiss={() => {

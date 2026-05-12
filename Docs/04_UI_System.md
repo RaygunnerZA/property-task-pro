@@ -16,8 +16,8 @@ Use semantic gutters instead of one-off pixel padding:
 | Token | CSS variable | Tailwind | Use |
 |-------|----------------|----------|-----|
 | Page | `--gutter-page` | `px-gutter-page`, `pl-gutter-page` | `StandardPage*`, scope rows, `#root` inset |
-| Pane | `--gutter-pane` | `px-gutter-pane` | Dual-pane middle column, aligned 16px surfaces |
-| Rail | `--gutter-rail` | `px-gutter-rail` | Dense task rail / tight columns (default 10px; tighten with `max-pane:` where needed) |
+| Pane | `--gutter-pane` | `px-gutter-pane` | Dual-pane middle column, aligned 16px surfaces (default **20px** / `1.25rem`) |
+| Rail | `--gutter-rail` | `px-gutter-rail` | Dense task rail / tight columns (default **12px** / `0.75rem`; tighten with `max-pane:` where needed) |
 
 ### Breakpoints (canonical)
 

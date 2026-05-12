@@ -91,27 +91,6 @@ export default function Dashboard() {
   const { orgId } = useActiveOrg();
   const [recordsReanalyseBusy, setRecordsReanalyseBusy] = useState(false);
 
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "ef808d" },
-      body: JSON.stringify({
-        sessionId: "ef808d",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "app/page.tsx:Dashboard",
-        message: "dashboard_mounted",
-        data: {
-          pathname: typeof window !== "undefined" ? window.location.pathname : "",
-          search: typeof window !== "undefined" ? window.location.search : "",
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, []);
-
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();

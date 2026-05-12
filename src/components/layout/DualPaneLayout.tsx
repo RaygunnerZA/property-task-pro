@@ -30,16 +30,16 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
 
   /** Below lg the app nav is offcanvas but the hub can still be two columns (sm–lg); inset left content 12px from the screen edge. */
   const stickyColClass = hasHeader
-    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px] px-0 sm:max-lg:pl-[12px]"
-    : "h-screen sticky top-0 w-[265px] px-0 sm:max-lg:pl-[12px]";
+    ? "h-[calc(100vh-var(--header-height))] sticky top-[var(--header-height)] w-[265px] px-0 pr-3 sm:max-lg:pl-[12px]"
+    : "h-screen sticky top-0 w-[265px] px-0 pr-3 sm:max-lg:pl-[12px]";
 
   return (
     <div className="min-h-screen w-full min-w-0">
       {/* Very narrow: Single column stack */}
       <div className="flex flex-col sm:hidden w-full min-w-0 max-w-full overflow-x-hidden">
         {header && <div className="w-full">{header}</div>}
-        <div className="w-full min-w-0 max-w-full px-[12px]">{leftColumn}</div>
-        <div className="w-full min-w-0 max-w-full px-[12px]">{rightColumn}</div>
+        <div className="w-full min-w-0 max-w-full px-gutter-rail">{leftColumn}</div>
+        <div className="w-full min-w-0 max-w-full px-gutter-rail">{rightColumn}</div>
       </div>
 
       {/* Two-column hub (sm+), until wide layout / third-column breakpoint */}
@@ -57,7 +57,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {/* Right Column: Dynamic 1fr, max 652px */}
-        <div className="overflow-y-auto min-w-0 max-w-[652px] pt-3">
+        <div className="overflow-y-auto min-w-0 max-w-[652px] px-gutter-pane pt-4 pb-4">
           {rightColumn}
         </div>
       </div>
@@ -82,7 +82,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
               }`}
             >
               <div className={stickyColClass}>{leftColumn}</div>
-              <div className="min-h-0 overflow-y-auto min-w-0 px-gutter-pane pt-3">
+              <div className="min-h-0 overflow-y-auto min-w-0 px-gutter-pane pt-4 pb-5">
                 {rightColumn}
               </div>
             </div>
