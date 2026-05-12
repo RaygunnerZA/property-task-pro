@@ -270,7 +270,7 @@ function PropertyScopeFilterBarPrimary({
           )}
         >
           <div className="flex items-center justify-between px-1">
-            <PanelSectionTitle as="h2" className="mb-0">
+            <PanelSectionTitle as="h2" className="mb-0 text-lg">
               {properties.length > 1 && isAllActive ? "All Properties" : "Properties"}
             </PanelSectionTitle>
             <button

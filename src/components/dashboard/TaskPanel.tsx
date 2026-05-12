@@ -1380,9 +1380,11 @@ export function TaskPanel({
                       <>
                         {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
                           <div className="space-y-2">
-                            <div className="space-y-0.5 px-1">
-                              <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">Urgent</p>
-                              <p className="text-[11px] leading-snug text-muted-foreground">
+                            <div className="my-[22px] flex flex-row items-start gap-3 px-1 py-[17px]">
+                              <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
+                                Urgent
+                              </p>
+                              <p className="flex w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
                                 Time-sensitive signals — still not tasks until you act on them below.
                               </p>
                             </div>
@@ -1419,9 +1421,13 @@ export function TaskPanel({
                           const items = groupedAttentionItems[itemsKey];
                           return items.length > 0 ? (
                             <div key={key} className="space-y-2">
-                              <div className="space-y-0.5 px-1">
-                                <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">{title}</p>
-                                <p className="text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+                              <div className="my-[22px] flex flex-row items-start gap-3 px-1 py-[17px]">
+                                <p className="flex shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
+                                  {title}
+                                </p>
+                                <p className="flex w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
+                                  {subtitle}
+                                </p>
                               </div>
                               <div className="space-y-2">
                                 {items.map((item) => (
@@ -1458,9 +1464,11 @@ export function TaskPanel({
                     )}
                   >
                     {issuesFilter === "all" && (
-                      <div className="mb-2 px-1">
-                        <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">Open work</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                      <div className="mb-2 flex flex-row items-start gap-3 px-1 py-[18px]">
+                        <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
+                          Open work
+                        </p>
+                        <p className="flex w-[224px] shrink-0 text-xs text-muted-foreground">
                           Approved, actionable issues and tasks — not the raw signal feed above.
                         </p>
                       </div>

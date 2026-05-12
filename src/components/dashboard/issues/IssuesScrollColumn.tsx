@@ -34,9 +34,13 @@ export function IssuesScrollColumn<T extends { id: string }>({
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col space-y-2", className)}>
-      <div className="shrink-0 space-y-0.5 px-1">
-        <p className="text-sm font-semibold tracking-wide text-[rgb(42,41,62)]">{title}</p>
-        {subtitle ? <p className="text-[11px] leading-snug text-muted-foreground">{subtitle}</p> : null}
+      <div className="my-0 flex shrink-0 flex-row items-start gap-3 px-1 py-[18px]">
+        <p className="flex w-[135px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
+          {title}
+        </p>
+        {subtitle ? (
+          <p className="flex w-[291px] shrink-0 text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+        ) : null}
       </div>
       {items.length === 0 ? (
         <div className="space-y-1.5 rounded-xl bg-muted/25 px-3 py-2.5 shadow-sm">
