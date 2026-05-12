@@ -1310,7 +1310,7 @@ export function CreateTaskModal({
       // Scan for ghost chips and create them before saving the task
       let resolvedSpaceIds = [...selectedSpaceIds];
       let resolvedThemeIds = [...selectedThemeIds];
-      let resolvedAssetIds: string[] = []; // Will be populated if assets are added later
+      const resolvedAssetIds: string[] = []; // Will be populated if assets are added later
       
       // Process Ghost Spaces
       const ghostSpaces = selectedSpaceIds.filter(id => id.startsWith('ghost-space-'));

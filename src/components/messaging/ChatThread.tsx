@@ -53,7 +53,7 @@ export function ChatThread({ taskId }: ChatThreadProps) {
 
     try {
       // Find or create conversation for this task
-      let { data: conversation, error: convError } = await supabase
+      const { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("id")
         .eq("org_id", orgId)

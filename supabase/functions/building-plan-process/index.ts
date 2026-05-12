@@ -420,8 +420,8 @@ Deno.serve(async (req) => {
     };
 
     for (const page of pageRows || []) {
-      let signedPath = page.image_storage_path || fileRow.storage_path;
-      let signedBucket = page.image_storage_path ? "property-plan-pages" : "property-plans";
+      const signedPath = page.image_storage_path || fileRow.storage_path;
+      const signedBucket = page.image_storage_path ? "property-plan-pages" : "property-plans";
 
       const { data: signed, error: signedError } = await admin.storage
         .from(signedBucket)

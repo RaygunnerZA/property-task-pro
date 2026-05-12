@@ -53,7 +53,7 @@ export function useDailyBriefing(
     const localPart = email.split('@')[0];
     
     // Remove special characters like +, numbers, and common separators
-    let cleaned = localPart
+    const cleaned = localPart
       .replace(/\+.*$/, '') // Remove everything after +
       .replace(/[0-9]/g, '') // Remove numbers
       .replace(/[._-]/g, '') // Remove dots, underscores, hyphens

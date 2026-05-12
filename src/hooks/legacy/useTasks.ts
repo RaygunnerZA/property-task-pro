@@ -69,7 +69,7 @@ export function useTasks() {
 
     // Fetch images from multiple sources
     const taskIds = taskData?.map(t => t.id) || [];
-    let imageMap = new Map<string, string>();
+    const imageMap = new Map<string, string>();
 
     if (taskIds.length > 0) {
       // 1. Fetch task images (highest priority)

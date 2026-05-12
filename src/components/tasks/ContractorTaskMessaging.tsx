@@ -73,7 +73,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
       const orgId = (taskData as any).org_id;
 
       // Find or create conversation
-      let { data: conversation, error: convError } = await supabase
+      const { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("id")
         .eq("org_id", orgId)
@@ -214,7 +214,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
       const orgId = (taskData as any).org_id;
 
       // Find or create conversation
-      let { data: conversation, error: convError } = await supabase
+      const { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("id")
         .eq("org_id", orgId)

@@ -12,7 +12,7 @@ export async function generateUniqueSlug(name: string): Promise<string> {
   const base = baseSlugify(name) || "organisation";
   
   // Check if base slug is free
-  let { data } = await supabase
+  const { data } = await supabase
     .from("organisations")
     .select("slug")
     .eq("slug", base);

@@ -26,7 +26,7 @@ function formatTimeCaps(timePart: string): string {
 
 /** First name / org handle for meta (caps); emails → local-part first token. */
 export function metaActorCaps(actorJoined: string): string {
-  let s = actorJoined.replace(/^from\s+/i, "").trim();
+  const s = actorJoined.replace(/^from\s+/i, "").trim();
   if (!s) return "";
   const lower = s.toLowerCase();
   if (lower === "ai" || lower === "system") return "";

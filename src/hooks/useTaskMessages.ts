@@ -15,7 +15,7 @@ export interface TaskMessage {
 }
 
 async function fetchTaskMessages(orgId: string, taskId: string): Promise<TaskMessage[]> {
-  let { data: conversation, error: convError } = await supabase
+  const { data: conversation, error: convError } = await supabase
     .from("conversations")
     .select("id")
     .eq("org_id", orgId)
