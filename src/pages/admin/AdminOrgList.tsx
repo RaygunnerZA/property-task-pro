@@ -1,12 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ArrowUpDown, Loader2 } from "lucide-react";
 import { useAdminOrgList, AdminOrg } from "@/hooks/admin/useAdminOrgList";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-
-const PAGE_SIZE = 25;
 
 type SortKey = keyof AdminOrg;
 type SortDir = "asc" | "desc";
@@ -40,12 +38,11 @@ function RelativeTime({ value }: { value: string | null }) {
 
 export default function AdminOrgList() {
   const navigate = useNavigate();
-  const { data: orgs = [], isLoading, error } = useAdminOrgList();
+  const { orgs, isLoading, error, hasNextPage, isFetchingNextPage, fetchNextPage } = useAdminOrgList();
 
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -56,12 +53,10 @@ export default function AdminOrgList() {
     }
   };
 
+  // Client-side search + sort over all fetched pages
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    const list = q
-      ? orgs.filter((o) => o.org_name.toLowerCase().includes(q))
-      : orgs;
-
+    const list = q ? orgs.filter((o) => o.org_name.toLowerCase().includes(q)) : orgs;
     return [...list].sort((a, b) => {
       const av = a[sortKey] ?? "";
       const bv = b[sortKey] ?? "";
@@ -70,24 +65,13 @@ export default function AdminOrgList() {
     });
   }, [orgs, search, sortKey, sortDir]);
 
+  // Reset sort when search changes
   useEffect(() => {
-    setPage(1);
-  }, [search, sortKey, sortDir]);
+    setSortDir("desc");
+  }, [search]);
 
-  useEffect(() => {
-    const tp = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    setPage((p) => Math.min(p, tp));
-  }, [filtered.length]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageStart = (safePage - 1) * PAGE_SIZE;
-  const pageSlice = useMemo(
-    () => filtered.slice(pageStart, pageStart + PAGE_SIZE),
-    [filtered, pageStart]
-  );
-
-  const thClass = "px-4 py-3 text-left text-xs font-mono text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
+  const thClass =
+    "px-4 py-3 text-left text-xs font-mono text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
   const tdClass = "px-4 py-3 text-sm";
 
   return (
@@ -96,7 +80,9 @@ export default function AdminOrgList() {
         <div>
           <h1 className="text-xl font-semibold">Organisations</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isLoading ? "Loading…" : `${orgs.length} organisation${orgs.length !== 1 ? "s" : ""}`}
+            {isLoading
+              ? "Loading…"
+              : `${orgs.length} organisation${orgs.length !== 1 ? "s" : ""}${hasNextPage ? "+" : ""}`}
           </p>
         </div>
         <div className="relative">
@@ -157,15 +143,13 @@ export default function AdminOrgList() {
                 </td>
               </tr>
             ) : (
-              pageSlice.map((org) => (
+              filtered.map((org) => (
                 <tr
                   key={org.org_id}
                   className="hover:bg-muted/30 transition-colors cursor-pointer"
                   onClick={() => navigate(`/admin/orgs/${org.org_id}`)}
                 >
-                  <td className={cn(tdClass, "font-medium text-foreground")}>
-                    {org.org_name}
-                  </td>
+                  <td className={cn(tdClass, "font-medium text-foreground")}>{org.org_name}</td>
                   <td className={tdClass}>
                     <OrgTypeBadge type={org.org_type} />
                   </td>
@@ -187,42 +171,26 @@ export default function AdminOrgList() {
         </table>
       </div>
 
-      {!isLoading && filtered.length > PAGE_SIZE && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-muted/30 px-4 py-3 shadow-sm">
-          <p className="text-sm text-muted-foreground">
-            Showing{" "}
-            <span className="font-medium text-foreground">
-              {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filtered.length)}
-            </span>{" "}
-            of <span className="font-medium text-foreground">{filtered.length}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shadow-sm"
-              disabled={safePage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Previous
-            </Button>
-            <span className="text-xs font-mono text-muted-foreground tabular-nums px-1">
-              {safePage} / {totalPages}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shadow-sm"
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+      {/* Load more — only shown when the server reports there are more pages */}
+      {hasNextPage && !search && (
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shadow-sm"
+            disabled={isFetchingNextPage}
+            onClick={() => void fetchNextPage()}
+          >
+            {isFetchingNextPage ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Loading…
+              </>
+            ) : (
+              "Load more"
+            )}
+          </Button>
         </div>
       )}
     </div>
