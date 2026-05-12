@@ -77,8 +77,7 @@ function DevToolsDropdownInner() {
     const propertyId = prompt("Enter a property ID to seed compliance data for:");
     if (!propertyId?.trim()) return;
     try {
-      const result = await generateCompliancePack(propertyId.trim(), orgId);
-      console.log("[DevTools] Compliance pack generated:", result);
+      await generateCompliancePack(propertyId.trim(), orgId);
       queryClient.invalidateQueries({ queryKey: ["compliance"] });
     } catch (err) {
       console.error("[DevTools] Compliance pack error:", err);

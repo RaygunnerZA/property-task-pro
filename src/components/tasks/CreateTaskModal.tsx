@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ChevronDown, ChevronUp, User, Calendar, MapPin, AlertTriangle, Shield, Box, Tag, Users } from "lucide-react";
-import { useAIExtract } from "@/hooks/useAIExtract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -21,14 +20,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
-import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
-import { useLastUsedProperty } from "@/hooks/useLastUsedProperty";
-import { useOrgMembers } from "@/hooks/useOrgMembers";
-import { useTasksQuery } from "@/hooks/useTasksQuery";
-import { useSpaces } from "@/hooks/useSpaces";
-import { useTeams } from "@/hooks/useTeams";
-import { useCategories } from "@/hooks/useCategories";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -42,20 +33,15 @@ import { PriorityTab } from "./create/tabs/PriorityTab";
 
 // New Panel Components
 import { WhoPanel } from "./create/panels/WhoPanel";
-import { ClarityState, ClaritySeverity } from "./create/ClarityState";
+import { ClarityState } from "./create/ClarityState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
-import { useChipSuggestions } from "@/hooks/useChipSuggestions";
-import { useImageAnalysis } from "@/hooks/useImageAnalysis";
-import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
-import { logChipResolution } from "@/services/ai/resolutionAudit";
-import type { SuggestedChip, ChipType } from "@/types/chip-suggestions";
+import type { SuggestedChip } from "@/types/chip-suggestions";
 // Section Components
 import { SubtasksSection, type SubtaskInput } from "./create/SubtasksSection";
 import { ImageUploadSection, type PendingTaskFile } from "./create/ImageUploadSection";
 import { ThemesSection } from "./create/ThemesSection";
 import { AssetsSection } from "./create/AssetsSection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
-import { includesMeetingSignal, minuteKeyFromDate } from "./create/createTaskModalMeetingSignals";
 import { WhoSection } from "./create/WhoSection";
 import { WhenSection, type MilestoneItem } from "./create/WhenSection";
 import { WhereSection } from "./create/WhereSection";
@@ -63,9 +49,12 @@ import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import type { CreateTaskPayload, TaskPriority, RepeatRule } from "@/types/database";
-import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
+import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { useCreateTaskMutation, type TaskCreatedSource } from "@/hooks/mutations/useCreateTaskMutation";
+import { useCreateTaskForm } from "./create/useCreateTaskForm";
+import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
+import { useCreateTaskAIPipeline } from "./create/useCreateTaskAIPipeline";
 
 export type { TaskCreatedSource };
 export interface CreateTaskPrefill {
@@ -105,6 +94,16 @@ const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; labe
 
 type ChecklistTemplateDialogMode = "save" | "edit" | "duplicate";
 
+const CREATE_TASK_SECTIONS = [
+  { id: "who", instruction: "Add Person or Team", valueLabel: "+Person", Icon: User },
+  { id: "where", instruction: "Add Property or Space", valueLabel: "+Property", Icon: MapPin },
+  { id: "when", instruction: "Add Due Date", valueLabel: "+Date", Icon: Calendar },
+  { id: "what", instruction: "Add Asset", valueLabel: "+Asset", Icon: Box },
+  { id: "priority", instruction: "Add Priority", valueLabel: "+Priority", Icon: AlertTriangle },
+  { id: "category", instruction: "Add Tag", valueLabel: "+Tag", Icon: Tag },
+  { id: "compliance", instruction: "Add Compliance Rule", valueLabel: "+Rule", Icon: Shield },
+] as const;
+
 export function CreateTaskModal({
   open,
   onOpenChange,
@@ -128,1048 +127,139 @@ export function CreateTaskModal({
     orgId,
     isLoading: orgLoading
   } = useActiveOrg();
-  // Only fetch checklist templates when modal is open to avoid unnecessary queries
-  const {
-    templates,
-    refresh: refreshChecklistTemplates
-  } = useChecklistTemplates(open);
-  const { lastUsedPropertyId, setLastUsed } = useLastUsedProperty();
-  const { members, refresh: refreshMembers } = useOrgMembers();
-  const { data: existingTasks = [] } = useTasksQuery();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const createTaskMutation = useCreateTaskMutation();
 
-  // Form state
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
-  
-  // Hooks that depend on form state
-  const { spaces } = useSpaces(propertyId || undefined);
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>(defaultPropertyId ? [defaultPropertyId] : []);
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  // ─── Form state (extracted to useCreateTaskForm) ─────────────────────────
 
-  // Initialize propertyId from last used when modal opens
-  useEffect(() => {
-    if (prefillFromLastUsedProperty && open && !defaultPropertyId && lastUsedPropertyId && !propertyId) {
-      setPropertyId(lastUsedPropertyId);
-      setSelectedPropertyIds([lastUsedPropertyId]);
-    }
-  }, [prefillFromLastUsedProperty, open, defaultPropertyId, lastUsedPropertyId]);
-
-  // Preseed space and asset when opening from "Create Task for Asset"
-  useEffect(() => {
-    if (open && (defaultSpaceIds?.length || defaultAssetIds?.length)) {
-      if (defaultSpaceIds?.length) setSelectedSpaceIds(defaultSpaceIds);
-      if (defaultAssetIds?.length) setSelectedAssetIds(defaultAssetIds);
-    }
-  }, [open, defaultSpaceIds, defaultAssetIds]);
-
-  // Phase 9: Prefill from compliance recommendation or other sources
-  useEffect(() => {
-    if (open && prefill) {
-      if (prefill.title != null) setTitle(prefill.title);
-      if (prefill.description != null) setDescription(prefill.description);
-      if (prefill.dueDate != null) setDueDate(prefill.dueDate);
-      if (prefill.propertyId) {
-        setPropertyId(prefill.propertyId);
-        setSelectedPropertyIds([prefill.propertyId]);
-      }
-      if (prefill.spaceIds?.length) setSelectedSpaceIds(prefill.spaceIds);
-      if (prefill.assetIds?.length) setSelectedAssetIds(prefill.assetIds);
-    }
-  }, [open, prefill]);
-
-  // Update last used when property changes
-  const handlePropertyChange = (newPropertyIds: string[]) => {
-    setSelectedPropertyIds(newPropertyIds);
-    // Use first property as primary for backward compatibility
-    const primaryPropertyId = newPropertyIds.length > 0 ? newPropertyIds[0] : "";
-    setPropertyId(primaryPropertyId);
-    if (primaryPropertyId) {
-      setLastUsed(primaryPropertyId);
-    }
-    // Clear spaces when properties change
-    if (newPropertyIds.length === 0) {
-      setSelectedSpaceIds([]);
-    }
-  };
-  const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [priorityTouched, setPriorityTouched] = useState(false);
-  const [dueDate, setDueDate] = useState(defaultDueDate || "");
-  const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
-  const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
-  const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
-  const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
-  const [isCompliance, setIsCompliance] = useState(false);
-  const [complianceLevel, setComplianceLevel] = useState("");
-  const [annotationRequired, setAnnotationRequired] = useState(false);
-  const [templateId, setTemplateId] = useState("");
-  const [recentTemplateIds, setRecentTemplateIds] = useState<string[]>([]);
-  const [templateDialogMode, setTemplateDialogMode] = useState<ChecklistTemplateDialogMode | null>(null);
-  const [templateDraftName, setTemplateDraftName] = useState("");
-  const [templateDraftCategory, setTemplateDraftCategory] = useState<ChecklistTemplateCategory>("operations");
-  const [subtasks, setSubtasks] = useState<SubtaskInput[]>([]);
-  const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
-  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
-  const [images, setImages] = useState<TempImage[]>([]);
-  const [taskFiles, setTaskFiles] = useState<PendingTaskFile[]>([]);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null); // Replaces activeTab
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [invitePrefill, setInvitePrefill] = useState<{
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  } | null>(null);
-  // Pending template import awaiting user choice (replace vs append)
-  const [pendingTemplateImport, setPendingTemplateImport] = useState<{
-    subtasks: SubtaskInput[];
-    templateId: string;
-    templateName: string;
-  } | null>(null);
-  // Pending archive confirmation
-  const [showArchiveTemplateDialog, setShowArchiveTemplateDialog] = useState(false);
-
-  const scheduleConflictNote = useMemo(() => {
-    if (!assignedUserId || assignedUserId.startsWith("pending-")) return null;
-    if (!dueDate || !dueDate.includes("T")) return null;
-
-    const draftDate = new Date(dueDate);
-    if (Number.isNaN(draftDate.getTime())) return null;
-    const draftMinuteKey = minuteKeyFromDate(draftDate);
-
-    const assigneeName =
-      members.find((m) => m.user_id === assignedUserId)?.display_name || "This assignee";
-
-    const sameMinuteAssigned = existingTasks.filter((task: any) => {
-      if (task?.assigned_user_id !== assignedUserId) return false;
-      if (!task?.due_date) return false;
-      const existingDate = new Date(task.due_date);
-      if (Number.isNaN(existingDate.getTime())) return false;
-      return minuteKeyFromDate(existingDate) === draftMinuteKey;
-    });
-
-    if (sameMinuteAssigned.length === 0) return null;
-
-    const meetingConflict = sameMinuteAssigned.find((task: any) => includesMeetingSignal(task));
-    if (meetingConflict) {
-      const title = String(meetingConflict.title ?? "Untitled meeting");
-      return `NOTE: ${assigneeName} has a meeting at this time (${title}).`;
-    }
-
-    const firstConflictTitle = String(sameMinuteAssigned[0]?.title ?? "another task");
-    return `NOTE: ${assigneeName} already has a task at this time (${firstConflictTitle}).`;
-  }, [assignedUserId, dueDate, existingTasks, members]);
-
-  // AI Title extraction
-  const [aiTitleGenerated, setAiTitleGenerated] = useState("");
-  const [userEditedTitle, setUserEditedTitle] = useState(false);
-  const [showTitleField, setShowTitleField] = useState(false);
-
-  const makeSubtaskFromText = useCallback((text: string): SubtaskInput => ({
-    id: crypto.randomUUID(),
-    title: text,
-    is_yes_no: false,
-    requires_signature: false
-  }), []);
-
-  const activeTemplate = useMemo(
-    () => templates.find((template) => template.id === templateId) ?? null,
-    [templateId, templates]
-  );
-
-  const recentStorageKey = useMemo(
-    () => `filla-checklist-recent:${orgId ?? "anon"}`,
-    [orgId]
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    try {
-      const stored = window.localStorage.getItem(recentStorageKey);
-      if (!stored) {
-        setRecentTemplateIds([]);
-        return;
-      }
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        setRecentTemplateIds(parsed.filter((id): id is string => typeof id === "string").slice(0, 8));
-      } else {
-        setRecentTemplateIds([]);
-      }
-    } catch {
-      setRecentTemplateIds([]);
-    }
-  }, [open, recentStorageKey]);
-
-  const rememberRecentTemplate = useCallback(
-    (id: string) => {
-      setRecentTemplateIds((prev) => {
-        const next = [id, ...prev.filter((item) => item !== id)].slice(0, 8);
-        try {
-          window.localStorage.setItem(recentStorageKey, JSON.stringify(next));
-        } catch {
-          // Ignore localStorage write failures.
-        }
-        return next;
-      });
-    },
-    [recentStorageKey]
-  );
-
-  const normalizeChecklistItems = useCallback((items: SubtaskInput[]) => {
-    return items
-      .map((subtask) => ({
-        title: subtask.title.trim(),
-        is_yes_no: Boolean(subtask.is_yes_no),
-        requires_signature: Boolean(subtask.requires_signature),
-      }))
-      .filter((item) => item.title.length > 0);
-  }, []);
-
-  const importTemplateItems = useCallback((templateId: string) => {
-    const template = templates.find((t) => t.id === templateId);
-    if (!template) {
-      toast({
-        title: "Template not found",
-        description: "That checklist template is no longer available.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const rawItems = Array.isArray(template.items) ? template.items : [];
-    const parsedSubtasks = rawItems
-      .map((item): SubtaskInput | null => {
-        if (typeof item === "string") {
-          const title = item.trim();
-          if (!title) return null;
-          return makeSubtaskFromText(title);
-        }
-        if (item && typeof item === "object") {
-          const candidate = item as {
-            title?: string;
-            label?: string;
-            is_yes_no?: boolean;
-            requires_signature?: boolean;
-          };
-          const title = (candidate.title || candidate.label || "").trim();
-          if (!title) return null;
-          return {
-            id: crypto.randomUUID(),
-            title,
-            is_yes_no: Boolean(candidate.is_yes_no),
-            requires_signature: Boolean(candidate.requires_signature)
-          };
-        }
-        return null;
-      })
-      .filter((item): item is SubtaskInput => Boolean(item));
-
-    if (parsedSubtasks.length === 0) {
-      toast({
-        title: "Template is empty",
-        description: "This template has no checklist items to import.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const hasExistingSubtasks = subtasks.some((subtask) => subtask.title.trim().length > 0);
-    if (hasExistingSubtasks) {
-      // Show AlertDialog to let user choose replace or append
-      setPendingTemplateImport({ subtasks: parsedSubtasks, templateId: template.id, templateName: template.name });
-      return;
-    }
-
-    // No existing subtasks — import directly
-    setTemplateId(template.id);
-    setSubtasks(parsedSubtasks);
-    rememberRecentTemplate(template.id);
-    toast({
-      title: "Checklist imported",
-      description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`
-    });
-  }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
-
-  const openTemplateDialog = useCallback((mode: ChecklistTemplateDialogMode) => {
-    const normalizedItems = normalizeChecklistItems(subtasks);
-    if (normalizedItems.length === 0) {
-      toast({
-        title: "No checklist items",
-        description: "Add at least one subtask before managing templates.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (mode === "edit" && !activeTemplate) {
-      toast({
-        title: "No active template",
-        description: "Load a checklist template before editing.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const baseName =
-      title.trim() ||
-      description.trim().slice(0, 42) ||
-      `Checklist ${new Date().toLocaleDateString()}`;
-    const defaultName = `${baseName.replace(/\s+/g, " ").trim()} Template`;
-
-    if (mode === "edit" && activeTemplate) {
-      setTemplateDraftName(activeTemplate.name);
-      setTemplateDraftCategory(activeTemplate.category);
-    } else if (mode === "duplicate" && activeTemplate) {
-      setTemplateDraftName(`${activeTemplate.name} Copy`);
-      setTemplateDraftCategory(activeTemplate.category);
-    } else {
-      setTemplateDraftName(defaultName);
-      setTemplateDraftCategory("operations");
-    }
-    setTemplateDialogMode(mode);
-  }, [activeTemplate, description, normalizeChecklistItems, subtasks, title, toast]);
-
-  const submitTemplateDialog = useCallback(async () => {
-    if (!orgId) {
-      toast({
-        title: "Not signed in",
-        description: "Log in to save checklist templates.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const normalizedItems = normalizeChecklistItems(subtasks);
-    if (normalizedItems.length === 0) {
-      toast({
-        title: "No checklist items",
-        description: "Add at least one subtask before saving a template.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const templateName = templateDraftName.trim();
-    if (!templateName) {
-      toast({
-        title: "Template name required",
-        description: "Enter a checklist name before saving.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (templateDialogMode === "edit" && activeTemplate) {
-      const { error } = await supabase
-        .from("checklist_templates")
-        .update({
-          name: templateName,
-          category: templateDraftCategory,
-          items: normalizedItems,
-        })
-        .eq("id", activeTemplate.id)
-        .eq("org_id", orgId);
-
-      if (error) {
-        toast({
-          title: "Couldn't update template",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await refreshChecklistTemplates();
-      setTemplateDialogMode(null);
-      toast({
-        title: "Template updated",
-        description: `"${templateName}" has been updated.`,
-      });
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("checklist_templates")
-      .insert({
-        org_id: orgId,
-        name: templateName,
-        category: templateDraftCategory,
-        items: normalizedItems,
-      })
-      .select("id")
-      .single();
-
-    if (error) {
-      toast({
-        title: "Couldn't save template",
-        description: error.message,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    await refreshChecklistTemplates();
-    if (data?.id) {
-      setTemplateId(data.id);
-      rememberRecentTemplate(data.id);
-    }
-    setTemplateDialogMode(null);
-    toast({
-      title: "Template saved",
-      description: `"${templateName}" is now available to import.`
-    });
-  }, [
-    activeTemplate,
-    normalizeChecklistItems,
-    orgId,
+  const {
+    orgId: formOrgId,
+    members,
+    refreshMembers,
+    templates,
     refreshChecklistTemplates,
+    spaces,
+    teams,
+    categories,
+    activeTemplate,
+    recentStorageKey,
+    scheduleConflictNote,
+    title, setTitle,
+    description, setDescription,
+    propertyId, setPropertyId,
+    selectedPropertyIds, setSelectedPropertyIds,
+    selectedSpaceIds, setSelectedSpaceIds,
+    priority, setPriority,
+    priorityTouched, setPriorityTouched,
+    dueDate, setDueDate,
+    repeatRule, setRepeatRule,
+    milestones, setMilestones,
+    assignedUserId, setAssignedUserId,
+    assignedTeamIds, setAssignedTeamIds,
+    pendingInvitations, setPendingInvitations,
+    isCompliance, setIsCompliance,
+    complianceLevel, setComplianceLevel,
+    annotationRequired, setAnnotationRequired,
+    templateId, setTemplateId,
+    recentTemplateIds,
+    templateDialogMode, setTemplateDialogMode,
+    templateDraftName, setTemplateDraftName,
+    templateDraftCategory, setTemplateDraftCategory,
+    subtasks, setSubtasks,
+    selectedThemeIds, setSelectedThemeIds,
+    selectedAssetIds, setSelectedAssetIds,
+    images, setImages,
+    taskFiles, setTaskFiles,
+    showAdvanced, setShowAdvanced,
+    activeSection, setActiveSection,
+    inviteModalOpen, setInviteModalOpen,
+    invitePrefill, setInvitePrefill,
+    pendingTemplateImport, setPendingTemplateImport,
+    showArchiveTemplateDialog, setShowArchiveTemplateDialog,
+    handlePropertyChange,
+    makeSubtaskFromText,
+    normalizeChecklistItems,
     rememberRecentTemplate,
-    subtasks,
-    templateDialogMode,
-    templateDraftCategory,
-    templateDraftName,
-    toast,
-  ]);
-
-  const archiveActiveTemplate = useCallback(async () => {
-    if (!orgId || !activeTemplate) {
-      toast({
-        title: "No active template",
-        description: "Load a checklist template before archiving.",
-        variant: "destructive",
-      });
-      return;
-    }
-    // Open confirmation dialog instead of window.confirm
-    setShowArchiveTemplateDialog(true);
-  }, [activeTemplate, orgId, toast]);
-
-  const confirmArchiveTemplate = useCallback(async () => {
-    if (!orgId || !activeTemplate) return;
-
-    const { error } = await supabase
-      .from("checklist_templates")
-      .update({ is_archived: true })
-      .eq("id", activeTemplate.id)
-      .eq("org_id", orgId);
-
-    if (error) {
-      toast({
-        title: "Couldn't archive template",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setTemplateId("");
-    setShowArchiveTemplateDialog(false);
-    await refreshChecklistTemplates();
-    toast({
-      title: "Template archived",
-      description: `"${activeTemplate.name}" has been archived.`,
-    });
-  }, [activeTemplate, orgId, refreshChecklistTemplates, toast]);
-
-  // Phase 1: Image analysis (fire-and-forget, never blocks task creation)
-  // TempImage.aiOcrText used ONLY for chip suggestions – never written to attachments.
-  // Phase 2 edge function ai-image-analyse is the source of truth for DB writes.
-  const patchImage = useCallback((localId: string, patch: Partial<TempImage>) => {
-    setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
-  }, []);
-
-  const handleAnalysisComplete = useCallback((localId: string, result: ImageAnalysisResult) => {
-    setImages((prev) =>
-      prev.map((img) => {
-        if (img.local_id !== localId) return img;
-        const meta = { ...(result.metadata || {}) };
-        const isRouter = meta.router_mode === true;
-        meta.intake_stage = isRouter ? "router" : "full";
-        return {
-          ...img,
-          aiOcrText: result.ocr_text ?? "",
-          detectedLabels: result.detected_labels ?? [],
-          rawAnalysis: { ...result, metadata: meta },
-        };
-      })
-    );
-  }, []);
-  const { imageOcrText, detectedLabels, runFullIntakeAnalysis } = useImageAnalysis({
-    images,
-    propertyId: propertyId || undefined,
-    orgId: orgId ?? "",
-    onAnalysisComplete: handleAnalysisComplete,
-    onPatchImage: patchImage,
+    importTemplateItems,
+    openTemplateDialog,
+    submitTemplateDialog,
+    archiveActiveTemplate,
+    confirmArchiveTemplate,
+    resetForm,
+  } = useCreateTaskForm({
+    open,
+    defaultPropertyId,
+    prefillFromLastUsedProperty,
+    defaultDueDate,
+    defaultSpaceIds,
+    defaultAssetIds,
+    prefill,
   });
 
-  // Combined text + detected objects for chip suggestions
-  const { combinedImageText, detectedObjects } = useMemo(() => {
-    const parts = [imageOcrText, detectedLabels.join(" ")].filter(Boolean);
-    const text = parts.join("\n");
-    const objects = images.flatMap(
-      (img) =>
-        (img.rawAnalysis?.detected_objects || []).map((o) => ({
-          type: o.type,
-          label: o.label,
-          confidence: o.confidence,
-          serial_number: o.serial_number,
-          expiry_date: o.expiry_date,
-        }))
-    );
-    return { combinedImageText: text, detectedObjects: objects };
-  }, [imageOcrText, detectedLabels, images]);
-  
-  // Call AI extraction hook (using the working hook)
-  const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
-  
-  // Chip suggestions with resolution pipeline (includes image OCR + detected objects)
-  const { chips: chipSuggestions, ghostCategories, suggestedIcon: chipSuggestedIcon, loading: chipsLoading, error: chipsError } = useChipSuggestions({
+  // ─── AI pipeline (extracted to useCreateTaskAIPipeline) ──────────────────
+
+  const {
+    patchImage,
+    runFullIntakeAnalysis,
+    aiResult,
+    aiLoading,
+    aiError,
+    chipSuggestions,
+    ghostCategories,
+    chipSuggestedIcon,
+    appliedChips,
+    selectedChipIds,
+    factChips,
+    verbChips,
+    unresolvedSections,
+    factChipsBySection,
+    suggestedChipsBySection,
+    verbChipsBySection,
+    clarityState,
+    instructionBlock,
+    setInstructionBlock,
+    aiTitleGenerated,
+    userEditedTitle,
+    setUserEditedTitle,
+    showTitleField,
+    hasDescriptionDraft,
+    shouldShowTitleField,
+    handleChipRemove,
+    handleChipSelect,
+    generateVerbLabel,
+  } = useCreateTaskAIPipeline({
     description,
+    title,
     propertyId,
     selectedSpaceIds,
-    selectedPersonId: assignedUserId,
-    selectedTeamIds: assignedTeamIds,
-    imageOcrText: combinedImageText,
-    detectedLabels,
-    detectedObjects,
+    assignedUserId,
+    assignedTeamIds,
+    images,
+    setImages,
+    orgId,
+    spaces,
+    members,
+    teams,
+    categories,
+    setDueDate,
+    setPriority,
+    setPriorityTouched,
+    setTitle,
+    setActiveSection,
+    setIsCompliance,
+    setShowAdvanced,
+    open,
+    priority,
+    priorityTouched,
+    dueDate,
   });
-  // Track applied chips and their resolution state
-  const [appliedChips, setAppliedChips] = useState<Map<string, SuggestedChip>>(new Map());
-  const [selectedChipIds, setSelectedChipIds] = useState<string[]>([]);
 
-  // Auto-apply date chips from the rule-based extractor immediately (no user tap required).
-  // This mirrors useAIExtract's behaviour but fires synchronously with no network delay.
-  // Only applied when dueDate is currently empty so we never stomp a user-set date.
-  useEffect(() => {
-    if (dueDate) return;
-    const dateChip = chipSuggestions.find(c => c.type === 'date' && c.resolvedEntityId);
-    if (dateChip?.resolvedEntityId) {
-      setDueDate(dateChip.resolvedEntityId);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chipSuggestions]);
-  
-  // Fact chips include: person, team, space, asset, category, date, recurrence
-  // Recurrence never blocks entity resolution - only space, asset, person do
-  const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
-  
-  // Calculate fact chips (resolved context) - chips that are resolved or don't require blocking
-  // INVITE BEHAVIORAL CONTRACT: Invite chips (person with blockingRequired && !resolvedEntityId) are NOT fact chips
-  // They are action chips that must be explicitly resolved or removed - they cannot be treated as passive metadata
-  const factChips = useMemo(() => {
-    const chipMap = new Map<string, SuggestedChip>();
-    
-    // Passive AI suggestions: exclude date chips — they are proposals until the user
-    // explicitly taps them. Absorbing them here would remove them from suggestedChipsBySection
-    // and prevent the proposal chip from ever rendering in WhenSection.
-    chipSuggestions
-      .filter(chip => factChipTypes.includes(chip.type) && chip.type !== 'date')
-      .forEach(chip => chipMap.set(chip.id, chip));
-    
-    // Override with applied chips (more current state) — applied date chips ARE facts
-    Array.from(appliedChips.values())
-      .filter(chip => factChipTypes.includes(chip.type))
-      .forEach(chip => chipMap.set(chip.id, chip));
-    
-    // Fact chips are resolved (have resolvedEntityId) OR don't require blocking
-    // INVITE BEHAVIORAL CONTRACT: Person chips without resolvedEntityId are Invite actions and must be excluded
-    return Array.from(chipMap.values()).filter(chip => 
-      chip.resolvedEntityId || !chip.blockingRequired
-    );
-  }, [chipSuggestions, appliedChips]);
-  
-  // Calculate verb (unresolved) chips - chips that require blocking and aren't resolved
-  // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
-  // Invite chips are NOT normal chips - they are action intent that requires explicit resolution
-  // They must be explicitly resolved to a person/team or removed - they cannot silently disappear
-  // They cannot be treated as passive metadata - they are gated actions
-  const verbChips = useMemo(() => {
-    const chipMap = new Map<string, SuggestedChip>();
-    
-    // Only applied chips (user-committed) can block submission.
-    // AI suggestions are advisory — they show verb labels for context but
-    // must not gate the Create button since the user may not want them.
-    Array.from(appliedChips.values())
-      .filter(chip => factChipTypes.includes(chip.type))
-      .forEach(chip => chipMap.set(chip.id, chip));
-    
-    return Array.from(chipMap.values()).filter(chip => 
-      chip.blockingRequired && !chip.resolvedEntityId
-    );
-  }, [appliedChips]);
-  
-  // Calculate unresolved sections from verb chips
-  const unresolvedSections = useMemo(() => {
-    const unresolved: string[] = [];
-    const chipTypeToSection: Record<string, string> = {
-      'person': 'who',
-      'team': 'who',
-      'space': 'where',
-      'asset': 'what',
-      'category': 'category',
-      'theme': 'category',
-      'date': 'when',
-      'recurrence': 'when',
-      'priority': 'priority',
-    };
+  // formOrgId === orgId (both from useActiveOrg, deduplicated by React Query)
+  void formOrgId;
 
-    verbChips.forEach(chip => {
-      const section = chipTypeToSection[chip.type];
-      if (section && !unresolved.includes(section)) {
-        unresolved.push(section);
-      }
-    });
-
-    return unresolved;
-  }, [verbChips]);
-
-  // Section order: Who, Where, When, Assets, Priority, Tags, Compliance (authoritative vertical stack)
-  const CREATE_TASK_SECTIONS = useMemo(() => [
-    { id: 'who', instruction: 'Add Person or Team', valueLabel: '+Person', Icon: User },
-    { id: 'where', instruction: 'Add Property or Space', valueLabel: '+Property', Icon: MapPin },
-    { id: 'when', instruction: 'Add Due Date', valueLabel: '+Date', Icon: Calendar },
-    { id: 'what', instruction: 'Add Asset', valueLabel: '+Asset', Icon: Box },
-    { id: 'priority', instruction: 'Add Priority', valueLabel: '+Priority', Icon: AlertTriangle },
-    { id: 'category', instruction: 'Add Tag', valueLabel: '+Tag', Icon: Tag },
-    { id: 'compliance', instruction: 'Add Compliance Rule', valueLabel: '+Rule', Icon: Shield },
-  ] as const, []);
-
-  const chipTypeToSection: Record<string, string> = {
-    person: 'who', team: 'who', space: 'where', date: 'when', recurrence: 'when',
-    asset: 'what', priority: 'priority', category: 'category', theme: 'category', compliance: 'compliance',
-  };
-
-  // Filter fact chips by section; merge form's priority into priority section
-  const factChipsBySection = useMemo(() => {
-    const bySection: Record<string, SuggestedChip[]> = {};
-    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
-    factChips.forEach(chip => {
-      const section = chipTypeToSection[chip.type];
-      if (section && bySection[section]) bySection[section].push(chip);
-    });
-    // Priority section: hide default NORMAL until explicitly chosen
-    if (priorityTouched) {
-      const priorityLabel = { low: "LOW", medium: "NORMAL", high: "HIGH", urgent: "URGENT" }[priority];
-      bySection["priority"] = [
-        { id: `priority-${priority}`, type: "priority", value: priority, label: priorityLabel, score: 1, source: "rule", resolvedEntityId: priority },
-      ];
-    } else {
-      bySection["priority"] = [];
-    }
-    return bySection;
-  }, [factChips, CREATE_TASK_SECTIONS, priority, priorityTouched]);
-
-  // Suggested (AI) chips by section — only chips not already in fact chips or applied verb chips
-  const suggestedChipsBySection = useMemo(() => {
-    const bySection: Record<string, SuggestedChip[]> = {};
-    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
-    const factIds = new Set(factChips.map(c => c.id));
-    const verbIds = new Set(verbChips.map(c => c.id));
-    chipSuggestions.forEach(chip => {
-      const section = chipTypeToSection[chip.type];
-      if (section && bySection[section] && !factIds.has(chip.id) && !verbIds.has(chip.id)) bySection[section].push(chip);
-    });
-    return bySection;
-  }, [chipSuggestions, factChips, verbChips, CREATE_TASK_SECTIONS]);
-  
-  // Helper to generate verb label
-  // ADD RESOLUTION RULE: Space and asset chips with blockingRequired && !resolvedEntityId generate "ADD" labels
-  // These represent action intent that must trigger the add flow or be explicitly removed
-  const generateVerbLabel = useCallback((chip: SuggestedChip): string => {
-    const value = chip.value || chip.label;
-    switch (chip.type) {
-      case 'person':
-        return `INVITE ${value.toUpperCase()}`;
-      case 'team':
-        return `CHOOSE ${value.toUpperCase()}`;
-      case 'space':
-        return `ADD ${value.toUpperCase()}`;
-      case 'asset':
-        return `ADD ${value.toUpperCase()}`;
-      case 'category':
-        return `CHOOSE ${value.toUpperCase()}`;
-      case 'date':
-        return `SET ${value.toUpperCase()}`;
-      default:
-        return `CHOOSE ${value.toUpperCase()}`;
-    }
-  }, []);
-  
-  // Verb chips by section — unresolved action chips (blockingRequired && !resolvedEntityId) with verb labels
-  // These appear as ghost chips in their respective rows (e.g., "INVITE FRANK" in Who row, "ADD COTTAGE" in Where row)
-  const verbChipsBySection = useMemo(() => {
-    const bySection: Record<string, SuggestedChip[]> = {};
-    CREATE_TASK_SECTIONS.forEach(s => { bySection[s.id] = []; });
-    verbChips.forEach(chip => {
-      const section = chipTypeToSection[chip.type];
-      if (section && bySection[section]) {
-        // Create a copy with the verb label for display
-        const verbChip: SuggestedChip = {
-          ...chip,
-          label: generateVerbLabel(chip),
-        };
-        bySection[section].push(verbChip);
-      }
-    });
-    return bySection;
-  }, [verbChips, CREATE_TASK_SECTIONS, generateVerbLabel]);
-  
-  // Clarity state
-  const [clarityState, setClarityState] = useState<{
-    severity: ClaritySeverity;
-    message: string;
-  } | null>(null);
-  
-  // Instruction block state - track which entity needs to be added
-  const [instructionBlock, setInstructionBlock] = useState<{
-    section: string;
-    entityName: string;
-    entityType: string;
-  } | null>(null);
-  
-  // Get teams and categories for resolution
-  const { teams } = useTeams();
-  const { categories } = useCategories();
-  
-  // Handle chip removal (for fact chips in context row)
-  const handleChipRemove = useCallback((chip: SuggestedChip) => {
-    if (chip.type === "priority") {
-      setPriority("medium");
-      setPriorityTouched(false);
-      return;
-    }
-    const updated = new Map(appliedChips);
-    updated.delete(chip.id);
-    setAppliedChips(updated);
-    setSelectedChipIds(prev => prev.filter(id => id !== chip.id));
-  }, [appliedChips]);
-  
-  // Handle chip selection and resolution (only for verb chips)
-  const handleChipSelect = useCallback(async (chip: SuggestedChip) => {
-    const isCurrentlySelected = selectedChipIds.includes(chip.id);
-    
-    // Map chip types to panel sections
-    const chipTypeToSection: Record<string, string> = {
-      'person': 'who',
-      'team': 'who',
-      'space': 'where',
-      'asset': 'what',
-      'date': 'when',
-      'priority': 'priority',
-      'category': 'category',
-      'theme': 'category',
-    };
-    
-    // ADD RESOLUTION RULE: "Add" chips (space/asset with blockingRequired && !resolvedEntityId) must trigger panel opening
-    // This opens the relevant section (where/what) so user can add the entity
-    // Open relevant panel when chip is clicked
-    const section = chipTypeToSection[chip.type];
-    if (section) {
-      setActiveSection(section);
-      // Scroll to panel
-      setTimeout(() => {
-        const panel = document.getElementById(`context-panel-${section}`);
-        panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
-    }
-    
-    if (isCurrentlySelected) {
-      // Toggle off
-      setSelectedChipIds(prev => prev.filter(id => id !== chip.id));
-      const updated = new Map(appliedChips);
-      updated.delete(chip.id);
-      setAppliedChips(updated);
-      return;
-    }
-    
-    // Toggle on - add to applied chips
-    setSelectedChipIds(prev => [...prev, chip.id]);
-    
-    // Run resolution pipeline
-    if (orgId) {
-      // Load assets if needed
-      let assets: Array<{ id: string; name: string; property_id: string; space_id?: string }> = [];
-      if (chip.type === 'asset' && propertyId) {
-        try {
-          const { data } = await supabase
-            .from('assets')
-            .select('id, name, property_id, space_id')
-            .eq('org_id', orgId)
-            .eq('property_id', propertyId);
-          assets = (data || []).map(a => ({
-            id: a.id,
-            name: a.name || '',
-            property_id: a.property_id,
-            space_id: a.space_id || undefined
-          }));
-        } catch (err) {
-          console.error('Error loading assets:', err);
-        }
-      }
-      
-      const entities: AvailableEntities = {
-        spaces: spaces.map(s => ({ id: s.id, name: s.name, property_id: s.property_id })),
-        members: members.map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
-        teams: teams.map(t => ({ id: t.id, name: t.name || '' })),
-        assets: assets,
-        categories: categories.map(c => ({ id: c.id, name: c.name, parent_id: c.parent_id || undefined })),
-        properties: [],
-      };
-
-      // Resolution pipeline now handles memory lookup (Step 0) and storage internally
-      const resolution = await resolveChip(chip, entities, {
-        propertyId,
-        spaceId: selectedSpaceIds[0],
-        orgId,
-      });
-      
-      // Update chip with resolution
-      // INVITE BEHAVIORAL CONTRACT: Person chips always have blockingRequired when unresolved
-      // This ensures Invite chips are gated - they cannot be treated as normal passive metadata
-      // Recurrence chips never block entity resolution - only space, asset, and person do
-      const resolvedChip: SuggestedChip = {
-        ...chip,
-        state: resolution.resolved ? 'resolved' : resolution.requiresCreation ? 'blocked' : 'applied',
-        resolvedEntityId: resolution.entityId,
-        resolvedEntityType: resolution.entityType,
-        resolutionSource: resolution.resolutionSource,
-        resolutionConfidence: resolution.confidence,
-        // Only space, asset, and person chips block entity resolution
-        // ADD RESOLUTION RULE: Space/asset chips with blockingRequired && !resolvedEntityId are "Add" actions
-        // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
-        // Invite chips are NOT normal chips - they require explicit resolution or removal
-        // Recurrence, date, priority, category, team chips never block
-        blockingRequired: chip.type === 'space' || chip.type === 'asset' || chip.type === 'person',
-      };
-      
-      const updated = new Map(appliedChips);
-      updated.set(chip.id, resolvedChip);
-      setAppliedChips(updated);
-      
-      // Memory storage is now handled inside resolveChip() — no duplicate call needed
-
-      // Log audit
-      if (orgId && resolution.resolved) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user?.id) {
-            await logChipResolution(
-              orgId,
-              user.id,
-              { chip: chip.label, type: chip.type },
-              { resolved: resolution.resolved, entityId: resolution.entityId }
-            );
-          }
-        } catch (err) {
-          console.error('Error logging chip resolution:', err);
-        }
-      }
-      
-      // For date chips: apply the resolved date directly to form state
-      if (chip.type === 'date' && chip.resolvedEntityId) {
-        setDueDate(chip.resolvedEntityId);
-      }
-
-      // ADD RESOLUTION RULE: Auto-open panels for "Add" chips when prerequisites are missing
-      // This ensures "Add" actions trigger the relevant flow
-      if (chip.type === 'asset' && !propertyId) {
-        setActiveSection('where');
-      } else if (chip.type === 'asset' && propertyId && selectedSpaceIds.length === 0) {
-        setActiveSection('where');
-      }
-    }
-  }, [selectedChipIds, appliedChips, orgId, spaces, members, teams, categories, propertyId, selectedSpaceIds]);
-  
-  // Validate resolution truth and update clarity state
-  useEffect(() => {
-    const blockingIssues: string[] = [];
-    const warningIssues: string[] = [];
-    
-    // Check all applied chips
-    appliedChips.forEach((chip) => {
-      if (chip.blockingRequired && !chip.resolvedEntityId) {
-        if (chip.type === 'space' && !propertyId) {
-          blockingIssues.push(`"${chip.label}" was found, but no property is selected. Which property does this apply to?`);
-        } else if (chip.type === 'asset' && !propertyId) {
-          blockingIssues.push(`"${chip.label}" needs a property. Pick one to continue.`);
-        } else if (chip.type === 'person') {
-          // INVITE BEHAVIORAL CONTRACT: Person chips with blockingRequired && !resolvedEntityId are Invite actions
-          // Invite chips are NOT normal chips - they are gated actions requiring explicit resolution
-          // They must be explicitly resolved - show explicit Invite intent with clear inline feedback
-          blockingIssues.push(`Invite "${chip.label}" to assign this task, or choose an existing contact.`);
-        } else {
-          blockingIssues.push(`"${chip.label}" needs sorting before creating this task.`);
-        }
-      }
-    });
-    
-    // Check property requirement for spaces/assets
-    const hasSpaceOrAssetChips = Array.from(appliedChips.values()).some(
-      c => (c.type === 'space' || c.type === 'asset') && !c.resolvedEntityId
-    );
-    if (hasSpaceOrAssetChips && !propertyId) {
-      blockingIssues.push('Pick a property when adding spaces or assets.');
-    }
-    
-    if (blockingIssues.length > 0) {
-      setClarityState({
-        severity: 'blocking',
-        message: `Resolve before creating. ${blockingIssues[0]}`,
-      });
-    } else if (warningIssues.length > 0) {
-      setClarityState({
-        severity: 'warning',
-        message: warningIssues[0],
-      });
-    } else {
-      setClarityState(null);
-    }
-  }, [appliedChips, propertyId]);
-  
-  // Auto-update title from AI when user hasn't manually edited
-  // Enhanced: Better title quality scoring and formatting
-  useEffect(() => {
-    if (aiResult?.title && !userEditedTitle) {
-      // Enhanced title processing:
-      // 1. Capitalize first letter
-      // 2. Trim whitespace
-      // 3. Remove trailing punctuation if present
-      // 4. Ensure minimum quality (at least 3 characters)
-      let processedTitle = aiResult.title.trim();
-      if (processedTitle.length >= 3) {
-        // Capitalize first letter, keep rest as-is (preserves AI formatting)
-        processedTitle = processedTitle.charAt(0).toUpperCase() + processedTitle.slice(1);
-        // Remove trailing periods/exclamation if AI added them
-        processedTitle = processedTitle.replace(/[.!]+$/, '');
-        
-        setAiTitleGenerated(processedTitle);
-        setTitle(processedTitle);
-        setShowTitleField(true);
-      }
-    }
-  }, [aiResult?.title, userEditedTitle]);
-
-  // Auto-apply AI suggestions when received
-  useEffect(() => {
-    if (!aiResult) return;
-    
-    // Auto-set priority from AI (default NORMAL stays hidden unless explicitly chosen)
-    if (aiResult.priority === "HIGH" || aiResult.priority === "high") {
-      setPriority("high");
-      setPriorityTouched(true);
-    } else if (aiResult.priority === "URGENT" || aiResult.priority === "urgent") {
-      setPriority("urgent");
-      setPriorityTouched(true);
-    } else if (aiResult.priority === "MEDIUM" || aiResult.priority === "medium") {
-      setPriority("medium");
-      setPriorityTouched(false);
-    } else if (aiResult.priority === "LOW" || aiResult.priority === "low") {
-      setPriority("low");
-      setPriorityTouched(true);
-    }
-    
-    // Auto-set date suggestions including weekdays
-    if (aiResult.date) {
-      const today = new Date();
-      const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-      
-      if (aiResult.date === "today") {
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiResult.date === "tomorrow") {
-        today.setDate(today.getDate() + 1);
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (aiResult.date === "next_week") {
-        today.setDate(today.getDate() + 7);
-        setDueDate(today.toISOString().split("T")[0]);
-      } else if (weekdays.includes(aiResult.date.toLowerCase())) {
-        // Calculate next occurrence of the weekday
-        const targetDay = weekdays.indexOf(aiResult.date.toLowerCase());
-        const currentDay = today.getDay();
-        let daysToAdd = targetDay - currentDay;
-        if (daysToAdd <= 0) daysToAdd += 7; // If today or in the past, go to next week
-        today.setDate(today.getDate() + daysToAdd);
-        setDueDate(today.toISOString().split("T")[0]);
-      }
-    }
-    
-    // Auto-enable compliance if signature is suggested
-    if (aiResult.signature && !isCompliance) {
-      setIsCompliance(true);
-      setShowAdvanced(true);
-    }
-  }, [aiResult]);
-
-  // Hide/show title field based on description and restore AI title if available
-  useEffect(() => {
-    if (!description.trim()) {
-      setShowTitleField(false);
-      setUserEditedTitle(false);
-      // Only clear title if user hasn't edited it and there's no AI-generated title
-      if (!userEditedTitle && !aiTitleGenerated) {
-        setTitle("");
-      }
-    } else {
-      // When description becomes non-empty, restore AI title if available and not user-edited
-      if (aiTitleGenerated && !userEditedTitle && !title.trim()) {
-        setTitle(aiTitleGenerated);
-        setShowTitleField(true);
-      } else if (title.trim() && !showTitleField) {
-        // If title exists but field is hidden, show it
-        setShowTitleField(true);
-      }
-    }
-  }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField]);
-  const hasDescriptionDraft = Boolean(description.trim());
-  const shouldShowTitleField = hasDescriptionDraft && (showTitleField || aiLoading || Boolean(aiError) || Boolean(title.trim()));
+  // Description being non-empty and not collapsed controls the expanded view
   const shouldShowDetailsArea = Boolean(description.trim()) && !collapseDetails;
-  const resetForm = useCallback(() => {
-    setTitle("");
-    setDescription("");
-    setPropertyId(defaultPropertyId || "");
-    setSelectedPropertyIds(defaultPropertyId ? [defaultPropertyId] : []);
-    setSelectedSpaceIds(defaultSpaceIds ?? []);
-    setPriority("medium");
-    setPriorityTouched(false);
-    setDueDate(defaultDueDate || "");
-    setRepeatRule(undefined);
-    setMilestones([]);
-    setAssignedUserId(undefined);
-    setAssignedTeamIds([]);
-    setPendingInvitations([]);
-    setIsCompliance(false);
-    setComplianceLevel("");
-    setAnnotationRequired(false);
-    setTemplateId("");
-    setTemplateDialogMode(null);
-    setTemplateDraftName("");
-    setTemplateDraftCategory("operations");
-    setSubtasks([]);
-    setSelectedThemeIds([]);
-    setSelectedAssetIds(defaultAssetIds ?? []);
-    setImages([]);
-    setTaskFiles([]);
-    setShowAdvanced(false);
-    setActiveSection(null);
-    setAppliedChips(new Map());
-    setSelectedChipIds([]);
-    // Reset AI-related state
-    setAiTitleGenerated("");
-    setUserEditedTitle(false);
-    setShowTitleField(false);
-  }, [defaultPropertyId, defaultDueDate, defaultSpaceIds, defaultAssetIds]);
-
-  // Reset form when modal closes
-  useEffect(() => {
-    if (!open) {
-      resetForm();
-    }
-  }, [open, resetForm]);
 
   const handleSubmit = async () => {
     // SUBMISSION GUARDRAIL: Block submission if unresolved action chips exist

@@ -31,6 +31,74 @@ export const extractionPatterns: ExtractionPatterns = {
     'statutory', 'hmo', 'landlord', 'tenant safety'
   ],
 
+  // Activity-to-space mapping: verbs / nouns that imply a space context.
+  // Keys are lowercase activity keywords; values are ordered candidate space names.
+  // The engine matches these against the property's EXISTING spaces first.
+  activityToSpaceMap: {
+    // Plumbing
+    'plumbing':        ['Bathroom', 'Kitchen', 'Utility Room', 'Scullery', 'Wet Room'],
+    'plumb':           ['Bathroom', 'Kitchen', 'Utility Room', 'Scullery'],
+    'draining':        ['Bathroom', 'Kitchen', 'Scullery', 'Utility Room'],
+    'blocked drain':   ['Bathroom', 'Kitchen', 'Scullery'],
+    'shower pressure': ['Bathroom', 'Ensuite', 'Wet Room'],
+    'hot water':       ['Bathroom', 'Utility Room', 'Boiler Room', 'Kitchen'],
+    'water pressure':  ['Bathroom', 'Utility Room', 'Boiler Room'],
+    'leaking':         ['Bathroom', 'Kitchen', 'Utility Room', 'Boiler Room'],
+    'flooding':        ['Bathroom', 'Kitchen', 'Basement', 'Utility Room'],
+    // Electrical
+    'electrical':      ['Living Room', 'Kitchen', 'Bedroom', 'Hallway'],
+    'wiring':          ['Living Room', 'Kitchen', 'Bedroom', 'Office'],
+    'fuse':            ['Utility Room', 'Hallway', 'Boiler Room', 'Basement'],
+    'circuit':         ['Utility Room', 'Hallway', 'Living Room'],
+    'socket':          ['Living Room', 'Kitchen', 'Bedroom', 'Office'],
+    // Heating / cooling
+    'heating':         ['Boiler Room', 'Utility Room', 'Living Room', 'Bedroom'],
+    'boiler':          ['Boiler Room', 'Utility Room', 'Kitchen'],
+    'air conditioning':['Living Room', 'Bedroom', 'Office'],
+    'radiator':        ['Living Room', 'Bedroom', 'Hallway'],
+    // Cooking / kitchen
+    'cooking':         ['Kitchen'],
+    'dinner':          ['Kitchen', 'Dining Room'],
+    'dinner party':    ['Kitchen', 'Dining Room', 'Living Room'],
+    'prep':            ['Kitchen', 'Scullery', 'Pantry'],
+    'catering':        ['Kitchen', 'Dining Room'],
+    'breakfast':       ['Kitchen', 'Dining Room'],
+    // Garden / outdoor
+    'mowing':          ['Garden', 'Lawn', 'Back Garden', 'Front Garden'],
+    'mow':             ['Garden', 'Lawn'],
+    'lawn':            ['Garden', 'Lawn', 'Back Garden'],
+    'hedging':         ['Garden', 'Exterior'],
+    'hedge':           ['Garden'],
+    'pruning':         ['Garden', 'Exterior'],
+    'landscaping':     ['Garden', 'Exterior', 'Grounds'],
+    'patio':           ['Patio', 'Garden', 'Terrace'],
+    'decking':         ['Deck', 'Patio', 'Garden'],
+    // Cleaning
+    'deep clean':      ['Kitchen', 'Bathroom', 'Living Room'],
+    'carpet clean':    ['Living Room', 'Bedroom', 'Hallway'],
+    'window clean':    ['Living Room', 'Bedroom', 'Exterior'],
+    // Arrival / transport
+    'airport':         ['Entrance', 'Driveway', 'Lobby', 'Reception'],
+    'fetch':           ['Entrance', 'Driveway', 'Reception'],
+    'pick up':         ['Entrance', 'Driveway', 'Lobby'],
+    'drop off':        ['Entrance', 'Driveway', 'Lobby'],
+    'collect':         ['Entrance', 'Driveway', 'Reception'],
+    'station':         ['Entrance', 'Driveway', 'Lobby'],
+    // Storage / utility
+    'storage':         ['Garage', 'Basement', 'Utility Room', 'Shed', 'Loft', 'Attic'],
+    'laundry':         ['Utility Room', 'Laundry Room', 'Kitchen'],
+    'washing':         ['Utility Room', 'Laundry Room', 'Kitchen'],
+    // Security / entry
+    'lock':            ['Entrance', 'Hallway', 'Front Door', 'Back Door'],
+    'door entry':      ['Entrance', 'Hallway', 'Lobby'],
+    'alarm':           ['Hallway', 'Entrance', 'Control Room'],
+    // Pool / gym
+    'pool':            ['Swimming Pool', 'Pool Area', 'Leisure'],
+    'swimming':        ['Swimming Pool', 'Pool Area'],
+    'gym':             ['Gym', 'Fitness Room', 'Leisure'],
+    'hot tub':         ['Pool Area', 'Garden', 'Terrace'],
+  } as Record<string, string[]>,
+
   // Asset-to-space mapping for intelligent space suggestions
   assetToSpaceMap: {
     'boiler': ['Boiler Room', 'Utility Room', 'Basement'],

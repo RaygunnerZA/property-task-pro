@@ -154,10 +154,10 @@ export function SemanticChip({
     textClass,
     epistemicStyles,
     interactionStyles,
-    epistemic === "fact" && "px-[10px] min-w-[40px] max-w-[120px]",
+    epistemic === "fact" && !removable && "px-[10px] min-w-[40px] max-w-[120px]",
+    epistemic === "fact" && removable && "pl-[10px] pr-[28px] min-w-[40px] max-w-[140px] overflow-visible",
     epistemic === "proposal" && "px-2 py-1 max-w-[160px]",
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
-    epistemic === "fact" && removable && "overflow-visible pr-[10px] hover:pr-[35px]",
     (onPress || dropdown) && "cursor-pointer select-none",
     onPress && !isPressed && "hover:opacity-90",
     pending && "opacity-75 text-muted-foreground",
@@ -180,8 +180,9 @@ export function SemanticChip({
           role="button"
           tabIndex={0}
           onClick={handleRemove}
+          onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRemove(e as unknown as React.MouseEvent); } }}
-          className="absolute right-[15px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-[120ms] flex-shrink-0 w-3 inline-flex items-center justify-center"
+          className="absolute right-[8px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-[120ms] flex-shrink-0 w-3 inline-flex items-center justify-center"
         >
           <X className="h-3 w-3" />
         </span>

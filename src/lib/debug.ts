@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Debug logging — only active when VITE_DEBUG_LOGGING=true.
  * Use for schedule, tasks, and other development tracing.

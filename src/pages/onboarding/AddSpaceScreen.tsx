@@ -123,7 +123,6 @@ export default function AddSpaceScreen() {
         const property = properties[0];
         setPropertyId(property.id);
         setHasProperties(true);
-        console.log("Property ID set:", property.id);
         
         // Fetch property name/address for breadcrumb
         const { data: propertyData } = await supabase
@@ -137,7 +136,6 @@ export default function AddSpaceScreen() {
         }
       } else {
         setHasProperties(false);
-        console.log("No properties found for org:", orgId);
       }
     } catch (error) {
       console.error("Error fetching property:", error);

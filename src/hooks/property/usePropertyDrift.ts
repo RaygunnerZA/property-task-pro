@@ -2,6 +2,10 @@
  * Property hub — compliance drift for one property (expired / expiring rows).
  * Same trusted source as `usePropertyDriftHeatmap` / `usePropertyCompliance`:
  * `compliance_portfolio_view` filtered by `org_id` + `property_id`.
+ *
+ * STATUS: Ready — not yet wired to UI.
+ * Wire to the Drift tab in PropertyIdentityStrip (Tier 3 — t3-property-hub).
+ * Note: `usePropertyDriftHeatmap` is a separate portfolio-level hook used in Compliance pages.
  */
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";

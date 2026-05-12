@@ -31,9 +31,14 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
       /** Backlog: promote to error during Phase A strictness ladder. */
       "@typescript-eslint/no-explicit-any": "warn",
+      /** Require a reason when suppressing TS errors so suppressors are intentional. */
+      "@typescript-eslint/ban-ts-comment": ["error", { "minimumDescriptionLength": 10 }],
       "@typescript-eslint/no-empty-object-type": "warn",
       "no-case-declarations": "warn",
       "no-useless-escape": "warn",
+      /** Allow console.error and console.warn; ban console.log/debug in production code.
+       *  Use src/lib/logger.ts for structured logging, src/lib/debug.ts for dev tracing. */
+      "no-console": ["warn", { "allow": ["error", "warn"] }],
       "no-restricted-imports": [
         "error",
         {

@@ -28,6 +28,9 @@ import {
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
+import { usePropertyTimeline } from "@/hooks/property/usePropertyTimeline";
+import { usePropertyVendors } from "@/hooks/property/usePropertyVendors";
+import { usePropertyDrift } from "@/hooks/property/usePropertyDrift";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { PropertySummaryDashboardGrid } from "@/components/properties/PropertySummaryDashboardGrid";
@@ -71,8 +74,8 @@ export type PropertyForStrip = {
   valid_compliance_count?: number | null;
 };
 
-const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA"] as const;
-type TabIndex = 0 | 1 | 2 | 3;
+const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA", "TIMELINE", "VENDORS", "DRIFT"] as const;
+type TabIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 type AssetViewRow = {
   status?: string | null;
@@ -122,6 +125,10 @@ export function PropertyIdentityStrip({
   });
   const { data: propertyAssets = [] } = useAssetsQuery(property.id);
   const { data: propertyTasksView = [] } = useTasksQuery(property.id);
+
+  const { events: timelineEvents, isLoading: timelineLoading } = usePropertyTimeline(property.id);
+  const { vendorActivity, isLoading: vendorsLoading } = usePropertyVendors(property.id);
+  const { drift, isLoading: driftLoading } = usePropertyDrift(property.id);
 
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -408,12 +415,7 @@ export function PropertyIdentityStrip({
         />
 
         {/* Property name + icon (icon matches title cap height, property colour — no badge box) */}
-        <div
-          className={cn(
-            "absolute bottom-2 left-2.5 right-2 z-10 min-w-0",
-            propertyCardWeather !== undefined && "pr-[5.75rem]"
-          )}
-        >
+        <div className="absolute bottom-2 left-2.5 right-2 z-10 min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <p className="min-w-0 truncate text-white font-semibold text-[30px] leading-tight drop-shadow-sm">
               {displayName}
@@ -884,6 +886,87 @@ export function PropertyIdentityStrip({
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* 4 ── TIMELINE ───────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 4 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
+            {timelineLoading ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : timelineEvents.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No activity yet.</p>
+            ) : (
+              <ol className="space-y-1.5">
+                {timelineEvents.slice(0, 15).map((ev) => (
+                  <li key={ev.id} className="flex gap-2 text-xs leading-tight">
+                    <span className="shrink-0 text-muted-foreground/60 font-mono">
+                      {new Date(ev.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </span>
+                    <span className="text-foreground/80 line-clamp-2">{ev.description}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          {/* 5 ── VENDORS ────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 5 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
+            {vendorsLoading ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : vendorActivity.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No assignees yet.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {vendorActivity.map((v, i) => (
+                  <li key={i} className="flex items-center justify-between text-xs">
+                    <span className="text-foreground/80 truncate max-w-[60%]">{v.vendorName}</span>
+                    <span className="text-muted-foreground shrink-0">
+                      {v.tasksCompleted} done
+                      {v.lastVisit ? ` · ${new Date(v.lastVisit).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* 6 ── DRIFT ──────────────────────────────────────────────────── */}
+          <div
+            className={cn(
+              "w-full flex-shrink-0 h-full px-3 py-2.5 overflow-y-auto",
+              activeTab === 6 ? "pointer-events-auto" : "pointer-events-none"
+            )}
+          >
+            {driftLoading ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : !drift.hasDrift ? (
+              <p className="text-xs text-muted-foreground">No compliance drift detected.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {drift.items.map((item) => (
+                  <li key={item.id} className="flex items-start gap-2 text-xs">
+                    <span
+                      className={cn(
+                        "shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full",
+                        item.severity === "high" && "bg-destructive",
+                        item.severity === "medium" && "bg-amber-500",
+                        item.severity === "low" && "bg-muted-foreground"
+                      )}
+                    />
+                    <span className="text-foreground/80 line-clamp-2">{item.ruleTitle}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
             </div>

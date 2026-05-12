@@ -42,7 +42,6 @@ export default function LoginPage() {
           hashType = hashParams.get("type");
           
           if (hashAccessToken && hashType === "invite") {
-            console.log("[Login] Found access_token in hash from invitation, setting session and redirecting");
             // Set session first, then redirect
             try {
               const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
@@ -51,7 +50,6 @@ export default function LoginPage() {
               });
               
               if (!sessionError && sessionData?.session) {
-                console.log("[Login] Session established, redirecting to accept-invitation");
                 const tokenFromMetadata = sessionData.session.user?.user_metadata?.invitation_token;
                 const tokenFromSearch = new URLSearchParams(window.location.search).get("invite_token");
                 const invitationToken = tokenFromSearch || tokenFromMetadata;
@@ -84,7 +82,6 @@ export default function LoginPage() {
       // This handles the case where inviteUserByEmail redirects to login
       // But only if we're not already on accept-invitation (prevent loop) and user is authenticated
       if (effectiveInviteToken && user && !window.location.pathname.includes("accept-invitation")) {
-        console.log("[Login] Found invite token and user is authenticated, redirecting to accept-invitation");
         navigate(`/accept-invitation?token=${encodeURIComponent(String(effectiveInviteToken))}`, { replace: true });
         return;
       }
@@ -101,7 +98,6 @@ export default function LoginPage() {
           .maybeSingle();
         
         if (pendingInvitation) {
-          console.log("User is authenticated and has pending invitation, redirecting to accept");
           navigate(`/accept-invitation?token=${pendingInvitation.token || inviteToken || ''}`);
           return;
         }
@@ -128,7 +124,6 @@ export default function LoginPage() {
     const rememberedEmail = localStorage.getItem(REMEMBERED_EMAIL_KEY);
     if (rememberedEmail) {
       setEmail(rememberedEmail);
-      console.log('[Login] Loaded remembered email from localStorage:', rememberedEmail);
     }
   }, []);
 
@@ -137,7 +132,6 @@ export default function LoginPage() {
     if (email && email.includes('@')) {
       const timer = setTimeout(() => {
         localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
-        console.log('[Login] Saved email to localStorage:', email);
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -163,7 +157,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      console.log('[Login] Starting sign in...');
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -189,7 +182,6 @@ export default function LoginPage() {
       }
 
       if (data.session) {
-        console.log('[Login] Sign in successful');
         toast.success("Welcome back!");
         
         // Save email to localStorage for next visit

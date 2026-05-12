@@ -171,16 +171,10 @@ export function AudioRecorder({ open, onOpenChange, onRecordingComplete }: Audio
           } as any);
 
         if (insertError) {
-          // Table might not exist, just log the URL
-          console.log("Audio file uploaded. URL:", audioUrl);
-          console.log("Note: audio_files table may not exist yet");
-        } else {
-          console.log("Audio file saved to audio_files table:", audioUrl);
+          // Table might not exist yet — silently continue
         }
-      } catch (tableError) {
-        // Table doesn't exist, just log the URL
-        console.log("Audio file uploaded. URL:", audioUrl);
-        console.log("Note: audio_files table does not exist yet");
+      } catch {
+        // Table doesn't exist yet — silently continue
       }
 
       toast({

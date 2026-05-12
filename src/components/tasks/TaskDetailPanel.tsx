@@ -57,6 +57,8 @@ import type { Annotation } from "@/types/image-annotations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskTimeline } from "@/hooks/useTaskTimeline";
 import { TaskTimeline } from "./TaskTimeline";
+import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
+import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -103,6 +105,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const deleteTaskMutation = useDeleteTaskMutation();
+  const updateTaskMutation = useUpdateTaskMutation();
   const { members } = useOrgMembers();
   const { messages: conversationMessages } = useTaskMessages(taskId);
   const latestConversationMessage = useMemo(() => {
@@ -272,45 +276,39 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   };
 
-  const handleUpdateTask = async () => {
+  const handleUpdateTask = () => {
     if (isUpdating) return;
     setIsUpdating(true);
-
-    try {
-      const updates: Record<string, unknown> = {
-        title,
-        status,
-        priority,
-        due_date: dueDate || null,
-        milestones: milestones.length > 0 ? milestones : [],
-      };
-
-      const { error: updateError, data: updateData } = await supabase
-        .from("tasks")
-        .update(updates)
-        .eq("id", taskId)
-        .select("id");
-
-      if (updateError) throw updateError;
-
-      await refreshTask();
-
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-
-      toast({
-        title: "Task updated",
-        description: "Changes saved successfully",
-      });
-    } catch (err: any) {
-      console.error("Error updating task:", err);
-      toast({
-        title: "Couldn't update task",
-        description: err.message || "Something didn't work. Try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdating(false);
-    }
+    const orgId = (task as any)?.org_id;
+    const propId = (task as any)?.property_id ?? null;
+    updateTaskMutation.mutate(
+      {
+        taskId,
+        orgId: orgId ?? "",
+        propertyId: propId,
+        updates: {
+          title,
+          status: status as any,
+          priority: priority as any,
+          due_date: dueDate || null,
+          milestones: milestones.length > 0 ? milestones : [],
+        },
+      },
+      {
+        onSuccess: async () => {
+          await refreshTask();
+          toast({ title: "Task updated", description: "Changes saved successfully" });
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't update task",
+            description: (err as Error).message || "Something didn't work. Try again.",
+            variant: "destructive",
+          });
+        },
+        onSettled: () => setIsUpdating(false),
+      }
+    );
   };
 
   // Section persistence handlers for the Create Task-style summary sections
@@ -1301,21 +1299,27 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async () => {
+              onClick={() => {
                 if (isUpdating) return;
                 setIsUpdating(true);
-                try {
-                  const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-                  if (error) throw error;
-                  queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                  toast({ title: "Task deleted" });
-                  onClose();
-                } catch (err: any) {
-                  toast({ title: "Couldn't delete task", description: err.message, variant: "destructive" });
-                } finally {
-                  setIsUpdating(false);
-                  setShowDeleteDialog(false);
-                }
+                const orgId = (task as any)?.org_id;
+                const propId = (task as any)?.property_id ?? null;
+                deleteTaskMutation.mutate(
+                  { taskId, orgId, propertyId: propId },
+                  {
+                    onSuccess: () => {
+                      toast({ title: "Task deleted" });
+                      onClose();
+                    },
+                    onError: (err) => {
+                      toast({ title: "Couldn't delete task", description: (err as Error).message, variant: "destructive" });
+                    },
+                    onSettled: () => {
+                      setIsUpdating(false);
+                      setShowDeleteDialog(false);
+                    },
+                  }
+                );
               }}
             >
               Delete

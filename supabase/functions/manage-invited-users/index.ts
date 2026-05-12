@@ -153,6 +153,52 @@ Deno.serve(async (req) => {
     const newPassword = body?.new_password as string | undefined;
 
     if (!action) return err("Missing action", 400);
+
+    // ── update_member_profile ─────────────────────────────────────────────────
+    // Updates an active org member's name, email, and/or role in auth + DB.
+    // Does NOT require an invitation_id.
+    if (action === "update_member_profile") {
+      const orgMemberId = body?.org_member_id as string | undefined;
+      if (!orgMemberId) return err("Missing org_member_id", 400);
+
+      const { data: member, error: memberError } = await supabaseAdmin
+        .from("organisation_members")
+        .select("id, org_id, user_id")
+        .eq("id", orgMemberId)
+        .maybeSingle();
+
+      if (memberError) return err(memberError.message, 500);
+      if (!member) return err("Organisation member not found", 404);
+
+      await ensureManagerOrOwner(member.org_id, actor.id);
+
+      const firstName = body?.first_name as string | null | undefined;
+      const lastName = body?.last_name as string | null | undefined;
+      const email = body?.email as string | undefined;
+
+      const metaUpdate: Record<string, unknown> = {};
+      if (firstName !== undefined) metaUpdate.first_name = firstName;
+      if (lastName !== undefined) metaUpdate.last_name = lastName;
+
+      const authUpdate: Record<string, unknown> = {};
+      if (Object.keys(metaUpdate).length > 0) authUpdate.data = metaUpdate;
+      if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return err("Invalid email format", 400);
+        authUpdate.email = email.toLowerCase();
+      }
+
+      if (Object.keys(authUpdate).length > 0) {
+        const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(
+          member.user_id,
+          authUpdate as Parameters<typeof supabaseAdmin.auth.admin.updateUserById>[1]
+        );
+        if (authErr) return err(`Failed to update profile: ${authErr.message}`, 500);
+      }
+
+      return ok({ success: true });
+    }
+
     if (!invitationId) return err("Missing invitation_id", 400);
 
     const { data: invitation, error: invitationError } = await supabaseAdmin

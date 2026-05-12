@@ -1,29 +1,16 @@
 /**
- * AI Suggestion Chips Component
- * Displays intelligent chip suggestions with fade-in animations
- * 
- * Design Contract:
- * - Suggestions never auto-apply
- * - Suggestions never disappear when applied
- * - Suggestions never look "decided" until validated
- * - Background: same as modal background (no card)
+ * AI Suggestion Chips — single horizontal strip.
+ *
+ * Layout: [FillaIcon] [CHIP] [CHIP] [+ INVITE X] [+ ADD Y]
+ * Suggestion chips are gray (distinct from solid-white active fact chips in IntakeChipRow).
+ * When a chip is selected it moves into the IntakeChipRow as a fact chip.
  */
 
 import React from 'react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SuggestedChip, GhostGroup, ChipState, ChipType } from '@/types/chip-suggestions';
+import type { SuggestedChip, GhostGroup, ChipType } from '@/types/chip-suggestions';
 import { FillaIcon } from '@/components/filla/FillaIcon';
-import { SemanticChip } from '@/components/chips/semantic';
-import { 
-  MapPin, 
-  User, 
-  Users, 
-  AlertTriangle, 
-  Folder, 
-  Shield, 
-  Calendar,
-  Check
-} from 'lucide-react';
 
 interface AISuggestionChipsProps {
   chips: SuggestedChip[];
@@ -31,222 +18,109 @@ interface AISuggestionChipsProps {
   onChipSelect: (chip: SuggestedChip) => void;
   onGhostGroupSelect: (group: GhostGroup) => void;
   onChipRemove?: (chip: SuggestedChip) => void;
-  /** When set, resolved (fact) chips become tappable to apply them to the form (e.g. unified intake). */
+  /** When set, resolved (fact) chips are tappable to apply them to the form. */
   onFactChipPress?: (chip: SuggestedChip) => void;
   selectedChipIds?: string[];
   loading?: boolean;
   className?: string;
 }
 
-/**
- * Get chip state based on selection and resolution
- */
-function getChipState(chip: SuggestedChip, isSelected: boolean): ChipState {
-  if (chip.state) return chip.state;
-  if (chip.resolvedEntityId) return 'resolved';
-  if (isSelected) return 'applied';
-  if (chip.blockingRequired && !chip.resolvedEntityId) return 'blocked';
-  return 'suggested';
-}
+const FACT_CHIP_TYPES: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
 
-/**
- * Generate verb label for unresolved/ambiguous entities
- * Examples: "INVITE FRANK", "ADD GARDEN", "CHOOSE ALEX"
- */
-function generateVerbLabel(chip: SuggestedChip): string {
-  const value = chip.value || chip.label;
-  
+function verbLabel(chip: SuggestedChip): string {
+  const raw = chip.value || chip.label;
   switch (chip.type) {
-    case 'person':
-      return `INVITE ${value.toUpperCase()}`;
-    case 'team':
-      return `CHOOSE ${value.toUpperCase()}`;
+    case 'person': return `+ INVITE ${raw.toUpperCase()}`;
     case 'space':
-      return `ADD ${value.toUpperCase()}`;
-    case 'asset':
-      return `ADD ${value.toUpperCase()}`;
-    case 'category':
-      return `CHOOSE ${value.toUpperCase()}`;
-    case 'date':
-      return `SET ${value.toUpperCase()}`;
-    default:
-      return `CHOOSE ${value.toUpperCase()}`;
+    case 'asset': return `+ ADD ${raw.toUpperCase()}`;
+    default: return `+ ${raw.toUpperCase()}`;
   }
 }
 
-const chipTypeIcons: Record<string, React.ElementType> = {
-  space: MapPin,
-  person: User,
-  team: Users,
-  priority: AlertTriangle,
-  group: Folder,
-  compliance: Shield,
-  date: Calendar
-};
-
-const chipTypeLabels: Record<string, string> = {
-  space: 'Space',
-  person: 'Assign',
-  team: 'Team',
-  priority: 'Priority',
-  group: 'Group',
-  compliance: 'Compliance',
-  date: 'When'
-};
-
 export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   chips,
-  ghostGroups,
   onChipSelect,
-  onGhostGroupSelect,
   onChipRemove,
   onFactChipPress,
-  selectedChipIds = [],
   loading = false,
-  className
+  className,
 }) => {
   if (loading) {
     return (
-      <div className={cn('flex items-center gap-2 py-2', className)}>
-        <FillaIcon size={16} className="text-accent animate-pulse" />
-        <span className="text-xs text-muted-foreground font-mono">
-          Analyzing...
+      <div className={cn('flex items-center gap-1.5 py-0.5', className)}>
+        <FillaIcon size={11} className="text-[#EB6834] shrink-0 animate-pulse" />
+        <span className="text-[10px] text-muted-foreground/60 font-mono uppercase tracking-wide animate-pulse">
+          Analyzing…
         </span>
       </div>
     );
   }
 
-  if (chips.length === 0 && ghostGroups.length === 0) {
-    return null;
-  }
+  const relevant = chips.filter(c => FACT_CHIP_TYPES.includes(c.type));
+  const factChips = relevant.filter(c => c.resolvedEntityId || !c.blockingRequired);
+  const verbChips = relevant.filter(c => c.blockingRequired && !c.resolvedEntityId);
 
-  // Filter chips to only types that should render as fact/verb chips:
-  // Who (person, team), Where (space), Assets (asset), Categories (category), Dates (date), Recurrence
-  // Recurrence never blocks entity resolution - it's always a fact chip
-  const factChipTypes: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
-  const relevantChips = chips.filter(chip => factChipTypes.includes(chip.type));
+  if (factChips.length === 0 && verbChips.length === 0) return null;
 
-  // Separate resolved chips (fact) from unresolved/ambiguous chips (verb)
-  // A chip is unresolved (verb) if: blockingRequired && !resolvedEntityId
-  // Recurrence chips never have blockingRequired, so they always render as fact chips
-  const factChips = relevantChips.filter(chip => 
-    chip.resolvedEntityId || !chip.blockingRequired
-  );
-  const verbChips = relevantChips.filter(chip => 
-    chip.blockingRequired && !chip.resolvedEntityId
+  const chipBase = cn(
+    'group shrink-0 inline-flex items-center h-[22px] pl-[9px] pr-[9px] rounded-[7px]',
+    'bg-foreground/[0.07] text-foreground/60',
+    'font-mono text-[10px] uppercase tracking-wide whitespace-nowrap',
+    'hover:bg-foreground/[0.12] hover:text-foreground/80 transition-all duration-150',
+    'cursor-pointer select-none animate-in fade-in duration-200'
   );
 
-  // Group fact chips by type for organized display
-  const factChipsByType = factChips.reduce((acc, chip) => {
-    if (!acc[chip.type]) acc[chip.type] = [];
-    acc[chip.type].push(chip);
-    return acc;
-  }, {} as Record<string, SuggestedChip[]>);
-
-  // Sort types by priority order
-  const typeOrder = ['space', 'person', 'team', 'date', 'category', 'asset'];
-  const sortedFactTypes = Object.keys(factChipsByType).sort(
-    (a, b) => typeOrder.indexOf(a) - typeOrder.indexOf(b)
+  const renderChip = (
+    chip: SuggestedChip,
+    label: string,
+    onSelect: () => void
+  ) => (
+    <button
+      key={chip.id}
+      type="button"
+      onClick={onSelect}
+      className={chipBase}
+    >
+      <span>{label}</span>
+      {onChipRemove && (
+        <span
+          role="button"
+          aria-label="Discard suggestion"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChipRemove(chip);
+          }}
+          className={cn(
+            'ml-0 w-0 overflow-hidden opacity-0',
+            'group-hover:ml-[5px] group-hover:w-[10px] group-hover:opacity-60',
+            'hover:!opacity-100',
+            'transition-all duration-150 flex items-center justify-center flex-shrink-0'
+          )}
+        >
+          <X className="h-[9px] w-[9px]" strokeWidth={2.5} />
+        </span>
+      )}
+    </button>
   );
 
   return (
-    <div className={cn('space-y-2', className)}>
-      {/* AI indicator - one Filla glyph at row level only */}
-      <div className="flex items-center gap-1.5 mb-1">
-        <FillaIcon size={12} className="text-muted-foreground/70" />
-        <span className="text-[10px] text-muted-foreground/70 font-mono uppercase tracking-wider font-normal">
-          Filla picked up:
-        </span>
-      </div>
+    <div className={cn('flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5', className)}>
+      {/* Filla coral indicator */}
+      <FillaIcon size={11} className="text-[#EB6834] shrink-0 flex-none" />
 
-      {/* Fact chips (resolved entities) - separate row */}
-      {factChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {sortedFactTypes.map((type) => (
-            <div key={type} className="flex flex-wrap gap-1.5">
-              {factChipsByType[type].map((chip, index) => {
-                // Determine if chip is AI-pre-filled: has resolvedEntityId and came from AI (rule/ai/fallback source)
-                // In AISuggestionChips, all chips are from AI suggestions, so if they have resolvedEntityId, they're AI-pre-filled
-                const isAIPreFilled = chip.resolvedEntityId && (chip.source === 'rule' || chip.source === 'ai' || chip.source === 'fallback');
-                
-                // Render as fact chip (AI-pre-filled have subtle styling to reduce visual dominance)
-                return (
-                  <SemanticChip
-                    key={chip.id}
-                    epistemic="fact"
-                    label={chip.label.toUpperCase()}
-                    pending={isAIPreFilled}
-                    removable={!!onChipRemove}
-                    onRemove={onChipRemove ? () => onChipRemove(chip) : undefined}
-                    onPress={onFactChipPress ? () => onFactChipPress(chip) : undefined}
-                    pressOnPointerDown={Boolean(onFactChipPress)}
-                    animateIn
-                    className={cn(
-                      'animate-in fade-in slide-in-from-bottom-1'
-                    )}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
+      {/* Resolved / fact suggestion chips */}
+      {factChips.map((chip) =>
+        renderChip(
+          chip,
+          chip.label.toUpperCase(),
+          () => onFactChipPress ? onFactChipPress(chip) : onChipSelect(chip)
+        )
       )}
 
-      {/* Suggestions: text actions (+ prefix), not pill chips */}
-      {verbChips.length > 0 && (
-        <div className="flex flex-col items-start gap-1 pt-1">
-          {verbChips.map((chip) => {
-            const raw = generateVerbLabel(chip).replace(/^(INVITE|CHOOSE|ADD|SET)\s+/i, "").trim();
-            const short =
-              chip.type === "person"
-                ? `Invite ${chip.value || chip.label}`
-                : chip.type === "space"
-                  ? `Add ${chip.value || chip.label}`
-                  : chip.type === "asset"
-                    ? `Add ${chip.value || chip.label}`
-                    : raw;
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => onChipSelect(chip)}
-                className={cn(
-                  "text-left text-[11px] font-medium text-muted-foreground underline-offset-2",
-                  "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer",
-                  "animate-in fade-in slide-in-from-bottom-1"
-                )}
-              >
-                + {short}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Ghost groups - semantic suggestions */}
-      {ghostGroups.length > 0 && (
-        <div className="flex flex-col items-start gap-1 pt-1 border-t border-border/20">
-          <span className="text-[10px] text-muted-foreground font-mono">Quick groups</span>
-          {ghostGroups.map((group, index) => (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => onGhostGroupSelect(group)}
-              className={cn(
-                "text-left text-[11px] font-medium text-muted-foreground underline-offset-2",
-                "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer",
-                "inline-flex items-center gap-1 animate-in fade-in slide-in-from-bottom-1"
-              )}
-              style={{
-                animationDelay: `${(chips.length + index) * 20}ms`,
-                animationDuration: "120ms",
-              }}
-            >
-              <Folder className="w-3 h-3 shrink-0 opacity-70" aria-hidden />
-              + {group.name}
-            </button>
-          ))}
-        </div>
+      {/* Verb / action chips (Invite X, Add Y) */}
+      {verbChips.map((chip) =>
+        renderChip(chip, verbLabel(chip), () => onChipSelect(chip))
       )}
     </div>
   );

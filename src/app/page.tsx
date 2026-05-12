@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { PlusCircle, FileText, AlertTriangle } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
@@ -75,6 +76,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
+  const [intakeMinimized, setIntakeMinimized] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
@@ -426,7 +428,10 @@ export default function Dashboard() {
 
       handleWorkbenchTabChange("issues");
       setSelectedItem({ type: "task", id: taskId });
-      if (isLargeScreen) setExpandedSection("details");
+      if (isLargeScreen) {
+        setExpandedSection("details");
+        setIntakeMinimized(true);
+      }
     };
 
     window.addEventListener("filla:assistant-open-task", onOpenTask);
@@ -436,6 +441,7 @@ export default function Dashboard() {
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
       setExpandedSection('details');
+      setIntakeMinimized(true);
     }
     setSelectedItem({ type: 'task', id: taskId });
   };
@@ -444,6 +450,7 @@ export default function Dashboard() {
     (payload: WorkbenchAttentionSelectPayload) => {
       if (isLargeScreen) {
         setExpandedSection("details");
+        setIntakeMinimized(true);
       }
       if (payload.kind === "message") {
         setSelectedItem({ type: "message", id: payload.messageId });
@@ -463,6 +470,8 @@ export default function Dashboard() {
     if (isLargeScreen) {
       setWorkbenchIntakeMode(mode);
       setExpandedSection(null);
+      setIntakeMinimized(false);
+      setSelectedItem(null);
       return;
     }
     setModalInitialIntakeMode(mode);
@@ -484,6 +493,7 @@ export default function Dashboard() {
   const handleMessageClick = (messageId: string) => {
     if (isLargeScreen) {
       setExpandedSection("details");
+      setIntakeMinimized(true);
     }
     setSelectedItem({ type: "message", id: messageId });
   };
@@ -491,6 +501,8 @@ export default function Dashboard() {
   const handleClosePanel = () => {
     if (isLargeScreen) {
       setExpandedSection((section) => (section === "details" ? null : section));
+      setIntakeMinimized(false);
+      setSelectedItem(null);
       return;
     }
     setSelectedItem(null);
@@ -596,6 +608,30 @@ export default function Dashboard() {
             onReanalyse={handleRecordsReanalyse}
             reanalyseBusy={recordsReanalyseBusy}
           />
+        </div>
+      ) : intakeMinimized ? (
+        /* ── Minimised intake strip ─────────────────────────────────────── */
+        <div className="mb-2 shrink-0 flex items-center gap-1.5 rounded-[10px] border border-border/40 bg-card/70 px-2.5 py-2 shadow-sm">
+          <PlusCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+          <span className="flex-1 text-xs text-muted-foreground/60 font-medium truncate">
+            New report or record
+          </span>
+          <button
+            type="button"
+            onClick={() => handleOpenIntake("report_issue")}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium text-foreground/70 bg-background/80 shadow-sm hover:bg-background hover:text-foreground transition-colors duration-100"
+          >
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            Issue
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenIntake("add_record")}
+            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium text-foreground/70 bg-background/80 shadow-sm hover:bg-background hover:text-foreground transition-colors duration-100"
+          >
+            <FileText className="h-3 w-3 shrink-0" />
+            Record
+          </button>
         </div>
       ) : (
         <div className="pb-[20px]">
@@ -704,8 +740,7 @@ export default function Dashboard() {
         className="flex h-[60px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
         style={headerStyle}
       >
-        {!showTodayWeatherOnPropertyCard ? (
-          <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
+        <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
             <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
             <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
             <div className="flex items-center justify-start gap-2 text-left">
@@ -715,7 +750,6 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-        ) : null}
       </div>
     </PageHeader>
   );
@@ -745,7 +779,7 @@ export default function Dashboard() {
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
-            propertyCardWeather={showTodayWeatherOnPropertyCard ? weather : undefined}
+            propertyCardWeather={undefined}
             scopeFilterBar={
               <PropertyScopeFilterBar
                 variant="primary"

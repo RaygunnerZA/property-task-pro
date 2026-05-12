@@ -80,6 +80,7 @@ export type IntelligenceEvent =
  */
 export function logIntelligenceEvent(event: IntelligenceEvent): void {
   if (process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
     console.debug("[Intelligence]", event.kind, event);
   }
 }

@@ -38,6 +38,7 @@ import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useRetireAssetMutation } from "@/hooks/mutations/useRetireAssetMutation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -130,6 +131,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
+  const retireAssetMutation = useRetireAssetMutation();
   const { settings } = useOrgSettings();
   const automatedIntelligence = settings?.automated_intelligence ?? "suggestions_only";
   const latestInspectionSignals = useMemo(() => {
@@ -287,26 +289,29 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     }
   }, [assetId, queryClient, toast, onClose]);
 
-  const handleArchive = useCallback(async () => {
+  const handleArchive = useCallback(() => {
     if (!assetId) return;
     setIsArchiving(true);
-    try {
-      const { error } = await supabase.from("assets").update({ status: "retired" }).eq("id", assetId);
-      if (error) throw error;
-      refresh();
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      toast({ title: "Asset archived", description: "Status set to retired." });
-      setShowArchiveDialog(false);
-    } catch (e: unknown) {
-      toast({
-        title: "Couldn't archive asset",
-        description: e instanceof Error ? e.message : "Try again",
-        variant: "destructive",
-      });
-    } finally {
-      setIsArchiving(false);
-    }
-  }, [assetId, refresh, queryClient, toast]);
+    retireAssetMutation.mutate(
+      { assetId, orgId: orgId ?? undefined },
+      {
+        onSuccess: () => {
+          refresh();
+          toast({ title: "Asset archived", description: "Status set to retired." });
+          setShowArchiveDialog(false);
+          setIsArchiving(false);
+        },
+        onError: (e) => {
+          toast({
+            title: "Couldn't archive asset",
+            description: e instanceof Error ? e.message : "Try again",
+            variant: "destructive",
+          });
+          setIsArchiving(false);
+        },
+      }
+    );
+  }, [assetId, orgId, refresh, retireAssetMutation, toast]);
 
   const isImageFile = (file: File) => {
     const t = file.type?.toLowerCase() || "";

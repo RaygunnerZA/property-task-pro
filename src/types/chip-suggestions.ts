@@ -82,6 +82,7 @@ export interface ExtractionPatterns {
   urgencyKeywords: string[];
   lowPriorityKeywords: string[];
   complianceKeywords: string[];
+  activityToSpaceMap: Record<string, string[]>;
   assetToSpaceMap: Record<string, string[]>;
   datePatterns: RegExp[];
 }

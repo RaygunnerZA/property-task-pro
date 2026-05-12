@@ -214,7 +214,10 @@ export function IntakeModal({
   const { data: properties = [] } = usePropertiesQuery();
 
   const [title, setTitle] = useState("");
+  const titleRef = useRef("");
+  titleRef.current = title; // Keep ref in sync without adding `title` to effect deps
   const [description, setDescription] = useState("");
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
   const [images, setImages] = useState<TempImage[]>([]);
   const [taskFiles, setTaskFiles] = useState<PendingTaskFile[]>([]);
   const [userChoseWorkflow, setUserChoseWorkflow] = useState<WorkflowHint | null>(null);
@@ -276,11 +279,12 @@ export function IntakeModal({
     if (!chosen) return;
     const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
     setAiTitleGenerated(processed);
-    const t = title.trim();
-    // Replace junk/short AI titles (e.g. "Ja") until the user has committed a usable title.
-    if (!userEditedTitle && (!t || !isUsableGeneratedTitle(t))) setTitle(processed);
+    // Use ref so that changing `title` doesn't re-trigger this effect (prevents overwrite loop).
+    const t = titleRef.current.trim();
+    if (!isUsableGeneratedTitle(t)) setTitle(processed);
     setShowTitleField(true);
-  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, title]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle]);
 
   useEffect(() => {
     if (!description.trim()) {
@@ -851,22 +855,16 @@ export function IntakeModal({
     }
   }, [openChipSlot, milestoneDraftDate]);
 
+  // Auto-apply date only — person/team chips are shown in the suggestion strip for the user to
+  // tap intentionally. Auto-applying them caused chips to "bounce" back after manual removal
+  // because the effect would immediately re-apply the same entity from chipSuggestions.
   useEffect(() => {
     const dateChip = chipSuggestions.find((c) => c.type === "date" && c.resolvedEntityId);
     if (!dueDate && dateChip?.resolvedEntityId && typeof dateChip.resolvedEntityId === "string") {
       const v = dateChip.resolvedEntityId;
       if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v.split("T")[0] || v);
     }
-    const personChip = chipSuggestions.find((c) => c.type === "person" && c.resolvedEntityId);
-    if (!assignedUserId && personChip?.resolvedEntityId && typeof personChip.resolvedEntityId === "string") {
-      setAssignedUserId(personChip.resolvedEntityId);
-    }
-    const teamChip = chipSuggestions.find((c) => c.type === "team" && c.resolvedEntityId);
-    if (teamChip?.resolvedEntityId && typeof teamChip.resolvedEntityId === "string") {
-      const tid = teamChip.resolvedEntityId;
-      setAssignedTeamIds((prev) => (prev.includes(tid) ? prev : [...prev, tid]));
-    }
-  }, [chipSuggestions, dueDate, assignedUserId]);
+  }, [chipSuggestions, dueDate]);
 
   useEffect(() => {
     if (priorityDefined || intakeMode !== "report_issue") return;
@@ -1026,20 +1024,6 @@ export function IntakeModal({
       });
     });
 
-    if (selectedProperty) {
-      chips.push({
-        id: `where-property-${selectedProperty.id}`,
-        slot: "where",
-        label: (selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase(),
-        epistemic: "fact",
-        removable: true,
-        onRemove: () => {
-          setPropertyId(defaultPropertyId || "");
-          setSelectedSpaceIds([]);
-        },
-      });
-    }
-
     selectedSpaces.forEach((space) => {
       chips.push({
         id: `where-space-${space.id}`,
@@ -1122,11 +1106,28 @@ export function IntakeModal({
       });
     });
 
+    // Only show the property chip once at least one other semantic chip is present.
+    // This keeps the row empty until the user's description produces the first chip.
+    if (selectedProperty && chips.length > 0) {
+      chips.unshift({
+        id: `where-property-${selectedProperty.id}`,
+        slot: "where",
+        label: (selectedProperty.nickname || selectedProperty.address || "Property").toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onRemove: () => {
+          setPropertyId(defaultPropertyId || "");
+          setSelectedSpaceIds([]);
+        },
+      });
+    }
+
     return chips;
   }, [
     assignedTeamIds,
     assignedUserId,
     categories,
+    defaultPropertyId,
     dueDate,
     milestones,
     formatDueDateLabel,
@@ -1141,6 +1142,25 @@ export function IntakeModal({
     selectedThemeIds,
     teams,
   ]);
+
+  // Filter out chips already applied as fact chips in the active row so suggestion strip
+  // never shows a chip that is simultaneously a semantic (fact) chip below.
+  const filteredChipSuggestions = useMemo(() => {
+    return chipSuggestions.filter((chip) => {
+      if (dismissedSuggestionIds.has(chip.id)) return false;
+      if (chip.type === "person") {
+        if (chip.resolvedEntityId === assignedUserId) return false;
+        if (chip.resolvedEntityId && assignedTeamIds.includes(chip.resolvedEntityId)) return false;
+      }
+      if (chip.type === "team" && chip.resolvedEntityId && assignedTeamIds.includes(chip.resolvedEntityId)) return false;
+      if (chip.type === "space" && chip.resolvedEntityId && selectedSpaceIds.includes(chip.resolvedEntityId)) return false;
+      if (chip.type === "date" && dueDate && chip.resolvedEntityId) {
+        if (dueDate.startsWith(chip.resolvedEntityId) || chip.resolvedEntityId.startsWith(dueDate.split("T")[0])) return false;
+      }
+      if (chip.type === "asset" && chip.resolvedEntityId && selectedAssetIds.includes(chip.resolvedEntityId)) return false;
+      return true;
+    });
+  }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, selectedAssetIds]);
 
   const toggleSpaceSelection = useCallback((spaceId: string) => {
     setSelectedSpaceIds((prev) =>
@@ -2957,6 +2977,7 @@ export function IntakeModal({
   const resetForm = useCallback((opts?: { preserveWhere?: boolean }) => {
     setTitle("");
     setDescription("");
+    setDismissedSuggestionIds(new Set());
     setUserEditedTitle(false);
     setShowTitleField(false);
     setAiTitleGenerated("");
@@ -3404,7 +3425,7 @@ export function IntakeModal({
                     setTitle(v);
                     const t = v.trim();
                     if (!t) setUserEditedTitle(false);
-                    else if (t.length >= 2) setUserEditedTitle(true);
+                    else setUserEditedTitle(true);
                   }}
                   placeholder="Generated title…"
                   className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
@@ -3447,22 +3468,6 @@ export function IntakeModal({
               )}
             </div>
           </div>
-
-          {intakeMode === "report_issue" && primaryIsTask && hasDescriptionDraft && (
-            <AISuggestionChips
-              chips={chipSuggestions}
-              ghostGroups={ghostCategories}
-              onChipSelect={(c) => {
-                void handleIntakeSuggestedChip(c);
-              }}
-              onGhostGroupSelect={handleIntakeGhostGroup}
-              onFactChipPress={(c) => {
-                void handleIntakeSuggestedChip(c);
-              }}
-              loading={false}
-              className="px-0 pt-0.5"
-            />
-          )}
 
           {showMismatchSuggestion && (
             <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 shadow-e1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -3538,6 +3543,26 @@ export function IntakeModal({
                 </label>
               </div>
             </div>
+          )}
+
+          {/* AI suggestion strip — single line, directly above active chip row */}
+          {intakeMode === "report_issue" && primaryIsTask && hasDescriptionDraft && filteredChipSuggestions.length > 0 && (
+            <AISuggestionChips
+              chips={filteredChipSuggestions}
+              ghostGroups={ghostCategories}
+              onChipSelect={(c) => {
+                void handleIntakeSuggestedChip(c);
+              }}
+              onGhostGroupSelect={handleIntakeGhostGroup}
+              onFactChipPress={(c) => {
+                void handleIntakeSuggestedChip(c);
+              }}
+              onChipRemove={(c) =>
+                setDismissedSuggestionIds((prev) => new Set([...prev, c.id]))
+              }
+              loading={false}
+              className="px-0"
+            />
           )}
 
           {/* 4. Context chip row */}

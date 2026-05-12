@@ -19,8 +19,7 @@ export function useUpdateTask(taskId: string) {
     setError(null);
     try {
       // TODO: Connect to backend service
-      // This is a stub
-      console.log('Updating task:', taskId, params);
+      void taskId; void params;
     } catch (err) {
       setError(err as Error);
     } finally {

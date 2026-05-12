@@ -87,7 +87,6 @@ export default function AddPropertyScreen() {
       }
       
       const hasProperties = properties && properties.length > 0;
-      console.log(`[AddPropertyScreen] Found ${properties?.length || 0} properties for org ${orgId}`);
       setHasExistingProperties(hasProperties);
       setOrgPropertyVisualRows(
         (properties ?? []) as PropertyVisualRow[]

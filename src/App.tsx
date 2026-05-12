@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { DevModeProvider } from "@/context/DevModeContext";
+import { DevModeProvider, isDevBuild } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
 import { ActiveOrgProvider } from "@/providers/ActiveOrgProvider";
 import { DataProvider, useAuth, useDataContext } from "@/contexts/DataContext";
@@ -64,7 +64,6 @@ const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompl
 const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
 const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
 const ComplianceTasks = lazy(() => import("./pages/ComplianceTasks"));
-const CalendarV2 = lazy(() => import("./pages/CalendarV2"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
 const RecordLibrary = lazy(() => import("./pages/record/RecordLibrary"));
@@ -299,9 +298,9 @@ const App = () => {
                         </ProtectedRoute>
                       }>
                         <Route index element={<Navigate to="/admin/orgs" replace />} />
-                        <Route path="orgs" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgList /></Suspense>} />
-                        <Route path="orgs/:orgId" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgDetail /></Suspense>} />
-                        <Route path="orgs/:orgId/ai" element={<Suspense fallback={<LoadingState message="Loading..." />}><AdminOrgAiRequests /></Suspense>} />
+                        <Route path="orgs" element={<RouteBoundary title="Admin — Orgs"><AdminOrgList /></RouteBoundary>} />
+                        <Route path="orgs/:orgId" element={<RouteBoundary title="Admin — Org detail"><AdminOrgDetail /></RouteBoundary>} />
+                        <Route path="orgs/:orgId/ai" element={<RouteBoundary title="Admin — AI requests"><AdminOrgAiRequests /></RouteBoundary>} />
                       </Route>
 
                       {/* All main app routes wrapped in AppLayout */}
@@ -314,15 +313,12 @@ const App = () => {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
                                 
-                                {/* Calendar v2 — stacked-paper swipe */}
-                                <Route path="/calendar-v2" element={<CalendarV2 />} />
-
                                 {/* Main Navigation */}
-                                <Route path="/properties" element={<Properties />} />
-                                <Route path="/tasks" element={<Tasks />} />
-                                <Route path="/schedule" element={<Schedule />} />
-                                <Route path="/assets" element={<Assets />} />
-                                <Route path="/compliance" element={<Compliance />} />
+                                <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
+                                <Route path="/tasks" element={<RouteBoundary title="Tasks"><Tasks /></RouteBoundary>} />
+                                <Route path="/schedule" element={<RouteBoundary title="Schedule"><Schedule /></RouteBoundary>} />
+                                <Route path="/assets" element={<RouteBoundary title="Assets"><Assets /></RouteBoundary>} />
+                                <Route path="/compliance" element={<RouteBoundary title="Compliance"><Compliance /></RouteBoundary>} />
                                 
                                 {/* WORK pillar */}
                                 <Route path="/work/tasks" element={<WorkTasks />} />
@@ -340,12 +336,12 @@ const App = () => {
                                 <Route path="/manage/settings" element={<ManageSettings />} />
                                 
                                 {/* Settings routes */}
-                                <Route path="/settings" element={<SettingsLayout />}>
-                                  <Route index element={<SettingsGeneral />} />
-                                  <Route path="profile" element={<SettingsProfile />} />
-                                  <Route path="automation" element={<SettingsAutomationPanel />} />
-                                  <Route path="team" element={<SettingsTeam />} />
-                                  <Route path="billing" element={<SettingsBilling />} />
+                                <Route path="/settings" element={<RouteBoundary title="Settings"><SettingsLayout /></RouteBoundary>}>
+                                  <Route index element={<RouteBoundary title="Settings — General"><SettingsGeneral /></RouteBoundary>} />
+                                  <Route path="profile" element={<RouteBoundary title="Settings — Profile"><SettingsProfile /></RouteBoundary>} />
+                                  <Route path="automation" element={<RouteBoundary title="Settings — Automation"><SettingsAutomationPanel /></RouteBoundary>} />
+                                  <Route path="team" element={<RouteBoundary title="Settings — Team"><SettingsTeam /></RouteBoundary>} />
+                                  <Route path="billing" element={<RouteBoundary title="Settings — Billing"><SettingsBilling /></RouteBoundary>} />
                                 </Route>
                                 
                                 {/* RECORD pillar */}
@@ -398,15 +394,17 @@ const App = () => {
                                   }
                                 />
 
-                                {/* Debug route */}
-                                <Route
-                                  path="/debug/data"
-                                  element={
-                                    <RouteBoundary title="Debug data">
-                                      <DebugData />
-                                    </RouteBoundary>
-                                  }
-                                />
+                                {/* Debug route — dev builds only */}
+                                {isDevBuild && (
+                                  <Route
+                                    path="/debug/data"
+                                    element={
+                                      <RouteBoundary title="Debug data">
+                                        <DebugData />
+                                      </RouteBoundary>
+                                    }
+                                  />
+                                )}
 
                                 {/* 404 */}
                                 <Route

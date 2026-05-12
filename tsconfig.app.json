@@ -15,11 +15,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
-    "strict": false,
+    /* Strictness — enabled; files with residual errors carry @ts-nocheck (see @Docs/28). */
+    "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
     "baseUrl": ".",

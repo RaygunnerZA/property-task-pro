@@ -23,12 +23,10 @@ export function QuickActionsSection({ propertyId }: QuickActionsSectionProps) {
 
   const handleRunAudit = () => {
     // TODO: Implement property audit
-    console.log("Run property audit", propertyId);
   };
 
   const handleGenerateReport = () => {
     // TODO: Implement report generation
-    console.log("Generate report", propertyId);
   };
 
   return (

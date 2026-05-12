@@ -111,10 +111,7 @@ export function DataProvider({ children }: DataProviderProps) {
 
       if (fetchError) {
         if (fetchError.code === "PGRST116" || fetchError.message?.includes("0 rows")) {
-          console.debug(
-            "Cannot fetch organisation - user not yet a member (expected during invitation acceptance):",
-            fetchError
-          );
+          // Expected during invitation acceptance — user not yet a member
         } else {
           console.error("Failed to fetch organisation:", fetchError);
         }

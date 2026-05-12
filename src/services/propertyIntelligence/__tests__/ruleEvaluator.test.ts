@@ -595,3 +595,78 @@ describe("evaluateProfile — repairing scope extended", () => {
     }
   });
 });
+
+// ─── Edge Cases — null / undefined / unknown values ──────────────────────────
+
+describe("evaluateProfile — null and edge-case inputs", () => {
+
+  it("null leaseEnd does not throw and emits no date chip boost", () => {
+    const profile = makeProfile({ leaseEnd: null });
+    expect(() => evaluateProfile(profile)).not.toThrow();
+    const result = evaluateProfile(profile);
+    const boostTypes = result.chipBoosts
+      .filter((r) => r.output.kind === "chip_boost")
+      .map((r) => r.output.kind === "chip_boost" ? r.output.chipType : "");
+    expect(boostTypes).not.toContain("date");
+  });
+
+  it("undefined leaseEnd does not throw", () => {
+    const profile = makeProfile({ leaseEnd: undefined });
+    expect(() => evaluateProfile(profile)).not.toThrow();
+  });
+
+  it("leaseEnd exactly 90 days in the future emits date chip boost", () => {
+    const future = new Date();
+    future.setDate(future.getDate() + 90);
+    const profile = makeProfile({ leaseEnd: future.toISOString() });
+    const result = evaluateProfile(profile);
+    const boostTypes = result.chipBoosts
+      .filter((r) => r.output.kind === "chip_boost")
+      .map((r) => r.output.kind === "chip_boost" ? r.output.chipType : "");
+    expect(boostTypes).toContain("date");
+  });
+
+  it("leaseEnd more than 1 year away emits no date chip boost (not yet actionable)", () => {
+    const farFuture = new Date();
+    farFuture.setFullYear(farFuture.getFullYear() + 2);
+    const profile = makeProfile({ leaseEnd: farFuture.toISOString() });
+    const result = evaluateProfile(profile);
+    const boostTypes = result.chipBoosts
+      .filter((r) => r.output.kind === "chip_boost")
+      .map((r) => r.output.kind === "chip_boost" ? r.output.chipType : "");
+    expect(boostTypes).not.toContain("date");
+  });
+
+  it("null ownershipType does not throw", () => {
+    const profile = makeProfile({ ownershipType: null });
+    expect(() => evaluateProfile(profile)).not.toThrow();
+  });
+
+  it("presentAssetTypes with unknown asset type does not throw", () => {
+    const profile = makeProfile({ presentAssetTypes: ["Flying Cars", "Teleporter"] });
+    expect(() => evaluateProfile(profile)).not.toThrow();
+  });
+
+  it("very long presentAssetTypes array does not throw", () => {
+    const manyAssets = Array.from({ length: 100 }, (_, i) => `Asset ${i}`);
+    const profile = makeProfile({ presentAssetTypes: manyAssets });
+    expect(() => evaluateProfile(profile)).not.toThrow();
+  });
+
+  it("all known asset types together do not produce duplicate compliance types", () => {
+    const profile = makeProfile({
+      siteType: "commercial",
+      ownershipType: "owned",
+      presentAssetTypes: [
+        "Boiler", "HVAC Units", "Passenger Lifts", "Sprinklers",
+        "Compressors", "UPS", "Generators",
+      ],
+    });
+    const result = evaluateProfile(profile);
+    const types = result.complianceRecommendations
+      .filter((r) => r.output.kind === "suggest_compliance")
+      .map((r) => r.output.kind === "suggest_compliance" ? r.output.complianceType : "");
+    const unique = new Set(types);
+    expect(unique.size).toBe(types.length);
+  });
+});

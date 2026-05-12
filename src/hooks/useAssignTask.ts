@@ -15,8 +15,7 @@ export function useAssignTask() {
     setError(null);
     try {
       // TODO: Connect to backend service
-      // This is a stub
-      console.log('Assigning task:', params);
+      void params;
     } catch (err) {
       setError(err as Error);
     } finally {

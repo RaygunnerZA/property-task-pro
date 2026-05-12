@@ -2,6 +2,9 @@
  * Property hub — timeline: org-scoped task activity for one property.
  * Merges `tasks` (opened) with `audit_logs` rows for those tasks (`entity_type = 'task'`).
  * Per @Docs/03_Data_Model — uses documented columns only; `useActiveOrg` for `org_id`.
+ *
+ * STATUS: Ready — not yet wired to UI.
+ * Wire to the Timeline tab in PropertyIdentityStrip (Tier 3 — t3-property-hub).
  */
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";

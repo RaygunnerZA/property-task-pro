@@ -32,8 +32,7 @@ export default function AuditExportOption({
 
   const handleDownload = () => {
     if (output?.url) {
-      // Placeholder - would trigger actual download
-      console.log('Downloading:', output.filename);
+      window.open(output.url, "_blank", "noopener,noreferrer");
     }
   };
 

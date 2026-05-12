@@ -128,7 +128,20 @@ export function IntakeChipRow({
   renderSlotContent,
   className,
 }: IntakeChipRowProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const railScrollRef = useRef<HTMLDivElement>(null);
+
+  // Close open slot when user clicks outside the chip row
+  useEffect(() => {
+    if (!openSlot) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onCloseSlot();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openSlot, onCloseSlot]);
   const [railShowRightFade, setRailShowRightFade] = useState(false);
 
   const updateRailFade = useCallback(() => {
@@ -187,7 +200,7 @@ export function IntakeChipRow({
   const panel = openSlot ? renderSlotContent(openSlot, onCloseSlot) : null;
 
   return (
-    <div className={cn("min-w-0 space-y-2", className)}>
+    <div ref={containerRef} className={cn("min-w-0 space-y-2", className)}>
       <div
         className="relative w-full min-w-0 rounded-[10px] bg-muted/25 px-1 py-0.5 shadow-sm"
         role="toolbar"
@@ -240,26 +253,36 @@ export function IntakeChipRow({
         </div>
       </div>
 
-      {panel && (
-        <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
-          <div className="min-w-0 border-b border-border/15 pb-px">
-            <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
-          </div>
-          <div className="min-w-0 space-y-1 pt-0">
-            <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row3}</HorizontalOverflowRow>
-            {summaryChipElements && (
-              <HorizontalOverflowRow
-                className={cn(
-                  SCROLLER_ROW_CLASS,
-                  "border-t-2 border-dashed border-white/65 [border-image:none] pt-[9px] mt-1.5"
+      {/* Panel — grid-rows animation for smooth open/close */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          panel ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
+          {panel && (
+            <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
+              <div className="min-w-0 border-b border-border/15 pb-px">
+                <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
+              </div>
+              <div className="min-w-0 space-y-1 pt-0">
+                <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row3}</HorizontalOverflowRow>
+                {summaryChipElements && (
+                  <HorizontalOverflowRow
+                    className={cn(
+                      SCROLLER_ROW_CLASS,
+                      "border-t-2 border-dashed border-white/65 [border-image:none] pt-[9px] mt-1.5"
+                    )}
+                  >
+                    {summaryChipElements}
+                  </HorizontalOverflowRow>
                 )}
-              >
-                {summaryChipElements}
-              </HorizontalOverflowRow>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {!openSlot && summaryChipElements && (
         <HorizontalOverflowRow className={cn(SCROLLER_ROW_CLASS, "border-t border-border/20 pt-2")}>

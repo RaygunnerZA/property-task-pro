@@ -80,6 +80,7 @@ export function useIdentityMode(): UseIdentityModeResult {
 
           if (orgError && orgError.code !== "PGRST116") {
             // PGRST116 is expected when user isn't a member yet
+            // eslint-disable-next-line no-console
             console.debug(
               "[useIdentityMode] Could not fetch org (may be expected):",
               orgError
@@ -99,6 +100,7 @@ export function useIdentityMode(): UseIdentityModeResult {
 
             if (membershipError && membershipError.code !== "PGRST116") {
               // PGRST116 is expected when user isn't a member yet
+              // eslint-disable-next-line no-console
               console.debug(
                 "[useIdentityMode] Could not fetch membership (may be expected):",
                 membershipError

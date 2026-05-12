@@ -1,5 +1,6 @@
+/* eslint-disable no-console */
 export const log = {
-  info: (...args: any[]) => console.log('[INFO]', ...args),
-  warn: (...args: any[]) => console.warn('[WARN]', ...args),
-  error: (...args: any[]) => console.error('[ERROR]', ...args),
+  info: (...args: unknown[]) => console.log('[INFO]', ...args),
+  warn: (...args: unknown[]) => console.warn('[WARN]', ...args),
+  error: (...args: unknown[]) => console.error('[ERROR]', ...args),
 };

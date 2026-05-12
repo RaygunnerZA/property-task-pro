@@ -5,7 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type CreatePropertyV2Args = Database["public"]["Functions"]["create_property_v2"]["Args"];
 
-function parsePropertyRpcResult(data: unknown): string {
+export function parsePropertyRpcResult(data: unknown): string {
   if (data && typeof data === "object" && "id" in data && typeof (data as { id: unknown }).id === "string") {
     return (data as { id: string }).id;
   }

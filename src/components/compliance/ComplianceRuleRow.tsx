@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useDeleteComplianceRuleMutation } from "@/hooks/mutations/useDeleteComplianceRuleMutation";
 import { formatFrequency } from "@/services/propertyIntelligence/frequencyUtils";
 import type { ComplianceRuleWithStatus } from "@/hooks/useComplianceRules";
 
@@ -79,6 +80,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
   const [toggling, setToggling] = useState(false);
+  const deleteRuleMutation = useDeleteComplianceRuleMutation();
 
   const scopeLabel =
     rule.scope_type === "asset_type" && rule.scope_asset_type
@@ -114,11 +116,12 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
     });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!orgId) return;
-    await supabase.from("compliance_rules").delete().eq("id", rule.id);
-    queryClient.invalidateQueries({
-      queryKey: ["compliance_rules", orgId, rule.property_id],
+    deleteRuleMutation.mutate({
+      ruleId: rule.id,
+      orgId,
+      propertyId: rule.property_id,
     });
   };
 

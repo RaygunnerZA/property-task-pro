@@ -1,6 +1,9 @@
 /**
  * Property hub — assignees with work on this property (tasks with `assigned_user_id`).
  * Uses `tasks_view` + `organisation_members` for role labels (no invented columns).
+ *
+ * STATUS: Ready — not yet wired to UI.
+ * Wire to the Vendors tab in PropertyIdentityStrip (Tier 3 — t3-property-hub).
  */
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";

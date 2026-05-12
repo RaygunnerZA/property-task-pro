@@ -7,6 +7,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useInsertSpaceMutation } from "@/hooks/mutations/useInsertSpaceMutation";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
@@ -84,6 +85,7 @@ export function SuggestedSpacesStrip({
 }: SuggestedSpacesStripProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const insertSpaceMutation = useInsertSpaceMutation();
 
   const [activating, setActivating] = useState<string | null>(null);
   const [localAdded, setLocalAdded] = useState<Map<string, ActivatedSpace>>(
@@ -274,7 +276,7 @@ export function SuggestedSpacesStrip({
     }
   };
 
-  const handleDuplicate = async (space: ActivatedSpace) => {
+  const handleDuplicate = (space: ActivatedSpace) => {
     if (!orgId || !propertyId) return;
     const allNames = new Set([
       ...existingSpaces.map((s) => s.name.toLowerCase()),
@@ -283,20 +285,19 @@ export function SuggestedSpacesStrip({
     let num = 2;
     while (allNames.has(`${space.name.toLowerCase()} ${num}`)) num++;
     const newName = `${space.name} ${num}`;
-    try {
-      const { error } = await supabase.from("spaces").insert({
+    insertSpaceMutation.mutate(
+      {
         name: newName,
         org_id: orgId,
         property_id: propertyId,
         icon_name: space.icon_name,
         space_type_id: space.space_type_id,
-      });
-      if (error) throw error;
-      toast.success(`${newName} created`);
-      invalidateAll();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to duplicate");
-    }
+      },
+      {
+        onSuccess: () => toast.success(`${newName} created`),
+        onError: (err) => toast.error((err as Error).message || "Failed to duplicate"),
+      }
+    );
   };
 
   const handleDelete = async (space: ActivatedSpace) => {
@@ -334,29 +335,27 @@ export function SuggestedSpacesStrip({
     }
   };
 
-  const handleAddSubSpace = async () => {
+  const handleAddSubSpace = () => {
     if (!editAction || !orgId || !propertyId) return;
     const subName = dialogInput.trim();
     if (!subName) return;
-    try {
-      const { iconName, typeId } = resolveIconAndType(subName);
-      const insert: Record<string, unknown> = {
+    const { iconName, typeId } = resolveIconAndType(subName);
+    insertSpaceMutation.mutate(
+      {
         name: subName,
         org_id: orgId,
         property_id: propertyId,
         icon_name: iconName,
-      };
-      if (typeId) insert.space_type_id = typeId;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await supabase.from("spaces").insert(insert as any);
-      if (error) throw error;
-      toast.success(`${subName} added`);
-      invalidateAll();
-      closeDialog();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to add sub-space");
-    }
+        space_type_id: typeId ?? null,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${subName} added`);
+          closeDialog();
+        },
+        onError: (err) => toast.error((err as Error).message || "Failed to add sub-space"),
+      }
+    );
   };
 
   const handleMoveToGroup = async (targetLabel: string) => {

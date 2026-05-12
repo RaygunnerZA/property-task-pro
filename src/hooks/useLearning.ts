@@ -1,6 +1,7 @@
+/* eslint-disable no-console */
 /**
  * Learning Hook - Phase 3
- * 
+ *
  * Provides functions to record learning events from user actions.
  * This hook does NOT change any UI - it only records learning events
  * in the background.

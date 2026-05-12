@@ -297,6 +297,36 @@ function detectSpaces(
       }
     }
   }
+
+  // Activity-to-space mapping: suggest existing spaces that fit the activity context.
+  // Multi-word keys are checked first (longest match wins), then single-word keys.
+  const activityEntries = Object.entries(extractionPatterns.activityToSpaceMap)
+    .sort((a, b) => b[0].length - a[0].length); // longest key first
+
+  const matchedActivitySpaceIds = new Set<string>();
+  for (const [activityKeyword, candidateSpaceNames] of activityEntries) {
+    if (!text.includes(activityKeyword.toLowerCase())) continue;
+    for (const candidateName of candidateSpaceNames) {
+      const matchingSpace = filteredSpaces.find(s =>
+        isFuzzyMatch(s.name.toLowerCase(), candidateName.toLowerCase())
+      );
+      if (matchingSpace && !chips.some(c => c.value === matchingSpace.id) && !matchedActivitySpaceIds.has(matchingSpace.id)) {
+        chips.push({
+          id: `space-activity-${matchingSpace.id}`,
+          type: 'space',
+          value: matchingSpace.id,
+          label: matchingSpace.name,
+          score: 0.70,
+          source: 'rule',
+          resolvedEntityId: matchingSpace.id,
+          blockingRequired: false,
+          metadata: { matchedActivity: activityKeyword },
+        });
+        matchedActivitySpaceIds.add(matchingSpace.id);
+        matchedSpaces.add(matchingSpace.name.toLowerCase());
+      }
+    }
+  }
   
   // ── "at the [phrase]" / "in the [phrase]" multi-word location capture ─────
   // Catches things like "at the bowling alley", "in the main office"

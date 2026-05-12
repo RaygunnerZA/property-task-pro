@@ -81,8 +81,8 @@ export function SubtasksSection({
   };
 
   const handleReorder = (ids: string[]) => {
-    // This callback can be used to update order_index in the database
-    console.log("Reordered subtasks:", ids);
+    // TODO: persist reorder to order_index in the database
+    void ids;
   };
 
   // If no subtasks, show the "add subtask" placeholder row
