@@ -100,8 +100,8 @@ export function PropertyInfoPanel({ propertyId }: PropertyInfoPanelProps) {
     const result = await updateDetails({
       total_area_sqft: physicalForm.total_area_sqft ? parseInt(physicalForm.total_area_sqft) : null,
       floor_count: physicalForm.floor_count ? parseInt(physicalForm.floor_count) : null,
-      site_type: physicalForm.site_type || null,
-      ownership_type: physicalForm.ownership_type || null,
+      site_type: (physicalForm.site_type || null) as "other" | "residential" | "commercial" | "mixed_use" | "industrial" | "land" | null,
+      ownership_type: (physicalForm.ownership_type || null) as "other" | "owned" | "leased" | "rented" | "managed" | null,
       listing_grade: physicalForm.listing_grade || null,
     });
 

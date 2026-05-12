@@ -31,7 +31,7 @@ export function PropertyDocumentsHeader({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-foreground">
-            {property?.name || "Property Documents"}
+            {property?.nickname || "Property Documents"}
           </h2>
           {lastUpdated && (
             <p className="text-sm text-muted-foreground mt-0.5">

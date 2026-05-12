@@ -27,7 +27,7 @@ export function ComplianceList({ propertyId }: ComplianceListProps = {}) {
       expiryStatus: doc.expiry_status || "none",
       daysUntilExpiry: doc.days_until_expiry,
     }));
-  }, [propertyDocuments]);
+  }, [documentsData]);
 
   // Filter documents based on selected filters
   const filteredDocuments = useMemo(() => {

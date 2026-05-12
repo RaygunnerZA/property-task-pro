@@ -120,7 +120,7 @@ export function DataProvider({ children }: DataProviderProps) {
         }
         return null;
       }
-      return data as Organisation;
+      return data as unknown as Organisation;
     } catch (err) {
       console.error("Error fetching organisation:", err);
       return null;

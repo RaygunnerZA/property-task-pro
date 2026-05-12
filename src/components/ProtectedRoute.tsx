@@ -49,20 +49,20 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     }
     let cancelled = false;
     setMemberRoleLoading(true);
-    supabase
-      .from("organisation_members")
-      .select("role")
-      .eq("org_id", orgId)
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (!error && data) setMemberRole(data.role ?? null);
-        else setMemberRole(null);
-      })
-      .finally(() => {
-        if (!cancelled) setMemberRoleLoading(false);
-      });
+    void Promise.resolve(
+      supabase
+        .from("organisation_members")
+        .select("role")
+        .eq("org_id", orgId)
+        .eq("user_id", userId)
+        .maybeSingle()
+    ).then(({ data, error }) => {
+      if (cancelled) return;
+      if (!error && data) setMemberRole(data.role ?? null);
+      else setMemberRole(null);
+    }).finally(() => {
+      if (!cancelled) setMemberRoleLoading(false);
+    });
     return () => {
       cancelled = true;
     };
@@ -72,15 +72,15 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
   useEffect(() => {
     if (!orgId || loading || orgLoading) return;
     setCheckingProperties(true);
-    supabase
-      .from("properties")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .then(({ count, error }) => {
-        if (!error) setHasProperties((count ?? 0) > 0);
-        else setHasProperties(true);
-      })
-      .finally(() => setCheckingProperties(false));
+    void Promise.resolve(
+      supabase
+        .from("properties")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+    ).then(({ count, error }) => {
+      if (!error) setHasProperties((count ?? 0) > 0);
+      else setHasProperties(true);
+    }).finally(() => setCheckingProperties(false));
   }, [orgId, loading, orgLoading]);
 
   const needRoleForRedirect = !onboardingCompleted && !!orgId;

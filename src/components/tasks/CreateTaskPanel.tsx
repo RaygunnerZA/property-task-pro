@@ -71,7 +71,7 @@ export function CreateTaskPanel({
           }}
           onTaskCreated={onTaskCreated}
           defaultPropertyId={defaultPropertyId}
-          defaultDueDate={defaultDueDate}
+          defaultDueDate={defaultDueDate instanceof Date ? defaultDueDate.toISOString().split("T")[0] : defaultDueDate}
           variant="column"
         />
       </div>

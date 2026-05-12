@@ -215,26 +215,26 @@ export function WhoSection({
     const newMemberIds = [...pendingTeamMemberIds, userId];
     setPendingTeamMemberIds(newMemberIds);
     if (newMemberIds.length >= 1) {
-      supabase
-        .from("teams")
-        .insert({ org_id: orgId, name: pendingTeam.name })
-        .select()
-        .single()
-        .then(({ data, error }) => {
-          if (error) throw error;
-          if (data) {
-            onTeamsChange([...assignedTeamIds, data.id]);
-            onUserChange(newMemberIds[0]);
-            setTeamMembersMap((prev) => ({ ...prev, [data.id]: newMemberIds }));
-            refreshTeams();
-            setPendingTeam(null);
-            setPendingTeamMemberIds([]);
-            toast({ title: "Team created", description: `${pendingTeam.name} has been created and assigned.` });
-          }
-        })
-        .catch((err: Error) => {
-          toast({ title: "Couldn't create team", description: err.message, variant: "destructive" });
-        });
+      void Promise.resolve(
+        supabase
+          .from("teams")
+          .insert({ org_id: orgId, name: pendingTeam.name })
+          .select()
+          .single()
+      ).then(({ data, error }) => {
+        if (error) throw error;
+        if (data) {
+          onTeamsChange([...assignedTeamIds, data.id]);
+          onUserChange(newMemberIds[0]);
+          setTeamMembersMap((prev) => ({ ...prev, [data.id]: newMemberIds }));
+          refreshTeams();
+          setPendingTeam(null);
+          setPendingTeamMemberIds([]);
+          toast({ title: "Team created", description: `${pendingTeam.name} has been created and assigned.` });
+        }
+      }).catch((err: Error) => {
+        toast({ title: "Couldn't create team", description: err.message, variant: "destructive" });
+      });
     }
   };
 

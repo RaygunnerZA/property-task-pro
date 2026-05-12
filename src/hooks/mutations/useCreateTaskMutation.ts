@@ -10,7 +10,7 @@ export interface CreateTaskMutationVariables {
   insert: TablesInsert<"tasks">;
 }
 
-type TaskRow = Tables<"tasks">["Row"];
+type TaskRow = Tables<"tasks">;
 type BriefingEntry = {
   id: string;
   status: string;

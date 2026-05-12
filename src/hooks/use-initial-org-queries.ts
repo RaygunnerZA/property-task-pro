@@ -105,7 +105,7 @@ export function useInitialOrgQueries(orgId: string | null): UseInitialOrgQueries
           console.error("[useInitialOrgQueries] Error fetching member:", memberResult.error);
           setError(memberResult.error.message);
         } else {
-          setMember(memberResult.data || null);
+          setMember((memberResult.data as OrganisationMember) || null);
         }
 
         // Handle properties result

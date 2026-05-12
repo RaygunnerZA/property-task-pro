@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSupabase } from "../../integrations/supabase/useSupabase";
 import { useActiveOrg } from "../useActiveOrg";
-import type { Tables } from "../integrations/supabase/types";
+import type { Tables } from "@/integrations/supabase/types";
 
 type PropertyRow = Tables<"properties">;
 

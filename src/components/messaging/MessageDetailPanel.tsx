@@ -94,7 +94,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
           org_id: orgId,
           conversation_id: selectedMessage.conversation_id,
           author_user_id: userId,
-          author_name: user?.display_name || user?.email || "Unknown",
+          author_name: (user?.user_metadata?.display_name as string | undefined) || user?.email || "Unknown",
           body: messageText.trim(),
           source: "web",
           direction: "outbound",

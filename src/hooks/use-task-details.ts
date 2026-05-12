@@ -25,7 +25,7 @@ interface Category {
   icon?: string | null;
 }
 
-interface TaskDetails extends TaskRow {
+interface TaskDetails extends Omit<TaskRow, "assigned_user_id"> {
   // Additional fields from tasks_view
   property_name?: string | null;
   property_address?: string | null;

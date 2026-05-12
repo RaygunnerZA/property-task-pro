@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, User } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, User, FileText } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";

@@ -333,7 +333,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
   if (error) {
     return (
       <div className="p-4 text-center text-sm text-destructive">
-        {error?.message || String(error)}
+        {typeof error === "string" ? error : String(error)}
       </div>
     );
   }

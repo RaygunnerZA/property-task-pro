@@ -163,7 +163,7 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
   }
 
   if (error) {
-    return <EmptyState title="Unable to load messages" subtitle={error?.message || String(error)} />;
+    return <EmptyState title="Unable to load messages" subtitle={typeof error === "string" ? error : String(error)} />;
   }
 
   if (!messages.length) {

@@ -322,10 +322,12 @@ export function DashboardCalendarV2({
         }
         if (row.type === "sep") {
           for (let j = i + 1; j < dateRows.length; j++) {
-            if (dateRows[j].type === "week") return format(dateRows[j].month, "yyyy-MM");
+            const r = dateRows[j];
+            if (r.type === "week") return format(r.month, "yyyy-MM");
           }
           for (let j = i - 1; j >= 0; j--) {
-            if (dateRows[j].type === "week") return format(dateRows[j].month, "yyyy-MM");
+            const r = dateRows[j];
+            if (r.type === "week") return format(r.month, "yyyy-MM");
           }
         }
         return null;

@@ -110,7 +110,7 @@ export function WhoTab({
   const allTeams: TeamChip[] = teams.map((t) => ({
     id: t.id,
     name: t.name,
-    image_url: t.image_url,
+    image_url: undefined,
   }));
 
   // Identify ghost chips (suggested but not in DB)

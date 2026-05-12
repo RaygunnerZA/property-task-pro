@@ -174,8 +174,7 @@ export function AIIconColorPicker({
 
     let cancelled = false;
     setLoading(true);
-    supabase
-      .rpc("ai_icon_search", { query_text: query })
+    void Promise.resolve(supabase.rpc("ai_icon_search", { query_text: query }))
       .then(({ data }) => {
         if (cancelled) return;
         const names = (data ?? [])
