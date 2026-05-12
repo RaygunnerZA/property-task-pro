@@ -76,6 +76,7 @@ Requires the Supabase CLI and a linked project (`supabase link`), or run the gen
 - **Rollout backlog (1–2 sprints):** [`@Docs/Rollout_Checklist_1-2_Sprints.md`](./@Docs/Rollout_Checklist_1-2_Sprints.md)
 - **What we’re executing now:** [`@Docs/Rollout_Execution_Plan.md`](./@Docs/Rollout_Execution_Plan.md)
 - **First platform admin:** insert your auth user into `platform_admins` via Supabase SQL — see the comment in `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md) §25.2.
+- **Admin list scale:** [`@Docs/25_Admin_Cursor_Pagination_Design.md`](./@Docs/25_Admin_Cursor_Pagination_Design.md) — keyset pagination for org activity and AI requests (RPC + admin UI).
 
 ## How can I deploy this project?
 

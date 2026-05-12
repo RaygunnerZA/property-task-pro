@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { useAdminOrgAiRequests, AdminAiRequest } from "@/hooks/admin/useAdminOrgAiRequests";
@@ -49,7 +49,14 @@ function ExpandedRow({ req }: { req: AdminAiRequest }) {
 export default function AdminOrgAiRequests() {
   const { orgId } = useParams<{ orgId: string }>();
   const navigate = useNavigate();
-  const { data: requests = [], isLoading, error } = useAdminOrgAiRequests(orgId ?? "");
+  const {
+    data: requests = [],
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+  } = useAdminOrgAiRequests(orgId ?? "");
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [functionFilter, setFunctionFilter] = useState<string>("all");
@@ -89,7 +96,9 @@ export default function AdminOrgAiRequests() {
         <div>
           <h1 className="text-xl font-semibold">AI Requests</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isLoading ? "Loading…" : `${filtered.length} of ${requests.length} requests`}
+            {isLoading
+              ? "Loading…"
+              : `${filtered.length} shown · ${requests.length} loaded${hasNextPage ? " (more available)" : ""}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -150,9 +159,8 @@ export default function AdminOrgAiRequests() {
                 const isExpanded = expandedId === req.id;
                 const hasDetail = !!req.error_message || !!(req.entity_type && req.entity_id);
                 return (
-                  <>
+                  <Fragment key={req.id}>
                     <tr
-                      key={req.id}
                       className={cn(
                         "transition-colors",
                         hasDetail ? "cursor-pointer hover:bg-muted/20" : ""
@@ -190,14 +198,27 @@ export default function AdminOrgAiRequests() {
                         {formatDistanceToNow(new Date(req.created_at), { addSuffix: true })}
                       </td>
                     </tr>
-                    {isExpanded && hasDetail && <ExpandedRow key={`${req.id}-expanded`} req={req} />}
-                  </>
+                    {isExpanded && hasDetail && <ExpandedRow req={req} />}
+                  </Fragment>
                 );
               })
             )}
           </tbody>
         </table>
       </div>
+
+      {hasNextPage && requests.length > 0 ? (
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="text-sm font-medium text-primary px-4 py-2 rounded-[10px] shadow-sm bg-background hover:shadow-md transition-shadow disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {isFetchingNextPage ? "Loading…" : "Load more"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

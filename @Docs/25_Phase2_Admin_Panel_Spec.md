@@ -5,6 +5,8 @@
 **Risk level:** Medium — introduces a new privilege concept and cross-org data access  
 **Touches:** `supabase/migrations/`, `src/pages/admin/`, `src/App.tsx`
 
+**Related (pagination scale):** [`25_Admin_Cursor_Pagination_Design.md`](./25_Admin_Cursor_Pagination_Design.md) — keyset pagination for activity / AI requests (see migration `20260515000001_admin_activity_ai_requests_cursor.sql`).
+
 ---
 
 ## 25.0 — Scope and Non-Scope

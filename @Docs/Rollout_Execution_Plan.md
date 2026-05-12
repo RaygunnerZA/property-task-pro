@@ -14,20 +14,34 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 |---|------|--------|------------|
 | S1.1 | README cross-links → `@Docs`, rollout checklist, execution plan, platform admin seed | **Done** | README § Engineering |
 | S1.2 | `@Docs/02_Identity.md` — “preferred hooks” for org-scoped code | **Done** | §8a |
-| S1.3 | `AppLayout` — regional `ErrorBoundary` around all main `children` (Work / Manage / Tasks / Settings, etc.) | **Done** | `AppLayout.tsx` |
-| S1.4 | Link this plan from checklist (see checklist header) | **Done** | Header link in `Rollout_Checklist_1-2_Sprints.md` |
-
-**Explicitly not in Sprint 1:** strict TS ladder (Phase A), admin RPC pagination (Phase B), property hub real hooks (Phase C), `CreateTaskModal` split (Phase D), analytics grep cleanup beyond audit (Phase E), observability edge batch (Phase I).
+| S1.3 | `AppLayout` — regional `ErrorBoundary` around all main `children` | **Done** | `AppLayout.tsx` |
+| S1.4 | Link this plan from checklist header | **Done** | `Rollout_Checklist_1-2_Sprints.md` |
 
 ---
 
-## Next sprint (Sprint 2 — suggested order)
+## Sprint 2 (completed) — Property hub
 
-1. **Phase B.1–B.2** — Admin pagination design + RPC/migrations (requires types regen).
-2. **Phase E.2–E.3** — `document_uploaded` / any remaining UI `track` → mutation `onSuccess` (compliance complete already uses mutation `onSuccess`).
-3. **Phase C** — Property hub: timeline + drift + assignees implemented in Insights. Further polish (names from profiles, vendor-org linkage) optional.
+**Theme:** Real Insights data (timeline, drift, assignees) + invalidation wiring.
 
-Re-sequence if product prioritises compliance analytics or property hub over admin scale.
+| # | Task | Status |
+|---|------|--------|
+| S2.1 | `usePropertyTimeline` + activity UI | **Done** |
+| S2.2 | `usePropertyDrift` + `usePropertyVendors` + Insights sections | **Done** |
+
+---
+
+## Sprint 3 (in progress)
+
+**Theme:** Admin scale design on paper + analytics alignment for uploads.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S3.1 | Phase **B.1** — Admin cursor/keyset pagination **design doc** | **Done** | [`25_Admin_Cursor_Pagination_Design.md`](./25_Admin_Cursor_Pagination_Design.md); Ch 25 cross-link |
+| S3.2 | Phase **B.2–B.5** — RPC migrations + hooks + UI “Load more” | **Done** | `20260515000001_admin_activity_ai_requests_cursor.sql`; `useInfiniteQuery` + footers on org detail / AI requests |
+| S3.3 | Phase **E.2** — `document_uploaded` from upload **mutation** `onSuccess` | **Done** | `use-file-upload.ts` uses `useMutation` |
+| S3.4 | Phase **E.4–E.6** / other `track()` moves | **Todo** | Optional next |
+
+**Explicitly later:** Phase A strict TS ladder, `CreateTaskModal` split (D), observability edge batch (I).
 
 ---
 
@@ -39,7 +53,7 @@ Re-sequence if product prioritises compliance analytics or property hub over adm
 | Pre | Vitest scoped to `src`; `useVendor` build fix | merged `main` |
 | Pre | `@Docs/Rollout_Checklist_1-2_Sprints.md` | merged `main` |
 | Sprint 1 | Execution plan, README § Engineering, identity §8a, `AppLayout` `ErrorBoundary` | merged `main` |
-| Sprint 2 (partial) | Property timeline (`usePropertyTimeline` + Insights activity) | merged `main` |
-| Sprint 2 (partial) | Property drift + field assignees (`usePropertyDrift`, `usePropertyVendors`, Insights) | merged `main` |
+| Sprint 2 | Property timeline + drift + field assignees (Insights) | merged `main` |
+| Sprint 3 | Admin design (B.1), `document_uploaded` mutation (E.2), activity/AI keyset RPCs + infinite hooks + Load more (B.2–B.5) | this PR |
 
 Update the **Done** table whenever a checklist phase ships.

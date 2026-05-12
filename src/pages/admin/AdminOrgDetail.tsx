@@ -71,7 +71,16 @@ function ActivityEntry({
 export default function AdminOrgDetail() {
   const { orgId } = useParams<{ orgId: string }>();
   const navigate = useNavigate();
-  const { org, members, activity, isLoading, error } = useAdminOrg(orgId ?? "");
+  const {
+    org,
+    members,
+    activity,
+    activityHasNextPage,
+    fetchNextActivity,
+    isFetchingNextActivity,
+    isLoading,
+    error,
+  } = useAdminOrg(orgId ?? "");
 
   const emailByUserId = new Map(members.map((m) => [m.user_id, m.email]));
 
@@ -187,11 +196,25 @@ export default function AdminOrgDetail() {
           ) : activity.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No activity recorded yet.</p>
           ) : (
-            <div className="divide-y divide-border/60">
-              {activity.map((entry) => (
-                <ActivityEntry key={entry.id} entry={entry} emailByUserId={emailByUserId} />
-              ))}
-            </div>
+            <>
+              <div className="divide-y divide-border/60">
+                {activity.map((entry) => (
+                  <ActivityEntry key={entry.id} entry={entry} emailByUserId={emailByUserId} />
+                ))}
+              </div>
+              {activityHasNextPage ? (
+                <div className="pt-3 pb-1 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => fetchNextActivity()}
+                    disabled={isFetchingNextActivity}
+                    className="text-sm font-medium text-primary px-4 py-2 rounded-[10px] shadow-sm bg-background hover:shadow-md transition-shadow disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    {isFetchingNextActivity ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </section>

@@ -40,11 +40,11 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| B.1 | **Design:** cursor/keyset strategy (`created_at`, `id`), page size defaults, max cap (align with §25 hard caps) | TBD | S | `@Docs/25_Phase2_Admin_Panel_Spec.md` | Written in PR / doc comment |
-| B.2 | **Migrations / RPCs:** `admin_list_orgs` pagination (if row counts justify); **`admin_get_org_activity`** + **`admin_get_org_ai_requests`** cursor args + stable sort | TBD | L | B.1, `platform_admins` / sentinel already in DB | `supabase db push` (or CI) green; types regenerated |
-| B.3 | **Types:** regenerate Supabase types after RPC signature changes | TBD | S | B.2 | `src/integrations/supabase/types.ts` updated in same PR |
-| B.4 | **Hooks:** `useAdminOrgList`, `useAdminOrg`, `useAdminOrgAiRequests` — pass cursor, expose `hasNextPage` / `fetchNextPage` (or equivalent) | TBD | M | B.3 | Unit or manual: large fixture org |
-| B.5 | **UI:** org list, org detail activity, AI requests — wire infinite scroll or “Load more”; remove redundant **client-only** paging if superseded | TBD | M | B.4 | Manual: no duplicate fetch storm; works with empty / single page |
+| B.1 | **Design:** cursor/keyset strategy (`created_at`, `id`), page size defaults, max cap (align with §25 hard caps) | TBD | S | [`25_Admin_Cursor_Pagination_Design.md`](./25_Admin_Cursor_Pagination_Design.md) | **Done** — doc merged |
+| B.2 | **Migrations / RPCs:** `admin_list_orgs` pagination (if row counts justify); **`admin_get_org_activity`** + **`admin_get_org_ai_requests`** cursor args + stable sort | TBD | L | B.1, `platform_admins` / sentinel already in DB | **Done** for activity + AI RPCs — `20260515000001_admin_activity_ai_requests_cursor.sql`; `admin_list_orgs` deferred |
+| B.3 | **Types:** regenerate Supabase types after RPC signature changes | TBD | S | B.2 | **`src/types/supabase.ts`** RPC Args/Returns updated (`has_more`, cursor args). Regenerate `integrations/supabase/types.ts` when CI/CLI available |
+| B.4 | **Hooks:** `useAdminOrgList`, `useAdminOrg`, `useAdminOrgAiRequests` — pass cursor, expose `hasNextPage` / `fetchNextPage` (or equivalent) | TBD | M | B.3 | **Done** — `useAdminOrg` + `useAdminOrgAiRequests` use `useInfiniteQuery`; `useAdminOrgList` unchanged |
+| B.5 | **UI:** org list, org detail activity, AI requests — wire infinite scroll or “Load more”; remove redundant **client-only** paging if superseded | TBD | M | B.4 | **Done** — Load more on org detail activity + AI requests page; org list still client paged |
 | B.6 | **Audit:** each RPC still logs to `audit_logs` per §25; no new PII in analytics | TBD | S | B.2 | Spot-check `audit_logs` actions |
 
 ---
@@ -83,7 +83,7 @@
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | E.1 | Table in **24** §24.5: list each event vs **current** `track()` callsite | TBD | S | `@Docs/24_Phase1_Observability_Spec.md` | Gap list in ticket |
-| E.2 | Move **`document_uploaded`** to mutation / upload hook `onSuccess` (not ad-hoc UI) | TBD | M | E.1 | PostHog/dev capture once per successful upload |
+| E.2 | Move **`document_uploaded`** to mutation / upload hook `onSuccess` (not ad-hoc UI) | TBD | M | E.1 (optional) | **Done** — `use-file-upload.ts` `useMutation.onSuccess` |
 | E.3 | Move **`compliance_item_completed`** into a dedicated mutation hook `onSuccess` | TBD | M | E.1 | Same |
 | E.4 | Align **`ai_task_generated`** with spec intent (document if edge vs mutation) | TBD | M | E.1 | Spec + code match; no double-fire |
 | E.5 | Resolution / suggestion events (`resolutionAudit` paths): ensure properties match §24; no PII | TBD | M | E.1 | Review payload keys |

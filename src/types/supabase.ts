@@ -4249,19 +4249,30 @@ export type Database = {
         }[]
       }
       admin_get_org_activity: {
-        Args: { p_limit?: number; p_org_id: string }
+        Args: {
+          p_after_created_at?: string | null
+          p_after_id?: string | null
+          p_limit?: number
+          p_org_id: string
+        }
         Returns: {
           action: string
           actor_id: string
           created_at: string
           entity_id: string
           entity_type: string
+          has_more: boolean
           id: string
           metadata: Json
         }[]
       }
       admin_get_org_ai_requests: {
-        Args: { p_limit?: number; p_org_id: string }
+        Args: {
+          p_after_created_at?: string | null
+          p_after_id?: string | null
+          p_limit?: number
+          p_org_id: string
+        }
         Returns: {
           cost_usd: number
           created_at: string
@@ -4269,6 +4280,7 @@ export type Database = {
           entity_type: string
           error_message: string
           function_name: string
+          has_more: boolean
           id: string
           input_tokens: number
           latency_ms: number
