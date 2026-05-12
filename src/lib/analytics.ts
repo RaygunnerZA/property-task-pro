@@ -6,6 +6,7 @@
  * - Never send PII: no names, emails, addresses, or document content in properties.
  * - All events are namespaced under the AnalyticsEvent union type — add new events here first.
  * - EU Cloud endpoint used for FADP compliance (data stored in Frankfurt).
+ * - New invocations of the exported `track` helper: document in `@Docs/24_Phase1_Observability_Spec.md` §24.5 and extend `src/lib/__tests__/analyticsTrackInvokers.test.ts`.
  */
 
 import posthog from "posthog-js";

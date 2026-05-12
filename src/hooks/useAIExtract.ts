@@ -25,6 +25,31 @@ function endsWithSentenceCue(raw: string): boolean {
   return /[.!?…][\s]*$/u.test(raw);
 }
 
+/** Mean of numeric `authority` on chips — maps to §24 `confidence_avg` for `ai_task_generated`. */
+function confidenceAvgFromCombined(
+  combined: AIExtractResponse["combined"]
+): number | null {
+  const values: number[] = [];
+  const take = (n: unknown) => {
+    if (typeof n === "number" && Number.isFinite(n)) values.push(n);
+  };
+  for (const x of combined.spaces ?? []) take(x.authority);
+  for (const x of combined.people ?? []) take(x.authority);
+  for (const x of combined.teams ?? []) take(x.authority);
+  for (const x of combined.themes ?? []) take(x.authority);
+  const assets = combined.assets;
+  if (Array.isArray(assets)) {
+    for (const a of assets) {
+      if (typeof a === "object" && a !== null && "authority" in a) {
+        take((a as { authority?: unknown }).authority);
+      }
+    }
+  }
+  if (values.length === 0) return null;
+  const avg = values.reduce((s, v) => s + v, 0) / values.length;
+  return Math.round(avg * 10_000) / 10_000;
+}
+
 export interface ThemeSuggestion {
   name: string;
   exists: boolean;
@@ -126,14 +151,17 @@ export function useAIExtract(input: string) {
         if (data.ok && data.combined) {
           setResult(data.combined);
           lastSuccessNormalizedRef.current = normalized;
+          // §24.5 — one event per successful ai-extract response (deduped by normalize above; not task creation).
+          const chip_count =
+            (data.combined.spaces?.length ?? 0) +
+            (data.combined.people?.length ?? 0) +
+            (data.combined.teams?.length ?? 0) +
+            (data.combined.assets?.length ?? 0) +
+            (data.combined.themes?.length ?? 0);
           track("ai_task_generated", {
             org_id: orgId,
-            chip_count:
-              (data.combined.spaces?.length ?? 0) +
-              (data.combined.people?.length ?? 0) +
-              (data.combined.teams?.length ?? 0) +
-              (data.combined.assets?.length ?? 0) +
-              (data.combined.themes?.length ?? 0),
+            chip_count,
+            confidence_avg: confidenceAvgFromCombined(data.combined),
           });
         } else {
           setError(data.error || "AI extraction failed");

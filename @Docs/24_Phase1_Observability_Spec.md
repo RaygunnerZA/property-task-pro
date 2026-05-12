@@ -386,8 +386,8 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 | Event | Fire location | Properties |
 |---|---|---|
 | `property_created` | `useCreateProperty` mutation `onSuccess` | `{ org_id, property_id }` |
-| `task_created` | `useCreateTask` mutation `onSuccess` | `{ org_id, task_id, source: 'manual' \| 'ai' \| 'assistant' }` |
-| `ai_task_generated` | `ai-extract` response handler in `AssistantContext` | `{ org_id, chip_count, confidence_avg }` |
+| `task_created` | `useCreateTask` mutation `onSuccess`; **`useAssistant`** `assistantActionMutation` `onSuccess` when the executor creates a task | `{ org_id, task_id, source: 'manual' \| 'ai' \| 'assistant' }` |
+| `ai_task_generated` | `useAIExtract` after a successful `ai-extract` edge response (debounced; deduped on normalized description — not task creation) | `{ org_id, chip_count, confidence_avg }` — `confidence_avg` is the mean of chip `authority` scores when present, else `null` |
 | `compliance_item_completed` | `useUpdateComplianceStatus` mutation `onSuccess` | `{ org_id, document_id, document_type }` |
 | `document_uploaded` | `useUploadAttachment` or inbox upload `onSuccess` | `{ org_id, document_type, via_ai: boolean }` |
 | `issue_flagged` | Issue creation mutation `onSuccess` | `{ org_id, property_id }` |
@@ -396,6 +396,8 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 | `ai_suggestion_rejected` | `logResolutionAudit` call path | `{ org_id, suggestion_type }` |
 
 **Do not send:** user names, emails, property addresses, document content, or any PII in event properties.
+
+**`track()` callsite guard:** Vitest `src/lib/__tests__/analyticsTrackInvokers.test.ts` fails if any file under `src/` (except `src/lib/analytics.ts`, which defines `track`) invokes `track` with a string-literal event without updating that allowlist and this table.
 
 ### Privacy and FADP
 

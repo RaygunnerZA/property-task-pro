@@ -4,8 +4,8 @@
  * Enables trust, debugging, compliance later
  */
 
-import { supabase } from '@/integrations/supabase/client';
-import { track } from '@/lib/analytics';
+import { supabase } from "@/integrations/supabase/client";
+import { track } from "@/lib/analytics";
 
 export interface ResolutionAuditEntry {
   org_id: string;
@@ -22,16 +22,24 @@ export async function logResolutionAudit(
   entry: ResolutionAuditEntry
 ): Promise<void> {
   const { error } = await supabase
-    .from('ai_resolution_audit')
+    .from("ai_resolution_audit")
     .insert({
       ...entry,
       created_at: new Date().toISOString(),
     });
 
   if (error) {
-    console.error('Error logging resolution audit:', error);
+    console.error("Error logging resolution audit:", error);
     // Don't throw - audit failures shouldn't break the flow
   }
+}
+
+/** §24.5 — short non-PII label for PostHog only (full payloads stay in DB). */
+function suggestionTypeForAnalytics(suggestion: Record<string, unknown>): string {
+  const raw = suggestion.type ?? suggestion.chip;
+  if (raw == null || typeof raw !== "string") return "unknown";
+  const cleaned = raw.trim().replace(/[\r\n\u0000]+/g, "").slice(0, 64);
+  return cleaned.length > 0 ? cleaned : "unknown";
 }
 
 /**
@@ -46,7 +54,7 @@ export async function logChipResolution(
   suggestion: Record<string, unknown>,
   chosen: Record<string, unknown>,
   taskTempId?: string,
-  outcome: 'accepted' | 'edited' | 'rejected' = 'accepted'
+  outcome: "accepted" | "edited" | "rejected" = "accepted"
 ): Promise<void> {
   await logResolutionAudit({
     org_id: orgId,
@@ -57,14 +65,14 @@ export async function logChipResolution(
   });
 
   const eventMap = {
-    accepted: 'ai_suggestion_accepted',
-    edited: 'ai_suggestion_edited',
-    rejected: 'ai_suggestion_rejected',
+    accepted: "ai_suggestion_accepted",
+    edited: "ai_suggestion_edited",
+    rejected: "ai_suggestion_rejected",
   } as const;
 
   track(eventMap[outcome], {
     org_id: orgId,
-    suggestion_type: suggestion.type ?? suggestion.chip ?? 'unknown',
+    suggestion_type: suggestionTypeForAnalytics(suggestion),
   });
 }
 

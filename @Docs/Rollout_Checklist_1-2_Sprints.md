@@ -85,9 +85,9 @@
 | E.1 | Table in **24** §24.5: list each event vs **current** `track()` callsite | TBD | S | `@Docs/24_Phase1_Observability_Spec.md` | Gap list in ticket |
 | E.2 | Move **`document_uploaded`** to mutation / upload hook `onSuccess` (not ad-hoc UI) | TBD | M | E.1 (optional) | **Done** — `use-file-upload.ts` `useMutation.onSuccess` |
 | E.3 | Move **`compliance_item_completed`** into a dedicated mutation hook `onSuccess` | TBD | M | E.1 | Same |
-| E.4 | Align **`ai_task_generated`** with spec intent (document if edge vs mutation) | TBD | M | E.1 | Spec + code match; no double-fire |
-| E.5 | Resolution / suggestion events (`resolutionAudit` paths): ensure properties match §24; no PII | TBD | M | E.1 | Review payload keys |
-| E.6 | Grep guard: **`track(`** only in `src/lib/analytics.ts`, mutations, and explicitly documented exceptions | TBD | S | E.2–E.5 | `rg 'track\\(' src` reviewed in PR |
+| E.4 | Align **`ai_task_generated`** with spec intent (document if edge vs mutation) | TBD | M | E.1 | **Done** — §24.5 + `useAIExtract`: `confidence_avg` from chip `authority`; client handler documented |
+| E.5 | Resolution / suggestion events (`resolutionAudit` paths): ensure properties match §24; no PII | TBD | M | E.1 | **Done** — `suggestionTypeForAnalytics` (trim, strip control chars, cap length); only `org_id` + `suggestion_type` to PostHog |
+| E.6 | Grep guard: **`track(`** only in `src/lib/analytics.ts`, mutations, and explicitly documented exceptions | TBD | S | E.2–E.5 | **Done** — `src/lib/__tests__/analyticsTrackInvokers.test.ts` allowlist |
 
 ---
 
