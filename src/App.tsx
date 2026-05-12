@@ -14,6 +14,7 @@ import { AuthHashHandler } from "@/components/AuthHashHandler";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { LoadingState } from "@/components/design-system/LoadingState";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "@/pages/Login";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
 
@@ -183,11 +184,23 @@ const App = () => {
                       <Route path="/onboarding/complete" element={<OnboardingCompleteScreen />} />
                       
                       {/* Login route (no layout) */}
-                      <Route path="/login" element={<Login />} />
+                      <Route path="/login" element={
+                        <ErrorBoundary regionTitle="Sign in">
+                          <Login />
+                        </ErrorBoundary>
+                      } />
                       
                       {/* Contractor routes (no auth required, no layout) */}
-                      <Route path="/contractor/access" element={<ContractorAccess />} />
-                      <Route path="/contractor/task/:id" element={<ContractorTask />} />
+                      <Route path="/contractor/access" element={
+                        <ErrorBoundary regionTitle="Contractor access">
+                          <ContractorAccess />
+                        </ErrorBoundary>
+                      } />
+                      <Route path="/contractor/task/:id" element={
+                        <ErrorBoundary regionTitle="Contractor task">
+                          <ContractorTask />
+                        </ErrorBoundary>
+                      } />
                       
                       {/* Admin panel — own layout, own guard, no AppLayout */}
                       <Route path="/admin" element={

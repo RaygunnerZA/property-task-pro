@@ -24,6 +24,12 @@ import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyU
 import { createTask } from "@/services/tasks/taskMutations";
 import { track } from "@/lib/analytics";
 
+/** Returned for §24.5 `compliance_item_completed` analytics (`onSuccess`). */
+export interface MarkCompleteResult {
+  document_id: string;
+  document_type: string | null;
+}
+
 export interface MarkCompleteInput {
   complianceDocId: string;
   propertyId: string;
@@ -41,7 +47,7 @@ export function useMarkComplianceComplete() {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<MarkCompleteResult, Error, MarkCompleteInput>({
     mutationFn: async ({
       complianceDocId,
       propertyId,
@@ -53,8 +59,21 @@ export function useMarkComplianceComplete() {
       const now = new Date();
       const nowIso = now.toISOString();
 
-      // 1. Update compliance_documents (skip for rule-only occurrences with no doc)
+      let documentType: string | null = null;
+
+      // 1. Read document_type (§24.5), then update compliance_documents (skip when no doc id)
       if (complianceDocId) {
+        const { data: docMeta, error: metaErr } = await supabase
+          .from("compliance_documents")
+          .select("document_type")
+          .eq("id", complianceDocId)
+          .maybeSingle();
+
+        if (metaErr) throw metaErr;
+        if (docMeta && typeof docMeta.document_type === "string") {
+          documentType = docMeta.document_type;
+        }
+
         const { error: docError } = await supabase
           .from("compliance_documents")
           .update({
@@ -66,7 +85,14 @@ export function useMarkComplianceComplete() {
         if (docError) throw docError;
       }
 
-      if (!ruleId) return;
+      const analyticsPayload: MarkCompleteResult = {
+        document_id: complianceDocId,
+        document_type: documentType,
+      };
+
+      if (!ruleId) {
+        return analyticsPayload;
+      }
 
       // 2a. Close the pending occurrence
       // Sprint 4: if assetId is provided, scope to that specific (rule_id, asset_id) pair
@@ -103,7 +129,9 @@ export function useMarkComplianceComplete() {
         .single();
 
       if (ruleFetchError) throw ruleFetchError;
-      if (!rule) return;
+      if (!rule) {
+        return analyticsPayload;
+      }
 
       const frequency = rule.frequency ?? "annual";
       const nextDue = calculateNextDueDate(frequency, now);
@@ -150,12 +178,15 @@ export function useMarkComplianceComplete() {
           is_compliance: true,
         });
       }
+
+      return analyticsPayload;
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      if (!orgId) return;
       track("compliance_item_completed", {
         org_id: orgId,
-        document_id: variables.complianceDocId,
-        property_id: variables.propertyId,
+        document_id: data.document_id,
+        document_type: data.document_type ?? "unknown",
       });
       queryClient.invalidateQueries({
         queryKey: ["compliance", orgId, variables.propertyId],

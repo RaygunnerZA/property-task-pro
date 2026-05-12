@@ -84,7 +84,7 @@
 |---|------|-------|--------|----------------|--------|
 | E.1 | Table in **24** §24.5: list each event vs **current** `track()` callsite | TBD | S | `@Docs/24_Phase1_Observability_Spec.md` | Gap list in ticket |
 | E.2 | Move **`document_uploaded`** to mutation / upload hook `onSuccess` (not ad-hoc UI) | TBD | M | E.1 (optional) | **Done** — `use-file-upload.ts` `useMutation.onSuccess` |
-| E.3 | Move **`compliance_item_completed`** into a dedicated mutation hook `onSuccess` | TBD | M | E.1 | Same |
+| E.3 | Move **`compliance_item_completed`** into a dedicated mutation hook `onSuccess` | TBD | M | E.1 | **Done** — `useMarkComplianceComplete` + §24.5 payload (`document_type` from DB) |
 | E.4 | Align **`ai_task_generated`** with spec intent (document if edge vs mutation) | TBD | M | E.1 | **Done** — §24.5 + `useAIExtract`: `confidence_avg` from chip `authority`; client handler documented |
 | E.5 | Resolution / suggestion events (`resolutionAudit` paths): ensure properties match §24; no PII | TBD | M | E.1 | **Done** — `suggestionTypeForAnalytics` (trim, strip control chars, cap length); only `org_id` + `suggestion_type` to PostHog |
 | E.6 | Grep guard: **`track(`** only in `src/lib/analytics.ts`, mutations, and explicitly documented exceptions | TBD | S | E.2–E.5 | **Done** — `src/lib/__tests__/analyticsTrackInvokers.test.ts` allowlist |
@@ -96,7 +96,7 @@
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
 | F.1 | List **top 10 routes** by traffic / support tickets; mark which already wrapped | TBD | S | — | List in ticket |
-| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | Forced throw in dev verifies isolated fallback |
+| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Partial** — `AppLayout` + admin + hub/compliance already wrapped; **login + contractor** routes in `App.tsx` (Sprint 4) |
 | F.3 | **Work / Manage / Record** pillars: at least layout-level boundary if not per-page | TBD | M | F.2 | No white screen on child throw |
 
 ---

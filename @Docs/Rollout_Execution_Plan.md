@@ -45,6 +45,17 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 
 ---
 
+## Sprint 4 (completed)
+
+**Theme:** Phase **E.3** compliance analytics + Phase **F** error boundaries outside `AppLayout`.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S4.1 | Phase **E.3** — `compliance_item_completed` payload + mutation result | **Done** | `useMarkComplianceComplete`: fetch `document_type`, §24.5 `track` keys |
+| S4.2 | Phase **F** (partial) — `ErrorBoundary` on login + contractor routes | **Done** | `App.tsx` wraps `/login`, `/contractor/access`, `/contractor/task/:id` |
+
+---
+
 ## Done (archive)
 
 | Sprint | Item | Completed |
@@ -55,5 +66,6 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sprint 1 | Execution plan, README § Engineering, identity §8a, `AppLayout` `ErrorBoundary` | merged `main` |
 | Sprint 2 | Property timeline + drift + field assignees (Insights) | merged `main` |
 | Sprint 3 | Admin B.1/B.2–B.5, `document_uploaded` (E.2), analytics E.4–E.6 (`ai_task_generated`, resolution payloads, track allowlist test) | merged `main` |
+| Sprint 4 | E.3 compliance `track` §24.5 alignment + ErrorBoundary on login / contractor routes | this PR |
 
 Update the **Done** table whenever a checklist phase ships.
