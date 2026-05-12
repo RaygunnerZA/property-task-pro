@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +19,10 @@ import Login from "@/pages/Login";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
 
 initAnalytics();
+
+function RouteBoundary({ title, children }: { title: string; children: ReactNode }) {
+  return <ErrorBoundary regionTitle={title}>{children}</ErrorBoundary>;
+}
 
 // Lazy load all page components (except Login and AppLayout which load instantly)
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -169,19 +173,103 @@ const App = () => {
                   <AppInitializer>
                   <Suspense fallback={<LoadingState message="Loading..." />}>
                     <Routes>
-                      {/* Onboarding routes (no layout) */}
-                      <Route path="/welcome" element={<WelcomeScreen />} />
-                      <Route path="/signup" element={<SignUpScreen />} />
-                      <Route path="/verify" element={<VerifyEmailScreen />} />
-                      <Route path="/accept-invitation" element={<AcceptInvitation />} />
-                      <Route path="/auth/callback" element={<AuthCallback />} />
-                      <Route path="/onboarding/create-organisation" element={<CreateOrganisationScreen />} />
-                      <Route path="/onboarding/staff" element={<StaffOnboardingScreen />} />
-                      <Route path="/onboarding/add-property" element={<AddPropertyScreen />} />
-                      <Route path="/onboarding/add-spaces" element={<AddSpaceScreen />} />
-                      <Route path="/onboarding/invite-team" element={<InviteTeamScreen />} />
-                      <Route path="/onboarding/preferences" element={<PreferencesScreen />} />
-                      <Route path="/onboarding/complete" element={<OnboardingCompleteScreen />} />
+                      {/* Onboarding routes (no layout) — each wrapped for isolated failure */}
+                      <Route
+                        path="/welcome"
+                        element={
+                          <RouteBoundary title="Welcome">
+                            <WelcomeScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/signup"
+                        element={
+                          <RouteBoundary title="Sign up">
+                            <SignUpScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/verify"
+                        element={
+                          <RouteBoundary title="Email verification">
+                            <VerifyEmailScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/accept-invitation"
+                        element={
+                          <RouteBoundary title="Accept invitation">
+                            <AcceptInvitation />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/auth/callback"
+                        element={
+                          <RouteBoundary title="Authentication">
+                            <AuthCallback />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/create-organisation"
+                        element={
+                          <RouteBoundary title="Create organisation">
+                            <CreateOrganisationScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/staff"
+                        element={
+                          <RouteBoundary title="Staff onboarding">
+                            <StaffOnboardingScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/add-property"
+                        element={
+                          <RouteBoundary title="Add property">
+                            <AddPropertyScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/add-spaces"
+                        element={
+                          <RouteBoundary title="Add spaces">
+                            <AddSpaceScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/invite-team"
+                        element={
+                          <RouteBoundary title="Invite team">
+                            <InviteTeamScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/preferences"
+                        element={
+                          <RouteBoundary title="Preferences">
+                            <PreferencesScreen />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/complete"
+                        element={
+                          <RouteBoundary title="Onboarding complete">
+                            <OnboardingCompleteScreen />
+                          </RouteBoundary>
+                        }
+                      />
                       
                       {/* Login route (no layout) */}
                       <Route path="/login" element={

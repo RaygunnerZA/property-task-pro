@@ -389,7 +389,7 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 | `task_created` | `useCreateTask` mutation `onSuccess`; **`useAssistant`** `assistantActionMutation` `onSuccess` when the executor creates a task | `{ org_id, task_id, source: 'manual' \| 'ai' \| 'assistant' }` |
 | `ai_task_generated` | `useAIExtract` after a successful `ai-extract` edge response (debounced; deduped on normalized description — not task creation) | `{ org_id, chip_count, confidence_avg }` — `confidence_avg` is the mean of chip `authority` scores when present, else `null` |
 | `compliance_item_completed` | **`useMarkComplianceComplete`** mutation `onSuccess` (after successful writes) | `{ org_id, document_id, document_type }` — `document_type` from `compliance_documents.document_type` when a doc id is present, else `"unknown"` |
-| `document_uploaded` | `useUploadAttachment` or inbox upload `onSuccess` | `{ org_id, document_type, via_ai: boolean }` |
+| `document_uploaded` | `use-file-upload.ts` (`useMutation` `onSuccess`) | `{ org_id, document_type, via_ai: boolean }` |
 | `issue_flagged` | Issue creation mutation `onSuccess` | `{ org_id, property_id }` |
 | `ai_suggestion_accepted` | `logResolutionAudit` call path | `{ org_id, suggestion_type }` |
 | `ai_suggestion_edited` | `logResolutionAudit` call path | `{ org_id, suggestion_type }` |
@@ -398,6 +398,18 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 **Do not send:** user names, emails, property addresses, document content, or any PII in event properties.
 
 **`track()` callsite guard:** Vitest `src/lib/__tests__/analyticsTrackInvokers.test.ts` fails if any file under `src/` (except `src/lib/analytics.ts`, which defines `track`) invokes `track` with a string-literal event without updating that allowlist and this table.
+
+#### E.1 — Implementation index (event ↔ module)
+
+| Event | Primary implementation | Wired |
+|------|--------------------------|-------|
+| `property_created` | `src/hooks/mutations/useCreatePropertyMutation.ts` | Yes |
+| `task_created` | `src/hooks/mutations/useCreateTaskMutation.ts`; `src/hooks/useAssistant.ts` | Yes |
+| `ai_task_generated` | `src/hooks/useAIExtract.ts` | Yes |
+| `compliance_item_completed` | `src/hooks/useMarkComplianceComplete.ts` | Yes |
+| `document_uploaded` | `src/hooks/use-file-upload.ts` | Yes |
+| `issue_flagged` | — | **No** — add when issue-creation mutation ships |
+| `ai_suggestion_accepted` / `edited` / `rejected` | `src/services/ai/resolutionAudit.ts` (`logChipResolution`) | Yes |
 
 ### Privacy and FADP
 

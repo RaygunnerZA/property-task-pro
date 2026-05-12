@@ -8,7 +8,7 @@
 ## Goals
 
 - Avoid loading unbounded rows for **`admin_get_org_activity`** and **`admin_get_org_ai_requests`** as orgs grow.
-- Keep **one audit log row per RPC invocation** (§25) — cursor fetches are still “one logical read”; optional second log on “load more” is acceptable if product wants per-page audit granularity (default: **log once per admin session** is already satisfied by first page; document if you log each page).
+- Keep **one audit log row per RPC invocation** (§25). Each “Load more” is a separate RPC call and therefore **its own** `audit_logs` row (`admin.org.activity.viewed` / `admin.org.ai_requests.viewed`). This matches §25’s per-invocation audit; if product later wants only the first page logged, gate the INSERT in a follow-up migration.
 
 ---
 

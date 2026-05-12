@@ -45,7 +45,7 @@
 | B.3 | **Types:** regenerate Supabase types after RPC signature changes | TBD | S | B.2 | **`src/types/supabase.ts`** RPC Args/Returns updated (`has_more`, cursor args). Regenerate `integrations/supabase/types.ts` when CI/CLI available |
 | B.4 | **Hooks:** `useAdminOrgList`, `useAdminOrg`, `useAdminOrgAiRequests` — pass cursor, expose `hasNextPage` / `fetchNextPage` (or equivalent) | TBD | M | B.3 | **Done** — `useAdminOrg` + `useAdminOrgAiRequests` use `useInfiniteQuery`; `useAdminOrgList` unchanged |
 | B.5 | **UI:** org list, org detail activity, AI requests — wire infinite scroll or “Load more”; remove redundant **client-only** paging if superseded | TBD | M | B.4 | **Done** — Load more on org detail activity + AI requests page; org list still client paged |
-| B.6 | **Audit:** each RPC still logs to `audit_logs` per §25; no new PII in analytics | TBD | S | B.2 | Spot-check `audit_logs` actions |
+| B.6 | **Audit:** each RPC still logs to `audit_logs` per §25; no new PII in analytics | TBD | S | B.2 | **Done** — design doc Goals: per-RPC insert incl. Load more; spot-check in staging |
 
 ---
 
@@ -55,7 +55,7 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| C.1 | **Product decision per hook:** ship real data vs hide tab vs mark “Coming soon” (document in PR) | TBD | S | `@Docs/05_Task_Engine.md` / product | Decision recorded |
+| C.1 | **Product decision per hook:** ship real data vs hide tab vs mark “Coming soon” (document in PR) | TBD | S | `@Docs/05_Task_Engine.md` / product | **Done** — Insights ships real `usePropertyTimeline` / drift / vendors on `main` (Sprint 2) |
 | C.2 | **Data model / RLS:** confirm queries only use documented columns (`03_Data_Model`); use **`useActiveOrg`** for `org_id` | TBD | M | C.1 | No invented columns; RLS-safe |
 | C.3 | Implement **`usePropertyTimeline`** (org-scoped events: tasks, compliance, inspections — scope per product) | TBD | L | C.2 | Tab shows real data for test property |
 | C.4 | Implement **`usePropertyDrift`** (or replace with `usePropertyDriftHeatmap` + copy if that’s the real source) | TBD | L | C.2 | Tab matches design; loading/error states |
@@ -82,7 +82,7 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| E.1 | Table in **24** §24.5: list each event vs **current** `track()` callsite | TBD | S | `@Docs/24_Phase1_Observability_Spec.md` | Gap list in ticket |
+| E.1 | Table in **24** §24.5: list each event vs **current** `track()` callsite | TBD | S | `@Docs/24_Phase1_Observability_Spec.md` | **Done** — §24.5 “E.1 — Implementation index” + `issue_flagged` gap |
 | E.2 | Move **`document_uploaded`** to mutation / upload hook `onSuccess` (not ad-hoc UI) | TBD | M | E.1 (optional) | **Done** — `use-file-upload.ts` `useMutation.onSuccess` |
 | E.3 | Move **`compliance_item_completed`** into a dedicated mutation hook `onSuccess` | TBD | M | E.1 | **Done** — `useMarkComplianceComplete` + §24.5 payload (`document_type` from DB) |
 | E.4 | Align **`ai_task_generated`** with spec intent (document if edge vs mutation) | TBD | M | E.1 | **Done** — §24.5 + `useAIExtract`: `confidence_avg` from chip `authority`; client handler documented |
@@ -95,9 +95,9 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| F.1 | List **top 10 routes** by traffic / support tickets; mark which already wrapped | TBD | S | — | List in ticket |
-| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Partial** — `AppLayout` + admin + hub/compliance already wrapped; **login + contractor** routes in `App.tsx` (Sprint 4) |
-| F.3 | **Work / Manage / Record** pillars: at least layout-level boundary if not per-page | TBD | M | F.2 | No white screen on child throw |
+| F.1 | List **top 10 routes** by traffic / support tickets; mark which already wrapped | TBD | S | — | **Done** — [`Rollout_Execution_Plan.md`](./Rollout_Execution_Plan.md) Sprint 5 “Route ↔ ErrorBoundary coverage” |
+| F.2 | Add **`ErrorBoundary`** + `regionTitle` + retry (invalidate React Query where applicable) per route group | TBD | M | F.1 | **Partial** — `AppLayout` + admin + hub/compliance + **onboarding/auth no-layout routes** (`RouteBoundary` in `App.tsx`); login + contractor |
+| F.3 | **Work / Manage / Record** pillars: at least layout-level boundary if not per-page | TBD | M | F.2 | **Done** — `AppLayout` wraps all `/*` authenticated app routes (Sprint 1 + plan) |
 
 ---
 
@@ -105,8 +105,8 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| G.1 | Pick **one entry doc** (e.g. `README.md` “Platform admin” section **or** `@Docs/00_Onboarding_Developers.md` if it exists) | TBD | S | — | Link merged |
-| G.2 | Add **cross-links:** README ↔ `@Docs/25_Phase2_Admin_Panel_Spec.md` §25.2 / migration `20260511000001_*` comment | TBD | S | G.1 | New hire can find seed steps in ≤2 clicks |
+| G.1 | Pick **one entry doc** (e.g. `README.md` “Platform admin” section **or** `@Docs/00_Onboarding_Developers.md` if it exists) | TBD | S | — | **Done** — README **Engineering (FILLA)** |
+| G.2 | Add **cross-links:** README ↔ `@Docs/25_Phase2_Admin_Panel_Spec.md` §25.2 / migration `20260511000001_*` comment | TBD | S | G.1 | **Done** — README Engineering + Ch 25 Related link |
 | G.3 | Keep **`02_Identity`** + **`Roadmap_Tactical`** in sync when provider order or org rules change | TBD | S | Phase H | Any Phase H PR updates docs |
 
 ---
@@ -117,7 +117,7 @@
 
 | # | Item | Owner | Effort | Dependencies | Verify |
 |---|------|-------|--------|----------------|--------|
-| H.1 | **Document** in `02_Identity`: recommended hook for **data fetch** (`useActiveOrg` / `useOrgScope`) vs **display** (`useOrg` for `organisation` name) | TBD | S | `@Docs/02_Identity.md` | PR approved by tech lead |
+| H.1 | **Document** in `02_Identity`: recommended hook for **data fetch** (`useActiveOrg` / `useOrgScope`) vs **display** (`useOrg` for `organisation` name) | TBD | S | `@Docs/02_Identity.md` | **Done** — `02_Identity.md` §8a (preferred hooks) |
 | H.2 | **Deprecate or narrow:** e.g. `@deprecated` JSDoc on redundant hooks; eslint import restriction (optional) | TBD | M | H.1 | Grep shows new code uses preferred pattern |
 | H.3 | Migrate **highest-churn** files first (new PRs only if large migration deferred) | TBD | L | H.2 | No functional regression; dev warning still useful if JWT ≠ membership |
 

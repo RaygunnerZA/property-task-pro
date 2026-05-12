@@ -56,6 +56,34 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 
 ---
 
+## Sprint 5 (completed)
+
+**Theme:** Rollout gap fill — **E.1** analytics index, **F.1** route/boundary map, onboarding **ErrorBoundary**s, **B.6** audit note.
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| S5.1 | **E.1** — §24.5 implementation index + `issue_flagged` gap | **Done** | `@Docs/24_Phase1_Observability_Spec.md`; `document_uploaded` path corrected |
+| S5.2 | **F.1** — High-traffic route ↔ boundary map | **Done** | Table below + checklist |
+| S5.3 | **F** — Onboarding + auth callback routes wrapped | **Done** | `App.tsx` `RouteBoundary` on 11 paths |
+| S5.4 | **B.6** — Admin cursor + audit clarity | **Done** | `@Docs/25_Admin_Cursor_Pagination_Design.md` Goals bullet |
+
+### Route ↔ `ErrorBoundary` coverage (F.1)
+
+| Area | Paths (representative) | Boundary |
+|------|-------------------------|----------|
+| Main app (Work / Manage / Record / settings / legacy) | `/*` under `ProtectedRoute` | **`AppLayout`** — `regionTitle="Main workspace"` |
+| Hub / dashboard columns | `/` (dashboard) | **`app/page.tsx`** — per-column regions |
+| Compliance overview | `/compliance` | **`Compliance.tsx`** |
+| Record compliance workspace | `/record/compliance` | **`RecordCompliance.tsx`** |
+| Admin | `/admin/*` | **`AdminLayout.tsx`** |
+| Onboarding + auth (no `AppLayout`) | `/welcome`, `/signup`, `/verify`, `/accept-invitation`, `/auth/callback`, `/onboarding/*` | **`App.tsx`** — per-route `RouteBoundary` (Sprint 5) |
+| Sign-in | `/login` | **`App.tsx`** — `ErrorBoundary` |
+| Contractor | `/contractor/access`, `/contractor/task/:id` | **`App.tsx`** — `ErrorBoundary` |
+
+**Not wrapped** (by design / low traffic): `NotFound`, `DesignLibrary`, `/debug/data` — acceptable until F.2 expands again.
+
+---
+
 ## Done (archive)
 
 | Sprint | Item | Completed |
@@ -66,6 +94,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 | Sprint 1 | Execution plan, README § Engineering, identity §8a, `AppLayout` `ErrorBoundary` | merged `main` |
 | Sprint 2 | Property timeline + drift + field assignees (Insights) | merged `main` |
 | Sprint 3 | Admin B.1/B.2–B.5, `document_uploaded` (E.2), analytics E.4–E.6 (`ai_task_generated`, resolution payloads, track allowlist test) | merged `main` |
-| Sprint 4 | E.3 compliance `track` §24.5 alignment + ErrorBoundary on login / contractor routes | this PR |
+| Sprint 4 | E.3 compliance `track` §24.5 alignment + ErrorBoundary on login / contractor routes | merged `main` |
+| Sprint 5 | E.1 analytics index; F.1 route map; onboarding RouteBoundary; B.6 admin audit note | this PR |
 
 Update the **Done** table whenever a checklist phase ships.
