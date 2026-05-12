@@ -1,4 +1,5 @@
-import { useRef, useEffect, useCallback, useState, type LucideIcon } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type IconColorPickerValue = {

@@ -13,6 +13,7 @@
     "test:verbose": "vitest run --reporter=verbose",
     "lint": "eslint src",
     "lint:all": "eslint .",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -59,6 +60,7 @@
     "input-otp": "^1.4.2",
     "ldrs": "^1.1.9",
     "lucide-react": "^0.462.0",
+    "motion": "^12.38.0",
     "next-themes": "^0.3.0",
     "posthog-js": "^1.364.1",
     "react": "^18.3.1",
