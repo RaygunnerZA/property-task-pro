@@ -6,6 +6,11 @@ import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
+import {
+  SignalFeedDetailPanel,
+  type SignalFeedDetailSnapshot,
+  type WorkbenchAttentionSelectPayload,
+} from "@/components/dashboard/SignalFeedDetailPanel";
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -58,10 +63,11 @@ function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchP
   return new URLSearchParams(window.location.search);
 }
 
-type SelectedItem = {
-  type: 'task' | 'message';
-  id: string;
-} | null;
+type SelectedItem =
+  | { type: "task"; id: string }
+  | { type: "message"; id: string }
+  | { type: "signal"; id: string; snapshot: SignalFeedDetailSnapshot }
+  | null;
 
 type ExpandedSection = 'details' | 'assistant' | null;
 
@@ -434,6 +440,24 @@ export default function Dashboard() {
     setSelectedItem({ type: 'task', id: taskId });
   };
 
+  const handleAttentionItemSelect = useCallback(
+    (payload: WorkbenchAttentionSelectPayload) => {
+      if (isLargeScreen) {
+        setExpandedSection("details");
+      }
+      if (payload.kind === "message") {
+        setSelectedItem({ type: "message", id: payload.messageId });
+      } else {
+        setSelectedItem({
+          type: "signal",
+          id: payload.snapshot.id,
+          snapshot: payload.snapshot,
+        });
+      }
+    },
+    [isLargeScreen]
+  );
+
   const handleOpenIntake = (mode: IntakeMode = "report_issue") => {
     tabBeforeCreateTaskRef.current = activeTab;
     if (isLargeScreen) {
@@ -459,10 +483,9 @@ export default function Dashboard() {
 
   const handleMessageClick = (messageId: string) => {
     if (isLargeScreen) {
-      // Keep the last selected task active on desktop workbench.
-      return;
+      setExpandedSection("details");
     }
-    setSelectedItem({ type: 'message', id: messageId });
+    setSelectedItem({ type: "message", id: messageId });
   };
 
   const handleClosePanel = () => {
@@ -523,8 +546,18 @@ export default function Dashboard() {
   /** Single-property workbench: Today + weather live on the property card thumbnail instead of the gradient header. */
   const showTodayWeatherOnPropertyCard = selectedPropertyIds.size === 1;
 
-  const selectedTaskId = selectedItem?.type === "task" ? selectedItem.id : null;
-  const detailsSectionTitle = selectedTaskId ? "Task Details" : "Details";
+  const showWorkbenchDetailSection =
+    selectedItem?.type === "task" ||
+    selectedItem?.type === "message" ||
+    selectedItem?.type === "signal";
+  const detailsSectionTitle =
+    selectedItem?.type === "task"
+      ? "Task Details"
+      : selectedItem?.type === "message"
+        ? "Message"
+        : selectedItem?.type === "signal"
+          ? "Signal"
+          : "Details";
 
   const intakeScopedPropertyId = useMemo(() => {
     if (selectedPropertyIds.size !== 1) return undefined;
@@ -580,20 +613,36 @@ export default function Dashboard() {
       )}
       <ThirdColumnConcertina
         sections={[
-          ...(selectedTaskId
-            ? [{
-                id: 'details',
-                title: detailsSectionTitle,
-                isExpanded: expandedSection === 'details',
-                onToggle: () => setExpandedSection((s) => (s === 'details' ? null : 'details')),
-                children: (
-                  <TaskDetailPanel
-                    taskId={selectedTaskId}
-                    onClose={handleClosePanel}
-                    variant="column"
-                  />
-                ),
-              }]
+          ...(showWorkbenchDetailSection && selectedItem
+            ? [
+                {
+                  id: "details" as const,
+                  title: detailsSectionTitle,
+                  isExpanded: expandedSection === "details",
+                  onToggle: () => setExpandedSection((s) => (s === "details" ? null : "details")),
+                  children:
+                    selectedItem.type === "task" ? (
+                      <TaskDetailPanel
+                        taskId={selectedItem.id}
+                        onClose={handleClosePanel}
+                        variant="column"
+                      />
+                    ) : selectedItem.type === "message" ? (
+                      <MessageDetailPanel
+                        messageId={selectedItem.id}
+                        onClose={handleClosePanel}
+                        variant="column"
+                      />
+                    ) : (
+                      <SignalFeedDetailPanel
+                        snapshot={selectedItem.snapshot}
+                        onClose={handleClosePanel}
+                        variant="column"
+                        onOpenIntake={handleOpenIntake}
+                      />
+                    ),
+                },
+              ]
             : []),
           {
             id: 'assistant',
@@ -723,6 +772,7 @@ export default function Dashboard() {
             tasksLoading={tasksLoading}
             onTaskClick={handleTaskClick}
             onMessageClick={handleMessageClick}
+            onAttentionItemSelect={handleAttentionItemSelect}
             selectedItem={selectedItem}
             activeTab={activeTab}
             onTabChange={handleWorkbenchTabChange}
@@ -765,17 +815,16 @@ export default function Dashboard() {
 
       {/* Detail Panel - Modal variant for smaller screens */}
       {selectedItem && !isLargeScreen && (
-        selectedItem.type === 'task' ? (
-          <TaskDetailPanel 
-            taskId={selectedItem.id} 
-            onClose={handleClosePanel}
-            variant="modal"
-          />
+        selectedItem.type === "task" ? (
+          <TaskDetailPanel taskId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
+        ) : selectedItem.type === "message" ? (
+          <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
         ) : (
-          <MessageDetailPanel 
-            messageId={selectedItem.id} 
+          <SignalFeedDetailPanel
+            snapshot={selectedItem.snapshot}
             onClose={handleClosePanel}
             variant="modal"
+            onOpenIntake={handleOpenIntake}
           />
         )
       )}

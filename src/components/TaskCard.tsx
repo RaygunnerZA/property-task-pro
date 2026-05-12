@@ -11,6 +11,10 @@ import { useState, useMemo, useCallback, memo } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { OverlappingAvatars } from "@/components/tasks/UserAvatar";
 
+/** Issues workbench “Open work” — same meta treatment as Recent signals (JetBrains Mono 10 / 600, caps). */
+const WORKBENCH_TASK_META_CLASS =
+  "text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
+
 // Property Icon Chip Component - shows property icon on property color background
 // 24x24px icon bounding box
 function PropertyIconChip({ property }: { property: any }) {
@@ -302,7 +306,7 @@ function TaskCardComponent({
             {metaCompact ? (
               <>
                 {(spaces[0]?.name || t.due_at) && (
-                  <span className="text-xs text-muted-foreground truncate min-w-0 flex-1">
+                  <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0 flex-1")}>
                     {spaces[0]?.name ? `${spaces[0].name}` : ""}
                     {spaces[0]?.name && t.due_at ? " · " : ""}
                     {t.due_at ? formatTaskDate(t.due_at) : ""}
@@ -499,7 +503,7 @@ function TaskCardComponent({
             {metaCompact ? (
               <>
                 {(spaces[0]?.name || t.due_at) && (
-                  <span className="text-xs text-muted-foreground truncate min-w-0">
+                  <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0")}>
                     {spaces[0]?.name ? `${spaces[0].name}` : ""}
                     {spaces[0]?.name && t.due_at ? " · " : ""}
                     {t.due_at ? formatTaskDate(t.due_at) : ""}

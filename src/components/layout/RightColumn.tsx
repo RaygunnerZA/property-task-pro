@@ -4,6 +4,7 @@ import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 
 interface RightColumnProps {
   children?: ReactNode;
@@ -12,7 +13,8 @@ interface RightColumnProps {
   tasksLoading?: boolean;
   onTaskClick?: (taskId: string) => void;
   onMessageClick?: (messageId: string) => void;
-  selectedItem?: { type: 'task' | 'message'; id: string } | null;
+  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
+  selectedItem?: { type: "task" | "message" | "signal"; id: string } | null;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
@@ -39,7 +41,8 @@ export function RightColumn({
   properties,
   tasksLoading,
   onTaskClick, 
-  onMessageClick, 
+  onMessageClick,
+  onAttentionItemSelect,
   selectedItem,
   activeTab,
   onTabChange,
@@ -88,6 +91,7 @@ export function RightColumn({
             tasksLoading={tasksLoading}
             onTaskClick={onTaskClick}
             onMessageClick={onMessageClick}
+            onAttentionItemSelect={onAttentionItemSelect}
             selectedItem={selectedItem}
             activeTab={activeTab}
             onTabChange={onTabChange}

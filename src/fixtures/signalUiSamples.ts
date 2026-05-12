@@ -161,7 +161,7 @@ export const SIGNAL_UI_FIXTURES_REVIEW: SignalUiFixture[] = [
     explanation: "Certificate-like text found but owner and record type are unclear.",
     primaryAction: { id: "signal-convert", label: "Add to Records" },
     secondaryActions: [
-      { id: "signal-review", label: "Treat as Issue" },
+      { id: "treat-as-issue", label: "Treat as Issue" },
       { id: "dismiss", label: "Dismiss" },
     ],
   },

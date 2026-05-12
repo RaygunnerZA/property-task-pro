@@ -55,6 +55,10 @@ import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import { buildRecentUnifiedSignalMetaLine } from "@/lib/recentSignalMetaLine";
+import type {
+  SignalFeedDetailSnapshot,
+  WorkbenchAttentionSelectPayload,
+} from "@/components/dashboard/SignalFeedDetailPanel";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -62,7 +66,9 @@ interface TaskPanelProps {
   tasksLoading?: boolean;
   onTaskClick?: (taskId: string) => void;
   onMessageClick?: (messageId: string) => void;
-  selectedItem?: { type: "task" | "message"; id: string } | null;
+  /** Issues stream card → third column / modal (message thread or read-only signal snapshot). */
+  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
+  selectedItem?: { type: "task" | "message" | "signal"; id: string } | null;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
@@ -102,6 +108,7 @@ type IssuesSignalCardProps = {
   addAttentionItemToCompliance: (item: AttentionItem) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
   onMessageClick?: (messageId: string) => void;
+  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
 };
 
 type RecentNeedsReviewStackProps = {
@@ -112,6 +119,7 @@ type RecentNeedsReviewStackProps = {
   addAttentionItemToCompliance: (item: AttentionItem) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
   onMessageClick?: (messageId: string) => void;
+  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
 };
 
 const SIGNAL_COLUMN_RECENT = {
@@ -161,6 +169,7 @@ function RecentNeedsReviewStack({
   addAttentionItemToCompliance,
   onOpenIntake,
   onMessageClick,
+  onAttentionItemSelect,
 }: RecentNeedsReviewStackProps) {
   const renderSignal = (item: AttentionItem) => (
     <IssuesSignalCard
@@ -170,6 +179,7 @@ function RecentNeedsReviewStack({
       addAttentionItemToCompliance={addAttentionItemToCompliance}
       onOpenIntake={onOpenIntake}
       onMessageClick={onMessageClick}
+      onAttentionItemSelect={onAttentionItemSelect}
     />
   );
 
@@ -223,6 +233,10 @@ function runFixtureAction(
       onOpenIntake?.("add_record");
       resolveAttentionItem(item.id);
       break;
+    case "treat-as-issue":
+      onOpenIntake?.("report_issue");
+      resolveAttentionItem(item.id);
+      break;
     case "signal-assign":
       onOpenIntake?.("report_issue");
       resolveAttentionItem(item.id);
@@ -244,6 +258,7 @@ function IssuesSignalCard({
   addAttentionItemToCompliance,
   onOpenIntake,
   onMessageClick,
+  onAttentionItemSelect,
 }: IssuesSignalCardProps) {
   const ctx = {
     resolveAttentionItem,
@@ -251,6 +266,20 @@ function IssuesSignalCard({
     onOpenIntake,
     onMessageClick,
   };
+
+  const cardActivate =
+    item.id === "recent-empty-seed" || !onAttentionItemSelect
+      ? undefined
+      : () => {
+          if (item.messageId) {
+            onAttentionItemSelect({ kind: "message", messageId: item.messageId });
+          } else {
+            onAttentionItemSelect({
+              kind: "signal",
+              snapshot: attentionItemToSignalSnapshot(item),
+            });
+          }
+        };
 
   if (item.group === "urgent") {
     const icon = item.signalKind
@@ -303,6 +332,7 @@ function IssuesSignalCard({
         emphasis="standard"
         actions={primaryAction ? [primaryAction] : actionsList.slice(0, 1)}
         minorLinkAction={minor ?? minorFromExtras}
+        onCardActivate={cardActivate}
       />
     );
   }
@@ -344,7 +374,8 @@ function IssuesSignalCard({
           ];
 
     const reviewShortReason =
-      item.whyHere?.trim() || item.context?.trim() || item.description?.trim() || undefined;
+      item.whyHere?.trim() || item.description?.trim() || undefined;
+    const issuesMetaLine = item.context?.trim() || undefined;
 
     return (
       <OperationalStreamCard
@@ -353,6 +384,7 @@ function IssuesSignalCard({
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
+        issuesMetaLine={issuesMetaLine}
         reviewShortReason={reviewShortReason}
         icon={icon}
         title={item.title}
@@ -366,6 +398,7 @@ function IssuesSignalCard({
           label: "Dismiss",
           onClick: () => runFixtureAction("dismiss", item, ctx),
         }}
+        onCardActivate={cardActivate}
       />
     );
   }
@@ -426,8 +459,24 @@ function IssuesSignalCard({
       accent="slate"
       emphasis="minimal"
       actions={viewAction ? [viewAction, ...(dismissAction ? [dismissAction] : [])] : actionsList}
+      onCardActivate={cardActivate}
     />
   );
+}
+
+function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDetailSnapshot {
+  return {
+    id: item.id,
+    group: item.group,
+    title: item.title,
+    context: item.context,
+    description: item.description,
+    whyHere: item.whyHere,
+    footChipLabel: item.footChipLabel,
+    signalKind: item.signalKind,
+    messageId: item.messageId,
+    complianceSeed: item.complianceSeed,
+  };
 }
 
 function useTaskTabNarrowViewport() {
@@ -579,6 +628,7 @@ export function TaskPanel({
   tasksLoading = false,
   onTaskClick,
   onMessageClick,
+  onAttentionItemSelect,
   selectedItem,
   activeTab: externalActiveTab,
   onTabChange,
@@ -1346,6 +1396,7 @@ export function TaskPanel({
                                   addAttentionItemToCompliance={addAttentionItemToCompliance}
                                   onOpenIntake={onOpenIntake}
                                   onMessageClick={onMessageClick}
+                                  onAttentionItemSelect={onAttentionItemSelect}
                                 />
                               ))}
                             </div>
@@ -1359,6 +1410,7 @@ export function TaskPanel({
                           addAttentionItemToCompliance={addAttentionItemToCompliance}
                           onOpenIntake={onOpenIntake}
                           onMessageClick={onMessageClick}
+                          onAttentionItemSelect={onAttentionItemSelect}
                         />
                       </>
                     ) : (
@@ -1381,6 +1433,7 @@ export function TaskPanel({
                                     addAttentionItemToCompliance={addAttentionItemToCompliance}
                                     onOpenIntake={onOpenIntake}
                                     onMessageClick={onMessageClick}
+                                    onAttentionItemSelect={onAttentionItemSelect}
                                   />
                                 ))}
                               </div>
