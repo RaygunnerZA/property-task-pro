@@ -104,7 +104,7 @@ type IssuesSignalCardProps = {
   onMessageClick?: (messageId: string) => void;
 };
 
-type RecentNeedsReviewColumnsProps = {
+type RecentNeedsReviewStackProps = {
   recentItems: AttentionItem[];
   reviewItems: AttentionItem[];
   attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
@@ -139,21 +139,21 @@ const SIGNAL_STACK_SECTIONS = [
     itemsKey: "urgent" as const,
   },
   {
-    key: "recent",
-    title: SIGNAL_COLUMN_RECENT.title,
-    subtitle: SIGNAL_COLUMN_RECENT.subtitle,
-    itemsKey: "recent" as const,
-  },
-  {
     key: "review",
     title: SIGNAL_COLUMN_REVIEW.title,
     subtitle: SIGNAL_COLUMN_REVIEW.subtitle,
     itemsKey: "review" as const,
   },
+  {
+    key: "recent",
+    title: SIGNAL_COLUMN_RECENT.title,
+    subtitle: SIGNAL_COLUMN_RECENT.subtitle,
+    itemsKey: "recent" as const,
+  },
 ] as const;
 
-/** Two-column row: recent signals (left) and needs review (right). */
-function RecentNeedsReviewColumns({
+/** Stacked sections: triage first (needs review), then recent activity — single column for simpler scanning. */
+function RecentNeedsReviewStack({
   recentItems,
   reviewItems,
   attentionCardRefs,
@@ -161,7 +161,7 @@ function RecentNeedsReviewColumns({
   addAttentionItemToCompliance,
   onOpenIntake,
   onMessageClick,
-}: RecentNeedsReviewColumnsProps) {
+}: RecentNeedsReviewStackProps) {
   const renderSignal = (item: AttentionItem) => (
     <IssuesSignalCard
       item={item}
@@ -174,21 +174,21 @@ function RecentNeedsReviewColumns({
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
-      <IssuesScrollColumn
-        title={SIGNAL_COLUMN_RECENT.title}
-        subtitle={SIGNAL_COLUMN_RECENT.subtitle}
-        items={recentItems}
-        emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
-        emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
-        renderCard={renderSignal}
-      />
+    <div className="flex min-w-0 flex-col gap-6">
       <IssuesScrollColumn
         title={SIGNAL_COLUMN_REVIEW.title}
         subtitle={SIGNAL_COLUMN_REVIEW.subtitle}
         items={reviewItems}
         emptyTitle={SIGNAL_COLUMN_REVIEW.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_REVIEW.emptyDescription}
+        renderCard={renderSignal}
+      />
+      <IssuesScrollColumn
+        title={SIGNAL_COLUMN_RECENT.title}
+        subtitle={SIGNAL_COLUMN_RECENT.subtitle}
+        items={recentItems}
+        emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
+        emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
         renderCard={renderSignal}
       />
     </div>
@@ -1351,7 +1351,7 @@ export function TaskPanel({
                             </div>
                           </div>
                         )}
-                        <RecentNeedsReviewColumns
+                        <RecentNeedsReviewStack
                           recentItems={groupedAttentionItems.recent}
                           reviewItems={groupedAttentionItems.review}
                           attentionCardRefs={attentionCardRefs}

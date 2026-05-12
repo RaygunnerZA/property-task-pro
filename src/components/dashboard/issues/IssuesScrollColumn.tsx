@@ -18,7 +18,7 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
 };
 
 /**
- * Vertical scroll panel for Issues feed columns (Recent / Needs Review).
+ * Vertical scroll panel for Issues feed sections (recent / needs review).
  * Cards ease in smoothly when they enter the column viewport—no scroll-linked distortion.
  */
 export function IssuesScrollColumn<T extends { id: string }>({
