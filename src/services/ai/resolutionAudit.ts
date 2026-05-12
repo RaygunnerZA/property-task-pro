@@ -38,7 +38,7 @@ export async function logResolutionAudit(
 function suggestionTypeForAnalytics(suggestion: Record<string, unknown>): string {
   const raw = suggestion.type ?? suggestion.chip;
   if (raw == null || typeof raw !== "string") return "unknown";
-  const cleaned = raw.trim().replace(/[\r\n\u0000]+/g, "").slice(0, 64);
+  const cleaned = raw.trim().replace(/[\r\n]+/g, "").split("\0").join("").slice(0, 64);
   return cleaned.length > 0 ? cleaned : "unknown";
 }
 
