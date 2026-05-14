@@ -3,8 +3,9 @@ import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 
-/** Minimum trimmed length before calling ai-extract */
-const MIN_DESCRIPTION_LENGTH = 8;
+/** Minimum trimmed length before calling ai-extract. Raised from 8 → 12 to avoid
+ *  burning calls on fragments like "The b is" that can't yet be summarised. */
+const MIN_DESCRIPTION_LENGTH = 12;
 
 /** Minimum gap between completed API calls (ms) */
 const AI_CALL_COOLDOWN_MS = 2000;
@@ -89,11 +90,20 @@ export function useAIExtract(input: string) {
   const lastCallTimeRef = useRef<number>(0);
   const isProcessingRef = useRef(false);
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Aborts the in-flight request when input changes or the hook unmounts. */
+  const activeAbortRef = useRef<AbortController | null>(null);
 
   const clearPendingTimer = useCallback(() => {
     if (pendingTimerRef.current != null) {
       clearTimeout(pendingTimerRef.current);
       pendingTimerRef.current = null;
+    }
+  }, []);
+
+  const abortActiveRequest = useCallback(() => {
+    if (activeAbortRef.current) {
+      activeAbortRef.current.abort();
+      activeAbortRef.current = null;
     }
   }, []);
 
@@ -105,6 +115,11 @@ export function useAIExtract(input: string) {
       if (trimmed.length < MIN_DESCRIPTION_LENGTH) return;
       if (isProcessingRef.current) return;
       if (normalized === lastSuccessNormalizedRef.current) return;
+
+      // Cancel any prior request — guarantees the most recent input wins.
+      abortActiveRequest();
+      const controller = new AbortController();
+      activeAbortRef.current = controller;
 
       isProcessingRef.current = true;
       lastCallTimeRef.current = Date.now();
@@ -118,8 +133,6 @@ export function useAIExtract(input: string) {
         } = await supabase.auth.getSession();
         if (!session) {
           setError("Not authenticated");
-          isProcessingRef.current = false;
-          setLoading(false);
           return;
         }
 
@@ -136,7 +149,15 @@ export function useAIExtract(input: string) {
             description: trimmed,
             org_id: orgId,
           }),
+          signal: controller.signal,
         });
+
+        // Stale-response guard: if the user has typed past what we sent (and
+        // the change isn't just whitespace), drop the result to avoid
+        // flashing outdated chips/titles.
+        if (normalizeForDedupe(inputRef.current) !== normalized) {
+          return;
+        }
 
         const responseText = await response.text();
         let responseData: unknown;
@@ -169,16 +190,23 @@ export function useAIExtract(input: string) {
           lastSuccessNormalizedRef.current = "";
         }
       } catch (err: unknown) {
+        // Aborts are expected when superseded by newer input — not real errors.
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
         console.error("AI extract error:", err);
         setError(err instanceof Error ? err.message : "Failed to extract");
         setResult(null);
         lastSuccessNormalizedRef.current = "";
       } finally {
+        if (activeAbortRef.current === controller) {
+          activeAbortRef.current = null;
+        }
         setLoading(false);
         isProcessingRef.current = false;
       }
     },
-    [orgId]
+    [orgId, abortActiveRequest]
   );
 
   useEffect(() => {
@@ -191,6 +219,8 @@ export function useAIExtract(input: string) {
       if (!trimmed) {
         lastSuccessNormalizedRef.current = "";
       }
+      // Whatever was in flight is no longer relevant.
+      abortActiveRequest();
       setResult(null);
       setLoading(false);
       return;
@@ -248,7 +278,14 @@ export function useAIExtract(input: string) {
     return () => {
       clearPendingTimer();
     };
-  }, [input, orgId, orgLoading, clearPendingTimer, extractNow]);
+  }, [input, orgId, orgLoading, clearPendingTimer, extractNow, abortActiveRequest]);
+
+  // Abort any in-flight request when the hook unmounts.
+  useEffect(() => {
+    return () => {
+      abortActiveRequest();
+    };
+  }, [abortActiveRequest]);
 
   return { result, loading, error };
 }

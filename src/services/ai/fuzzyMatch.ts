@@ -65,17 +65,45 @@ export function levenshteinDistance(a: string, b: string): number {
 // ─── Distance-based Fuzzy Match ─────────────────────────────────
 
 /**
+ * Escape a string for safe use in a `RegExp`.
+ */
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Quick fuzzy match by absolute edit distance.
  * Used by the rule-based extractor for keyword-level matching.
  *
- * Checks (in order): exact → contains → Levenshtein ≤ `maxDistance`.
+ * Checks (in order):
+ *   1. exact (after normalisation)
+ *   2. **constrained** containment — only when the shorter side is ≥ 4 chars
+ *      AND appears at a word boundary OR as a prefix of the longer side.
+ *      Without this guard, a 3-char word like "set" would match "closet"
+ *      (because "closet".includes("set") is true), and "do" would match
+ *      "door", etc.
+ *   3. Levenshtein ≤ `maxDistance` for typo-tolerant matching.
  */
 export function isFuzzyMatch(a: string, b: string, maxDistance = 2): boolean {
   const na = normalizeString(a);
   const nb = normalizeString(b);
+  if (!na || !nb) return false;
 
   if (na === nb) return true;
-  if (na.includes(nb) || nb.includes(na)) return true;
+
+  const [shorter, longer] = na.length <= nb.length ? [na, nb] : [nb, na];
+  if (shorter.length >= 4) {
+    // Whole-word containment, e.g. "room" inside "boiler room".
+    const wordRe = new RegExp(`\\b${escapeForRegex(shorter)}\\b`);
+    if (wordRe.test(longer)) return true;
+    // Prefix containment, e.g. "hall" → "hallway", "kitchen" → "kitchenette".
+    if (longer.startsWith(shorter)) return true;
+  }
+
+  // Below 3 characters, Levenshtein distance is too small to discriminate
+  // (e.g. distance("do","door") = 2 ≤ default maxDistance of 2). Require an
+  // exact match — already handled above — so reject here.
+  if (shorter.length < 3) return false;
 
   return levenshteinDistance(na, nb) <= maxDistance;
 }

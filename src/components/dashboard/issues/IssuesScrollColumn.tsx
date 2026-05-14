@@ -10,6 +10,8 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   title: string;
   /** One line under the title — defines what this column is (signals, not tasks). */
   subtitle?: string;
+  /** Decorative illustration shown on the right of the header row. */
+  headerIllustrationSrc?: string;
   items: T[];
   emptyTitle: string;
   emptyDescription: string;
@@ -24,6 +26,7 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
 export function IssuesScrollColumn<T extends { id: string }>({
   title,
   subtitle,
+  headerIllustrationSrc,
   items,
   emptyTitle,
   emptyDescription,
@@ -34,12 +37,24 @@ export function IssuesScrollColumn<T extends { id: string }>({
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col space-y-2", className)}>
-      <div className="my-0 flex shrink-0 flex-row items-start gap-3 px-1 py-[18px]">
+      <div className="my-0 flex w-full min-w-0 shrink-0 flex-row items-start gap-3 px-1 py-[18px]">
         <p className="flex w-[135px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
           {title}
         </p>
         {subtitle ? (
-          <p className="flex w-[291px] shrink-0 text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
+          <p className="flex min-w-0 max-w-[291px] shrink-0 text-[11px] leading-snug text-muted-foreground">
+            {subtitle}
+          </p>
+        ) : null}
+        {headerIllustrationSrc ? (
+          <div className="ml-auto shrink-0 pl-2 pt-0.5">
+            <img
+              src={headerIllustrationSrc}
+              alt=""
+              className="h-[52px] w-[52px] object-contain drop-shadow-sm"
+              decoding="async"
+            />
+          </div>
         ) : null}
       </div>
       {items.length === 0 ? (

@@ -1,7 +1,8 @@
 /**
  * Shared section metadata for CreateTaskModal.
- * Defined here so both CreateTaskModal and CreateTaskSections can import it
- * without either depending on the other.
+ * Kept in a separate file from CreateTaskSections.tsx so the modal and section
+ * stack can share it without circular imports. Basename must not differ only
+ * by letter case from CreateTaskSections.tsx (case-insensitive volume collision).
  */
 import { User, Calendar, MapPin, AlertTriangle, Shield, Box, Tag } from "lucide-react";
 

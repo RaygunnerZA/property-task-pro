@@ -12,7 +12,7 @@ import type { TaskCreatedSource } from "@/hooks/mutations/useCreateTaskMutation"
 import { useCreateTaskForm } from "./create/useCreateTaskForm";
 import { useCreateTaskAIPipeline } from "./create/useCreateTaskAIPipeline";
 import { useCreateTaskSubmit } from "./create/useCreateTaskSubmit";
-import { CreateTaskSections } from "./create/CreateTaskSections";
+import { CreateTaskSections } from "./create/CreateTaskSections.tsx";
 import { CreateTaskFooter } from "./create/CreateTaskFooter";
 import { CreateTaskDialogs } from "./create/CreateTaskDialogs";
 

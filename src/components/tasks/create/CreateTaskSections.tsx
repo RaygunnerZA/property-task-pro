@@ -25,7 +25,7 @@ import type { SubtaskInput } from "./SubtasksSection";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { TaskPriority, RepeatRule } from "@/types/database";
 import type { AIExtractResponse } from "@/hooks/useAIExtract";
-import { CREATE_TASK_SECTIONS } from "./createTaskSections";
+import { CREATE_TASK_SECTIONS } from "./createTaskSectionMeta";
 
 export interface CreateTaskSectionsProps {
   // Section state

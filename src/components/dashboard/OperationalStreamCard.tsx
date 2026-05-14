@@ -77,10 +77,10 @@ const accentClassMap: Record<CardAccent, string> = {
 
 const emphasisShellMap: Record<StreamCardEmphasis, string> = {
   minimal:
-    "rounded-xl bg-card/50 shadow-sm hover:shadow-md px-2.5 py-2 transition-all duration-[180ms]",
-  standard: "rounded-xl bg-card/60 shadow-e1 hover:shadow-e2 px-3 py-2.5 transition-all duration-[140ms]",
+    "rounded-xl bg-card/50 shadow-sm hover:shadow-md px-2.5 py-2 transition-all duration-\[180ms\]",
+  standard: "rounded-xl bg-card/60 shadow-e1 hover:shadow-e2 px-3 py-2.5 transition-all duration-\[140ms\]",
   elevated:
-    "rounded-xl bg-card/85 shadow-md hover:shadow-lg px-3 py-2.5 ring-1 ring-[#8EC9CE]/22 transition-all duration-[180ms]",
+    "rounded-xl bg-card/85 shadow-md hover:shadow-lg px-3 py-2.5 ring-1 ring-[#8EC9CE]/22 transition-all duration-\[180ms\]",
 };
 
 const inlineMinorLinkClass = cn(
@@ -594,7 +594,7 @@ export function OperationalStreamCard({
   const footerVisible =
     actionsVisibility === "always"
       ? "opacity-100 pt-2"
-      : "max-h-0 opacity-0 overflow-hidden transition-all duration-[140ms] group-hover:max-h-48 group-hover:opacity-100 group-focus-within:max-h-48 group-focus-within:opacity-100 pt-0 group-hover:pt-2 group-focus-within:pt-2";
+      : "max-h-0 opacity-0 overflow-hidden transition-all duration-\[140ms\] group-hover:max-h-48 group-hover:opacity-100 group-focus-within:max-h-48 group-focus-within:opacity-100 pt-0 group-hover:pt-2 group-focus-within:pt-2";
 
   if (feedLayout) {
     return (

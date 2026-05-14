@@ -195,6 +195,95 @@ describe("extractChipsFromText — space detection", () => {
     );
     expect(alley).toBeDefined();
   });
+
+  // Regression: "set" (3 chars) used to falsely match a "Closet" space because
+  // the fuzzy matcher treated `"closet".includes("set")` as a positive match.
+  // The closet chip in the screenshot for "James, set it up in 2 weeks" came
+  // from this exact path. See fuzzyMatch.isFuzzyMatch + detectSpaces.
+  it("description with 'set it up' does NOT match a 'Closet' space", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [
+        { id: "s-closet", name: "Closet", property_id: "p1" },
+        { id: "s-garage", name: "Garage", property_id: "p1" },
+      ],
+    };
+    const result = extractChipsFromText(
+      {
+        description: "the bmw needs a service. James, set it up in 2 weeks",
+        propertyId: "p1",
+      },
+      entities
+    );
+    const closet = result.chips.find(
+      (c) => c.type === "space" && c.resolvedEntityId === "s-closet"
+    );
+    expect(closet).toBeUndefined();
+  });
+
+  it("description that genuinely mentions a 'closet' DOES match a Closet space", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [{ id: "s-closet", name: "Closet", property_id: "p1" }],
+    };
+    const result = extractChipsFromText(
+      { description: "tidy the closet before guests arrive", propertyId: "p1" },
+      entities
+    );
+    const closet = result.chips.find(
+      (c) => c.type === "space" && c.resolvedEntityId === "s-closet"
+    );
+    expect(closet).toBeDefined();
+  });
+
+  it("short two-letter space names ('On') do not match every sentence", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [{ id: "s-on", name: "On", property_id: "p1" }],
+    };
+    const result = extractChipsFromText(
+      { description: "Please turn this off and on again later", propertyId: "p1" },
+      entities
+    );
+    // "on" appears as a word — the word-boundary check should permit it.
+    const onMatch = result.chips.find(
+      (c) => c.type === "space" && c.resolvedEntityId === "s-on"
+    );
+    expect(onMatch).toBeDefined();
+  });
+
+  it("short two-letter space names do not match arbitrary substrings", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      // "An" would previously match any text containing 'an' (e.g. "James"
+      // contains "an"). Word-boundary matching prevents this.
+      spaces: [{ id: "s-an", name: "An", property_id: "p1" }],
+    };
+    const result = extractChipsFromText(
+      { description: "James needs to fix the boiler", propertyId: "p1" },
+      entities
+    );
+    const anMatch = result.chips.find(
+      (c) => c.type === "space" && c.resolvedEntityId === "s-an"
+    );
+    expect(anMatch).toBeUndefined();
+  });
+
+  it("prefix match still works: 'hallway' space is matched by word 'hall' in text", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [{ id: "s-hall", name: "Hallway", property_id: "p1" }],
+    };
+    const result = extractChipsFromText(
+      { description: "There is a draft in the hall area", propertyId: "p1" },
+      entities
+    );
+    // "hall" is a prefix of "hallway" — fuzzy matcher should still link them.
+    const hall = result.chips.find(
+      (c) => c.type === "space" && c.resolvedEntityId === "s-hall"
+    );
+    expect(hall).toBeDefined();
+  });
 });
 
 // ─── Date Detection ─────────────────────────────────────────────────────────

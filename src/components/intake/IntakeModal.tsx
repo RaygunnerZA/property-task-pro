@@ -256,13 +256,20 @@ export function IntakeModal({
 
   const isUsableGeneratedTitle = useCallback((rawTitle: string) => {
     const trimmed = rawTitle.trim().replace(/[.!?,:;]+$/, "");
-    if (trimmed.length < 5) return false;
+    // Require enough total characters to be a real title (avoids "The b").
+    if (trimmed.length < 8) return false;
 
     const words = trimmed.split(/\s+/).filter(Boolean);
     if (words.length < 2) return false;
 
-    const lastWord = words[words.length - 1]?.toLowerCase() ?? "";
-    if (TITLE_TRAILING_STOP_WORDS.has(lastWord)) return false;
+    // A trailing single-character word almost always means the user is mid-typing
+    // (e.g. "The b" while they're still on "bmw"). Hold the previous title in
+    // that case rather than committing a partial fragment.
+    const lastWord = words[words.length - 1] ?? "";
+    if (lastWord.length < 2) return false;
+
+    const lastWordLower = lastWord.toLowerCase();
+    if (TITLE_TRAILING_STOP_WORDS.has(lastWordLower)) return false;
     if (/\bon(?:\s+the)?\s+\d{1,2}(?:st|nd|rd|th)?$/i.test(trimmed)) return false;
 
     return true;
@@ -270,18 +277,26 @@ export function IntakeModal({
 
   useEffect(() => {
     if (userEditedTitle) return;
+    const trimmedDescription = description.trim();
+    // Don't auto-populate a title until the description has enough substance.
+    // Without this gate, the fallback locks in fragments like "The b" before
+    // ai-extract has a chance to run (min length 12, debounce 2.3s).
+    if (trimmedDescription.length < 12 && !aiResult?.title) return;
+
     const aiRaw = aiResult?.title?.trim() || "";
     const fallback = buildFallbackTitleFromDescription(description);
     const chosen =
-      aiRaw && isUsableGeneratedTitle(aiRaw)
-        ? aiRaw
-        : fallback;
+      aiRaw && isUsableGeneratedTitle(aiRaw) ? aiRaw : fallback;
     if (!chosen) return;
     const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
+    // Never commit a fragment — keep the previous title until we have something usable.
+    if (!isUsableGeneratedTitle(processed)) return;
+
     setAiTitleGenerated(processed);
-    // Use ref so that changing `title` doesn't re-trigger this effect (prevents overwrite loop).
-    const t = titleRef.current.trim();
-    if (!isUsableGeneratedTitle(t)) setTitle(processed);
+    // User hasn't edited the title, so always upgrade to the latest computed
+    // value (lets AI replace fallback when it arrives, and lets a later
+    // fallback replace an earlier one as the description grows).
+    if (titleRef.current.trim() !== processed) setTitle(processed);
     setShowTitleField(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle]);

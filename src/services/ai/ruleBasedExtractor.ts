@@ -235,6 +235,11 @@ const spaceKeywordPatterns = spaceKeywords.map(keyword => {
  */
 const AT_LOCATION_PATTERN = /\b(?:at|in|from)\s+the\s+([a-z][a-z\s]{2,30}?)(?:\s+(?:today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next|last|by|before|on|at\b)|[,.!?]|$)/gi;
 
+/** Escape a string for safe use in a `RegExp`. */
+function escapeForRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Detect spaces from text using fuzzy matching
  * Also detects potential space names that don't match existing spaces (creates verb/ghost chips)
@@ -251,12 +256,14 @@ function detectSpaces(
     ? spaces.filter(s => s.property_id === propertyId)
     : spaces;
   
-  // Direct space name matching
+  // Direct space name matching — require a word-boundary hit in the text so
+  // short space names ("On", "An", "Or") don't trivially match every sentence,
+  // and "set" doesn't match a "Closet" space via plain substring containment.
   for (const space of filteredSpaces) {
     const spaceName = space.name.toLowerCase();
-    
-    // Check for fuzzy match in text
-    if (text.includes(spaceName) || words.some(w => isFuzzyMatch(w, spaceName))) {
+    const spaceNameWordRe = new RegExp(`\\b${escapeForRegex(spaceName)}\\b`);
+
+    if (spaceNameWordRe.test(text) || words.some(w => isFuzzyMatch(w, spaceName))) {
       chips.push({
         id: `space-${space.id}`,
         type: 'space',
