@@ -27,6 +27,11 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Environment (secrets) — keep .env.example tracked
+.env
+.env.*
+!.env.example
 .env*.local
 
 # Supabase CLI local cache (not portable)

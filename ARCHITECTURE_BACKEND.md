@@ -2,14 +2,14 @@
 
 This document outlines the backend logic structure and boundaries.
 
-## Backend Folders (Do Not Modify in Lovable)
+## Backend Folders (protected — domain logic)
 - /services/**  
 - /lib/**  
 - /types/**  
 
-These contain Supabase logic, domain services, AI pipelines, and data integrity functions.
+These contain Supabase logic, domain services, AI pipelines, and data integrity functions. Do not change without reviewing `@Docs/` and migrations.
 
-## Frontend / UI (Lovable may modify)
+## Frontend / UI
 - /components/filla/**
 - /app/screens/**
 

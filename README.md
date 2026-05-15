@@ -1,117 +1,95 @@
-# Welcome to your Lovable project
+# FILLA — Property Task Pro
 
-## Project info 
+Property operations platform: tasks, compliance, assets, and team workflows. React + Supabase.
 
-**URL**: https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21
+## Local setup
 
-## How can I edit this code?
-
-There are several ways of editing your application. 
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Requires [Node.js](https://nodejs.org/) (LTS) and npm.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+cd property-task-pro
+npm ci
+cp .env.example .env   # fill in Supabase values from your project dashboard
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open the URL printed by Vite (typically `http://localhost:5173`).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Environment variables
 
-**Use GitHub Codespaces**
+| Variable | Where | Notes |
+|----------|--------|--------|
+| `VITE_SUPABASE_URL` | `.env`, Vercel | Public |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `.env`, Vercel | Public (anon/publishable) |
+| `VITE_SUPABASE_PROJECT_ID` | `.env` | Public |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env` only (local scripts) | **Secret** — never commit or prefix with `VITE_` |
+| `VITE_POSTHOG_KEY` | `.env`, Vercel | Public analytics key |
+| `VITE_APP_URL` | Vercel production | Auth redirect base URL |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+If `.env` was ever committed, rotate the **service role key** in Supabase Dashboard → Settings → API before continuing.
 
-## What technologies are used for this project?
+## Scripts
 
-This project is built with:
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build |
+| `npm run test` | Vitest (`src/`) |
+| `npm run lint` | ESLint on `src/` (merge gate) |
+| `npm run lint:all` | ESLint on repo TS (excludes `supabase/functions`) |
+| `npm run typecheck` | `tsc --noEmit` (app config) |
+| `npm run gen:types` | Regenerate `src/types/supabase.ts` from linked project |
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Package manager: **npm** (`package-lock.json`). Use `npm ci` in CI and fresh clones.
+
+## Stack
+
+- Vite, TypeScript, React
+- shadcn-ui, Tailwind CSS (neomorphic design system — see `@Docs/04_UI_System.md`)
+- Supabase (Postgres, Auth, Storage, Edge Functions)
 
 ### Supabase types
 
-Frontend typing is driven by generated types from the live public schema (`src/types/supabase.ts`). To avoid schema/type drift after DB changes, regenerate with:
+Frontend types come from the live public schema (`src/types/supabase.ts`). After DB migrations:
 
 ```sh
 npm run gen:types
 ```
 
-Requires the Supabase CLI and a linked project (`supabase link`), or run the generator manually with your project ID and redirect output to `src/types/supabase.ts`.
+Requires Supabase CLI and `supabase link`, or generate manually and write to `src/types/supabase.ts`.
 
-## Engineering (FILLA)
+## Engineering
 
-- **Canonical docs:** [`@Docs/`](./@Docs/) — data model, identity, observability, admin (see repo `.cursorrules`).
-- **Rollout backlog (1–2 sprints):** [`@Docs/Rollout_Checklist_1-2_Sprints.md`](./@Docs/Rollout_Checklist_1-2_Sprints.md)
-- **What we’re executing now:** [`@Docs/Rollout_Execution_Plan.md`](./@Docs/Rollout_Execution_Plan.md)
-- **First platform admin:** insert your auth user into `platform_admins` via Supabase SQL — see the comment in `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md) §25.2.
-- **Admin list scale:** [`@Docs/25_Admin_Cursor_Pagination_Design.md`](./@Docs/25_Admin_Cursor_Pagination_Design.md) — keyset pagination for org activity and AI requests (RPC + admin UI).
-- **Lint policy:** `npm run lint` runs **ESLint on `src/` only** (intended merge gate). `npm run lint:all` includes other TS files (e.g. root configs); **`supabase/functions/**` is ignored** (Deno — use `deno lint` there if needed). Several `@typescript-eslint` rules are **warnings** until strictness cleanup; see `eslint.config.js`.
+- **Canonical docs:** [`@Docs/`](./@Docs/) — data model, identity, UI system (see `.cursorrules`)
+- **Backend overview:** [`README_BACKEND.md`](./README_BACKEND.md), [`ARCHITECTURE_BACKEND.md`](./ARCHITECTURE_BACKEND.md)
+- **Rollout backlog:** [`@Docs/Rollout_Checklist_1-2_Sprints.md`](./@Docs/Rollout_Checklist_1-2_Sprints.md)
+- **Current execution:** [`@Docs/Rollout_Execution_Plan.md`](./@Docs/Rollout_Execution_Plan.md)
+- **TypeScript strictness:** [`@Docs/28_TypeScript_Strictness_Debt.md`](./@Docs/28_TypeScript_Strictness_Debt.md)
+- **Lint policy:** `npm run lint` targets `src/` only. `supabase/functions/**` is Deno — lint separately if needed. Some `@typescript-eslint` rules are warnings until cleanup; see `eslint.config.js`.
 
-## How can I deploy this project?
+## Deploy (Vercel + Supabase)
 
-Simply open [Lovable](https://lovable.dev/projects/4f11452d-2715-4234-9262-39e60794cb21) and click on Share -> Publish.
+### Vercel
 
-### Auth on Vercel (production)
+1. Connect the repo and set build command `npm run build`, output `dist`.
+2. **Environment variables** (Production / Preview as needed):
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
+   - `VITE_APP_URL` — e.g. `https://your-app.vercel.app` (no trailing slash)
+   - `VITE_POSTHOG_KEY` (optional)
+3. Redeploy after env changes (Vite bakes `VITE_*` at build time).
 
-For sign-up, email confirmation, password reset, and invites to work for users on your live Vercel app:
+### Supabase Auth URLs
 
-1. **Vercel**
-   - Project → **Settings** → **Environment Variables**
-   - Add: **Name** `VITE_APP_URL`, **Value** `https://property-task-pro.vercel.app` (or your actual Vercel URL; no trailing slash)
-   - Apply to **Production** (and **Preview** if you use preview deployments)
-   - **Redeploy** the project (env vars are baked in at build time)
+Dashboard → **Authentication** → **URL Configuration**:
 
-2. **Supabase**
-   - [Dashboard](https://supabase.com/dashboard) → your project → **Authentication** → **URL Configuration**
-   - **Site URL:** `https://property-task-pro.vercel.app` (same as above)
-   - **Redirect URLs:** add these (one per line or comma-separated, depending on UI):
-     - `https://property-task-pro.vercel.app/verify`
-     - `https://property-task-pro.vercel.app/login`
-     - `https://property-task-pro.vercel.app/accept-invitation`
-     - `https://property-task-pro.vercel.app/**` (wildcard is optional but covers any path)
-   - Save
+- **Site URL:** same as `VITE_APP_URL`
+- **Redirect URLs:** include `/verify`, `/login`, `/accept-invitation` on that host
 
-3. **Invite emails (optional)**  
-   If you use the invite-team-member Edge Function: Supabase → **Project Settings** → **Edge Functions** → set secret `SITE_URL` to `https://property-task-pro.vercel.app`
+### Edge function secrets
 
-After this, users who sign up or reset password on the Vercel app will get email links that open on your Vercel domain, not localhost.
+Set `SUPABASE_SERVICE_ROLE_KEY` and other secrets in Supabase → Project Settings → Edge Functions. For invite emails, set `SITE_URL` to your production URL.
 
-## Can I connect a custom domain to my Lovable project?
+### Platform admin
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Insert your auth user into `platform_admins` — see `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md).
