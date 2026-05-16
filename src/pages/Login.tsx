@@ -164,7 +164,7 @@ export default function LoginPage() {
 
       if (error) {
         console.error('[Login] Sign in error:', error);
-        
+
         // Check if this is an "Invalid login credentials" error for an invited user
         // Invited users don't have passwords set - they need to set one first
         if ((error.message.includes("Invalid login credentials") || 

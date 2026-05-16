@@ -39,6 +39,7 @@ export function extractChipsFromText(
     (context.detectedObjects || []).map((o) => o.label)
   );
   const combinedText = [
+    context.title,
     context.description,
     context.imageOcrText,
     ...labelParts,
@@ -518,13 +519,17 @@ const SUBJECT_PATTERNS = [
 const DIRECTED_NAME_PATTERNS = [
   /\b(?:call|ask|tell|contact|message|email|assign(?:\s+to)?|tag|loop\s+in)\s+([a-zA-Z]{3,})\b/i,
   /\bfor\s+([a-zA-Z]{3,})\b/i,
+  /\bto\s+([a-zA-Z]{3,})\b/i,
 ];
 
+const BEFORE_ARRIVAL_PATTERN =
+  /\bbefore\s+([a-zA-Z]{3,})\s+(?:arrives?|comes|gets|visits?|leaves?)\b/i;
+
 const COMMON_FIRST_NAMES = new Set([
-  "alex", "ben", "chris", "dan", "david", "emma", "frank", "george", "hannah", "harry",
-  "isla", "jack", "james", "jane", "john", "josh", "kate", "liam", "lucy", "mark",
-  "matt", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah", "sam",
-  "simon", "sophie", "thomas", "tom",
+  "alex", "ben", "bianca", "chris", "dan", "david", "emma", "frank", "george", "hannah",
+  "harry", "isla", "jack", "james", "jane", "john", "josh", "kate", "liam", "lucy",
+  "mark", "matt", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah",
+  "sam", "simon", "sophie", "thomas", "tom",
 ]);
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -654,7 +659,7 @@ function detectPersons(
     matchedNames.add(nameLower);
   }
 
-  // ── 4. Directed lowercase/common names (e.g. "call john", "assign to john")
+  // ── 4. Directed lowercase/common names (e.g. "call john", "send to bianca")
   for (const pattern of DIRECTED_NAME_PATTERNS) {
     const directedMatch = originalText.match(pattern);
     if (!directedMatch) continue;
@@ -672,6 +677,26 @@ function detectPersons(
       metadata: { detectedAs: "directed_name_phrase" },
     });
     matchedNames.add(nameLower);
+  }
+
+  // ── 4b. "before Alex arrives" style deadlines involving a person
+  const arrivalMatch = originalText.match(BEFORE_ARRIVAL_PATTERN);
+  if (arrivalMatch) {
+    const name = arrivalMatch[1];
+    const nameLower = name.toLowerCase();
+    if (!matchedNames.has(nameLower) && !NON_NAME_WORDS.has(nameLower)) {
+      chips.push({
+        id: `person-ghost-arrival-${nameLower}`,
+        type: "person",
+        value: name,
+        label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+        score: 0.72,
+        source: "rule",
+        blockingRequired: true,
+        metadata: { detectedAs: "before_arrival" },
+      });
+      matchedNames.add(nameLower);
+    }
   }
 
   // ── 5. Common first-name fallback (handles lowercase standalone names) ────

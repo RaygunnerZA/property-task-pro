@@ -1486,18 +1486,18 @@ export function TaskPanel({
                     )}
                   >
                     {issuesFilter === "all" && (
-                      <div className="mb-2 flex w-full min-w-0 flex-row items-start gap-3 px-1 py-[18px]">
+                      <div className="mb-2 flex w-full min-w-0 flex-row items-center justify-center gap-3 px-1 py-0">
                         <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
                           Open work
                         </p>
                         <p className="flex min-w-0 max-w-[224px] shrink-0 text-xs text-muted-foreground">
                           Approved, actionable issues and tasks — not the raw signal feed above.
                         </p>
-                        <div className="ml-auto shrink-0 pl-2 pt-0.5">
+                        <div className="ml-auto h-[90px] w-[100px] shrink-0 pl-2 pt-0.5">
                           <img
                             src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
                             alt=""
-                            className="h-[52px] w-[52px] object-contain drop-shadow-sm"
+                            className="h-[90px] w-[90px] object-contain drop-shadow-sm"
                             decoding="async"
                           />
                         </div>

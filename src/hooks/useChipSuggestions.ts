@@ -88,6 +88,7 @@ export function useChipSuggestions(
       return extractChipsSync(
         {
           description: desc,
+          title: context.title?.trim() || undefined,
           propertyId: context.propertyId,
           selectedSpaceIds: context.selectedSpaceIds,
           selectedPersonId: context.selectedPersonId,
@@ -104,6 +105,7 @@ export function useChipSuggestions(
     }
   }, [
     context.description,
+    context.title,
     context.propertyId,
     context.selectedSpaceIds,
     context.selectedPersonId,
@@ -127,6 +129,7 @@ export function useChipSuggestions(
     generateChipSuggestions(
       {
         description: desc,
+        title: context.title?.trim() || undefined,
         propertyId: context.propertyId,
         selectedSpaceIds: context.selectedSpaceIds,
         selectedPersonId: context.selectedPersonId,

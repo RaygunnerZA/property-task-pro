@@ -44,6 +44,7 @@ import {
 } from "@/hooks/mutations/useCreateTaskMutation";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
+import { mergeAiPeopleIntoChips } from "@/services/ai/mergeAiPeopleChips";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
 import {
@@ -425,9 +426,10 @@ export function IntakeModal({
     [images]
   );
 
-  const { chips: chipSuggestions, ghostCategories } = useChipSuggestions(
+  const { chips: ruleChipSuggestions, ghostCategories } = useChipSuggestions(
     {
       description,
+      title: title.trim() || undefined,
       propertyId: propertyId || undefined,
       selectedSpaceIds,
       imageOcrText,
@@ -437,6 +439,11 @@ export function IntakeModal({
       selectedTeamIds: assignedTeamIds,
     },
     { minDescriptionLength: 3 }
+  );
+
+  const chipSuggestions = useMemo(
+    () => mergeAiPeopleIntoChips(ruleChipSuggestions, aiResult?.people),
+    [ruleChipSuggestions, aiResult?.people]
   );
 
   const { members } = useOrgMembers();

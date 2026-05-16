@@ -52,6 +52,8 @@ export interface DetectedObjectForChips {
 
 export interface ChipSuggestionContext {
   description: string;
+  /** Optional task title — scanned with description for names, spaces, dates, etc. */
+  title?: string;
   propertyId?: string;
   /**
    * Enriched property profile from usePropertyProfile.

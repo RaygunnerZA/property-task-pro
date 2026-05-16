@@ -158,6 +158,36 @@ describe("extractChipsFromText — person detection", () => {
     const fixChip = people.find((c) => c.label.toLowerCase() === "fix");
     expect(fixChip).toBeUndefined();
   });
+
+  it("before Alex arrives → person ghost chip for Alex", () => {
+    const result = extract(
+      "Frank must fix the oven in the cottage next tuesday before Alex arrives"
+    );
+    const people = result.chips.filter((c) => c.type === "person");
+    const alex = people.find((c) => c.label.toLowerCase() === "alex");
+    const frank = people.find((c) => c.label.toLowerCase() === "frank");
+    expect(frank).toBeDefined();
+    expect(alex).toBeDefined();
+  });
+
+  it("send flowers to Bianca → person ghost chip for Bianca", () => {
+    const result = extract("Frank must send flowers to Bianca tomorrow");
+    const people = result.chips.filter((c) => c.type === "person");
+    const bianca = people.find((c) => c.label.toLowerCase() === "bianca");
+    const frank = people.find((c) => c.label.toLowerCase() === "frank");
+    expect(frank).toBeDefined();
+    expect(bianca).toBeDefined();
+  });
+
+  it("includes names mentioned only in title", () => {
+    const result = extractChipsFromText(
+      { description: "Must fix before Friday", title: "Send flowers to Bianca" },
+      EMPTY_ENTITIES
+    );
+    const people = result.chips.filter((c) => c.type === "person");
+    const bianca = people.find((c) => c.label.toLowerCase() === "bianca");
+    expect(bianca).toBeDefined();
+  });
 });
 
 // ─── Space Detection ────────────────────────────────────────────────────────
