@@ -37,7 +37,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col space-y-2", className)}>
-      <div className="my-0 flex w-full min-w-0 shrink-0 flex-row items-start gap-3 px-1 py-[18px]">
+      <div className="my-0 flex w-full min-w-0 shrink-0 flex-row items-center justify-start gap-3 px-1">
         <p className="flex w-[135px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
           {title}
         </p>
@@ -47,11 +47,11 @@ export function IssuesScrollColumn<T extends { id: string }>({
           </p>
         ) : null}
         {headerIllustrationSrc ? (
-          <div className="ml-auto shrink-0 pl-2 pt-0.5">
+          <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
             <img
               src={headerIllustrationSrc}
               alt=""
-              className="h-[52px] w-[52px] object-contain drop-shadow-sm"
+              className="h-[100px] w-[100px] object-contain drop-shadow-sm"
               decoding="async"
             />
           </div>

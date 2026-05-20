@@ -39,6 +39,7 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
   const [lastError, setLastError] = useState<string | null>(null);
   const [status, setStatus] = useState<SystemStatus>("healthy");
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatInFlightRef = useRef(false);
 
   // Update singleton reference
   useEffect(() => {
@@ -79,27 +80,24 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
       return;
     }
 
-    try {
-      // Avoid forcing auth refresh here; it can collide with other providers
-      // and create token-refresh bursts in dev StrictMode.
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setSupabaseHealthy(true);
-        setLastError(null);
-        return;
-      }
+    if (heartbeatInFlightRef.current) {
+      return;
+    }
 
-      // Then test the connection
-      const { error } = await supabase
-        .from("organisations")
-        .select("id")
-        .limit(1);
+    heartbeatInFlightRef.current = true;
+
+    try {
+      // DB ping only — avoid getSession() here; it acquires the auth token lock and
+      // collides with DataContext / auto-refresh (especially in React StrictMode).
+      const { error } = await supabase.from("organisations").select("id").limit(1);
 
       if (error) {
-        // Permission errors (401/403) are auth issues, not connection issues
-        const isAuthError = error.code === "42501" || error.message?.includes("permission denied");
+        const isAuthError =
+          error.code === "42501" ||
+          error.code === "PGRST301" ||
+          error.message?.includes("permission denied") ||
+          error.message?.includes("JWT");
         if (isAuthError) {
-          // User not logged in - this is expected, not a connection problem
           setSupabaseHealthy(true);
           setLastError(null);
         } else {
@@ -110,9 +108,11 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
         setSupabaseHealthy(true);
         setLastError(null);
       }
-    } catch (err: any) {
+    } catch {
       setSupabaseHealthy(false);
       setLastError("Connection issue detected");
+    } finally {
+      heartbeatInFlightRef.current = false;
     }
   }, [isOnline]);
 
@@ -124,15 +124,14 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
 
   // Heartbeat: ping Supabase every 45 seconds
   useEffect(() => {
-    // Run immediately
-    heartbeat();
+    void heartbeat();
 
-    // Then every 45 seconds
     heartbeatRef.current = setInterval(heartbeat, 45000);
 
     return () => {
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
+        heartbeatRef.current = null;
       }
     };
   }, [heartbeat]);

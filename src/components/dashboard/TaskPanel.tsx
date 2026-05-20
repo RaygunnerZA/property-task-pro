@@ -1386,18 +1386,18 @@ export function TaskPanel({
                       <>
                         {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
                           <div className="space-y-2">
-                            <div className="my-[22px] flex w-full min-w-0 flex-row items-start gap-3 px-1 py-[17px]">
+                            <div className="my-[22px] flex w-full min-w-0 flex-row items-center justify-start gap-3 px-1">
                               <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
                                 Urgent
                               </p>
                               <p className="flex min-w-0 max-w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
                                 Time-sensitive signals — still not tasks until you act on them below.
                               </p>
-                              <div className="ml-auto shrink-0 pl-2 pt-0.5">
+                              <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
                                 <img
                                   src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent}
                                   alt=""
-                                  className="h-[52px] w-[52px] object-contain drop-shadow-sm"
+                                  className="h-[100px] w-[100px] object-contain drop-shadow-sm"
                                   decoding="async"
                                 />
                               </div>
@@ -1435,18 +1435,18 @@ export function TaskPanel({
                           const items = groupedAttentionItems[itemsKey];
                           return items.length > 0 ? (
                             <div key={key} className="space-y-2">
-                              <div className="my-[22px] flex w-full min-w-0 flex-row items-start gap-3 px-1 py-[17px]">
+                              <div className="my-[22px] flex w-full min-w-0 flex-row items-center justify-start gap-3 px-1">
                                 <p className="flex shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
                                   {title}
                                 </p>
                                 <p className="flex min-w-0 max-w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
                                   {subtitle}
                                 </p>
-                                <div className="ml-auto shrink-0 pl-2 pt-0.5">
+                                <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
                                   <img
                                     src={illustrationSrc}
                                     alt=""
-                                    className="h-[52px] w-[52px] object-contain drop-shadow-sm"
+                                    className="h-[100px] w-[100px] object-contain drop-shadow-sm"
                                     decoding="async"
                                   />
                                 </div>
