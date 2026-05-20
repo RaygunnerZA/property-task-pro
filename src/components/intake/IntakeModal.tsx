@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
@@ -931,6 +932,21 @@ export function IntakeModal({
   );
 
   const hasUpload = images.length > 0 || taskFiles.length > 0;
+
+  const canSubmitPrimary = useMemo(() => {
+    if (!orgId || isSubmitting) return false;
+    if (primaryIsDocument) return Boolean(propertyId) && hasUpload;
+    return hasComposerDraft;
+  }, [orgId, isSubmitting, primaryIsDocument, propertyId, hasUpload, hasComposerDraft]);
+
+  const showIntakeError = useCallback(
+    (title: string, description?: string) => {
+      toast({ title, description, variant: "destructive" });
+      sonnerToast.error(title, description ? { description } : undefined);
+    },
+    [toast]
+  );
+
   const showMismatchSuggestion =
     hasUpload &&
     !mismatchDismissed &&
@@ -2791,11 +2807,15 @@ export function IntakeModal({
 
   const handleSubmit = async () => {
     if (!orgId) {
-      toast({ title: "Not signed in", variant: "destructive" });
+      showIntakeError("Not signed in");
       return;
     }
 
     if (primaryIsCompliance) {
+      if (!hasComposerDraft) {
+        showIntakeError("Add record details", "Enter a note, title, or attachment before saving.");
+        return;
+      }
       const complianceTitle = title.trim() || description.trim().slice(0, 80) || "Compliance document";
       setIsSubmitting(true);
       try {
@@ -2837,11 +2857,8 @@ export function IntakeModal({
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
-        toast({
-          title: "Could not add to Compliance",
-          description: err instanceof Error ? err.message : "Something went wrong",
-          variant: "destructive",
-        });
+        const message = err instanceof Error ? err.message : "Something went wrong";
+        showIntakeError("Could not add to Compliance", message);
       } finally {
         setIsSubmitting(false);
       }
@@ -2850,11 +2867,11 @@ export function IntakeModal({
 
     if (primaryIsDocument) {
       if (!propertyId) {
-        toast({
-          title: "Select a location",
-          description: "Choose a property before saving documents.",
-          variant: "destructive",
-        });
+        showIntakeError("Select a location", "Choose a property before saving documents.");
+        return;
+      }
+      if (!hasUpload) {
+        showIntakeError("Add a document", "Attach at least one file before saving.");
         return;
       }
       setIsSubmitting(true);
@@ -2869,22 +2886,21 @@ export function IntakeModal({
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
-        toast({
-          title: "Could not save document",
-          description: err instanceof Error ? err.message : "Something went wrong",
-          variant: "destructive",
-        });
+        const message = err instanceof Error ? err.message : "Something went wrong";
+        showIntakeError("Could not save document", message);
       } finally {
         setIsSubmitting(false);
       }
       return;
     }
 
-    const finalTitle = title.trim() || aiTitleGenerated.trim() || description.trim().slice(0, 50) || "New task";
-    if (!finalTitle) {
-      toast({ title: "Add a title or note", variant: "destructive" });
+    if (!hasComposerDraft) {
+      showIntakeError("Add issue details", "Enter a note, title, attachment, or checklist item before reporting.");
       return;
     }
+
+    const finalTitle =
+      title.trim() || aiTitleGenerated.trim() || description.trim().slice(0, 50) || "New task";
 
     setIsSubmitting(true);
     try {
@@ -2986,11 +3002,8 @@ export function IntakeModal({
       onOpenChange(false);
       resetForm();
     } catch (err: unknown) {
-      toast({
-        title: "Could not create task",
-        description: err instanceof Error ? err.message : "Something went wrong",
-        variant: "destructive",
-      });
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      showIntakeError("Could not create task", message);
     } finally {
       setIsSubmitting(false);
     }
@@ -3611,8 +3624,8 @@ export function IntakeModal({
               primaryIsCompliance && intakeFooterSubmitAddRecordClassName,
               !primaryIsDocument && !primaryIsCompliance && intakeFooterSubmitReportIssueClassName
             )}
-            onClick={handleSubmit}
-            disabled={isSubmitting}
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmitPrimary}
           >
             {isSubmitting ? "Saving…" : primaryLabel}
           </Button>

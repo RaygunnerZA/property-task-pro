@@ -15,7 +15,8 @@
     "lint": "eslint src",
     "lint:all": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:edge-functions": "node scripts/check-edge-functions.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -261,7 +261,9 @@ export function useDailyBriefing(
             }
           },
           (error) => {
-            console.error("Geolocation error:", error);
+            if (import.meta.env.DEV) {
+              console.debug("Geolocation unavailable (expected when permission denied):", error);
+            }
             setWeatherError("Location access denied");
           }
         );

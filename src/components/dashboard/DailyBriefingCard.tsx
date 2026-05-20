@@ -5,6 +5,7 @@ import { type CarouselApi, Carousel, CarouselContent, CarouselItem } from "@/com
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
+import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DailyBriefingCardProps {
@@ -81,6 +82,26 @@ export function DailyBriefingCard({
     return full.filter((t: any) => t.property_id === effectivePropertyId);
   }, [fullTasksFromApi, filteredTasks, effectivePropertyId, selectedPropertyIds, properties.length]);
 
+  const metricsScopeLabel = useMemo(() => {
+    const ids = (properties ?? []).map((p: { id: string }) => p.id);
+    if (effectivePropertyId) {
+      const prop = properties.find((p: { id: string }) => p.id === effectivePropertyId);
+      const name =
+        (prop as { nickname?: string; address?: string } | undefined)?.nickname ||
+        (prop as { address?: string } | undefined)?.address;
+      return name ? `on ${name}` : "for 1 property";
+    }
+    if (
+      ids.length > 0 &&
+      selectedPropertyIds &&
+      !isAllPropertiesActive(selectedPropertyIds, ids)
+    ) {
+      const n = selectedPropertyIds.size;
+      return `across ${n} propert${n === 1 ? "y" : "ies"}`;
+    }
+    return "across all properties";
+  }, [effectivePropertyId, properties, selectedPropertyIds]);
+
   const taskMetrics = useMemo(() => {
     const list = tasksForMetrics;
     const isCompleted = (t: any) => String(t?.status || "").toLowerCase() === "completed";
@@ -142,13 +163,13 @@ export function DailyBriefingCard({
       id: "radial",
       value: radialValue,
       label: radialLabel,
-      sublabel: `${taskMetrics.done} of ${taskMetrics.total} tasks`,
+      sublabel: `${taskMetrics.done} of ${taskMetrics.total} tasks · ${metricsScopeLabel}`,
     },
     {
       id: "focus",
       value: focusPct,
       label: "Due today",
-      sublabel: `${focus} of ${totalActive} tasks`,
+      sublabel: `${focus} of ${totalActive} tasks · ${metricsScopeLabel}`,
     },
   ];
 
@@ -170,7 +191,9 @@ export function DailyBriefingCard({
       >
         {slide.label}
       </p>
-      <p className="text-[10px] text-muted-foreground/80 mt-0.5">{slide.sublabel}</p>
+      <p className="text-[10px] text-muted-foreground/80 mt-0.5 text-center leading-tight px-0.5">
+        {slide.sublabel}
+      </p>
     </div>
   );
 
