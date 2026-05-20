@@ -2,6 +2,7 @@ import { useRef } from "react";
 import type { RefObject } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
 
 /** Premium-style ease: fast start, long smooth settle (similar to iOS / system motion curves). */
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -17,6 +18,8 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   emptyDescription: string;
   renderCard: (item: T) => React.ReactNode;
   className?: string;
+  /** Taller header spacing when stacked in the signal feed. */
+  headerSpacious?: boolean;
 };
 
 /**
@@ -32,31 +35,18 @@ export function IssuesScrollColumn<T extends { id: string }>({
   emptyDescription,
   renderCard,
   className,
+  headerSpacious = false,
 }: IssuesScrollColumnProps<T>) {
   const scrollRootRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-col space-y-2", className)}>
-      <div className="my-0 flex w-full min-w-0 shrink-0 flex-row items-center justify-start gap-3 px-1">
-        <p className="flex w-[135px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
-          {title}
-        </p>
-        {subtitle ? (
-          <p className="flex min-w-0 max-w-[291px] shrink-0 text-[11px] leading-snug text-muted-foreground">
-            {subtitle}
-          </p>
-        ) : null}
-        {headerIllustrationSrc ? (
-          <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
-            <img
-              src={headerIllustrationSrc}
-              alt=""
-              className="h-[100px] w-[100px] object-contain drop-shadow-sm"
-              decoding="async"
-            />
-          </div>
-        ) : null}
-      </div>
+      <IssuesWorkbenchSectionHeader
+        title={title}
+        subtitle={subtitle}
+        illustrationSrc={headerIllustrationSrc}
+        spacious={headerSpacious}
+      />
       {items.length === 0 ? (
         <div className="space-y-1.5 rounded-xl bg-muted/25 px-3 py-2.5 shadow-sm">
           <p className="text-xs font-medium text-foreground/90">{emptyTitle}</p>

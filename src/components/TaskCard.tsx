@@ -408,7 +408,7 @@ function TaskCardComponent({
   return (
     <div 
       className={cn(
-        "task-card-vertical h-[267px]",
+        "task-card-vertical h-[267px] w-full min-w-0",
         "rounded-[12px] bg-card/60",
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",

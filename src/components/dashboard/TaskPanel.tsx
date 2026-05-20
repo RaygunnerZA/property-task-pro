@@ -13,6 +13,7 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
+import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
 import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
@@ -193,6 +194,7 @@ function RecentNeedsReviewStack({
         title={SIGNAL_COLUMN_REVIEW.title}
         subtitle={SIGNAL_COLUMN_REVIEW.subtitle}
         headerIllustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
+        headerSpacious
         items={reviewItems}
         emptyTitle={SIGNAL_COLUMN_REVIEW.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_REVIEW.emptyDescription}
@@ -202,6 +204,7 @@ function RecentNeedsReviewStack({
         title={SIGNAL_COLUMN_RECENT.title}
         subtitle={SIGNAL_COLUMN_RECENT.subtitle}
         headerIllustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals}
+        headerSpacious
         items={recentItems}
         emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
@@ -1386,22 +1389,12 @@ export function TaskPanel({
                       <>
                         {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
                           <div className="space-y-2">
-                            <div className="my-[22px] flex w-full min-w-0 flex-row items-center justify-start gap-3 px-1">
-                              <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
-                                Urgent
-                              </p>
-                              <p className="flex min-w-0 max-w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
-                                Time-sensitive signals — still not tasks until you act on them below.
-                              </p>
-                              <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
-                                <img
-                                  src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent}
-                                  alt=""
-                                  className="h-[100px] w-[100px] object-contain drop-shadow-sm"
-                                  decoding="async"
-                                />
-                              </div>
-                            </div>
+                            <IssuesWorkbenchSectionHeader
+                              title="Urgent"
+                              subtitle="Time-sensitive signals — still not tasks until you act on them below."
+                              illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent}
+                              spacious
+                            />
                             <div className="space-y-2">
                               {groupedAttentionItems.urgent.map((item) => (
                                 <IssuesSignalCard
@@ -1435,22 +1428,12 @@ export function TaskPanel({
                           const items = groupedAttentionItems[itemsKey];
                           return items.length > 0 ? (
                             <div key={key} className="space-y-2">
-                              <div className="my-[22px] flex w-full min-w-0 flex-row items-center justify-start gap-3 px-1">
-                                <p className="flex shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
-                                  {title}
-                                </p>
-                                <p className="flex min-w-0 max-w-[288px] shrink-0 text-[11px] leading-snug text-muted-foreground">
-                                  {subtitle}
-                                </p>
-                                <div className="ml-auto h-[100px] w-[100px] shrink-0 pl-2 pt-0.5">
-                                  <img
-                                    src={illustrationSrc}
-                                    alt=""
-                                    className="h-[100px] w-[100px] object-contain drop-shadow-sm"
-                                    decoding="async"
-                                  />
-                                </div>
-                              </div>
+                              <IssuesWorkbenchSectionHeader
+                                title={title}
+                                subtitle={subtitle}
+                                illustrationSrc={illustrationSrc}
+                                spacious
+                              />
                               <div className="space-y-2">
                                 {items.map((item) => (
                                   <IssuesSignalCard
@@ -1486,22 +1469,12 @@ export function TaskPanel({
                     )}
                   >
                     {issuesFilter === "all" && (
-                      <div className="mb-2 flex w-full min-w-0 flex-row items-center justify-center gap-3 px-1 py-0">
-                        <p className="flex w-[107px] shrink-0 text-lg font-semibold tracking-wide text-[rgb(42,41,62)]">
-                          Open work
-                        </p>
-                        <p className="flex min-w-0 max-w-[224px] shrink-0 text-xs text-muted-foreground">
-                          Approved, actionable issues and tasks — not the raw signal feed above.
-                        </p>
-                        <div className="ml-auto h-[90px] w-[100px] shrink-0 pl-2 pt-0.5">
-                          <img
-                            src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
-                            alt=""
-                            className="h-[90px] w-[90px] object-contain drop-shadow-sm"
-                            decoding="async"
-                          />
-                        </div>
-                      </div>
+                      <IssuesWorkbenchSectionHeader
+                        className="mb-2"
+                        title="Open work"
+                        subtitle="Approved, actionable issues and tasks — not the raw signal feed above."
+                        illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
+                      />
                     )}
                     <div className="h-full flex flex-col min-h-0 rounded-xl bg-muted/20 p-2 shadow-sm">
                       <TaskList

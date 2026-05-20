@@ -914,6 +914,7 @@ export function IntakeModal({
     fileCount: taskFiles.length,
     composedText: description,
     userHasComposed: description.trim().length > 15,
+    intakeMode,
   });
 
   /** User-facing mode maps to baseline workflow; AI does not choose the starting path. */
@@ -947,14 +948,27 @@ export function IntakeModal({
     [toast]
   );
 
-  const showMismatchSuggestion =
+  const suggestComplianceFromReportIssue =
+    intakeMode === "report_issue" &&
     hasUpload &&
     !mismatchDismissed &&
     !userManuallySwitchedIntake &&
-    analysis.workflow_confidence >= 0.65 &&
-    (intakeMode === "report_issue"
-      ? analysis.workflow_hint === "compliance" || analysis.workflow_hint === "document"
-      : analysis.workflow_hint === "task");
+    !analysis.has_issue_signals &&
+    analysis.has_strong_document_evidence &&
+    analysis.workflow_confidence >= 0.8 &&
+    (analysis.workflow_hint === "compliance" || analysis.workflow_hint === "document");
+
+  const suggestTaskFromAddRecord =
+    intakeMode === "add_record" &&
+    hasUpload &&
+    !mismatchDismissed &&
+    !userManuallySwitchedIntake &&
+    analysis.has_issue_signals &&
+    !analysis.has_strong_document_evidence &&
+    analysis.workflow_hint === "task" &&
+    analysis.workflow_confidence >= 0.65;
+
+  const showMismatchSuggestion = suggestComplianceFromReportIssue || suggestTaskFromAddRecord;
 
   const applyIntakeMode = useCallback(
     (next: IntakeMode) => {

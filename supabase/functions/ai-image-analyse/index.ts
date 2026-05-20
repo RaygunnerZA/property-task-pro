@@ -87,7 +87,31 @@ Rules:
 - workflow_hint must be one of task, compliance, document, uncertain.
 - workflow_confidence is 0..1.
 - labels must be short, max 6.
+- A photo of equipment alone (boiler, appliance, pipe, HVAC, pump, extinguisher, electrical board) is NOT a compliance record. Classify as task if there is visible damage, leak, staining, corrosion, loose fittings, or fault evidence; otherwise uncertain (not compliance).
+- Classify as compliance only when the image is clearly a document, certificate, inspection record, or label/plate with readable expiry or certificate wording.
+- Visible damage, leak, staining, broken parts, corrosion, or fault evidence → workflow_hint task.
+- Prefer uncertain over compliance when the image is equipment without readable certificate/document text.
+- document_type_hint must be null unless a real certificate/document type is visible (never use "None" or "Unknown" as a type string).
 - If unsure, use uncertain with low confidence.`;
+
+const MEANINGLESS_DOC_TYPES = new Set([
+  "none",
+  "unknown",
+  "n/a",
+  "na",
+  "null",
+  "undefined",
+  "not_applicable",
+  "not applicable",
+]);
+
+function sanitizeDocumentType(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (MEANINGLESS_DOC_TYPES.has(trimmed.toLowerCase())) return null;
+  return trimmed;
+}
 
 function getGeminiKey(): string | undefined {
   return Deno.env.get("GEMINI_API_KEY");
@@ -314,7 +338,8 @@ const HAZARD_OBJECT_TO_ICON: Record<string, string> = {
 function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
   const docClass = parsed.document_classification;
   const docTypeRaw = docClass?.type?.toLowerCase().replace(/\s+/g, "_") ?? "";
-  const normalizedDocType = DOC_TYPE_MAP[docTypeRaw] ?? docClass?.type ?? null;
+  const mappedType = DOC_TYPE_MAP[docTypeRaw] ?? docClass?.type ?? null;
+  const normalizedDocType = sanitizeDocumentType(mappedType);
   const normalizedExpiry = docClass?.expiry_date ?? null;
   const rawOcr = parsed.ocr_text ?? "";
 
@@ -384,10 +409,9 @@ function normalizeRouterResponse(parsed: Record<string, unknown>): ResponseBody 
     ? Math.max(0, Math.min(1, confidenceNum))
     : 0.35;
 
-  const documentType =
-    typeof parsed.document_type_hint === "string" && parsed.document_type_hint.trim()
-      ? parsed.document_type_hint.trim()
-      : null;
+  const documentType = sanitizeDocumentType(
+    typeof parsed.document_type_hint === "string" ? parsed.document_type_hint : null
+  );
   const expiryDate =
     typeof parsed.expiry_date_hint === "string" && parsed.expiry_date_hint.trim()
       ? parsed.expiry_date_hint.trim()

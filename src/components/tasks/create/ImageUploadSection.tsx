@@ -8,6 +8,10 @@ import type { Annotation } from "@/types/image-annotations";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import type { IntakeMode } from "@/types/intake";
+import {
+  hasUsefulComplianceScanResult,
+  isMeaningfulSuggestedType,
+} from "@/lib/intakeWorkflowSignals";
 
 export interface PendingTaskFile {
   local_id: string;
@@ -289,6 +293,7 @@ export function ImageUploadSection({
     | { kind: "router_scanning" }
     | { kind: "full_scanning" }
     | { kind: "full_done"; specificType: string | null; formattedExpiryDate: string | null }
+    | { kind: "image_analysed" }
     | { kind: "router_ui"; branch: "task" | "compliance" | "uncertain"; confidence?: number };
 
   const getIntakePanelState = (image: TempImage): IntakePanelState => {
@@ -314,19 +319,24 @@ export function ImageUploadSection({
     const legacyFull = Boolean(image.rawAnalysis) && !isRouterStage && meta?.intake_stage !== "router";
 
     if (isFullStage || legacyFull) {
-      const specificType =
+      const rawType =
         meta?.normalized_document_type ||
         meta?.document_classification?.type ||
         inferComplianceTypeFromName(image.display_name);
+      const specificType = isMeaningfulSuggestedType(rawType) ? rawType!.trim() : null;
       const expiryDate =
         meta?.document_classification?.expiry_date ||
         image.rawAnalysis.detected_objects?.find((obj) => obj.expiry_date)?.expiry_date ||
         inferExpiryFromText(image.aiOcrText);
-      return {
-        kind: "full_done",
-        specificType: specificType ?? null,
-        formattedExpiryDate: formatDisplayDate(expiryDate),
-      };
+      const formattedExpiryDate = formatDisplayDate(expiryDate);
+      if (hasUsefulComplianceScanResult(specificType, formattedExpiryDate)) {
+        return {
+          kind: "full_done",
+          specificType,
+          formattedExpiryDate,
+        };
+      }
+      return { kind: "image_analysed" };
     }
 
     const hint = String(meta?.workflow_hint ?? "uncertain").toLowerCase();
@@ -539,6 +549,19 @@ export function ImageUploadSection({
                         ) : null}
                       </div>
                     )}
+                    {panel.kind === "image_analysed" && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[12px] text-foreground">
+                          <BadgeCheck className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="font-medium">Image analysed</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {intakeMode === "report_issue"
+                            ? "No certificate details found — continue reporting the issue below."
+                            : "No certificate type or expiry detected — add details manually if needed."}
+                        </p>
+                      </div>
+                    )}
                     {panel.kind === "full_done" && (
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-[12px] text-foreground">
@@ -550,9 +573,7 @@ export function ImageUploadSection({
                             <div className="inline-flex rounded-[5px] bg-[#f6f4f2] px-[9px] py-1 text-[11px] font-medium text-foreground shadow-sm">
                               {panel.specificType}
                             </div>
-                          ) : (
-                            <p className="text-[11px] text-muted-foreground">No specific certificate type detected.</p>
-                          )}
+                          ) : null}
                           {panel.formattedExpiryDate ? (
                             <div className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-e1">
                               <CalendarDays className="h-3.5 w-3.5 text-primary" />

@@ -701,18 +701,26 @@ export function TaskList({
                     </div>
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
-                  <div className={cn(
-                    "hidden sm:grid sm:grid-cols-3 gap-3 mt-0",
-                    groupedTasks.todo.length === 1 && "sm:grid-cols-1",
-                    groupedTasks.todo.length === 2 && "sm:grid-cols-2"
-                  )}>
+                  <div
+                    className={cn(
+                      "mt-0 hidden min-w-0 gap-3 sm:grid",
+                      embeddedInIssuesWorkbench
+                        ? "grid-cols-[repeat(auto-fill,minmax(min(100%,10.5rem),1fr))]"
+                        : cn(
+                            "sm:grid-cols-3",
+                            groupedTasks.todo.length === 1 && "sm:grid-cols-1",
+                            groupedTasks.todo.length === 2 && "sm:grid-cols-2"
+                          )
+                    )}
+                  >
                     {memoizedTaskCards.todo.map((props) => (
-                      <TaskCard
-                        key={props.task.id}
-                        {...props}
-                        layout="vertical"
-                        metaDensity={compactTaskMeta ? "compact" : "default"}
-                      />
+                      <div key={props.task.id} className="min-w-0">
+                        <TaskCard
+                          {...props}
+                          layout="vertical"
+                          metaDensity={compactTaskMeta ? "compact" : "default"}
+                        />
+                      </div>
                     ))}
                   </div>
                 </>
