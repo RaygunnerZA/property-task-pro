@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Camera,
@@ -11,6 +11,7 @@ import {
   Archive,
   ChevronsUp,
   ChevronsDown,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
@@ -77,6 +78,12 @@ export type PropertyForStrip = {
 const TABS = ["PROPERTY", "DETAILS", "CONTACTS", "MEDIA", "TIMELINE", "VENDORS", "DRIFT"] as const;
 type TabIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+/** Right-edge fade: solid muted band fading to transparent at the left. */
+const TAB_STRIP_RIGHT_FADE_STYLE: CSSProperties = {
+  background:
+    "linear-gradient(270deg, rgba(237, 235, 232, 1) 0%, rgba(237, 235, 232, 1) 32%, rgba(0, 0, 0, 0) 100%)",
+};
+
 type AssetViewRow = {
   status?: string | null;
   condition_score?: number | null;
@@ -133,6 +140,36 @@ export function PropertyIdentityStrip({
   const [activeTab, setActiveTab] = useState<TabIndex>(0);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tabScrollRef = useRef<HTMLDivElement>(null);
+  const [showTabStripRightFade, setShowTabStripRightFade] = useState(false);
+
+  const updateTabStripFade = useCallback(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const overflow = scrollWidth > clientWidth + 1;
+    const atEnd = scrollLeft + clientWidth >= scrollWidth - 2;
+    setShowTabStripRightFade(overflow && !atEnd);
+  }, []);
+
+  useEffect(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    updateTabStripFade();
+    const ro = new ResizeObserver(() => updateTabStripFade());
+    ro.observe(el);
+    el.addEventListener("scroll", updateTabStripFade, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", updateTabStripFade);
+    };
+  }, [updateTabStripFade]);
+
+  const scrollTabsRight = useCallback(() => {
+    const el = tabScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: Math.max(72, el.clientWidth * 0.55), behavior: "smooth" });
+  }, []);
 
   // Details edit state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
@@ -385,8 +422,8 @@ export function PropertyIdentityStrip({
 
   return (
     <div
-      className="bg-card/60 rounded-[12px] overflow-hidden border border-border/20 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)] w-full flex flex-col px-0 transition-[height,box-shadow] duration-300 ease-out"
-      style={{ height: `${cardHeightPx}px` }}
+      className="bg-card/60 rounded-[12px] overflow-hidden border border-border/20 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)] w-full flex flex-col pl-0 pr-0 transition-[height,box-shadow] duration-300 ease-out"
+      style={{ height: `${cardHeightPx}px`, paddingLeft: 0, paddingRight: 0 }}
     >
 
       {/* ── IDENTITY HEADER ──────────────────────────────────────────────── */}
@@ -501,33 +538,68 @@ export function PropertyIdentityStrip({
       />
 
       {/* ── TAB STRIP ────────────────────────────────────────────────────── */}
-      <div className="relative z-10 mx-0 flex w-full min-w-0 shrink-0 flex-nowrap justify-start items-start gap-0 overflow-x-auto overflow-y-hidden pt-[10px] pb-[6px] px-3 sm:px-2.5 bg-muted/20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.map((tab, idx) => (
+      <div className="relative z-10 mx-0 w-full min-w-0 shrink-0 bg-muted/20">
+        <div
+          ref={tabScrollRef}
+          className="flex w-full min-w-0 flex-nowrap items-start justify-start gap-0 overflow-x-auto overflow-y-hidden px-3 pb-[6px] pt-[10px] sm:px-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {TABS.map((tab, idx) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(idx as TabIndex)}
+              className={cn(
+                "flex h-6 shrink-0 items-center justify-center rounded-[8px] px-2 font-mono text-[10px] font-medium uppercase leading-none tracking-wide",
+                "transition-[color,background-color,box-shadow] duration-200 ease-out",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
+                activeTab === idx
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:bg-background/55 hover:text-foreground/90"
+              )}
+              style={
+                activeTab === idx
+                  ? {
+                      backgroundColor: "rgba(255, 255, 255, 1)",
+                      boxShadow:
+                        "-1px -1px 2px 0px rgba(0, 0, 0, 0.07), 0 1px 1px 0px rgba(255, 255, 255, 0.55)",
+                    }
+                  : undefined
+              }
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div
+          aria-hidden={!showTabStripRightFade}
+          className={cn(
+            "pointer-events-none absolute inset-y-0 right-0 z-[2] flex w-16 min-w-[56px] items-center justify-end pr-1 transition-opacity duration-200",
+            showTabStripRightFade ? "opacity-100" : "opacity-0"
+          )}
+          style={TAB_STRIP_RIGHT_FADE_STYLE}
+        >
           <button
-            key={tab}
             type="button"
-            onClick={() => setActiveTab(idx as TabIndex)}
+            tabIndex={showTabStripRightFade ? 0 : -1}
+            aria-label="Scroll to more tabs"
+            onClick={scrollTabsRight}
             className={cn(
-              "shrink-0 rounded-[8px] h-6 flex items-center justify-center px-2 font-mono text-[10px] font-medium uppercase tracking-wide leading-none",
-              "transition-[color,background-color,box-shadow] duration-200 ease-out",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
-              activeTab === idx
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground/90 hover:bg-background/55"
+              "pointer-events-auto flex h-6 w-4 shrink-0 items-center justify-center rounded-full pt-px",
+              "text-[#687B7D] shadow-sm transition-opacity",
+              "hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+              showTabStripRightFade ? "opacity-100" : "pointer-events-none opacity-0"
             )}
-            style={
-              activeTab === idx
-                ? {
-                    backgroundColor: "rgba(255, 255, 255, 1)",
-                    boxShadow:
-                      "-1px -1px 2px 0px rgba(0, 0, 0, 0.07), 0 1px 1px 0px rgba(255, 255, 255, 0.55)",
-                  }
-                : undefined
-            }
           >
-            {tab}
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 shrink-0 text-[#687B7D]",
+                "drop-shadow-[0_0_6px_rgba(104,123,125,0.85)]",
+                "animate-[chip-chevron-glow_2.4s_ease-in-out_infinite]"
+              )}
+              strokeWidth={2.25}
+            />
           </button>
-        ))}
+        </div>
       </div>
 
       {/* ── SLIDING CARD CONTENT + collapse affordance (all tabs) ───────── */}
