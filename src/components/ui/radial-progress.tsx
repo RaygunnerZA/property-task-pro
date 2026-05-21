@@ -119,7 +119,7 @@ export function RadialProgress({
           position: "absolute",
           inset: 0,
           overflow: "visible",
-          transform: "rotate(-90deg)",
+          transform: "scaleY(-1)",
           filter: softVisual
             ? "drop-shadow(0px 1px 2px rgba(142,201,206,0.22))"
             : "drop-shadow(0px 2px 6px rgba(142,201,206,0.5))",
@@ -254,6 +254,7 @@ export function RadialProgress({
             opacity: 0.95,
             transform: "translateY(1px)",
             marginLeft: 0,
+            paddingTop: 6,
             color: "rgba(133, 186, 188, 1)",
           }}
         >

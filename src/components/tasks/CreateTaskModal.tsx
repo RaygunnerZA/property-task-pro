@@ -101,6 +101,7 @@ export function CreateTaskModal({
     images, setImages,
     taskFiles, setTaskFiles,
     showAdvanced,
+    setShowAdvanced,
     activeSection, setActiveSection,
     inviteModalOpen, setInviteModalOpen,
     invitePrefill, setInvitePrefill,

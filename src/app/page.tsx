@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { PlusCircle, FileText, AlertTriangle } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
@@ -43,6 +42,8 @@ import { RecordsActionRail } from "@/components/records/RecordsActionRail";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
+import { cn } from "@/lib/utils";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -593,7 +594,7 @@ export default function Dashboard() {
   }, [orgId, intakeScopedPropertyId, queryClient]);
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pt-3 pr-2 pb-0 pl-2">
+    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2">
       {activeTab === "records" && intakeScopedPropertyId ? (
         <div className="pb-[16px] shrink-0">
           <RecordsActionRail
@@ -610,28 +611,23 @@ export default function Dashboard() {
           />
         </div>
       ) : intakeMinimized ? (
-        /* ── Minimised intake strip ─────────────────────────────────────── */
-        <div className="mb-2 shrink-0 flex items-center gap-1.5 rounded-[10px] border border-border/40 bg-card/70 px-2.5 py-2 shadow-sm">
-          <PlusCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
-          <span className="flex-1 text-xs text-muted-foreground/60 font-medium truncate">
-            New report or record
-          </span>
-          <button
-            type="button"
-            onClick={() => handleOpenIntake("report_issue")}
-            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium text-foreground/70 bg-background/80 shadow-sm hover:bg-background hover:text-foreground transition-colors duration-100"
+        /* ── Minimised intake — keep primary CTAs bold (matches TaskPanel toolbar) */
+        <div className="mb-2 shrink-0 w-full min-w-0">
+          <div
+            className={cn(
+              "w-full min-h-12 h-12 rounded-[15px] bg-background overflow-visible",
+              "shadow-[inset_2px_1px_2px_0px_rgba(0,0,0,0.1),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.61)]"
+            )}
           >
-            <AlertTriangle className="h-3 w-3 shrink-0" />
-            Issue
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenIntake("add_record")}
-            className="flex items-center gap-1 rounded-[7px] px-2.5 py-1.5 text-[11px] font-medium text-foreground/70 bg-background/80 shadow-sm hover:bg-background hover:text-foreground transition-colors duration-100"
-          >
-            <FileText className="h-3 w-3 shrink-0" />
-            Record
-          </button>
+            <div className="grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-1.5 px-2 py-[6px]">
+              <IntakeActionButtonPair
+                variant="toolbar"
+                layout="grid"
+                onAddRecord={() => handleOpenIntake("add_record")}
+                onReportIssue={() => handleOpenIntake("report_issue")}
+              />
+            </div>
+          </div>
         </div>
       ) : (
         <div className="pb-[20px]">

@@ -163,7 +163,7 @@ export function SemanticChip({
   const baseStyles = cn(
     "relative inline-flex items-center gap-1.5 rounded-[8px] flex-shrink-0",
     "font-mono uppercase tracking-wide whitespace-nowrap",
-    "transition-[padding-right,max-width] duration-200 ease-out",
+    "transition-[max-width,width] duration-200 ease-out",
     heightClass,
     textClass,
     epistemicStyles,
@@ -171,7 +171,7 @@ export function SemanticChip({
     epistemic === "fact" && !removable && "px-[10px] min-w-[40px] max-w-[120px]",
     epistemic === "fact" &&
       removable &&
-      "pl-[10px] pr-[10px] group-hover:pr-[40px] min-w-[40px] max-w-[200px] group-hover:max-w-[230px] overflow-visible",
+      "pl-[10px] pr-[10px] min-w-[40px] max-w-[200px] group-hover:max-w-none group-hover:z-10",
     epistemic === "proposal" && "px-2 py-1 max-w-[160px]",
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
     (onPress || dropdown) && "cursor-pointer select-none",
@@ -225,7 +225,15 @@ export function SemanticChip({
       {pending && (
         <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 flex-shrink-0" />
       )}
-      <span className={cn(truncate && "min-w-0 truncate flex-1", !truncate && "flex-1")}>{label}</span>
+      <span
+        className={cn(
+          truncate && "min-w-0 truncate",
+          removable && truncate && "group-hover:shrink-0",
+          !truncate && "flex-1"
+        )}
+      >
+        {label}
+      </span>
       {removable && onRemove && epistemic === "fact" && (
         <span
           role="button"
@@ -233,7 +241,13 @@ export function SemanticChip({
           onClick={handleRemove}
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRemove(e as unknown as React.MouseEvent); } }}
-          className="absolute right-[10px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-200 ease-out flex-shrink-0 w-3 inline-flex items-center justify-center"
+          className={cn(
+            "inline-flex items-center justify-center flex-shrink-0 overflow-hidden",
+            "w-0 opacity-0 pointer-events-none",
+            "transition-[width,opacity] duration-200 ease-out",
+            "group-hover:w-4 group-hover:ml-1 group-hover:opacity-70 group-hover:pointer-events-auto",
+            "hover:opacity-100"
+          )}
         >
           <X className="h-3 w-3" />
         </span>

@@ -1,5 +1,5 @@
-import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { RadialProgress } from "@/components/ui/radial-progress";
 
 const neuTileCoreClass =
@@ -162,17 +162,17 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         {onAddTask && (
-          <button
-            type="button"
+          <IntakeActionButton
+            mode="report_issue"
+            variant="micro"
+            showLabel={false}
             aria-label="Report Issue"
-            className="absolute bottom-1 left-1/2 z-10 flex h-6 w-[79px] -translate-x-1/2 items-center justify-center align-bottom rounded-lg font-semibold text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive md:hidden"
+            className="absolute bottom-1 left-1/2 z-10 h-6 w-[79px] -translate-x-1/2 md:hidden"
             onClick={(e) => {
               e.stopPropagation();
               onAddTask();
             }}
-          >
-            <Plus className="h-3.5 w-3.5" strokeWidth={2.25} />
-          </button>
+          />
         )}
         <span className={cn(openTasksCountClass, "mt-0.5")}>{openTasksCount}</span>
         <span className="mb-1 mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.2px] text-muted-foreground">

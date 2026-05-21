@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SignalKind } from "@/types/workbenchSignals";
@@ -98,20 +99,12 @@ export function SignalFeedDetailPanel({
           </div>
         ) : null}
         {onOpenIntake ? (
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button type="button" size="sm" className="shadow-primary-btn" onClick={() => onOpenIntake("add_record")}>
-              Add record
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="shadow-e1"
-              onClick={() => onOpenIntake("report_issue")}
-            >
-              Report issue
-            </Button>
-          </div>
+          <IntakeActionButtonPair
+            variant="micro"
+            className="pt-1"
+            onAddRecord={() => onOpenIntake("add_record")}
+            onReportIssue={() => onOpenIntake("report_issue")}
+          />
         ) : null}
       </div>
     </>

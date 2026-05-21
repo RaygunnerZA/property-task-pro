@@ -177,8 +177,8 @@ export function DailyBriefingCard({
     <div className="flex flex-col items-center justify-center w-[115px] h-[165px] mx-auto">
       <RadialProgress
         value={slide.value}
-        size={90}
-        thickness={10}
+        size={95}
+        thickness={8}
         innerDiscSize={70}
         labelMarginLeft={9}
         aria-label={`${slide.label}: ${slide.value}%`}

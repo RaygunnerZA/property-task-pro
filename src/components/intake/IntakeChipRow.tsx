@@ -111,12 +111,16 @@ export interface IntakeChipRowChip {
   onRemove?: () => void;
 }
 
+export type IntakeChipRowLayout = "stacked" | "interleaved";
+
 export interface IntakeChipRowProps {
   chips: IntakeChipRowChip[];
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   openSlot: IntakeChipSlotId | null;
   onCloseSlot: () => void;
   renderSlotContent: (slot: IntakeChipSlotId, onClose: () => void) => IntakeSlotPanelRows;
+  /** stacked: icon rail + panel + summary row (intake modal). interleaved: [icon][chip] pairs (task detail edit). */
+  layout?: IntakeChipRowLayout;
   className?: string;
 }
 
@@ -126,6 +130,7 @@ export function IntakeChipRow({
   openSlot,
   onCloseSlot,
   renderSlotContent,
+  layout = "stacked",
   className,
 }: IntakeChipRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -169,8 +174,6 @@ export function IntakeChipRow({
     };
   }, [updateRailFade, chips.length, openSlot]);
 
-  const slotsWithValues = new Set(chips.map((c) => c.slot));
-
   const toggleSlot = (slot: IntakeChipSlotId) => {
     if (openSlot === slot) {
       onCloseSlot();
@@ -192,47 +195,113 @@ export function IntakeChipRow({
             animateIn
             removable={chip.removable ?? Boolean(chip.onRemove)}
             onRemove={chip.onRemove}
-            className="shrink-0 max-w-[200px]"
+            className="shrink-0"
           />
         ))
       : null;
 
   const panel = openSlot ? renderSlotContent(openSlot, onCloseSlot) : null;
 
+  const slotIconButton = (id: IntakeChipSlotId, Icon: typeof User, title: string) => {
+    const isOpen = openSlot === id;
+    return (
+      <button
+        key={`icon-${id}`}
+        type="button"
+        onClick={() => toggleSlot(id)}
+        aria-label={title}
+        title={title}
+        style={{ width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }}
+        className={cn(
+          "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-[8px]",
+          "transition-[background-color,box-shadow,color] duration-200 ease-out",
+          isOpen
+            ? "bg-transparent text-muted-foreground shadow-e1"
+            : "bg-transparent text-muted-foreground shadow-none hover:shadow-inset"
+        )}
+      >
+        <Icon className="h-[14px] w-[14px] shrink-0" />
+      </button>
+    );
+  };
+
+  const interleavedRow = (
+    <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>
+      {SLOTS.map(({ id, icon: Icon, title }) => {
+        const slotChips = chips.filter((c) => c.slot === id);
+        return (
+          <span key={id} className="inline-flex shrink-0 items-center gap-1">
+            {slotIconButton(id, Icon, title)}
+            {slotChips.map((chip) => (
+              <SemanticChip
+                key={chip.id}
+                epistemic={chip.epistemic}
+                label={chip.label}
+                onPress={chip.onPress ?? (() => toggleSlot(chip.slot))}
+                pressOnPointerDown
+                truncate
+                animateIn
+                removable={chip.removable ?? Boolean(chip.onRemove)}
+                onRemove={chip.onRemove}
+                className="shrink-0"
+              />
+            ))}
+          </span>
+        );
+      })}
+    </HorizontalOverflowRow>
+  );
+
+  const panelBlock = (
+    <div
+      className={cn(
+        "grid transition-[grid-template-rows] duration-200 ease-out",
+        panel ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+      )}
+    >
+      <div className="overflow-hidden">
+        {panel && (
+          <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
+            <div className="min-w-0 border-b border-border/15 pb-px">
+              <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
+            </div>
+            <div className="min-w-0 space-y-1 pt-0">
+              <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row3}</HorizontalOverflowRow>
+              {layout === "stacked" && summaryChipElements && (
+                <HorizontalOverflowRow
+                  className={cn(
+                    SCROLLER_ROW_CLASS,
+                    "border-t-2 border-dashed border-white/65 [border-image:none] pt-[9px] mt-1.5"
+                  )}
+                >
+                  {summaryChipElements}
+                </HorizontalOverflowRow>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (layout === "interleaved") {
+    return (
+      <div ref={containerRef} className={cn("min-w-0 space-y-2", className)}>
+        {interleavedRow}
+        {panelBlock}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className={cn("min-w-0 space-y-2", className)}>
       <div
-        className="relative w-full min-w-0 rounded-[10px] bg-muted/25 px-1 py-0.5 shadow-sm"
+        className="relative w-full min-w-0 rounded-[10px] bg-muted/25 px-1 py-0.5"
         role="toolbar"
         aria-label="Intake field shortcuts"
       >
         <div ref={railScrollRef} className={SCROLLER_ROW_CLASS}>
-          {SLOTS.map(({ id, icon: Icon, title }) => {
-            const isOpen = openSlot === id;
-            const hasValue = slotsWithValues.has(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggleSlot(id)}
-                aria-label={title}
-                title={title}
-                style={{ width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }}
-                className={cn(
-                  "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-[8px]",
-                  "transition-[background-color,box-shadow,color] duration-200 ease-out",
-                  isOpen
-                    ? "bg-transparent text-muted-foreground shadow-e1"
-                    : cn(
-                        "bg-transparent text-muted-foreground shadow-none",
-                        "hover:shadow-inset"
-                      )
-                )}
-              >
-                <Icon className="h-[14px] w-[14px] shrink-0" />
-              </button>
-            );
-          })}
+          {SLOTS.map(({ id, icon: Icon, title }) => slotIconButton(id, Icon, title))}
         </div>
         <div
           aria-hidden
@@ -253,36 +322,7 @@ export function IntakeChipRow({
         </div>
       </div>
 
-      {/* Panel — grid-rows animation for smooth open/close */}
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-out",
-          panel ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        )}
-      >
-        <div className="overflow-hidden">
-          {panel && (
-            <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
-              <div className="min-w-0 border-b border-border/15 pb-px">
-                <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
-              </div>
-              <div className="min-w-0 space-y-1 pt-0">
-                <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row3}</HorizontalOverflowRow>
-                {summaryChipElements && (
-                  <HorizontalOverflowRow
-                    className={cn(
-                      SCROLLER_ROW_CLASS,
-                      "border-t-2 border-dashed border-white/65 [border-image:none] pt-[9px] mt-1.5"
-                    )}
-                  >
-                    {summaryChipElements}
-                  </HorizontalOverflowRow>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {panelBlock}
 
       {!openSlot && summaryChipElements && (
         <HorizontalOverflowRow className={cn(SCROLLER_ROW_CLASS, "border-t border-border/20 pt-2")}>

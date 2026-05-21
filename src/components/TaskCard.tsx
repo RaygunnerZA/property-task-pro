@@ -255,6 +255,7 @@ function TaskCardComponent({
   };
 
   const priorityColor = getPriorityColor(task?.priority);
+  const isUrgentPriority = task?.priority?.toLowerCase() === "urgent";
   const metaCompact = metaDensity === "compact";
   const showPriorityDot =
     !metaCompact || task?.priority === "high" || task?.priority === "urgent";
@@ -423,13 +424,17 @@ function TaskCardComponent({
         {showPriorityDot ? (
         <div 
           className={cn(
-            "absolute top-[4px] left-[4px] w-[15px] h-[15px] rounded-full z-10",
+            "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-[8px] z-10 flex items-center justify-center",
             priorityColor
           )}
           style={{
-            boxShadow: "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -2px 2px 0px rgba(0, 0, 0, 0.34)",
+            boxShadow: "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -1px 1px 0px rgba(0, 0, 0, 0.2)",
           }}
-        />
+        >
+          {isUrgentPriority ? (
+            <span className="text-white text-[13px] font-bold leading-none">!</span>
+          ) : null}
+        </div>
         ) : null}
         {/* Theme/Category chip - overlays the thumbnail */}
         {!metaCompact && themes.length > 0 && (

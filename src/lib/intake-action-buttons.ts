@@ -21,22 +21,22 @@ const addNeuShadow =
 
 export const intakeReportIssueButtonClassName = cn(
   "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
-  "lg:h-8 lg:min-h-8 lg:max-h-8 lg:py-0 lg:flex-1",
+  "lg:h-9 lg:min-h-9 lg:max-h-9 lg:py-0 lg:flex-1",
   onCta,
   reportBg,
   toolbarRaisedShadow,
   "transition-all hover:bg-[#ff6b6b]/90",
-  "lg:justify-start lg:px-1.5 lg:gap-1"
+  "lg:justify-start lg:px-1.5 lg:gap-[5px]"
 );
 
 export const intakeAddRecordButtonClassName = cn(
   "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
-  "lg:h-8 lg:min-h-8 lg:max-h-8 lg:py-0 lg:flex-1",
+  "lg:h-9 lg:min-h-9 lg:max-h-9 lg:py-0 lg:flex-1",
   onCta,
   addRecordBg,
   toolbarRaisedShadow,
   "transition-all hover:bg-[#8DC9CE]/90",
-  "lg:justify-start lg:px-1.5 lg:gap-1"
+  "lg:justify-start lg:px-1.5 lg:gap-[5px]"
 );
 
 export const intakeReportIssueIconClassName = "h-4 w-4 shrink-0 text-white";
@@ -133,3 +133,23 @@ export const intakeFooterSubmitAddRecordClassName = cn(
   addNeuShadow,
   "hover:bg-[#8DC9CE]/90 hover:text-white"
 );
+
+/** Full-width stacked actions (records rail, property workspace cards). */
+export const intakeAddRecordStackedClassName = cn(
+  "w-full flex items-center justify-center gap-2 rounded-xl border-0 px-4 py-2.5 text-sm font-semibold",
+  onCta,
+  addRecordBg,
+  addNeuShadow,
+  "transition-all hover:bg-[#8DC9CE]/90"
+);
+
+export const intakeReportIssueStackedClassName = cn(
+  "w-full flex items-center justify-center gap-2 rounded-xl border-0 px-4 py-2.5 text-sm font-semibold",
+  onCta,
+  reportBg,
+  reportNeuShadow,
+  "transition-all hover:bg-[#ff6b6b]/90"
+);
+
+export const INTAKE_ADD_RECORD_LABEL = "Add Record";
+export const INTAKE_REPORT_ISSUE_LABEL = "Report Issue";

@@ -1,16 +1,14 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, Calendar, User, FileText } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, MessageSquare } from "lucide-react";
 import { useTaskDetails } from "@/hooks/use-task-details";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
-import { FileUploadZone } from "@/components/attachments/FileUploadZone";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -38,7 +36,6 @@ import { cn } from "@/lib/utils";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
-import { useTaskMessages } from "@/hooks/useTaskMessages";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
@@ -59,6 +56,12 @@ import { useTaskTimeline } from "@/hooks/useTaskTimeline";
 import { TaskTimeline } from "./TaskTimeline";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
+import {
+  IntakeChipRow,
+  type IntakeChipRowChip,
+  type IntakeChipSlotId,
+  type IntakeSlotPanelRows,
+} from "@/components/intake/IntakeChipRow";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -108,11 +111,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const deleteTaskMutation = useDeleteTaskMutation();
   const updateTaskMutation = useUpdateTaskMutation();
   const { members } = useOrgMembers();
-  const { messages: conversationMessages } = useTaskMessages(taskId);
-  const latestConversationMessage = useMemo(() => {
-    if (conversationMessages.length === 0) return null;
-    return conversationMessages[conversationMessages.length - 1];
-  }, [conversationMessages]);
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
@@ -125,7 +123,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [taskEditOpen, setTaskEditOpen] = useState(false);
+  const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [dueDate, setDueDate] = useState("");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
   const [localPropertyId, setLocalPropertyId] = useState("");
@@ -146,6 +145,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset edit UI when switching tasks
+  useEffect(() => {
+    setTaskEditOpen(false);
+    setOpenChipSlot(null);
+  }, [taskId]);
 
   // Update local state when task data loads
   useEffect(() => {
@@ -398,94 +403,429 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
   }, [status]);
 
-  const hasAssetFacts = selectedAssetIds.length > 0;
-  const hasCategoryFacts = selectedThemeIds.length > 0;
-  const hasComplianceFacts = isCompliance || Boolean(complianceLevel);
-
-  const dueDateSummaryLabel = useMemo(() => {
-    if (!dueDate) return "No due date";
-    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
-    return isValid(d) ? format(d, "MMM d, yyyy") : dueDate;
-  }, [dueDate]);
-
-  const assigneeSummaryLabel = useMemo(() => {
-    if (selectedUserId) {
-      const m = members.find((x) => x.user_id === selectedUserId);
-      return m?.display_name || m?.nickname || m?.email || "Assignee";
-    }
-    if (selectedTeamIds.length > 0) return "Team";
-    return "Unassigned";
-  }, [members, selectedUserId, selectedTeamIds]);
-
-  const prioritySummaryLabel = useMemo(() => {
-    return (
-      ({ low: "Low", normal: "Normal", high: "High", urgent: "Urgent" } as Record<string, string>)[priority] ||
-      priority
-    );
-  }, [priority]);
-
-  const statusDisplayLabel = useMemo(() => {
+  const statusChipLabel = useMemo(() => {
     return (
       (
         {
-          open: "Open",
-          in_progress: "In progress",
-          waiting_review: "Waiting review",
-          completed: "Done",
-          archived: "Archived",
+          open: "OPEN",
+          in_progress: "IN PROGRESS",
+          waiting_review: "WAITING REVIEW",
+          completed: "DONE",
+          archived: "ARCHIVED",
         } as Record<string, string>
-      )[status] || status
+      )[status] || status.toUpperCase()
     );
   }, [status]);
 
-  const detailMetaLinkClass = cn(
-    "text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline",
-    "bg-transparent border-0 p-0 cursor-pointer text-left font-normal"
-  );
+  const statusChipTextClass = useMemo(() => {
+    if (status === "open") return "text-emerald-600";
+    if (status === "completed" || status === "archived") return "text-muted-foreground";
+    if (status === "waiting_review") return "text-amber-700";
+    return "text-teal-600";
+  }, [status]);
 
-  /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
-  const whereChipLabel = useMemo(() => {
-    if (!task) return "PLACE";
+  const taskTeams = useMemo(() => {
+    const raw = (task as any)?.teams;
+    if (Array.isArray(raw)) return raw as { id: string; name?: string }[];
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw) as { id: string; name?: string }[];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }, [task]);
+
+  const metaLine = useMemo(() => {
+    const parts: string[] = [];
+    if (dueDate) {
+      const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
+      if (isValid(d)) parts.push(format(d, "d MMM").toUpperCase());
+    }
+    if (selectedUserId) {
+      const m = members.find((x) => x.user_id === selectedUserId);
+      const name = m?.display_name || m?.nickname || m?.email || "";
+      const first = name.trim().split(/\s+/)[0];
+      if (first) parts.push(first.toUpperCase());
+    } else if (selectedTeamIds.length > 0) {
+      const team = taskTeams.find((t) => selectedTeamIds.includes(t.id));
+      if (team?.name) parts.push(team.name.toUpperCase());
+    }
     const propName =
-      (task as any).property?.nickname ||
-      (task as any).property_name ||
+      (task as any)?.property?.nickname ||
+      (task as any)?.property_name ||
       "";
-    const spacesRaw = (task as any).spaces;
+    const spacesRaw = (task as any)?.spaces;
     const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
     const spaceNames = spacesArr
       .filter((s: { id?: string }) => selectedSpaceIds.length === 0 || (s.id && selectedSpaceIds.includes(s.id)))
       .map((s: { name?: string }) => s.name)
       .filter(Boolean) as string[];
-    const spacePart = spaceNames.join(", ");
-    if (propName && spacePart) return `${propName} · ${spacePart}`;
-    if (propName) return propName;
-    if (spacePart) return spacePart;
-    return "PLACE";
-  }, [task, selectedSpaceIds]);
+    if (propName) {
+      parts.push(
+        spaceNames.length > 0
+          ? `${propName.toUpperCase()}: ${spaceNames.map((n) => n.toUpperCase()).join(", ")}`
+          : propName.toUpperCase()
+      );
+    } else if (spaceNames.length > 0) {
+      parts.push(spaceNames.map((n) => n.toUpperCase()).join(", "));
+    }
+    return parts.join(" • ");
+  }, [dueDate, members, selectedUserId, selectedTeamIds, task, taskTeams, selectedSpaceIds]);
 
-  const assetChipLabel = useMemo(() => {
-    if (!hasAssetFacts) return "+ASSET";
-    const names = taskAssets
+  const formatDueChipLabel = useCallback((dateStr: string) => {
+    const d = dateStr.includes("T") ? parseISO(dateStr) : parseISO(`${dateStr}T12:00:00`);
+    return isValid(d) ? format(d, "EEE d MMM").toUpperCase() : dateStr.toUpperCase();
+  }, []);
+
+  const taskDetailChips: IntakeChipRowChip[] = useMemo(() => {
+    const chips: IntakeChipRowChip[] = [];
+    const openSlot = (slot: IntakeChipSlotId) => {
+      setOpenChipSlot((prev) => (prev === slot ? null : slot));
+    };
+
+    if (selectedUserId) {
+      const m = members.find((x) => x.user_id === selectedUserId);
+      const label = (m?.display_name || m?.nickname || m?.email || "Assignee").toUpperCase();
+      chips.push({
+        id: `who-${selectedUserId}`,
+        slot: "who",
+        label,
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("who"),
+        onRemove: () => handleUserChange(undefined),
+      });
+    }
+
+    selectedTeamIds.forEach((teamId) => {
+      const team = taskTeams.find((t) => t.id === teamId);
+      chips.push({
+        id: `who-team-${teamId}`,
+        slot: "who",
+        label: (team?.name || "Team").toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("who"),
+        onRemove: () => handleTeamsChange(selectedTeamIds.filter((id) => id !== teamId)),
+      });
+    });
+
+    const propName =
+      (task as any)?.property?.nickname || (task as any)?.property_name || "";
+    const spacesRaw = (task as any)?.spaces;
+    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
+    spacesArr
+      .filter((s: { id?: string }) => s.id && selectedSpaceIds.includes(s.id))
+      .forEach((space: { id: string; name?: string }) => {
+        chips.push({
+          id: `where-space-${space.id}`,
+          slot: "where",
+          label: (space.name || "Space").toUpperCase(),
+          epistemic: "fact",
+          removable: true,
+          onPress: () => openSlot("where"),
+          onRemove: () => handleSpacesChange(selectedSpaceIds.filter((id) => id !== space.id)),
+        });
+      });
+
+    if (dueDate) {
+      chips.push({
+        id: `when-${dueDate}`,
+        slot: "when",
+        label: formatDueChipLabel(dueDate),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("when"),
+        onRemove: () => handleDueDateChange(""),
+      });
+    }
+
+    milestones.forEach((milestone) => {
+      chips.push({
+        id: `when-milestone-${milestone.id}`,
+        slot: "when",
+        label: `${milestone.name} ${milestone.date ? formatDueChipLabel(milestone.date) : ""}`.trim().toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("when"),
+        onRemove: () => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id)),
+      });
+    });
+
+    taskAssets
       .filter((a) => selectedAssetIds.includes(a.id))
-      .map((a) => a.name)
-      .filter(Boolean);
-    return names.length > 0 ? names.join(", ") : "ASSET";
-  }, [hasAssetFacts, taskAssets, selectedAssetIds]);
+      .forEach((asset) => {
+        chips.push({
+          id: `asset-${asset.id}`,
+          slot: "asset",
+          label: (asset.name || "Asset").toUpperCase(),
+          epistemic: "fact",
+          removable: true,
+          onPress: () => openSlot("asset"),
+          onRemove: () => handleAssetsChange(selectedAssetIds.filter((id) => id !== asset.id)),
+        });
+      });
 
-  const categoryChipLabel = useMemo(() => {
-    if (!hasCategoryFacts) return "+TAG";
-    const cats = (task as any)?.categories;
-    const arr = Array.isArray(cats) ? cats : [];
-    const names = arr.map((c: { name?: string }) => c.name).filter(Boolean) as string[];
-    return names.length > 0 ? names.join(", ") : "TAG";
-  }, [hasCategoryFacts, task]);
+    if (priority === "urgent" || priority === "high") {
+      chips.push({
+        id: `priority-${priority}`,
+        slot: "priority",
+        label: priority.toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("priority"),
+        onRemove: () => setPriority("normal"),
+      });
+    }
 
-  const complianceChipLabel = useMemo(() => {
-    if (!hasComplianceFacts) return "+RULE";
-    if (complianceLevel) return complianceLevel.toUpperCase();
-    return "RULE";
-  }, [hasComplianceFacts, complianceLevel]);
+    const categories = Array.isArray((task as any)?.categories) ? (task as any).categories : [];
+    categories
+      .filter((c: { id: string }) => selectedThemeIds.includes(c.id))
+      .forEach((cat: { id: string; name?: string }) => {
+        chips.push({
+          id: `category-${cat.id}`,
+          slot: "category",
+          label: (cat.name || "Tag").toUpperCase(),
+          epistemic: "fact",
+          removable: true,
+          onPress: () => openSlot("category"),
+          onRemove: () => handleThemesChange(selectedThemeIds.filter((id) => id !== cat.id)),
+        });
+      });
 
+    if (propName && chips.length > 0) {
+      chips.unshift({
+        id: `where-property-${(task as any)?.property_id || "property"}`,
+        slot: "where",
+        label: propName.toUpperCase(),
+        epistemic: "fact",
+        removable: false,
+        onPress: () => openSlot("where"),
+      });
+    }
+
+    return chips;
+  }, [
+    members,
+    selectedUserId,
+    selectedTeamIds,
+    taskTeams,
+    task,
+    selectedSpaceIds,
+    dueDate,
+    milestones,
+    taskAssets,
+    selectedAssetIds,
+    priority,
+    selectedThemeIds,
+    formatDueChipLabel,
+    handleUserChange,
+    handleTeamsChange,
+    handleSpacesChange,
+    handleDueDateChange,
+    handleAssetsChange,
+    handleThemesChange,
+  ]);
+
+  const renderTaskDetailSlotContent = useCallback(
+    (slot: IntakeChipSlotId, onClose: () => void): IntakeSlotPanelRows => {
+      const row3 = null;
+      switch (slot) {
+        case "who":
+          return {
+            row2: (
+              <WhoSection
+                isActive
+                onActivate={() => setOpenChipSlot("who")}
+                assignedUserId={selectedUserId}
+                assignedTeamIds={selectedTeamIds}
+                onUserChange={(userId) => {
+                  void handleUserChange(userId);
+                  onClose();
+                }}
+                onTeamsChange={(teamIds) => {
+                  void handleTeamsChange(teamIds);
+                }}
+                pendingInvitations={pendingInvitations}
+                onPendingInvitationsChange={setPendingInvitations}
+                onInviteToOrg={(prefill) => {
+                  setInvitePrefill(prefill ?? null);
+                  setInviteModalOpen(true);
+                }}
+                onAddAsContractor={() => {
+                  setInvitePrefill(null);
+                  setInviteModalOpen(true);
+                }}
+              />
+            ),
+            row3,
+          };
+        case "where":
+          return {
+            row2: (
+              <WhereSection
+                propertyId={localPropertyId}
+                selectedPropertyIds={selectedPropertyIds}
+                selectedSpaceIds={selectedSpaceIds}
+                onPropertyChange={handlePropertyChangeSection}
+                onSpacesChange={handleSpacesChange}
+                showFactsByDefault
+              />
+            ),
+            row3,
+          };
+        case "when":
+          return {
+            row2: (
+              <WhenSection
+                isActive
+                onActivate={() => setOpenChipSlot("when")}
+                onDeactivate={onClose}
+                dueDate={dueDate}
+                repeatRule={repeatRule}
+                onDueDateChange={handleDueDateChange}
+                onRepeatRuleChange={setRepeatRule}
+                milestones={milestones}
+                onMilestonesChange={setMilestones}
+              />
+            ),
+            row3,
+          };
+        case "asset":
+          return {
+            row2: (
+              <AssetSection
+                isActive
+                onActivate={() => setOpenChipSlot("asset")}
+                propertyId={localPropertyId || undefined}
+                spaceId={selectedSpaceIds[0]}
+                selectedAssetIds={selectedAssetIds}
+                onAssetsChange={handleAssetsChange}
+              />
+            ),
+            row3,
+          };
+        case "priority":
+          return {
+            row2: (
+              <CreateTaskRow
+                sectionId="priority"
+                icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
+                instruction="Add Priority"
+                valueLabel="+Priority"
+                isActive
+                onActivate={() => setOpenChipSlot("priority")}
+                factChips={priorityFactChips}
+                hoverChips={[
+                  { id: "low", label: "LOW", onPress: () => setPriority("low") },
+                  { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
+                  { id: "high", label: "HIGH", onPress: () => setPriority("high") },
+                  { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
+                ]}
+              />
+            ),
+            row3,
+          };
+        case "status":
+          return {
+            row2: (
+              <CreateTaskRow
+                sectionId="status"
+                icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
+                instruction="Set Status"
+                valueLabel="+Status"
+                isActive
+                onActivate={() => setOpenChipSlot("status")}
+                factChips={statusFactChips}
+                hoverChips={[
+                  { id: "open", label: "OPEN", onPress: () => setStatus("open") },
+                  { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
+                  { id: "waiting_review", label: "WAITING REVIEW", onPress: () => setStatus("waiting_review") },
+                  { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
+                  { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
+                ]}
+              />
+            ),
+            row3,
+          };
+        case "category":
+          return {
+            row2: (
+              <CategorySection
+                isActive
+                onActivate={() => setOpenChipSlot("category")}
+                selectedThemeIds={selectedThemeIds}
+                onThemesChange={handleThemesChange}
+              />
+            ),
+            row3,
+          };
+        case "compliance":
+          return {
+            row2: (
+              <CreateTaskRow
+                sectionId="compliance"
+                icon={<Shield className="h-4 w-4 text-muted-foreground" />}
+                instruction="Add Compliance Rule"
+                valueLabel="+Rule"
+                isActive
+                onActivate={() => setOpenChipSlot("compliance")}
+                factChips={[]}
+              >
+                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                  <Switch id="task-detail-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
+                  {isCompliance && (
+                    <Select value={complianceLevel} onValueChange={setComplianceLevel}>
+                      <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                        <SelectValue placeholder="Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </CreateTaskRow>
+            ),
+            row3,
+          };
+        default:
+          return { row2: null, row3 };
+      }
+    },
+    [
+      selectedUserId,
+      selectedTeamIds,
+      pendingInvitations,
+      localPropertyId,
+      selectedPropertyIds,
+      selectedSpaceIds,
+      dueDate,
+      repeatRule,
+      milestones,
+      selectedAssetIds,
+      priorityFactChips,
+      statusFactChips,
+      selectedThemeIds,
+      isCompliance,
+      complianceLevel,
+      handleUserChange,
+      handleTeamsChange,
+      handlePropertyChangeSection,
+      handleSpacesChange,
+      handleDueDateChange,
+      handleAssetsChange,
+      handleThemesChange,
+    ]
+  );
+
+  /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
   const { userId } = useDataContext();
   const allAttachments = (task as any)?.images ?? [];
   const imageAttachments = useMemo(
@@ -723,6 +1063,83 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               </button>
             </div>
           )}
+          <input
+            ref={taskImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const files = e.target.files;
+              if (files) {
+                Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
+                e.target.value = "";
+              }
+            }}
+          />
+        </div>
+
+        {/* Content — status, meta, description, edit chips, messaging, activity */}
+        <div className="p-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+              Status:
+            </span>
+            <span
+              className={cn(
+                "inline-flex h-[28px] items-center rounded-[8px] bg-white px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide shadow-none",
+                statusChipTextClass
+              )}
+            >
+              {statusChipLabel}
+            </span>
+            {priority === "urgent" && (
+              <span className="inline-flex h-[28px] items-center rounded-[8px] bg-white px-2.5 font-mono text-[11px] uppercase tracking-wide text-destructive shadow-none">
+                URGENT
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-start justify-between gap-3 min-w-0">
+            {taskEditOpen ? (
+              <div className="min-w-0 flex-1">
+                <IntakeChipRow
+                  layout="interleaved"
+                  chips={taskDetailChips}
+                  onOpenSlot={setOpenChipSlot}
+                  openSlot={openChipSlot}
+                  onCloseSlot={() => setOpenChipSlot(null)}
+                  renderSlotContent={renderTaskDetailSlotContent}
+                />
+              </div>
+            ) : metaLine ? (
+              <p className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide text-foreground leading-snug">
+                {metaLine}
+              </p>
+            ) : (
+              <p className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide text-muted-foreground leading-snug">
+                No date, assignee, or location
+              </p>
+            )}
+            <button
+              type="button"
+              className="shrink-0 font-sans text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => {
+                setTaskEditOpen((open) => {
+                  const next = !open;
+                  if (!next) setOpenChipSlot(null);
+                  return next;
+                });
+              }}
+            >
+              {taskEditOpen ? "Done" : "Edit"}
+            </button>
+          </div>
+
+          <p className="text-[18px] text-foreground leading-relaxed">
+            {(task as any)?.description || "No description provided"}
+          </p>
+
           {documentAttachments.length > 0 && (
             <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
               <div className="mb-2 text-xs font-medium text-muted-foreground">
@@ -747,401 +1164,33 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               </div>
             </div>
           )}
-          <input
-            ref={taskImageInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files) {
-                Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
-                e.target.value = "";
-              }
-            }}
-          />
-        </div>
-
-        {/* Content — title, key facts, description, chips, messaging, activity */}
-        <div className="p-4 space-y-4">
-          <h2 className="text-sm font-semibold text-foreground tracking-tight line-clamp-2">
-            {title.trim() || "Untitled task"}
-          </h2>
-
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "when" ? null : "when")}>
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                <span className="truncate max-w-[10rem]">{dueDateSummaryLabel}</span>
-              </span>
-            </button>
-            <span className="text-muted-foreground/40 select-none" aria-hidden>
-              ·
-            </span>
-            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "who" ? null : "who")}>
-              <span className="inline-flex items-center gap-1">
-                <User className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                <span className="truncate max-w-[10rem]">{assigneeSummaryLabel}</span>
-              </span>
-            </button>
-            <span className="text-muted-foreground/40 select-none" aria-hidden>
-              ·
-            </span>
-            <button
-              type="button"
-              className={cn(detailMetaLinkClass, priority === "urgent" && "text-destructive hover:text-destructive")}
-              onClick={() => setActiveSection(activeSection === "priority" ? null : "priority")}
-            >
-              <span className="inline-flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                {prioritySummaryLabel}
-              </span>
-            </button>
-          </div>
-
-          <p className="text-[18px] text-foreground leading-relaxed">
-            {(task as any)?.description || "No description provided"}
-          </p>
-
-          <div className="rounded-[10px] bg-muted/30 px-3 py-2.5 shadow-sm space-y-2">
-            <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Property & location</p>
-              <button
-                type="button"
-                className="w-full text-left text-sm font-medium text-foreground leading-snug hover:underline"
-                onClick={() => setActiveSection("where")}
-              >
-                {whereChipLabel}
-              </button>
-            </div>
-            <div className="flex flex-row flex-wrap items-baseline justify-between gap-2 border-t border-border/20 pt-2">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Status</span>
-              <button type="button" className={cn(detailMetaLinkClass, "text-sm font-medium text-foreground")} onClick={() => setActiveSection("status")}>
-                {statusDisplayLabel}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-border/15 pb-3">
-            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection(activeSection === "what" ? null : "what")}>
-              {hasAssetFacts ? assetChipLabel : "+ Asset"}
-            </button>
-            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection("category")}>
-              {hasCategoryFacts ? categoryChipLabel : "+ Tags"}
-            </button>
-            <button type="button" className={detailMetaLinkClass} onClick={() => setActiveSection("compliance")}>
-              {hasComplianceFacts ? complianceChipLabel : "+ Rule"}
-            </button>
-          </div>
-
-          {activeSection === "who" && (
-            <WhoSection
-              isActive
-              onActivate={() => setActiveSection("who")}
-              assignedUserId={selectedUserId}
-              assignedTeamIds={selectedTeamIds}
-              onUserChange={(userId) => handleUserChange(userId)}
-              onTeamsChange={(teamIds) => handleTeamsChange(teamIds)}
-              pendingInvitations={pendingInvitations}
-              onPendingInvitationsChange={setPendingInvitations}
-              onInviteToOrg={(prefill) => {
-                setInvitePrefill(prefill ?? null);
-                setInviteModalOpen(true);
-              }}
-              onAddAsContractor={() => {
-                setInvitePrefill(null);
-                setInviteModalOpen(true);
-              }}
-            />
-          )}
-
-          {activeSection === "where" && (
-            <WhereSection
-              propertyId={localPropertyId}
-              selectedPropertyIds={selectedPropertyIds}
-              selectedSpaceIds={selectedSpaceIds}
-              onPropertyChange={handlePropertyChangeSection}
-              onSpacesChange={handleSpacesChange}
-              showFactsByDefault
-            />
-          )}
-
-          {activeSection === "when" && (
-            <WhenSection
-              isActive
-              onActivate={() => setActiveSection("when")}
-              onDeactivate={() => setActiveSection(null)}
-              dueDate={dueDate}
-              repeatRule={repeatRule}
-              onDueDateChange={handleDueDateChange}
-              onRepeatRuleChange={setRepeatRule}
-              milestones={milestones}
-              onMilestonesChange={setMilestones}
-            />
-          )}
-
-          {activeSection === "what" && (
-            <AssetSection
-              isActive
-              onActivate={() => setActiveSection("what")}
-              propertyId={localPropertyId || undefined}
-              spaceId={selectedSpaceIds[0]}
-              selectedAssetIds={selectedAssetIds}
-              onAssetsChange={handleAssetsChange}
-            />
-          )}
-
-          {activeSection === "priority" && (
-            <CreateTaskRow
-              sectionId="priority"
-              icon={<AlertTriangle className="h-4 w-4 text-muted-foreground" />}
-              instruction="Add Priority"
-              valueLabel="+Priority"
-              isActive
-              onActivate={() => setActiveSection("priority")}
-              factChips={priorityFactChips}
-              hoverChips={[
-                { id: "low", label: "LOW", onPress: () => setPriority("low") },
-                { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
-                { id: "high", label: "HIGH", onPress: () => setPriority("high") },
-                { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
-              ]}
-            />
-          )}
-
-          {activeSection === "status" && (
-            <CreateTaskRow
-              sectionId="status"
-              icon={<CircleDot className="h-4 w-4 text-muted-foreground" />}
-              instruction="Set Status"
-              valueLabel="+Status"
-              isActive
-              onActivate={() => setActiveSection("status")}
-              factChips={statusFactChips}
-              hoverChips={[
-                { id: "open", label: "OPEN", onPress: () => setStatus("open") },
-                { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
-                { id: "waiting_review", label: "WAITING REVIEW", onPress: () => setStatus("waiting_review") },
-                { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
-                { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
-              ]}
-            />
-          )}
-
-          {activeSection === "category" && (
-            <CategorySection
-              isActive
-              onActivate={() => setActiveSection("category")}
-              selectedThemeIds={selectedThemeIds}
-              onThemesChange={handleThemesChange}
-            />
-          )}
-
-          {activeSection === "compliance" && (
-            <CreateTaskRow
-              sectionId="compliance"
-              icon={<Shield className="h-4 w-4 text-muted-foreground" />}
-              instruction="Add Compliance Rule"
-              valueLabel="+Rule"
-              isActive
-              onActivate={() => setActiveSection("compliance")}
-              factChips={[]}
-            >
-              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
-                <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
-                <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
-                {isCompliance && (
-                  <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                    <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
-                      <SelectValue placeholder="Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </CreateTaskRow>
-          )}
-
-          <Collapsible open={messagesOpen} onOpenChange={setMessagesOpen}>
-            <CollapsibleTrigger
-              className={cn(
-                "flex w-full items-stretch gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium",
-                "bg-muted/40 shadow-sm hover:shadow-md transition-shadow text-foreground"
-              )}
-            >
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5 text-left">
-                <div className="flex w-full items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 text-base leading-none" aria-hidden>
-                      💬
-                    </span>
-                    <span className="truncate">Start a Conversation</span>
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                      messagesOpen && "rotate-180"
-                    )}
-                    aria-hidden
-                  />
-                </div>
-                {latestConversationMessage && (
-                  <p className="line-clamp-2 pl-7 text-left text-xs font-normal leading-snug text-muted-foreground">
-                    <span className="font-medium text-foreground/90">
-                      {latestConversationMessage.author_name || "Someone"}
-                    </span>
-                    {latestConversationMessage.body?.trim() ? (
-                      <>
-                        <span className="text-muted-foreground/80"> · </span>
-                        <span>{latestConversationMessage.body.trim()}</span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground/80"> · Sent an attachment</span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-3 data-[state=closed]:animate-out">
-              <div className="flex max-h-[280px] min-h-0 h-[min(280px,42dvh)] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
-                <TaskMessaging taskId={taskId} />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <Collapsible open={activityOpen} onOpenChange={setActivityOpen}>
-            <CollapsibleTrigger
-              className={cn(
-                "flex w-full items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm font-medium",
-                "bg-muted/40 shadow-sm hover:shadow-md transition-shadow text-foreground"
-              )}
-            >
-              <span className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
-                View activity
-              </span>
-              <ChevronDown
-                className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform", activityOpen && "rotate-180")}
-                aria-hidden
-              />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-3 space-y-4 data-[state=closed]:animate-out">
-              <GraphInsightPanel
-                start={{ type: "task", id: taskId }}
-                depth={2}
-                variant="minimal"
-                className="mb-1"
-              />
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Upload Images</h3>
-                <FileUploadZone
-                  taskId={taskId}
-                  propertyId={propertyId}
-                  onUploadComplete={() => {
-                    queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-                    queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
-                    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                    refreshTask();
-                    setSelectedImageIndex(0);
-                  }}
-                  accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
-                />
-              </div>
-              {imageAttachments.length > 0 && (() => {
-                const img = imageAttachments[selectedImageIndex ?? 0] as any;
-                const orgId = (task as any)?.org_id;
-                if (!orgId) return null;
-                return (
-                  <ImageAiActions
-                    attachment={img}
-                    assets={assets}
-                    complianceItems={complianceItems.map((c: any) => ({
-                      id: c.id,
-                      title: c.title,
-                      expiry_date: c.expiry_date,
-                    }))}
-                    orgId={orgId}
-                    propertyId={propertyId}
-                    taskId={taskId}
-                    onRefresh={() => {
-                      refreshTask();
-                      queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
-                      queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
-                      queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
-                    }}
-                  />
-                );
-              })()}
-              {imageAttachments.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">All Images ({imageAttachments.length})</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {imageAttachments.map((image: any) => (
-                      <button
-                        key={image.id}
-                        type="button"
-                        className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
-                        onClick={() => {
-                          if (!image?.id) return;
-                          setEditingImageId(image.id);
-                          setShowAnnotationEditor(true);
-                        }}
-                      >
-                        <img
-                          src={image.thumbnail_url || image.file_url}
-                          alt={image.file_name || "Task image"}
-                          className="w-full h-full object-contain bg-muted/40"
-                          onError={(e) => {
-                            if (image.thumbnail_url && image.file_url) {
-                              (e.target as HTMLImageElement).src = image.file_url;
-                            }
-                          }}
-                        />
-                        <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Logs
-                </h3>
-                {timelineLoading ? (
-                  <div className="space-y-2 py-2">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                  </div>
-                ) : timelineError ? (
-                  <p className="text-muted-foreground text-sm">
-                    Couldn’t load audit log.{" "}
-                    <button
-                      type="button"
-                      className="text-primary underline-offset-2 hover:underline"
-                      onClick={() => void refetchTimeline()}
-                    >
-                      Retry
-                    </button>
-                  </p>
-                ) : (
-                  <TaskTimeline events={timelineEvents} />
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
         </div>
       </div>
 
-      {/* CTA panel — primary: Mark Complete; secondary: Update + overflow */}
-      <div className="flex flex-col gap-3 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
-        <div className="flex gap-2 items-center min-w-0">
+      {messagesOpen && (
+        <div className="flex-shrink-0 px-4 pb-2">
+          <div className="flex max-h-[280px] min-h-0 h-[min(280px,42dvh)] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
+            <TaskMessaging taskId={taskId} />
+          </div>
+        </div>
+      )}
+
+      {/* CTA panel — primary: Mark Complete; secondary: Add message + overflow */}
+      <div className="flex flex-col gap-1.5 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
+        <div className="flex gap-2 items-center min-w-0 w-full">
+          <Button
+            variant="outline"
+            className="shrink-0 shadow-e1 text-foreground"
+            onClick={() => setMessagesOpen((open) => !open)}
+          >
+            <MessageSquare className="h-4 w-4 mr-1.5 shrink-0" />
+            {messagesOpen ? "Close" : "Add message"}
+          </Button>
+          {hasEdits && canManageTask && (
+            <Button variant="outline" className="shrink-0 shadow-e1 text-foreground" onClick={handleUpdateTask} disabled={isUpdating}>
+              {isUpdating ? "…" : "Update"}
+            </Button>
+          )}
           {canManageTask && (
             <Button
               variant={status === "completed" ? "secondary" : "default"}
@@ -1203,15 +1252,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               {status === "completed" ? "Completed" : "Mark Complete"}
             </Button>
           )}
-          {hasEdits && canManageTask && (
-            <Button variant="outline" className="shrink-0 shadow-e1" onClick={handleUpdateTask} disabled={isUpdating}>
-              {isUpdating ? "…" : "Update"}
-            </Button>
-          )}
           {canManageTask && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="shadow-e1 gap-1.5">
+                <Button variant="outline" className="shrink-0 shadow-e1 text-foreground gap-1.5">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -1221,7 +1265,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     if (isUpdating || !task) return;
                     setIsUpdating(true);
                     try {
-                      const { data: newTask, error } = await supabase
+                      const { error } = await supabase
                         .from("tasks")
                         .insert({
                           org_id: (task as any).org_id,
@@ -1285,7 +1329,108 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </DropdownMenu>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => setActivityOpen((open) => !open)}
+          className="w-full pt-1.5 flex justify-end items-start font-sans text-xs font-normal text-muted-foreground hover:text-foreground underline"
+        >
+          View activity
+        </button>
       </div>
+
+      {activityOpen && (
+        <div className="flex-shrink-0 px-4 pb-4 space-y-4 border-t border-border/15 pt-3">
+          <GraphInsightPanel
+            start={{ type: "task", id: taskId }}
+            depth={2}
+            variant="minimal"
+            className="mb-1"
+          />
+          {imageAttachments.length > 0 && (() => {
+            const img = imageAttachments[selectedImageIndex ?? 0] as any;
+            const orgId = (task as any)?.org_id;
+            if (!orgId) return null;
+            return (
+              <ImageAiActions
+                attachment={img}
+                assets={assets}
+                complianceItems={complianceItems.map((c: any) => ({
+                  id: c.id,
+                  title: c.title,
+                  expiry_date: c.expiry_date,
+                }))}
+                orgId={orgId}
+                propertyId={propertyId}
+                taskId={taskId}
+                onRefresh={() => {
+                  refreshTask();
+                  queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+                  queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
+                  queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
+                }}
+              />
+            );
+          })()}
+          {imageAttachments.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                All Images ({imageAttachments.length})
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {imageAttachments.map((image: any) => (
+                  <button
+                    key={image.id}
+                    type="button"
+                    className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
+                    onClick={() => {
+                      if (!image?.id) return;
+                      setEditingImageId(image.id);
+                      setShowAnnotationEditor(true);
+                    }}
+                  >
+                    <img
+                      src={image.thumbnail_url || image.file_url}
+                      alt={image.file_name || "Task image"}
+                      className="w-full h-full object-contain bg-muted/40"
+                      onError={(e) => {
+                        if (image.thumbnail_url && image.file_url) {
+                          (e.target as HTMLImageElement).src = image.file_url;
+                        }
+                      }}
+                    />
+                    <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Logs
+            </h3>
+            {timelineLoading ? (
+              <div className="space-y-2 py-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : timelineError ? (
+              <p className="text-muted-foreground text-sm">
+                Couldn’t load audit log.{" "}
+                <button
+                  type="button"
+                  className="text-primary underline-offset-2 hover:underline"
+                  onClick={() => void refetchTimeline()}
+                >
+                  Retry
+                </button>
+              </p>
+            ) : (
+              <TaskTimeline events={timelineEvents} />
+            )}
+          </div>
+        </div>
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

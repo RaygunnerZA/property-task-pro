@@ -50,11 +50,10 @@ import { enrichSuggestionChipsWithEntities } from "@/services/ai/enrichSuggestio
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
 import {
-  intakeAddRecordMicroClassName,
   intakeFooterSubmitAddRecordClassName,
   intakeFooterSubmitReportIssueClassName,
-  intakeReportIssueMicroClassName,
 } from "@/lib/intake-action-buttons";
+import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import {
@@ -2319,11 +2318,13 @@ export function IntakeModal({
                       row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
                       cell: "h-[30px] w-[30px] rounded-[12px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
                       day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-[12px] grid items-center justify-center aria-selected:opacity-100",
+                      day_selected:
+                        "bg-primary text-primary-foreground shadow-[inset_2px_4px_4px_0px_rgba(0,0,0,0.23),1px_2px_2px_0px_rgba(255,255,255,0.75)] hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                       day_today:
                         "bg-white/30 text-foreground border-none shadow-[inset_0px_6.2px_3.9px_-1.2px_rgba(0,0,0,0.2),0px_1px_1px_0px_rgba(255,255,255,1)]",
                       nav: "ml-[3px] flex items-start justify-end gap-1 text-center",
                       nav_button:
-                        "h-7 w-7 rounded-full p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
+                        "flex h-7 w-7 items-center justify-center rounded-[12px] p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
                       nav_button_previous: "absolute top-1 left-[177px] flex items-center justify-center",
                     }}
                     components={{
@@ -3354,7 +3355,7 @@ export function IntakeModal({
           aria-selected={intakeMode === m}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex max-w-full min-w-0 shrink flex-[0_1_auto] items-center justify-center gap-1.5 rounded-[12px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex max-w-full min-w-0 shrink flex-[0_1_auto] items-center justify-center gap-1.5 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
                 ? "bg-[#ff6b6b] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
@@ -3681,21 +3682,12 @@ export function IntakeModal({
                   : "This looks like an on-site issue. Switch to Report Issue?"}
               </p>
               <div className="flex flex-wrap gap-2 shrink-0">
-                <button
-                  type="button"
-                  className={cn(
-                    "h-8 min-h-8 px-3",
-                    intakeMode === "report_issue" ? intakeAddRecordMicroClassName : intakeReportIssueMicroClassName
-                  )}
+                <IntakeActionButton
+                  mode={intakeMode === "report_issue" ? "add_record" : "report_issue"}
+                  variant="micro"
+                  className="h-8 min-h-8 px-3"
                   onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
-                >
-                  {intakeMode === "report_issue" ? (
-                    <FileText className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5 shrink-0 text-white" aria-hidden />
-                  )}
-                  {intakeMode === "report_issue" ? "Add Record" : "Report Issue"}
-                </button>
+                />
                 <Button
                   type="button"
                   variant="ghost"
@@ -3783,7 +3775,7 @@ export function IntakeModal({
       {/* 6. Footer: one adaptive primary + secondary override */}
       <div className="px-4 pt-3 pb-5 border-t border-border/30 space-y-2">
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 shadow-e1" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+          <Button variant="outline" className="flex-1 border-0 btn-neomorphic" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button
@@ -3803,7 +3795,7 @@ export function IntakeModal({
           <button
             type="button"
             onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
+            className="w-full pt-1.5 flex justify-end items-start text-xs text-muted-foreground hover:text-foreground underline"
           >
             {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Report Issue"}
           </button>

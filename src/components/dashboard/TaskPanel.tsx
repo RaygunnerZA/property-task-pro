@@ -20,14 +20,12 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Plus,
   Search,
   AlertTriangle,
   HelpCircle,
   ShieldCheck,
   ClipboardList,
   Upload,
-  FileText,
 } from "lucide-react";
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import {
@@ -45,14 +43,7 @@ import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import type { IntakeMode } from "@/types/intake";
-import {
-  intakeAddRecordButtonClassName,
-  intakeAddRecordCompactClassName,
-  intakeAddRecordIconClassName,
-  intakeReportIssueButtonClassName,
-  intakeReportIssueCompactClassName,
-  intakeReportIssueIconClassName,
-} from "@/lib/intake-action-buttons";
+import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
@@ -311,7 +302,7 @@ function IssuesSignalCard({
         : [
             {
               id: "report-issue",
-              label: "Report issue",
+              label: "Report Issue",
               onClick: () => runFixtureAction("report-issue", item, ctx),
             },
             {
@@ -1323,18 +1314,12 @@ export function TaskPanel({
                     "max-pane:px-1"
                   )}
                 >
-                  <button type="button" onClick={() => onOpenIntake("add_record")} className={intakeAddRecordButtonClassName}>
-                    <FileText className={intakeAddRecordIconClassName} />
-                    Add Record
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpenIntake("report_issue")}
-                    className={intakeReportIssueButtonClassName}
-                  >
-                    <Plus className={intakeReportIssueIconClassName} />
-                    Report Issue
-                  </button>
+                  <IntakeActionButtonPair
+                    variant="toolbar"
+                    layout="grid"
+                    onAddRecord={() => onOpenIntake("add_record")}
+                    onReportIssue={() => onOpenIntake("report_issue")}
+                  />
                 </div>
               </div>
             </div>

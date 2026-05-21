@@ -1,5 +1,6 @@
-import { Plus, FileText, FileUp, Sparkles, Link2 } from "lucide-react";
+import { Plus, FileUp, Sparkles, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { WorkspaceSurfaceCard } from "@/components/property-workspace";
 import type { IntakeMode } from "@/types/intake";
 
@@ -29,15 +30,18 @@ export function RecordsActionRail({
     <div className="flex flex-col gap-4 pr-2 pl-1 pt-3 min-w-0">
       <WorkspaceSurfaceCard title="Primary" description="Create or attach evidence">
         <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            className="w-full btn-accent-vibrant justify-center gap-2"
+          <IntakeActionButton
+            mode="add_record"
+            variant="stacked"
             disabled={disabled}
             onClick={() => onOpenIntake?.("add_record")}
-          >
-            <FileText className="h-4 w-4" />
-            Add Record
-          </Button>
+          />
+          <IntakeActionButton
+            mode="report_issue"
+            variant="stacked"
+            disabled={disabled}
+            onClick={() => onOpenIntake?.("report_issue")}
+          />
           <Button
             type="button"
             variant="outline"
