@@ -435,6 +435,80 @@ describe("extractChipsFromText — asset detection", () => {
     const chairs = assets.find((c) => c.label.toLowerCase().includes("chair"));
     expect(chairs).toBeDefined();
   });
+
+  it("Bob must fix the stove → person Bob + asset Stove chips", () => {
+    const result = extractChipsFromText(
+      {
+        title: "Fix stove",
+        description: "Bob must fix the stove at the cottage next thursday.",
+      },
+      EMPTY_ENTITIES
+    );
+    const people = result.chips.filter((c) => c.type === "person");
+    const assets = result.chips.filter((c) => c.type === "asset");
+    expect(people.some((c) => c.label.toLowerCase() === "bob")).toBe(true);
+    expect(assets.some((c) => c.label.toLowerCase() === "stove")).toBe(true);
+  });
+
+  it("Bob must check the oven → asset Oven only (no person/action bleed)", () => {
+    const result = extract("Bob must check the oven before next week");
+    const assets = result.chips.filter((c) => c.type === "asset");
+    const oven = assets.find((c) => c.label.toLowerCase() === "oven");
+    expect(oven).toBeDefined();
+    const bad = assets.find((c) => /bob|must/.test(c.label.toLowerCase()));
+    expect(bad).toBeUndefined();
+    const people = result.chips.filter((c) => c.type === "person");
+    expect(people.some((c) => c.label.toLowerCase() === "bob")).toBe(true);
+  });
+
+  it("title + description (Check oven / Bob must…) → single Oven asset chip", () => {
+    const result = extractChipsFromText(
+      {
+        title: "Check oven",
+        description: "Bob must check the oven before next week",
+      },
+      EMPTY_ENTITIES
+    );
+    const assets = result.chips.filter((c) => c.type === "asset");
+    expect(assets.some((c) => c.label.toLowerCase() === "oven")).toBe(true);
+    expect(assets.some((c) => /bob|must/.test(c.label.toLowerCase()))).toBe(false);
+    const people = result.chips.filter((c) => c.type === "person");
+    expect(people.some((c) => c.label.toLowerCase() === "bob")).toBe(true);
+  });
+
+  it("lowercase title + bob must → person ghost for bob", () => {
+    const result = extractChipsFromText(
+      {
+        title: "check oven",
+        description: "bob must check the oven before next week",
+      },
+      EMPTY_ENTITIES
+    );
+    const people = result.chips.filter((c) => c.type === "person");
+    expect(people.some((c) => c.label.toLowerCase() === "bob")).toBe(true);
+  });
+
+  it("bob must not resolve to member Bobby — keeps + INVITE bob chip", () => {
+    const result = extractChipsFromText(
+      {
+        title: "Check oven",
+        description: "bob must check the oven before next week",
+      },
+      {
+        ...EMPTY_ENTITIES,
+        members: [{ id: "m1", user_id: "u1", display_name: "Bobby Hill" }],
+      }
+    );
+    const inviteBob = result.chips.find(
+      (c) =>
+        c.type === "person" &&
+        c.label.toLowerCase() === "bob" &&
+        c.blockingRequired &&
+        !c.resolvedEntityId
+    );
+    expect(inviteBob).toBeDefined();
+    expect(result.chips.some((c) => c.resolvedEntityId === "u1")).toBe(false);
+  });
 });
 
 // ─── Ghost Category Generation ──────────────────────────────────────────────

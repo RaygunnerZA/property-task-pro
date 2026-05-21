@@ -46,6 +46,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { mergeAiPeopleIntoChips } from "@/services/ai/mergeAiPeopleChips";
+import { enrichSuggestionChipsWithEntities } from "@/services/ai/enrichSuggestionChipsWithEntities";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
 import {
@@ -170,6 +171,22 @@ function intakeWhoProposalChipLabel(p: WhoProposal): string {
   return p.label.toUpperCase();
 }
 
+/** Strip assignee/modal verbs accidentally typed into asset search (e.g. "oven bob must"). */
+function normalizeIntakeAssetAddName(raw: string): string {
+  const stop = new Set([
+    "in", "at", "on", "before", "after", "by", "for", "with", "from", "to", "and", "or",
+    "must", "should", "will", "can", "may", "please", "needs",
+  ]);
+  const tokens = raw.trim().split(/\s+/).filter(Boolean);
+  const kept: string[] = [];
+  for (const token of tokens) {
+    const lower = token.toLowerCase();
+    if (stop.has(lower)) break;
+    kept.push(token);
+  }
+  return (kept[0] ?? raw.trim()).trim();
+}
+
 export interface IntakeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -194,7 +211,7 @@ interface UploadedAttachment {
 }
 
 type IntakeWhenTab = "due" | "milestone" | "repeat";
-type IntakeMilestone = { id: string; date: string };
+type IntakeMilestone = { id: string; date: string; name: string };
 
 export function IntakeModal({
   open,
@@ -325,6 +342,8 @@ export function IntakeModal({
   const [whenTab, setWhenTab] = useState<IntakeWhenTab>("due");
   const [milestones, setMilestones] = useState<IntakeMilestone[]>([]);
   const [milestoneDraftDate, setMilestoneDraftDate] = useState(format(startOfDay(new Date()), "yyyy-MM-dd"));
+  const [milestoneEntryOpen, setMilestoneEntryOpen] = useState(false);
+  const [milestoneNameDraft, setMilestoneNameDraft] = useState("");
   const [repeatPreset, setRepeatPreset] = useState<"none" | "daily" | "weekly" | "monthly">("none");
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
@@ -442,11 +461,6 @@ export function IntakeModal({
     { minDescriptionLength: 3 }
   );
 
-  const chipSuggestions = useMemo(
-    () => mergeAiPeopleIntoChips(ruleChipSuggestions, aiResult?.people),
-    [ruleChipSuggestions, aiResult?.people]
-  );
-
   const { members } = useOrgMembers();
   const { teams } = useTeams();
   const whoIntakeProposals = useWhoSuggestions(
@@ -464,6 +478,16 @@ export function IntakeModal({
   }, [intakeWhoMode, whoIntakeProposals]);
 
   const { spaces, refresh: refreshSpaces } = useSpaces(propertyId || undefined);
+
+  const chipSuggestions = useMemo(() => {
+    const merged = mergeAiPeopleIntoChips(ruleChipSuggestions, aiResult?.people);
+    return enrichSuggestionChipsWithEntities(merged, {
+      members: members ?? [],
+      teams: teams ?? [],
+      spaces: spaces ?? [],
+      assets: availableAssets,
+    });
+  }, [ruleChipSuggestions, aiResult?.people, members, teams, spaces, availableAssets]);
 
   useEffect(() => {
     if (openChipSlot !== "who") setIntakeWhoInviteDraft(null);
@@ -875,6 +899,9 @@ export function IntakeModal({
     if (openChipSlot === "when") {
       setWhenTab("due");
       if (!milestoneDraftDate) setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+    } else {
+      setMilestoneEntryOpen(false);
+      setMilestoneNameDraft("");
     }
   }, [openChipSlot, milestoneDraftDate]);
 
@@ -1048,6 +1075,11 @@ export function IntakeModal({
     return format(dateObj, "EEE d MMM").toUpperCase();
   }, []);
 
+  const formatMilestoneFactLabel = useCallback(
+    (name: string, date: string) => `${name.trim().toUpperCase()} ${formatDueDateLabel(date)}`,
+    [formatDueDateLabel]
+  );
+
   const intakeRowChips: IntakeChipRowChip[] = useMemo(() => {
     const chips: IntakeChipRowChip[] = [];
 
@@ -1123,7 +1155,7 @@ export function IntakeModal({
       chips.push({
         id: `when-milestone-${milestone.id}`,
         slot: "when",
-        label: `MS ${formatDueDateLabel(milestone.date)}`,
+        label: formatMilestoneFactLabel(milestone.name, milestone.date),
         epistemic: "fact",
         removable: true,
         onRemove: () => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id)),
@@ -1183,6 +1215,7 @@ export function IntakeModal({
     dueDate,
     milestones,
     formatDueDateLabel,
+    formatMilestoneFactLabel,
     members,
     priority,
     priorityDefined,
@@ -1213,6 +1246,41 @@ export function IntakeModal({
       return true;
     });
   }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, selectedAssetIds]);
+
+  /** Person invite verbs always lead the AI strip (INVITE BOB before FIX CREW / ADD COTTAGE). */
+  const suggestionStripChips = useMemo(() => {
+    const base = filteredChipSuggestions;
+    const seen = new Set(base.map((c) => c.id));
+    const personInvites = chipSuggestions.filter(
+      (c) =>
+        c.type === "person" &&
+        c.blockingRequired &&
+        !c.resolvedEntityId &&
+        !dismissedSuggestionIds.has(c.id)
+    );
+    const prepend = personInvites.filter((c) => !seen.has(c.id));
+    return [...prepend, ...base];
+  }, [filteredChipSuggestions, chipSuggestions, dismissedSuggestionIds]);
+
+  // Auto-apply assets that match DB entities mentioned in the description (like due date).
+  useEffect(() => {
+    if (!propertyId) return;
+    const toAdd = chipSuggestions
+      .filter((c) => c.type === "asset" && c.resolvedEntityId)
+      .map((c) => c.resolvedEntityId as string);
+    if (toAdd.length === 0) return;
+    setSelectedAssetIds((prev) => {
+      const next = [...prev];
+      let changed = false;
+      for (const id of toAdd) {
+        if (!next.includes(id)) {
+          next.push(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [chipSuggestions, propertyId]);
 
   const toggleSpaceSelection = useCallback((spaceId: string) => {
     setSelectedSpaceIds((prev) =>
@@ -1480,6 +1548,14 @@ export function IntakeModal({
   const renderSlotContent = useCallback(
     (slot: IntakeChipSlotId, onClose: () => void): IntakeSlotPanelRows => {
       if (slot === "who") {
+        const unresolvedPersonSuggestions = chipSuggestions.filter(
+          (chip) =>
+            chip.type === "person" &&
+            chip.blockingRequired &&
+            !chip.resolvedEntityId &&
+            assignedUserId === undefined &&
+            !dismissedSuggestionIds.has(chip.id)
+        );
         const q = intakeWhoQuery.trim().toLowerCase();
         const ranked = [...members].sort((a, b) => {
           const na = (a.display_name || a.email || "").toLowerCase();
@@ -1709,6 +1785,20 @@ export function IntakeModal({
                   className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 h-[24px]"
                 />
               )}
+              {intakeWhoMode === null &&
+                unresolvedPersonSuggestions.map((chip) => (
+                  <SemanticChip
+                    key={chip.id}
+                    epistemic="proposal"
+                    label={`INVITE ${(chip.label || chip.value || "").toUpperCase()}`}
+                    truncate={false}
+                    pressOnPointerDown
+                    onPress={() => {
+                      void handleIntakeSuggestedChip(chip);
+                    }}
+                    className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 h-[24px]"
+                  />
+                ))}
               {intakeWhoMode === null &&
                 ranked
                   .filter((m) => m.user_id !== assignedUserId)
@@ -2067,19 +2157,40 @@ export function IntakeModal({
         ];
         const selectedDueDate = dueDate ? new Date(`${dueDate}T00:00:00`) : undefined;
         const selectedMilestoneDate = milestoneDraftDate ? new Date(`${milestoneDraftDate}T00:00:00`) : undefined;
-        const activeWhenDate = whenTab === "milestone" ? milestoneDraftDate : dueDate;
+        const activeWhenDate = dueDate;
         const dueDateChipLabel = dueDate
           ? `DUE ${format(new Date(`${dueDate}T00:00:00`), "d MMMM").toUpperCase()}`
           : "DUE DATE";
         const applyQuick = (date: string) => {
           setIntakeWhenCustom(false);
-          if (whenTab === "milestone") {
-            setMilestoneDraftDate(date);
-            return;
-          }
+          setMilestoneEntryOpen(false);
+          setMilestoneNameDraft("");
           setDueDate(date);
         };
-        const calendarSelected = whenTab === "milestone" ? selectedMilestoneDate : selectedDueDate;
+        const startMilestoneEntry = () => {
+          const seed = dueDate || format(today, "yyyy-MM-dd");
+          setMilestoneDraftDate(seed);
+          setMilestoneEntryOpen(true);
+          setMilestoneNameDraft("");
+        };
+        const commitMilestoneWithName = (rawName: string) => {
+          const name = rawName.trim();
+          if (!name || !milestoneDraftDate) return;
+          const already = milestones.some(
+            (m) => m.date === milestoneDraftDate && m.name.toLowerCase() === name.toLowerCase()
+          );
+          if (already) {
+            setMilestoneEntryOpen(false);
+            setMilestoneNameDraft("");
+            return;
+          }
+          setMilestones((prev) => [...prev, { id: crypto.randomUUID(), date: milestoneDraftDate, name }]);
+          setMilestoneEntryOpen(false);
+          setMilestoneNameDraft("");
+          if (repeatPreset !== "none") setRepeatPreset("none");
+        };
+        const calendarSelected = milestoneEntryOpen ? selectedMilestoneDate : selectedDueDate;
+        const hideRepeat = milestones.length > 0;
         const whenRow2 = !intakeWhenCustom ? (
           <>
             {quick.map(({ label: ql, date }) => (
@@ -2098,7 +2209,10 @@ export function IntakeModal({
               label="CUSTOM"
               truncate={false}
               pressOnPointerDown
-              onPress={() => setIntakeWhenCustom(true)}
+              onPress={() => {
+                setIntakeWhenCustom(true);
+                setWhenTab("due");
+              }}
               className="shrink-0 text-[11px]"
             />
           </>
@@ -2109,25 +2223,54 @@ export function IntakeModal({
               label={dueDateChipLabel}
               truncate={false}
               pressOnPointerDown
-              onPress={() => setWhenTab("due")}
+              onPress={() => {
+                setWhenTab("due");
+                setMilestoneEntryOpen(false);
+                setMilestoneNameDraft("");
+              }}
               className="shrink-0 text-[11px]"
             />
-            <SemanticChip
-              epistemic={whenTab === "milestone" ? "fact" : "proposal"}
-              label="+ MILESTONE"
-              truncate={false}
-              pressOnPointerDown
-              onPress={() => setWhenTab("milestone")}
-              className="shrink-0 text-[11px]"
-            />
-            <SemanticChip
-              epistemic={whenTab === "repeat" ? "fact" : "proposal"}
-              label="REPEAT"
-              truncate={false}
-              pressOnPointerDown
-              onPress={() => setWhenTab("repeat")}
-              className="shrink-0 text-[11px]"
-            />
+            {whenTab !== "repeat" &&
+              (milestoneEntryOpen ? (
+                <SemanticChip
+                  epistemic="proposal"
+                  interaction="entry"
+                  entryPlaceholder="Milestone Name..."
+                  entryValue={milestoneNameDraft}
+                  onEntryChange={setMilestoneNameDraft}
+                  onCommit={commitMilestoneWithName}
+                  onCancel={() => {
+                    setMilestoneEntryOpen(false);
+                    setMilestoneNameDraft("");
+                  }}
+                  truncate={false}
+                  className="shrink-0 text-[11px]"
+                />
+              ) : (
+                <SemanticChip
+                  epistemic="proposal"
+                  label="ADD MILESTONE"
+                  truncate={false}
+                  pressOnPointerDown
+                  transferOnPress
+                  onPress={startMilestoneEntry}
+                  className="shrink-0 text-[11px]"
+                />
+              ))}
+            {!hideRepeat && (
+              <SemanticChip
+                epistemic={whenTab === "repeat" ? "fact" : "proposal"}
+                label="REPEAT"
+                truncate={false}
+                pressOnPointerDown
+                onPress={() => {
+                  setWhenTab("repeat");
+                  setMilestoneEntryOpen(false);
+                  setMilestoneNameDraft("");
+                }}
+                className="shrink-0 text-[11px]"
+              />
+            )}
           </>
         );
 
@@ -2161,75 +2304,64 @@ export function IntakeModal({
               </div>
             )}
 
-            {intakeWhenCustom && (
-              <div className="rounded-lg bg-background/80 p-2 w-fit">
-                <MiniCalendar
-                  mode="single"
-                  classNames={{
-                    month: "space-y-4 w-[246px]",
-                    caption: "flex justify-start pt-1 relative items-start gap-2.5 pl-[7px]",
-                    caption_label: "text-base font-medium",
-                    table: "w-full border-collapse space-y-1 mt-[10px]",
-                    head_cell: "text-[#85BABC] rounded-md w-[30px] font-semibold text-[0.8rem] font-mono",
-                    tbody: "rdp-tbody mt-0 rounded-[5px]",
-                    row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
-                    cell: "h-[30px] w-[30px] rounded-[12px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                    day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-[12px] grid items-center justify-center aria-selected:opacity-100",
-                    day_today:
-                      "bg-white/30 text-foreground border-none shadow-[inset_0px_6.2px_3.9px_-1.2px_rgba(0,0,0,0.2),0px_1px_1px_0px_rgba(255,255,255,1)]",
-                    nav: "ml-[3px] flex items-start justify-end gap-1 text-center",
-                    nav_button:
-                      "h-7 w-7 rounded-full p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
-                    nav_button_previous: "absolute top-1 left-[177px] flex items-center justify-center",
-                  }}
-                  components={{
-                    IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />,
-                    IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" strokeWidth={2.2} />,
-                  }}
-                  selected={calendarSelected}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    const next = format(date, "yyyy-MM-dd");
-                    if (whenTab === "milestone") {
-                      setMilestoneDraftDate(next);
-                    } else {
-                      setDueDate(next);
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            {whenTab !== "repeat" && !intakeWhenCustom && whenTab === "due" && (
-              <span className="sr-only">Choose a quick date in row above, or Custom for the calendar.</span>
-            )}
-
-            {whenTab === "milestone" && intakeWhenCustom && (
+            {intakeWhenCustom && whenTab !== "repeat" && (
               <div className="flex w-full min-w-0 flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!milestoneDraftDate) return;
-                    setMilestones((prev) => [...prev, { id: crypto.randomUUID(), date: milestoneDraftDate }]);
-                  }}
-                  className="self-start shrink-0 rounded-[8px] px-2 py-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground shadow-e1 hover:text-foreground"
-                >
-                  Add milestone
-                </button>
+                <div className="rounded-lg bg-background/80 p-2 w-fit">
+                  <MiniCalendar
+                    mode="single"
+                    classNames={{
+                      month: "space-y-4 w-[246px]",
+                      caption: "flex justify-start pt-1 relative items-start gap-2.5 pl-[7px]",
+                      caption_label: "text-base font-medium",
+                      table: "w-full border-collapse space-y-1 mt-[10px]",
+                      head_cell: "text-[#85BABC] rounded-md w-[30px] font-semibold text-[0.8rem] font-mono",
+                      tbody: "rdp-tbody mt-0 rounded-[5px]",
+                      row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
+                      cell: "h-[30px] w-[30px] rounded-[12px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                      day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-[12px] grid items-center justify-center aria-selected:opacity-100",
+                      day_today:
+                        "bg-white/30 text-foreground border-none shadow-[inset_0px_6.2px_3.9px_-1.2px_rgba(0,0,0,0.2),0px_1px_1px_0px_rgba(255,255,255,1)]",
+                      nav: "ml-[3px] flex items-start justify-end gap-1 text-center",
+                      nav_button:
+                        "h-7 w-7 rounded-full p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
+                      nav_button_previous: "absolute top-1 left-[177px] flex items-center justify-center",
+                    }}
+                    components={{
+                      IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />,
+                      IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" strokeWidth={2.2} />,
+                    }}
+                    selected={calendarSelected}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      const next = format(date, "yyyy-MM-dd");
+                      if (milestoneEntryOpen) {
+                        setMilestoneDraftDate(next);
+                      } else {
+                        setDueDate(next);
+                      }
+                    }}
+                  />
+                </div>
                 {milestones.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     {milestones.map((milestone) => (
                       <SemanticChip
                         key={milestone.id}
                         epistemic="fact"
-                        label={formatDueDateLabel(milestone.date)}
+                        label={formatMilestoneFactLabel(milestone.name, milestone.date)}
+                        truncate={false}
                         removable
                         onRemove={() => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id))}
+                        className="shrink-0"
                       />
                     ))}
                   </div>
                 )}
               </div>
+            )}
+
+            {whenTab !== "repeat" && !intakeWhenCustom && whenTab === "due" && (
+              <span className="sr-only">Choose a quick date in row above, or Custom for the calendar.</span>
             )}
             </div>
           ),
@@ -2245,11 +2377,23 @@ export function IntakeModal({
             !selectedAssets.some((asset) => asset.name.toLowerCase() === (chip.value || chip.label).toLowerCase())
         );
         const aq = intakeAssetQuery.trim().toLowerCase();
+        const assetAddName = normalizeIntakeAssetAddName(intakeAssetQuery);
+        const assetAddNorm = assetAddName.toLowerCase();
+        const ghostAssetNames = unresolvedAssetSuggestions.map((c) =>
+          (c.value || c.label || "").trim().toLowerCase()
+        );
         const assetsRanked = availableAssets.filter((asset) => !aq || asset.name.toLowerCase().includes(aq));
         const assetInlineTop = intakeAssetSearchOpen ? assetsRanked.slice(0, 4) : [];
         const assetInputW = intakeInlineInputWidth(intakeAssetQuery.length);
         const hasExactAssetMatch =
-          Boolean(aq) && availableAssets.some((a) => a.name.toLowerCase() === aq);
+          Boolean(aq) &&
+          availableAssets.some(
+            (a) =>
+              a.name.toLowerCase() === aq ||
+              a.name.toLowerCase() === assetAddNorm
+          );
+        const showInlineAssetAdd =
+          Boolean(assetAddName) && !ghostAssetNames.includes(assetAddNorm);
 
         return {
           row2: (
@@ -2365,14 +2509,15 @@ export function IntakeModal({
               {intakeAssetSearchOpen &&
                 propertyId &&
                 intakeAssetQuery.trim() &&
-                !hasExactAssetMatch && (
+                !hasExactAssetMatch &&
+                showInlineAssetAdd && (
                   <SemanticChip
                     epistemic="proposal"
-                    label={`ADD ${intakeAssetQuery.trim().toUpperCase()}`}
+                    label={`ADD ${assetAddName.toUpperCase()}`}
                     truncate={false}
                     pressOnPointerDown
                     onPress={() => {
-                      setAssetDraftName(intakeAssetQuery.trim());
+                      setAssetDraftName(assetAddName);
                       setShowCreateAssetDialog(true);
                     }}
                     className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 max-w-[200px]"
@@ -2623,6 +2768,7 @@ export function IntakeModal({
       defaultPropertyId,
       dueDate,
       formatDueDateLabel,
+      formatMilestoneFactLabel,
       intakeAssetQuery,
       intakeAssetSearchOpen,
       intakeTagQuery,
@@ -2641,6 +2787,8 @@ export function IntakeModal({
       whoIntakePersonProposals,
       whoIntakeTeamProposals,
       milestoneDraftDate,
+      milestoneEntryOpen,
+      milestoneNameDraft,
       milestones,
       priority,
       properties,
@@ -2657,6 +2805,10 @@ export function IntakeModal({
       toast,
       toggleSpaceSelection,
       whenTab,
+      filteredChipSuggestions,
+      handleIntakeSuggestedChip,
+      chipSuggestions,
+      dismissedSuggestionIds,
     ]
   );
 
@@ -2937,6 +3089,7 @@ export function IntakeModal({
               ? milestones.map((milestone) => ({
                   id: milestone.id,
                   dateTime: `${milestone.date}T09:00`,
+                  label: milestone.name,
                 }))
               : null,
           priority: priority === "medium" ? "normal" : priority,
@@ -3044,6 +3197,8 @@ export function IntakeModal({
     setWhenTab("due");
     setMilestones([]);
     setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+    setMilestoneEntryOpen(false);
+    setMilestoneNameDraft("");
     setRepeatPreset("none");
     if (!opts?.preserveWhere) {
       setPropertyId(defaultPropertyId || "");
@@ -3595,9 +3750,9 @@ export function IntakeModal({
           )}
 
           {/* AI suggestion strip — single line, directly above active chip row */}
-          {intakeMode === "report_issue" && primaryIsTask && hasDescriptionDraft && filteredChipSuggestions.length > 0 && (
+          {hasDescriptionDraft && suggestionStripChips.length > 0 && (
             <AISuggestionChips
-              chips={filteredChipSuggestions}
+              chips={suggestionStripChips}
               ghostGroups={ghostCategories}
               onChipSelect={(c) => {
                 void handleIntakeSuggestedChip(c);

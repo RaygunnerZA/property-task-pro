@@ -1,7 +1,7 @@
 /**
  * AI Suggestion Chips — single horizontal strip.
  *
- * Layout: [FillaIcon] [CHIP] [CHIP] [+ INVITE X] [+ ADD Y]
+ * Layout: [FillaIcon] [INVITE X] [FIX CREW] [KITCHEN] [ADD OVEN]
  * Suggestion chips are gray (distinct from solid-white active fact chips in IntakeChipRow).
  * When a chip is selected it moves into the IntakeChipRow as a fact chip.
  */
@@ -30,11 +30,24 @@ const FACT_CHIP_TYPES: ChipType[] = ['person', 'team', 'space', 'asset', 'catego
 function verbLabel(chip: SuggestedChip): string {
   const raw = chip.value || chip.label;
   switch (chip.type) {
-    case 'person': return `+ INVITE ${raw.toUpperCase()}`;
-    case 'space':
-    case 'asset': return `+ ADD ${raw.toUpperCase()}`;
-    default: return `+ ${raw.toUpperCase()}`;
+    case "person":
+      return `INVITE ${raw.toUpperCase()}`;
+    case "space":
+    case "asset":
+      return `ADD ${raw.toUpperCase()}`;
+    default:
+      return raw.toUpperCase();
   }
+}
+
+/** Invite verbs first, then resolved facts, then other action verbs. */
+function suggestionChipOrder(chip: SuggestedChip): number {
+  if (chip.type === "person" && chip.blockingRequired && !chip.resolvedEntityId) return 0;
+  if (chip.resolvedEntityId || !chip.blockingRequired) return 1;
+  if (chip.type === "team") return 2;
+  if (chip.type === "space" || chip.type === "category" || chip.type === "theme") return 3;
+  if (chip.type === "asset" && chip.blockingRequired && !chip.resolvedEntityId) return 5;
+  return 4;
 }
 
 export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
@@ -56,11 +69,11 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
     );
   }
 
-  const relevant = chips.filter(c => FACT_CHIP_TYPES.includes(c.type));
-  const factChips = relevant.filter(c => c.resolvedEntityId || !c.blockingRequired);
-  const verbChips = relevant.filter(c => c.blockingRequired && !c.resolvedEntityId);
+  const relevant = chips
+    .filter((c) => FACT_CHIP_TYPES.includes(c.type))
+    .sort((a, b) => suggestionChipOrder(a) - suggestionChipOrder(b));
 
-  if (factChips.length === 0 && verbChips.length === 0) return null;
+  if (relevant.length === 0) return null;
 
   const chipBase = cn(
     'group shrink-0 inline-flex items-center h-[22px] pl-[9px] pr-[9px] rounded-[7px]',
@@ -109,19 +122,14 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
       {/* Filla coral indicator */}
       <FillaIcon size={11} className="text-[#EB6834] shrink-0 flex-none" />
 
-      {/* Resolved / fact suggestion chips */}
-      {factChips.map((chip) =>
-        renderChip(
-          chip,
-          chip.label.toUpperCase(),
-          () => onFactChipPress ? onFactChipPress(chip) : onChipSelect(chip)
-        )
-      )}
-
-      {/* Verb / action chips (Invite X, Add Y) */}
-      {verbChips.map((chip) =>
-        renderChip(chip, verbLabel(chip), () => onChipSelect(chip))
-      )}
+      {relevant.map((chip) => {
+        const isVerb = chip.blockingRequired && !chip.resolvedEntityId;
+        const label = isVerb ? verbLabel(chip) : chip.label.toUpperCase();
+        const onSelect = isVerb
+          ? () => onChipSelect(chip)
+          : () => (onFactChipPress ? onFactChipPress(chip) : onChipSelect(chip));
+        return renderChip(chip, label, onSelect);
+      })}
     </div>
   );
 };

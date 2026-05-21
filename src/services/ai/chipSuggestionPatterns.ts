@@ -108,6 +108,7 @@ export const extractionPatterns: ExtractionPatterns = {
     'shower': ['Bathroom', 'Ensuite'],
     'bath': ['Bathroom', 'Ensuite'],
     'oven': ['Kitchen'],
+    'stove': ['Kitchen'],
     'cooker': ['Kitchen'],
     'fridge': ['Kitchen'],
     'washing machine': ['Utility Room', 'Kitchen'],

@@ -44,6 +44,10 @@ export interface SemanticChipProps {
   truncate?: boolean;
   /** For proposal chips, collapse horizontally before calling onPress. */
   transferOnPress?: boolean;
+  /** Shown when interaction is entry (proposal only). */
+  entryPlaceholder?: string;
+  entryValue?: string;
+  onEntryChange?: (value: string) => void;
   className?: string;
 }
 
@@ -67,6 +71,9 @@ export function SemanticChip({
   color,
   truncate = true,
   transferOnPress = false,
+  entryPlaceholder = "",
+  entryValue = "",
+  onEntryChange,
   className,
 }: SemanticChipProps) {
   const TRANSFER_COLLAPSE_MS = 260;
@@ -74,6 +81,7 @@ export function SemanticChip({
   const [isTransferCollapsing, setIsTransferCollapsing] = useState(false);
   const firedOnPointerDown = useRef(false);
   const transferTimeoutRef = useRef<number | null>(null);
+  const entryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
@@ -82,6 +90,12 @@ export function SemanticChip({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (interaction !== "entry") return;
+    const id = window.setTimeout(() => entryInputRef.current?.focus(), 30);
+    return () => window.clearTimeout(id);
+  }, [interaction]);
 
   const shouldTransferOnPress = transferOnPress || (epistemic === "proposal" && pressOnPointerDown);
   const triggerPress = (e?: React.SyntheticEvent) => {
@@ -141,7 +155,7 @@ export function SemanticChip({
 
   const interactionStyles =
     interaction === "entry"
-      ? "shadow-inset bg-background"
+      ? "shadow-inset bg-background min-w-[140px] max-w-[200px] px-2 animate-in fade-in duration-200"
       : isPressed && onPress
         ? "shadow-inset"
         : "";
@@ -149,13 +163,15 @@ export function SemanticChip({
   const baseStyles = cn(
     "relative inline-flex items-center gap-1.5 rounded-[8px] flex-shrink-0",
     "font-mono uppercase tracking-wide whitespace-nowrap",
-    "transition-[padding] duration-\[120ms\] ease-out",
+    "transition-[padding-right,max-width] duration-200 ease-out",
     heightClass,
     textClass,
     epistemicStyles,
     interactionStyles,
     epistemic === "fact" && !removable && "px-[10px] min-w-[40px] max-w-[120px]",
-    epistemic === "fact" && removable && "pl-[10px] pr-[28px] min-w-[40px] max-w-[140px] overflow-visible",
+    epistemic === "fact" &&
+      removable &&
+      "pl-[10px] pr-[10px] group-hover:pr-[40px] min-w-[40px] max-w-[200px] group-hover:max-w-[230px] overflow-visible",
     epistemic === "proposal" && "px-2 py-1 max-w-[160px]",
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
     (onPress || dropdown) && "cursor-pointer select-none",
@@ -168,7 +184,42 @@ export function SemanticChip({
     className
   );
 
-  const content = (
+  const handleEntryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const v = entryValue.trim();
+      if (v) onCommit?.(v);
+      else onCancel?.();
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onCancel?.();
+    }
+  };
+
+  const content =
+    interaction === "entry" ? (
+      <input
+        ref={entryInputRef}
+        type="text"
+        value={entryValue}
+        onChange={(e) => onEntryChange?.(e.target.value)}
+        onKeyDown={handleEntryKeyDown}
+        onBlur={() => {
+          const v = entryValue.trim();
+          if (v) onCommit?.(v);
+          else onCancel?.();
+        }}
+        placeholder={entryPlaceholder}
+        className={cn(
+          "w-full min-w-0 bg-transparent border-0 outline-none caret-foreground",
+          textClass,
+          "font-mono uppercase tracking-wide",
+          "placeholder:font-mono placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground/55"
+        )}
+        aria-label={entryPlaceholder || "Enter value"}
+      />
+    ) : (
     <>
       {icon && <span className="flex-shrink-0">{icon}</span>}
       {pending && (
@@ -182,7 +233,7 @@ export function SemanticChip({
           onClick={handleRemove}
           onPointerDown={(e) => e.stopPropagation()}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRemove(e as unknown as React.MouseEvent); } }}
-          className="absolute right-[8px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-\[120ms\] flex-shrink-0 w-3 inline-flex items-center justify-center"
+          className="absolute right-[10px] top-0 bottom-0 flex items-center pointer-events-none group-hover:pointer-events-auto text-current opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity duration-200 ease-out flex-shrink-0 w-3 inline-flex items-center justify-center"
         >
           <X className="h-3 w-3" />
         </span>
@@ -198,7 +249,15 @@ export function SemanticChip({
         </span>
       )}
     </>
-  );
+    );
+
+  if (interaction === "entry") {
+    return (
+      <span className={baseStyles} style={color ? { backgroundColor: color } : undefined}>
+        {content}
+      </span>
+    );
+  }
 
   if (dropdown && dropdownContent) {
     return (

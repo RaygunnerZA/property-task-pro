@@ -450,7 +450,9 @@ function detectAssets(
     /\b(?:fix|repair|replace|check|inspect|service|install|clean|paint|remove)\s+(?:the\s+|a\s+|an\s+)?([a-z][a-z-]{2,}(?:\s+[a-z][a-z-]{2,}){0,2})/gi;
   const trailingStopWords = new Set([
     "in", "at", "on", "before", "after", "by", "for", "with", "from", "to", "and", "or",
+    "must", "should", "will", "can", "may", "please", "needs",
   ]);
+  const knownAssetKeys = Object.keys(extractionPatterns.assetToSpaceMap);
 
   let contextualMatch: RegExpExecArray | null;
   while ((contextualMatch = contextualAssetPattern.exec(text)) !== null) {
@@ -461,15 +463,32 @@ function detectAssets(
     const trimmedTokens: string[] = [];
     for (const token of candidateTokens) {
       if (trailingStopWords.has(token)) break;
+      if (NON_NAME_WORDS.has(token)) break;
+      if (COMMON_FIRST_NAMES.has(token)) break;
       trimmedTokens.push(token);
     }
 
     if (trimmedTokens.length === 0) continue;
-    const candidate = trimmedTokens.join(" ");
+
+    // Title + description often yields "check oven bob must …" — keep only the asset noun.
+    let candidate = trimmedTokens.join(" ");
+    const firstNorm = singularize(trimmedTokens[0].toLowerCase());
+    if (trimmedTokens.length > 1) {
+      const knownMulti = knownAssetKeys.find(
+        (key) => key.split(/\s+/).length > 1 && candidate.toLowerCase().startsWith(key)
+      );
+      if (knownMulti) {
+        candidate = knownMulti;
+      } else if (matchedAssets.has(firstNorm) || knownAssetKeys.includes(firstNorm)) {
+        candidate = trimmedTokens[0];
+      }
+    }
+
     const normalizedCandidate = singularize(candidate.toLowerCase());
 
     if (matchedAssets.has(normalizedCandidate)) continue;
-    if (NON_NAME_WORDS.has(normalizedCandidate)) continue;
+    // Appliance/room nouns are valid assets — only block true verb/meta tokens, not "stove"/"oven".
+    if (ASSET_REJECT_TOKENS.has(normalizedCandidate)) continue;
 
     const formattedName = candidate
       .split(" ")
@@ -504,9 +523,15 @@ const NON_NAME_WORDS = new Set([
   'kitchen', 'bathroom', 'bedroom', 'living', 'garden', 'garage', 'office',
   'hall', 'entrance', 'cottage', 'house', 'flat', 'apartment', 'room',
   'boiler', 'toilet', 'shower', 'window', 'door', 'pipe', 'roof', 'floor',
-  'wall', 'ceiling', 'stove', 'oven', 'fridge', 'sink', 'tap', 'lock',
+  'wall', 'ceiling', 'lock',
   'new', 'old', 'broken', 'leaking', 'blocked', 'damaged', 'urgent',
   'high', 'low', 'medium', 'normal',
+]);
+
+/** Tokens that must never become contextual asset chips (verbs/meta, not appliances). */
+const ASSET_REJECT_TOKENS = new Set([
+  ...NON_NAME_WORDS,
+  "cottage", "house", "flat", "apartment", "room", "hall", "entrance",
 ]);
 
 // Subject-indicating verbs: "X must/should/needs to/will/has to [verb]"
@@ -526,7 +551,7 @@ const BEFORE_ARRIVAL_PATTERN =
   /\bbefore\s+([a-zA-Z]{3,})\s+(?:arrives?|comes|gets|visits?|leaves?)\b/i;
 
 const COMMON_FIRST_NAMES = new Set([
-  "alex", "ben", "bianca", "chris", "dan", "david", "emma", "frank", "george", "hannah",
+  "alex", "ben", "bianca", "bob", "chris", "dan", "david", "emma", "frank", "george", "hannah",
   "harry", "isla", "jack", "james", "jane", "john", "josh", "kate", "liam", "lucy",
   "mark", "matt", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah",
   "sam", "simon", "sophie", "thomas", "tom",
@@ -592,53 +617,84 @@ function detectPersons(
   const chips: SuggestedChip[] = [];
   const matchedNames = new Set<string>(); // tracks already-matched lowercased names
 
-  // ── 1. Match against existing org members (case-insensitive) ──────────────
+  const wordMatchesMemberNamePart = (word: string, part: string): boolean => {
+    const wl = word.toLowerCase();
+    const pl = part.toLowerCase();
+    if (wl === pl) return true;
+    // Avoid matching "bob" → member "Bobby" — keep + INVITE BOB for unknown assignees.
+    if (COMMON_FIRST_NAMES.has(wl) || COMMON_FIRST_NAMES.has(pl)) return false;
+    return isFuzzyMatch(wl, pl);
+  };
+
+  const pushAssigneeGhost = (name: string, detectedAs: string, score: number) => {
+    const nameLower = name.toLowerCase();
+    if (matchedNames.has(nameLower) || NON_NAME_WORDS.has(nameLower)) return;
+    chips.push({
+      id: `person-ghost-${detectedAs}-${nameLower}`,
+      type: "person",
+      value: name,
+      label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
+      score,
+      source: "rule",
+      blockingRequired: true,
+      metadata: { detectedAs },
+    });
+    matchedNames.add(nameLower);
+  };
+
+  // ── 1. Assignee phrases anywhere (e.g. title "Check oven" + "Bob must …") ─
+  const globalSubjectPattern =
+    /\b([a-zA-Z]{3,})\s+(?:must|should|needs?\s+to|will|has\s+to|is\s+to)\b/gi;
+  let globalSubjectMatch: RegExpExecArray | null;
+  while ((globalSubjectMatch = globalSubjectPattern.exec(originalText)) !== null) {
+    pushAssigneeGhost(globalSubjectMatch[1], "assignee_phrase", 0.72);
+  }
+
+  // ── 2. Match against existing org members (exact or fuzzy, not bob→Bobby) ─
   for (const member of members) {
     const nameParts = member.display_name.toLowerCase().split(/\s+/);
     for (const part of nameParts) {
-      if (part.length > 2 && words.some(w => isFuzzyMatch(w.toLowerCase(), part))) {
+      if (part.length > 2 && words.some((w) => wordMatchesMemberNamePart(w, part))) {
+        const nameLower = part.toLowerCase();
+        matchedNames.add(nameLower);
+        for (const p of nameParts) matchedNames.add(p);
+        for (let i = chips.length - 1; i >= 0; i--) {
+          const c = chips[i];
+          if (
+            c.type === "person" &&
+            !c.resolvedEntityId &&
+            (c.label || c.value || "").toLowerCase() === nameLower
+          ) {
+            chips.splice(i, 1);
+          }
+        }
         chips.push({
           id: `person-${member.user_id}`,
-          type: 'person',
+          type: "person",
           value: member.user_id,
           label: member.display_name,
           score: 0.85,
-          source: 'rule',
+          source: "rule",
           resolvedEntityId: member.user_id,
           blockingRequired: false,
         });
-        nameParts.forEach(p => matchedNames.add(p));
         break;
       }
     }
   }
 
-  // ── 2. Detect sentence subject as potential person name ───────────────────
+  // ── 3. Detect sentence subject at start ───────────────────────────────────
   // Handles both "Frank must fix …" and "frank must fix …" (lowercase too)
   const trimmed = originalText.trim();
   for (const pattern of SUBJECT_PATTERNS) {
     const m = trimmed.match(pattern);
     if (m) {
-      const name = m[1];
-      const nameLower = name.toLowerCase();
-      if (!matchedNames.has(nameLower) && !NON_NAME_WORDS.has(nameLower)) {
-        chips.push({
-          id: `person-ghost-subject-${nameLower}`,
-          type: 'person',
-          value: name,
-          label: name.charAt(0).toUpperCase() + name.slice(1).toLowerCase(),
-          score: 0.7,
-          source: 'rule',
-          blockingRequired: true,
-          metadata: { detectedAs: 'sentence_subject' },
-        });
-        matchedNames.add(nameLower);
-      }
+      pushAssigneeGhost(m[1], "sentence_subject", 0.7);
       break;
     }
   }
 
-  // ── 3. Capitalized proper nouns (e.g. "Call Frank about …") ─────────────
+  // ── 4. Capitalized proper nouns (e.g. "Call Frank about …") ─────────────
   const properNounPattern = /\b([A-Z][a-z]{2,})\b/g;
   let m: RegExpExecArray | null;
   while ((m = properNounPattern.exec(originalText)) !== null) {
@@ -659,7 +715,7 @@ function detectPersons(
     matchedNames.add(nameLower);
   }
 
-  // ── 4. Directed lowercase/common names (e.g. "call john", "send to bianca")
+  // ── 5. Directed lowercase/common names (e.g. "call john", "send to bianca")
   for (const pattern of DIRECTED_NAME_PATTERNS) {
     const directedMatch = originalText.match(pattern);
     if (!directedMatch) continue;
@@ -679,7 +735,7 @@ function detectPersons(
     matchedNames.add(nameLower);
   }
 
-  // ── 4b. "before Alex arrives" style deadlines involving a person
+  // ── 5b. "before Alex arrives" style deadlines involving a person
   const arrivalMatch = originalText.match(BEFORE_ARRIVAL_PATTERN);
   if (arrivalMatch) {
     const name = arrivalMatch[1];
@@ -699,7 +755,7 @@ function detectPersons(
     }
   }
 
-  // ── 5. Common first-name fallback (handles lowercase standalone names) ────
+  // ── 6. Common first-name fallback (handles lowercase standalone names) ────
   for (const rawWord of words) {
     const cleaned = rawWord.toLowerCase().replace(/[^a-z'-]/g, "");
     if (cleaned.length < 3) continue;
