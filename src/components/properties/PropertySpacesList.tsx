@@ -136,17 +136,17 @@ export function PropertySpacesList({
         ) : (
           <div 
             ref={spacesRef}
-            className="relative w-full max-w-full overflow-hidden"
+            className="relative w-full max-w-full overflow-hidden h-[145px]"
           >
-            <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0" style={{ width: 'calc(100% + 15px)' }}>
-              <div className="flex gap-2.5 h-[129px] py-[5px]" style={{ width: 'max-content' }}>
+            <div className="overflow-x-auto -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0 h-[145px]" style={{ width: 'calc(100% + 15px)' }}>
+              <div className="flex gap-2.5 h-[145px] py-[5px] justify-start items-start" style={{ width: 'max-content' }}>
                 {displaySpaces.map((space) => {
                   const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };
                   const effectiveIcon = space.icon_name ?? spaceWithTypes?.space_types?.default_icon ?? null;
                   return (
                     <div 
                       key={space.id} 
-                      className="w-[120px] flex-shrink-0 rounded-[5px]"
+                      className="w-[120px] h-[140px] flex-shrink-0 rounded-[5px] text-center"
                       onClick={() => handleSpaceClick(space)}
                     >
                       <SpaceCard
@@ -168,7 +168,7 @@ export function PropertySpacesList({
               className="absolute top-0 right-0 bottom-0 pointer-events-none"
               style={{
                 width: '10px',
-                height: '131px',
+                height: '147px',
                 background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1))',
                 zIndex: 20
               }}

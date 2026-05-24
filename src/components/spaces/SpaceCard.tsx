@@ -1,15 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { propertyHubPath } from "@/lib/propertyRoutes";
-import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getAssetIcon } from "@/lib/icon-resolver";
-import { supabase } from "@/integrations/supabase/client";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { getSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 
 interface SpaceCardProps {
   space: {
@@ -18,6 +12,8 @@ interface SpaceCardProps {
     type?: string | null;
     property_id?: string | null;
     icon_name?: string | null;
+    /** Resolved space type label for illustration lookup (e.g. space_types.name). */
+    spaceTypeName?: string | null;
     taskCount?: number;
     urgentTaskCount?: number;
   };
@@ -29,17 +25,21 @@ interface SpaceCardProps {
 
 export function SpaceCard({ space, groupColor, className, onFilterClick }: SpaceCardProps) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [iconDialogOpen, setIconDialogOpen] = useState(false);
-  const [iconValue, setIconValue] = useState({ iconName: space.icon_name || "box", color: groupColor ?? "#8EC9CE" });
-  
-  const displayName = space.name || space.type || 'Unnamed Space';
+
+  const displayName = space.name || space.type || "Unnamed Space";
   const taskCount = space.taskCount ?? 0;
   const urgentCount = space.urgentTaskCount ?? 0;
-  
-  const iconColor = groupColor ?? "#8EC9CE";
+  const hasTasks = taskCount > 0;
 
-  const handleTopSectionClick = (e: React.MouseEvent) => {
+  const iconColor = groupColor ?? "#8EC9CE";
+  const illustrationLabel =
+    resolveToCanonicalSpaceType(space.spaceTypeName ?? space.name ?? space.type ?? "") ??
+    space.spaceTypeName ??
+    space.name ??
+    space.type;
+  const illustrationSrc = getSpaceMiniCardIllustration(illustrationLabel);
+
+  const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (space.property_id && space.id) {
       navigate(`/properties/${space.property_id}/spaces/${space.id}`);
@@ -58,135 +58,80 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[121px]",
-        "transition-all duration-200",
+        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[137px]",
+        "flex flex-col text-center transition-all duration-200",
         className
       )}
     >
-      {/* Thumbnail Image */}
-      <div 
-        className="w-full h-[34px] overflow-hidden relative"
+      {/* Illustration */}
+      <div
+        className={cn(
+          "w-full overflow-hidden relative flex items-center justify-center cursor-pointer active:scale-[0.99]",
+          hasTasks ? "h-[86px] shrink-0" : "flex-1 min-h-0"
+        )}
         style={{
-          backgroundColor: iconColor,
+          backgroundColor: illustrationSrc ? undefined : iconColor,
         }}
+        onClick={handleNavigate}
       >
-        {/* Space Icon - positioned top left, clickable to change icon */}
-        <button
-          type="button"
-          className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10 cursor-pointer hover:scale-110 active:scale-95 transition-transform"
-          style={{
-            backgroundColor: iconColor,
-            width: '24px',
-            height: '24px',
-            boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            setIconValue({ iconName: space.icon_name || "box", color: groupColor ?? "#8EC9CE" });
-            setIconDialogOpen(true);
-          }}
-        >
-          {(() => {
-            const SpaceIcon = getAssetIcon(space.icon_name);
-            return <SpaceIcon className="h-4 w-4 text-white" />;
-          })()}
-        </button>
-        {/* Neumorphic overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
-          }}
-        />
+        {illustrationSrc ? (
+          <img
+            src={illustrationSrc}
+            alt=""
+            className={cn(
+              "object-contain",
+              hasTasks ? "h-[80px] w-[80px]" : "h-full max-h-[108px] w-auto max-w-full px-1"
+            )}
+            loading="lazy"
+          />
+        ) : null}
       </div>
-      
-      <div className="pt-1 pb-1 pl-2.5 pr-2.5 space-y-2 h-[84px]">
-        {/* Top Section - Clickable for navigation */}
-        <div 
-          onClick={handleTopSectionClick}
-          className="cursor-pointer active:scale-[0.99] mb-[5px] mt-1 h-[34px] flex flex-col justify-center items-start"
+
+      {hasTasks ? (
+        <div className="px-2.5 pb-2 pt-0 flex flex-col items-center gap-1.5 h-[68px] shrink-0">
+          <div onClick={handleNavigate} className="cursor-pointer active:scale-[0.99] w-full">
+            <h3 className="font-semibold text-sm text-foreground leading-[15px] line-clamp-2">
+              {displayName}
+            </h3>
+          </div>
+
+          <div
+            className="w-full px-1"
+            style={{
+              height: "1px",
+              backgroundImage:
+                "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+              backgroundSize: "7px 1px",
+              backgroundRepeat: "repeat-x",
+              boxShadow: "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
+            }}
+          />
+
+          <div onClick={handleMetaZoneClick} className="cursor-pointer active:scale-[0.99] w-full">
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <CheckSquare className="h-3 w-3" />
+                {taskCount} Task{taskCount !== 1 ? "s" : ""}
+              </span>
+              {urgentCount > 0 && (
+                <span className="text-xs text-destructive font-medium flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {urgentCount}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          onClick={handleNavigate}
+          className="px-2.5 pb-2.5 pt-1 shrink-0 cursor-pointer active:scale-[0.99]"
         >
-          <h3 className="font-semibold text-sm text-foreground h-[34px] w-[69px] flex flex-col justify-center items-start leading-[15px]">
+          <h3 className="font-semibold text-sm text-foreground leading-[15px] line-clamp-2">
             {displayName}
           </h3>
         </div>
-
-        {/* Neumorphic Perforation Line - Row of cut circles */}
-        <div 
-          className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1"
-          style={{
-            height: '1px',
-            backgroundImage: 'repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)',
-            backgroundSize: '7px 1px',
-            backgroundRepeat: 'repeat-x',
-            boxShadow: '1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)',
-          }}
-        />
-
-        {/* Meta Zone - Clickable for filtering */}
-        <div 
-          onClick={handleMetaZoneClick}
-          className="cursor-pointer active:scale-[0.99] m-0"
-        >
-          {/* Task Counts Row */}
-          <div className="flex items-center gap-2 flex-wrap mt-0 pt-[3px]">
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <CheckSquare className="h-3 w-3" />
-              {taskCount} Task{taskCount !== 1 ? 's' : ''}
-            </span>
-            {urgentCount > 0 && (
-              <span className="text-xs text-destructive font-medium flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {urgentCount}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Change Icon Dialog */}
-      <Dialog open={iconDialogOpen} onOpenChange={setIconDialogOpen}>
-        <DialogContent className="max-w-sm p-5" aria-describedby="space-icon-desc">
-          <DialogHeader>
-            <DialogTitle>Change Icon</DialogTitle>
-            <DialogDescription id="space-icon-desc">
-              Pick a new icon for <strong>{displayName}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          <AIIconColorPicker
-            searchText={displayName}
-            value={iconValue}
-            onChange={(icon, color) => setIconValue({ iconName: icon, color })}
-            suggestedIcon={space.icon_name}
-            showSearchInput
-          />
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" onClick={() => setIconDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                try {
-                  const { error } = await supabase
-                    .from("spaces")
-                    .update({ icon_name: iconValue.iconName })
-                    .eq("id", space.id);
-                  if (error) throw error;
-                  toast.success("Icon updated");
-                  queryClient.invalidateQueries({ queryKey: ["spaces"] });
-                  setIconDialogOpen(false);
-                } catch (err: any) {
-                  toast.error(err.message || "Failed to update icon");
-                }
-              }}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      )}
     </div>
   );
 }
-

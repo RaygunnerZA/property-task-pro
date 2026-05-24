@@ -14,6 +14,7 @@ export type SpaceWithType = {
   updated_at: string;
   [key: string]: unknown;
   space_types?: {
+    name?: string | null;
     default_ui_group: string | null;
     default_icon: string | null;
   } | null;
@@ -44,7 +45,7 @@ export function useSpacesWithTypes(
 
       let query = supabase
         .from("spaces")
-        .select("*, space_types(default_ui_group, default_icon)")
+        .select("*, space_types(name, default_ui_group, default_icon)")
         .eq("org_id", orgId);
 
       if (propertyId) query = query.eq("property_id", propertyId);
@@ -84,7 +85,7 @@ export function useSpacesWithTypes(
     setError(null);
     let query = supabase
       .from("spaces")
-      .select("*, space_types(default_ui_group, default_icon)")
+      .select("*, space_types(name, default_ui_group, default_icon)")
       .eq("org_id", orgId);
     if (propertyId) query = query.eq("property_id", propertyId);
     const { data, error: err } = await query;

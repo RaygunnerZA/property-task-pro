@@ -82,8 +82,11 @@ export function SpaceGroupMiniCardsStrip({
       <div className="overflow-x-auto -mx-[15px] px-[15px] pb-2 scrollbar-hz-teal">
         <div className="flex gap-2.5 h-[165px]" style={{ width: "max-content" }}>
           {displaySpaces.map((space) => {
-            const spaceWithTypes = space as { space_types?: { default_icon?: string | null } | null };
+            const spaceWithTypes = space as {
+              space_types?: { name?: string | null; default_icon?: string | null } | null;
+            };
             const effectiveIcon = space.icon_name ?? spaceWithTypes?.space_types?.default_icon ?? null;
+            const spaceTypeName = spaceWithTypes?.space_types?.name ?? space.name ?? null;
             return (
               <div
                 key={space.id}
@@ -94,6 +97,7 @@ export function SpaceGroupMiniCardsStrip({
                   space={{
                     ...space,
                     icon_name: effectiveIcon,
+                    spaceTypeName,
                     taskCount: spaceTaskCounts.counts[space.id] || 0,
                     urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
                   }}

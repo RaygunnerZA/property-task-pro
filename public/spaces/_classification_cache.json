@@ -1,0 +1,615 @@
+{
+  "1.png": {
+    "canonical_name": null,
+    "free_label": "Abstract shapes",
+    "confidence": 0.15,
+    "visual_summary": "Six colorful textured blob shapes in a grid with no room or architectural cues."
+  },
+  "2.png": {
+    "canonical_name": null,
+    "free_label": "Fire hazard",
+    "confidence": 0.2,
+    "visual_summary": "Stylized person whose head is replaced by a large flame with floating sparks."
+  },
+  "3.png": {
+    "canonical_name": "Archive Room",
+    "confidence": 0.72,
+    "visual_summary": "Person holding an overflowing yellow file folder with loose papers spilling out."
+  },
+  "4.png": {
+    "canonical_name": "Archive",
+    "confidence": 0.65,
+    "visual_summary": "Person peeking from behind a large folded document or sheet of paper."
+  },
+  "5.png": {
+    "canonical_name": "Phone Booth",
+    "confidence": 0.82,
+    "visual_summary": "Person cupping an ear toward sound waves coming from a speech bubble."
+  },
+  "6.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.78,
+    "visual_summary": "Forced-perspective yellow path leading to a small arched doorway at the end of a passage."
+  },
+  "7.png": {
+    "canonical_name": "Staircase",
+    "confidence": 0.95,
+    "visual_summary": "Side view of five ascending steps with a dark handrail along the incline."
+  },
+  "8.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.8,
+    "visual_summary": "Entry alcove with pendant lamp, potted plant, and a partially open door."
+  },
+  "9.png": {
+    "canonical_name": "Shower",
+    "confidence": 0.92,
+    "visual_summary": "Wall-mounted shower head with curved pipe and falling water droplets."
+  },
+  "10.png": {
+    "canonical_name": "Cupboard",
+    "confidence": 0.88,
+    "visual_summary": "Open teal cupboard with three shelves holding colored storage boxes."
+  },
+  "11.png": {
+    "canonical_name": "Electrical Room",
+    "confidence": 0.9,
+    "visual_summary": "Green equipment block marked with a yellow lightning bolt connected to pipes."
+  },
+  "12.png": {
+    "canonical_name": "Garage",
+    "confidence": 0.93,
+    "visual_summary": "Small red outbuilding with a large dark rectangular garage door beside a tree."
+  },
+  "13.png": {
+    "canonical_name": "Accessible WC",
+    "confidence": 0.94,
+    "visual_summary": "Silhouettes of a standing person and a person in a wheelchair side by side."
+  },
+  "14.png": {
+    "canonical_name": null,
+    "free_label": "Warning alert",
+    "confidence": 0.18,
+    "visual_summary": "Red warning triangle with an exclamation mark and radiating alert bars."
+  },
+  "15.png": {
+    "canonical_name": "HR Office",
+    "confidence": 0.85,
+    "visual_summary": "Document with a magnifying glass revealing an orange person silhouette."
+  },
+  "16.png": {
+    "canonical_name": "Phone Booth",
+    "confidence": 0.75,
+    "visual_summary": "Speech bubble with ellipsis overlapped by a clock icon suggesting timed communication."
+  },
+  "17.png": {
+    "canonical_name": null,
+    "free_label": "Checklist",
+    "confidence": 0.25,
+    "visual_summary": "Clipboard showing a checklist with two completed items and one empty box."
+  },
+  "18.png": {
+    "canonical_name": null,
+    "free_label": "Playground",
+    "confidence": 0.35,
+    "visual_summary": "Outdoor wooden play structure with tower, slide, and swing set on grass."
+  },
+  "19.png": {
+    "canonical_name": "Bike Store",
+    "confidence": 0.91,
+    "visual_summary": "Bicycle parked in front of a dark U-shaped bike rack."
+  },
+  "20.png": {
+    "canonical_name": "Bin Store",
+    "confidence": 0.9,
+    "visual_summary": "Overflowing wheeled dumpster with cardboard boxes, bags, and loose rubbish."
+  },
+  "21.png": {
+    "canonical_name": null,
+    "free_label": "Fire extinguisher cabinet",
+    "confidence": 0.38,
+    "visual_summary": "Red fire extinguisher in a wall-mounted cabinet beside a flame safety sign on an olive wall."
+  },
+  "22.png": {
+    "canonical_name": "Electrical Room",
+    "confidence": 0.95,
+    "visual_summary": "Dark electrical breaker panel with yellow lightning bolt and conduit pipes on a textured yellow wall."
+  },
+  "23.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.76,
+    "visual_summary": "Dark door with a wall-mounted numeric keypad and green display next to the handle."
+  },
+  "24.png": {
+    "canonical_name": "Server Room",
+    "confidence": 0.94,
+    "visual_summary": "Dark grey five-unit server rack with blue status lights and vent grilles on each blade."
+  },
+  "25.png": {
+    "canonical_name": "Exit",
+    "confidence": 0.91,
+    "visual_summary": "Running figure following a dashed path that ends in a right-pointing arrow on a purple wall."
+  },
+  "26.png": {
+    "canonical_name": "Garage",
+    "confidence": 0.95,
+    "visual_summary": "Closed horizontal-slat garage door in a cream frame set into a teal wall with curb blocks."
+  },
+  "27.png": {
+    "canonical_name": "Server Room",
+    "confidence": 0.93,
+    "visual_summary": "Pair of dark server cabinets with teal and amber indicator lights against a deep blue wall."
+  },
+  "28.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.92,
+    "visual_summary": "Beige perimeter wall with a dark vertical-slat gate flanked by trees and rounded bushes."
+  },
+  "29.png": {
+    "canonical_name": "Boiler Room",
+    "confidence": 0.93,
+    "visual_summary": "Hot water tank with front gauge connected by pipes to a boiler unit with orange control knobs."
+  },
+  "30.png": {
+    "canonical_name": "Car Park",
+    "confidence": 0.96,
+    "visual_summary": "Outdoor parking sign with a P marking above diagonal stall lines on dark asphalt with shrubs."
+  },
+  "31.png": {
+    "canonical_name": "Loading Bay",
+    "confidence": 0.9,
+    "visual_summary": "Roll-up bay door on a beige building with a red box truck parked at the loading apron."
+  },
+  "32.png": {
+    "canonical_name": "Garden",
+    "confidence": 0.87,
+    "visual_summary": "Outdoor gate and tan fence between a red shed, green bush, distant hills and a cloud sky."
+  },
+  "33.png": {
+    "canonical_name": "Rooftop Plant",
+    "confidence": 0.94,
+    "visual_summary": "Flat roof deck with a rooftop structure, green HVAC condenser, vent stack and access ladder."
+  },
+  "34.png": {
+    "canonical_name": null,
+    "free_label": "Abstract shapes",
+    "confidence": 0.16,
+    "visual_summary": "Two grainy blue-green organic blob forms on black with no architectural or room cues."
+  },
+  "35.png": {
+    "canonical_name": "Terrace",
+    "confidence": 0.88,
+    "visual_summary": "Raised outdoor platform with a potted plant, low shrubs and a capped pillar against teal sky."
+  },
+  "36.png": {
+    "canonical_name": "Closet",
+    "confidence": 0.91,
+    "visual_summary": "Open two-shelf cupboard with folded towels and a yellow lidded storage box inside."
+  },
+  "37.png": {
+    "canonical_name": "Archive Room",
+    "confidence": 0.83,
+    "visual_summary": "White shelf holding three colored ring binders and a lidded document storage box."
+  },
+  "38.png": {
+    "canonical_name": "Cupboard",
+    "confidence": 0.89,
+    "visual_summary": "Open cupboard with a yellow box on the top shelf and stacked cream and orange storage bins below."
+  },
+  "39.png": {
+    "canonical_name": "Bedroom",
+    "confidence": 0.96,
+    "visual_summary": "Bed with yellow blanket, teal nightstand and red-shade lamp against a dark teal wall."
+  },
+  "40.png": {
+    "canonical_name": "Living Room",
+    "confidence": 0.94,
+    "visual_summary": "Cream armchair beside a red side table with a potted plant and green pendant lamp on purple wall."
+  },
+  "41.png": {
+    "canonical_name": "Office",
+    "confidence": 0.93,
+    "visual_summary": "Desk with laptop, office chair, and small potted plant on a green wall."
+  },
+  "42.png": {
+    "canonical_name": "Meeting Room",
+    "confidence": 0.84,
+    "visual_summary": "Rectangular table with three chairs and a dome pendant light over a yellow wall."
+  },
+  "43.png": {
+    "canonical_name": "Classroom",
+    "confidence": 0.92,
+    "visual_summary": "Four student desks facing a wall-mounted whiteboard in rows."
+  },
+  "44.png": {
+    "canonical_name": "Retail Floor",
+    "confidence": 0.9,
+    "visual_summary": "Dress form mannequin, checkout counter, and handbag on a display shelf."
+  },
+  "45.png": {
+    "canonical_name": "Workshop",
+    "confidence": 0.91,
+    "visual_summary": "Workbench with stool and pegboard holding hammer and wrench."
+  },
+  "46.png": {
+    "canonical_name": "Creative Studio",
+    "confidence": 0.9,
+    "visual_summary": "Blank canvas on easel beside a cup of paintbrushes."
+  },
+  "47.png": {
+    "canonical_name": "Meeting Room",
+    "confidence": 0.76,
+    "visual_summary": "Long table under two matching dome pendant lights."
+  },
+  "48.png": {
+    "canonical_name": "Kitchen",
+    "confidence": 0.94,
+    "visual_summary": "Counter with gooseneck faucet, mug, base cabinet, and pendant lamp."
+  },
+  "49.png": {
+    "canonical_name": "Laundry Room",
+    "confidence": 0.96,
+    "visual_summary": "Front-loading washer with detergent bottle and folded towels on a shelf."
+  },
+  "50.png": {
+    "canonical_name": "Print Room",
+    "confidence": 0.97,
+    "visual_summary": "Office copier/printer with open scanner lid and paper trays."
+  },
+  "51.png": {
+    "canonical_name": "Staff Kitchen",
+    "confidence": 0.8,
+    "visual_summary": "Teapot and steaming mug on a small wall shelf."
+  },
+  "52.png": {
+    "canonical_name": "Dining Room",
+    "confidence": 0.86,
+    "visual_summary": "Round table with two chairs, pendant light, and center potted plant."
+  },
+  "53.png": {
+    "canonical_name": "Bathroom",
+    "confidence": 0.95,
+    "visual_summary": "Shower head with falling droplets beside a toilet."
+  },
+  "54.png": {
+    "canonical_name": "WC",
+    "confidence": 0.88,
+    "visual_summary": "Toilet with dual-flush panel and wall-mounted toilet paper holder."
+  },
+  "55.png": {
+    "canonical_name": "Accessible WC",
+    "confidence": 0.96,
+    "visual_summary": "Toilet icon paired with international wheelchair accessibility symbol."
+  },
+  "56.png": {
+    "canonical_name": "Locker Room",
+    "confidence": 0.92,
+    "visual_summary": "Wall hooks with hanging towel next to a vented locker."
+  },
+  "57.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.87,
+    "visual_summary": "Multi-story building facade with double doors, windows, tree, and shrubs."
+  },
+  "58.png": {
+    "canonical_name": "Elevator",
+    "confidence": 0.97,
+    "visual_summary": "Closed lift doors with floor indicator dial and up/down call buttons."
+  },
+  "59.png": {
+    "canonical_name": "Staircase",
+    "confidence": 0.95,
+    "visual_summary": "Open doorway revealing interior stairs with handrail leading upward."
+  },
+  "60.png": {
+    "canonical_name": "Living Room",
+    "confidence": 0.78,
+    "visual_summary": "Four-pane window with potted plant on sill and outdoor view."
+  },
+  "61.png": {
+    "canonical_name": "Plant Room",
+    "confidence": 0.91,
+    "visual_summary": "Industrial teal pipes with a large orange-red valve wheel on a textured purple background."
+  },
+  "62.png": {
+    "canonical_name": "Plant Room",
+    "confidence": 0.84,
+    "visual_summary": "Beige column radiator with grey supply pipe and red thermostatic valve on teal."
+  },
+  "63.png": {
+    "canonical_name": "Bin Store",
+    "confidence": 0.93,
+    "visual_summary": "Green wheelie bin with recycling symbol beside a tied black refuse sack."
+  },
+  "64.png": {
+    "canonical_name": "Electrical Room",
+    "confidence": 0.76,
+    "visual_summary": "Glowing incandescent bulb with radiating lines on mustard-yellow textured ground."
+  },
+  "65.png": {
+    "canonical_name": "HVAC Room",
+    "confidence": 0.9,
+    "visual_summary": "Outdoor-style AC unit with circular fan and horizontal vent slats, layered paper-cut style."
+  },
+  "66.png": {
+    "canonical_name": "Bedroom",
+    "confidence": 0.94,
+    "visual_summary": "White crib with star/cloud mobile, shelf with teddy and books, red toy box."
+  },
+  "67.png": {
+    "canonical_name": "Dining Room",
+    "confidence": 0.82,
+    "visual_summary": "Rectangular table with four chairs, pendant lamp, and potted plant on mustard wall."
+  },
+  "68.png": {
+    "canonical_name": "Pantry",
+    "confidence": 0.88,
+    "visual_summary": "Three-tier shelf with jars, bowls, storage box, and bottles\u2014pantry/kitchen storage."
+  },
+  "69.png": {
+    "canonical_name": "Storage Room",
+    "confidence": 0.9,
+    "visual_summary": "Closet with hanging jackets, drawer chest, duffel on shelf, shoes on storage box."
+  },
+  "70.png": {
+    "canonical_name": "Balcony",
+    "confidence": 0.95,
+    "visual_summary": "Sliding glass door to exterior railing, potted plant, cloud on teal sky."
+  },
+  "71.png": {
+    "canonical_name": "Entrance",
+    "confidence": 0.96,
+    "visual_summary": "Front door with doormat, wall coat pegs with tote bag, and floor plant."
+  },
+  "72.png": {
+    "canonical_name": "Attic",
+    "confidence": 0.89,
+    "visual_summary": "Sloped roof with round window and stacked labeled storage boxes."
+  },
+  "73.png": {
+    "canonical_name": "Plant Room",
+    "confidence": 0.92,
+    "visual_summary": "Basement stairs, boiler/furnace with pipes, shelf with jerrycan and small window."
+  },
+  "74.png": {
+    "canonical_name": "Laundry Room",
+    "confidence": 0.98,
+    "visual_summary": "Front-load washer, laundry basket, shelf with detergent bottle and folded towels."
+  },
+  "75.png": {
+    "canonical_name": "Reception",
+    "confidence": 0.87,
+    "visual_summary": "Reception desk with monitor, pendant light, and large/small potted plants."
+  },
+  "76.png": {
+    "canonical_name": "Lobby",
+    "confidence": 0.86,
+    "visual_summary": "Two armchairs flanking a round side table with plant and abstract wall art."
+  },
+  "77.png": {
+    "canonical_name": "Kitchen",
+    "confidence": 0.85,
+    "visual_summary": "Dining table with three chairs, pendant lights, wall shelf with stacked plates."
+  },
+  "78.png": {
+    "canonical_name": "Office",
+    "confidence": 0.94,
+    "visual_summary": "Dual desk with two monitors, office chairs, shelf with plant and binders."
+  },
+  "79.png": {
+    "canonical_name": "Meeting Room",
+    "confidence": 0.96,
+    "visual_summary": "Long conference table with eight chairs and whiteboard/screen on red wall."
+  },
+  "80.png": {
+    "canonical_name": "Phone Booth",
+    "confidence": 0.94,
+    "visual_summary": "Enclosed privacy pod with stool, shelf, plant, and wall telephone icon sign."
+  },
+  "81.png": {
+    "canonical_name": "Classroom",
+    "confidence": 0.95,
+    "visual_summary": "Four student desks with chairs facing a whiteboard and teacher podium with laptop."
+  },
+  "82.png": {
+    "canonical_name": "Copy Room",
+    "confidence": 0.9,
+    "visual_summary": "Large office copier beside a cabinet with paper stacks, binders, and a wall shelf."
+  },
+  "83.png": {
+    "canonical_name": null,
+    "free_label": "mailroom",
+    "confidence": 0.72,
+    "visual_summary": "Cubby shelving filled with storage boxes next to a red wall-mounted MAIL mailbox."
+  },
+  "84.png": {
+    "canonical_name": "First Aid",
+    "confidence": 0.98,
+    "visual_summary": "Green FIRST AID POINT sign with white cross mounted on a textured wall."
+  },
+  "85.png": {
+    "canonical_name": "Fire Escape",
+    "confidence": 0.97,
+    "visual_summary": "Green emergency exit door with push bar and FIRE EXIT sign above."
+  },
+  "86.png": {
+    "canonical_name": "Plant Room",
+    "confidence": 0.86,
+    "visual_summary": "White storage tank connected by blue pipes to a pump with a red valve wheel."
+  },
+  "87.png": {
+    "canonical_name": "Classroom",
+    "confidence": 0.94,
+    "visual_summary": "Three student desks before a whiteboard with books and pencil cup on a side shelf."
+  },
+  "88.png": {
+    "canonical_name": "Closet",
+    "confidence": 0.92,
+    "visual_summary": "Walk-in closet with clothing rack, folded garments, storage boxes, and center island."
+  },
+  "89.png": {
+    "canonical_name": "Workshop",
+    "confidence": 0.95,
+    "visual_summary": "Workbench with pegboard tools, C-clamp, drawer cabinet, and stool."
+  },
+  "90.png": {
+    "canonical_name": "Creative Studio",
+    "confidence": 0.93,
+    "visual_summary": "Wooden easel with blank canvas beside paintbrushes and a shelf with a potted plant."
+  },
+  "91.png": {
+    "canonical_name": "Kitchen",
+    "confidence": 0.96,
+    "visual_summary": "Refrigerator beside counter with sink faucet, cream cabinets, and mugs on a shelf."
+  },
+  "92.png": {
+    "canonical_name": "Laundry Room",
+    "confidence": 0.97,
+    "visual_summary": "Front-loading washer with laundry basket, detergent bottles, and storage cabinet."
+  },
+  "93.png": {
+    "canonical_name": "Staff Kitchen",
+    "confidence": 0.84,
+    "visual_summary": "Counter with coffee maker, kettle, mug, jars, and cabinets in a beverage prep area."
+  },
+  "94.png": {
+    "canonical_name": "Breakout Area",
+    "confidence": 0.8,
+    "visual_summary": "Round table with three chairs, pendant lamp, plant centerpiece, and bulletin board."
+  },
+  "95.png": {
+    "canonical_name": "Plant Room",
+    "confidence": 0.86,
+    "visual_summary": "Cylindrical tank with gauge piped to a blue pump unit and red handwheel valve."
+  },
+  "96.png": {
+    "canonical_name": "Server Room",
+    "confidence": 0.96,
+    "visual_summary": "Two rack cabinets with green and amber status lights plus conduit control panel."
+  },
+  "97.png": {
+    "canonical_name": "Electrical Room",
+    "confidence": 0.95,
+    "visual_summary": "Main electrical panel with lightning-bolt door, conduits, and red toggle switch box."
+  },
+  "98.png": {
+    "canonical_name": "Boiler Room",
+    "confidence": 0.94,
+    "visual_summary": "Vertical boiler tank with gauge, red access panel, control box, and pipe valve."
+  },
+  "99.png": {
+    "canonical_name": "HVAC Room",
+    "confidence": 0.93,
+    "visual_summary": "Air-handling unit with fan, ventilation slats, and connected supply and return ductwork."
+  },
+  "100.png": {
+    "canonical_name": "Elevator",
+    "confidence": 0.96,
+    "visual_summary": "Closed elevator doors with up/down call panel and hoist machinery mounted above."
+  },
+  "101.png": {
+    "canonical_name": "HVAC Room",
+    "confidence": 0.91,
+    "visual_summary": "Off-white mechanical cabinet with blue ductwork routing to a slatted heat exchanger unit."
+  },
+  "102.png": {
+    "canonical_name": "UPS Room",
+    "confidence": 0.97,
+    "visual_summary": "Dark blue UPS cabinet labeled UPS with status lights, connected by cables to a battery unit."
+  },
+  "103.png": {
+    "canonical_name": "Riser",
+    "confidence": 0.9,
+    "visual_summary": "Five vertical service pipes (red, blue, white) bracketed inside a wall recess."
+  },
+  "104.png": {
+    "canonical_name": "Workshop",
+    "confidence": 0.96,
+    "visual_summary": "Blue workbench with red vise and pegboard holding wrench, screwdriver, and toolbox."
+  },
+  "105.png": {
+    "canonical_name": "Loading Bay",
+    "confidence": 0.88,
+    "visual_summary": "Blue roll-up sectional door in a frame with overhead lamp and yellow safety bollards."
+  },
+  "106.png": {
+    "canonical_name": "Storage Room",
+    "free_label": "locked tool cage",
+    "confidence": 0.84,
+    "visual_summary": "Padlocked blue mesh cage storing a yellow shovel and step ladder."
+  },
+  "107.png": {
+    "canonical_name": null,
+    "free_label": "chemical storage",
+    "confidence": 0.86,
+    "visual_summary": "Yellow hazardous-materials cabinet with warning diamond, bottles, and red jerrycan on shelves."
+  },
+  "108.png": {
+    "canonical_name": "Bin Store",
+    "confidence": 0.94,
+    "visual_summary": "Blue commercial dumpster beside a tied refuse sack on a textured ground."
+  },
+  "109.png": {
+    "canonical_name": "Bin Store",
+    "free_label": "recycling",
+    "confidence": 0.89,
+    "visual_summary": "Three color-coded recycling bins with lids under a recycling-symbol sign."
+  },
+  "110.png": {
+    "canonical_name": null,
+    "free_label": "air compressor",
+    "confidence": 0.92,
+    "visual_summary": "Horizontal cream air tank with blue motor-pump assembly, piping, and pressure gauge."
+  },
+  "111.png": {
+    "canonical_name": "Security Room",
+    "confidence": 0.93,
+    "visual_summary": "Desk with monitor and chair, blue door, and dome CCTV camera on the wall."
+  },
+  "112.png": {
+    "canonical_name": "Plant Room",
+    "free_label": "BMS control console",
+    "confidence": 0.82,
+    "visual_summary": "Three-monitor SCADA-style desk with charts, gauges, and colored control buttons."
+  },
+  "113.png": {
+    "canonical_name": null,
+    "free_label": "muster point",
+    "confidence": 0.97,
+    "visual_summary": "Green emergency assembly sign reading MUSTER POINT with grouped-figures pictogram."
+  },
+  "114.png": {
+    "canonical_name": null,
+    "free_label": "fire alarm panel",
+    "confidence": 0.96,
+    "visual_summary": "Cream fire-alarm control panel with display, buttons, and ringing-bell icon."
+  },
+  "115.png": {
+    "canonical_name": null,
+    "free_label": "sprinkler cabinet",
+    "confidence": 0.95,
+    "visual_summary": "Red wall cabinet labeled SPRINKLER CABINET showing coiled hose and valve wheel."
+  },
+  "116.png": {
+    "canonical_name": null,
+    "free_label": "fire extinguisher",
+    "confidence": 0.96,
+    "visual_summary": "Red fire-extinguisher sign beside a detailed extinguisher with hose and handle."
+  },
+  "117.png": {
+    "canonical_name": "Exit",
+    "confidence": 0.94,
+    "visual_summary": "Running-figure pictogram with right-pointing arrow on a dashed path\u2014emergency exit wayfinding."
+  },
+  "118.png": {
+    "canonical_name": "Lift",
+    "confidence": 0.97,
+    "visual_summary": "Closed elevator doors with up/down indicator panel and wall-mounted call buttons."
+  },
+  "119.png": {
+    "canonical_name": null,
+    "free_label": "escalator",
+    "confidence": 0.96,
+    "visual_summary": "Diagonal escalator silhouette with a stick figure rider on textured olive-green background."
+  }
+}
