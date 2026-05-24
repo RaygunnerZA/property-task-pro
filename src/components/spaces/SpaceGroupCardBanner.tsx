@@ -20,7 +20,7 @@ export function SpaceGroupCardBanner({
 }: SpaceGroupCardBannerProps) {
   return (
     <div
-      className={cn("relative w-full h-[63px] overflow-hidden", className)}
+      className={cn("relative w-full h-[130px] overflow-hidden", className)}
       style={{ backgroundColor: imageSrc ? undefined : color }}
     >
       {imageSrc ? (
