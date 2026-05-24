@@ -6,6 +6,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { SpaceGroupCard } from "./SpaceGroupCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
+import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 
 interface PropertySpacesSectionProps {
   propertyId: string;
@@ -77,6 +78,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
         key={group.id}
         groupName={group.label}
         description={group.description}
+        thumbnailUrl={getSpaceGroupCardIllustration(group.id)}
         color={group.color}
         spaceCount={spaceCount}
         propertyId={propertyId}

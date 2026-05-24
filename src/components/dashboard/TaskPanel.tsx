@@ -196,6 +196,7 @@ function RecentNeedsReviewStack({
         subtitle={SIGNAL_COLUMN_RECENT.subtitle}
         headerIllustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals}
         headerSpacious
+        headerClassName="mb-[-21px]"
         items={recentItems}
         emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
@@ -1344,7 +1345,7 @@ export function TaskPanel({
               }}
             >
                 <div className="min-w-0 space-y-3">
-                <div className="min-w-0 space-y-2 px-0.5">
+                <div className="mt-[5px] min-w-0 space-y-2 px-0.5">
                   <div className="flex flex-wrap items-center gap-2">
                     {ISSUES_CHIP_FILTERS.map(({ id, label }) => (
                       <FilterChip
@@ -1355,7 +1356,7 @@ export function TaskPanel({
                       />
                     ))}
                   </div>
-                  <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
+                  <div className="relative -ml-0.5 mt-[11px] flex w-[294px] items-center gap-2 rounded-[10px] bg-background/80 px-3 py-[10px] shadow-[1px_1px_2px_0px_rgba(255,255,255,0.6),inset_1px_2px_4px_0px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_0px_rgba(255,255,255,0.5)]">
                     <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                     <input
                       type="search"

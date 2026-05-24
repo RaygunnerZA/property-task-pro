@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { groupLabelToSlug } from "@/components/onboarding/onboardingSpaceGroups";
+import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 
@@ -39,28 +40,7 @@ export function SpaceGroupCard({
       )}
       onClick={handleClick}
     >
-      {/* Thumbnail Image */}
-      <div 
-        className="w-full h-[63px] overflow-hidden relative"
-        style={{
-          backgroundColor: thumbnailUrl ? undefined : color,
-        }}
-      >
-        {thumbnailUrl ? (
-          <img
-            src={thumbnailUrl}
-            alt={groupName}
-            className="w-full h-full object-cover"
-          />
-        ) : null}
-        {/* Neumorphic overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)'
-          }}
-        />
-      </div>
+      <SpaceGroupCardBanner imageSrc={thumbnailUrl} alt={groupName} color={color} />
       
       <div className="pt-2 pb-2 pl-2.5 pr-2.5">
         {/* Title and Button Row */}

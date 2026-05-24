@@ -33,12 +33,14 @@ export function IssuesWorkbenchSectionHeader({
         className
       )}
     >
-      <h2 className="min-w-0 text-lg font-semibold leading-tight tracking-wide text-[rgb(42,41,62)]">
+      <h2 className="min-w-0 w-[90px] text-lg font-semibold leading-tight tracking-wide text-[rgb(42,41,62)]">
         {title}
       </h2>
 
       {subtitle ? (
-        <p className="min-w-0 text-[11px] leading-snug text-muted-foreground sm:text-xs">{subtitle}</p>
+        <p className="min-w-0 pt-[5px] text-[11px] leading-snug text-muted-foreground sm:text-xs">
+          {subtitle}
+        </p>
       ) : (
         <span className="min-w-0" aria-hidden />
       )}
@@ -48,7 +50,7 @@ export function IssuesWorkbenchSectionHeader({
           <img
             src={illustrationSrc}
             alt=""
-            className="h-full w-full object-contain object-bottom drop-shadow-sm"
+            className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
             decoding="async"
           />
         </div>

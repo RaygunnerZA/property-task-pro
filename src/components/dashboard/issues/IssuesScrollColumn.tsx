@@ -20,6 +20,8 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   className?: string;
   /** Taller header spacing when stacked in the signal feed. */
   headerSpacious?: boolean;
+  /** Extra classes on the section header grid (e.g. tight bottom margin). */
+  headerClassName?: string;
 };
 
 /**
@@ -36,6 +38,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
   renderCard,
   className,
   headerSpacious = false,
+  headerClassName,
 }: IssuesScrollColumnProps<T>) {
   const scrollRootRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +49,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
         subtitle={subtitle}
         illustrationSrc={headerIllustrationSrc}
         spacious={headerSpacious}
+        className={headerClassName}
       />
       {items.length === 0 ? (
         <div className="space-y-1.5 rounded-xl bg-muted/25 px-3 py-2.5 shadow-sm">

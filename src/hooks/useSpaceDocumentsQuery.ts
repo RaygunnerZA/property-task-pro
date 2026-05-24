@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase as _supabase } from "@/integrations/supabase/client";
+import { isMissingRelationError } from "@/lib/supabaseErrors";
 // attachment_spaces is a pending-migration table — cast until schema is generated
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabase = _supabase as any;
@@ -17,7 +18,10 @@ export function useSpaceDocumentsQuery(spaceId: string | undefined, propertyId: 
         .from("attachment_spaces")
         .select("attachment_id")
         .eq("space_id", spaceId);
-      if (linksError) throw linksError;
+      if (linksError) {
+        if (isMissingRelationError(linksError)) return [];
+        throw linksError;
+      }
       if (!links?.length) return [];
 
       const attachmentIds = links.map((r) => r.attachment_id);

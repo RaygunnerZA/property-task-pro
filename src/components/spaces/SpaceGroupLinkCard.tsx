@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import type { SpaceGroup } from "@/components/onboarding/onboardingSpaceGroups";
+import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
+import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 
 interface SpaceGroupLinkCardProps {
   group: SpaceGroup;
@@ -17,7 +19,12 @@ export function SpaceGroupLinkCard({ group, to }: SpaceGroupLinkCardProps) {
       to={to}
       className="w-[200px] flex-shrink-0 rounded-[8px] overflow-hidden bg-card shadow-e1 flex flex-col transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.99] group/card"
     >
-      <div className="flex-1 pt-4 pb-3 px-3 space-y-3">
+      <SpaceGroupCardBanner
+        imageSrc={getSpaceGroupCardIllustration(group.id)}
+        alt={group.label}
+        color={group.color}
+      />
+      <div className="flex-1 pt-2 pb-3 px-3 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="font-semibold text-lg text-foreground leading-tight">
             {group.label}

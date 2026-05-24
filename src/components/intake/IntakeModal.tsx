@@ -3343,7 +3343,7 @@ export function IntakeModal({
   const intakeModeSwitcher = (
     <div
       ref={intakeTabListRef}
-      className="flex h-12 w-full min-w-0 flex-nowrap items-stretch justify-center gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      className="flex h-12 w-full min-w-0 flex-nowrap items-stretch gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
       role="tablist"
       aria-label="Intake type"
     >
@@ -3355,7 +3355,7 @@ export function IntakeModal({
           aria-selected={intakeMode === m}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex max-w-full min-w-0 shrink flex-[0_1_auto] items-center justify-center gap-1.5 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
                 ? "bg-[#ff6b6b] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"

@@ -37,10 +37,14 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "loading-bay": `${MINI_CARD_BASE}/loading-bay.png`,
   "lobby": `${MINI_CARD_BASE}/lobby.png`,
   "locker-room": `${MINI_CARD_BASE}/locker-room.png`,
+  "mailroom": `${MINI_CARD_BASE}/mailroom.png`,
   "meeting-room": `${MINI_CARD_BASE}/meeting-room.png`,
+  "meeting-room-2": `${MINI_CARD_BASE}/meeting-room-2.png`,
   "office": `${MINI_CARD_BASE}/office.png`,
+  "office-2": `${MINI_CARD_BASE}/office-2.png`,
   "pantry": `${MINI_CARD_BASE}/pantry.png`,
   "phone-booth": `${MINI_CARD_BASE}/phone-booth.png`,
+  "playground": `${MINI_CARD_BASE}/playground.png`,
   "plant-room": `${MINI_CARD_BASE}/plant-room.png`,
   "print-room": `${MINI_CARD_BASE}/print-room.png`,
   "reception": `${MINI_CARD_BASE}/reception.png`,
@@ -59,6 +63,59 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "workshop": `${MINI_CARD_BASE}/workshop.png`,
 };
 
+/** Space type slugs without dedicated art → nearest mini-card slug. */
+const SPACE_MINI_CARD_SLUG_ALIAS: Record<string, string> = {
+  basement: "storage-room",
+  boardroom: "meeting-room-2",
+  "break-room": "breakout-area",
+  "call-room": "phone-booth",
+  canteen: "staff-kitchen",
+  cellar: "storage-room",
+  "changing-room": "locker-room",
+  "comms-room": "server-room",
+  "conference-room": "meeting-room",
+  conservatory: "garden",
+  corridor: "entrance",
+  courtyard: "garden",
+  "data-room": "server-room",
+  "disabled-wc": "accessible-wc",
+  "family-bathroom": "bathroom",
+  "generator-room": "electrical-room",
+  "guest-room": "bedroom",
+  hallway: "entrance",
+  "home-office": "office",
+  "it-room": "server-room",
+  laboratory: "creative-studio",
+  landing: "staircase",
+  library: "archive-room",
+  "lift-motor-room": "lift",
+  loft: "attic",
+  lounge: "living-room",
+  "master-bedroom": "bedroom",
+  "mechanical-room": "plant-room",
+  "medical-room": "first-aid",
+  "open-plan-office": "office-2",
+  parking: "car-park",
+  playroom: "playground",
+  "powder-room": "wc",
+  roof: "rooftop-plant",
+  "sales-floor": "retail-floor",
+  "service-riser": "riser",
+  "shower-block": "shower",
+  "shower-room": "shower",
+  "sitting-room": "living-room",
+  "staff-room": "staff-kitchen",
+  "stock-room": "storage-room",
+  study: "office",
+  sunroom: "terrace",
+  "switch-room": "electrical-room",
+  toilet: "wc",
+  "training-room": "classroom",
+  utility: "laundry-room",
+  "utility-room": "laundry-room",
+  yard: "garden",
+};
+
 export function spaceTypeIllustrationSlug(name: string | null | undefined): string {
   if (!name?.trim()) return "";
   return name
@@ -73,7 +130,8 @@ export function getSpaceMiniCardIllustration(
 ): string | undefined {
   const slug = spaceTypeIllustrationSlug(spaceTypeName);
   if (!slug) return undefined;
-  if (SPACE_MINI_CARD_ILLUSTRATION[slug]) return SPACE_MINI_CARD_ILLUSTRATION[slug];
-  const base = slug.replace(/-\d+$/, '');
+  const targetSlug = SPACE_MINI_CARD_SLUG_ALIAS[slug] ?? slug;
+  if (SPACE_MINI_CARD_ILLUSTRATION[targetSlug]) return SPACE_MINI_CARD_ILLUSTRATION[targetSlug];
+  const base = targetSlug.replace(/-\d+$/, "");
   return SPACE_MINI_CARD_ILLUSTRATION[base];
 }

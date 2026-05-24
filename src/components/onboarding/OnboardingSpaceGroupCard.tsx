@@ -5,6 +5,8 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { CopyPlus } from "lucide-react";
 import type { SpaceGroup } from "./onboardingSpaceGroups";
 import { shortSpaceLabel } from "./onboardingSpaceGroups";
+import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
+import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 
 const FLIP_IN_DURATION_MS = 250;
 const FLIP_OUT_DURATION_MS = 600;
@@ -109,7 +111,12 @@ export function OnboardingSpaceGroupCard({
             WebkitBackfaceVisibility: "hidden",
           }}
         >
-          <div className="flex-1 pt-4 pb-3 px-3 space-y-3">
+          <SpaceGroupCardBanner
+            imageSrc={getSpaceGroupCardIllustration(group.id)}
+            alt={group.label}
+            color={group.color}
+          />
+          <div className="flex-1 pt-2 pb-3 px-3 space-y-3">
             <h3 className="font-semibold text-lg text-foreground leading-tight">
               {group.label}
             </h3>
