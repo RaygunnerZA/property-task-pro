@@ -38,4 +38,19 @@ describe("mergeAiPeopleIntoChips", () => {
     expect(frank).toBeDefined();
     expect(frank?.blockingRequired).toBe(false);
   });
+
+  it("rejects AI verbs and date-context months", () => {
+    const merged = mergeAiPeopleIntoChips(
+      [],
+      [
+        { name: "Have", exists: false },
+        { name: "Collect", exists: false },
+        { name: "Oliver", exists: false },
+        { name: "June", exists: false },
+      ],
+      { contextText: "Have Oliver collect before the 12th June." }
+    );
+    const labels = merged.filter((c) => c.type === "person").map((c) => c.label);
+    expect(labels).toEqual(["Oliver"]);
+  });
 });

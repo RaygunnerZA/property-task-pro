@@ -100,7 +100,13 @@
 
   /* Dashboard: gradient strip only; property scope lives in the left column */
   .dashboard-workbench {
-    --header-height: 60px;
+    --header-height: 80px;
+  }
+
+  .dashboard-workbench .page-header {
+    height: 80px;
+    padding-top: 0;
+    box-sizing: border-box;
   }
 
   /* StandardPageWithBack + Spaces: gradient + property scope row under it */

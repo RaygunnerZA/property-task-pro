@@ -4,6 +4,7 @@
  */
 
 import type { SuggestedChip } from "@/types/chip-suggestions";
+import { isRejectedPersonName } from "./personNameHeuristics";
 
 export interface AiExtractedPerson {
   name: string;
@@ -57,16 +58,19 @@ function existingPersonKeys(chips: SuggestedChip[]): Set<string> {
  */
 export function mergeAiPeopleIntoChips(
   chips: SuggestedChip[],
-  people: AiExtractedPerson[] | undefined | null
+  people: AiExtractedPerson[] | undefined | null,
+  options?: { contextText?: string }
 ): SuggestedChip[] {
   if (!people?.length) return chips;
 
   const result = [...chips];
   const seen = existingPersonKeys(chips);
+  const contextText = options?.contextText;
 
   for (const person of people) {
     const raw = person.name?.trim();
     if (!raw || raw.length < 2) continue;
+    if (isRejectedPersonName(raw, contextText)) continue;
 
     const display = normalizePersonName(raw);
     const lower = display.toLowerCase();

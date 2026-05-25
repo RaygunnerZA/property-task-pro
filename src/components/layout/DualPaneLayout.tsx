@@ -26,7 +26,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
-      {hasHeader && <div className="w-full shrink-0">{header}</div>}
+      {hasHeader && <div className="h-[80px] w-full shrink-0 pt-0">{header}</div>}
 
       <div
         className={cn(

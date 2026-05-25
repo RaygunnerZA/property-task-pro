@@ -16,6 +16,40 @@ import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
 import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search, Eye } from "lucide-react";
 import { FilterChip } from "@/components/chips/filter";
+import {
+  useOptionalWorkbenchControls,
+  type WorkbenchSortBy,
+} from "@/contexts/WorkbenchControlsContext";
+
+const PRIORITY_RANK: Record<string, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  normal: 2,
+  low: 3,
+};
+
+function sortTasksBy(tasks: any[], sortBy: WorkbenchSortBy) {
+  const sorted = [...tasks];
+  if (sortBy === "priority") {
+    return sorted.sort(
+      (a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9)
+    );
+  }
+  if (sortBy === "due_date") {
+    return sorted.sort((a, b) => {
+      if (!a.due_date && !b.due_date) return 0;
+      if (!a.due_date) return 1;
+      if (!b.due_date) return -1;
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    });
+  }
+  return sorted.sort(
+    (a, b) =>
+      new Date(b.updated_at || b.created_at || 0).getTime() -
+      new Date(a.updated_at || a.created_at || 0).getTime()
+  );
+}
 
 interface TaskListProps {
   tasks?: any[]; // Accept tasks as prop instead of fetching
@@ -69,18 +103,32 @@ export function TaskList({
   const { teams } = useTeams();
   const { categories } = useCategories();
   const { userId } = useDataContext();
+  const workbenchControls = useOptionalWorkbenchControls();
+  const useHeaderControls = embeddedInIssuesWorkbench && workbenchControls != null;
   
   // Property filters start as inactive by default (no filters = show all properties)
-  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(() => {
+  const [internalSelectedFilters, setInternalSelectedFilters] = useState<Set<string>>(() => {
     return new Set();
   });
+  const selectedFilters = useHeaderControls
+    ? workbenchControls.selectedFilters
+    : internalSelectedFilters;
+  const setSelectedFilters = useHeaderControls
+    ? workbenchControls.setSelectedFilters
+    : setInternalSelectedFilters;
   const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
   const [taskSearchOpen, setTaskSearchOpen] = useState(false);
   const [internalTaskSearchQuery, setInternalTaskSearchQuery] = useState("");
   const tasksPanelInteractionRef = useRef<HTMLDivElement | null>(null);
   const taskSearchQuery =
-    externalTaskSearchQuery !== undefined ? externalTaskSearchQuery : internalTaskSearchQuery;
-  const setTaskSearchQuery = onExternalTaskSearchQueryChange ?? setInternalTaskSearchQuery;
+    externalTaskSearchQuery !== undefined
+      ? externalTaskSearchQuery
+      : useHeaderControls
+        ? workbenchControls.searchQuery
+        : internalTaskSearchQuery;
+  const setTaskSearchQuery =
+    onExternalTaskSearchQueryChange ??
+    (useHeaderControls ? workbenchControls.setSearchQuery : setInternalTaskSearchQuery);
 
   // Parse tasks from view (handles JSON arrays for spaces/themes/teams)
   const tasks = useMemo(() => {
@@ -340,16 +388,20 @@ export function TaskList({
 
   // Group filtered tasks by status
   const groupedTasks = useMemo(() => {
-    const todo = filteredTasks.filter(
-      (task) =>
-        task.status === "open" ||
-        task.status === "in_progress" ||
-        task.status === "waiting_review"
+    const sortBy = workbenchControls?.sortBy ?? "priority";
+    const todo = sortTasksBy(
+      filteredTasks.filter(
+        (task) =>
+          task.status === "open" ||
+          task.status === "in_progress" ||
+          task.status === "waiting_review"
+      ),
+      sortBy
     );
     const done = filteredTasks.filter((task) => task.status === "completed");
 
     return { todo, done };
-  }, [filteredTasks]);
+  }, [filteredTasks, workbenchControls?.sortBy]);
 
   const primaryOptions: FilterOption[] = useMemo(() => {
     const opts: FilterOption[] = [
@@ -536,7 +588,7 @@ export function TaskList({
   useEffect(() => {
     if (!filtersToApply) return;
     setSelectedFilters(new Set(filtersToApply));
-  }, [filtersToApply]);
+  }, [filtersToApply, setSelectedFilters]);
   
   // Memoize click handlers to prevent recreation on every render
   const handleTaskClick = useCallback((taskId: string) => {
@@ -614,7 +666,7 @@ export function TaskList({
       <div
         className={cn("flex-shrink-0 mt-0 mb-[18px] pb-0", !embeddedInIssuesWorkbench && "ml-[-3px]")}
       >
-        {embeddedInIssuesWorkbench && externalTaskSearchQuery === undefined ? (
+        {embeddedInIssuesWorkbench && externalTaskSearchQuery === undefined && !useHeaderControls ? (
           <div className="relative mb-2 flex items-center gap-2 rounded-[10px] bg-background/80 px-2 py-1.5 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
             <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             <input
@@ -627,12 +679,17 @@ export function TaskList({
             />
           </div>
         ) : null}
+        {!useHeaderControls ? (
         <FilterBar
           primaryOptions={primaryOptions}
           secondaryGroups={secondaryGroups}
           selectedFilters={selectedFilters}
           onFilterChange={handleFilterChange}
-          rightElement={<ViewToggle view={view} onViewChange={setView} />}
+          rightElement={
+            embeddedInIssuesWorkbench ? undefined : (
+              <ViewToggle view={view} onViewChange={setView} />
+            )
+          }
           collapseFilterChipAfterMs={2000}
           collapseInteractionRootRef={tasksPanelInteractionRef}
           primaryTrailing={
@@ -647,6 +704,7 @@ export function TaskList({
             )
           }
         />
+        ) : null}
         {!embeddedInIssuesWorkbench ? (
         <div
           className={cn(
@@ -685,6 +743,21 @@ export function TaskList({
             {groupedTasks.todo.length > 0 && (
             <div>
               {view === 'vertical' ? (
+                embeddedInIssuesWorkbench ? (
+                  <div className="overflow-x-auto -mx-1 px-1 mt-[7px] scrollbar-hz-teal">
+                    <div className="flex gap-3 min-w-max pb-0.5">
+                      {memoizedTaskCards.todo.map((props) => (
+                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
+                          <TaskCard
+                            {...props}
+                            layout="vertical"
+                            metaDensity={compactTaskMeta ? "compact" : "default"}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                 <>
                   {/* Mobile: Horizontal scroll */}
                   <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal sm:hidden">
@@ -704,13 +777,11 @@ export function TaskList({
                   <div
                     className={cn(
                       "mt-0 hidden min-w-0 gap-3 sm:grid",
-                      embeddedInIssuesWorkbench
-                        ? "grid-cols-[repeat(auto-fill,minmax(min(100%,10.5rem),1fr))]"
-                        : cn(
-                            "sm:grid-cols-3",
-                            groupedTasks.todo.length === 1 && "sm:grid-cols-1",
-                            groupedTasks.todo.length === 2 && "sm:grid-cols-2"
-                          )
+                      cn(
+                        "sm:grid-cols-3",
+                        groupedTasks.todo.length === 1 && "sm:grid-cols-1",
+                        groupedTasks.todo.length === 2 && "sm:grid-cols-2"
+                      )
                     )}
                   >
                     {memoizedTaskCards.todo.map((props) => (
@@ -724,6 +795,7 @@ export function TaskList({
                     ))}
                   </div>
                 </>
+                )
               ) : (
                 <div className="space-y-3 mt-0">
                   {memoizedTaskCards.todo.map((props) => (

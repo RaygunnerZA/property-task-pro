@@ -290,7 +290,8 @@ CONTEXT UNDERSTANDING:
 - "dirt" or "cleaning" → theme: "Housekeeping" (type: "category")
 - "leak" or "broken" → priority: "urgent"
 - "Tuesday" or "tomorrow" → date: parse to ISO format
-- Person names (e.g., "Frank", "John") → people: explicit mention
+- Person names (e.g., "Frank", "John", "Oliver") → people: explicit human assignees only
+- Do NOT include imperative verbs (have, collect, get), month names in dates (e.g. "June" in "12th June"), or task verbs as people
 - Role references (e.g., "the cleaner", "maintenance") → people: role-based inference
 - Team names (e.g., "Maintenance Team", "Housekeeping") → teams
 - Asset names (e.g., "HVAC Unit A", "Stove") → assets

@@ -74,6 +74,7 @@ export const ALTERNATE_NAME_TO_CANONICAL: Record<string, string> = {
   // Technical
   "plant room": "Plant Room",
   "boiler room": "Boiler Room",
+  "the boiler room": "Boiler Room",
   "electrical room": "Electrical Room",
   "switch room": "Switch Room",
   "ups room": "UPS Room",

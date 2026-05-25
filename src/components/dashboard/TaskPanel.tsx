@@ -20,7 +20,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Search,
   AlertTriangle,
   HelpCircle,
   ShieldCheck,
@@ -36,6 +35,7 @@ import {
 } from "@/fixtures/signalUiSamples";
 import type { SignalKind } from "@/types/workbenchSignals";
 import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
+import type { SignalCategoryVariant, SignalConfidenceLevel } from "@/components/dashboard/issues/IssuesSignalListParts";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
@@ -47,11 +47,17 @@ import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
-import { buildRecentUnifiedSignalMetaLine } from "@/lib/recentSignalMetaLine";
+import {
+  formatRecentSignalSubtitle,
+  reviewConfidenceForFixture,
+  signalCategoryForKind,
+} from "@/lib/signalDisplayMeta";
+import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
 import type {
   SignalFeedDetailSnapshot,
   WorkbenchAttentionSelectPayload,
 } from "@/components/dashboard/SignalFeedDetailPanel";
+import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 
 interface TaskPanelProps {
   tasks?: any[];
@@ -117,19 +123,16 @@ type RecentNeedsReviewStackProps = {
 
 const SIGNAL_COLUMN_RECENT = {
   title: "Recent signals",
-  subtitle: "What just entered the system — a timeline of events, not your task list.",
+  subtitle: "What just entered the system",
   emptyTitle: "Nothing new in the timeline",
-  emptyDescription:
-    "When photos, messages, uploads, or system events arrive, they show up here first. Open Tasks below when you are ready to execute work.",
+  emptyDescription: "When photos, messages, or uploads arrive, they show up here first.",
 } as const;
 
 const SIGNAL_COLUMN_REVIEW = {
   title: "Needs review",
-  subtitle:
-    "Things Filla cannot safely classify or assign yet — your judgment before they become work or records.",
+  subtitle: "Items that need your judgement",
   emptyTitle: "Nothing in the decision queue",
-  emptyDescription:
-    "If this stays empty while a lot is happening, items may be auto-classified too aggressively. Surfacing uncertainty (e.g. a review_state in your pipeline) will fill this column when the system needs your judgment.",
+  emptyDescription: "When Filla needs your judgement before routing work, items appear here.",
 } as const;
 
 const SIGNAL_STACK_SECTIONS = [
@@ -167,6 +170,15 @@ function RecentNeedsReviewStack({
   onMessageClick,
   onAttentionItemSelect,
 }: RecentNeedsReviewStackProps) {
+  const displayReviewItems = useMemo(
+    () => pickTopReviewSignals(reviewItems),
+    [reviewItems]
+  );
+  const displayRecentItems = useMemo(
+    () => pickTopRecentSignals(recentItems),
+    [recentItems]
+  );
+
   const renderSignal = (item: AttentionItem) => (
     <IssuesSignalCard
       item={item}
@@ -180,13 +192,13 @@ function RecentNeedsReviewStack({
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-4">
       <IssuesScrollColumn
         title={SIGNAL_COLUMN_REVIEW.title}
         subtitle={SIGNAL_COLUMN_REVIEW.subtitle}
-        headerIllustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
-        headerSpacious
-        items={reviewItems}
+        countVariant="review"
+        items={displayReviewItems}
+        totalCount={reviewItems.length}
         emptyTitle={SIGNAL_COLUMN_REVIEW.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_REVIEW.emptyDescription}
         renderCard={renderSignal}
@@ -194,10 +206,9 @@ function RecentNeedsReviewStack({
       <IssuesScrollColumn
         title={SIGNAL_COLUMN_RECENT.title}
         subtitle={SIGNAL_COLUMN_RECENT.subtitle}
-        headerIllustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals}
-        headerSpacious
-        headerClassName="mb-[-21px]"
-        items={recentItems}
+        countVariant="recent"
+        items={displayRecentItems}
+        totalCount={recentItems.length}
         emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
         emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
         renderCard={renderSignal}
@@ -342,41 +353,31 @@ function IssuesSignalCard({
     const icon = item.signalKind
       ? signalKindIcon(item.signalKind, "text-teal-800")
       : <HelpCircle className="h-4 w-4 text-teal-800" />;
-    const actionsList =
-      item.fixtureActions != null
+
+    const primaryId = item.fixtureActions?.primary.id ?? "signal-review";
+    const secondaryRaw = item.fixtureActions?.secondary ?? [];
+    const overflowFromFixtures = secondaryRaw.filter((a) => a.id !== "dismiss");
+    const reviewAction = {
+      id: primaryId,
+      label: "Review",
+      onClick: () => runFixtureAction(primaryId, item, ctx),
+    };
+    const overflowActions = [
+      ...overflowFromFixtures.map((a) => ({
+        id: a.id,
+        label: a.label,
+        onClick: () => runFixtureAction(a.id, item, ctx),
+      })),
+      ...(item.complianceSeed && !overflowFromFixtures.some((a) => a.id === "signal-convert")
         ? [
             {
-              id: item.fixtureActions.primary.id,
-              label: item.fixtureActions.primary.label,
-              onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
-            },
-            ...(item.fixtureActions.secondary ?? []).map((a) => ({
-              id: a.id,
-              label: a.label,
-              onClick: () => runFixtureAction(a.id, item, ctx),
-            })),
-          ]
-        : [
-            {
-              id: "signal-review",
-              label: "Classify",
-              onClick: () => runFixtureAction("signal-review", item, ctx),
-            },
-            {
-              id: "signal-assign",
-              label: "Assign",
-              onClick: () => runFixtureAction("signal-assign", item, ctx),
-            },
-            {
               id: "signal-convert",
-              label: "Convert",
+              label: "Convert to record",
               onClick: () => runFixtureAction("signal-convert", item, ctx),
             },
-          ];
-
-    const reviewShortReason =
-      item.whyHere?.trim() || item.description?.trim() || undefined;
-    const issuesMetaLine = item.context?.trim() || undefined;
+          ]
+        : []),
+    ];
 
     return (
       <OperationalStreamCard
@@ -385,15 +386,13 @@ function IssuesSignalCard({
         cardRef={(node) => {
           attentionCardRefs.current[item.id] = node;
         }}
-        issuesMetaLine={issuesMetaLine}
-        reviewShortReason={reviewShortReason}
+        issuesMetaLine={item.context?.trim() || undefined}
         icon={icon}
         title={item.title}
         context={item.context}
-        whyHere={item.whyHere}
-        accent="teal"
-        emphasis="elevated"
-        actions={actionsList}
+        confidenceLevel={item.confidenceLevel ?? "medium"}
+        actions={[reviewAction]}
+        overflowActions={overflowActions}
         dismissAction={{
           id: "dismiss",
           label: "Dismiss",
@@ -435,14 +434,14 @@ function IssuesSignalCard({
           },
         ];
 
-  const viewAction = actionsList.find((a) => a.id === "signal-open") ?? actionsList[0];
-  const dismissAction = actionsList.find((a) => a.id === "dismiss" || a.id === "ignore");
+  const category = item.categoryTag
+    ? { label: item.categoryTag, variant: item.categoryTagVariant ?? "default" }
+    : signalCategoryForKind(item.signalKind);
 
-  const recentSignalMetaLine = buildRecentUnifiedSignalMetaLine({
-    kind: item.signalKind,
-    context: item.context,
-    footChipLabel: item.footChipLabel,
-  });
+  const recentSubtitle =
+    item.recentSubtitle?.trim() ||
+    formatRecentSignalSubtitle(item.context, item.signalKind) ||
+    item.context;
 
   return (
     <OperationalStreamCard
@@ -451,15 +450,13 @@ function IssuesSignalCard({
       cardRef={(node) => {
         attentionCardRefs.current[item.id] = node;
       }}
-      recentSignalMetaLine={recentSignalMetaLine}
+      recentSignalMetaLine={recentSubtitle}
+      categoryTag={category?.label}
+      categoryTagVariant={category?.variant}
       icon={icon}
       title={item.title}
       context={item.context}
-      description={item.description}
-      imageUrl={item.imageUrl}
-      accent="slate"
-      emphasis="minimal"
-      actions={viewAction ? [viewAction, ...(dismissAction ? [dismissAction] : [])] : actionsList}
+      actions={actionsList}
       onCardActivate={cardActivate}
     />
   );
@@ -540,11 +537,21 @@ interface AttentionItem {
     primary: { id: string; label: string };
     secondary?: { id: string; label: string }[];
   };
+  confidenceLevel?: SignalConfidenceLevel;
+  categoryTag?: string;
+  categoryTagVariant?: SignalCategoryVariant;
+  recentSubtitle?: string;
+  /** Sort key for Recent signals preview (ms since epoch). */
+  occurredAt?: number;
 }
 
-function mapSignalFixtureToAttentionItem(f: SignalUiFixture): AttentionItem {
+function mapSignalFixtureToAttentionItem(f: SignalUiFixture, fixtureIndex = 0): AttentionItem {
   const group: AttentionGroup =
     f.disposition === "needs_review" ? "review" : f.disposition === "urgent" ? "urgent" : "recent";
+  const category = f.categoryTag
+    ? { label: f.categoryTag, variant: f.categoryTagVariant ?? "default" }
+    : signalCategoryForKind(f.kind);
+
   return {
     id: f.id,
     group,
@@ -561,6 +568,12 @@ function mapSignalFixtureToAttentionItem(f: SignalUiFixture): AttentionItem {
       secondary: f.secondaryActions,
     },
     hint: undefined,
+    confidenceLevel: f.confidenceLevel ?? reviewConfidenceForFixture(f),
+    categoryTag: category?.label,
+    categoryTagVariant: category?.variant,
+    recentSubtitle: f.recentSubtitle,
+    occurredAt:
+      group === "recent" ? Date.now() - fixtureIndex * 60_000 : undefined,
   };
 }
 
@@ -670,7 +683,10 @@ export function TaskPanel({
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date | undefined>(new Date());
   const [isDatePinned, setIsDatePinned] = useState(false);
   const [internalIssuesFilter, setInternalIssuesFilter] = useState<WorkbenchIssuesFilter>("all");
-  const [issuesWorkbenchSearch, setIssuesWorkbenchSearch] = useState("");
+  const workbenchControls = useOptionalWorkbenchControls();
+  const [localIssuesSearch, setLocalIssuesSearch] = useState("");
+  const issuesWorkbenchSearch = workbenchControls?.searchQuery ?? localIssuesSearch;
+  const setIssuesWorkbenchSearch = workbenchControls?.setSearchQuery ?? setLocalIssuesSearch;
   const issuesFilter = issuesFilterProp ?? internalIssuesFilter;
   const setIssuesFilter = (next: WorkbenchIssuesFilter) => {
     onIssuesFilterChange?.(next);
@@ -805,7 +821,7 @@ export function TaskPanel({
       ? SIGNAL_UI_FIXTURES_REVIEW.map(mapSignalFixtureToAttentionItem)
       : [];
     const fixtureRecent = signalUiFixturesEnabled
-      ? SIGNAL_UI_FIXTURES_RECENT.map(mapSignalFixtureToAttentionItem)
+      ? SIGNAL_UI_FIXTURES_RECENT.map((f, i) => mapSignalFixtureToAttentionItem(f, i))
       : [];
 
     const urgentFromData: AttentionItem[] = complianceRecords
@@ -864,6 +880,7 @@ export function TaskPanel({
         context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
         description:
           body.length > 120 ? `${body.slice(0, 120)}…` : body || "Something new arrived — open it when you are ready to triage.",
+        occurredAt: new Date(message.created_at).getTime(),
       };
     });
 
@@ -1345,7 +1362,7 @@ export function TaskPanel({
               }}
             >
                 <div className="min-w-0 space-y-3">
-                <div className="mt-[5px] min-w-0 space-y-2 px-0.5">
+                <div className="mt-[5px] min-w-0 px-0.5">
                   <div className="flex flex-wrap items-center gap-2">
                     {ISSUES_CHIP_FILTERS.map(({ id, label }) => (
                       <FilterChip
@@ -1356,18 +1373,43 @@ export function TaskPanel({
                       />
                     ))}
                   </div>
-                  <div className="relative -ml-0.5 mt-[11px] flex w-[294px] items-center gap-2 rounded-[10px] bg-background/80 px-3 py-[10px] shadow-[1px_1px_2px_0px_rgba(255,255,255,0.6),inset_1px_2px_4px_0px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_0px_rgba(255,255,255,0.5)]">
-                    <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                    <input
-                      type="search"
-                      value={issuesWorkbenchSearch}
-                      onChange={(e) => setIssuesWorkbenchSearch(e.target.value)}
-                      placeholder="Search signals and tasks…"
-                      className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-                      aria-label="Search issues"
-                    />
-                  </div>
                 </div>
+
+                {showTaskList && (
+                  <div
+                    className={cn(
+                      "min-h-0",
+                      showSignalFeed && issuesFilter === "all" && "mb-4 border-b border-border/50 pb-4"
+                    )}
+                  >
+                    {issuesFilter === "all" && (
+                      <IssuesWorkbenchSectionHeader
+                        className="mb-2"
+                        title="Open work"
+                        subtitle="Approved, actionable issues and tasks — scroll sideways through open tasks below."
+                        illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
+                      />
+                    )}
+                    <div className="h-full flex flex-col min-h-0 rounded-xl bg-muted/20 p-2">
+                      <TaskList
+                        key={`issues-tasklist-${issuesFilter}`}
+                        tasks={tasks}
+                        properties={properties}
+                        tasksLoading={tasksLoading}
+                        onTaskClick={onTaskClick}
+                        selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
+                        filterToApply={filterToApply}
+                        filtersToApply={filtersToApply}
+                        selectedPropertyIds={selectedPropertyIds}
+                        hidePrimaryUrgentChip
+                        embeddedInIssuesWorkbench
+                        externalTaskSearchQuery={issuesWorkbenchSearch}
+                        onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
+                        compactTaskMeta
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {showSignalFeed && (
                   <div className="space-y-4">
@@ -1444,42 +1486,6 @@ export function TaskPanel({
                         )}
                       </>
                     )}
-                  </div>
-                )}
-
-                {showTaskList && (
-                  <div
-                    className={cn(
-                      "min-h-0",
-                      showSignalFeed && "mt-6 border-t border-border/50 pt-4"
-                    )}
-                  >
-                    {issuesFilter === "all" && (
-                      <IssuesWorkbenchSectionHeader
-                        className="mb-2"
-                        title="Open work"
-                        subtitle="Approved, actionable issues and tasks — not the raw signal feed above."
-                        illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
-                      />
-                    )}
-                    <div className="h-full flex flex-col min-h-0 rounded-xl bg-muted/20 p-2 shadow-sm">
-                      <TaskList
-                        key={`issues-tasklist-${issuesFilter}`}
-                        tasks={tasks}
-                        properties={properties}
-                        tasksLoading={tasksLoading}
-                        onTaskClick={onTaskClick}
-                        selectedTaskId={selectedItem?.type === "task" ? selectedItem.id : undefined}
-                        filterToApply={filterToApply}
-                        filtersToApply={filtersToApply}
-                        selectedPropertyIds={selectedPropertyIds}
-                        hidePrimaryUrgentChip
-                        embeddedInIssuesWorkbench
-                        externalTaskSearchQuery={issuesWorkbenchSearch}
-                        onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
-                        compactTaskMeta
-                      />
-                    </div>
                   </div>
                 )}
               </div>

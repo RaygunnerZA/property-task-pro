@@ -15,6 +15,12 @@ import {
   isFuzzyMatch, 
   extractWords 
 } from './chipSuggestionPatterns';
+import {
+  IMPERATIVE_DELEGATE_PATTERN,
+  NON_PERSON_WORDS,
+  isMonthInDateContext,
+  isRejectedPersonName,
+} from './personNameHeuristics';
 
 interface AvailableEntities {
   spaces: Array<{ id: string; name: string; property_id: string }>;
@@ -97,7 +103,12 @@ export function extractChipsFromText(
   chips.push(...assetChips);
   
   // 4. Person detection — pass combinedText (original casing) for proper-noun detection
-  const personChips = detectPersons(combinedText, words, entities.members);
+  const personChips = detectPersons(
+    combinedText,
+    words,
+    entities.members,
+    context.title
+  );
   chips.push(...personChips);
   
   // Ghost groups for frequent assignees
@@ -463,7 +474,7 @@ function detectAssets(
     const trimmedTokens: string[] = [];
     for (const token of candidateTokens) {
       if (trailingStopWords.has(token)) break;
-      if (NON_NAME_WORDS.has(token)) break;
+      if (NON_PERSON_WORDS.has(token)) break;
       if (COMMON_FIRST_NAMES.has(token)) break;
       trimmedTokens.push(token);
     }
@@ -511,26 +522,9 @@ function detectAssets(
   return chips;
 }
 
-// Words that are never person names
-const NON_NAME_WORDS = new Set([
-  'fix', 'check', 'clean', 'repair', 'install', 'replace', 'inspect', 'review',
-  'update', 'remove', 'add', 'call', 'book', 'schedule', 'contact', 'order',
-  'buy', 'get', 'test', 'paint', 'seal', 'drain', 'flush', 'reset',
-  'the', 'this', 'that', 'and', 'for', 'not', 'but', 'from', 'with', 'into',
-  'must', 'should', 'needs', 'will', 'can', 'may', 'please', 'urgent',
-  'today', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday',
-  'friday', 'saturday', 'sunday', 'next', 'last', 'asap',
-  'kitchen', 'bathroom', 'bedroom', 'living', 'garden', 'garage', 'office',
-  'hall', 'entrance', 'cottage', 'house', 'flat', 'apartment', 'room',
-  'boiler', 'toilet', 'shower', 'window', 'door', 'pipe', 'roof', 'floor',
-  'wall', 'ceiling', 'lock',
-  'new', 'old', 'broken', 'leaking', 'blocked', 'damaged', 'urgent',
-  'high', 'low', 'medium', 'normal',
-]);
-
 /** Tokens that must never become contextual asset chips (verbs/meta, not appliances). */
 const ASSET_REJECT_TOKENS = new Set([
-  ...NON_NAME_WORDS,
+  ...NON_PERSON_WORDS,
   "cottage", "house", "flat", "apartment", "room", "hall", "entrance",
 ]);
 
@@ -612,7 +606,8 @@ const RELATIVE_NUMBER_PATTERN =
 function detectPersons(
   originalText: string,
   words: string[],
-  members: Array<{ id: string; user_id: string; display_name: string }>
+  members: Array<{ id: string; user_id: string; display_name: string }>,
+  title?: string
 ): SuggestedChip[] {
   const chips: SuggestedChip[] = [];
   const matchedNames = new Set<string>(); // tracks already-matched lowercased names
@@ -626,9 +621,12 @@ function detectPersons(
     return isFuzzyMatch(wl, pl);
   };
 
+  const titleLeadingVerb = title?.trim().split(/\s+/)[0];
+
   const pushAssigneeGhost = (name: string, detectedAs: string, score: number) => {
+    if (isRejectedPersonName(name, originalText)) return;
     const nameLower = name.toLowerCase();
-    if (matchedNames.has(nameLower) || NON_NAME_WORDS.has(nameLower)) return;
+    if (matchedNames.has(nameLower)) return;
     chips.push({
       id: `person-ghost-${detectedAs}-${nameLower}`,
       type: "person",
@@ -694,6 +692,13 @@ function detectPersons(
     }
   }
 
+  // ── 3b. Imperative delegation: "Have Oliver collect …" ───────────────────
+  let imperativeMatch: RegExpExecArray | null;
+  const imperativePattern = new RegExp(IMPERATIVE_DELEGATE_PATTERN.source, IMPERATIVE_DELEGATE_PATTERN.flags);
+  while ((imperativeMatch = imperativePattern.exec(originalText)) !== null) {
+    pushAssigneeGhost(imperativeMatch[1], "imperative_delegate", 0.74);
+  }
+
   // ── 4. Capitalized proper nouns (e.g. "Call Frank about …") ─────────────
   const properNounPattern = /\b([A-Z][a-z]{2,})\b/g;
   let m: RegExpExecArray | null;
@@ -701,7 +706,9 @@ function detectPersons(
     const name = m[1];
     const nameLower = name.toLowerCase();
     if (matchedNames.has(nameLower)) continue;
-    if (NON_NAME_WORDS.has(nameLower)) continue;
+    if (isRejectedPersonName(name, originalText)) continue;
+    if (titleLeadingVerb && name === titleLeadingVerb && NON_PERSON_WORDS.has(nameLower)) continue;
+    if (isMonthInDateContext(name, originalText)) continue;
     chips.push({
       id: `person-ghost-${nameLower}`,
       type: 'person',
@@ -721,7 +728,7 @@ function detectPersons(
     if (!directedMatch) continue;
     const name = directedMatch[1];
     const nameLower = name.toLowerCase();
-    if (matchedNames.has(nameLower) || NON_NAME_WORDS.has(nameLower)) continue;
+    if (matchedNames.has(nameLower) || isRejectedPersonName(name, originalText)) continue;
     chips.push({
       id: `person-ghost-directed-${nameLower}`,
       type: "person",
@@ -740,7 +747,7 @@ function detectPersons(
   if (arrivalMatch) {
     const name = arrivalMatch[1];
     const nameLower = name.toLowerCase();
-    if (!matchedNames.has(nameLower) && !NON_NAME_WORDS.has(nameLower)) {
+    if (!matchedNames.has(nameLower) && !isRejectedPersonName(name, originalText)) {
       chips.push({
         id: `person-ghost-arrival-${nameLower}`,
         type: "person",
@@ -760,7 +767,7 @@ function detectPersons(
     const cleaned = rawWord.toLowerCase().replace(/[^a-z'-]/g, "");
     if (cleaned.length < 3) continue;
     if (!COMMON_FIRST_NAMES.has(cleaned)) continue;
-    if (matchedNames.has(cleaned) || NON_NAME_WORDS.has(cleaned)) continue;
+    if (matchedNames.has(cleaned) || isRejectedPersonName(cleaned, originalText)) continue;
 
     chips.push({
       id: `person-ghost-common-${cleaned}`,

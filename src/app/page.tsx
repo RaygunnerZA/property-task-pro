@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
@@ -44,6 +44,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { cn } from "@/lib/utils";
+import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
+import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import type { LucideIcon } from "lucide-react";
 
 // Helper function to create gradient header style
 const createGradientHeaderStyle = (color: string) => {
@@ -73,6 +76,66 @@ type SelectedItem =
 
 type ExpandedSection = 'details' | 'assistant' | null;
 
+function WorkbenchFiltersSync({ filterIds }: { filterIds: string[] | null | undefined }) {
+  const { setSelectedFilters } = useWorkbenchControls();
+  useEffect(() => {
+    if (!filterIds) return;
+    setSelectedFilters(new Set(filterIds));
+  }, [filterIds, setSelectedFilters]);
+  return null;
+}
+
+type DashboardGradientHeaderProps = {
+  headerStyle: CSSProperties;
+  showTodayWeather: boolean;
+  WeatherIcon: LucideIcon;
+  weather: { temp?: number } | null | undefined;
+  properties: { id: string; name?: string | null; nickname?: string | null; address?: string | null }[];
+  onAskFilla: (query: string) => void;
+};
+
+function DashboardGradientHeader({
+  headerStyle,
+  showTodayWeather,
+  WeatherIcon,
+  weather,
+  properties,
+  onAskFilla,
+}: DashboardGradientHeaderProps) {
+  return (
+    <PageHeader showAccountMenu={false}>
+      <div
+        className="relative flex h-[80px] items-start rounded-bl-[12px] px-[18px] pt-0 pr-28 sm:pr-40"
+        style={headerStyle}
+      >
+        {showTodayWeather ? (
+          <div className="flex w-[248px] min-w-0 shrink-0 items-start justify-start gap-[7px] pt-[25px]">
+            <h1 className="shrink-0 text-[18px] font-semibold leading-tight text-white">Today</h1>
+            <div className="mx-2 h-6 w-px shrink-0 bg-white/30" />
+            <div className="flex items-center justify-start gap-2 text-left">
+              <WeatherIcon className="h-4 w-4 shrink-0 text-white/90" />
+              <span className="whitespace-nowrap text-sm text-white/90">
+                {weather ? `${weather.temp}°C` : "--°C"}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="w-[248px] shrink-0" aria-hidden />
+        )}
+
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(calc(100%-11rem),720px)] -translate-x-1/2 -translate-y-1/2 pt-5 sm:w-[min(calc(100%-14rem),720px)]">
+          <WorkbenchHeaderToolbar
+            variant="gradient"
+            className="pointer-events-auto"
+            properties={properties}
+            onAskFilla={onAskFilla}
+          />
+        </div>
+      </div>
+    </PageHeader>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -83,7 +146,7 @@ export default function Dashboard() {
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
   const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
-  const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
+  const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
@@ -729,31 +792,38 @@ export default function Dashboard() {
 
   const headerStyle = createGradientHeaderStyle(headerAccentColor);
 
-  // Header element that will be passed to DualPaneLayout
-  const headerElement = (
-    <PageHeader showAccountMenu={false}>
-      <div
-        className="flex h-[60px] items-end justify-start rounded-bl-[12px] pb-[12px] pl-[18px] pr-28 pt-[18px] sm:pr-40"
-        style={headerStyle}
-      >
-        <div className="flex items-center justify-start gap-[7px] w-[248px] min-w-0 shrink-0">
-            <h1 className="text-[18px] font-semibold text-white leading-tight shrink-0">Today</h1>
-            <div className="h-6 w-px bg-white/30 mx-2 shrink-0" />
-            <div className="flex items-center justify-start gap-2 text-left">
-              <WeatherIcon className="h-4 w-4 text-white/90 shrink-0" />
-              <span className="text-sm text-white/90 whitespace-nowrap">
-                {weather ? `${weather.temp}°C` : "--°C"}
-              </span>
-            </div>
-          </div>
-      </div>
-    </PageHeader>
+  const defaultWorkbenchPropertyId = useMemo(() => {
+    if (selectedPropertyIds.size === 1) return Array.from(selectedPropertyIds)[0];
+    return "all";
+  }, [selectedPropertyIds]);
+
+  const handleAskFilla = useCallback(
+    (query: string) => {
+      openAssistant();
+      if (isLargeScreen) {
+        setExpandedSection("assistant");
+        setIntakeMinimized(true);
+      }
+      if (query) onSendMessage(query);
+    },
+    [openAssistant, isLargeScreen, onSendMessage]
   );
 
   return (
-    <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
-      <DualPaneLayout
-        header={headerElement}
+    <WorkbenchControlsProvider defaultPropertyId={defaultWorkbenchPropertyId}>
+      <WorkbenchFiltersSync filterIds={effectiveTaskListFiltersToApply} />
+      <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+        <DualPaneLayout
+          header={
+            <DashboardGradientHeader
+              headerStyle={headerStyle}
+              showTodayWeather={!showTodayWeatherOnPropertyCard}
+              WeatherIcon={WeatherIcon}
+              weather={weather}
+              properties={properties}
+              onAskFilla={handleAskFilla}
+            />
+          }
         leftColumn={
           <ErrorBoundary
             regionTitle="Today & sidebar"
@@ -858,7 +928,8 @@ export default function Dashboard() {
           />
         )
       )}
-    </div>
+      </div>
+    </WorkbenchControlsProvider>
   );
 }
 

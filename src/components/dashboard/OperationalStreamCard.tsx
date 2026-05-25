@@ -4,7 +4,14 @@ import {
   intakeAddRecordMicroClassName,
   intakeReportIssueMicroClassName,
 } from "@/lib/intake-action-buttons";
-
+import {
+  IssuesRecentSignalRow,
+  IssuesReviewSignalRow,
+} from "@/components/dashboard/issues/IssuesSignalRowCards";
+import type {
+  SignalCategoryVariant,
+  SignalConfidenceLevel,
+} from "@/components/dashboard/issues/IssuesSignalListParts";
 type CardAccent = "red" | "amber" | "green" | "slate" | "teal";
 
 /** Timeline = lightweight; standard = default; elevated = decision-queue emphasis */
@@ -63,6 +70,13 @@ interface OperationalStreamCardProps {
   reviewShortReason?: string;
   /** Issues “Needs review”: mono meta above title (e.g. context line), same style as Recent. */
   issuesMetaLine?: string;
+  /** Issues “Needs review”: confidence bars (Low / Medium). */
+  confidenceLevel?: SignalConfidenceLevel;
+  /** Issues “Recent signals”: category pill (Maintenance, Tenant, …). */
+  categoryTag?: string;
+  categoryTagVariant?: SignalCategoryVariant;
+  /** Extra review actions shown in overflow menu. */
+  overflowActions?: CardAction[];
   /** Issues “Urgent”: secondary inline text (e.g. Ignore). */
   minorLinkAction?: CardAction | null;
 }
@@ -139,252 +153,6 @@ function ActionRow({ actions }: { actions: CardAction[] }) {
         </button>
       ))}
     </>
-  );
-}
-
-function IssuesRecentCard({
-  id,
-  cardRef,
-  className,
-  accent,
-  emphasis,
-  icon,
-  title,
-  description,
-  imageUrl,
-  recentSignalMetaLine,
-  actions,
-  onCardActivate,
-}: Pick<
-  OperationalStreamCardProps,
-  | "id"
-  | "cardRef"
-  | "className"
-  | "accent"
-  | "emphasis"
-  | "icon"
-  | "title"
-  | "description"
-  | "imageUrl"
-  | "recentSignalMetaLine"
-  | "actions"
-  | "onCardActivate"
->) {
-  const viewAction = actions.find((a) => a.id === "signal-open");
-  const dismissAction = actions.find((a) => a.id === "dismiss" || a.id === "ignore");
-  const shell = emphasisShellMap[emphasis ?? "minimal"];
-
-  return (
-    <div
-      id={id}
-      ref={cardRef}
-      role={onCardActivate ? "button" : undefined}
-      tabIndex={onCardActivate ? 0 : undefined}
-      onClick={onCardActivate}
-      onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-        if (!onCardActivate) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onCardActivate();
-        }
-      }}
-      className={cn("group relative overflow-hidden", shell, className, onCardActivate && "cursor-pointer")}
-    >
-      <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "slate"])} />
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1 min-h-0">
-          {recentSignalMetaLine?.trim() ? (
-            <p className={ISSUES_STREAM_META_CLASSNAME}>{recentSignalMetaLine.trim()}</p>
-          ) : null}
-          <p
-            className={cn(
-              "text-sm font-semibold text-foreground leading-snug",
-              recentSignalMetaLine?.trim() ? "mt-1.5" : ""
-            )}
-          >
-            {title}
-          </p>
-          {description ? (
-            <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{description}</p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5 self-start pt-0.5 min-w-0 max-w-[13rem]">
-          {viewAction ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                viewAction.onClick();
-              }}
-              className={streamActionButtonClass(viewAction.id, viewAction.label)}
-            >
-              {viewAction.label === "Open" ? "View" : viewAction.label}
-            </button>
-          ) : null}
-          {dismissAction ? (
-            <button
-              type="button"
-              className={cn(issuesDismissOrIgnoreLinkClassName, "text-right")}
-              onClick={(e) => {
-                e.stopPropagation();
-                dismissAction.onClick();
-              }}
-            >
-              {dismissAction.label}
-            </button>
-          ) : null}
-        </div>
-        {imageUrl ? (
-          <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
-            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function IssuesReviewCard({
-  id,
-  cardRef,
-  className,
-  accent,
-  emphasis,
-  icon,
-  title,
-  issuesMetaLine,
-  reviewShortReason,
-  actions,
-  dismissAction,
-  onCardActivate,
-}: Pick<
-  OperationalStreamCardProps,
-  | "id"
-  | "cardRef"
-  | "className"
-  | "accent"
-  | "emphasis"
-  | "icon"
-  | "title"
-  | "issuesMetaLine"
-  | "reviewShortReason"
-  | "actions"
-  | "dismissAction"
-  | "onCardActivate"
->) {
-  const shell = emphasisShellMap[emphasis ?? "elevated"];
-  const core = actions.filter((a) => a.id !== "dismiss" && a.id !== "ignore");
-  const totalCtas = core.length + (dismissAction ? 1 : 0);
-  const stackVertically = totalCtas === 2;
-
-  return (
-    <div
-      id={id}
-      ref={cardRef}
-      role={onCardActivate ? "button" : undefined}
-      tabIndex={onCardActivate ? 0 : undefined}
-      onClick={onCardActivate}
-      onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-        if (!onCardActivate) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onCardActivate();
-        }
-      }}
-      className={cn("relative overflow-hidden", shell, className, onCardActivate && "cursor-pointer")}
-    >
-      <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "teal"])} />
-      <div className="flex items-start gap-3 pl-0.5">
-        <div className="mt-0.5 h-7 w-7 shrink-0 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center">
-          {icon}
-        </div>
-        <div className="min-w-0 flex-1">
-          {issuesMetaLine?.trim() ? <p className={ISSUES_STREAM_META_CLASSNAME}>{issuesMetaLine.trim()}</p> : null}
-          <p
-            className={cn(
-              "text-sm font-semibold text-foreground leading-snug pt-0.5",
-              issuesMetaLine?.trim() ? "mt-1" : ""
-            )}
-          >
-            {title}
-          </p>
-          {reviewShortReason?.trim() ? (
-            <p className="mt-1.5 text-xs text-muted-foreground leading-snug line-clamp-2">{reviewShortReason.trim()}</p>
-          ) : null}
-        </div>
-        <div
-          className={cn(
-            "flex shrink-0 flex-col gap-1.5 self-start pt-0.5 min-w-0 max-w-[13rem]",
-            stackVertically ? "items-end" : "items-stretch",
-          )}
-        >
-          {stackVertically ? (
-            <>
-              {core.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    action.onClick();
-                  }}
-                  className={streamActionButtonClass(action.id, action.label)}
-                >
-                  {action.label}
-                </button>
-              ))}
-              {dismissAction ? (
-                <button
-                  type="button"
-                  className={cn(issuesDismissOrIgnoreLinkClassName, "text-right")}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    dismissAction.onClick();
-                  }}
-                >
-                  {dismissAction.label}
-                </button>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-x-1.5 gap-y-1.5 justify-items-stretch">
-                {core.map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      action.onClick();
-                    }}
-                    className={streamActionButtonClass(action.id, action.label)}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-              {dismissAction ? (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    className={cn(issuesDismissOrIgnoreLinkClassName, "text-right")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dismissAction.onClick();
-                    }}
-                  >
-                    {dismissAction.label}
-                  </button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -523,46 +291,56 @@ export function OperationalStreamCard({
   reviewShortReason,
   recentSignalMetaLine,
   issuesMetaLine,
+  confidenceLevel,
+  categoryTag,
+  categoryTagVariant,
+  overflowActions = [],
 }: OperationalStreamCardProps) {
   if (issuesStreamKind === "recent") {
+    const subtitle =
+      (recentSignalMetaLine ?? "").trim() ||
+      (context ?? "").trim() ||
+      undefined;
+    const viewAction = actions.find((a) => a.id === "signal-open") ?? actions[0];
+    const dismiss =
+      actions.find((a) => a.id === "dismiss" || a.id === "ignore") ??
+      (dismissAction ?? undefined);
+
     return (
-      <IssuesRecentCard
+      <IssuesRecentSignalRow
         id={id}
         cardRef={cardRef}
         className={className}
-        accent={accent}
-        emphasis={emphasis}
         icon={icon}
         title={title}
-        description={description}
-        imageUrl={imageUrl}
-        recentSignalMetaLine={recentSignalMetaLine}
-        actions={actions}
+        subtitle={subtitle}
+        categoryTag={categoryTag}
+        categoryTagVariant={categoryTagVariant}
+        viewAction={viewAction}
+        dismissAction={dismiss}
         onCardActivate={onCardActivate}
       />
     );
   }
 
   if (issuesStreamKind === "review") {
-    const reason =
-      (reviewShortReason ?? "").trim() ||
-      (whyHere ?? "").trim() ||
-      (description ?? "").trim() ||
-      undefined;
-    const meta = (issuesMetaLine ?? "").trim() || (context ?? "").trim() || undefined;
+    const subtitle = (issuesMetaLine ?? "").trim() || (context ?? "").trim() || undefined;
+    const coreActions = actions.filter((a) => a.id !== "dismiss" && a.id !== "ignore");
+    const reviewAction = coreActions[0];
+    const overflow = overflowActions.length > 0 ? overflowActions : coreActions.slice(1);
+
     return (
-      <IssuesReviewCard
+      <IssuesReviewSignalRow
         id={id}
         cardRef={cardRef}
         className={className}
-        accent={accent}
-        emphasis={emphasis}
         icon={icon}
         title={title}
-        issuesMetaLine={meta}
-        reviewShortReason={reason}
-        actions={actions}
-        dismissAction={dismissAction}
+        subtitle={subtitle}
+        confidenceLevel={confidenceLevel ?? "medium"}
+        reviewAction={reviewAction}
+        dismissAction={dismissAction ?? undefined}
+        overflowActions={overflow}
         onCardActivate={onCardActivate}
       />
     );

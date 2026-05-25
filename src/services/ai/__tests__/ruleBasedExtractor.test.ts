@@ -159,6 +159,23 @@ describe("extractChipsFromText — person detection", () => {
     expect(fixChip).toBeUndefined();
   });
 
+  it("imperative 'Have Oliver collect' and date month are not invite chips", () => {
+    const result = extractChipsFromText(
+      {
+        title: "Collect pool pump from PoolExperts",
+        description:
+          "Have Oliver collect the pool pump from PoolExperts before the 12th June.",
+      },
+      EMPTY_ENTITIES
+    );
+    const people = result.chips.filter((c) => c.type === "person");
+    const labels = people.map((c) => c.label.toLowerCase());
+    expect(labels).toContain("oliver");
+    expect(labels).not.toContain("have");
+    expect(labels).not.toContain("collect");
+    expect(labels).not.toContain("june");
+  });
+
   it("before Alex arrives → person ghost chip for Alex", () => {
     const result = extract(
       "Frank must fix the oven in the cottage next tuesday before Alex arrives"

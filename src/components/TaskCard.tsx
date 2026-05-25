@@ -1,6 +1,6 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
+import { Calendar, Clock, MapPin, MoreHorizontal } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Badge } from "@/components/ui/badge";
 import { updateTaskFields } from "@/services/tasks/taskMutations";
@@ -10,6 +10,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { OverlappingAvatars } from "@/components/tasks/UserAvatar";
+import { getTaskSpaceIllustration } from "@/lib/taskIllustration";
+import {
+  formatTaskDueRelative,
+  getTaskDueUrgency,
+  taskDueUrgencyLabel,
+} from "@/lib/taskDueUrgency";
+import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
+import {
+  issuesSignalOverflowButtonClassName,
+  issuesSignalReviewButtonClassName,
+  issuesSignalSecondaryButtonClassName,
+} from "@/components/dashboard/issues/IssuesSignalListParts";
 
 /** Issues workbench “Open work” — same meta treatment as Recent signals (JetBrains Mono 10 / 600, caps). */
 const WORKBENCH_TASK_META_CLASS =
@@ -98,6 +110,7 @@ function TaskCardComponent({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isCompleting, setIsCompleting] = useState(false);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   
   // Memoize task mapping and image parsing to prevent re-renders
   // Only recalculate when task data actually changes, not when object reference changes
@@ -124,8 +137,13 @@ function TaskCardComponent({
       const fileName = String(attachment?.file_name || "").toLowerCase();
       return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
     }) || (images.length > 0 ? images[0] : null);
-    const url = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
-    
+    const uploadedUrl =
+      firstImage?.thumbnail_url ||
+      firstImage?.file_url ||
+      task?.primary_image_url ||
+      task?.image_url ||
+      (task as any)?.image_url;
+
     // Parse themes, spaces, and teams (handle both string and array formats)
     let themesArray: any[] = [];
     if (task?.themes) {
@@ -179,6 +197,10 @@ function TaskCardComponent({
         propertyColor: property?.icon_color_hex || "#8EC9CE",
       });
     }
+
+    const url =
+      uploadedUrl ||
+      getTaskSpaceIllustration(spacesArray, task?.title ?? mappedTask.title);
     
     return { 
       t: mappedTask, 
@@ -200,6 +222,7 @@ function TaskCardComponent({
     task?.themes,
     task?.spaces,
     task?.teams,
+    task?.spaces,
     task?.assigned_user_id,
     task?.assigned_user_name,
     task?.assignee_name,
@@ -259,6 +282,27 @@ function TaskCardComponent({
   const metaCompact = metaDensity === "compact";
   const showPriorityDot =
     !metaCompact || task?.priority === "high" || task?.priority === "urgent";
+  const dueUrgency = getTaskDueUrgency(task);
+  const dueRelativeLabel = formatTaskDueRelative(task?.due_date ?? t.due_at);
+  const propertyLabel =
+    property?.nickname || property?.address || property?.name || null;
+  const spaceLabel = spaces[0]?.name ?? null;
+  const locationLine = [propertyLabel, spaceLabel].filter(Boolean).join(" • ");
+
+  const dueUrgencyChip =
+    dueUrgency != null ? (
+      <span
+        className={cn(
+          "absolute top-1 right-2 z-10 -mx-0.5 flex h-[22px] items-center justify-center rounded-[5px] px-2",
+          "font-mono text-[11px] font-medium uppercase tracking-normal leading-none shadow-sm",
+          dueUrgency === "overdue"
+            ? "bg-destructive/90 text-white"
+            : "bg-amber-500/90 text-white"
+        )}
+      >
+        {taskDueUrgencyLabel(dueUrgency)}
+      </span>
+    ) : null;
 
   // Horizontal layout (image on right)
   if (layout === 'horizontal') {
@@ -353,54 +397,22 @@ function TaskCardComponent({
           </div>
         </div>
 
-        {/* Image Zone - Anchored to right side with no padding on top/right/bottom */}
-        {/* Always show image area for consistent layout, show placeholder if no image */}
-        <div className="w-24 sm:w-28 flex-shrink-0 relative">
-          {imageUrl ? (
-            <>
-              <img 
-                src={imageUrl} 
-                alt={t.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                onError={(e) => {
-                  // Hide image on error, show placeholder
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLImageElement).parentElement;
-                  if (parent) {
-                    parent.classList.add('bg-muted');
-                  }
-                }}
-              />
-              {/* Neumorphic overlay - light inner shadow top/left, outer shadow right */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  boxShadow: 'inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)'
-                }}
-              />
-            </>
-          ) : (
-            <div className="absolute inset-0 bg-muted/30 flex items-center justify-center">
-              <div className="w-8 h-8 rounded bg-muted/50" />
-            </div>
-          )}
-          {/* DONE chip - appears on hover, bottom right corner */}
-          {showDoneButton && !metaCompact && (
-            <div 
+        <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
+          {dueUrgencyChip}
+          {showDoneButton && !metaCompact ? (
+            <div
               className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDone(e);
               }}
             >
-              <Badge 
-                className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0"
-              >
+              <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
                 DONE
               </Badge>
             </div>
-          )}
-        </div>
+          ) : null}
+        </TaskCardMediaZone>
       </div>
     );
   }
@@ -409,7 +421,7 @@ function TaskCardComponent({
   return (
     <div 
       className={cn(
-        "task-card-vertical h-[267px] w-full min-w-0",
+        "task-card-vertical h-[290px] w-full min-w-0",
         "rounded-[12px] bg-card/60",
         "shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
@@ -418,143 +430,126 @@ function TaskCardComponent({
       )}
       onClick={onClick}
     >
-      {/* Image Zone - Top */}
-      <div className="w-full h-[170px] relative flex-shrink-0">
-        {/* Priority Indicator Circle - Top Left Corner of Image */}
+      <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
+        {dueUrgencyChip}
         {showPriorityDot ? (
-        <div 
-          className={cn(
-            "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-[8px] z-10 flex items-center justify-center",
-            priorityColor
-          )}
-          style={{
-            boxShadow: "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -1px 1px 0px rgba(0, 0, 0, 0.2)",
-          }}
-        >
-          {isUrgentPriority ? (
-            <span className="text-white text-[13px] font-bold leading-none">!</span>
-          ) : null}
-        </div>
+          <div
+            className={cn(
+              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-[8px] z-10 flex items-center justify-center",
+              priorityColor
+            )}
+            style={{
+              boxShadow:
+                "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -1px 1px 0px rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            {isUrgentPriority ? (
+              <span className="text-white text-[13px] font-bold leading-none">!</span>
+            ) : null}
+          </div>
         ) : null}
-        {/* Theme/Category chip - overlays the thumbnail */}
-        {!metaCompact && themes.length > 0 && (
+        {!metaCompact && themes.length > 0 ? (
           <div className="absolute bottom-2 left-2 z-10">
             <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
               {themes[0].name}
             </Badge>
           </div>
-        )}
-        {imageUrl ? (
-          <>
-            <img 
-              src={imageUrl} 
-              alt={t.title}
-              className="absolute inset-0 w-full h-full object-cover"
-              onError={(e) => {
-                // Hide image on error, show placeholder
-                (e.target as HTMLImageElement).style.display = 'none';
-                const parent = (e.target as HTMLImageElement).parentElement;
-                if (parent) {
-                  parent.classList.add('bg-muted');
-                }
-              }}
-            />
-            {/* Neumorphic overlay - light inner shadow top/left, outer shadow bottom */}
-            <div 
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 0px 3px 6px rgba(0, 0, 0, 0.15)'
-              }}
-            />
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-muted/30 flex items-center justify-center">
-            <div className="w-12 h-12 rounded bg-muted/50" />
-          </div>
-        )}
-        {/* DONE chip - appears on hover, top right corner */}
-        {showDoneButton && !metaCompact && (
-          <div 
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDone(e);
-            }}
-          >
-            <Badge 
-              className="text-[10px] px-2 py-0.5 bg-success text-success-foreground border-0"
-            >
-              DONE
-            </Badge>
-          </div>
-        )}
-      </div>
+        ) : null}
+      </TaskCardMediaZone>
 
       {/* Content */}
-      <div className="flex-1 px-[14px] pt-[6px] pb-[14px] flex flex-col justify-center">
-        {/* Task Title */}
-        <div className="flex justify-start items-center gap-2 min-h-[44px]">
-          <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
-            {t.title}
-          </h3>
-        </div>
+      <div className="flex flex-1 flex-col px-[12px] pt-[12px] pb-[12px] min-h-0">
+        <h3 className="pb-[5px] text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
+          {t.title}
+        </h3>
 
-        {/* Property Icon + Space + Date/Time + Teams + Avatars */}
-        <div className="mt-[12px] relative">
-          <div className="flex gap-2 items-center flex-nowrap overflow-x-auto no-scrollbar">
-            {property && (
-              <PropertyIconChips properties={[property]} />
-            )}
-            {metaCompact ? (
-              <>
-                {(spaces[0]?.name || t.due_at) && (
-                  <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0")}>
-                    {spaces[0]?.name ? `${spaces[0].name}` : ""}
-                    {spaces[0]?.name && t.due_at ? " · " : ""}
-                    {t.due_at ? formatTaskDate(t.due_at) : ""}
-                  </span>
-                )}
-                {assignedUsers.length > 0 && (
-                  <OverlappingAvatars
-                    users={assignedUsers}
-                    size={24}
-                    overlap={20}
-                    className="ml-auto flex-shrink-0"
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                {spaces.length > 0 && (
-                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
-                    {spaces[0].name}
-                  </Badge>
-                )}
-                {t.due_at && (
-                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px] flex-shrink-0">
-                    <Clock className="h-3 w-3" />
-                    {formatTaskDate(t.due_at)}
-                  </Badge>
-                )}
-                {teams.length > 0 && teams.map((team: any) => (
-                  <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px] flex-shrink-0">
-                    {team.name}
-                  </Badge>
-                ))}
-                {assignedUsers.length > 0 && (
-                  <OverlappingAvatars 
-                    users={assignedUsers}
-                    size={24}
-                    overlap={20}
-                    className="ml-auto flex-shrink-0"
-                  />
-                )}
-              </>
-            )}
+        {locationLine ? (
+          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{locationLine}</span>
+          </p>
+        ) : null}
+
+        {dueRelativeLabel ? (
+          <p className="mt-1 flex items-center gap-1.5 text-[12px] text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span>{dueRelativeLabel}</span>
+          </p>
+        ) : null}
+
+        <div className="mt-auto flex items-center gap-2 pt-3">
+          <button
+            type="button"
+            className={issuesSignalReviewButtonClassName}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick?.();
+            }}
+          >
+            Take Action
+          </button>
+          <button
+            type="button"
+            className={issuesSignalSecondaryButtonClassName}
+            onClick={(e) => {
+              e.stopPropagation();
+              toast({
+                title: "Snooze",
+                description: "Snooze will be available soon.",
+              });
+            }}
+          >
+            Snooze
+          </button>
+          <div className="relative ml-auto shrink-0">
+            <button
+              type="button"
+              aria-label="More actions"
+              aria-expanded={overflowOpen}
+              aria-haspopup="menu"
+              className={issuesSignalOverflowButtonClassName}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOverflowOpen((open) => !open);
+              }}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+            {overflowOpen ? (
+              <div
+                role="menu"
+                className="absolute right-0 top-full z-20 mt-1 min-w-[8rem] rounded-[8px] border border-border/60 bg-card py-1 shadow-md"
+              >
+                {showDoneButton ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="block w-full px-3 py-1.5 text-left text-xs text-foreground hover:bg-muted/40 disabled:opacity-50"
+                    disabled={isCompleting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOverflowOpen(false);
+                      handleDone(e);
+                    }}
+                  >
+                    {isCompleting ? "Completing…" : "Mark done"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 text-left text-xs text-foreground hover:bg-muted/40"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOverflowOpen(false);
+                    onClick?.();
+                  }}
+                >
+                  Details
+                </button>
+              </div>
+            ) : null}
           </div>
-          {!metaCompact ? (
-          <div className="absolute right-0 top-0 bottom-0 w-[5px] pointer-events-none bg-gradient-to-l from-card to-transparent" />
-          ) : null}
         </div>
       </div>
     </div>
@@ -615,8 +610,23 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
     }) || images[0];
     return preferred?.thumbnail_url || preferred?.file_url || task?.primary_image_url || null;
   };
-  const prevImageUrl = selectImageUrl(prevTask);
-  const nextImageUrl = selectImageUrl(nextTask);
+  const parseSpaces = (task: any) => {
+    const raw = task?.spaces;
+    if (typeof raw === "string") {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return [];
+      }
+    }
+    return Array.isArray(raw) ? raw : [];
+  };
+  const prevImageUrl =
+    selectImageUrl(prevTask) ||
+    getTaskSpaceIllustration(parseSpaces(prevTask), prevTask?.title);
+  const nextImageUrl =
+    selectImageUrl(nextTask) ||
+    getTaskSpaceIllustration(parseSpaces(nextTask), nextTask?.title);
   if (prevImageUrl !== nextImageUrl) return false;
   
   // onClick comparison - if both are functions, we assume they're equivalent if task.id is the same

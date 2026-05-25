@@ -8,6 +8,8 @@ import { archiveTask } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { getTaskSpaceIllustration } from "@/lib/taskIllustration";
+import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
 
 // Property icon mapping
 const PROPERTY_ICONS = {
@@ -72,7 +74,12 @@ export function TaskCardActive({
     }
     
     const firstImage = images.length > 0 ? images[0] : null;
-    const url = firstImage?.thumbnail_url || firstImage?.file_url || task?.primary_image_url || task?.image_url || (task as any)?.image_url;
+    const uploadedUrl =
+      firstImage?.thumbnail_url ||
+      firstImage?.file_url ||
+      task?.primary_image_url ||
+      task?.image_url ||
+      (task as any)?.image_url;
     
     // Parse themes, spaces, and teams
     let themesArray: any[] = [];
@@ -114,6 +121,10 @@ export function TaskCardActive({
       }
     }
     
+    const url =
+      uploadedUrl ||
+      getTaskSpaceIllustration(spacesArray, task?.title ?? mappedTask.title);
+
     return {
       t: mappedTask,
       imageUrl: url,
@@ -145,16 +156,14 @@ export function TaskCardActive({
         "active:scale-[0.99]"
       )}
     >
-      {/* Image Preview */}
-      {imageUrl && (
-        <div className="w-full h-32 overflow-hidden rounded-t-[8px]">
-          <img
-            src={imageUrl}
-            alt={t.title || "Task image"}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      )}
+      {imageUrl ? (
+        <TaskCardMediaZone
+          imageUrl={imageUrl}
+          alt={t.title || "Task image"}
+          variant="vertical"
+          className="h-32 rounded-t-[8px]"
+        />
+      ) : null}
 
       <div className="p-4 space-y-3">
         {/* Title - 2-4 lines */}

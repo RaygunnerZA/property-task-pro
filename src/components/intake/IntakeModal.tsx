@@ -479,14 +479,17 @@ export function IntakeModal({
   const { spaces, refresh: refreshSpaces } = useSpaces(propertyId || undefined);
 
   const chipSuggestions = useMemo(() => {
-    const merged = mergeAiPeopleIntoChips(ruleChipSuggestions, aiResult?.people);
+    const contextText = [title, description].filter(Boolean).join(" ");
+    const merged = mergeAiPeopleIntoChips(ruleChipSuggestions, aiResult?.people, {
+      contextText,
+    });
     return enrichSuggestionChipsWithEntities(merged, {
       members: members ?? [],
       teams: teams ?? [],
       spaces: spaces ?? [],
       assets: availableAssets,
     });
-  }, [ruleChipSuggestions, aiResult?.people, members, teams, spaces, availableAssets]);
+  }, [ruleChipSuggestions, aiResult?.people, title, description, members, teams, spaces, availableAssets]);
 
   useEffect(() => {
     if (openChipSlot !== "who") setIntakeWhoInviteDraft(null);

@@ -4,6 +4,7 @@
  */
 import type { SignalKind, ReviewState } from "@/types/workbenchSignals";
 import { SIGNAL_KIND_TO_CHIP, reviewStateDisplay } from "@/types/workbenchSignals";
+import type { SignalCategoryVariant, SignalConfidenceLevel } from "@/components/dashboard/issues/IssuesSignalListParts";
 
 export type SignalUiFixture = {
   id: string;
@@ -17,6 +18,10 @@ export type SignalUiFixture = {
   explanation: string;
   primaryAction: { id: string; label: string };
   secondaryActions?: { id: string; label: string }[];
+  confidenceLevel?: SignalConfidenceLevel;
+  categoryTag?: string;
+  categoryTagVariant?: SignalCategoryVariant;
+  recentSubtitle?: string;
 };
 
 function chip(kind: SignalKind): string {
@@ -33,6 +38,9 @@ export const SIGNAL_UI_FIXTURES_RECENT: SignalUiFixture[] = [
     typeChip: chip("message"),
     title: "Heating not working in flat 2B",
     contextLine: "tenant@example.com • Today, 08:14",
+    recentSubtitle: "Message from tenant • Today 08:14",
+    categoryTag: "Tenant",
+    categoryTagVariant: "tenant",
     explanation: "Tenant message via portal — may need maintenance triage.",
     primaryAction: { id: "signal-open", label: "View" },
     secondaryActions: [{ id: "dismiss", label: "Dismiss" }],
@@ -44,7 +52,10 @@ export const SIGNAL_UI_FIXTURES_RECENT: SignalUiFixture[] = [
     reviewState: "none",
     typeChip: chip("email"),
     title: "Boiler complaint forwarded",
-    contextLine: "from facilities@client.com • 22 Feb, 06:00",
+    contextLine: "from facilities@client.com • Today, 08:14",
+    recentSubtitle: "Email from Facilities • Today 08:14",
+    categoryTag: "Maintenance",
+    categoryTagVariant: "maintenance",
     explanation: "Potential maintenance issue detected from email thread.",
     primaryAction: { id: "signal-open", label: "View" },
     secondaryActions: [{ id: "dismiss", label: "Dismiss" }],
@@ -55,8 +66,11 @@ export const SIGNAL_UI_FIXTURES_RECENT: SignalUiFixture[] = [
     disposition: "recent",
     reviewState: "none",
     typeChip: chip("upload"),
-    title: "Photo uploaded to Kitchen",
-    contextLine: "justin • Yesterday, 16:22",
+    title: "Possible mould in bathroom corner",
+    contextLine: "justin • Today, 07:41",
+    recentSubtitle: "Photo uploaded to Unit 12 • Today 07:41",
+    categoryTag: "Inspection",
+    categoryTagVariant: "inspection",
     explanation: "New site photo — not yet classified as issue or record.",
     primaryAction: { id: "signal-open", label: "View" },
     secondaryActions: [{ id: "dismiss", label: "Dismiss" }],
@@ -156,10 +170,11 @@ export const SIGNAL_UI_FIXTURES_REVIEW: SignalUiFixture[] = [
     reviewState: "needs_classification",
     typeChip: chip("ai_suggestion"),
     title: "Possible compliance document",
-    contextLine: "Uploaded image • Pelican site",
+    contextLine: "Uploaded image • Pelican House",
+    confidenceLevel: "low",
     whyHere: "AI confidence is too low to auto-classify.",
     explanation: "Certificate-like text found but owner and record type are unclear.",
-    primaryAction: { id: "signal-convert", label: "Add to Records" },
+    primaryAction: { id: "signal-review", label: "Review" },
     secondaryActions: [
       { id: "treat-as-issue", label: "Treat as Issue" },
       { id: "dismiss", label: "Dismiss" },
@@ -173,9 +188,10 @@ export const SIGNAL_UI_FIXTURES_REVIEW: SignalUiFixture[] = [
     typeChip: chip("conflict"),
     title: "Contractors overlap",
     contextLine: "Scheduling • This week",
+    confidenceLevel: "medium",
     whyHere: "Two bookings conflict in the same time window.",
     explanation: "James Electrical and Fix Crew appear booked for overlapping slots.",
-    primaryAction: { id: "signal-assign", label: "Resolve" },
+    primaryAction: { id: "signal-assign", label: "Review" },
     secondaryActions: [{ id: "dismiss", label: "Dismiss" }],
   },
   {
@@ -186,9 +202,10 @@ export const SIGNAL_UI_FIXTURES_REVIEW: SignalUiFixture[] = [
     typeChip: chip("admin"),
     title: "Set permissions for new staff member",
     contextLine: "Organisation • Today",
+    confidenceLevel: "medium",
     whyHere: "New user has no team or property access yet.",
     explanation: "Invited user cannot see work until access is assigned.",
-    primaryAction: { id: "signal-assign", label: "Assign permissions" },
+    primaryAction: { id: "signal-assign", label: "Review" },
     secondaryActions: [{ id: "dismiss", label: "Dismiss" }],
   },
   {
