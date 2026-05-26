@@ -80,6 +80,10 @@ interface TaskPanelProps {
   onOpenIntake?: (mode: IntakeMode) => void;
   recordsView?: RecordsView;
   onRecordsViewChange?: (view: RecordsView) => void;
+  /** Standalone workbench pages: hide Issues | Records | Schedule tab strip. */
+  hideTabs?: boolean;
+  /** Optional heading when tabs are hidden (e.g. dedicated /issues route). */
+  pageTitle?: string;
 }
 
 type TabBarDensity = "comfortable" | "compact" | "iconOnly";
@@ -655,6 +659,8 @@ export function TaskPanel({
   onOpenIntake,
   recordsView: recordsViewProp,
   onRecordsViewChange,
+  hideTabs = false,
+  pageTitle,
 }: TaskPanelProps = {}) {
 
   const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
@@ -1160,6 +1166,10 @@ export function TaskPanel({
           )}
         >
           <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
+            {hideTabs && pageTitle ? (
+              <h2 className="px-1 text-base font-semibold tracking-tight text-foreground">{pageTitle}</h2>
+            ) : null}
+            {!hideTabs ? (
             <div
               className={cn(
                 taskToolbarRecessedClass,
@@ -1320,6 +1330,7 @@ export function TaskPanel({
               </TabsTrigger>
               </TabsList>
             </div>
+            ) : null}
           </div>
 
           {onOpenIntake && (
@@ -1379,7 +1390,7 @@ export function TaskPanel({
                   <div
                     className={cn(
                       "min-h-0",
-                      showSignalFeed && issuesFilter === "all" && "mb-4 border-b border-border/50 pb-4"
+                      showSignalFeed && issuesFilter === "all" && "mb-6 border-b border-border/50 pb-4"
                     )}
                   >
                     {issuesFilter === "all" && (

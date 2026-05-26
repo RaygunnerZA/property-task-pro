@@ -26,6 +26,17 @@ const STATUS_FILTER_IDS = [
   "filter-status-done",
 ] as const;
 
+/** No task filters applied — used on Home and when the user clears filters. */
+export const EMPTY_FILTER_DRAFT: WorkbenchFilterDraft = {
+  propertyId: "all",
+  statusIds: [],
+  priorityId: "all",
+  assigneeMode: "all",
+  dueDateMode: "all",
+  showMyTasksOnly: false,
+};
+
+/** Default when opening Issues / Records / Agenda workbench pages. */
 export const DEFAULT_FILTER_DRAFT: WorkbenchFilterDraft = {
   propertyId: "all",
   statusIds: [],
@@ -73,7 +84,7 @@ export function filterIdsToDraft(
   else if (filters.has("filter-date-this-week")) dueDateMode = "next-30";
 
   return {
-    propertyId: propertyFilter ? propertyFilter.replace("filter-property-", "") : defaultPropertyId,
+    propertyId: propertyFilter ? propertyFilter.replace("filter-property-", "") : "all",
     statusIds,
     priorityId: priorityFilter ?? "all",
     assigneeMode: filters.has("filter-assigned-me") ? "me-or-teams" : "all",
@@ -101,6 +112,7 @@ const WorkbenchControlsContext = createContext<WorkbenchControlsContextValue | n
 type WorkbenchControlsProviderProps = {
   children: ReactNode;
   defaultPropertyId?: string;
+  /** When provided (including an empty set), skips DEFAULT_FILTER_DRAFT pre-applied filters. */
   initialFilters?: Set<string>;
 };
 
@@ -109,15 +121,22 @@ export function WorkbenchControlsProvider({
   defaultPropertyId = "all",
   initialFilters,
 }: WorkbenchControlsProviderProps) {
+  const hasExplicitInitialFilters = initialFilters !== undefined;
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(
-    () => initialFilters ?? draftToFilterIds({ ...DEFAULT_FILTER_DRAFT, propertyId: defaultPropertyId })
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(() =>
+    hasExplicitInitialFilters
+      ? new Set(initialFilters)
+      : draftToFilterIds({ ...DEFAULT_FILTER_DRAFT, propertyId: defaultPropertyId })
   );
-  const [filterDraft, setFilterDraft] = useState<WorkbenchFilterDraft>(() =>
-    initialFilters
-      ? filterIdsToDraft(initialFilters, defaultPropertyId)
-      : { ...DEFAULT_FILTER_DRAFT, propertyId: defaultPropertyId }
-  );
+  const [filterDraft, setFilterDraft] = useState<WorkbenchFilterDraft>(() => {
+    if (hasExplicitInitialFilters) {
+      return initialFilters.size === 0
+        ? { ...EMPTY_FILTER_DRAFT }
+        : filterIdsToDraft(initialFilters, defaultPropertyId);
+    }
+    return { ...DEFAULT_FILTER_DRAFT, propertyId: defaultPropertyId };
+  });
   const [sortBy, setSortBy] = useState<WorkbenchSortBy>("priority");
 
   const applyFilterDraft = useCallback(() => {
@@ -125,17 +144,9 @@ export function WorkbenchControlsProvider({
   }, [filterDraft]);
 
   const clearAllFilters = useCallback(() => {
-    const cleared: WorkbenchFilterDraft = {
-      ...DEFAULT_FILTER_DRAFT,
-      propertyId: defaultPropertyId,
-      statusIds: [],
-      assigneeMode: "all",
-      dueDateMode: "all",
-      showMyTasksOnly: false,
-    };
-    setFilterDraft(cleared);
+    setFilterDraft({ ...EMPTY_FILTER_DRAFT });
     setSelectedFilters(new Set());
-  }, [defaultPropertyId]);
+  }, []);
 
   const activeFilterCount = selectedFilters.size;
 

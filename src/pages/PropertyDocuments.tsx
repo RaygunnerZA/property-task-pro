@@ -1,12 +1,8 @@
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
-import {
-  WORKBENCH_PANEL_TAB_QUERY,
-  WORKBENCH_RECORDS_VIEW_QUERY,
-  type RecordsView,
-} from "@/lib/propertyRoutes";
+import { propertyHubRecordsPath, type RecordsView } from "@/lib/propertyRoutes";
 
 /**
- * Legacy `/properties/:id/documents` → hub Records (documents slice).
+ * Legacy `/properties/:id/documents` → Records workbench (documents slice).
  * Preserves `filter`, `upload` query params for the Records workspace.
  */
 export default function PropertyDocuments() {
@@ -23,10 +19,8 @@ export default function PropertyDocuments() {
   else if (filter === "expired") recordsView = "overdue";
   else if (filter === "hazards" || filter === "unlinked") recordsView = "documents";
 
-  const q = new URLSearchParams();
-  q.set("property", id);
-  q.set(WORKBENCH_PANEL_TAB_QUERY, "records");
-  q.set(WORKBENCH_RECORDS_VIEW_QUERY, recordsView);
+  const base = propertyHubRecordsPath(id, recordsView);
+  const q = new URLSearchParams(base.split("?")[1] ?? "");
   if (filter) {
     q.set("filter", filter);
   }
@@ -35,5 +29,5 @@ export default function PropertyDocuments() {
     q.set("upload", upload);
   }
 
-  return <Navigate to={`/?${q.toString()}`} replace />;
+  return <Navigate to={`/records?${q.toString()}`} replace />;
 }

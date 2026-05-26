@@ -4,12 +4,7 @@
 
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  propertyHubPath,
-  WORKBENCH_PANEL_TAB_QUERY,
-  WORKBENCH_RECORDS_VIEW_QUERY,
-  type RecordsView,
-} from "@/lib/propertyRoutes";
+import { propertyHubRecordsPath, type RecordsView } from "@/lib/propertyRoutes";
 import { useQuery } from "@tanstack/react-query";
 import { FileText, AlertCircle, AlertTriangle, Link2, Shield, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -84,16 +79,13 @@ export function DocumentHealthSummary({
   const expiryAttention = expired + dueSoon;
 
   const hubRecords = (view?: RecordsView, extra?: Record<string, string>) => {
-    const q: Record<string, string> = { [WORKBENCH_PANEL_TAB_QUERY]: "records" };
-    if (view && view !== "all") {
-      q[WORKBENCH_RECORDS_VIEW_QUERY] = view;
+    const path = propertyHubRecordsPath(propertyId, view);
+    if (!extra) return path;
+    const q = new URLSearchParams(path.split("?")[1] ?? "");
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) q.set(k, v);
     }
-    if (extra) {
-      for (const [k, v] of Object.entries(extra)) {
-        if (v) q[k] = v;
-      }
-    }
-    return propertyHubPath(propertyId, q);
+    return `/records?${q.toString()}`;
   };
 
   const rowClass =

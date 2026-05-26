@@ -98,12 +98,14 @@
     --sidebar-muted: 248 10% 40%;
   }
 
-  /* Dashboard: gradient strip only; property scope lives in the left column */
-  .dashboard-workbench {
+  /* Dashboard + Calendar: gradient strip; property scope lives in the left column */
+  .dashboard-workbench,
+  .calendar-page {
     --header-height: 80px;
   }
 
-  .dashboard-workbench .page-header {
+  .dashboard-workbench .page-header,
+  .calendar-page .page-header {
     height: 80px;
     padding-top: 0;
     box-sizing: border-box;
@@ -774,5 +776,60 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
+  }
+
+  /* Workbench header: Filter / Sort responsive density (container-width) */
+  .workbench-toolbar {
+    container-type: inline-size;
+    container-name: workbench-toolbar;
+  }
+
+  .wb-control-btn {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-white;
+  }
+
+  .wb-control-btn[data-state="open"] {
+    @apply bg-white;
+  }
+
+  /* Comfortable: icon + label */
+  .wb-control-btn .wb-btn-icon {
+    display: inline-flex;
+  }
+
+  .wb-control-btn .wb-btn-label,
+  .wb-control-btn .wb-btn-prefix,
+  .wb-control-btn .wb-btn-chevron {
+    display: inline-flex;
+  }
+
+  /* Compact: label only (hide leading icons) */
+  @container workbench-toolbar (max-width: 519px) {
+    .wb-control-btn .wb-btn-icon {
+      display: none;
+    }
+
+    .wb-control-btn .wb-btn-label,
+    .wb-control-btn .wb-btn-prefix,
+    .wb-control-btn .wb-btn-chevron {
+      display: inline-flex;
+    }
+  }
+
+  /* Narrow: icon only */
+  @container workbench-toolbar (max-width: 379px) {
+    .wb-control-btn {
+      @apply gap-0 px-2;
+    }
+
+    .wb-control-btn .wb-btn-icon {
+      display: inline-flex;
+    }
+
+    .wb-control-btn .wb-btn-label,
+    .wb-control-btn .wb-btn-prefix,
+    .wb-control-btn .wb-btn-chevron {
+      display: none;
+    }
   }
 }

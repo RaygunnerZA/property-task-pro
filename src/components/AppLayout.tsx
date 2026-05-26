@@ -40,7 +40,12 @@ export function AppLayout({
   const queryClient = useQueryClient();
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
-  const isHubHome = pathname === '/' || pathname === '';
+  const isHubHome =
+    pathname === '/' ||
+    pathname === '' ||
+    pathname === '/issues' ||
+    pathname === '/records' ||
+    pathname === '/agenda';
 
   useEffect(() => {
     if ('scrollRestoration' in history) {

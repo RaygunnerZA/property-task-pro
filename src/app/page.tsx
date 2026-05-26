@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
@@ -14,13 +14,12 @@ import {
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
-import { PageHeader } from "@/components/design-system/PageHeader";
 import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
-import { format } from "date-fns";
+import { buildTasksByDate } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import type { IntakeMode } from "@/types/intake";
 import {
@@ -36,6 +35,7 @@ import {
   type RecordsView,
   type WorkbenchIssuesFilter,
   type WorkbenchPanelTab,
+  type DashboardWorkbenchPanel,
 } from "@/lib/propertyRoutes";
 import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
 import { RecordsActionRail } from "@/components/records/RecordsActionRail";
@@ -45,17 +45,22 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { cn } from "@/lib/utils";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
-import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
-import type { LucideIcon } from "lucide-react";
+import {
+  WorkbenchGradientHeader,
+  createGradientHeaderStyle,
+} from "@/components/layout/WorkbenchGradientHeader";
+import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 
-// Helper function to create gradient header style
-const createGradientHeaderStyle = (color: string) => {
-  // Create gradient: color solid until 28%, then transition to transparent by 97%
-  // No texture overlay - allows clean blend with bg-background
-  return {
-    backgroundImage: `linear-gradient(90deg, ${color} 0%, ${color} 28%, transparent 97%, transparent 100%)`
-  };
+export type { DashboardWorkbenchPanel };
+
+export type DashboardProps = {
+  /** `home` = Today hub with workspace links; otherwise a dedicated workbench page. */
+  workbenchPanel?: DashboardWorkbenchPanel;
 };
+
+function workbenchRouteForTab(tab: WorkbenchPanelTab): string {
+  return WORKBENCH_SECTION_ROUTES[tab];
+}
 
 // Match DualPaneLayout third-column breakpoint (min-1380px)
 const LG_BREAKPOINT = 1380;
@@ -76,68 +81,24 @@ type SelectedItem =
 
 type ExpandedSection = 'details' | 'assistant' | null;
 
-function WorkbenchFiltersSync({ filterIds }: { filterIds: string[] | null | undefined }) {
+function WorkbenchFiltersSync({
+  filterIds,
+  enabled = true,
+}: {
+  filterIds: string[] | null | undefined;
+  enabled?: boolean;
+}) {
   const { setSelectedFilters } = useWorkbenchControls();
   useEffect(() => {
-    if (!filterIds) return;
+    if (!enabled || !filterIds) return;
     setSelectedFilters(new Set(filterIds));
-  }, [filterIds, setSelectedFilters]);
+  }, [enabled, filterIds, setSelectedFilters]);
   return null;
 }
 
-type DashboardGradientHeaderProps = {
-  headerStyle: CSSProperties;
-  showTodayWeather: boolean;
-  WeatherIcon: LucideIcon;
-  weather: { temp?: number } | null | undefined;
-  properties: { id: string; name?: string | null; nickname?: string | null; address?: string | null }[];
-  onAskFilla: (query: string) => void;
-};
-
-function DashboardGradientHeader({
-  headerStyle,
-  showTodayWeather,
-  WeatherIcon,
-  weather,
-  properties,
-  onAskFilla,
-}: DashboardGradientHeaderProps) {
-  return (
-    <PageHeader showAccountMenu={false}>
-      <div
-        className="relative flex h-[80px] items-start rounded-bl-[12px] px-[18px] pt-0 pr-28 sm:pr-40"
-        style={headerStyle}
-      >
-        {showTodayWeather ? (
-          <div className="flex w-[248px] min-w-0 shrink-0 items-start justify-start gap-[7px] pt-[25px]">
-            <h1 className="shrink-0 text-[18px] font-semibold leading-tight text-white">Today</h1>
-            <div className="mx-2 h-6 w-px shrink-0 bg-white/30" />
-            <div className="flex items-center justify-start gap-2 text-left">
-              <WeatherIcon className="h-4 w-4 shrink-0 text-white/90" />
-              <span className="whitespace-nowrap text-sm text-white/90">
-                {weather ? `${weather.temp}°C` : "--°C"}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="w-[248px] shrink-0" aria-hidden />
-        )}
-
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(calc(100%-11rem),720px)] -translate-x-1/2 -translate-y-1/2 pt-5 sm:w-[min(calc(100%-14rem),720px)]">
-          <WorkbenchHeaderToolbar
-            variant="gradient"
-            className="pointer-events-auto"
-            properties={properties}
-            onAskFilla={onAskFilla}
-          />
-        </div>
-      </div>
-    </PageHeader>
-  );
-}
-
-export default function Dashboard() {
+export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   const navigate = useNavigate();
+  const isDedicatedWorkbench = workbenchPanel !== "home";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [intakeMinimized, setIntakeMinimized] = useState(false);
@@ -255,12 +216,11 @@ export default function Dashboard() {
     [properties, searchParams, setSearchParams]
   );
 
-  /** Single source of truth with the URL: no `panelTab` ⇒ Issues. Optional `tab` alias. */
+  /** Dedicated routes lock the panel; Home no longer hosts tab state (legacy `panelTab` redirects). */
   const activeTab = useMemo((): WorkbenchPanelTab => {
-    const panel = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
-    const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
-    return normalizeWorkbenchPanelTab(panel, alias);
-  }, [searchParams]);
+    if (isDedicatedWorkbench) return workbenchPanel;
+    return "issues";
+  }, [isDedicatedWorkbench, workbenchPanel]);
 
   const recordsView = useMemo((): RecordsView => {
     return normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
@@ -272,37 +232,51 @@ export default function Dashboard() {
 
   const taskPriorityUrgent = searchParams.get(WORKBENCH_TASK_PRIORITY_QUERY) === "urgent";
 
+  const navigateToWorkbenchSection = useCallback(
+    (tab: WorkbenchPanelTab) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      if (tab !== "records") {
+        params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
+      }
+      const qs = params.toString();
+      navigate(`${workbenchRouteForTab(tab)}${qs ? `?${qs}` : ""}`);
+    },
+    [navigate, searchParams]
+  );
+
   const handleWorkbenchTabChange = useCallback(
     (tab: string) => {
       const normalized = normalizeWorkbenchPanelTab(tab);
-      const params = workbenchSearchParamsFromBrowser(searchParams);
-      if (normalized === "issues") {
-        params.delete(WORKBENCH_PANEL_TAB_QUERY);
-      } else {
-        params.set(WORKBENCH_PANEL_TAB_QUERY, normalized);
+      if (workbenchPanel === "home") {
+        navigateToWorkbenchSection(normalized);
+        return;
       }
-      if (normalized !== "records") {
-        params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
-      }
-      setSearchParams(params, { replace: true });
+      if (normalized === workbenchPanel) return;
+      navigateToWorkbenchSection(normalized);
     },
-    [searchParams, setSearchParams]
+    [workbenchPanel, navigateToWorkbenchSection]
   );
 
   const handleRecordsViewChange = useCallback(
     (next: RecordsView) => {
       const params = workbenchSearchParamsFromBrowser(searchParams);
-      if (!params.has(WORKBENCH_PANEL_TAB_QUERY)) {
-        params.set(WORKBENCH_PANEL_TAB_QUERY, "records");
-      }
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
       if (next === "all") {
         params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
       } else {
         params.set(WORKBENCH_RECORDS_VIEW_QUERY, next);
       }
-      setSearchParams(params, { replace: true });
+      if (workbenchPanel === "records") {
+        setSearchParams(params, { replace: true });
+        return;
+      }
+      const qs = params.toString();
+      navigate(`/records${qs ? `?${qs}` : ""}`);
     },
-    [searchParams, setSearchParams]
+    [workbenchPanel, navigate, searchParams, setSearchParams]
   );
 
   const handleIssuesFilterChange = useCallback(
@@ -320,6 +294,7 @@ export default function Dashboard() {
   );
 
   const effectiveTaskListFiltersToApply = useMemo(() => {
+    if (workbenchPanel === "home") return undefined;
     if (assistantFiltersToApply != null) return assistantFiltersToApply;
     if (activeTab !== "issues") return undefined;
     if (issuesFilter === "open") {
@@ -329,30 +304,21 @@ export default function Dashboard() {
     }
     if (issuesFilter === "done") return ["filter-status-done"];
     return undefined;
-  }, [assistantFiltersToApply, activeTab, issuesFilter, taskPriorityUrgent]);
+  }, [workbenchPanel, assistantFiltersToApply, activeTab, issuesFilter, taskPriorityUrgent]);
 
-  /** Fold `tab=` into canonical `panelTab` once so refresh and bookmarks stay consistent. */
+  /** Legacy hub URLs with `panelTab` / `tab` → dedicated workbench routes. */
   useEffect(() => {
+    if (workbenchPanel !== "home") return;
+    const panel = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
     const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
-    if (!alias) return;
-    const merged = normalizeWorkbenchPanelTab(
-      searchParams.get(WORKBENCH_PANEL_TAB_QUERY),
-      alias
-    );
-    const params = new URLSearchParams(searchParams);
-    params.delete(WORKBENCH_TAB_ALIAS_QUERY);
-    if (merged === "issues") {
-      params.delete(WORKBENCH_PANEL_TAB_QUERY);
-    } else {
-      params.set(WORKBENCH_PANEL_TAB_QUERY, merged);
-    }
-    setSearchParams(params, { replace: true });
-  }, [searchParams, setSearchParams]);
+    if (!panel && !alias) return;
+    const merged = normalizeWorkbenchPanelTab(panel, alias);
+    navigateToWorkbenchSection(merged);
+  }, [workbenchPanel, searchParams, navigateToWorkbenchSection]);
 
-  // When the workbench `property` param changes after load, default to Issues (strip stale panelTab).
-  // Skip the first transition that only injects `property` for single-property orgs so deep links keep ?panelTab=.
+  // When property scope changes on a dedicated workbench page, strip stale panelTab query keys.
   useEffect(() => {
-    if (properties.length === 0) return;
+    if (!isDedicatedWorkbench || properties.length === 0) return;
     const pid = searchParams.get("property");
     if (!workbenchPropertyInitRef.current) {
       workbenchPropertyInitRef.current = true;
@@ -362,91 +328,14 @@ export default function Dashboard() {
     const prev = prevWorkbenchPropertyIdRef.current;
     if (pid === prev) return;
     prevWorkbenchPropertyIdRef.current = pid;
-    const singleId = properties.length === 1 ? properties[0].id : null;
-    const isImplicitSingleOrgFill =
-      singleId != null && (prev == null || prev === "") && pid === singleId;
-    if (isImplicitSingleOrgFill) return;
     const params = new URLSearchParams(searchParams);
-    if (!params.has(WORKBENCH_PANEL_TAB_QUERY)) return;
+    if (!params.has(WORKBENCH_PANEL_TAB_QUERY) && !params.has(WORKBENCH_TAB_ALIAS_QUERY)) return;
     params.delete(WORKBENCH_PANEL_TAB_QUERY);
-    params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
+    params.delete(WORKBENCH_TAB_ALIAS_QUERY);
     setSearchParams(params, { replace: true });
-  }, [searchParams, setSearchParams, properties]);
+  }, [isDedicatedWorkbench, searchParams, setSearchParams, properties]);
 
-  // Centralized aggregation: Calculate stats once at Dashboard level
-  const { tasksByDate, urgentCount, overdueCount } = useMemo(() => {
-    const dateMap = new Map<string, {
-      total: number;
-      high: number;
-      urgent: number;
-      overdue: number;
-    }>();
-    
-    let urgent = 0;
-    let overdue = 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Normalize priority helper
-    const normalizePriority = (priority: string | null | undefined): string => {
-      if (!priority) return 'normal';
-      const normalized = priority.toLowerCase();
-      if (normalized === 'medium') return 'normal';
-      return normalized;
-    };
-    
-    const addDateEntry = (dateValue: string, task: any) => {
-      try {
-        const date = new Date(dateValue);
-        if (isNaN(date.getTime())) return;
-        const dateKey = format(date, "yyyy-MM-dd");
-        const current = dateMap.get(dateKey) || { total: 0, high: 0, urgent: 0, overdue: 0 };
-        
-        current.total += 1;
-        
-        const priority = normalizePriority(task.priority);
-        
-        if (priority === 'high') {
-          current.high += 1;
-        } else if (priority === 'urgent') {
-          current.urgent += 1;
-          urgent += 1;
-        }
-        
-        date.setHours(0, 0, 0, 0);
-        if (date < today) {
-          current.overdue += 1;
-          overdue += 1;
-        }
-        
-        dateMap.set(dateKey, current);
-      } catch {
-        // Skip invalid dates
-      }
-    };
-
-    tasks.forEach((task) => {
-      if (task.status === 'completed' || task.status === 'archived') return;
-
-      const dueDateValue = task.due_date || task.due_at;
-      if (dueDateValue) addDateEntry(dueDateValue, task);
-
-      // Include milestone dates on the calendar
-      const milestones = (task as any).milestones;
-      if (Array.isArray(milestones)) {
-        milestones.forEach((m: any) => {
-          if (m?.dateTime) addDateEntry(m.dateTime, task);
-        });
-      }
-    });
-    
-    return {
-      tasksByDate: dateMap,
-      urgentCount: urgent,
-      overdueCount: overdue,
-    };
-  }, [tasks]);
+  const tasksByDate = useMemo(() => buildTasksByDate(tasks), [tasks]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -597,6 +486,14 @@ export default function Dashboard() {
       if (pid) navigate(`/assets?property=${encodeURIComponent(pid)}&attention=1`);
       return;
     }
+    if (filterId === "show-spaces") {
+      navigate("/manage/spaces");
+      return;
+    }
+    if (filterId === "show-assets") {
+      navigate("/assets");
+      return;
+    }
 
     handleWorkbenchTabChange("issues");
     if (filterId === "show-tasks") {
@@ -606,9 +503,11 @@ export default function Dashboard() {
     if (filterId === "show-tasks-urgent") {
       const params = workbenchSearchParamsFromBrowser(searchParams);
       params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
       params.set(WORKBENCH_ISSUES_FILTER_QUERY, "open");
       params.set(WORKBENCH_TASK_PRIORITY_QUERY, "urgent");
-      setSearchParams(params, { replace: true });
+      const qs = params.toString();
+      navigate(`/issues${qs ? `?${qs}` : ""}`);
       return;
     }
     // Set the filter to apply, which will trigger TaskList to apply it.
@@ -810,12 +709,18 @@ export default function Dashboard() {
   );
 
   return (
-    <WorkbenchControlsProvider defaultPropertyId={defaultWorkbenchPropertyId}>
-      <WorkbenchFiltersSync filterIds={effectiveTaskListFiltersToApply} />
+    <WorkbenchControlsProvider
+      defaultPropertyId={defaultWorkbenchPropertyId}
+      initialFilters={workbenchPanel === "home" ? new Set<string>() : undefined}
+    >
+      <WorkbenchFiltersSync
+        filterIds={effectiveTaskListFiltersToApply}
+        enabled={workbenchPanel !== "home"}
+      />
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
           header={
-            <DashboardGradientHeader
+            <WorkbenchGradientHeader
               headerStyle={headerStyle}
               showTodayWeather={!showTodayWeatherOnPropertyCard}
               WeatherIcon={WeatherIcon}
@@ -839,8 +744,6 @@ export default function Dashboard() {
             selectedDate={selectedDate}
             onDateSelect={handleDateSelect}
             tasksByDate={tasksByDate}
-            urgentCount={urgentCount}
-            overdueCount={overdueCount}
             onFilterClick={handleFilterClick}
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
@@ -885,6 +788,7 @@ export default function Dashboard() {
             onOpenIntake={handleOpenIntake}
             recordsView={recordsView}
             onRecordsViewChange={handleRecordsViewChange}
+            workbenchPanel={workbenchPanel}
           />
           </ErrorBoundary>
         }

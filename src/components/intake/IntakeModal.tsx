@@ -73,7 +73,7 @@ import { getAssetIcon } from "@/lib/icon-resolver";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage } from "@/utils/image-optimization";
 import { format, addDays, addMonths, startOfDay } from "date-fns";
-import { Calendar as MiniCalendar } from "@/components/ui/calendar";
+import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { Input } from "@/components/ui/input";
 import { useCategories } from "@/hooks/useCategories";
 import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
@@ -2308,44 +2308,20 @@ export function IntakeModal({
 
             {intakeWhenCustom && whenTab !== "repeat" && (
               <div className="flex w-full min-w-0 flex-col gap-2">
-                <div className="rounded-lg bg-background/80 p-2 w-fit">
-                  <MiniCalendar
-                    mode="single"
-                    classNames={{
-                      month: "space-y-4 w-[246px]",
-                      caption: "flex justify-start pt-1 relative items-start gap-2.5 pl-[7px]",
-                      caption_label: "text-base font-medium",
-                      table: "w-full border-collapse space-y-1 mt-[10px]",
-                      head_cell: "text-[#85BABC] rounded-md w-[30px] font-semibold text-[0.8rem] font-mono",
-                      tbody: "rdp-tbody mt-0 rounded-[5px]",
-                      row: "flex w-full !mt-[1px] !mb-[1px] py-0 justify-start items-start font-mono",
-                      cell: "h-[30px] w-[30px] rounded-[12px] text-center text-sm p-0 relative font-mono [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                      day: "h-[30px] w-[30px] p-0 text-xs font-normal font-mono rounded-[12px] grid items-center justify-center aria-selected:opacity-100",
-                      day_selected:
-                        "bg-primary text-primary-foreground shadow-[inset_2px_4px_4px_0px_rgba(0,0,0,0.23),1px_2px_2px_0px_rgba(255,255,255,0.75)] hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-                      day_today:
-                        "bg-white/30 text-foreground border-none shadow-[inset_0px_6.2px_3.9px_-1.2px_rgba(0,0,0,0.2),0px_1px_1px_0px_rgba(255,255,255,1)]",
-                      nav: "ml-[3px] flex items-start justify-end gap-1 text-center",
-                      nav_button:
-                        "flex h-7 w-7 items-center justify-center rounded-[12px] p-0 text-muted-foreground shadow-e1 hover:text-foreground hover:shadow-inset",
-                      nav_button_previous: "absolute top-1 left-[177px] flex items-center justify-center",
-                    }}
-                    components={{
-                      IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" strokeWidth={2.2} />,
-                      IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" strokeWidth={2.2} />,
-                    }}
-                    selected={calendarSelected}
-                    onSelect={(date) => {
-                      if (!date) return;
-                      const next = format(date, "yyyy-MM-dd");
-                      if (milestoneEntryOpen) {
-                        setMilestoneDraftDate(next);
-                      } else {
-                        setDueDate(next);
-                      }
-                    }}
-                  />
-                </div>
+                <FillaMiniCalendar
+                  variant="embedded"
+                  className="w-fit rounded-lg bg-background/80 p-2 shadow-none border-0"
+                  selectedDate={calendarSelected}
+                  onDateSelect={(date) => {
+                    if (!date) return;
+                    const next = format(date, "yyyy-MM-dd");
+                    if (milestoneEntryOpen) {
+                      setMilestoneDraftDate(next);
+                    } else {
+                      setDueDate(next);
+                    }
+                  }}
+                />
                 {milestones.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     {milestones.map((milestone) => (

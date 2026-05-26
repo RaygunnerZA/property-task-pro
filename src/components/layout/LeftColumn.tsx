@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
-import { DashboardCalendarV2 } from "@/components/dashboard/DashboardCalendarV2";
+import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
 import type { PropertyCardWeather } from "@/types/propertyCardWeather";
@@ -13,6 +13,7 @@ import { OnboardingDemoBanner } from "@/components/onboarding/OnboardingDemoBann
 import { propertyHasOnboardingDemoContent } from "@/lib/onboardingDemo";
 import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
 import { Button } from "@/components/ui/button";
+import { HubSummaryPanel } from "@/components/dashboard/HubSummaryPanel";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -152,7 +153,7 @@ export function LeftColumn({
     >
       {/* Properties: scope chips + cards / identity strip */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background px-0 py-2">
+        <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-[5px]">
         {scopeFilterBar}
         {isHubHome && !scopeFilterBar && (
           <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
@@ -238,20 +239,36 @@ export function LeftColumn({
         </div>
       </div>
 
+      {isHubHome && !focusedProperty && !propertiesLoading && properties.length > 0 ? (
+        <HubSummaryPanel
+          tasks={tasks}
+          properties={properties}
+          selectedPropertyIds={selectedPropertyIds}
+          loading={tasksLoading}
+          onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
+          onOpenUrgentTasks={onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined}
+          onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
+          onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
+          onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
+          onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
+          onMissingInfo={onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined}
+        />
+      ) : null}
+
       {/* Calendar Section - Scrollable (no horizontal pan — avoid sideways slide on touch/trackpad) */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
         <div
           ref={calendarRef}
-          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden"
+          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden px-[3px]"
         >
-          <div className="px-0 w-full min-w-0 max-w-full overflow-x-hidden">
+          <div className="px-0 w-full min-w-0 max-w-[250px] overflow-x-hidden">
             {tasksLoading ? (
-              <div className="rounded-lg bg-transparent px-0 pt-4 pb-2 shadow-none w-full">
+              <div className="w-full max-w-[252px] rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="rounded-lg bg-transparent px-0 pt-4 pb-2 shadow-none w-full">
-                <DashboardCalendarV2
+              <div className="w-full max-w-[252px] rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
+                <FillaMiniCalendar
                   tasks={tasks}
                   selectedDate={selectedDate}
                   onDateSelect={onDateSelect}

@@ -15,6 +15,9 @@ export const WORKBENCH_TASK_PRIORITY_QUERY = "taskPriority";
 
 export type WorkbenchPanelTab = "issues" | "records" | "schedule";
 
+/** Home hub vs dedicated workbench page (`/issues`, `/records`, `/agenda`). */
+export type DashboardWorkbenchPanel = "home" | WorkbenchPanelTab;
+
 /** Primary slices inside the Records workspace (URL-backed on the hub). */
 export type RecordsView =
   | "all"
@@ -84,7 +87,7 @@ export const ISSUES_OPEN_TASK_FILTER_IDS = [
   "filter-status-blocked",
 ] as const;
 
-/** Canonical URL for the property workbench (dashboard at / with property scope). */
+/** Canonical URL for the property hub (Home) with optional query params. */
 export function propertyHubPath(propertyId: string, extra?: Record<string, string>): string {
   const q = new URLSearchParams();
   q.set("property", propertyId);
@@ -96,15 +99,28 @@ export function propertyHubPath(propertyId: string, extra?: Record<string, strin
   return `/?${q.toString()}`;
 }
 
-/** Hub with Records open and an optional records sub-view. */
+function workbenchScopedPath(
+  basePath: string,
+  propertyId: string,
+  extra?: Record<string, string>
+): string {
+  const q = new URLSearchParams();
+  q.set("property", propertyId);
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) q.set(k, v);
+    }
+  }
+  return `${basePath}?${q.toString()}`;
+}
+
+/** Records workbench with an optional sub-view. */
 export function propertyHubRecordsPath(propertyId: string, recordsView?: RecordsView): string {
-  const extra: Record<string, string> = {
-    [WORKBENCH_PANEL_TAB_QUERY]: "records",
-  };
+  const extra: Record<string, string> = {};
   if (recordsView && recordsView !== "all") {
     extra[WORKBENCH_RECORDS_VIEW_QUERY] = recordsView;
   }
-  return propertyHubPath(propertyId, extra);
+  return workbenchScopedPath("/records", propertyId, extra);
 }
 
 /**
@@ -120,7 +136,12 @@ export function propertyHubIssuesPath(
   if (f && f !== "all") {
     extra[WORKBENCH_ISSUES_FILTER_QUERY] = f;
   }
-  return propertyHubPath(propertyId, extra);
+  return workbenchScopedPath("/issues", propertyId, extra);
+}
+
+/** Day agenda workbench (`/agenda`). */
+export function propertyHubAgendaPath(propertyId: string): string {
+  return workbenchScopedPath("/agenda", propertyId);
 }
 
 /** @deprecated Prefer `propertyHubIssuesPath(id, { issuesFilter: "open" })`. */

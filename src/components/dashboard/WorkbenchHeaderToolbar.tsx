@@ -1,12 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
-import {
-  Bookmark,
-  ChevronDown,
-  ChevronUp,
-  Search,
-  SlidersHorizontal,
-} from "lucide-react";
-import { FillaIcon } from "@/components/filla/FillaIcon";
+import { Bookmark, ChevronDown, ChevronUp } from "lucide-react";
+
+const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -21,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import {
   useWorkbenchControls,
   type WorkbenchFilterDraft,
-  type WorkbenchSortBy,
 } from "@/contexts/WorkbenchControlsContext";
 
 const Funnel = ({ className }: { className?: string }) => (
@@ -57,12 +51,6 @@ const PRIORITY_OPTIONS = [
   { id: "filter-priority-normal", label: "Normal" },
   { id: "filter-priority-low", label: "Low" },
 ] as const;
-
-const SORT_OPTIONS: { id: WorkbenchSortBy; label: string }[] = [
-  { id: "priority", label: "Priority" },
-  { id: "due_date", label: "Due date" },
-  { id: "updated", label: "Recently updated" },
-];
 
 type WorkbenchHeaderToolbarProps = {
   className?: string;
@@ -156,13 +144,10 @@ export function WorkbenchHeaderToolbar({
     setFilterDraft,
     applyFilterDraft,
     clearAllFilters,
-    sortBy,
-    setSortBy,
     activeFilterCount,
   } = useWorkbenchControls();
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
 
   const propertyOptions = useMemo(
     () =>
@@ -175,8 +160,6 @@ export function WorkbenchHeaderToolbar({
     [properties]
   );
 
-  const sortLabel = SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? "Priority";
-
   const patchDraft = (patch: Partial<WorkbenchFilterDraft>) => {
     setFilterDraft({ ...filterDraft, ...patch });
   };
@@ -188,21 +171,24 @@ export function WorkbenchHeaderToolbar({
   return (
     <div
       className={cn(
+        "workbench-toolbar",
         variant === "gradient"
           ? "flex min-w-0 items-stretch gap-2 border-0 bg-transparent py-0.5 px-0 shadow-none"
           : "flex min-w-0 items-stretch gap-2 rounded-xl border-0 bg-white py-0.5 px-1 shadow-none",
         className
       )}
     >
-      {/* Search + Ask Filla */}
+      {/* Search */}
       <div className="flex min-w-0 flex-1 items-stretch overflow-hidden rounded-lg border border-border/40 bg-input">
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <div className="flex min-w-0 flex-1 items-center px-3">
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search signals, tasks, records, properties…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAskFilla();
+            }}
+            placeholder="Search anything..."
             className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
             aria-label="Search workbench"
           />
@@ -211,10 +197,16 @@ export function WorkbenchHeaderToolbar({
         <button
           type="button"
           onClick={handleAskFilla}
-          className="inline-flex shrink-0 items-center gap-1.5 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/5"
+          className="inline-flex shrink-0 items-center justify-center px-3 transition-opacity hover:opacity-80"
+          aria-label="Search"
         >
-          <FillaIcon size={14} />
-          <span className="hidden sm:inline">Ask Filla</span>
+          <img
+            src={WORKBENCH_SEARCH_ICON}
+            alt=""
+            className="h-5 w-5 object-contain"
+            width={20}
+            height={20}
+          />
         </button>
       </div>
 
@@ -223,22 +215,20 @@ export function WorkbenchHeaderToolbar({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/30",
-              filtersOpen && "bg-muted/40"
-            )}
+            data-state={filtersOpen ? "open" : "closed"}
+            className="wb-control-btn"
           >
-            <Funnel className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden sm:inline">Filters</span>
+            <Funnel className="wb-btn-icon h-4 w-4 text-muted-foreground" />
+            <span className="wb-btn-label">Filters</span>
             {activeFilterCount > 0 ? (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 px-1 text-[11px] font-semibold text-primary">
                 {activeFilterCount}
               </span>
             ) : null}
             {filtersOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              <ChevronUp className="wb-btn-chevron h-4 w-4 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="wb-btn-chevron h-4 w-4 text-muted-foreground" />
             )}
           </button>
         </PopoverTrigger>
@@ -388,42 +378,6 @@ export function WorkbenchHeaderToolbar({
               Apply filters
             </Button>
           </div>
-        </PopoverContent>
-      </Popover>
-
-      {/* Sort */}
-      <Popover open={sortOpen} onOpenChange={setSortOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border/40 bg-background px-3 py-2 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/30",
-              sortOpen && "bg-muted/40"
-            )}
-          >
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-            <span className="hidden md:inline">Sort:</span>
-            <span>{sortLabel}</span>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-52 p-1">
-          {SORT_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => {
-                setSortBy(option.id);
-                setSortOpen(false);
-              }}
-              className={cn(
-                "flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-muted/60",
-                sortBy === option.id && "bg-primary/10 font-medium text-primary"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
         </PopoverContent>
       </Popover>
     </div>

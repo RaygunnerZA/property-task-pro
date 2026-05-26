@@ -12,6 +12,7 @@ const ThirdColumnContext = createContext<boolean>(false);
 /** Pages that show the third column concertina at min-1380px */
 function isThirdColumnPage(pathname: string): boolean {
   if (pathname === "/") return true;
+  if (pathname === "/calendar") return true;
   if (/^\/properties\/[^/]+$/.test(pathname)) return true;
   return false;
 }

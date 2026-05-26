@@ -3,6 +3,7 @@ import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { DailyBriefingCard } from "@/components/dashboard/DailyBriefingCard";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
+import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 
@@ -26,6 +27,7 @@ interface RightColumnProps {
   onOpenIntake?: (mode: IntakeMode) => void;
   recordsView?: RecordsView;
   onRecordsViewChange?: (view: RecordsView) => void;
+  workbenchPanel?: DashboardWorkbenchPanel;
 }
 
 /**
@@ -55,7 +57,16 @@ export function RightColumn({
   onOpenIntake,
   recordsView,
   onRecordsViewChange,
+  workbenchPanel = "home",
 }: RightColumnProps) {
+  const dedicatedTitle =
+    workbenchPanel === "issues"
+      ? "Issues"
+      : workbenchPanel === "records"
+        ? "Records"
+        : workbenchPanel === "schedule"
+          ? "Schedule"
+          : undefined;
   const showDailyBriefing = useMemo(() => {
     const ids = (properties ?? []).map((p: { id: string }) => p.id);
     if (ids.length === 0) return false;
@@ -85,7 +96,7 @@ export function RightColumn({
         }}
       >
         {children || (
-          <TaskPanel 
+          <TaskPanel
             tasks={tasks}
             properties={properties}
             tasksLoading={tasksLoading}
@@ -104,6 +115,8 @@ export function RightColumn({
             onOpenIntake={onOpenIntake}
             recordsView={recordsView}
             onRecordsViewChange={onRecordsViewChange}
+            hideTabs={workbenchPanel !== "home"}
+            pageTitle={dedicatedTitle}
           />
         )}
       </div>

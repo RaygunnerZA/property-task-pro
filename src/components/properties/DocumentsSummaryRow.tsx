@@ -3,7 +3,7 @@
  * Expiring Soon (Amber), Expired (Red), Missing (Slate)
  */
 import { useNavigate } from "react-router-dom";
-import { propertyHubPath, WORKBENCH_PANEL_TAB_QUERY, WORKBENCH_RECORDS_VIEW_QUERY } from "@/lib/propertyRoutes";
+import { propertyHubRecordsPath } from "@/lib/propertyRoutes";
 import { ContextSummaryCard } from "@/components/property-framework";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import { useQuery } from "@tanstack/react-query";
@@ -60,14 +60,7 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         description="Due within 30 days"
         color="amber"
         ctaLabel="View"
-        onClick={() =>
-          navigate(
-            propertyHubPath(propertyId, {
-              [WORKBENCH_PANEL_TAB_QUERY]: "records",
-              [WORKBENCH_RECORDS_VIEW_QUERY]: "expiring",
-            })
-          )
-        }
+        onClick={() => navigate(propertyHubRecordsPath(propertyId, "expiring"))}
       />
       <ContextSummaryCard
         title="Expired"
@@ -75,14 +68,7 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         description="Past expiry date"
         color="red"
         ctaLabel="View"
-        onClick={() =>
-          navigate(
-            propertyHubPath(propertyId, {
-              [WORKBENCH_PANEL_TAB_QUERY]: "records",
-              [WORKBENCH_RECORDS_VIEW_QUERY]: "overdue",
-            })
-          )
-        }
+        onClick={() => navigate(propertyHubRecordsPath(propertyId, "overdue"))}
       />
       <ContextSummaryCard
         title="Missing"
@@ -90,14 +76,7 @@ export function DocumentsSummaryRow({ propertyId }: DocumentsSummaryRowProps) {
         description="Not yet uploaded"
         color="slate"
         ctaLabel="View"
-        onClick={() =>
-          navigate(
-            propertyHubPath(propertyId, {
-              [WORKBENCH_PANEL_TAB_QUERY]: "records",
-              [WORKBENCH_RECORDS_VIEW_QUERY]: "missing",
-            })
-          )
-        }
+        onClick={() => navigate(propertyHubRecordsPath(propertyId, "missing"))}
       />
     </div>
   );

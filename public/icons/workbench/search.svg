@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+  <rect x="7" y="7" width="22" height="22" rx="5" stroke="#EB6834" stroke-width="3.25" />
+  <path
+    d="M26.5 26.5L33.5 35"
+    stroke="url(#search-handle-gradient)"
+    stroke-width="3.25"
+    stroke-linecap="round"
+  />
+  <defs>
+    <linearGradient id="search-handle-gradient" x1="26.5" y1="26.5" x2="33.5" y2="35" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EB6834" />
+      <stop offset="1" stop-color="#D85A28" />
+    </linearGradient>
+  </defs>
+</svg>

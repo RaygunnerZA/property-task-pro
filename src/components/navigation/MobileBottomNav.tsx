@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Home, CheckSquare, Inbox, Calendar, Plus, FileText } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
+import { MAIN_NAV_ITEMS } from "@/lib/mainNavigation";
+import { isMainNavActive } from "@/lib/mainNavigation";
 import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +24,7 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
 /**
  * Mobile Bottom Navigation
  * 
- * Tabs: Home, Tasks, Inbox, Schedule, Create (Center, highlighted)
+ * Tabs: Home, My Tasks, Calendar, Properties (+ Create)
  * Only visible when the app sidebar is offcanvas (below `lg` / 1024px)
  * Fixed at bottom with high z-index and glassmorphism background
  */
@@ -32,19 +34,13 @@ export function MobileBottomNav() {
   const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
   const [mobileIntakeInitial, setMobileIntakeInitial] = useState<IntakeMode>("report_issue");
 
-  const navItems = [
-    { to: "/", icon: Home, label: "Home" },
-    { to: "/tasks", icon: CheckSquare, label: "Tasks" },
-    { to: "/work/inbox", icon: Inbox, label: "Inbox" },
-    { to: "/schedule", icon: Calendar, label: "Schedule" },
-  ];
-
-  const isActiveRoute = (path: string) => {
-    if (path === "/") {
-      return location.pathname === "/" || location.pathname === "/dashboard";
-    }
-    return location.pathname === path || location.pathname.startsWith(path + "/");
-  };
+  const navItems = MAIN_NAV_ITEMS.filter(
+    (item) => !["Knowledge", "Reports"].includes(item.title)
+  ).map((item) => ({
+    to: item.url,
+    icon: item.icon,
+    label: item.title === "My Tasks" ? "Tasks" : item.title,
+  }));
 
   const handleCreateClick = () => {
     setShowCreateDrawer(true);
@@ -78,7 +74,7 @@ export function MobileBottomNav() {
           <div className="flex items-center justify-around">
             {/* Regular nav items */}
             {navItems.map(({ to, icon: Icon, label }) => {
-              const isActive = isActiveRoute(to);
+              const isActive = isMainNavActive(location.pathname, to);
               
               return (
                 <Link

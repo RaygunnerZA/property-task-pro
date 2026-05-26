@@ -1,18 +1,16 @@
 import { useAssistantContext } from "@/contexts/AssistantContext";
-import { useDataContext } from "@/contexts/DataContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-import { userAvatarUrl, userInitials } from "@/lib/userDisplayHelpers";
+
+const WORKBENCH_HAMBURGER_ICON = "/icons/workbench/hamburger.svg";
 
 /**
- * Hub workbench (mobile): Filla AI opener + user avatar that opens the left navigation sheet.
+ * Hub workbench (mobile): Filla AI opener + hamburger that opens the left navigation sheet.
  */
 export function WorkbenchMobileNavCluster({ className }: { className?: string }) {
   const { openAssistant } = useAssistantContext();
   const { setOpenMobile } = useSidebar();
-  const { user } = useDataContext();
 
   return (
     <div className={cn("flex shrink-0 items-center gap-2", className)}>
@@ -31,21 +29,19 @@ export function WorkbenchMobileNavCluster({ className }: { className?: string })
         type="button"
         onClick={() => setOpenMobile(true)}
         className={cn(
-          "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] outline-none transition-shadow",
-          "bg-card shadow-e1 ring-2 ring-background hover:shadow-e2",
-          "focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] outline-none transition-shadow",
+          "bg-card shadow-e1 hover:shadow-e2",
+          "focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-label="Open navigation menu"
       >
-        <Avatar className="h-8 w-8 rounded-[11px]">
-          <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover rounded-none" />
-          <AvatarFallback
-            className="rounded-[11px] text-xs font-semibold"
-            style={{ backgroundColor: "hsl(var(--primary) / 0.35)", color: "hsl(var(--foreground))" }}
-          >
-            {userInitials(user)}
-          </AvatarFallback>
-        </Avatar>
+        <img
+          src={WORKBENCH_HAMBURGER_ICON}
+          alt=""
+          className="h-5 w-5 object-contain"
+          width={20}
+          height={20}
+        />
       </button>
     </div>
   );

@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
 import { 
-  LayoutDashboard, 
-  CheckSquare, 
   Package,
   FolderOpen,
   Shield,
@@ -12,18 +10,17 @@ import {
   FileCheck,
   Plus,
   Settings,
+  CheckSquare,
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
-  propertyHubTasksPath,
+  propertyHubIssuesPath,
   propertySubPath,
-  WORKBENCH_PANEL_TAB_QUERY,
   WORKBENCH_RECORDS_VIEW_QUERY,
-  WORKBENCH_TAB_ALIAS_QUERY,
   normalizeRecordsView,
-  normalizeWorkbenchPanelTab,
 } from '@/lib/propertyRoutes';
+import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
 import fillaLogo from '@/assets/filla-logo.svg';
 import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
@@ -31,26 +28,12 @@ import { cn } from '@/lib/utils';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { APP_VERSION } from '@/config/version';
 
-// Global navigation items (always visible)
-const globalNavItems = [
-  {
-    title: 'Hub',
-    url: '/',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'My Tasks',
-    url: '/tasks',
-    icon: CheckSquare,
-  },
-];
-
-// Property context — deep links (workbench home is global Hub + scope chips)
+// Property context — deep links (workbench home is global Home + scope chips)
 const propertyContextItems = [
   {
     title: 'Issues',
     icon: CheckSquare,
-    getUrl: (id: string) => propertyHubTasksPath(id),
+    getUrl: (id: string) => propertyHubIssuesPath(id),
   },
   {
     title: 'Assets',
@@ -79,7 +62,7 @@ const assetContextItems = [
   {
     title: 'Overview',
     icon: Package,
-    getUrl: (id: string) => `/assets/${id}`, // Assuming asset detail route exists
+    getUrl: (id: string) => `/assets/${id}`,
   },
   {
     title: 'Tasks',
@@ -121,28 +104,16 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
   const entityContext = useMemo(() => {
-    // Property workbench: /?property=<id> (Today hub scoped to one property)
-    if (currentPath === '/' || currentPath === '') {
-      const pid = searchParams.get('property');
-      if (pid) {
-        return { type: 'property' as const, id: pid };
-      }
+    const pid = searchParams.get('property');
+    if (pid && ['/issues', '/records', '/agenda', '/', ''].includes(currentPath)) {
+      return { type: 'property' as const, id: pid };
     }
-    // Filtered property list: /properties?property=<id>
-    if (currentPath === '/properties') {
-      const pid = searchParams.get('property');
-      if (pid) {
-        return { type: 'property' as const, id: pid };
-      }
+    if (currentPath === '/properties' && pid) {
+      return { type: 'property' as const, id: pid };
     }
-    // Property-scoped assets: /assets?property=<id>
-    if (currentPath === '/assets') {
-      const pid = searchParams.get('property');
-      if (pid) {
-        return { type: 'property' as const, id: pid };
-      }
+    if (currentPath === '/assets' && pid) {
+      return { type: 'property' as const, id: pid };
     }
-    // Check for property context: /properties/:id or /property/:id
     const propertyMatch = currentPath.match(/^\/(?:properties|property)\/([^/]+)/);
     if (propertyMatch) {
       return {
@@ -151,7 +122,6 @@ export function AppSidebar() {
       };
     }
 
-    // Check for asset context: /assets/:id or /asset/:id
     const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
     if (assetMatch) {
       return {
@@ -163,7 +133,6 @@ export function AppSidebar() {
     return null;
   }, [currentPath, searchParams]);
 
-  // Get context items based on entity type
   const contextItems = useMemo(() => {
     if (!entityContext) return [];
     
@@ -176,7 +145,6 @@ export function AppSidebar() {
     return [];
   }, [entityContext]);
 
-  /** Hub home (`/?property=`) already has property scope + card in LeftColumn — hide duplicate sidebar nav. */
   const hidePropertyContextSidebar = useMemo(() => {
     if (!entityContext || entityContext.type !== 'property') return false;
     const path = currentPath === '' ? '/' : currentPath;
@@ -185,8 +153,6 @@ export function AppSidebar() {
   }, [currentPath, searchParams, entityContext]);
 
   const handleCreateNew = () => {
-    // Trigger FAB - this will be handled by FloatingAddButton
-    // For now, navigate to tasks with add param
     navigate('/tasks?add=true');
   };
 
@@ -203,7 +169,7 @@ export function AppSidebar() {
     );
 
   const renderNavItem = (
-    item: { title: string; url?: string; icon: any; getUrl?: (id: string) => string },
+    item: { title: string; url?: string; icon: typeof CheckSquare; getUrl?: (id: string) => string },
     isContextItem = false,
     entityId?: string
   ) => {
@@ -211,43 +177,23 @@ export function AppSidebar() {
     const urlBase = url.split('?')[0];
     const hubQuery = url.includes('?') ? new URLSearchParams(url.split('?')[1]) : null;
     const hubPropertyId = hubQuery?.get('property');
-    const isDashboardPropertyHub =
-      isContextItem && urlBase === '/' && Boolean(hubPropertyId);
-    const isPropertyListHub =
-      isContextItem && urlBase === '/properties' && Boolean(hubPropertyId);
-    const isPropertyAssetsHub =
-      isContextItem && urlBase === '/assets' && Boolean(hubPropertyId);
-    const isHubNav = Boolean(item.url === '/' && !item.getUrl);
-    const livePanelTab = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
-    const liveTabAlias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
-    const liveWorkbenchTab = normalizeWorkbenchPanelTab(livePanelTab, liveTabAlias);
     const liveRecordsView = normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
-    const isActive = isDashboardPropertyHub
+
+    const isActive = isContextItem
       ? item.title === 'Issues'
-        ? currentPath === '/' &&
-          searchParams.get('property') === hubPropertyId &&
-          liveWorkbenchTab === 'issues'
+        ? currentPath === '/issues' && searchParams.get('property') === hubPropertyId
         : item.title === 'Compliance'
-          ? currentPath === '/' &&
+          ? currentPath === '/records' &&
             searchParams.get('property') === hubPropertyId &&
-            liveWorkbenchTab === 'records' &&
             liveRecordsView === 'compliance'
           : item.title === 'Documents'
-            ? currentPath === '/' &&
+            ? currentPath === '/records' &&
               searchParams.get('property') === hubPropertyId &&
-              liveWorkbenchTab === 'records' &&
               liveRecordsView === 'documents'
-            : false
-      : isPropertyListHub
-        ? currentPath === '/properties' &&
-          searchParams.get('property') === hubPropertyId
-        : isPropertyAssetsHub
-          ? currentPath === '/assets' &&
-            searchParams.get('property') === hubPropertyId
-        : isHubNav
-          ? currentPath === '/' && !searchParams.get('property')
-          : currentPath === urlBase ||
-            (isContextItem && currentPath.startsWith(urlBase + '/'));
+            : currentPath === urlBase ||
+              (isContextItem && currentPath.startsWith(urlBase + '/'))
+      : isMainNavActive(currentPath, url);
+
     const IconComponent = item.icon;
     
     return (
@@ -255,7 +201,7 @@ export function AppSidebar() {
         <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
           <Link to={url} className={navLinkClass(isActive)}>
             <IconComponent className="h-4 w-4 flex-shrink-0" />
-            {open && <span className="text-sm tracking-tight">{item.title}</span>}
+            {open && <span className="text-[13px] font-medium tracking-[-0.2px]">{item.title}</span>}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -281,12 +227,11 @@ export function AppSidebar() {
           isMobile && "text-sidebar-foreground"
         )}
       >
-        {/* Logo & Brand */}
         <div className="pl-[11px] pr-0 pt-[9px] pb-0 mb-[15px]">
           <Link
             to="/"
             className="flex w-[121px] items-center gap-3 rounded-md outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/40"
-            aria-label="Go to hub"
+            aria-label="Go to home"
           >
             <img
               src={isMobile ? fillaLogoTeal2 : fillaLogo}
@@ -296,16 +241,14 @@ export function AppSidebar() {
           </Link>
         </div>
 
-        {/* Global Navigation Layer */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {globalNavItems.map(item => renderNavItem(item))}
+              {MAIN_NAV_ITEMS.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Context Layer (Dynamic) — omitted on property hub; shown on Assets / Compliance / Documents / Spaces etc. */}
         {entityContext && contextItems.length > 0 && !hidePropertyContextSidebar && (
           <SidebarGroup className="mt-8">
             <SidebarGroupLabel
@@ -324,14 +267,11 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        {/* Spacer to push action layer to bottom */}
         <div className="flex-1" />
 
-        {/* Action Layer (Bottom) */}
         <SidebarGroup className="mt-auto">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {/* Assistant */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button
@@ -348,7 +288,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Create New Button */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button
@@ -380,7 +319,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Version - only when sidebar expanded */}
               {open && (
                 <SidebarMenuItem>
                   <div

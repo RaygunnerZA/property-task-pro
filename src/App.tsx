@@ -63,6 +63,7 @@ const ComplianceDashboard = lazy(() => import("./pages/ComplianceDashboard"));
 const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompliance"));
 const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
 const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const ComplianceTasks = lazy(() => import("./pages/ComplianceTasks"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
@@ -100,6 +101,11 @@ const Dashboard = lazy(() => import("./app/page"));
 const Properties = lazy(() => import("./pages/Properties"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const Schedule = lazy(() => import("./pages/Schedule"));
+const Knowledge = lazy(() => import("./pages/Knowledge"));
+const Reports = lazy(() => import("./pages/Reports"));
+const IssuesPage = lazy(() => import("./pages/workbench/IssuesPage"));
+const RecordsPage = lazy(() => import("./pages/workbench/RecordsPage"));
+const AgendaPage = lazy(() => import("./pages/workbench/AgendaPage"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"));
 const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
@@ -312,11 +318,19 @@ const App = () => {
                                 {/* Dashboard */}
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
+
+                                {/* Workbench pages (formerly Issues | Records | Schedule tabs) */}
+                                <Route path="/issues" element={<RouteBoundary title="Issues"><IssuesPage /></RouteBoundary>} />
+                                <Route path="/records" element={<RouteBoundary title="Records"><RecordsPage /></RouteBoundary>} />
+                                <Route path="/agenda" element={<RouteBoundary title="Schedule"><AgendaPage /></RouteBoundary>} />
                                 
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
-                                <Route path="/tasks" element={<RouteBoundary title="Tasks"><Tasks /></RouteBoundary>} />
-                                <Route path="/schedule" element={<RouteBoundary title="Schedule"><Schedule /></RouteBoundary>} />
+                                <Route path="/tasks" element={<RouteBoundary title="My Tasks"><Tasks /></RouteBoundary>} />
+                                <Route path="/calendar" element={<RouteBoundary title="Calendar"><CalendarPage /></RouteBoundary>} />
+                                <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
+                                <Route path="/knowledge" element={<RouteBoundary title="Knowledge"><Knowledge /></RouteBoundary>} />
+                                <Route path="/reports" element={<RouteBoundary title="Reports"><Reports /></RouteBoundary>} />
                                 <Route path="/assets" element={<RouteBoundary title="Assets"><Assets /></RouteBoundary>} />
                                 <Route path="/compliance" element={<RouteBoundary title="Compliance"><Compliance /></RouteBoundary>} />
                                 

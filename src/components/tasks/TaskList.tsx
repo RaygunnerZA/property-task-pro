@@ -20,6 +20,7 @@ import {
   useOptionalWorkbenchControls,
   type WorkbenchSortBy,
 } from "@/contexts/WorkbenchControlsContext";
+import { isTaskMissingInfo } from "@/lib/hubSummaryMetrics";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -381,6 +382,10 @@ export function TaskList({
         dueDate.setHours(0, 0, 0, 0);
         return dueDate < today;
       });
+    }
+
+    if (selectedFilters.has("filter-task-missing-info")) {
+      filtered = filtered.filter((task) => isTaskMissingInfo(task));
     }
 
     return filtered;
