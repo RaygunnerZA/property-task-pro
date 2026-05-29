@@ -114,15 +114,15 @@ export function HubSummaryPanel({
 
   if (loading) {
     return (
-      <div className={cn(className)}>
-        <Skeleton className="h-[244px] w-[254px] rounded-[14px]" />
+      <div className={cn("w-full max-w-[252px]", className)}>
+        <Skeleton className="h-[244px] w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className={cn(className)}>
-      <div className="h-[244px] w-[254px] rounded-[14px] border border-border/25 bg-muted/15 shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.03),inset_-1px_-1px_2px_0px_rgba(255,255,255,0.5)]">
+    <div className={cn("w-full max-w-[252px]", className)}>
+      <div className="h-[244px] w-full rounded-xl border border-border/40 bg-card/60 shadow-e1">
         {/* Top stats row */}
         <div className="grid grid-cols-3 pt-0">
           <div
@@ -197,7 +197,7 @@ export function HubSummaryPanel({
             </p>
           </div>
 
-          <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-1 pr-3 pt-[14px]">
+          <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-1 pr-[3px] pt-[14px]">
             <StatusRow label="Due soon" count={metrics.dueSoonCount} onActivate={onDueSoon} />
             <StatusRow
               label="Overdue"

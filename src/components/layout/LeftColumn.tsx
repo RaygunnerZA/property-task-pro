@@ -162,7 +162,7 @@ export function LeftColumn({
         )}
         {!hideProperties && (
         <div
-          className="px-0 w-full max-w-full overflow-x-hidden"
+          className="px-0 w-full max-w-full overflow-x-visible"
           style={{ height: focusedProperty ? 'auto' : '228px' }}
         >
           {propertiesLoading ? (
@@ -204,10 +204,10 @@ export function LeftColumn({
             /* Multiple properties selected: horizontal card scroller */
             <div
               ref={propertiesRef}
-              className="relative w-full max-w-full overflow-x-hidden overflow-y-visible"
+              className="relative w-full max-w-full overflow-x-visible overflow-y-visible"
               style={{ borderRadius: '13px 13px 10px 0px' }}
             >
-              <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-4 scrollbar-hz-teal min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
+              <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-[7px] scrollbar-hz-teal min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
                 <div className="flex gap-4 items-start py-2" style={{ width: 'max-content', height: '228px' }}>
                   {properties.map((property) => (
                     <div key={property.id} className="w-[195px] flex-shrink-0" style={{ maxHeight: '228px' }}>
@@ -240,28 +240,30 @@ export function LeftColumn({
       </div>
 
       {isHubHome && !focusedProperty && !propertiesLoading && properties.length > 0 ? (
-        <HubSummaryPanel
-          tasks={tasks}
-          properties={properties}
-          selectedPropertyIds={selectedPropertyIds}
-          loading={tasksLoading}
-          onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
-          onOpenUrgentTasks={onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined}
-          onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
-          onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
-          onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
-          onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
-          onMissingInfo={onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined}
-        />
+        <div className="w-full min-w-0 max-w-full px-[3px]">
+          <HubSummaryPanel
+            tasks={tasks}
+            properties={properties}
+            selectedPropertyIds={selectedPropertyIds}
+            loading={tasksLoading}
+            onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
+            onOpenUrgentTasks={onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined}
+            onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
+            onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
+            onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
+            onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
+            onMissingInfo={onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined}
+          />
+        </div>
       ) : null}
 
       {/* Calendar Section - Scrollable (no horizontal pan — avoid sideways slide on touch/trackpad) */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
+      <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
         <div
           ref={calendarRef}
-          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-hidden px-[3px]"
+          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
         >
-          <div className="px-0 w-full min-w-0 max-w-[250px] overflow-x-hidden">
+          <div className="px-0 w-full min-w-0 max-w-[250px] overflow-x-visible">
             {tasksLoading ? (
               <div className="w-full max-w-[252px] rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
                 <Skeleton className="h-64 w-full" />
