@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import { cn } from "@/lib/utils";
 
 /** Gradient strip: colour solid until ~28%, then fades to transparent. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
@@ -35,32 +36,50 @@ export function WorkbenchGradientHeader({
   return (
     <PageHeader showAccountMenu={false}>
       <div
-        className="relative flex h-[80px] items-start rounded-bl-[12px] px-[18px] pt-0 pr-28 sm:pr-40"
+        className={cn(
+          "grid h-[80px] w-full min-w-0 items-start rounded-bl-[12px] pr-28 sm:pr-40",
+          /* Match DualPaneLayout: 265px left rail | center column (660px at layout+) */
+          "grid-cols-1",
+          "sm:grid-cols-[265px_minmax(0,1fr)]",
+          "layout:grid-cols-[265px_660px_minmax(0,1fr)]"
+        )}
         style={headerStyle}
       >
-        {showTodayWeather ? (
-          <div className="flex w-[248px] min-w-0 shrink-0 items-start justify-start gap-[7px] pt-[25px]">
-            <h1 className="shrink-0 text-[18px] font-semibold leading-tight text-white">Today</h1>
-            <div className="mx-2 h-6 w-px shrink-0 bg-white/30" />
-            <div className="flex items-center justify-start gap-2 text-left">
-              <WeatherIcon className="h-4 w-4 shrink-0 text-white/90" />
-              <span className="whitespace-nowrap text-sm text-white/90">
-                {weather ? `${weather.temp}°C` : "--°C"}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="w-[248px] shrink-0" aria-hidden />
-        )}
+        <div
+          className={cn(
+            "hidden min-w-0 items-start justify-start gap-[7px] px-[18px] pt-[25px] sm:flex",
+            !showTodayWeather && "sm:invisible"
+          )}
+        >
+          {showTodayWeather ? (
+            <>
+              <h1 className="shrink-0 text-[18px] font-semibold leading-tight text-white">Today</h1>
+              <div className="mx-2 h-6 w-px shrink-0 bg-white/30" />
+              <div className="flex items-center justify-start gap-2 text-left">
+                <WeatherIcon className="h-4 w-4 shrink-0 text-white/90" />
+                <span className="whitespace-nowrap text-sm text-white/90">
+                  {weather ? `${weather.temp}°C` : "--°C"}
+                </span>
+              </div>
+            </>
+          ) : null}
+        </div>
 
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 w-[min(calc(100%-11rem),720px)] -translate-x-1/2 -translate-y-1/2 pt-5 sm:w-[min(calc(100%-14rem),720px)]">
+        <div
+          className={cn(
+            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[652px]",
+            "layout:max-w-[660px]"
+          )}
+        >
           <WorkbenchHeaderToolbar
             variant="gradient"
-            className="pointer-events-auto"
+            className="w-full min-w-0"
             properties={properties}
             onAskFilla={onAskFilla}
           />
         </div>
+
+        <div className="hidden min-w-0 layout:block" aria-hidden />
       </div>
     </PageHeader>
   );

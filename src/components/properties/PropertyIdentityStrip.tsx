@@ -32,9 +32,9 @@ import { usePropertyDetails } from "@/hooks/property/usePropertyDetails";
 import { usePropertyTimeline } from "@/hooks/property/usePropertyTimeline";
 import { usePropertyVendors } from "@/hooks/property/usePropertyVendors";
 import { usePropertyDrift } from "@/hooks/property/usePropertyDrift";
-import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
-import { PropertySummaryDashboardGrid } from "@/components/properties/PropertySummaryDashboardGrid";
+import { DocumentHealthSummary } from "@/components/properties/DocumentHealthSummary";
+import { HubSummaryPanel } from "@/components/dashboard/HubSummaryPanel";
 import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { propertiesService } from "@/services/properties/properties";
 import { toast } from "sonner";
@@ -84,12 +84,6 @@ const TAB_STRIP_RIGHT_FADE_STYLE: CSSProperties = {
     "linear-gradient(270deg, rgba(237, 235, 232, 1) 0%, rgba(237, 235, 232, 1) 32%, rgba(0, 0, 0, 0) 100%)",
 };
 
-type AssetViewRow = {
-  status?: string | null;
-  condition_score?: number | null;
-  open_tasks_count?: number | null;
-};
-
 interface PropertyIdentityStripProps {
   property: PropertyForStrip;
   onAddTaskClick?: () => void;
@@ -103,6 +97,8 @@ interface PropertyIdentityStripProps {
   onFilterClick?: (filterId: string) => void;
   /** When provided (single-property workbench), Today + weather render on the thumbnail; parent hides the gradient header row. */
   propertyCardWeather?: PropertyCardWeather;
+  /** Hub workbench renders HubSummaryPanel below the strip (homepage layout). */
+  externalDashboard?: boolean;
 }
 
 /**
@@ -122,6 +118,7 @@ export function PropertyIdentityStrip({
   onOpenTasksClick,
   onFilterClick,
   propertyCardWeather,
+  externalDashboard = false,
 }: PropertyIdentityStripProps) {
   const { orgId } = useActiveOrg();
   const { details: propertyDetails } = usePropertyDetails(property.id);
@@ -130,7 +127,6 @@ export function PropertyIdentityStrip({
   const { documents: propertyDocuments = [] } = usePropertyDocuments(property.id, undefined, {
     limit: 500,
   });
-  const { data: propertyAssets = [] } = useAssetsQuery(property.id);
   const { data: propertyTasksView = [] } = useTasksQuery(property.id);
 
   const { events: timelineEvents, isLoading: timelineLoading } = usePropertyTimeline(property.id);
@@ -198,92 +194,6 @@ export function PropertyIdentityStrip({
   const iconColor = property.icon_color_hex || "#8EC9CE";
   const IconComponent = getPropertyChipIcon(property.icon_name);
   const WeatherIcon = getWeatherLucideIcon(propertyCardWeather?.conditionCode ?? null);
-
-  const taskCount = property.open_tasks_count ?? 0;
-  const assetsCount = property.assets_count ?? 0;
-  const spacesCount = property.spaces_count ?? 0;
-  const urgentCount = urgentOpenTaskCount;
-
-  const assetsAttentionCount = useMemo(() => {
-    return (propertyAssets as AssetViewRow[]).filter((a) => {
-      const active = (a.status || "active") === "active";
-      if (!active) return false;
-      const score = a.condition_score ?? 100;
-      const openTasks = a.open_tasks_count ?? 0;
-      return score < 60 || openTasks > 0;
-    }).length;
-  }, [propertyAssets]);
-
-  const documentsCount = propertyDocuments.length;
-  const documentsCountLabel = documentsCount >= 500 ? "500+" : String(documentsCount);
-
-  const taskDashboardMetrics = useMemo(() => {
-    const list = propertyTasksView as Record<string, unknown>[];
-    const isCompleted = (t: Record<string, unknown>) =>
-      String(t?.status ?? "").toLowerCase() === "completed";
-    const isArchived = (t: Record<string, unknown>) =>
-      String(t?.status ?? "").toLowerCase() === "archived";
-    const active = list.filter((t) => !isArchived(t));
-    const total = active.length;
-    const done = active.filter(isCompleted).length;
-    const completionPct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-    const parseSpaces = (t: Record<string, unknown>): { id?: string }[] => {
-      try {
-        const raw = t.spaces;
-        const s = typeof raw === "string" ? JSON.parse(raw || "[]") : raw;
-        return Array.isArray(s) ? s : [];
-      } catch {
-        return [];
-      }
-    };
-
-    const spaceIdsWithUrgent = new Set<string>();
-    for (const t of list) {
-      const st = String(t.status ?? "").toLowerCase();
-      if (st === "completed" || st === "archived") continue;
-      const pr = String(t.priority ?? "").toLowerCase();
-      if (pr !== "urgent" && pr !== "high") continue;
-      for (const s of parseSpaces(t)) {
-        if (s?.id) spaceIdsWithUrgent.add(s.id);
-      }
-    }
-
-    return {
-      completionPct,
-      completedLabel: `${done} of ${total} complete`,
-      spacesWithUrgentIssueCount: spaceIdsWithUrgent.size,
-    };
-  }, [propertyTasksView]);
-
-  const documentDashboardBuckets = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split("T")[0];
-    const in7 = new Date(today);
-    in7.setDate(in7.getDate() + 7);
-    const in7Str = in7.toISOString().split("T")[0];
-    const in30 = new Date(today);
-    in30.setDate(in30.getDate() + 30);
-    const in30Str = in30.toISOString().split("T")[0];
-
-    let dueSoon = 0;
-    let expiring = 0;
-    let missing = 0;
-
-    for (const d of propertyDocuments) {
-      if (!d.file_url) {
-        missing++;
-        continue;
-      }
-      const exp = d.expiry_date;
-      if (!exp) continue;
-      if (exp < todayStr || exp <= in7Str) expiring++;
-      else if (exp <= in30Str) dueSoon++;
-    }
-
-    return { dueSoon, expiring, missing };
-  }, [propertyDocuments]);
 
   const { data: bedroomCount = 0 } = useQuery({
     queryKey: ["property-bedroom-spaces-count", orgId, property.id],
@@ -631,58 +541,73 @@ export function PropertyIdentityStrip({
               style={{ transform: `translateX(-${activeTab * 100}%)` }}
             >
 
-          {/* 0 ── PROPERTY dashboard (3×2 grid) ─────────────────────────── */}
+          {/* 0 ── PROPERTY tab ─────────────────────────────────────────── */}
           <div
             className={cn(
               "w-full min-w-0 flex-shrink-0 h-full min-h-0 overflow-hidden",
               activeTab === 0 ? "pointer-events-auto" : "pointer-events-none"
             )}
           >
-            <PropertySummaryDashboardGrid
-              openTasksCount={taskCount}
-              urgentOpenTaskCount={urgentCount}
-              completionPct={taskDashboardMetrics.completionPct}
-              completedLabel={taskDashboardMetrics.completedLabel}
-              onOpenTasks={() =>
-                onOpenTasksClick ? onOpenTasksClick() : navigate(`/properties/${property.id}/tasks`)
-              }
-              onOpenUrgentTasks={() =>
-                onFilterClick
-                  ? onFilterClick("show-tasks-urgent")
-                  : navigate(
-                      propertyHubPath(property.id, {
-                        [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
-                        [WORKBENCH_TASK_PRIORITY_QUERY]: "urgent",
-                      })
-                    )
-              }
-              onAddTask={onAddTaskClick}
-              spacesCount={spacesCount}
-              spaceUrgentIssuesCount={taskDashboardMetrics.spacesWithUrgentIssueCount}
-              onOpenSpaces={() => navigate(propertySubPath(property.id, "spaces-organise"))}
-              onOpenUrgentSpaces={() =>
-                onFilterClick
-                  ? onFilterClick("show-spaces-urgent")
-                  : navigate(
-                      `/properties/${property.id}/spaces/organise?workTab=issues&urgent=1`
-                    )
-              }
-              assetsCount={assetsCount}
-              assetsUrgentIssuesCount={assetsAttentionCount}
-              onOpenAssets={() =>
-                navigate(`/assets?property=${encodeURIComponent(property.id)}`)
-              }
-              onOpenAttentionAssets={() =>
-                onFilterClick
-                  ? onFilterClick("show-assets-attention")
-                  : navigate(`/assets?property=${encodeURIComponent(property.id)}&attention=1`)
-              }
-              documentsCountLabel={documentsCountLabel}
-              docDueSoon={documentDashboardBuckets.dueSoon}
-              docExpiring={documentDashboardBuckets.expiring}
-              docMissing={documentDashboardBuckets.missing}
-              onOpenDocuments={() => navigate(propertySubPath(property.id, "documents"))}
-            />
+            {externalDashboard ? (
+              <DocumentHealthSummary propertyId={property.id} documents={propertyDocuments} />
+            ) : (
+              <HubSummaryPanel
+                tasks={propertyTasksView}
+                properties={[property]}
+                selectedPropertyIds={new Set([property.id])}
+                className="w-full max-w-none"
+                onOpenTasks={() =>
+                  onOpenTasksClick ? onOpenTasksClick() : navigate(`/properties/${property.id}/tasks`)
+                }
+                onOpenUrgentTasks={() =>
+                  onFilterClick
+                    ? onFilterClick("show-tasks-urgent")
+                    : navigate(
+                        propertyHubPath(property.id, {
+                          [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+                          [WORKBENCH_TASK_PRIORITY_QUERY]: "urgent",
+                        })
+                      )
+                }
+                onOpenSpaces={() =>
+                  onFilterClick
+                    ? onFilterClick("show-spaces")
+                    : navigate(propertySubPath(property.id, "spaces-organise"))
+                }
+                onOpenAssets={() =>
+                  onFilterClick
+                    ? onFilterClick("show-assets")
+                    : navigate(`/assets?property=${encodeURIComponent(property.id)}`)
+                }
+                onDueSoon={() =>
+                  onFilterClick
+                    ? onFilterClick("filter-date-this-week")
+                    : navigate(
+                        propertyHubPath(property.id, {
+                          [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+                        })
+                      )
+                }
+                onOverdue={() =>
+                  onFilterClick
+                    ? onFilterClick("filter-date-overdue")
+                    : navigate(
+                        propertyHubPath(property.id, {
+                          [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+                        })
+                      )
+                }
+                onMissingInfo={() =>
+                  onFilterClick
+                    ? onFilterClick("filter-task-missing-info")
+                    : navigate(
+                        propertyHubPath(property.id, {
+                          [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+                        })
+                      )
+                }
+              />
+            )}
           </div>
 
           {/* 1 ── DETAILS ──────────────────────────────────────────────── */}

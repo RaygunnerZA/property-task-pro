@@ -176,29 +176,32 @@ export function LeftColumn({
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
           ) : focusedProperty ? (
-            /* Single property in focus: show identity strip with sliding cards */
-            <div ref={propertiesRef} className="relative w-full max-w-full min-w-0 pt-[2px] pb-[7px] max-sm:px-0 sm:pr-[5px]">
+            /* Single property in focus: identity strip + hub dashboard (same 252px rail as homepage) */
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full px-[3px] pt-[2px] pb-[7px]">
               {showOnboardingDemoBanner && (
                 <OnboardingDemoBanner
                   propertyId={focusedProperty.id}
                   className="mx-0 mb-2 max-sm:px-[12px] sm:mx-0"
                 />
               )}
-              <PropertyIdentityStrip
-                key={focusedProperty.id}
-                property={focusedProperty}
-                onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
-                urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
-                onOpenTasksClick={
-                  onFilterClick ? () => onFilterClick("show-tasks") : undefined
-                }
-                onFilterClick={onFilterClick}
-                onPropertyArchived={() => {
-                  setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
-                  onFilterClick?.("show-tasks");
-                }}
-                propertyCardWeather={propertyCardWeather}
-              />
+              <div className="w-full max-w-[252px]">
+                <PropertyIdentityStrip
+                  key={focusedProperty.id}
+                  property={focusedProperty}
+                  externalDashboard
+                  onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
+                  urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
+                  onOpenTasksClick={
+                    onFilterClick ? () => onFilterClick("show-tasks") : undefined
+                  }
+                  onFilterClick={onFilterClick}
+                  onPropertyArchived={() => {
+                    setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
+                    onFilterClick?.("show-tasks");
+                  }}
+                  propertyCardWeather={propertyCardWeather}
+                />
+              </div>
             </div>
           ) : (
             /* Multiple properties selected: horizontal card scroller */
@@ -239,7 +242,7 @@ export function LeftColumn({
         </div>
       </div>
 
-      {isHubHome && !focusedProperty && !propertiesLoading && properties.length > 0 ? (
+      {isHubHome && !propertiesLoading && properties.length > 0 ? (
         <div className="w-full min-w-0 max-w-full px-[3px]">
           <HubSummaryPanel
             tasks={tasks}

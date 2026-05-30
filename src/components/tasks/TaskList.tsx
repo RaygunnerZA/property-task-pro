@@ -71,6 +71,8 @@ interface TaskListProps {
   /** Parent-controlled search when embedded in Issues (omits inline search in TaskList). */
   externalTaskSearchQuery?: string;
   onExternalTaskSearchQueryChange?: (value: string) => void;
+  /** When true, completed tasks are rendered elsewhere (Issues Done stream). */
+  hideDoneSection?: boolean;
 }
 
 export function TaskList({ 
@@ -87,6 +89,7 @@ export function TaskList({
   compactTaskMeta = false,
   externalTaskSearchQuery,
   onExternalTaskSearchQueryChange,
+  hideDoneSection = false,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -817,7 +820,7 @@ export function TaskList({
           )}
 
           {/* Done: one row per task, max 6 (most recently updated) */}
-          {groupedTasks.done.length > 0 && (
+          {!hideDoneSection && groupedTasks.done.length > 0 && (
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
                 <span>Done ({groupedTasks.done.length})</span>

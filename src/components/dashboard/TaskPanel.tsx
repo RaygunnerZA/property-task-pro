@@ -53,6 +53,8 @@ import {
   signalCategoryForKind,
 } from "@/lib/signalDisplayMeta";
 import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
+import { pickDoneWorkbenchTaskPreviews } from "@/lib/workbenchDoneTasks";
+import { IssuesDoneTasksColumn } from "@/components/dashboard/issues/IssuesDoneTasksColumn";
 import type {
   SignalFeedDetailSnapshot,
   WorkbenchAttentionSelectPayload,
@@ -947,6 +949,16 @@ export function TaskPanel({
     return { urgent, review, recent };
   }, [filteredAttentionItems]);
 
+  const doneWorkbenchTasks = useMemo(
+    () =>
+      pickDoneWorkbenchTaskPreviews(tasks, {
+        properties: properties ?? [],
+        selectedPropertyIds,
+        searchQuery: issuesWorkbenchSearch,
+      }),
+    [tasks, properties, selectedPropertyIds, issuesWorkbenchSearch]
+  );
+
   const resolveAttentionItem = (itemId: string) => {
     setResolvedAttentionIds((prev) => {
       const next = new Set(prev);
@@ -1417,6 +1429,7 @@ export function TaskPanel({
                         externalTaskSearchQuery={issuesWorkbenchSearch}
                         onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
                         compactTaskMeta
+                        hideDoneSection={issuesFilter === "all"}
                       />
                     </div>
                   </div>
@@ -1426,30 +1439,6 @@ export function TaskPanel({
                   <div className="space-y-4">
                     {issuesFilter === "all" ? (
                       <>
-                        {issuesFilter === "all" && groupedAttentionItems.urgent.length > 0 && (
-                          <div className="space-y-2">
-                            <IssuesWorkbenchSectionHeader
-                              title="Urgent"
-                              subtitle="Time-sensitive signals — still not tasks until you act on them below."
-                              illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent}
-                              spacious
-                            />
-                            <div className="space-y-2">
-                              {groupedAttentionItems.urgent.map((item) => (
-                                <IssuesSignalCard
-                                  key={item.id}
-                                  item={item}
-                                  attentionCardRefs={attentionCardRefs}
-                                  resolveAttentionItem={resolveAttentionItem}
-                                  addAttentionItemToCompliance={addAttentionItemToCompliance}
-                                  onOpenIntake={onOpenIntake}
-                                  onMessageClick={onMessageClick}
-                                  onAttentionItemSelect={onAttentionItemSelect}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
                         <RecentNeedsReviewStack
                           recentItems={groupedAttentionItems.recent}
                           reviewItems={groupedAttentionItems.review}
@@ -1459,6 +1448,11 @@ export function TaskPanel({
                           onOpenIntake={onOpenIntake}
                           onMessageClick={onMessageClick}
                           onAttentionItemSelect={onAttentionItemSelect}
+                        />
+                        <IssuesDoneTasksColumn
+                          previews={doneWorkbenchTasks.previews}
+                          totalCount={doneWorkbenchTasks.totalCount}
+                          onTaskClick={onTaskClick}
                         />
                       </>
                     ) : (
