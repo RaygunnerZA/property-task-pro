@@ -1,6 +1,7 @@
 import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IssuesStreamThumbnail } from "@/components/dashboard/issues/IssuesStreamThumbnail";
 import {
   issuesSignalOverflowButtonClassName,
   issuesSignalReviewButtonClassName,
@@ -19,7 +20,7 @@ interface CardAction {
 
 type RowBaseProps = {
   id: string;
-  icon: ReactNode;
+  thumbnailUrl: string;
   title: string;
   subtitle?: string;
   cardRef?: (node: HTMLDivElement | null) => void;
@@ -29,7 +30,7 @@ type RowBaseProps = {
 
 export function IssuesRecentSignalRow({
   id,
-  icon,
+  thumbnailUrl,
   title,
   subtitle,
   categoryTag,
@@ -52,7 +53,7 @@ export function IssuesRecentSignalRow({
       className={className}
       onCardActivate={onCardActivate}
       metaFirst
-      icon={icon}
+      thumbnailUrl={thumbnailUrl}
       title={title}
       subtitle={subtitle}
       trailing={
@@ -92,7 +93,7 @@ export function IssuesRecentSignalRow({
 
 export function IssuesReviewSignalRow({
   id,
-  icon,
+  thumbnailUrl,
   title,
   subtitle,
   confidenceLevel = "medium",
@@ -122,7 +123,7 @@ export function IssuesReviewSignalRow({
       cardRef={cardRef}
       className={className}
       onCardActivate={onCardActivate}
-      icon={icon}
+      thumbnailUrl={thumbnailUrl}
       title={title}
       subtitle={subtitle}
       trailing={
@@ -204,7 +205,7 @@ function SignalRowTrailingRail({ children }: { children: ReactNode }) {
 
 function RowShell({
   id,
-  icon,
+  thumbnailUrl,
   title,
   subtitle,
   trailing,
@@ -233,12 +234,12 @@ function RowShell({
       className={cn("min-w-0", className, onCardActivate && "cursor-pointer")}
     >
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white">{icon}</div>
+        <IssuesStreamThumbnail url={thumbnailUrl} alt={title} />
         <div className="min-w-0 flex-1">
           {metaFirst && subtitle?.trim() ? (
             <p className="text-[11px] text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
           ) : null}
-          <p className={cn("text-xs font-medium tracking-[-0.1px] text-foreground leading-snug", metaFirst && subtitle?.trim() && "mt-0.5")}>
+          <p className={cn("text-sm font-medium tracking-[-0.1px] text-foreground leading-snug", metaFirst && subtitle?.trim() && "mt-0.5")}>
             {title}
           </p>
           {!metaFirst && subtitle?.trim() ? (

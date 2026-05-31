@@ -13,8 +13,8 @@ interface DualPaneLayoutProps {
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
  * Narrow (< sm): stacked calendar + tasks
- * sm–layout: 265px | tasks (max 652px)
- * layout+: 265px | tasks (660px) [| optional third column]
+ * sm–layout: 265px | tasks (max 692px)
+ * layout+: 265px | tasks (700px) [| optional third column]
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
@@ -34,7 +34,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
           "sm:grid sm:min-h-0 sm:grid-cols-[265px_1fr]",
           hasThirdColumn
             ? "layout:flex layout:flex-row layout:items-stretch"
-            : "layout:grid layout:grid-cols-[265px_minmax(450px,_660px)]"
+            : "layout:grid layout:grid-cols-[265px_minmax(450px,_700px)]"
         )}
       >
         <div
@@ -50,9 +50,9 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         <div
           className={cn(
             "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
-            "sm:flex sm:h-full sm:max-w-[652px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-0 sm:pb-4",
+            "sm:flex sm:h-full sm:max-w-[692px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-0 sm:pb-4",
             hasThirdColumn
-              ? "layout:w-[660px] layout:max-w-[660px] layout:shrink-0 layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
+              ? "layout:w-[700px] layout:max-w-[700px] layout:shrink-0 layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
               : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
           )}
         >

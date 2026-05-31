@@ -53,7 +53,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
       ) : (
         <div className="mt-3 divide-y divide-input-bg">
           {items.map((item) => (
-            <div key={item.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
+            <div key={item.id} className="min-w-0">
               {renderCard(item)}
             </div>
           ))}

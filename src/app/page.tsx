@@ -50,6 +50,7 @@ import {
   createGradientHeaderStyle,
 } from "@/components/layout/WorkbenchGradientHeader";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 export type { DashboardWorkbenchPanel };
 
@@ -62,8 +63,7 @@ function workbenchRouteForTab(tab: WorkbenchPanelTab): string {
   return WORKBENCH_SECTION_ROUTES[tab];
 }
 
-// Match DualPaneLayout third-column breakpoint (min-1380px)
-const LG_BREAKPOINT = 1380;
+const LG_BREAKPOINT = LAYOUT_BREAKPOINTS.layout;
 
 /** Use the live address bar when mutating query params so we never drop `property` or revert scope if React's `searchParams` is one frame behind (e.g. Hall selected then Compliance tab immediately). */
 function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchParams {

@@ -504,7 +504,7 @@ const Assets = () => {
           className={propertyScopedShellClass}
           belowGradientRow={scopeBarBelowHeader}
         >
-          <div className="max-w-[660px] w-full min-w-0">
+          <div className="max-w-[700px] w-full min-w-0">
             <PropertyAssetsWorkColumnHeading subtitle={wideScopedLoadingSubtitle} />
             <LoadingState message="Loading assets..." />
           </div>
@@ -534,7 +534,7 @@ const Assets = () => {
           className={propertyScopedShellClass}
           belowGradientRow={scopeBarBelowHeader}
         >
-          <div className="max-w-[660px] w-full min-w-0">
+          <div className="max-w-[700px] w-full min-w-0">
             <PropertyAssetsWorkColumnHeading
               subtitle={scopedSubtitleLine ?? "Something went wrong while loading assets"}
             />
@@ -734,7 +734,7 @@ const Assets = () => {
       <div
         className={cn(
           "flex flex-col gap-6",
-          isPropertyScoped && "max-w-[660px] w-full min-w-0"
+          isPropertyScoped && "max-w-[700px] w-full min-w-0"
         )}
       >
       {/* Health Snapshot Row - Framework V2 */}

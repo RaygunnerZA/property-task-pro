@@ -1,4 +1,3 @@
-import { CheckCircle2 } from "lucide-react";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
 import { IssuesRecentSignalRow } from "@/components/dashboard/issues/IssuesSignalRowCards";
 import type { WorkbenchDoneTaskPreview } from "@/lib/workbenchDoneTasks";
@@ -35,7 +34,7 @@ export function IssuesDoneTasksColumn({
       renderCard={(item) => (
         <IssuesRecentSignalRow
           id={`done-task-${item.id}`}
-          icon={<CheckCircle2 className="h-4 w-4 text-primary" aria-hidden />}
+          thumbnailUrl={item.thumbnailUrl}
           title={item.title}
           subtitle={item.metaLine}
           viewAction={

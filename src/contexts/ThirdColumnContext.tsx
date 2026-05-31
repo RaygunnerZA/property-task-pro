@@ -5,11 +5,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 
-const LG_BREAKPOINT = 1380;
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
+
+const LG_BREAKPOINT = LAYOUT_BREAKPOINTS.layout;
 
 const ThirdColumnContext = createContext<boolean>(false);
 
-/** Pages that show the third column concertina at min-1380px */
+/** Pages that show the third column concertina at `layout` breakpoint */
 function isThirdColumnPage(pathname: string): boolean {
   if (pathname === "/") return true;
   if (pathname === "/calendar") return true;

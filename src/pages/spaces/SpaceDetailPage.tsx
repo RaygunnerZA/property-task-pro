@@ -23,6 +23,7 @@ import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 export default function SpaceDetailPage() {
   const { propertyId, spaceId } = useParams<{ propertyId: string; spaceId: string }>();
@@ -81,7 +82,7 @@ export default function SpaceDetailPage() {
   );
 
   useEffect(() => {
-    const checkScreenSize = () => setIsLargeScreen(window.innerWidth >= 1380);
+    const checkScreenSize = () => setIsLargeScreen(window.innerWidth >= LAYOUT_BREAKPOINTS.layout);
     checkScreenSize();
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);

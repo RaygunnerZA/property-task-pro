@@ -148,7 +148,7 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto sm:h-screen flex flex-col overflow-y-auto sm:overflow-hidden w-full max-w-full px-0"
+      className="h-auto sm:h-[calc(100vh-var(--header-height))] flex flex-col overflow-y-auto w-full max-w-full px-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties: scope chips + cards / identity strip */}
@@ -242,26 +242,29 @@ export function LeftColumn({
         </div>
       </div>
 
-      {isHubHome && !propertiesLoading && properties.length > 0 ? (
-        <div className="w-full min-w-0 max-w-full px-[3px]">
-          <HubSummaryPanel
-            tasks={tasks}
-            properties={properties}
-            selectedPropertyIds={selectedPropertyIds}
-            loading={tasksLoading}
-            onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
-            onOpenUrgentTasks={onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined}
-            onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
-            onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
-            onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
-            onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
-            onMissingInfo={onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined}
-          />
-        </div>
-      ) : null}
-
-      {/* Calendar Section - Scrollable (no horizontal pan — avoid sideways slide on touch/trackpad) */}
+      {/* Calendar + hub summary — dashboard sits directly above the calendar */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
+        {isHubHome && !propertiesLoading && properties.length > 0 ? (
+          <div className="w-full min-w-0 max-w-full shrink-0 px-[3px] pb-2 pt-1">
+            <HubSummaryPanel
+              tasks={tasks}
+              properties={properties}
+              selectedPropertyIds={selectedPropertyIds}
+              loading={tasksLoading}
+              onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
+              onOpenUrgentTasks={
+                onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined
+              }
+              onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
+              onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
+              onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
+              onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
+              onMissingInfo={
+                onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined
+              }
+            />
+          </div>
+        ) : null}
         <div
           ref={calendarRef}
           className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"

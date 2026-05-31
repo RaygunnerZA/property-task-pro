@@ -38,10 +38,10 @@ export function WorkbenchGradientHeader({
       <div
         className={cn(
           "grid h-[80px] w-full min-w-0 items-start rounded-bl-[12px] pr-28 sm:pr-40",
-          /* Match DualPaneLayout: 265px left rail | center column (660px at layout+) */
+          /* Match DualPaneLayout: 265px left rail | center column (700px at layout+) */
           "grid-cols-1",
           "sm:grid-cols-[265px_minmax(0,1fr)]",
-          "layout:grid-cols-[265px_660px_minmax(0,1fr)]"
+          "layout:grid-cols-[265px_700px_minmax(0,1fr)]"
         )}
         style={headerStyle}
       >
@@ -67,8 +67,8 @@ export function WorkbenchGradientHeader({
 
         <div
           className={cn(
-            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[652px]",
-            "layout:max-w-[660px]"
+            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[692px]",
+            "layout:max-w-[700px]"
           )}
         >
           <WorkbenchHeaderToolbar

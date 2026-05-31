@@ -1,6 +1,6 @@
 /**
  * PropertyScreenLayout - Framework V2 layout wrapper
- * Left: 265px | Middle: max 660px | Right: 1fr (≥1380px only)
+ * Left: 265px | Middle: max 700px | Right: 1fr (≥1420px only)
  * Uses DualPaneLayout for consistent breakpoints.
  */
 import { ReactNode } from "react";
@@ -10,9 +10,9 @@ import { PageHeader } from "@/components/design-system/PageHeader";
 interface PropertyScreenLayoutProps {
   /** Left column content (265px) - e.g. property identity, nav */
   leftColumn: ReactNode;
-  /** Middle column content (max 660px) - main content */
+  /** Middle column content (max 700px) - main content */
   middleColumn: ReactNode;
-  /** Right column content (1fr, only ≥1380px) - quick actions */
+  /** Right column content (1fr, only ≥1420px) - quick actions */
   rightColumn?: ReactNode;
   /** Optional header spanning the full workbench width (above left, middle, and right columns). */
   header?: ReactNode;
@@ -30,7 +30,7 @@ export function PropertyScreenLayout({
         header={header}
         leftColumn={leftColumn}
         rightColumn={
-          <div className="w-full max-w-[660px] min-w-0">
+          <div className="w-full max-w-[700px] min-w-0">
             {middleColumn}
           </div>
         }

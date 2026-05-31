@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { mapTask } from "@/utils/mapTask";
+import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
 
 const DONE_PREVIEW_LIMIT = 6;
 
@@ -7,6 +8,7 @@ export type WorkbenchDoneTaskPreview = {
   id: string;
   title: string;
   metaLine: string;
+  thumbnailUrl: string;
 };
 
 /**
@@ -83,6 +85,7 @@ export function pickDoneWorkbenchTaskPreviews(
       id: mapped.id,
       title: mapped.title,
       metaLine: `${propertyLabel} • Completed ${when}`,
+      thumbnailUrl: resolveTaskDisplayImageUrl(task as Record<string, unknown>, mapped.title),
     };
   });
 

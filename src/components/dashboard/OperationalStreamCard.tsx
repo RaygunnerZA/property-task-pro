@@ -8,6 +8,7 @@ import {
   IssuesRecentSignalRow,
   IssuesReviewSignalRow,
 } from "@/components/dashboard/issues/IssuesSignalRowCards";
+import { IssuesStreamThumbnail } from "@/components/dashboard/issues/IssuesStreamThumbnail";
 import type {
   SignalCategoryVariant,
   SignalConfidenceLevel,
@@ -29,6 +30,8 @@ interface CardAction {
 interface OperationalStreamCardProps {
   id: string;
   icon: ReactNode;
+  /** Photo or mini-card thumbnail for Issues stream rows (replaces icon chip when set). */
+  thumbnailUrl?: string | null;
   /** Legacy top chip (non-feed layout only). Prefer `footChip` for Recent / urgent feed cards. */
   typeChip?: string;
   /** Second line for review queue, e.g. “AI SUGGESTION • NEEDS CLASSIFICATION” */
@@ -170,6 +173,7 @@ function IssuesUrgentCard({
   actions,
   minorLinkAction,
   onCardActivate,
+  thumbnailUrl,
 }: Pick<
   OperationalStreamCardProps,
   | "id"
@@ -185,6 +189,7 @@ function IssuesUrgentCard({
   | "actions"
   | "minorLinkAction"
   | "onCardActivate"
+  | "thumbnailUrl"
 >) {
   const primary = actions[0];
   const minor =
@@ -210,9 +215,13 @@ function IssuesUrgentCard({
     >
       <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "red"])} />
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
-          {icon}
-        </div>
+        {thumbnailUrl ? (
+          <IssuesStreamThumbnail url={thumbnailUrl} alt={title} className="mt-0.5" />
+        ) : (
+          <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+            {icon}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           {context?.trim() ? <p className={ISSUES_STREAM_META_CLASSNAME}>{context.trim()}</p> : null}
           <p className={cn("text-sm font-semibold text-foreground leading-snug", context?.trim() ? "mt-1.5" : "")}>
@@ -295,6 +304,7 @@ export function OperationalStreamCard({
   categoryTag,
   categoryTagVariant,
   overflowActions = [],
+  thumbnailUrl,
 }: OperationalStreamCardProps) {
   if (issuesStreamKind === "recent") {
     const subtitle =
@@ -311,7 +321,7 @@ export function OperationalStreamCard({
         id={id}
         cardRef={cardRef}
         className={className}
-        icon={icon}
+        thumbnailUrl={thumbnailUrl ?? ""}
         title={title}
         subtitle={subtitle}
         categoryTag={categoryTag}
@@ -334,7 +344,7 @@ export function OperationalStreamCard({
         id={id}
         cardRef={cardRef}
         className={className}
-        icon={icon}
+        thumbnailUrl={thumbnailUrl ?? ""}
         title={title}
         subtitle={subtitle}
         confidenceLevel={confidenceLevel ?? "medium"}
@@ -360,6 +370,7 @@ export function OperationalStreamCard({
         context={context}
         description={description}
         imageUrl={imageUrl}
+        thumbnailUrl={thumbnailUrl}
         actions={primaryActions.length > 0 ? primaryActions : actions}
         minorLinkAction={minorLinkAction}
         onCardActivate={onCardActivate}

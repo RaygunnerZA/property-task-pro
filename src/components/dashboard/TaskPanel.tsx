@@ -54,6 +54,7 @@ import {
 } from "@/lib/signalDisplayMeta";
 import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
 import { pickDoneWorkbenchTaskPreviews } from "@/lib/workbenchDoneTasks";
+import { resolveAttentionStreamThumbnail } from "@/lib/taskIllustration";
 import { IssuesDoneTasksColumn } from "@/components/dashboard/issues/IssuesDoneTasksColumn";
 import type {
   SignalFeedDetailSnapshot,
@@ -299,6 +300,13 @@ function IssuesSignalCard({
           }
         };
 
+  const thumbnailUrl = resolveAttentionStreamThumbnail({
+    imageUrl: item.imageUrl,
+    title: item.title,
+    context: item.context,
+    signalKind: item.signalKind,
+  });
+
   if (item.group === "urgent") {
     const icon = item.signalKind
       ? signalKindIcon(item.signalKind, "text-amber-700")
@@ -342,6 +350,7 @@ function IssuesSignalCard({
           attentionCardRefs.current[item.id] = node;
         }}
         icon={icon}
+        thumbnailUrl={thumbnailUrl}
         title={item.title}
         context={item.context}
         description={item.description}
@@ -394,6 +403,7 @@ function IssuesSignalCard({
         }}
         issuesMetaLine={item.context?.trim() || undefined}
         icon={icon}
+        thumbnailUrl={thumbnailUrl}
         title={item.title}
         context={item.context}
         confidenceLevel={item.confidenceLevel ?? "medium"}
@@ -460,6 +470,7 @@ function IssuesSignalCard({
       categoryTag={category?.label}
       categoryTagVariant={category?.variant}
       icon={icon}
+      thumbnailUrl={thumbnailUrl}
       title={item.title}
       context={item.context}
       actions={actionsList}
@@ -1170,7 +1181,7 @@ export function TaskPanel({
         <div
           className={cn(
             "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-full overflow-x-hidden",
-            /* Below lg the centre column is narrow (sidebar + ~652px cap): stack so intake actions stay in-flow */
+            /* Below lg the centre column is narrow (sidebar + ~692px cap): stack so intake actions stay in-flow */
             "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
             "px-[10px] max-sm:px-0",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
@@ -1375,7 +1386,7 @@ export function TaskPanel({
         >
           {activeTab === "issues" && (
             <div
-              className="box-border max-h-full min-h-0 w-full max-w-[660px] overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
+              className="box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
               style={{
                 borderWidth: "0 0 10px",
                 borderStyle: "none none solid",

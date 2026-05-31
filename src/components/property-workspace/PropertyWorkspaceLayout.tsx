@@ -13,7 +13,7 @@ export interface PropertyWorkspaceLayoutProps {
 
 /**
  * Shared 3-column shell for property-scoped modules (Documents, Assets, Compliance, Spaces).
- * Aligns with Hub spatial grammar: ~265px context, capped work surface (660px), fixed action rail.
+ * Aligns with Hub spatial grammar: ~265px context, capped work surface (700px), fixed action rail.
  * Below `workspace` (1100px) columns stack: context → work → action.
  */
 export function PropertyWorkspaceLayout({
@@ -41,7 +41,7 @@ export function PropertyWorkspaceLayout({
         {contextColumn}
       </aside>
 
-      <section className="min-w-0 max-w-[660px] w-full space-y-5">{workColumn}</section>
+      <section className="min-w-0 max-w-[700px] w-full space-y-5">{workColumn}</section>
 
       <aside
         className={cn(

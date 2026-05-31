@@ -23,10 +23,11 @@ import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { toast } from "sonner";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 /**
  * Space Group Screen - Template for all space groups (Circulation, Service Areas, etc.)
- * Same layout as Property Detail: 265px left, 660px middle, third column concertina on wide screens.
+ * Same layout as Property Detail: 265px left, 700px middle, third column concertina on wide screens.
  */
 export default function SpaceGroupScreen() {
   const { id: propertyId, groupSlug } = useParams<{
@@ -49,7 +50,7 @@ export default function SpaceGroupScreen() {
   const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading: assistantLoading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
   useEffect(() => {
-    const check = () => setIsLargeScreen(window.innerWidth >= 1380);
+    const check = () => setIsLargeScreen(window.innerWidth >= LAYOUT_BREAKPOINTS.layout);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
