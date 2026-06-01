@@ -13,7 +13,7 @@ export interface PropertyWorkspaceLayoutProps {
 
 /**
  * Shared 3-column shell for property-scoped modules (Documents, Assets, Compliance, Spaces).
- * Aligns with Hub spatial grammar: ~265px context, capped work surface (700px), fixed action rail.
+ * Aligns with Hub spatial grammar: ~265px context, capped work surface (700px), flexible action rail (≤280px).
  * Below `workspace` (1100px) columns stack: context → work → action.
  */
 export function PropertyWorkspaceLayout({
@@ -26,7 +26,7 @@ export function PropertyWorkspaceLayout({
     <div
       className={cn(
         "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-start",
-        "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(260px,300px)]",
+        "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(0,280px)]",
         "workspace:gap-[24px]",
         className
       )}

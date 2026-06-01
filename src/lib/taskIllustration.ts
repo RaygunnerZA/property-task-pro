@@ -6,7 +6,7 @@ import type { SignalKind } from "@/types/workbenchSignals";
 export const TASK_SPACE_ILLUSTRATION_PATH_PREFIX = "/spaces/mini-cards/";
 
 export function isTaskSpaceIllustrationUrl(url: string | null | undefined): boolean {
-  return typeof url === "string" && url.startsWith(TASK_SPACE_ILLUSTRATION_PATH_PREFIX);
+  return typeof url === "string" && url.includes(TASK_SPACE_ILLUSTRATION_PATH_PREFIX);
 }
 
 export type TaskSpaceRef = {

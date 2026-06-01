@@ -228,7 +228,7 @@ export function LeftColumn({
               </div>
               {/* Right-side fade scroll affordance */}
               <div
-                className="absolute top-0 right-0 bottom-0 pointer-events-none"
+                className="absolute top-0 right-0 bottom-0 pointer-events-none rounded-tr-lg rounded-br-lg"
                 style={{
                   width: '48px',
                   background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.12))',

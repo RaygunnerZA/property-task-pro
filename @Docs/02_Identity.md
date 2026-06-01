@@ -1,58 +1,236 @@
 # CHAPTER 2 — Identity & Organisation System
 
-**1. PURPOSE**
-The Identity & Organisation backbone determines what mode a user sees, what properties they access, and how RLS is enforced.
 
-**2. THE TWO AXES: Identity vs Role**
-*   **Identity (UX Mode):** Personal, Manager, Staff, Contractor, Contractor Pro.
-*   **Role (Permissions):** Owner, Manager, Member, Staff.
+STATUS: CANONICAL
 
-**3. ORGANISATION MODEL**
-*   `organisations`: id, name, org_type (personal|business|contractor).
-*   `organisation_members`: user_id, org_id, role, assigned_properties.
+This chapter is a source of truth.
 
-**4. ACTIVE ORGAN (CANONICAL FOR DATA)**
+Implementation documents must defer to this chapter.
 
-The org that gates all org-scoped queries and RLS-backed reads is **not** inferred from JWT `app_metadata.org_id` alone. The app resolves it from **`organisation_members`** (see `useActiveOrg` / `ActiveOrgProvider`): first membership in `created_at` order, preferring a non-`personal` org when one exists.
+1. PURPOSE
+The Identity & Organisation backbone determines what data a user can access, what capabilities they can perform, and how organisation-scoped security is enforced.
 
-*   **`DataContext.orgId`** matches that same membership resolution (provider order: `ActiveOrgProvider` wraps `DataProvider`).
-*   **JWT** may still carry `org_id` for Supabase triggers and legacy paths; it must not be the only source for UI data loading. In development, if JWT `org_id` and membership `orgId` both exist and differ, the app logs a console warning.
+Identity provides context.
 
-**5. MULTI-ORG SUPPORT**
+Roles provide permissions.
 
-Users may belong to multiple orgs; the active org above determines which org’s rows are visible. Switching org (when the product adds a selector) must invalidate `["activeOrg", userId]` and dependent queries.
+Capabilities determine visible functionality.
 
-**6. INVISIBLE ORG (PERSONAL MODE)**
+⸻
 
-"I manage my own home" creates a `personal` org where the user is Owner.
+2. THE THREE AXES: Identity, Role and Experience
 
-**7. JWT CLAIMS**
+Identity
 
-Tokens may contain: `identity_type`, `org_id` / `active_org_id`, `org_roles`, `assigned_properties`, `contractor_token`, etc. **Use claims for contractor token and auth**, but treat **`useActiveOrg` / `DataContext.orgId`** as the source of truth for which organisation’s data to load.
-
-**8. SESSION HYDRATION**
-
-1. Read session (JWT) → 2. Resolve user id → 3. Load active org from `organisation_members` → 4. Fetch `organisations` row for display (name, etc.) → 5. Derive permissions from membership role.
-
-**8a. PREFERRED HOOKS (APPLICATION CODE)**
-
-*   **Org-scoped data, query keys, guards:** use **`useActiveOrg()`** or **`useOrgScope()`** (same membership-backed `org_id`). Do not derive the active org solely from JWT `app_metadata.org_id` for Supabase filters.
-*   **Active org id + organisation display row:** **`useOrg()`** from `@/contexts/DataContext` — exposes membership-aligned `orgId` and loaded `organisation` (name, etc.).
-*   **Legacy aliases (deprecated):** **`useCurrentOrg()`** — use **`useOrg`** instead. **`useFillaIdentity()`** — prefer **`useActiveOrg` / `useOrgScope`** plus **`useOrg`** / **`useDataContext`** as needed; do not add new imports of these aliases.
-
-**9. GATES & FLOWS**
-*   **Identity Gate:** Blocks access until mode is known.
-*   **Org Gate:** Ensures user belongs to active org.
-*   **Staff:** Restricted to `assigned_properties`.
-*   **Contractor Free:** Token-based access to single task.
-*   **Contractor Pro:** Full access to own org; upload-only to client org.
-
-**19. IDENTITY SHAPES NAVIGATION (NOT MENU STRUCTURE)**
-Filla does not expose navigation based on abstract modes such as “Work” or “Manage”.
 Identity determines:
-• which entities are accessible
-• which actions are permitted
-• which context layers are visible
 
-Navigation is entity- and context-driven, not role-driven.
-Example: A staff user and a manager viewing the same Asset see the same context structure, but actions differ based on permissions.
+* Which organisations a user belongs to
+* Which properties they can access
+* Which organisation is active
+* Which data is visible through RLS
+
+Identity does not determine navigation structure.
+
+⸻
+
+Role
+
+Roles determine:
+
+* Permissions
+* Access rights
+* Available actions
+
+Examples:
+
+* Owner
+* Manager
+* Member
+* Staff
+
+⸻
+
+Experience
+
+Filla uses progressive complexity.
+
+All users operate within the same platform.
+
+The platform reveals capabilities according to responsibility.
+
+Examples:
+
+* Cleaners primarily see work, checklists and evidence capture.
+* Technicians additionally see assets and maintenance context.
+* Property managers see coordination, compliance and operational oversight.
+* Portfolio managers see reporting, trends and intelligence.
+
+The underlying platform remains the same.
+
+⸻
+
+3. ORGANISATION MODEL
+
+* organisations: id, name, org_type (personal|business|contractor).
+* organisation_members: user_id, org_id, role, assigned_properties.
+
+⸻
+
+4. ACTIVE ORGAN (CANONICAL FOR DATA)
+
+The org that gates all org-scoped queries and RLS-backed reads is not inferred from JWT app_metadata.org_id alone. The app resolves it from organisation_members (see useActiveOrg / ActiveOrgProvider): first membership in created_at order, preferring a non-personal org when one exists.
+
+* DataContext.orgId matches that same membership resolution (provider order: ActiveOrgProvider wraps DataProvider).
+* JWT may still carry org_id for Supabase triggers and legacy paths; it must not be the only source for UI data loading. In development, if JWT org_id and membership orgId both exist and differ, the app logs a console warning.
+
+⸻
+
+5. MULTI-ORG SUPPORT
+
+Users may belong to multiple organisations.
+
+The active organisation determines which organisation’s rows are visible.
+
+Switching organisation must invalidate dependent queries and reload organisation-scoped data.
+
+⸻
+
+6. INVISIBLE ORG (PERSONAL MODE)
+
+“I manage my own home” creates a personal organisation where the user is Owner.
+
+Personal organisations follow the same rules as all other organisations.
+
+⸻
+
+7. JWT CLAIMS
+
+Tokens may contain:
+
+* identity_type
+* org_id
+* active_org_id
+* org_roles
+* assigned_properties
+* contractor_token
+
+Use claims for authentication and contractor access.
+
+Use useActiveOrg and DataContext.orgId as the source of truth for data loading.
+
+⸻
+
+8. SESSION HYDRATION
+
+1. Read session (JWT)
+2. Resolve user id
+3. Load active organisation from organisation_members
+4. Fetch organisation row
+5. Derive permissions from membership role
+6. Resolve visible capabilities
+
+⸻
+
+8a. PREFERRED HOOKS (APPLICATION CODE)
+
+* Org-scoped data, query keys, guards: use useActiveOrg() or useOrgScope().
+* Active org id + organisation display row: useOrg() from @/contexts/DataContext.
+* Legacy aliases (deprecated):
+    * useCurrentOrg()
+    * useFillaIdentity()
+
+New code should use:
+
+* useActiveOrg
+* useOrgScope
+* useOrg
+* useDataContext
+
+⸻
+
+9. GATES & FLOWS
+
+* Identity Gate: Blocks access until identity is known.
+* Organisation Gate: Ensures membership exists.
+* Staff: Restricted to assigned properties.
+* Contractor Free: Token-based access to a single task.
+* Contractor Pro: Full access to contractor organisation; upload-only access to client organisations.
+
+⸻
+
+19. IDENTITY SHAPES CONTEXT, NOT NAVIGATION
+
+Identity determines:
+
+* Which organisations are visible
+* Which properties are accessible
+* Which actions are permitted
+* Which capabilities are available
+* Which context layers are visible
+
+Identity does not directly determine navigation.
+
+⸻
+
+Navigation
+
+Navigation describes activity.
+
+Examples:
+
+* Home
+* My Work
+* Calendar
+* Properties
+* Knowledge
+* Reports
+
+Not every role sees every activity area.
+
+Navigation should remain as consistent as possible across users.
+
+⸻
+
+Scope
+
+Property selection determines scope.
+
+Examples:
+
+* All Properties
+* The Bird
+* Pelican House
+
+Changing scope filters activity areas.
+
+Scope should never create duplicate navigation structures.
+
+Bad:
+
+Properties
+→ The Bird
+→ Tasks
+
+while also having:
+
+My Work
+
+Good:
+
+My Work
+
+filtered by:
+
+The Bird
+
+⸻
+
+Core Principle
+
+A cleaner and a property manager may access the same Asset.
+
+The structure of the Asset remains consistent.
+
+Permissions, capabilities and available actions change according to role.
+
+The platform remains the same.

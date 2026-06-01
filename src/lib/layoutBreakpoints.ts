@@ -28,5 +28,8 @@ export const LAYOUT_BREAKPOINTS = {
 /** Hub / workbench middle column max width (DualPaneLayout, PropertyScreenLayout, etc.) */
 export const WORK_SURFACE_MAX_PX = 700;
 
+/** Property workspace action / AI rail max width beside the work surface */
+export const WORKSPACE_ACTION_RAIL_MAX_PX = 280;
+
 /** Content width inside work surface after `px-1` (4px × 2) gutters */
 export const WORK_SURFACE_CONTENT_MAX_PX = WORK_SURFACE_MAX_PX - 8;

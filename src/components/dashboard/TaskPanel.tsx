@@ -1181,7 +1181,7 @@ export function TaskPanel({
         <div
           className={cn(
             "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-full overflow-x-hidden",
-            /* Below lg the centre column is narrow (sidebar + ~692px cap): stack so intake actions stay in-flow */
+            /* Below layout the centre column is capped at 700px: stack so intake actions stay in-flow */
             "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
             "px-[10px] max-sm:px-0",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed

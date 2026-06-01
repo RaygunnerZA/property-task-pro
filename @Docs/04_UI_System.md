@@ -1,21 +1,155 @@
 # CHAPTER 4 — UI / UX SYSTEM (Tactile Neomorphism)
 
+STATUS: CANONICAL
+
+This chapter is a source of truth.
+
+Implementation documents must defer to this chapter.
+
+
 **4.1 — VISUAL PRINCIPLES**
 Tactile Calm, Soft Depth, No Harsh Borders, Material Honesty, No Pure White.
 
 **4.2 — RESPONSIVE LAYOUT STRATEGY**
-Filla uses a distinct Desktop vs Mobile paradigm.
 
-**DESKTOP: Dual-Pane Command Centre**
-*   **Left Column (Fixed):** Calendar Heatmap + Property Snapshots + Quick Create.
-*   **Right Column (Dynamic):** Task Panel (Tabs: Tasks, Inbox, Schedule).
-*   **Context Surface:** Clicking a task/property slides a panel over the Right Column. The Left Column stays visible for grounding.
+Filla uses a distinct Desktop vs Mobile paradigm while maintaining the same underlying platform.
 
-**MOBILE: Single-Pane Adaptive Workflow**
-*   **Stack:** Home → Calendar → Task List → Detail View.
-*   **Navigation:** Bottom Tab Bar (Home, Tasks, Inbox, Schedule, Create).
-*   **Interaction:** Full-screen transitions. Back buttons required.
+The goal is progressive complexity:
 
+* Frontline users complete work.
+* Managers coordinate work.
+* Portfolio users review outcomes and intelligence.
+
+The underlying system remains the same.
+
+⸻
+
+DESKTOP: Operational Workbench
+
+Desktop is optimised for coordination, planning and review.
+
+Left Column (Grounding & Scope)
+
+Contains:
+
+* Property Scope Selector
+* Mini Calendar
+* Property Snapshots
+* Quick Create
+* Personal Overview
+
+This column remains visible whenever possible to provide grounding.
+
+⸻
+
+Centre Column (Primary Work Surface)
+
+Contains the user’s current activity area.
+
+Examples:
+
+* My Work
+* Calendar
+* Properties
+* Knowledge
+* Reports
+
+This is the primary focus area.
+
+⸻
+
+Right Column (Context & Detail)
+
+Contains contextual information related to the selected object.
+
+Examples:
+
+* Task Detail
+* Checklist Progress
+* Asset Information
+* Property Overview
+* Compliance Detail
+
+Detail panels should not replace the primary work surface.
+
+Where possible they should slide over or coexist with the centre column.
+
+⸻
+
+MOBILE: Work Execution First
+
+Mobile is optimised for:
+
+* Completing work
+* Completing checklists
+* Capturing evidence
+* Reporting issues
+
+Complex coordination workflows should be deferred to desktop where appropriate.
+
+⸻
+
+MOBILE STRUCTURE
+
+Primary flows:
+
+* Home
+* My Work
+* Calendar
+* Report Issue
+
+Additional activity areas may appear depending on role and permissions.
+
+All mobile interactions should favour:
+
+* Full-screen focus
+* Bottom sheets
+* Camera-first workflows
+* Minimal data entry
+
+⸻
+
+SCOPE
+
+Property selection represents scope.
+
+Examples:
+
+* All Properties
+* The Bird
+* Pelican House
+
+Changing scope filters content.
+
+Scope must not create duplicate navigation structures.
+
+Bad:
+
+Properties
+→ The Bird
+→ Tasks
+
+Good:
+
+My Work
+
+filtered by:
+
+The Bird
+
+⸻
+
+PROGRESSIVE COMPLEXITY
+
+Frontline users should see a simplified version of the platform.
+
+Managers should see broader operational context.
+
+Portfolio users should see reporting and intelligence.
+
+The platform should reveal complexity gradually rather than through separate products.
+
+⸻
 **4.3 — DESIGN TOKENS (SINGLE SOURCE OF TRUTH)**
 
 All design tokens are defined in:
@@ -234,12 +368,143 @@ import { ErrorState } from "@/components/design-system/ErrorState";
 - `DashboardTabs` - Check usage
 
 **4.6 — NAVIGATION PATTERNS**
-*   **Desktop:** Top Header (Search/User) + Fixed Left Sidebar content.
-*   **Mobile:** Bottom Nav Bar + Collapsible Top Calendar.
+Navigation describes activity.
+
+Scope describes context.
+
+Roles determine visibility.
+
+These concepts must remain separate.
+
+⸻
+
+ACTIVITY AREAS
+
+Examples:
+
+* Home
+* My Work
+* Calendar
+* Properties
+* Knowledge
+* Reports
+
+Not every role sees every activity area.
+
+Navigation should remain as consistent as possible across user types.
+
+⸻
+
+PROPERTY SCOPE
+
+Properties are a scope mechanism, not a navigation system.
+
+Property selection filters activity areas.
+
+Property selection should never create duplicate navigation structures.
+
+⸻
+
+CONTEXT SURFACES
+
+Selecting an entity should reveal context.
+
+Examples:
+
+* Task
+* Asset
+* Property
+* Compliance Record
+* Document
+
+Context surfaces provide detail without forcing navigation changes.
+
+⸻
+
+ROLE VISIBILITY
+
+Roles determine which activity areas are visible.
+
+Examples:
+
+Cleaner:
+
+* Home
+* My Work
+* Calendar
+
+Property Manager:
+
+* Home
+* My Work
+* Calendar
+* Properties
+* Knowledge
+* Reports
+
+Portfolio Manager:
+
+* Home
+* Properties
+* Reports
+* Intelligence
+
+The platform remains the same.
 
 **4.7 — COMPONENTS**
-*   **FAB:** Desktop (Bottom Right Floating) vs Mobile (Center Tab).
-*   **Smart Chips:** Desktop (Inline) vs Mobile (Keyboard Drawer).
+
+Floating Action Button (FAB)
+
+Represents the fastest path to creating work.
+
+Examples:
+
+* Report Issue
+* Create Task
+* Add Evidence
+* Upload Document
+
+Desktop:
+
+* Floating bottom-right action
+
+Mobile:
+
+* Floating action button or central action entry point
+
+⸻
+
+Smart Chips
+
+Represent lightweight suggestions and actions.
+
+Examples:
+
+* Property suggestions
+* Asset suggestions
+* AI recommendations
+* Checklist shortcuts
+
+Smart chips should assist users without interrupting workflows.
+
+AI should appear as guidance, not as a dominant interface element.
+
+⸻
+
+Context Panels
+
+Context panels are a core Filla interaction pattern.
+
+Examples:
+
+* Task Detail
+* Asset Detail
+* Property Overview
+* Compliance Detail
+
+Panels should provide context without removing the user from their current activity.
+
+The work surface should remain visible whenever practical.
 
 **4.8 — MIGRATION CHECKLIST**
 

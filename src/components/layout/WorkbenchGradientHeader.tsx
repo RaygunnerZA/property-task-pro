@@ -67,7 +67,7 @@ export function WorkbenchGradientHeader({
 
         <div
           className={cn(
-            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[692px]",
+            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[700px]",
             "layout:max-w-[700px]"
           )}
         >

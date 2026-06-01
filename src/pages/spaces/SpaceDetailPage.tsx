@@ -152,7 +152,7 @@ export default function SpaceDetailPage() {
   );
 
   const thirdColumnContent = propertyId && spaceId ? (
-    <div className="flex flex-col pt-3 pr-2 pb-0 pl-2 min-h-0">
+    <div className="flex min-w-0 max-w-full flex-col pt-3 pr-1 pb-0 pl-1 min-h-0">
       <ThirdColumnConcertina
         sections={[
           {

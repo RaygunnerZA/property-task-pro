@@ -752,18 +752,29 @@ export function TaskList({
             <div>
               {view === 'vertical' ? (
                 embeddedInIssuesWorkbench ? (
-                  <div className="overflow-x-auto -mx-1 px-1 mt-[7px] scrollbar-hz-teal">
-                    <div className="flex gap-3 min-w-max pb-0.5">
-                      {memoizedTaskCards.todo.map((props) => (
-                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
-                          <TaskCard
-                            {...props}
-                            layout="vertical"
-                            metaDensity={compactTaskMeta ? "compact" : "default"}
-                          />
-                        </div>
-                      ))}
+                  <div className="relative mt-[7px]">
+                    <div className="overflow-x-auto -mx-1 px-1 scrollbar-hz-teal">
+                      <div className="flex gap-3 min-w-max pb-0.5">
+                        {memoizedTaskCards.todo.map((props) => (
+                          <div key={props.task.id} className="w-[200px] flex-shrink-0">
+                            <TaskCard
+                              {...props}
+                              layout="vertical"
+                              metaDensity={compactTaskMeta ? "compact" : "default"}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
+                    {/* Right-side fade scroll affordance — matches property slider in LeftColumn */}
+                    <div
+                      className="absolute top-0 right-0 bottom-0 pointer-events-none rounded-tr-lg rounded-br-lg"
+                      style={{
+                        width: "48px",
+                        background: "linear-gradient(to right, transparent, rgba(0, 0, 0, 0.12))",
+                        zIndex: 20,
+                      }}
+                    />
                   </div>
                 ) : (
                 <>
@@ -771,7 +782,7 @@ export function TaskList({
                   <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal sm:hidden">
                     <div className="flex gap-4 min-w-max">
                       {memoizedTaskCards.todo.map((props) => (
-                        <div key={props.task.id} className="w-[210px] flex-shrink-0">
+                        <div key={props.task.id} className="w-[200px] flex-shrink-0">
                           <TaskCard
                             {...props}
                             layout="vertical"

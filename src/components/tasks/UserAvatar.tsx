@@ -1,11 +1,16 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
+/** Standard assignee / profile avatar — matches header account menu (h-8 w-8). */
+export const APP_USER_AVATAR_SIZE = 32;
+
 interface UserAvatarProps {
   imageUrl?: string | null;
   name?: string;
   propertyColor?: string;
   size?: number;
+  /** Square chips (default) or circular profile frame. */
+  shape?: "square" | "circle";
   className?: string;
 }
 
@@ -18,6 +23,7 @@ export function UserAvatar({
   name = "", 
   propertyColor = "#8EC9CE",
   size = 24,
+  shape = "square",
   className 
 }: UserAvatarProps) {
   // Extract initials from name
@@ -31,17 +37,18 @@ export function UserAvatar({
   };
 
   const initials = getInitials(name);
+  const radiusClass = shape === "circle" ? "rounded-full" : "rounded-[5px]";
 
   return (
     <Avatar 
-      className={cn("rounded-[5px] border-2 border-background", className)}
+      className={cn(radiusClass, "border-2 border-background", className)}
       style={{ width: size, height: size }}
     >
       {imageUrl && (
-        <AvatarImage src={imageUrl} alt={name} />
+        <AvatarImage src={imageUrl} alt={name} className="object-cover" />
       )}
       <AvatarFallback
-        className="text-white font-medium text-xs"
+        className={cn(radiusClass, "text-white font-medium text-xs")}
         style={{ 
           backgroundColor: propertyColor,
           fontSize: `${size * 0.4}px`
@@ -62,6 +69,7 @@ interface OverlappingAvatarsProps {
   size?: number;
   overlap?: number; // Percentage overlap (0-100)
   maxVisible?: number;
+  shape?: "square" | "circle";
   className?: string;
 }
 
@@ -74,6 +82,7 @@ export function OverlappingAvatars({
   size = 24, 
   overlap = 20,
   maxVisible = 3,
+  shape = "square",
   className 
 }: OverlappingAvatarsProps) {
   if (users.length === 0) return null;
@@ -81,6 +90,7 @@ export function OverlappingAvatars({
   const visibleUsers = users.slice(0, maxVisible);
   const remainingCount = users.length - maxVisible;
   const overlapPx = (size * overlap) / 100;
+  const radiusClass = shape === "circle" ? "rounded-full" : "rounded-[5px]";
 
   return (
     <div className={cn("flex items-center", className)} style={{ marginLeft: `-${overlapPx}px` }}>
@@ -97,12 +107,16 @@ export function OverlappingAvatars({
             name={user.name}
             propertyColor={user.propertyColor}
             size={size}
+            shape={shape}
           />
         </div>
       ))}
       {remainingCount > 0 && (
         <div
-          className="flex items-center justify-center rounded-[5px] border-2 border-background bg-muted text-muted-foreground text-xs font-medium"
+          className={cn(
+            "flex items-center justify-center border-2 border-background bg-muted text-muted-foreground text-xs font-medium",
+            radiusClass
+          )}
           style={{ 
             marginLeft: `-${overlapPx}px`,
             zIndex: 0,

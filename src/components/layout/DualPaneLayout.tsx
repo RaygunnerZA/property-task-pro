@@ -13,8 +13,8 @@ interface DualPaneLayoutProps {
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
  * Narrow (< sm): stacked calendar + tasks
- * sm–layout: 265px | tasks (max 692px)
- * layout+: 265px | tasks (700px) [| optional third column]
+ * sm–layout: 265px | tasks (max 700px)
+ * layout+: 265px | tasks (700px) [| optional third column — minmax(0,1fr)]
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
@@ -33,15 +33,14 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
           "flex min-h-0 w-full min-w-0 flex-1 flex-col",
           "sm:grid sm:min-h-0 sm:grid-cols-[265px_1fr]",
           hasThirdColumn
-            ? "layout:flex layout:flex-row layout:items-stretch"
+            ? "layout:grid layout:grid-cols-[265px_700px_minmax(0,1fr)]"
             : "layout:grid layout:grid-cols-[265px_minmax(450px,_700px)]"
         )}
       >
         <div
           className={cn(
             "w-full min-w-0 max-w-full shrink-0 px-gutter-rail",
-            stickyColClass,
-            hasThirdColumn && "layout:w-[265px] layout:shrink-0"
+            stickyColClass
           )}
         >
           {leftColumn}
@@ -50,9 +49,9 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         <div
           className={cn(
             "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
-            "sm:flex sm:h-full sm:max-w-[692px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-0 sm:pb-4",
+            "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-0 sm:pb-4",
             hasThirdColumn
-              ? "layout:w-[700px] layout:max-w-[700px] layout:shrink-0 layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
+              ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
               : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
           )}
         >
@@ -60,7 +59,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {hasThirdColumn && (
-          <div className="hidden layout:flex layout:min-h-0 layout:min-w-0 layout:flex-1 layout:overflow-y-auto">
+          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:overflow-x-hidden layout:overflow-y-auto">
             {thirdColumn}
           </div>
         )}

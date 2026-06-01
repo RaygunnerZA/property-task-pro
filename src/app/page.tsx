@@ -556,7 +556,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   }, [orgId, intakeScopedPropertyId, queryClient]);
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex flex-col pt-4 pr-2 pb-0 pl-2">
+    <div className="flex min-w-0 max-w-full flex-col pt-4 pr-1 pb-0 pl-1">
       {activeTab === "records" && intakeScopedPropertyId ? (
         <div className="pb-[16px] shrink-0">
           <RecordsActionRail

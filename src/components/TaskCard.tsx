@@ -3,14 +3,23 @@ import { cn } from "@/lib/utils";
 import { Calendar, Clock, MapPin, MoreHorizontal } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { updateTaskFields } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
-import { OverlappingAvatars } from "@/components/tasks/UserAvatar";
-import { getTaskSpaceIllustration } from "@/lib/taskIllustration";
+import { OverlappingAvatars, APP_USER_AVATAR_SIZE } from "@/components/tasks/UserAvatar";
+import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
+import { resolveTaskAssigneeUsers } from "@/lib/userDisplayHelpers";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useAuth } from "@/hooks/useAuth";
 import {
   formatTaskDueRelative,
   getTaskDueUrgency,
@@ -90,6 +99,21 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
   );
 }
 
+/** Sentence-case display for task card metadata (matches property line tone). */
+function sentenceCaseTaskDate(label: string): string {
+  return label
+    .split(" • ")
+    .map((segment) =>
+      segment
+        .split(" ")
+        .map((word) =>
+          /^\d/.test(word) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+        )
+        .join(" ")
+    )
+    .join(" • ");
+}
+
 function TaskCardComponent({
   task, 
   property, 
@@ -107,43 +131,17 @@ function TaskCardComponent({
   metaDensity?: 'default' | 'compact';
 }) {
   const { orgId } = useActiveOrg();
+  const { members } = useOrgMembers();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isCompleting, setIsCompleting] = useState(false);
-  const [overflowOpen, setOverflowOpen] = useState(false);
   
   // Memoize task mapping and image parsing to prevent re-renders
   // Only recalculate when task data actually changes, not when object reference changes
-  const { t, imageUrl, themes, spaces, assignedUsers, teams } = useMemo(() => {
+  const { t, imageUrl, themes, spaces, teams } = useMemo(() => {
     const mappedTask = mapTask(task);
     
-    // Get image from new images array (from tasks_view)
-    // Handle both JSON string and array formats
-    let images: any[] = [];
-    if (task?.images) {
-      if (typeof task.images === 'string') {
-        try {
-          images = JSON.parse(task.images);
-        } catch (e) {
-          images = [];
-        }
-      } else if (Array.isArray(task.images)) {
-        images = task.images;
-      }
-    }
-    
-    const firstImage = images.find((attachment: any) => {
-      const fileType = String(attachment?.file_type || "").toLowerCase();
-      const fileName = String(attachment?.file_name || "").toLowerCase();
-      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
-    }) || (images.length > 0 ? images[0] : null);
-    const uploadedUrl =
-      firstImage?.thumbnail_url ||
-      firstImage?.file_url ||
-      task?.primary_image_url ||
-      task?.image_url ||
-      (task as any)?.image_url;
-
     // Parse themes, spaces, and teams (handle both string and array formats)
     let themesArray: any[] = [];
     if (task?.themes) {
@@ -184,31 +182,14 @@ function TaskCardComponent({
       }
     }
     
-    // Get assigned user ID (check both field names)
-    const assignedUserId = task?.assigned_user_id;
-    
-    // Get assigned users (check both field names for user ID)
-    const assignedUsersArray: any[] = [];
-    if (assignedUserId) {
-      assignedUsersArray.push({
-        id: assignedUserId,
-        name: task?.assigned_user_name || task?.assignee_name || task?.assigned_user_display_name || task?.assignee_display_name || undefined,
-        imageUrl: task?.assigned_user_image_url || task?.assignee_image_url || task?.assigned_user_avatar_url || task?.assignee_avatar_url || undefined,
-        propertyColor: property?.icon_color_hex || "#8EC9CE",
-      });
-    }
+    const url = resolveTaskDisplayImageUrl(task, task?.title ?? mappedTask.title);
 
-    const url =
-      uploadedUrl ||
-      getTaskSpaceIllustration(spacesArray, task?.title ?? mappedTask.title);
-    
     return { 
       t: mappedTask, 
       imageUrl: url,
       themes: themesArray,
       spaces: spacesArray,
       teams: teamsArray,
-      assignedUsers: assignedUsersArray,
     };
   }, [
     task?.id,
@@ -222,22 +203,24 @@ function TaskCardComponent({
     task?.themes,
     task?.spaces,
     task?.teams,
-    task?.spaces,
-    task?.assigned_user_id,
-    task?.assigned_user_name,
-    task?.assignee_name,
-    task?.assigned_user_display_name,
-    task?.assignee_display_name,
-    task?.assigned_user_image_url,
-    task?.assignee_image_url,
-    task?.assigned_user_avatar_url,
-    task?.assignee_avatar_url,
-    property?.icon_color_hex,
   ]);
+
+  const assignedUsers = useMemo(
+    () =>
+      resolveTaskAssigneeUsers(task, members, property?.icon_color_hex || "#8EC9CE", currentUser),
+    [
+      task,
+      members,
+      property?.icon_color_hex,
+      currentUser,
+      task?.assigned_user_id,
+      task?.assigned_user_name,
+      task?.assignee_name,
+    ]
+  );
   
   // Memoize handleDone to prevent recreation on every render
-  const handleDone = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
+  const handleDone = useCallback(async () => {
     if (!task?.id || isCompleting) return;
 
     setIsCompleting(true);
@@ -283,7 +266,9 @@ function TaskCardComponent({
   const showPriorityDot =
     !metaCompact || task?.priority === "high" || task?.priority === "urgent";
   const dueUrgency = getTaskDueUrgency(task);
-  const dueRelativeLabel = formatTaskDueRelative(task?.due_date ?? t.due_at);
+  const dueDateRaw = task?.due_date ?? t.due_at;
+  const dueFormattedLabel = dueDateRaw ? formatTaskDate(dueDateRaw) : null;
+  const dueRelativeLabel = formatTaskDueRelative(dueDateRaw);
   const propertyLabel =
     property?.nickname || property?.address || property?.name || null;
   const spaceLabel = spaces[0]?.name ?? null;
@@ -404,7 +389,7 @@ function TaskCardComponent({
               className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDone(e);
+                handleDone();
               }}
             >
               <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
@@ -470,85 +455,108 @@ function TaskCardComponent({
           </p>
         ) : null}
 
-        {dueRelativeLabel ? (
-          <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        {dueFormattedLabel ? (
+          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
             <Calendar className="h-3 w-3 shrink-0" aria-hidden />
-            <span>{dueRelativeLabel}</span>
+            <span className="truncate">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
           </p>
         ) : null}
 
-        <div className="mt-auto flex items-center gap-2 pt-3">
-          <button
-            type="button"
-            className={issuesSignalReviewButtonClassName}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick?.();
-            }}
-          >
-            Take Action
-          </button>
-          <button
-            type="button"
-            className={issuesSignalSecondaryButtonClassName}
-            onClick={(e) => {
-              e.stopPropagation();
-              toast({
-                title: "Snooze",
-                description: "Snooze will be available soon.",
-              });
-            }}
-          >
-            Snooze
-          </button>
-          <div className="relative ml-auto shrink-0">
+        <div className="relative mt-auto min-h-[32px] pt-3">
+          {/* Default footer — relative due + assignee */}
+          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none">
+            {dueRelativeLabel ? (
+              <span
+                className={cn(
+                  "min-w-0 truncate text-[11px]",
+                  dueUrgency === "overdue" ? "text-destructive" : "text-muted-foreground"
+                )}
+              >
+                {dueRelativeLabel}
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1" />
+            )}
+            {assignedUsers.length > 0 ? (
+              <OverlappingAvatars
+                users={assignedUsers}
+                size={APP_USER_AVATAR_SIZE}
+                shape="circle"
+                overlap={20}
+                className="shrink-0"
+              />
+            ) : null}
+          </div>
+
+          {/* Hover — CTA buttons */}
+          <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto">
             <button
               type="button"
-              aria-label="More actions"
-              aria-expanded={overflowOpen}
-              aria-haspopup="menu"
-              className={issuesSignalOverflowButtonClassName}
+              className={issuesSignalReviewButtonClassName}
               onClick={(e) => {
                 e.stopPropagation();
-                setOverflowOpen((open) => !open);
+                onClick?.();
               }}
             >
-              <MoreHorizontal className="h-4 w-4" />
+              Take Action
             </button>
-            {overflowOpen ? (
-              <div
-                role="menu"
-                className="absolute right-0 top-full z-20 mt-1 min-w-[8rem] rounded-[8px] border border-border/60 bg-card py-1 shadow-md"
+            <button
+              type="button"
+              className={issuesSignalSecondaryButtonClassName}
+              onClick={(e) => {
+                e.stopPropagation();
+                toast({
+                  title: "Snooze",
+                  description: "Snooze will be available soon.",
+                });
+              }}
+            >
+              Snooze
+            </button>
+            <div className="ml-auto shrink-0">
+              <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="More actions"
+                className={issuesSignalOverflowButtonClassName}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
               >
-                {showDoneButton ? (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="block w-full px-3 py-1.5 text-left text-xs text-foreground hover:bg-muted/40 disabled:opacity-50"
-                    disabled={isCompleting}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOverflowOpen(false);
-                      handleDone(e);
-                    }}
-                  >
-                    {isCompleting ? "Completing…" : "Mark done"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="block w-full px-3 py-1.5 text-left text-xs text-foreground hover:bg-muted/40"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setOverflowOpen(false);
-                    onClick?.();
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              side="top"
+              sideOffset={4}
+              className="min-w-[8rem] rounded-[8px] border-border/60 bg-card p-1 shadow-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {showDoneButton ? (
+                <DropdownMenuItem
+                  disabled={isCompleting}
+                  className="cursor-pointer px-3 py-1.5 text-xs text-foreground focus:bg-muted/40"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    void handleDone();
                   }}
                 >
-                  Details
-                </button>
-              </div>
-            ) : null}
+                  {isCompleting ? "Completing…" : "Mark done"}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                className="cursor-pointer px-3 py-1.5 text-xs text-foreground focus:bg-muted/40"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onClick?.();
+                }}
+              >
+                Details
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>
@@ -592,41 +600,8 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
     return false; // Task fields changed, re-render
   }
   
-  // Compare images array (by first image URL)
-  const selectImageUrl = (task: any) => {
-    const rawImages = task?.images;
-    const parsedImages = typeof rawImages === "string" ? (() => {
-      try {
-        return JSON.parse(rawImages);
-      } catch {
-        return [];
-      }
-    })() : rawImages;
-    const images = Array.isArray(parsedImages) ? parsedImages : [];
-    const preferred = images.find((attachment: any) => {
-      const fileType = String(attachment?.file_type || "").toLowerCase();
-      const fileName = String(attachment?.file_name || "").toLowerCase();
-      return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
-    }) || images[0];
-    return preferred?.thumbnail_url || preferred?.file_url || task?.primary_image_url || null;
-  };
-  const parseSpaces = (task: any) => {
-    const raw = task?.spaces;
-    if (typeof raw === "string") {
-      try {
-        return JSON.parse(raw);
-      } catch {
-        return [];
-      }
-    }
-    return Array.isArray(raw) ? raw : [];
-  };
-  const prevImageUrl =
-    selectImageUrl(prevTask) ||
-    getTaskSpaceIllustration(parseSpaces(prevTask), prevTask?.title);
-  const nextImageUrl =
-    selectImageUrl(nextTask) ||
-    getTaskSpaceIllustration(parseSpaces(nextTask), nextTask?.title);
+  const prevImageUrl = resolveTaskDisplayImageUrl(prevTask, prevTask?.title);
+  const nextImageUrl = resolveTaskDisplayImageUrl(nextTask, nextTask?.title);
   if (prevImageUrl !== nextImageUrl) return false;
   
   // onClick comparison - if both are functions, we assume they're equivalent if task.id is the same

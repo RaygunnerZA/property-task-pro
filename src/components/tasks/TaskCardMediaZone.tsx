@@ -1,17 +1,16 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
-
-const PAPER_TEXTURE_STYLE: CSSProperties = {
-  backgroundImage: "var(--paper-texture)",
-  backgroundColor: "rgba(0, 0, 0, 0)",
-};
 
 const UPLOADED_INSET_SHADOW_HORIZONTAL =
   "inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)";
 
 const UPLOADED_INSET_SHADOW_VERTICAL =
   "inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 0px 3px 6px rgba(0, 0, 0, 0.15)";
+
+/** Vertical illustrated task cards — shared inset highlight (Open work slider, property task strips). */
+export const VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS =
+  "shadow-[inset_1px_2px_1px_0px_rgba(255,255,255,0.5)]";
 
 interface TaskCardMediaZoneProps {
   imageUrl?: string | null;
@@ -36,12 +35,16 @@ export function TaskCardMediaZone({
       ? "w-24 sm:w-28 flex-shrink-0 relative overflow-hidden"
       : "w-full h-[140px] relative flex-shrink-0 overflow-hidden";
 
+  const verticalIllustrationZoneClass =
+    variant === "vertical" &&
+    cn("flex items-center justify-center bg-background", VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS);
+
   if (!imageUrl) {
     return (
-      <div className={cn(baseZoneClass, className)}>
+      <div className={cn(baseZoneClass, verticalIllustrationZoneClass, className)}>
         <div
           className={cn(
-            "absolute inset-0 bg-muted/30 flex items-center justify-center",
+            "absolute inset-0 bg-background flex items-center justify-center",
             placeholderClassName
           )}
         >
@@ -61,10 +64,10 @@ export function TaskCardMediaZone({
     <div
       className={cn(
         baseZoneClass,
-        isIllustration && "flex items-center justify-center",
+        isIllustration && "flex items-center justify-center bg-background",
+        isIllustration && variant === "vertical" && VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS,
         className
       )}
-      style={isIllustration ? PAPER_TEXTURE_STYLE : undefined}
     >
       <img
         src={imageUrl}
@@ -78,7 +81,7 @@ export function TaskCardMediaZone({
           (e.target as HTMLImageElement).style.display = "none";
           const parent = (e.target as HTMLImageElement).parentElement;
           if (parent && !isIllustration) {
-            parent.classList.add("bg-muted");
+            parent.classList.add("bg-background");
           }
         }}
       />
