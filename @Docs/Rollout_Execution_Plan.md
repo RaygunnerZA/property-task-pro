@@ -84,7 +84,7 @@ This file tracks **what we are doing now**, **order**, and **done** state so not
 
 | Area | Paths (representative) | Boundary |
 |------|-------------------------|----------|
-| Main app (Work / Manage / Record / settings / legacy) | `/*` under `ProtectedRoute` | **`AppLayout`** — `regionTitle="Main workspace"` |
+| Main app (authenticated routes / settings / legacy) | `/*` under `ProtectedRoute` | **`AppLayout`** — `regionTitle="Main workspace"`. *Legacy “Work / Manage / Record” terminology — activity areas per **`02_Identity`** / **`04_UI_System`**.* |
 | Hub / dashboard columns | `/` (dashboard) | **`app/page.tsx`** — per-column regions + **`onRetryReset`** → `invalidateQueries()` (Sprint 7) |
 | Compliance overview | `/compliance` | **`Compliance.tsx`** |
 | Record compliance workspace | `/record/compliance` | **`RecordCompliance.tsx`** |

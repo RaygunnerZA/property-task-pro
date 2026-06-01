@@ -1,5 +1,9 @@
 # TACTICAL BUILD ROADMAP (Current Focus)
 
+> **SUPERSEDED — V2.1 (do not use for product or IA decisions).**  
+> Canonical navigation, task detail, and property context: **`02_Identity.md`**, **`04_UI_System.md`**, **`05_Task_Engine.md`**, **`Appendix_A.md`**.  
+> This file is retained for historical file-path references only.
+
 **Goal:** Turn the Skeleton into a Rich Application.
 
 **PHASE A: THE STORAGE ENGINE (Attachments)**

@@ -196,40 +196,4 @@ Signals remain infrastructure.
 
 Users primarily interact with tasks, checklists, evidence and records.
 
-The most important changes are:
-
-Property
-Overview
-Operations
-Compliance
-Assets
-People
-
-instead of:
-
-Property
-Overview
-Spaces
-Assets
-Tasks
-Compliance
-Documents
-People
-Notes
-
-and
-
-Task
-Overview
-Checklist
-Evidence
-Activity
-
-instead of:
-
-Task
-Details
-Subtasks
-Attachments
-Timeline
-
+**Task context areas** must match **05_Task_Engine.md** §5.6 and the TASK section above (Overview, Checklist, Evidence, Activity only).

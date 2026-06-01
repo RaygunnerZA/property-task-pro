@@ -2,6 +2,7 @@
 
 # 1. ARCHITECTURE
 - The single source of truth is the `@Docs` folder.
+- CANONICAL product/IA docs (V2.1): `@Docs/01_Overview.md`, `@Docs/02_Identity.md`, `@Docs/04_UI_System.md`, `@Docs/05_Task_Engine.md`, `@Docs/19_Platform_Arch.md`, `@Docs/Appendix_A.md`. Index: `@Docs/00_Index.txt`.
 - BEFORE writing code, check the relevant Chapter in `@Docs`.
 - NEVER invent database columns. Check `@Docs/03_Data_Model.md`.
 - ALWAYS use `useActiveOrg` for data fetching. Never use `user_id` directly.

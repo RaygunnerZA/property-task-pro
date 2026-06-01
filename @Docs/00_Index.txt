@@ -1,5 +1,15 @@
 # Filla Architecture Index - System V2.1
 
+# CANONICAL DOCUMENTS (read these first — prevent product/IA drift)
+#   01_Overview.md
+#   02_Identity.md
+#   04_UI_System.md
+#   05_Task_Engine.md
+#   19_Platform_Arch.md
+#   Appendix_A.md
+# Schema SSOT: 03_Data_Model.md
+# Start here: @Docs/00_Index.txt
+
 01_Overview.md              : Vision, Core Pillars, and User Flows.
 02_Identity.md              : AUTHORITATIVE source for Roles, Org Logic, and Identity Modes.
 03_Data_Model.md            : SOLE TRUTH for Schema, Enums, and RLS.
