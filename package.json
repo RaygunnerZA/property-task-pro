@@ -18,7 +18,10 @@
     "lint:all": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
-    "check:edge-functions": "node scripts/check-edge-functions.mjs"
+    "check:edge-functions": "node scripts/check-edge-functions.mjs",
+    "db:diagnose": "node scripts/supabase-db-bootstrap.mjs",
+    "db:repair-stale-remote": "node scripts/supabase-db-bootstrap.mjs --repair-stale-remote",
+    "db:push": "supabase db push"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 interface TaskListSectionHeaderProps {
   title: string;
   count: number;
-  variant?: 'default' | 'danger' | 'warning';
+  variant?: "default" | "danger" | "warning" | "muted";
 }
 
 export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({ 
@@ -15,9 +15,14 @@ export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({
 }) => {
   const getTextColor = () => {
     switch (variant) {
-      case 'danger': return 'text-red-600';
-      case 'warning': return 'text-yellow-700';
-      default: return 'text-primary-deep';
+      case "danger":
+        return "text-red-600";
+      case "warning":
+        return "text-yellow-700";
+      case "muted":
+        return "text-muted-foreground";
+      default:
+        return "text-primary-deep";
     }
   };
 
@@ -28,9 +33,13 @@ export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({
       </Text>
       <span className={cn(
         'text-xs font-mono font-medium px-2 py-1 rounded-full',
-        variant === 'danger' ? 'bg-red-100 text-red-700' :
-        variant === 'warning' ? 'bg-yellow-100 text-yellow-700' :
-        'bg-card text-muted-foreground'
+        variant === "danger"
+          ? "bg-red-100 text-red-700"
+          : variant === "warning"
+            ? "bg-yellow-100 text-yellow-700"
+            : variant === "muted"
+              ? "bg-muted/50 text-muted-foreground"
+              : "bg-card text-muted-foreground"
       )}>
         {count}
       </span>

@@ -92,6 +92,24 @@ const TEST_USERS = [
       display_name: 'David Member',
     },
   },
+  {
+    email: 'justinplunkett+emma@gmail.com',
+    password: 'TestPassword123!',
+    metadata: {
+      first_name: 'Emma',
+      last_name: 'Technician',
+      display_name: 'Emma Technician',
+    },
+  },
+  {
+    email: 'justinplunkett+frank@gmail.com',
+    password: 'TestPassword123!',
+    metadata: {
+      first_name: 'Frank',
+      last_name: 'Vendor',
+      display_name: 'Frank Vendor',
+    },
+  },
 ];
 
 async function createTestUsers() {

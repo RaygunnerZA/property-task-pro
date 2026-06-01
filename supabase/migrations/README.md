@@ -1,6 +1,10 @@
 # Supabase Migrations
 
-172 migration files covering the full lifecycle from first schema to the current production schema.
+Active migrations in this folder apply in filename order starting at **`20251218201715_filla_v2_init.sql`**.
+
+Older **`202501…` / `202502…`** patches live in **`archive/legacy_pre_v2_init/`** (not run by `supabase db push`). They predate init and caused `attachments does not exist` / ordering failures on empty databases.
+
+**Fresh remote setup:** Dashboard → reset database (if tables already exist) → `npm run db:push`. Optional: `npm run db:repair-stale-remote` if the CLI complains about Dec 2025 remote-only IDs.
 
 ---
 

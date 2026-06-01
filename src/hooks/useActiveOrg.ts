@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useContext, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ActiveOrgContext, type UseActiveOrgResult } from "@/contexts/ActiveOrgContext";
+import { isDevBuild } from "@/context/DevModeContext";
+import { TEST_PERSONA_ORG_STORAGE_KEY } from "@/lib/dev/testPersonas";
 
 export type { UseActiveOrgResult };
 
@@ -63,7 +65,16 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
 
     if (!memberships || memberships.length === 0) return null;
 
-    const nonPersonal = memberships.find((m) => (m.organisations as { org_type?: string } | null)?.org_type !== "personal");
+    if (isDevBuild && typeof sessionStorage !== "undefined") {
+      const pinnedOrgId = sessionStorage.getItem(TEST_PERSONA_ORG_STORAGE_KEY);
+      if (pinnedOrgId && memberships.some((m) => m.org_id === pinnedOrgId)) {
+        return pinnedOrgId;
+      }
+    }
+
+    const nonPersonal = memberships.find(
+      (m) => (m.organisations as { org_type?: string } | null)?.org_type !== "personal"
+    );
     const selectedOrgId = (nonPersonal ?? memberships[0]).org_id;
     return selectedOrgId;
   }, [queryClient, userId]);

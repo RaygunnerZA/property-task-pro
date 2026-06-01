@@ -56,6 +56,60 @@ Examples:
 
 This is the primary focus area.
 
+On **Home**, the centre column is **My Work** (see below). **Issues** is a separate manager triage activity, not the Home execution queue.
+
+⸻
+
+**My Work Surface Decision (V2.1)**
+
+Filla separates work execution from signal triage.
+
+**My Work**
+
+My Work is the primary operational surface for staff, technicians, caretakers and contractors.
+
+*Purpose:* Execute work.
+
+*Content:* Overdue work · Today’s work · This week’s work · Completed work.
+
+Task cards prioritise checklist progress, evidence status, property and location context, and due urgency.
+
+My Work is **work-driven**.
+
+**Issues / Signals**
+
+Issues is a manager-facing triage surface.
+
+*Purpose:* Review, classify and convert signals into work.
+
+*Content:* Uploads · AI suggestions · Compliance detections · External messages · Weather and risk signals · Records requiring review.
+
+Issues is **signal-driven**.
+
+**Relationship**
+
+Signals create or influence work. Users primarily interact with My Work. Managers primarily interact with Issues.
+
+Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
+
+**Desktop — Home Workbench**
+
+| Column | Role |
+|--------|------|
+| Left | Scope + Calendar + Property context |
+| Centre | **My Work** |
+| Right | Task context panel (Overview, Checklist, Evidence, Activity) |
+
+Issues remains a separate triage activity (dedicated route or mode), not the Home centre queue.
+
+**Mobile**
+
+Primary destination: My Work. Issues is secondary and manager-oriented.
+
+**Properties**
+
+Properties provide scope. Property selection filters My Work and Issues; it does not create alternative task navigation trees.
+
 ⸻
 
 Right Column (Context & Detail)

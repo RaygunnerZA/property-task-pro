@@ -475,6 +475,7 @@ function LogsTab() {
           {JSON.stringify(
             {
               enabled: devMode.enabled,
+              activeTestPersonaId: devMode.activeTestPersonaId,
               userRoleOverride: devMode.userRoleOverride,
               simulateSlowNetwork: devMode.simulateSlowNetwork,
               simulateTimeShiftDays: devMode.simulateTimeShiftDays,

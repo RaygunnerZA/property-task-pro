@@ -28,6 +28,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { SubtaskOptionsMenu } from "./SubtaskOptionsMenu";
 import { cn } from "@/lib/utils";
@@ -832,9 +833,15 @@ export function SubtaskCard({
 
       {/* ── Assign to User Dialog ─────────────────────────────────── */}
       <Dialog open={assignPickerOpen} onOpenChange={setAssignPickerOpen}>
-        <DialogContent className="bg-card border-0 shadow-e2 rounded-2xl max-w-xs p-4">
+        <DialogContent
+          className="bg-card border-0 shadow-e2 rounded-2xl max-w-xs p-4"
+          aria-describedby="subtask-assign-desc"
+        >
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold">Assign to User</DialogTitle>
+            <DialogDescription id="subtask-assign-desc" className="sr-only">
+              Choose a user to assign this checklist item.
+            </DialogDescription>
           </DialogHeader>
 
           {/* Search */}

@@ -45,35 +45,32 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-const hotData = (import.meta.hot?.data ?? {}) as MainHotData;
-let root = hotData.root ?? createRoot(rootElement);
-if (import.meta.hot) {
-  import.meta.hot.data.root = root;
+function getOrCreateRoot(): Root {
+  if (import.meta.hot) {
+    const data = import.meta.hot.data as MainHotData;
+    if (data.root) {
+      return data.root;
+    }
+    const root = createRoot(rootElement);
+    data.root = root;
+    import.meta.hot.dispose((nextData) => {
+      (nextData as MainHotData).root = root;
+    });
+    return root;
+  }
+  return createRoot(rootElement);
 }
 
-let mountGeneration = 0;
-let afterUpdateRemountTimer: ReturnType<typeof setTimeout> | undefined;
+const root = getOrCreateRoot();
 
 function renderApp() {
-  mountGeneration += 1;
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        <App key={mountGeneration} />
+        <App />
       </ErrorBoundary>
     </React.StrictMode>
   );
-}
-
-function scheduleRemountAfterHmr() {
-  if (afterUpdateRemountTimer) {
-    clearTimeout(afterUpdateRemountTimer);
-  }
-  // Collapse bursts of vite:afterUpdate (Cursor Browser hard reload) into one remount.
-  afterUpdateRemountTimer = setTimeout(() => {
-    afterUpdateRemountTimer = undefined;
-    renderApp();
-  }, 50);
 }
 
 renderApp();
@@ -88,23 +85,5 @@ window.addEventListener("pageshow", (event) => {
 if (import.meta.hot) {
   import.meta.hot.accept("./App.tsx", () => {
     renderApp();
-  });
-
-  import.meta.hot.on("vite:beforeFullReload", () => {
-    root.unmount();
-  });
-
-  // Cursor Browser "hard reload" often triggers HMR without re-running main.tsx.
-  import.meta.hot.on("vite:afterUpdate", () => {
-    scheduleRemountAfterHmr();
-  });
-
-  import.meta.hot.dispose(() => {
-    if (afterUpdateRemountTimer) {
-      clearTimeout(afterUpdateRemountTimer);
-      afterUpdateRemountTimer = undefined;
-    }
-    root.unmount();
-    delete (import.meta.hot?.data as MainHotData).root;
   });
 }

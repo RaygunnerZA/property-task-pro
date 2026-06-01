@@ -64,10 +64,10 @@ Frontline users primarily interact with:
 
 Managers primarily interact with:
 
-* Work
-* Outcomes
-* Risks
-* Decisions
+* **Issues** (signal triage — classify and convert signals into work)
+* Work outcomes, risks, and decisions
+
+Frontline users primarily interact with **My Work** on Home (execution queue). See **04_UI_System.md** — *My Work Surface Decision (V2.1)*.
 
 Portfolio users primarily interact with:
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import { useDevMode } from "@/context/useDevMode";
+import { isDevBuild } from "@/context/DevModeContext";
 
 interface UseCurrentUserRoleResult {
   role: string | null;
@@ -77,12 +78,12 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
   }, [supabase, orgId, orgLoading]);
 
   const effectiveRole =
-    import.meta.env.DEV && devMode.enabled && devMode.userRoleOverride
+    isDevBuild && devMode.enabled && devMode.userRoleOverride
       ? devMode.userRoleOverride
       : role;
 
   const isDevOverride = !!(
-    import.meta.env.DEV &&
+    isDevBuild &&
     devMode.enabled &&
     devMode.userRoleOverride
   );

@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 
-export default function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
+function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="py-20 text-center text-[#666]">
       <div className="mb-3 opacity-30">
@@ -11,3 +11,6 @@ export default function EmptyState({ title, subtitle }: { title: string; subtitl
     </div>
   );
 }
+
+export { EmptyState };
+export default EmptyState;

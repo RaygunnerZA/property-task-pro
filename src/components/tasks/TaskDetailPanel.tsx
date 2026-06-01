@@ -909,15 +909,16 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           if (!open) onClose();
         }}
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0">
-          {title && (
-            <DialogHeader className="sr-only">
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>
-                Task detail: Overview, Checklist, Evidence, and Activity.
-              </DialogDescription>
-            </DialogHeader>
-          )}
+        <DialogContent
+          className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0"
+          aria-describedby="task-detail-panel-desc"
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>{title ?? "Task details"}</DialogTitle>
+            <DialogDescription id="task-detail-panel-desc">
+              Task detail: Overview, Checklist, Evidence, and Activity.
+            </DialogDescription>
+          </DialogHeader>
           {content}
         </DialogContent>
       </Dialog>

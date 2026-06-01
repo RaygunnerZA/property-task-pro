@@ -3551,6 +3551,9 @@ export function IntakeModal({
       {variant !== "column" && (
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
           <DialogTitle className="sr-only">Report Issue or add a record</DialogTitle>
+          <DialogDescription className="sr-only">
+            Create a task from an issue report or add a compliance record with photos and context.
+          </DialogDescription>
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0 pt-0.5">{intakeModeSwitcher}</div>
             <button

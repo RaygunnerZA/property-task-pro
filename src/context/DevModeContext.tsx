@@ -28,11 +28,19 @@ import {
 } from "react";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  findTestPersona,
+  TEST_PERSONA_ORG_STORAGE_KEY,
+  TEST_PERSONA_STORAGE_KEY,
+  type TestPersonaId,
+} from "@/lib/dev/testPersonas";
 
 export type DevUserRole = "manager" | "contractor" | "vendor" | "admin";
 
 export interface DevModeState {
   enabled: boolean;
+  /** Active TEST-0x persona (session sign-in), if any. */
+  activeTestPersonaId: TestPersonaId | null;
   userRoleOverride: DevUserRole | null;
   simulateSlowNetwork: boolean;
   simulateTimeShiftDays: number;
@@ -55,8 +63,34 @@ interface DevModeActions {
 
 type DevModeContextValue = DevModeState & DevModeActions;
 
+function readInitialDevState(): DevModeState {
+  const base = {
+    enabled: false,
+    activeTestPersonaId: null as TestPersonaId | null,
+    userRoleOverride: null as DevUserRole | null,
+    simulateSlowNetwork: false,
+    simulateTimeShiftDays: 0,
+    showAIDebugPanel: false,
+    showViewportSimulator: false,
+    createTaskDiagnostics: false,
+  };
+
+  if (typeof sessionStorage === "undefined") return base;
+
+  const personaRaw = sessionStorage.getItem(TEST_PERSONA_STORAGE_KEY);
+  const persona = personaRaw ? findTestPersona(personaRaw as TestPersonaId) : undefined;
+  const storedUiRole = sessionStorage.getItem("filla_dev_ui_role_override") as DevUserRole | null;
+
+  return {
+    ...base,
+    activeTestPersonaId: persona?.id ?? null,
+    userRoleOverride: persona?.uiRoleOverride ?? storedUiRole ?? null,
+  };
+}
+
 const DEFAULT_STATE: DevModeState = {
   enabled: false,
+  activeTestPersonaId: null,
   userRoleOverride: null,
   simulateSlowNetwork: false,
   simulateTimeShiftDays: 0,
@@ -97,7 +131,7 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
 }
 
 // In dev, default to enabled so both accounts see all tasks/files without toggling
-const DEV_DEFAULT_STATE: DevModeState = { ...DEFAULT_STATE, enabled: true };
+const DEV_DEFAULT_STATE: DevModeState = { ...readInitialDevState(), enabled: true };
 
 function DevModeProviderInner({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
@@ -160,6 +194,11 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
   );
 
   const setUserRoleOverride = useCallback((role: DevUserRole | null) => {
+    if (role) {
+      sessionStorage.setItem("filla_dev_ui_role_override", role);
+    } else {
+      sessionStorage.removeItem("filla_dev_ui_role_override");
+    }
     setState((prev) => ({ ...prev, userRoleOverride: role }));
   }, []);
 
@@ -184,6 +223,9 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
   }, []);
 
   const reset = useCallback(() => {
+    sessionStorage.removeItem(TEST_PERSONA_STORAGE_KEY);
+    sessionStorage.removeItem(TEST_PERSONA_ORG_STORAGE_KEY);
+    sessionStorage.removeItem("filla_dev_ui_role_override");
     setState(DEFAULT_STATE);
     syncDevModeToJwt(false);
   }, [syncDevModeToJwt]);

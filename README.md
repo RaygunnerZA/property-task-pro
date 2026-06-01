@@ -54,10 +54,13 @@ Package manager: **npm** (`package-lock.json`). Use `npm ci` in CI and fresh clo
 Frontend types come from the live public schema (`src/types/supabase.ts`). After DB migrations:
 
 ```sh
+npm run db:push      # apply migrations (after supabase link)
 npm run gen:types
 ```
 
-Requires Supabase CLI and `supabase link`, or generate manually and write to `src/types/supabase.ts`.
+Requires Supabase CLI and `supabase link`. If `db push` fails with **organisations already exists**, run `npm run db:diagnose` — usually you need a **database reset** in the Dashboard, then `npm run db:push` again.
+
+Legacy pre-init SQL is archived under `supabase/migrations/archive/legacy_pre_v2_init/`.
 
 ## Engineering
 

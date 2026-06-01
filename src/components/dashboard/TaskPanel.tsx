@@ -7,36 +7,40 @@ import {
   useSyncExternalStore,
   useCallback,
 } from "react";
-import type { MutableRefObject } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/animated-tabs";
 import { TaskList } from "@/components/tasks/TaskList";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
-import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
+import { IssuesAllFilterFeed } from "@/components/dashboard/issues/IssuesAllFilterFeed";
+import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
 import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
+import {
+  ISSUES_NEEDS_REVIEW_SECTION,
+  ISSUES_RECENT_SIGNALS_SECTION,
+} from "@/components/dashboard/issues/IssuesRecentNeedsReviewStack";
+import {
+  type AttentionItem,
+  type ComplianceRecord,
+  daysUntil,
+  formatAuthorDisplayName,
+  formatDueText,
+  mapSignalFixtureToAttentionItem,
+  normalizeComplianceStatus,
+} from "@/components/dashboard/issues/issuesAttentionItem";
 import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
-  HelpCircle,
   ShieldCheck,
   ClipboardList,
-  Upload,
 } from "lucide-react";
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import {
   SIGNAL_UI_FIXTURES_RECENT,
   SIGNAL_UI_FIXTURES_REVIEW,
   SIGNAL_UI_FIXTURES_URGENT,
-  type SignalUiFixture,
 } from "@/fixtures/signalUiSamples";
-import type { SignalKind } from "@/types/workbenchSignals";
-import { SIGNAL_KIND_FOOT_LABEL } from "@/types/workbenchSignals";
-import type { SignalCategoryVariant, SignalConfidenceLevel } from "@/components/dashboard/issues/IssuesSignalListParts";
-import { signalKindIcon } from "@/lib/signalKindIcons";
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
@@ -47,19 +51,8 @@ import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { addDays, format, isAfter, startOfDay, subDays } from "date-fns";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
-import {
-  formatRecentSignalSubtitle,
-  reviewConfidenceForFixture,
-  signalCategoryForKind,
-} from "@/lib/signalDisplayMeta";
-import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
 import { pickDoneWorkbenchTaskPreviews } from "@/lib/workbenchDoneTasks";
-import { resolveAttentionStreamThumbnail } from "@/lib/taskIllustration";
-import { IssuesDoneTasksColumn } from "@/components/dashboard/issues/IssuesDoneTasksColumn";
-import type {
-  SignalFeedDetailSnapshot,
-  WorkbenchAttentionSelectPayload,
-} from "@/components/dashboard/SignalFeedDetailPanel";
+import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 
 interface TaskPanelProps {
@@ -107,41 +100,6 @@ const ISSUES_CHIP_FILTERS: { id: WorkbenchIssuesFilter; label: string }[] = [
   { id: "done", label: "Done" },
 ];
 
-type IssuesSignalCardProps = {
-  item: AttentionItem;
-  attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
-  resolveAttentionItem: (id: string) => void;
-  addAttentionItemToCompliance: (item: AttentionItem) => void;
-  onOpenIntake?: (mode: IntakeMode) => void;
-  onMessageClick?: (messageId: string) => void;
-  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
-};
-
-type RecentNeedsReviewStackProps = {
-  recentItems: AttentionItem[];
-  reviewItems: AttentionItem[];
-  attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
-  resolveAttentionItem: (id: string) => void;
-  addAttentionItemToCompliance: (item: AttentionItem) => void;
-  onOpenIntake?: (mode: IntakeMode) => void;
-  onMessageClick?: (messageId: string) => void;
-  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
-};
-
-const SIGNAL_COLUMN_RECENT = {
-  title: "Recent signals",
-  subtitle: "What just entered the system",
-  emptyTitle: "Nothing new in the timeline",
-  emptyDescription: "When photos, messages, or uploads arrive, they show up here first.",
-} as const;
-
-const SIGNAL_COLUMN_REVIEW = {
-  title: "Needs review",
-  subtitle: "Items that need your judgement",
-  emptyTitle: "Nothing in the decision queue",
-  emptyDescription: "When Filla needs your judgement before routing work, items appear here.",
-} as const;
-
 const SIGNAL_STACK_SECTIONS = [
   {
     key: "urgent",
@@ -152,502 +110,21 @@ const SIGNAL_STACK_SECTIONS = [
   },
   {
     key: "review",
-    title: SIGNAL_COLUMN_REVIEW.title,
-    subtitle: SIGNAL_COLUMN_REVIEW.subtitle,
+    title: ISSUES_NEEDS_REVIEW_SECTION.title,
+    subtitle: ISSUES_NEEDS_REVIEW_SECTION.subtitle,
     itemsKey: "review" as const,
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview,
   },
   {
     key: "recent",
-    title: SIGNAL_COLUMN_RECENT.title,
-    subtitle: SIGNAL_COLUMN_RECENT.subtitle,
+    title: ISSUES_RECENT_SIGNALS_SECTION.title,
+    subtitle: ISSUES_RECENT_SIGNALS_SECTION.subtitle,
     itemsKey: "recent" as const,
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
   },
 ] as const;
 
-/** Stacked sections: triage first (needs review), then recent activity — single column for simpler scanning. */
-function RecentNeedsReviewStack({
-  recentItems,
-  reviewItems,
-  attentionCardRefs,
-  resolveAttentionItem,
-  addAttentionItemToCompliance,
-  onOpenIntake,
-  onMessageClick,
-  onAttentionItemSelect,
-}: RecentNeedsReviewStackProps) {
-  const displayReviewItems = useMemo(
-    () => pickTopReviewSignals(reviewItems),
-    [reviewItems]
-  );
-  const displayRecentItems = useMemo(
-    () => pickTopRecentSignals(recentItems),
-    [recentItems]
-  );
-
-  const renderSignal = (item: AttentionItem) => (
-    <IssuesSignalCard
-      item={item}
-      attentionCardRefs={attentionCardRefs}
-      resolveAttentionItem={resolveAttentionItem}
-      addAttentionItemToCompliance={addAttentionItemToCompliance}
-      onOpenIntake={onOpenIntake}
-      onMessageClick={onMessageClick}
-      onAttentionItemSelect={onAttentionItemSelect}
-    />
-  );
-
-  return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <IssuesScrollColumn
-        title={SIGNAL_COLUMN_REVIEW.title}
-        subtitle={SIGNAL_COLUMN_REVIEW.subtitle}
-        countVariant="review"
-        items={displayReviewItems}
-        totalCount={reviewItems.length}
-        emptyTitle={SIGNAL_COLUMN_REVIEW.emptyTitle}
-        emptyDescription={SIGNAL_COLUMN_REVIEW.emptyDescription}
-        renderCard={renderSignal}
-      />
-      <IssuesScrollColumn
-        title={SIGNAL_COLUMN_RECENT.title}
-        subtitle={SIGNAL_COLUMN_RECENT.subtitle}
-        countVariant="recent"
-        items={displayRecentItems}
-        totalCount={recentItems.length}
-        emptyTitle={SIGNAL_COLUMN_RECENT.emptyTitle}
-        emptyDescription={SIGNAL_COLUMN_RECENT.emptyDescription}
-        renderCard={renderSignal}
-      />
-    </div>
-  );
-}
-
-function runFixtureAction(
-  actionId: string,
-  item: AttentionItem,
-  ctx: {
-    resolveAttentionItem: (id: string) => void;
-    addAttentionItemToCompliance: (item: AttentionItem) => void;
-    onOpenIntake?: (mode: IntakeMode) => void;
-    onMessageClick?: (messageId: string) => void;
-  }
-) {
-  const { resolveAttentionItem, addAttentionItemToCompliance, onOpenIntake, onMessageClick } = ctx;
-  switch (actionId) {
-    case "report-issue":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "ignore":
-    case "dismiss":
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-open":
-      if (item.messageId) onMessageClick?.(item.messageId);
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-review":
-      onOpenIntake?.("add_record");
-      resolveAttentionItem(item.id);
-      break;
-    case "treat-as-issue":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-assign":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-convert":
-      if (item.complianceSeed) addAttentionItemToCompliance(item);
-      else onOpenIntake?.("add_record");
-      resolveAttentionItem(item.id);
-      break;
-    default:
-      resolveAttentionItem(item.id);
-  }
-}
-
-function IssuesSignalCard({
-  item,
-  attentionCardRefs,
-  resolveAttentionItem,
-  addAttentionItemToCompliance,
-  onOpenIntake,
-  onMessageClick,
-  onAttentionItemSelect,
-}: IssuesSignalCardProps) {
-  const ctx = {
-    resolveAttentionItem,
-    addAttentionItemToCompliance,
-    onOpenIntake,
-    onMessageClick,
-  };
-
-  const cardActivate =
-    item.id === "recent-empty-seed" || !onAttentionItemSelect
-      ? undefined
-      : () => {
-          if (item.messageId) {
-            onAttentionItemSelect({ kind: "message", messageId: item.messageId });
-          } else {
-            onAttentionItemSelect({
-              kind: "signal",
-              snapshot: attentionItemToSignalSnapshot(item),
-            });
-          }
-        };
-
-  const thumbnailUrl = resolveAttentionStreamThumbnail({
-    imageUrl: item.imageUrl,
-    title: item.title,
-    context: item.context,
-    signalKind: item.signalKind,
-  });
-
-  if (item.group === "urgent") {
-    const icon = item.signalKind
-      ? signalKindIcon(item.signalKind, "text-amber-700")
-      : <AlertTriangle className="h-4 w-4 text-amber-600" />;
-    const actionsList =
-      item.fixtureActions != null
-        ? [
-            {
-              id: item.fixtureActions.primary.id,
-              label: item.fixtureActions.primary.label,
-              onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
-            },
-            ...(item.fixtureActions.secondary ?? []).map((a) => ({
-              id: a.id,
-              label: a.label,
-              onClick: () => runFixtureAction(a.id, item, ctx),
-            })),
-          ]
-        : [
-            {
-              id: "report-issue",
-              label: "Report Issue",
-              onClick: () => runFixtureAction("report-issue", item, ctx),
-            },
-            {
-              id: "ignore",
-              label: "Ignore",
-              onClick: () => runFixtureAction("ignore", item, ctx),
-            },
-          ];
-    const minor = actionsList.find((a) => a.id === "ignore" || a.id === "dismiss");
-    const primaryOnly = actionsList.filter((a) => a.id !== "ignore" && a.id !== "dismiss");
-    const primaryAction = primaryOnly[0];
-    const minorFromExtras = !minor && primaryOnly.length > 1 ? primaryOnly[1] : undefined;
-
-    return (
-      <OperationalStreamCard
-        id={`issues-signal-${item.id}`}
-        issuesStreamKind="urgent"
-        cardRef={(node) => {
-          attentionCardRefs.current[item.id] = node;
-        }}
-        icon={icon}
-        thumbnailUrl={thumbnailUrl}
-        title={item.title}
-        context={item.context}
-        description={item.description}
-        imageUrl={item.imageUrl}
-        accent="red"
-        emphasis="standard"
-        actions={primaryAction ? [primaryAction] : actionsList.slice(0, 1)}
-        minorLinkAction={minor ?? minorFromExtras}
-        onCardActivate={cardActivate}
-      />
-    );
-  }
-
-  if (item.group === "review") {
-    const icon = item.signalKind
-      ? signalKindIcon(item.signalKind, "text-teal-800")
-      : <HelpCircle className="h-4 w-4 text-teal-800" />;
-
-    const primaryId = item.fixtureActions?.primary.id ?? "signal-review";
-    const secondaryRaw = item.fixtureActions?.secondary ?? [];
-    const overflowFromFixtures = secondaryRaw.filter((a) => a.id !== "dismiss");
-    const reviewAction = {
-      id: primaryId,
-      label: "Review",
-      onClick: () => runFixtureAction(primaryId, item, ctx),
-    };
-    const overflowActions = [
-      ...overflowFromFixtures.map((a) => ({
-        id: a.id,
-        label: a.label,
-        onClick: () => runFixtureAction(a.id, item, ctx),
-      })),
-      ...(item.complianceSeed && !overflowFromFixtures.some((a) => a.id === "signal-convert")
-        ? [
-            {
-              id: "signal-convert",
-              label: "Convert to record",
-              onClick: () => runFixtureAction("signal-convert", item, ctx),
-            },
-          ]
-        : []),
-    ];
-
-    return (
-      <OperationalStreamCard
-        id={`issues-signal-${item.id}`}
-        issuesStreamKind="review"
-        cardRef={(node) => {
-          attentionCardRefs.current[item.id] = node;
-        }}
-        issuesMetaLine={item.context?.trim() || undefined}
-        icon={icon}
-        thumbnailUrl={thumbnailUrl}
-        title={item.title}
-        context={item.context}
-        confidenceLevel={item.confidenceLevel ?? "medium"}
-        actions={[reviewAction]}
-        overflowActions={overflowActions}
-        dismissAction={{
-          id: "dismiss",
-          label: "Dismiss",
-          onClick: () => runFixtureAction("dismiss", item, ctx),
-        }}
-        onCardActivate={cardActivate}
-      />
-    );
-  }
-
-  // Recent = raw timeline signals (not tasks)
-  const icon = item.signalKind
-    ? signalKindIcon(item.signalKind)
-    : <Upload className="h-4 w-4 text-muted-foreground" />;
-  const actionsList =
-    item.fixtureActions != null
-      ? [
-          {
-            id: item.fixtureActions.primary.id,
-            label: item.fixtureActions.primary.label,
-            onClick: () => runFixtureAction(item.fixtureActions!.primary.id, item, ctx),
-          },
-          ...(item.fixtureActions.secondary ?? []).map((a) => ({
-            id: a.id,
-            label: a.label,
-            onClick: () => runFixtureAction(a.id, item, ctx),
-          })),
-        ]
-      : [
-          {
-            id: "signal-open",
-            label: "View",
-            onClick: () => runFixtureAction("signal-open", item, ctx),
-          },
-          {
-            id: "dismiss",
-            label: "Dismiss",
-            onClick: () => runFixtureAction("dismiss", item, ctx),
-          },
-        ];
-
-  const category = item.categoryTag
-    ? { label: item.categoryTag, variant: item.categoryTagVariant ?? "default" }
-    : signalCategoryForKind(item.signalKind);
-
-  const recentSubtitle =
-    item.recentSubtitle?.trim() ||
-    formatRecentSignalSubtitle(item.context, item.signalKind) ||
-    item.context;
-
-  return (
-    <OperationalStreamCard
-      id={`issues-signal-${item.id}`}
-      issuesStreamKind="recent"
-      cardRef={(node) => {
-        attentionCardRefs.current[item.id] = node;
-      }}
-      recentSignalMetaLine={recentSubtitle}
-      categoryTag={category?.label}
-      categoryTagVariant={category?.variant}
-      icon={icon}
-      thumbnailUrl={thumbnailUrl}
-      title={item.title}
-      context={item.context}
-      actions={actionsList}
-      onCardActivate={cardActivate}
-    />
-  );
-}
-
-function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDetailSnapshot {
-  return {
-    id: item.id,
-    group: item.group,
-    title: item.title,
-    context: item.context,
-    description: item.description,
-    whyHere: item.whyHere,
-    footChipLabel: item.footChipLabel,
-    signalKind: item.signalKind,
-    messageId: item.messageId,
-    complianceSeed: item.complianceSeed,
-  };
-}
-
-function useTaskTabNarrowViewport() {
-  const query = `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`;
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      const mql = window.matchMedia(query);
-      mql.addEventListener("change", onStoreChange);
-      return () => mql.removeEventListener("change", onStoreChange);
-    },
-    () => window.matchMedia(query).matches,
-    () => false
-  );
-}
-
-type AttentionGroup = "urgent" | "review" | "recent";
-type ComplianceStatus = "healthy" | "expiring" | "overdue" | "missing";
-interface ComplianceRecord {
-  id: string;
-  title: string;
-  propertyName: string;
-  propertyId?: string | null;
-  complianceType: string;
-  expiryDate?: string | null;
-  nextDueDate?: string | null;
-  status: ComplianceStatus;
-  linkedDocument: string;
-  inspectionHistory: string[];
-  linkedTasks: string[];
-  notes: string;
-}
-
-interface AttentionItem {
-  id: string;
-  group: AttentionGroup;
-  title: string;
-  context: string;
-  hint?: string;
-  /** Triage chips for the decision queue (from existing signal data only — no invented DB fields). */
-  signalLabels?: string[];
-  description?: string;
-  imageUrl?: string | null;
-  messageId?: string;
-  complianceSeed?: {
-    title: string;
-    propertyName: string;
-    propertyId?: string | null;
-    complianceType: string;
-  };
-  /** UI taxonomy fixtures / future typed ingestion */
-  signalKind?: SignalKind;
-  /** @deprecated Prefer footChipLabel for feed-layout cards */
-  typeChipLabel?: string;
-  /** Bottom chip on feed cards (e.g. UPLOADED PHOTO) — not duplicate of title */
-  footChipLabel?: string;
-  reviewBanner?: string;
-  whyHere?: string;
-  isUiFixture?: boolean;
-  fixtureActions?: {
-    primary: { id: string; label: string };
-    secondary?: { id: string; label: string }[];
-  };
-  confidenceLevel?: SignalConfidenceLevel;
-  categoryTag?: string;
-  categoryTagVariant?: SignalCategoryVariant;
-  recentSubtitle?: string;
-  /** Sort key for Recent signals preview (ms since epoch). */
-  occurredAt?: number;
-}
-
-function mapSignalFixtureToAttentionItem(f: SignalUiFixture, fixtureIndex = 0): AttentionItem {
-  const group: AttentionGroup =
-    f.disposition === "needs_review" ? "review" : f.disposition === "urgent" ? "urgent" : "recent";
-  const category = f.categoryTag
-    ? { label: f.categoryTag, variant: f.categoryTagVariant ?? "default" }
-    : signalCategoryForKind(f.kind);
-
-  return {
-    id: f.id,
-    group,
-    title: f.title,
-    context: f.contextLine,
-    description: f.explanation,
-    whyHere: f.whyHere,
-    footChipLabel: group === "review" ? undefined : SIGNAL_KIND_FOOT_LABEL[f.kind],
-    reviewBanner: undefined,
-    signalKind: f.kind,
-    isUiFixture: true,
-    fixtureActions: {
-      primary: f.primaryAction,
-      secondary: f.secondaryActions,
-    },
-    hint: undefined,
-    confidenceLevel: f.confidenceLevel ?? reviewConfidenceForFixture(f),
-    categoryTag: category?.label,
-    categoryTagVariant: category?.variant,
-    recentSubtitle: f.recentSubtitle,
-    occurredAt:
-      group === "recent" ? Date.now() - fixtureIndex * 60_000 : undefined,
-  };
-}
-
-function normalizeStatus(rawState?: string | null): ComplianceStatus {
-  const state = String(rawState || "").toLowerCase();
-  if (state.includes("overdue") || state.includes("expired")) return "overdue";
-  if (state.includes("missing") || state.includes("none")) return "missing";
-  if (state.includes("expiring") || state.includes("due_soon")) return "expiring";
-  if (state.includes("valid") || state.includes("healthy")) return "healthy";
-  return "healthy";
-}
-
-function daysUntil(dateString?: string | null): number | null {
-  if (!dateString) return null;
-  const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return null;
-  const now = startOfDay(new Date());
-  const due = startOfDay(parsed);
-  const diff = due.getTime() - now.getTime();
-  return Math.round(diff / (1000 * 60 * 60 * 24));
-}
-
-function formatDueText(dateString?: string | null): string {
-  if (!dateString) return "No expiry date";
-  const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return "No expiry date";
-  return format(parsed, "dd MMM yyyy");
-}
-
-function formatAuthorDisplayName(rawAuthor?: string | null): string {
-  const author = String(rawAuthor || "").trim();
-  if (!author) return "Unknown";
-  if (!author.includes("@")) return author;
-
-  // Some message sources persist an email in author_name.
-  // Convert it into a readable label for dashboard meta text.
-  const localPart = author.split("@")[0] || "";
-  const base = localPart.split("+")[0] || localPart;
-  const tokens = base
-    .replace(/[._-]+/g, " ")
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (tokens.length === 0) return "Unknown";
-
-  return tokens
-    .map((token) =>
-      token.length <= 2
-        ? token.toUpperCase()
-        : `${token.charAt(0).toUpperCase()}${token.slice(1).toLowerCase()}`
-    )
-    .join(" ");
-}
-
 /**
- * Task Panel Component
- *
  * Desktop centre-column panel with 3 tabs:
  * - Issues: operational feed (signals + tasks)
  * - Records: compliance / evidence portfolio
@@ -792,7 +269,7 @@ export function TaskPanel({
       const title = row.title || row.document_type || "Compliance Record";
       const propertyName = row.property_name || "Unassigned property";
       const dueOrExpiry = row.next_due_date || row.expiry_date;
-      const computedStatus = normalizeStatus(row.expiry_state || row.status);
+      const computedStatus = normalizeComplianceStatus(row.expiry_state || row.status);
       const dayDelta = daysUntil(dueOrExpiry);
 
       let status = computedStatus;
@@ -1450,19 +927,18 @@ export function TaskPanel({
                   <div className="space-y-4">
                     {issuesFilter === "all" ? (
                       <>
-                        <RecentNeedsReviewStack
-                          recentItems={groupedAttentionItems.recent}
-                          reviewItems={groupedAttentionItems.review}
+                        <IssuesAllFilterFeed
+                          groupedAttention={{
+                            recent: groupedAttentionItems.recent,
+                            review: groupedAttentionItems.review,
+                          }}
+                          doneWorkbenchTasks={doneWorkbenchTasks}
                           attentionCardRefs={attentionCardRefs}
                           resolveAttentionItem={resolveAttentionItem}
                           addAttentionItemToCompliance={addAttentionItemToCompliance}
                           onOpenIntake={onOpenIntake}
                           onMessageClick={onMessageClick}
                           onAttentionItemSelect={onAttentionItemSelect}
-                        />
-                        <IssuesDoneTasksColumn
-                          previews={doneWorkbenchTasks.previews}
-                          totalCount={doneWorkbenchTasks.totalCount}
                           onTaskClick={onTaskClick}
                         />
                       </>
