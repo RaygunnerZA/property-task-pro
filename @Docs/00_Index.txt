@@ -1,13 +1,21 @@
 # Filla Architecture Index - System V2.1
 
-# CANONICAL DOCUMENTS (read these first — prevent product/IA drift)
-#   01_Overview.md
-#   02_Identity.md
-#   04_UI_System.md
-#   05_Task_Engine.md
-#   19_Platform_Arch.md
-#   Appendix_A.md
-# Schema SSOT: 03_Data_Model.md
+# CONSTITUTIONAL DOCUMENTS (V2.1 — non-negotiable for product/IA/engineering)
+#   01_Overview.md       — vision, signals vs work, adoption, system-wide rules
+#   02_Identity.md     — identity, roles, experience, activity areas vs scope
+#   03_Data_Model.md   — schema, enums, RLS (sole truth for data)
+#   04_UI_System.md    — workbench, navigation, neomorphism, role visibility
+#   05_Task_Engine.md  — tasks, checklists, evidence, task context areas
+#   19_Platform_Arch.md — signals, context panels, Action Layer
+#   Appendix_A.md      — entity → context map (wins on entity IA conflicts)
+#
+# CONFLICT POLICY (agents and builders):
+#   Do not propose or ship IA, navigation, task, checklist, signal, property,
+#   or workbench changes that conflict with the constitution.
+#   If another doc, ticket, or code path conflicts — flag it; do not implement
+#   the conflicting approach until the constitution is explicitly updated.
+#
+# Cursor: see .cursorrules §0 CONSTITUTION
 # Start here: @Docs/00_Index.txt
 
 01_Overview.md              : Vision, Core Pillars, and User Flows.

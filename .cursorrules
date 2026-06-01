@@ -1,9 +1,22 @@
 # FILLA PROJECT RULES
 
+# 0. CONSTITUTION (V2.1 — non-negotiable)
+These `@Docs` chapters are **constitutional**. Read them before product, IA, or schema work:
+- `@Docs/01_Overview.md` — vision, signals vs work, system rules
+- `@Docs/02_Identity.md` — identity, roles, activity areas vs property scope, hooks
+- `@Docs/03_Data_Model.md` — schema, enums, RLS (sole truth for data)
+- `@Docs/04_UI_System.md` — workbench layout, navigation patterns, design tokens
+- `@Docs/05_Task_Engine.md` — tasks, checklists, evidence, task context areas
+- `@Docs/19_Platform_Arch.md` — signals layer, context panels, Action Layer
+- `@Docs/Appendix_A.md` — entity → context map (IA authority on entity surfaces)
+
+**Conflict policy:** Do **not** propose or implement changes to **IA, navigation, tasks, checklists, signals, property scope/navigation, or the operational workbench** that conflict with the constitution. If code, specs, rollout notes, or user requests conflict, **flag the conflict** and point to the constitutional chapter — do not silently implement the conflicting approach. Resolving conflicts requires an explicit constitution or product update first.
+
+Index: `@Docs/00_Index.txt`
+
 # 1. ARCHITECTURE
 - The single source of truth is the `@Docs` folder.
-- CANONICAL product/IA docs (V2.1): `@Docs/01_Overview.md`, `@Docs/02_Identity.md`, `@Docs/04_UI_System.md`, `@Docs/05_Task_Engine.md`, `@Docs/19_Platform_Arch.md`, `@Docs/Appendix_A.md`. Index: `@Docs/00_Index.txt`.
-- BEFORE writing code, check the relevant Chapter in `@Docs`.
+- BEFORE writing code, check the relevant Chapter in `@Docs` (constitutional chapters first when topics overlap).
 - NEVER invent database columns. Check `@Docs/03_Data_Model.md`.
 - ALWAYS use `useActiveOrg` for data fetching. Never use `user_id` directly.
 

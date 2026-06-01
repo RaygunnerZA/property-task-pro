@@ -62,6 +62,12 @@ import {
   type IntakeChipSlotId,
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
+import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
+import { TaskDetailChecklistTab } from "@/components/tasks/detail/TaskDetailChecklistTab";
+import {
+  DEFAULT_TASK_DETAIL_CONTEXT,
+  type TaskDetailContextId,
+} from "@/components/tasks/detail/taskDetailContexts";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -74,7 +80,7 @@ interface TaskDetailPanelProps {
  * 
  * Modal/column panel for viewing and editing task details.
  * Create Task aesthetic: image slider, description 18pt, multi-column metadata, CTA at bottom.
- * - Inline summary (title, key facts, chips), messaging, collapsible activity
+ * - V2.1 contexts: Overview | Checklist | Evidence | Activity
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
@@ -114,8 +120,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
-  const [activityOpen, setActivityOpen] = useState(false);
-  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [activeContext, setActiveContext] = useState<TaskDetailContextId>(DEFAULT_TASK_DETAIL_CONTEXT);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -908,7 +913,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           {title && (
             <DialogHeader className="sr-only">
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription>View and edit task details, attachments, and activity.</DialogDescription>
+              <DialogDescription>
+                Task detail: Overview, Checklist, Evidence, and Activity.
+              </DialogDescription>
             </DialogHeader>
           )}
           {content}
@@ -948,12 +955,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }
 
-  // Shared panel content - Create Task aesthetic: p-4, thumbnails + Camera/Upload at top, description, multi-column, CTA bottom
-  const panelContent = (
-    <>
-      <div ref={panelScrollRef} className="flex-1 overflow-y-auto min-h-0">
-        {/* Image section — main preview (≤70% width) + vertical thumbnails + actions */}
-        <div className="p-4 pb-0 space-y-3">
+  const taskTitle = String((task as any)?.title ?? "Task");
+
+  const evidenceMediaSection = (
+    <div className="space-y-4">
+      <div className="space-y-3">
           {imageAttachments.length > 0 ? (
             <div className="flex gap-3 items-start w-full">
               {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
@@ -1077,10 +1083,40 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }
             }}
           />
+      </div>
+      {documentAttachments.length > 0 ? (
+        <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">
+            Documents ({documentAttachments.length})
+          </div>
+          <div className="space-y-1.5">
+            {documentAttachments.map((attachment: any) => (
+              <button
+                key={attachment.id}
+                type="button"
+                onClick={() => setSelectedDocument(attachment)}
+                className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
+              >
+                <span className="block truncate font-medium text-foreground">
+                  {attachment.file_name || "Document"}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {attachment.file_type || "file"}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No files yet. Upload photos above or attach documents from the field app.
+        </p>
+      )}
+    </div>
+  );
 
-        {/* Content — status, meta, description, edit chips, messaging, activity */}
-        <div className="p-4 space-y-4">
+  const overviewSection = (
+    <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
               Status:
@@ -1139,52 +1175,96 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           <p className="text-[18px] text-foreground leading-relaxed">
             {(task as any)?.description || "No description provided"}
           </p>
+    </div>
+  );
 
-          {documentAttachments.length > 0 && (
-            <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">
-                Documents ({documentAttachments.length})
-              </div>
-              <div className="space-y-1.5">
-                {documentAttachments.map((attachment: any) => (
-                  <button
-                    key={attachment.id}
-                    type="button"
-                    onClick={() => setSelectedDocument(attachment)}
-                    className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
-                  >
-                    <span className="block truncate font-medium text-foreground">
-                      {attachment.file_name || "Document"}
-                    </span>
-                    <span className="block text-[11px] text-muted-foreground">
-                      {attachment.file_type || "file"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+  const activitySection = (
+    <div className="space-y-4">
+      <div className="flex max-h-[min(360px,50dvh)] min-h-[200px] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
+        <TaskMessaging taskId={taskId} />
       </div>
-
-      {messagesOpen && (
-        <div className="flex-shrink-0 px-4 pb-2">
-          <div className="flex max-h-[280px] min-h-0 h-[min(280px,42dvh)] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
-            <TaskMessaging taskId={taskId} />
+      <GraphInsightPanel
+        start={{ type: "task", id: taskId }}
+        depth={2}
+        variant="minimal"
+        className="mb-1"
+      />
+      {imageAttachments.length > 0 && (() => {
+        const img = imageAttachments[selectedImageIndex ?? 0] as any;
+        const orgId = (task as any)?.org_id;
+        if (!orgId) return null;
+        return (
+          <ImageAiActions
+            attachment={img}
+            assets={assets}
+            complianceItems={complianceItems.map((c: any) => ({
+              id: c.id,
+              title: c.title,
+              expiry_date: c.expiry_date,
+            }))}
+            orgId={orgId}
+            propertyId={propertyId}
+            taskId={taskId}
+            onRefresh={() => {
+              refreshTask();
+              queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
+              queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
+              queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
+            }}
+          />
+        );
+      })()}
+      <div>
+        <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Timeline
+        </h3>
+        {timelineLoading ? (
+          <div className="space-y-2 py-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
           </div>
-        </div>
-      )}
+        ) : timelineError ? (
+          <p className="text-muted-foreground text-sm">
+            Couldn’t load activity.{" "}
+            <button
+              type="button"
+              className="text-primary underline-offset-2 hover:underline"
+              onClick={() => void refetchTimeline()}
+            >
+              Retry
+            </button>
+          </p>
+        ) : (
+          <TaskTimeline events={timelineEvents} />
+        )}
+      </div>
+    </div>
+  );
 
-      {/* CTA panel — primary: Mark Complete; secondary: Add message + overflow */}
+  const panelContent = (
+    <>
+      <TaskDetailContent
+        title={taskTitle}
+        activeContext={activeContext}
+        onContextChange={setActiveContext}
+        scrollRef={panelScrollRef}
+        overview={overviewSection}
+        checklist={<TaskDetailChecklistTab taskId={taskId} canEdit={canManageTask} />}
+        evidence={evidenceMediaSection}
+        activity={activitySection}
+      />
+
+      {/* CTA panel — primary: Mark Complete; overflow menu */}
       <div className="flex flex-col gap-1.5 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
         <div className="flex gap-2 items-center min-w-0 w-full">
           <Button
             variant="outline"
             className="shrink-0 shadow-e1 text-foreground"
-            onClick={() => setMessagesOpen((open) => !open)}
+            onClick={() => setActiveContext("activity")}
           >
             <MessageSquare className="h-4 w-4 mr-1.5 shrink-0" />
-            {messagesOpen ? "Close" : "Add message"}
+            Activity
           </Button>
           {hasEdits && canManageTask && (
             <Button variant="outline" className="shrink-0 shadow-e1 text-foreground" onClick={handleUpdateTask} disabled={isUpdating}>
@@ -1329,108 +1409,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </DropdownMenu>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => setActivityOpen((open) => !open)}
-          className="w-full pt-1.5 flex justify-end items-start font-sans text-xs font-normal text-muted-foreground hover:text-foreground underline"
-        >
-          View activity
-        </button>
       </div>
-
-      {activityOpen && (
-        <div className="flex-shrink-0 px-4 pb-4 space-y-4 border-t border-border/15 pt-3">
-          <GraphInsightPanel
-            start={{ type: "task", id: taskId }}
-            depth={2}
-            variant="minimal"
-            className="mb-1"
-          />
-          {imageAttachments.length > 0 && (() => {
-            const img = imageAttachments[selectedImageIndex ?? 0] as any;
-            const orgId = (task as any)?.org_id;
-            if (!orgId) return null;
-            return (
-              <ImageAiActions
-                attachment={img}
-                assets={assets}
-                complianceItems={complianceItems.map((c: any) => ({
-                  id: c.id,
-                  title: c.title,
-                  expiry_date: c.expiry_date,
-                }))}
-                orgId={orgId}
-                propertyId={propertyId}
-                taskId={taskId}
-                onRefresh={() => {
-                  refreshTask();
-                  queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
-                  queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
-                  queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
-                }}
-              />
-            );
-          })()}
-          {imageAttachments.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-                All Images ({imageAttachments.length})
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {imageAttachments.map((image: any) => (
-                  <button
-                    key={image.id}
-                    type="button"
-                    className="relative aspect-square rounded-lg overflow-hidden shadow-e1 group text-left"
-                    onClick={() => {
-                      if (!image?.id) return;
-                      setEditingImageId(image.id);
-                      setShowAnnotationEditor(true);
-                    }}
-                  >
-                    <img
-                      src={image.thumbnail_url || image.file_url}
-                      alt={image.file_name || "Task image"}
-                      className="w-full h-full object-contain bg-muted/40"
-                      onError={(e) => {
-                        if (image.thumbnail_url && image.file_url) {
-                          (e.target as HTMLImageElement).src = image.file_url;
-                        }
-                      }}
-                    />
-                    <TaskImageAnnotationOverlay annotations={image.annotation_json} compact />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Logs
-            </h3>
-            {timelineLoading ? (
-              <div className="space-y-2 py-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            ) : timelineError ? (
-              <p className="text-muted-foreground text-sm">
-                Couldn’t load audit log.{" "}
-                <button
-                  type="button"
-                  className="text-primary underline-offset-2 hover:underline"
-                  onClick={() => void refetchTimeline()}
-                >
-                  Retry
-                </button>
-              </p>
-            ) : (
-              <TaskTimeline events={timelineEvents} />
-            )}
-          </div>
-        </div>
-      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
