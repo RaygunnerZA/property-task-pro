@@ -66,7 +66,7 @@ export default function CreateOrganisationScreen() {
       // Use a direct query with explicit user_id check to ensure RLS is working
       const { data: existingMemberships, error: membershipError } = await supabase
         .from('organisation_members')
-        .select('org_id, organisations!inner(id, name, created_by)')
+        .select('org_id, organisations!organisation_members_org_id_fkey!inner(id, name, created_by)')
         .eq('user_id', currentUserId)
         .limit(1);
 
@@ -124,7 +124,7 @@ export default function CreateOrganisationScreen() {
       const { data: orgId, error: orgError } = await supabase.rpc('create_organisation', {
         org_name: orgName,
         org_type_value: 'business',
-        creator_id: currentUserId
+        creator_id: currentUserId,
       });
 
       if (orgError) {

@@ -7,6 +7,9 @@ import { TEST_PERSONA_ORG_STORAGE_KEY } from "@/lib/dev/testPersonas";
 
 export type { UseActiveOrgResult };
 
+/** Disambiguates PostgREST embed when multiple FKs exist to `organisations` (legacy DBs). */
+const ORG_MEMBER_ORG_EMBED = "organisations!organisation_members_org_id_fkey";
+
 let activeOrgSubscriptionRefCount = 0;
 let activeOrgAuthSubscription: { unsubscribe: () => void } | null = null;
 let activeOrgInvalidateQueries: (() => void) | null = null;
@@ -41,7 +44,7 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
 
     const { data: memberships, error: membershipsError } = await supabase
       .from("organisation_members")
-      .select("org_id, created_at, organisations(org_type)")
+      .select(`org_id, created_at, ${ORG_MEMBER_ORG_EMBED}(org_type)`)
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
