@@ -89,6 +89,9 @@ export function RightColumn({
           {...sharedTaskListProps}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
+          onMessageClick={onMessageClick}
+          onAttentionItemSelect={onAttentionItemSelect}
+          onRecordsViewChange={onRecordsViewChange}
         />
       );
     }

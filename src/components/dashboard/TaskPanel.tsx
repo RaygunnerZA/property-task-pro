@@ -87,6 +87,19 @@ type TabBarDensity = "comfortable" | "compact" | "iconOnly";
 /** At this width and below, tab bar hides icons (compact) until overflow forces icon-only. */
 const TASK_TAB_NARROW_VIEWPORT_PX = LAYOUT_BREAKPOINTS.maxPane;
 
+function useTaskTabNarrowViewport() {
+  const query = `(max-width: ${TASK_TAB_NARROW_VIEWPORT_PX}px)`;
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onStoreChange);
+      return () => mql.removeEventListener("change", onStoreChange);
+    },
+    () => window.matchMedia(query).matches,
+    () => false
+  );
+}
+
 /** Stacked workbench (narrow window): never use icon-only strip; comfortable ↔ compact only. */
 const TASK_TAB_MOBILE_STACK_MAX_PX = 767;
 

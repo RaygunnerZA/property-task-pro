@@ -73,6 +73,8 @@ interface TaskListProps {
   onExternalTaskSearchQueryChange?: (value: string) => void;
   /** When true, completed tasks are rendered elsewhere (Issues Done stream). */
   hideDoneSection?: boolean;
+  /** Home open-work strip: horizontal slider only, no tall scroll region. */
+  embeddedSliderOnly?: boolean;
 }
 
 export function TaskList({ 
@@ -90,6 +92,7 @@ export function TaskList({
   externalTaskSearchQuery,
   onExternalTaskSearchQueryChange,
   hideDoneSection = false,
+  embeddedSliderOnly = false,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -672,7 +675,11 @@ export function TaskList({
     <div ref={tasksPanelInteractionRef} className="flex flex-col h-full min-h-0">
       {/* Filter Bar - fixed at top, does not scroll with list */}
       <div
-        className={cn("flex-shrink-0 mt-0 mb-[18px] pb-0", !embeddedInIssuesWorkbench && "ml-[-3px]")}
+        className={cn(
+          "flex-shrink-0 mt-0 pb-0",
+          embeddedSliderOnly ? "mb-0" : "mb-[18px]",
+          !embeddedInIssuesWorkbench && "ml-[-3px]"
+        )}
       >
         {embeddedInIssuesWorkbench && externalTaskSearchQuery === undefined && !useHeaderControls ? (
           <div className="relative mb-2 flex items-center gap-2 rounded-[10px] bg-background/80 px-2 py-1.5 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
@@ -738,7 +745,14 @@ export function TaskList({
       </div>
 
       {/* Scrollable task list area - independent of filter bar */}
-      <div className="flex-1 flex flex-col min-h-0 max-h-[calc(100vh-280px)] overflow-y-auto rounded-[12px]">
+      <div
+        className={cn(
+          "flex-1 flex flex-col min-h-0 rounded-[12px]",
+          embeddedSliderOnly
+            ? "max-h-none overflow-visible"
+            : "max-h-[calc(100vh-280px)] overflow-y-auto"
+        )}
+      >
         {/* Show empty state if filters are active but no tasks match */}
         {hasActiveFilters && hasNoMatchingTasks ? (
           <EmptyState 

@@ -1,19 +1,32 @@
 import { useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import TaskCard from "@/components/TaskCard";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
+import { TaskList } from "@/components/tasks/TaskList";
 import { TaskListSectionHeader } from "@/components/tasks/TaskListSectionHeader";
 import { EmptyState } from "@/components/design-system/EmptyState";
+import { IssuesRecentNeedsReviewStack } from "@/components/dashboard/issues/IssuesRecentNeedsReviewStack";
+import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
+import { WorkbenchHorizontalScroller } from "@/components/workbench/WorkbenchHorizontalScroller";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useWorkbenchAttentionStream } from "@/hooks/useWorkbenchAttentionStream";
+import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
+import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import {
   groupMyWorkTasksForScope,
   type MyWorkTimeGroup,
 } from "@/lib/myWorkGrouping";
+import { cn } from "@/lib/utils";
+import type { IntakeMode } from "@/types/intake";
+import type { RecordsView } from "@/lib/propertyRoutes";
+import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 
 export interface MyWorkPanelProps {
   tasks?: any[];
@@ -24,6 +37,11 @@ export interface MyWorkPanelProps {
   filterToApply?: string | null;
   filtersToApply?: string[] | null;
   selectedPropertyIds?: Set<string>;
+  onMessageClick?: (messageId: string) => void;
+  onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
+  onTabChange?: (tab: string) => void;
+  onRecordsViewChange?: (view: RecordsView) => void;
 }
 
 const centreScrollClass =
@@ -72,17 +90,31 @@ function MyWorkTaskRows({
 }
 
 /**
- * Home centre column — execution queue grouped by due urgency.
+ * Home centre column — open work slider, signal triage preview, then personal execution queue.
  */
 export function MyWorkPanel({
-  tasks = [],
-  properties = [],
-  tasksLoading = false,
+  tasks: tasksProp,
+  properties: propertiesProp,
+  tasksLoading: tasksLoadingProp,
   onTaskClick,
   selectedTaskId,
   selectedPropertyIds,
+  onMessageClick,
+  onAttentionItemSelect,
+  onOpenIntake,
+  onTabChange,
+  onRecordsViewChange,
 }: MyWorkPanelProps) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [completedOpen, setCompletedOpen] = useState(false);
+
+  const { data: tasksFromQuery = [], isLoading: tasksLoadingFromQuery } = useTasksQuery();
+  const { data: propertiesFromQuery = [] } = usePropertiesQuery();
+
+  const tasks = tasksProp ?? tasksFromQuery;
+  const properties = propertiesProp ?? propertiesFromQuery;
+  const tasksLoading = tasksLoadingProp ?? tasksLoadingFromQuery;
 
   const propertyMap = useMemo(
     () => new Map(properties.map((p) => [p.id, p])),
@@ -102,41 +134,41 @@ export function MyWorkPanel({
 
   const showTodayEmptyHint = grouped.today.length === 0;
 
+  const {
+    groupedAttentionItems,
+    attentionCardRefs,
+    resolveAttentionItem,
+    addAttentionItemToCompliance,
+  } = useWorkbenchAttentionStream({
+    properties,
+    selectedPropertyIds,
+    onTabChange,
+    onRecordsViewChange,
+  });
+
+  const handleViewAllIssues = () => {
+    const property = searchParams.get("property");
+    const suffix = property ? `?property=${encodeURIComponent(property)}` : "";
+    navigate(`${WORKBENCH_SECTION_ROUTES.issues}${suffix}`);
+  };
+
   if (tasksLoading) {
     return (
-      <div className={cn(centreScrollClass, "flex-1 min-h-0 space-y-3")}>
-        <header className="mt-[5px] min-w-0 px-0.5">
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
-            My Work
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Today&apos;s jobs, overdue work and checklists.
-          </p>
-        </header>
-        <div className="space-y-2 rounded-xl bg-muted/20 p-2">
-          <SkeletonTaskCard />
-          <SkeletonTaskCard />
-          <SkeletonTaskCard />
-        </div>
-      </div>
-    );
-  }
-
-  if (tasks.length === 0) {
-    return (
-      <div className={cn(centreScrollClass, "flex-1 min-h-0")}>
-        <header className="mt-[5px] mb-3 min-w-0 px-0.5">
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
-            My Work
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Today&apos;s jobs, overdue work and checklists.
-          </p>
-        </header>
-        <EmptyState
-          title="No tasks"
-          subtitle="Create work from the + actions when you are ready."
-        />
+      <div className={cn(centreScrollClass, "flex-1 min-h-0 space-y-5")}>
+        <section className="space-y-2 rounded-xl bg-muted/20 p-2">
+          <IssuesWorkbenchSectionHeader
+            title="Open work"
+            subtitle="Approved, actionable issues and tasks — scroll sideways through open tasks below."
+            illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
+          />
+          <WorkbenchHorizontalScroller gapClassName="gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-[200px] flex-shrink-0">
+                <SkeletonTaskCard />
+              </div>
+            ))}
+          </WorkbenchHorizontalScroller>
+        </section>
       </div>
     );
   }
@@ -152,17 +184,51 @@ export function MyWorkPanel({
           "linear-gradient(90deg, rgba(255, 255, 255, 0.49) 0%, rgba(255, 255, 255, 0) 100%) 1 / 1 / 0 stretch",
       }}
     >
-      <div className="min-w-0 space-y-4">
-        <header className="mt-[5px] min-w-0 px-0.5">
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
-            My Work
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Today&apos;s jobs, overdue work and checklists.
-          </p>
-        </header>
+      <div className="min-w-0 space-y-5">
+        <section className="space-y-2 rounded-xl bg-muted/20 p-2">
+          <IssuesWorkbenchSectionHeader
+            title="Open work"
+            subtitle="Approved, actionable issues and tasks — scroll sideways through open tasks below."
+            illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
+          />
+          <TaskList
+            tasks={tasks}
+            properties={properties}
+            tasksLoading={false}
+            onTaskClick={onTaskClick}
+            selectedTaskId={selectedTaskId}
+            selectedPropertyIds={selectedPropertyIds}
+            hidePrimaryUrgentChip
+            embeddedInIssuesWorkbench
+            embeddedSliderOnly
+            compactTaskMeta
+            hideDoneSection
+          />
+        </section>
 
-        <div className="min-h-0 space-y-5 rounded-xl bg-muted/20 p-2">
+        <IssuesRecentNeedsReviewStack
+          recentItems={groupedAttentionItems.recent}
+          reviewItems={groupedAttentionItems.review}
+          attentionCardRefs={attentionCardRefs}
+          resolveAttentionItem={resolveAttentionItem}
+          addAttentionItemToCompliance={addAttentionItemToCompliance}
+          onOpenIntake={onOpenIntake}
+          onMessageClick={onMessageClick}
+          onAttentionItemSelect={onAttentionItemSelect}
+          layout="horizontal"
+          onViewAllIssues={handleViewAllIssues}
+        />
+
+        <section className="min-h-0 space-y-5 rounded-xl bg-muted/20 p-2">
+          <header className="min-w-0 px-0.5">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">
+              My Work
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Today&apos;s jobs, overdue work and checklists.
+            </p>
+          </header>
+
           {grouped.overdue.length > 0 ? (
             <section className="space-y-2">
               <TaskListSectionHeader
@@ -215,7 +281,12 @@ export function MyWorkPanel({
             </section>
           ) : null}
 
-          {!hasActiveWork && grouped.completed.length === 0 ? (
+          {!hasActiveWork && grouped.completed.length === 0 && tasks.length === 0 ? (
+            <EmptyState
+              title="No tasks"
+              subtitle="Create work from the + actions when you are ready."
+            />
+          ) : !hasActiveWork && grouped.completed.length === 0 ? (
             <EmptyState
               title="Nothing scheduled"
               subtitle="No overdue, today, or this-week work in your current scope."
@@ -255,7 +326,7 @@ export function MyWorkPanel({
               </section>
             </Collapsible>
           ) : null}
-        </div>
+        </section>
       </div>
     </div>
   );

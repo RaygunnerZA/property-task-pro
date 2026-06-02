@@ -129,7 +129,7 @@ export function HomeWorkbenchCentre({
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden h-[515px] shrink-0">
-        <MyWorkPanel {...myWorkProps} />
+        <MyWorkPanel {...myWorkProps} onOpenIntake={onOpenIntake} onTabChange={onTabChange} />
       </div>
     </div>
   );

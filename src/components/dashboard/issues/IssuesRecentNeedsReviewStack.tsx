@@ -32,6 +32,8 @@ export type IssuesRecentNeedsReviewStackProps = {
   onOpenIntake?: (mode: IntakeMode) => void;
   onMessageClick?: (messageId: string) => void;
   onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
+  layout?: "vertical" | "horizontal";
+  onViewAllIssues?: () => void;
 };
 
 /**
@@ -46,6 +48,8 @@ export function IssuesRecentNeedsReviewStack({
   onOpenIntake,
   onMessageClick,
   onAttentionItemSelect,
+  layout = "vertical",
+  onViewAllIssues,
 }: IssuesRecentNeedsReviewStackProps) {
   const displayReviewItems = useMemo(() => pickTopReviewSignals(reviewItems), [reviewItems]);
   const displayRecentItems = useMemo(() => pickTopRecentSignals(recentItems), [recentItems]);
@@ -73,6 +77,8 @@ export function IssuesRecentNeedsReviewStack({
         emptyTitle={ISSUES_NEEDS_REVIEW_SECTION.emptyTitle}
         emptyDescription={ISSUES_NEEDS_REVIEW_SECTION.emptyDescription}
         renderCard={renderSignal}
+        layout={layout}
+        onViewAll={onViewAllIssues}
       />
       <IssuesScrollColumn
         title={ISSUES_RECENT_SIGNALS_SECTION.title}
@@ -83,6 +89,8 @@ export function IssuesRecentNeedsReviewStack({
         emptyTitle={ISSUES_RECENT_SIGNALS_SECTION.emptyTitle}
         emptyDescription={ISSUES_RECENT_SIGNALS_SECTION.emptyDescription}
         renderCard={renderSignal}
+        layout={layout}
+        onViewAll={onViewAllIssues}
       />
     </div>
   );

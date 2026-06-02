@@ -9,7 +9,7 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { loading: authLoading } = useDataContext();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const { isLoading: dataLoading } = useInitialOrgQueries(orgId);
+  useInitialOrgQueries(orgId);
 
   // Prefetch tasks and properties as soon as orgId is available
   useEffect(() => {

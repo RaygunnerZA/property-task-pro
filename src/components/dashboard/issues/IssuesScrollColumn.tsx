@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
+import { WorkbenchHorizontalScroller } from "@/components/workbench/WorkbenchHorizontalScroller";
 
 type IssuesScrollColumnProps<T extends { id: string }> = {
   title: string;
@@ -13,6 +14,10 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   renderCard: (item: T) => React.ReactNode;
   className?: string;
   onViewAll?: () => void;
+  /** Horizontal scroll row vs stacked vertical list. */
+  layout?: "vertical" | "horizontal";
+  /** Width of each card in horizontal layout. */
+  horizontalItemClassName?: string;
 };
 
 /**
@@ -29,6 +34,8 @@ export function IssuesScrollColumn<T extends { id: string }>({
   renderCard,
   className,
   onViewAll,
+  layout = "vertical",
+  horizontalItemClassName = "w-[min(100vw-2.5rem,300px)] flex-shrink-0",
 }: IssuesScrollColumnProps<T>) {
   return (
     <section
@@ -50,6 +57,14 @@ export function IssuesScrollColumn<T extends { id: string }>({
           <p className="text-xs font-medium text-foreground/90">{emptyTitle}</p>
           <p className="text-[11px] leading-relaxed text-muted-foreground">{emptyDescription}</p>
         </div>
+      ) : layout === "horizontal" ? (
+        <WorkbenchHorizontalScroller className="mt-3">
+          {items.map((item) => (
+            <div key={item.id} className={cn("min-w-0", horizontalItemClassName)}>
+              {renderCard(item)}
+            </div>
+          ))}
+        </WorkbenchHorizontalScroller>
       ) : (
         <div className="mt-3 divide-y divide-input-bg">
           {items.map((item) => (

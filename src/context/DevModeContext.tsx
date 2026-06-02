@@ -133,35 +133,17 @@ export function DevModeProvider({ children }: { children: ReactNode }) {
 // In dev, default to enabled so both accounts see all tasks/files without toggling
 const DEV_DEFAULT_STATE: DevModeState = { ...readInitialDevState(), enabled: true };
 
+/** Call sync-dev-mode edge function only when deployed (set VITE_SYNC_DEV_MODE_EDGE=true). */
+const SYNC_DEV_MODE_EDGE = import.meta.env.VITE_SYNC_DEV_MODE_EDGE === "true";
+
 function DevModeProviderInner({ children }: { children: ReactNode }) {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
   const [state, setState] = useState<DevModeState>(DEV_DEFAULT_STATE);
 
-  // Default ON in this build: sync app_metadata via edge function (RLS reads app_metadata, not user_metadata)
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) return;
-      const devMode = session.user.app_metadata?.dev_mode;
-      const alreadyOn = devMode === true || devMode === "true";
-      if (alreadyOn) {
-        setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
-      } else {
-        setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
-        const { error } = await supabase.functions.invoke("sync-dev-mode", {
-          body: { enabled: true },
-        });
-        if (!error) {
-          await supabase.auth.refreshSession();
-          queryClient.invalidateQueries({ queryKey: ["tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
-        }
-      }
-    });
-  }, [supabase, queryClient]);
-
   const syncDevModeToJwt = useCallback(
     async (enabled: boolean) => {
+      if (!SYNC_DEV_MODE_EDGE) return;
       try {
         const { error } = await supabase.functions.invoke("sync-dev-mode", {
           body: { enabled },
@@ -176,6 +158,21 @@ function DevModeProviderInner({ children }: { children: ReactNode }) {
     },
     [supabase, queryClient]
   );
+
+  // Default ON in this build; only hit edge function when explicitly enabled (avoids CORS noise when undeployed)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session?.user) return;
+      const devMode = session.user.app_metadata?.dev_mode;
+      const alreadyOn = devMode === true || devMode === "true";
+      if (alreadyOn || !SYNC_DEV_MODE_EDGE) {
+        setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+        return;
+      }
+      setState((prev) => (prev.enabled ? prev : { ...prev, enabled: true }));
+      void syncDevModeToJwt(true);
+    });
+  }, [supabase, syncDevModeToJwt]);
 
   const toggle = useCallback(() => {
     setState((prev) => {
