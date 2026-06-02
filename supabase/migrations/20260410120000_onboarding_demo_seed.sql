@@ -63,7 +63,7 @@ BEGIN
     'Take a quick tour of your workspace',
     'You''re seeing sample tasks, compliance items, and assets so nothing feels empty on day one. Delete or edit anything - this is your space. [onboarding_demo]',
     'open',
-    'normal',
+    'medium',
     NULL,
     'sparkles',
     v_milestones
@@ -93,7 +93,7 @@ BEGIN
     'Invite a teammate when you''re ready',
     'Great work happens together. When you want help on site, invite someone from Settings > Team. [onboarding_demo]',
     'open',
-    'normal',
+    'medium',
     NULL,
     'users',
     '[]'::jsonb

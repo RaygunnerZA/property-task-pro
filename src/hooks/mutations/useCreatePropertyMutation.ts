@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
+import { ensureOnboardingDemoForProperty } from "@/lib/seedOnboardingDemo";
 import type { Database } from "@/integrations/supabase/types";
 
 export type CreatePropertyV2Args = Database["public"]["Functions"]["create_property_v2"]["Args"];
@@ -24,6 +25,7 @@ export function useCreatePropertyMutation() {
       const { data, error } = await supabase.rpc("create_property_v2", args);
       if (error) throw error;
       const propertyId = parsePropertyRpcResult(data);
+      await ensureOnboardingDemoForProperty(propertyId);
       return { propertyId, raw: data };
     },
     onSuccess: (result, variables) => {
@@ -33,6 +35,9 @@ export function useCreatePropertyMutation() {
       });
       void queryClient.invalidateQueries({ queryKey: ["properties"] });
       void queryClient.invalidateQueries({ queryKey: ["properties", variables.p_org_id] });
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["assets"] });
+      void queryClient.invalidateQueries({ queryKey: ["compliance_portfolio"] });
     },
   });
 }

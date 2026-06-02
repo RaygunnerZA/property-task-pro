@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import { OnboardingDemoBanner } from "@/components/onboarding/OnboardingDemoBanner";
 import { propertyHasOnboardingDemoContent } from "@/lib/onboardingDemo";
+import { useEnsureOnboardingDemo } from "@/hooks/useEnsureOnboardingDemo";
 import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
 import { Button } from "@/components/ui/button";
 import { HubSummaryPanel } from "@/components/dashboard/HubSummaryPanel";
@@ -139,6 +140,8 @@ export function LeftColumn({
     const id = Array.from(selectedPropertyIds)[0];
     return (properties as any[]).find((p) => p.id === id) ?? null;
   }, [selectedPropertyIds, properties]);
+
+  useEnsureOnboardingDemo(focusedProperty?.id, tasks ?? []);
 
   const showOnboardingDemoBanner = useMemo(() => {
     if (!focusedProperty?.id) return false;

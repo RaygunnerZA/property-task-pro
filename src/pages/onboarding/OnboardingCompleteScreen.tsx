@@ -40,9 +40,9 @@ export default function OnboardingCompleteScreen() {
         </h1>
         
         <p className="text-lg text-[#6D7480] mb-12 px-4">
-          Your workspace is ready.
+          Your workspace is ready with sample tasks, assets, and compliance examples so you can explore every area.
           <br />
-          Let's start managing your properties.
+          Replace or delete them anytime — they&apos;re yours to customise.
         </p>
 
         <NeomorphicButton

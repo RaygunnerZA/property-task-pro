@@ -267,7 +267,7 @@ export default function AddPropertyScreen() {
         }
       }
 
-      toast.success("Property added!");
+      toast.success("Property added! Sample tasks and examples are being added to your workspace.");
 
       // Mark that we're navigating from onboarding to prevent AppInitializer interference
       (window as any).__lastOnboardingNavigation = Date.now();
