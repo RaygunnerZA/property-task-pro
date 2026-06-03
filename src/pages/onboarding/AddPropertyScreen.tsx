@@ -6,6 +6,7 @@ import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboardin
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
+import { NeomorphicAddressInput } from "@/components/onboarding/NeomorphicAddressInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
@@ -16,7 +17,10 @@ import { uploadPropertyImageWithThumbnail } from "@/services/properties/property
 import { useOrganization } from "@/hooks/use-organization";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Pencil, Upload, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { paperTexturedColorStyle } from "@/lib/paperTexture";
 import {
   buildPropertyVisualOccupancy,
   firstFreeColorFromPalette,
@@ -50,6 +54,7 @@ export default function AddPropertyScreen() {
   const orgId = orgIdFromQuery ?? orgIdFromState ?? null;
 
   const [loading, setLoading] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [hasExistingProperties, setHasExistingProperties] = useState(false);
@@ -289,30 +294,75 @@ export default function AddPropertyScreen() {
 
   const IconComponent = getAssetIcon(propertyIcon || "building");
 
-  const stepIcon = (
-    <div
-      className="p-4 rounded-2xl transition-all duration-300"
-      style={{
-        backgroundColor: propertyIconColor,
-        boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
-      }}
-    >
-      <IconComponent className="w-10 h-10 text-white" />
-    </div>
-  );
+  const stepIconStyle = {
+    ...paperTexturedColorStyle(propertyIconColor),
+    backgroundColor: "rgba(255, 255, 255, 1)",
+    boxShadow:
+      "2px 3px 3px 0px rgba(255, 255, 255, 0.75), -1px -1px 1px 1px rgba(0, 0, 0, 0.15), inset 1px 3px 3px 0px rgba(0, 0, 0, 0.15)",
+  } as const;
 
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
         <ProgressDots current={3} total={6} />
         
-        {/* Property icon above title, left-aligned */}
-        <div className="flex justify-center items-center mt-[33px] mb-[10px]">
-          {stepIcon}
+        {/* Property icon with edit affordance */}
+        <div className="flex flex-col items-center mt-[33px] mb-[10px]">
+          <div className="relative group">
+            <div
+              className={cn(
+                "paper-textured-color relative overflow-hidden p-4 rounded-2xl transition-all duration-300",
+                "group-hover:scale-[1.03] group-hover:brightness-[1.03]",
+                iconPickerOpen && "ring-2 ring-offset-2 ring-foreground/20"
+              )}
+              style={stepIconStyle}
+            >
+              <IconComponent className="relative z-10 w-10 h-10 text-white drop-shadow-sm" />
+            </div>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Edit icon"
+                  aria-expanded={iconPickerOpen}
+                  onClick={() => setIconPickerOpen((open) => !open)}
+                  className={cn(
+                    "absolute -top-1.5 -right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full",
+                    "bg-white/95 text-[#6D7480] shadow-md transition-all duration-200",
+                    "opacity-80 group-hover:opacity-100 group-hover:scale-110 group-hover:text-[#FF6B6B]",
+                    "hover:bg-white hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B6B]/40",
+                    iconPickerOpen && "opacity-100 scale-110 text-[#FF6B6B] ring-2 ring-[#FF6B6B]/30"
+                  )}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Edit icon</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {iconPickerOpen && (
+            <div className="mt-4 w-full animate-fade-in">
+              <AIIconColorPicker
+                searchText={propertyNickname.trim() || propertyAddress?.trim() || ""}
+                value={{ iconName: propertyIcon, color: propertyIconColor }}
+                onChange={(icon, color) => {
+                  setPropertyIcon(icon);
+                  setPropertyIconColor(color);
+                }}
+                defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+                fallbackSearch="building"
+                disabled={loading}
+                takenPropertyIconNames={takenIconsArr}
+                takenPropertyColorHexes={takenColorsArr}
+                showLabels={false}
+              />
+            </div>
+          )}
         </div>
 
         <OnboardingHeader
-          title={hasExistingProperties ? "Add another property" : "Add your first property"}
+          title="Add a Property"
           subtitle={hasExistingProperties 
             ? "You already have properties. Add another or skip to continue."
             : "You can always add more later"
@@ -372,28 +422,11 @@ export default function AddPropertyScreen() {
           </div>
         </div>
 
-        {/* AI Icon + Color (5 each, empty until user types) */}
-        <div className="mb-6">
-          <AIIconColorPicker
-            searchText={propertyNickname.trim() || propertyAddress?.trim() || ""}
-            value={{ iconName: propertyIcon, color: propertyIconColor }}
-            onChange={(icon, color) => {
-              setPropertyIcon(icon);
-              setPropertyIconColor(color);
-            }}
-            defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
-            fallbackSearch="building"
-            disabled={loading}
-            takenPropertyIconNames={takenIconsArr}
-            takenPropertyColorHexes={takenColorsArr}
-          />
-        </div>
-
         <div className="space-y-4">
 
-          <NeomorphicInput
+          <NeomorphicAddressInput
             label="Address (Optional)"
-            placeholder="123 Main St, City"
+            placeholder="Start typing an address…"
             value={propertyAddress}
             onChange={(e) => setPropertyAddress(e.target.value)}
           />
@@ -427,7 +460,7 @@ export default function AddPropertyScreen() {
                 variant="ghost"
                 onClick={handleSkip}
               >
-                Continue (you already have properties)
+                Skip for now
               </NeomorphicButton>
             )}
           </div>

@@ -14,6 +14,7 @@ import {
   firstFreeIconFromList,
 } from "@/lib/propertyVisualUniqueness";
 import { cn } from "@/lib/utils";
+import { paperTexturedChipStyle, paperTexturedColorStyle } from "@/lib/paperTexture";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Search } from "lucide-react";
 
@@ -41,6 +42,8 @@ interface AIIconColorPickerProps {
   takenPropertyIconNames?: string[];
   /** Property flow only: normalized hex (no #, lowercase) already used by other properties */
   takenPropertyColorHexes?: string[];
+  /** When false, hides the "Choose an icon" / "Choose a color" labels */
+  showLabels?: boolean;
 }
 
 export function AIIconColorPicker({
@@ -55,6 +58,7 @@ export function AIIconColorPicker({
   className,
   takenPropertyIconNames,
   takenPropertyColorHexes,
+  showLabels = true,
 }: AIIconColorPickerProps) {
   const [aiIcons, setAiIcons] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -251,9 +255,11 @@ export function AIIconColorPicker({
       )}
       {/* Icon row: 5 thematic slots; first replaced by AI when user types */}
       <div>
-        <p className="text-xs font-medium text-muted-foreground mb-2">
-          {debouncedSearch ? "Choose an icon" : "Choose an icon (or type a name for suggestions)"}
-        </p>
+        {showLabels && (
+          <p className="text-xs font-medium text-muted-foreground mb-2">
+            {debouncedSearch ? "Choose an icon" : "Choose an icon (or type a name for suggestions)"}
+          </p>
+        )}
         <div className="flex gap-2 justify-center flex-wrap">
           {displayIcons.map((name, i) => {
             const IconComponent = getAssetIcon(name);
@@ -266,12 +272,17 @@ export function AIIconColorPicker({
                 disabled={disabled || loading}
                 onClick={() => onChange(name, value.color)}
                 className={cn(
-                  "w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
+                  "paper-textured-chip w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
                   "border-2 border-border",
                   isSelected
-                    ? "border-primary bg-primary/10 shadow-md"
-                    : "bg-muted/30 hover:bg-muted/50"
+                    ? "border-primary shadow-md"
+                    : "hover:opacity-90"
                 )}
+                style={
+                  isSelected
+                    ? paperTexturedChipStyle("hsl(var(--primary) / 0.12)")
+                    : paperTexturedChipStyle("hsl(40 12% 94% / 0.85)")
+                }
               >
                 <IconComponent
                   className={cn("h-5 w-5", isSelected ? "text-primary" : "text-muted-foreground")}
@@ -284,10 +295,11 @@ export function AIIconColorPicker({
             disabled={disabled || loading}
             onClick={() => setRefreshKey((k) => k + 1)}
             className={cn(
-              "w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
-              "border-2 border-border bg-white hover:bg-muted/20",
+              "paper-textured-chip w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
+              "border-2 border-border hover:opacity-90",
               loading && "animate-spin"
             )}
+            style={paperTexturedChipStyle("hsl(40 18% 98% / 0.95)")}
             title="Refresh suggestions"
           >
             <RefreshCw className="h-4 w-4 text-muted-foreground" />
@@ -297,7 +309,9 @@ export function AIIconColorPicker({
 
       {/* Color row */}
       <div>
-        <p className="text-xs font-medium text-muted-foreground mb-2">Choose a color</p>
+        {showLabels && (
+          <p className="text-xs font-medium text-muted-foreground mb-2">Choose a color</p>
+        )}
         {visibleColors.length === 0 ? (
           <p className="text-xs text-center text-muted-foreground">
             All palette colours are in use in this organisation.
@@ -313,13 +327,14 @@ export function AIIconColorPicker({
                   onChange(value.iconName || displayIcons[0] || themeIcons[0], color)
                 }
                 className={cn(
-                  "w-10 h-10 rounded-full transition-all",
+                  "paper-textured-color w-10 h-10 rounded-full transition-all",
                   normalizePropertyColorHex(value.color) === normalizePropertyColorHex(color) &&
                     "scale-125 ring-2 ring-offset-2 ring-foreground/30"
                 )}
                 style={{
-                  backgroundColor: color,
-                  boxShadow: "2px 2px 4px rgba(0,0,0,0.1), -1px -1px 2px rgba(255,255,255,0.3)",
+                  ...paperTexturedColorStyle(color),
+                  boxShadow:
+                    "1px 2px 2px 0px rgba(255, 255, 255, 0.5), -1px -1px 1px 0px rgba(0, 0, 0, 0.15), inset 2px 3px 3px 0px rgba(0, 0, 0, 0.06)",
                 }}
               />
             ))}

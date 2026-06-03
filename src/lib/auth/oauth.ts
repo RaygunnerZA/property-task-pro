@@ -4,6 +4,47 @@ import { getAppBaseUrl } from "@/lib/utils";
 
 export type SocialAuthProvider = "google" | "apple" | "facebook";
 
+const PROVIDER_LABELS: Record<SocialAuthProvider, string> = {
+  google: "Google",
+  apple: "Apple",
+  facebook: "Facebook",
+};
+
+/** User-facing message for Supabase OAuth failures (e.g. provider not enabled). */
+export function formatSocialAuthError(
+  err: unknown,
+  provider: SocialAuthProvider
+): { title: string; description?: string } {
+  const label = PROVIDER_LABELS[provider];
+  const raw =
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" &&
+          err !== null &&
+          "msg" in err &&
+          typeof (err as { msg: unknown }).msg === "string"
+        ? (err as { msg: string }).msg
+        : "Could not start sign in";
+
+  const lower = raw.toLowerCase();
+  if (
+    lower.includes("provider is not enabled") ||
+    lower.includes("unsupported provider")
+  ) {
+    return {
+      title: `${label} sign-in is not configured yet`,
+      description:
+        `Enable ${label} under Supabase → Authentication → Providers, then add your OAuth client ID and secret.`,
+    };
+  }
+
+  return {
+    title: raw,
+    description:
+      "Confirm redirect URLs include /auth/callback and the provider is enabled in Supabase.",
+  };
+}
+
 const PROVIDER_MAP: Record<SocialAuthProvider, Provider> = {
   google: "google",
   apple: "apple",

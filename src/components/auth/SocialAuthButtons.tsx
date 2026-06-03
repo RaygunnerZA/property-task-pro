@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+  formatSocialAuthError,
   signInWithSocialProvider,
   type SocialAuthProvider,
 } from "@/lib/auth/oauth";
@@ -48,12 +49,8 @@ export function SocialAuthButtons({ className, disabled }: SocialAuthButtonsProp
       await signInWithSocialProvider(provider);
       // Browser redirects to provider; no further UI updates expected.
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Could not start sign in";
-      toast.error(message, {
-        description:
-          "Check that this provider is enabled in Supabase Authentication settings.",
-      });
+      const { title, description } = formatSocialAuthError(err, provider);
+      toast.error(title, { description });
       setLoadingProvider(null);
     }
   };
