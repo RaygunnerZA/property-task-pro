@@ -9,14 +9,15 @@ export interface OnboardingStep {
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   { step: 0, route: "/signup", label: "Sign Up" },
   { step: 1, route: "/verify", label: "Verify Email" },
-  { step: 2, route: "/onboarding/create-organisation", label: "Create Organisation" },
-  { step: 3, route: "/onboarding/add-property", label: "Add Property" },
-  { step: 4, route: "/onboarding/add-spaces", label: "Add Spaces" },
-  { step: 5, route: "/onboarding/invite-team", label: "Invite Team" },
-  { step: 6, route: "/onboarding/preferences", label: "Preferences" },
+  { step: 2, route: "/onboarding/property-profile", label: "Property Profile" },
+  { step: 3, route: "/onboarding/create-organisation", label: "Create Organisation" },
+  { step: 4, route: "/onboarding/add-property", label: "Add Property" },
+  { step: 5, route: "/onboarding/add-spaces", label: "Add Spaces" },
+  { step: 6, route: "/onboarding/invite-team", label: "Invite Team" },
+  { step: 7, route: "/onboarding/preferences", label: "Preferences" },
 ];
 
-export const TOTAL_STEPS = 7; // 0-6 = 7 steps
+export const TOTAL_STEPS = 8; // 0-7 = 8 steps
 
 /**
  * Get the current step number from the current route

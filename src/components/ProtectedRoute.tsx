@@ -103,7 +103,7 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     if (isInvitedStaff) {
       return <Navigate to="/onboarding/staff" replace />;
     }
-    return <Navigate to="/onboarding/create-organisation" replace />;
+    return <Navigate to="/onboarding/property-profile" replace />;
   }
 
   // If onboarding complete, allow access even if org hydration is still pending

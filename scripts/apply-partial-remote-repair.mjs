@@ -44,6 +44,10 @@ const MIGRATION_PART7 = join(
   root,
   "supabase/migrations/20260602210000_ensure_onboarding_demo_seed.sql"
 );
+const MIGRATION_PART8 = join(
+  root,
+  "supabase/migrations/20260602220000_ensure_space_types_default_icon.sql"
+);
 function loadEnv() {
   if (existsSync(join(root, ".env.local"))) {
     dotenv.config({ path: join(root, ".env.local") });
@@ -206,6 +210,13 @@ async function probeAfterRepair() {
     seedRpcErr?.code === "PGRST202"
       ? { code: seedRpcErr.code, message: seedRpcErr.message }
       : { ok: true };
+  const { error: spaceTypesErr } = await sb
+    .from("space_types")
+    .select("name, default_ui_group, default_icon")
+    .limit(1);
+  results.space_types_default_icon = spaceTypesErr
+    ? { code: spaceTypesErr.code, message: spaceTypesErr.message }
+    : { ok: true };
   return results;
 }
 
@@ -233,6 +244,7 @@ Or paste these files in SQL Editor and run manually:
   supabase/migrations/20260602190000_ensure_entity_icon_name_columns.sql
   supabase/migrations/20260602200000_ensure_space_junctions_and_assets_view.sql
   supabase/migrations/20260602210000_ensure_onboarding_demo_seed.sql
+  supabase/migrations/20260602220000_ensure_space_types_default_icon.sql
 `);
     process.exit(1);
   }
@@ -248,6 +260,7 @@ Or paste these files in SQL Editor and run manually:
     ["part 5", MIGRATION_PART5],
     ["part 6", MIGRATION_PART6],
     ["part 7", MIGRATION_PART7],
+    ["part 8", MIGRATION_PART8],
   ]) {
     const result = runSqlFile(dbUrl, file);
 

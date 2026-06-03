@@ -11,18 +11,36 @@ import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { getCurrentStep } from "@/utils/onboardingSteps";
+import { isPropertyProfileId, orgTypeForPropertyProfile } from "@/lib/propertyProfiles";
 import { toast } from "sonner";
 
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { orgName, setOrgName, setOrgId } = useOnboardingStore();
+  const { orgName, setOrgName, setOrgId, propertyProfile } = useOnboardingStore();
   const { refresh, session } = useDataContext();
   const { orgId: activeOrgId, isLoading: orgLoading } = useActiveOrg();
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [profileReady, setProfileReady] = useState(!!propertyProfile);
+
+  useEffect(() => {
+    if (propertyProfile) {
+      setProfileReady(true);
+      return;
+    }
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const stored = user?.user_metadata?.property_profile;
+      if (isPropertyProfileId(stored)) {
+        useOnboardingStore.getState().setPropertyProfile(stored);
+        setProfileReady(true);
+        return;
+      }
+      navigate("/onboarding/property-profile", { replace: true });
+    });
+  }, [propertyProfile, navigate]);
 
   // If user already has an org, skip this step to avoid "create org" then "you have an org" confusion
   const hasOrgAndRedirecting = !orgLoading && !!activeOrgId;
@@ -31,8 +49,8 @@ export default function CreateOrganisationScreen() {
     navigate("/onboarding/add-property", { replace: true });
   }, [hasOrgAndRedirecting, navigate]);
 
-  // Don't show the form until we've finished the org check – avoids showing "Create org" then redirecting
-  if (orgLoading) {
+  // Don't show the form until profile + org checks finish
+  if (!profileReady || orgLoading) {
     return (
       <OnboardingContainer topRight={<OnboardingLogoutButton />}>
         <div className="animate-fade-in flex min-h-[200px] items-center justify-center">
@@ -121,9 +139,13 @@ export default function CreateOrganisationScreen() {
       }
 
       // Use SECURITY DEFINER function to bypass RLS for org creation
+      const orgType = propertyProfile
+        ? orgTypeForPropertyProfile(propertyProfile)
+        : 'business';
+
       const { data: orgId, error: orgError } = await supabase.rpc('create_organisation', {
         org_name: orgName,
-        org_type_value: 'business',
+        org_type_value: orgType,
         creator_id: currentUserId,
       });
 
@@ -195,7 +217,7 @@ export default function CreateOrganisationScreen() {
           showLogout={false}
           subtitle="Give your team a home"
           showBack
-          onBack={() => navigate("/login")}
+          onBack={() => navigate("/onboarding/property-profile")}
         />
 
         <div className="space-y-6">

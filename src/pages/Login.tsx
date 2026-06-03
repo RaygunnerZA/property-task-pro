@@ -6,6 +6,10 @@ import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import {
+  AuthMethodDivider,
+  SocialAuthButtons,
+} from "@/components/auth/SocialAuthButtons";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -216,6 +220,10 @@ export default function LoginPage() {
           showBack
           onBack={() => navigate("/welcome")}
         />
+
+        <SocialAuthButtons disabled={loading} className="mb-6" />
+
+        <AuthMethodDivider className="mb-6" />
 
         <form onSubmit={handleSignIn} className="space-y-4">
           <NeomorphicInput

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { exchangeOAuthCodeFromUrl } from "@/lib/auth/oauth";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NewtonsCradle } from "ldrs/react";
 import "ldrs/react/NewtonsCradle.css";
@@ -15,7 +16,7 @@ const MIN_LOADING_MS = 2500;
  * Waits at least MIN_LOADING_MS so checks have time to complete before routing.
  * Routes to:
  * - / if user has an org (and properties for owner/manager)
- * - /onboarding/create-organisation if user needs to onboard
+ * - /onboarding/property-profile if user needs to onboard
  * - /onboarding/add-property if user has org but no properties
  * - /welcome if not authenticated
  */
@@ -29,6 +30,13 @@ export default function AuthCallback() {
 
     async function runChecks(): Promise<string | null> {
       try {
+        try {
+          await exchangeOAuthCodeFromUrl();
+        } catch (oauthErr: unknown) {
+          console.error("[AuthCallback] OAuth code exchange failed:", oauthErr);
+          return "/welcome";
+        }
+
         // 1. Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -104,7 +112,7 @@ export default function AuthCallback() {
           }
         }
 
-        return "/onboarding/create-organisation";
+        return "/onboarding/property-profile";
       } catch (err: any) {
         console.error("[AuthCallback] Unexpected error:", err);
         if (!cancelled) {

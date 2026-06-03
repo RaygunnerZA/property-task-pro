@@ -54,7 +54,7 @@ export function NeomorphicButton({
       className={cn(baseStyles, variantStyles[variant], className)}
       style={{
         boxShadow: variantShadows[variant],
-        backgroundColor: variant === "primary" ? "#8EC9CE" : undefined,
+        backgroundColor: variant === "primary" ? "#85BABC" : undefined,
         ...styleProp,
       }}
       disabled={disabled}

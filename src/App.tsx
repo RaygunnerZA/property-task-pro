@@ -31,6 +31,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const WelcomeScreen = lazy(() => import("./pages/onboarding/WelcomeScreen"));
 const SignUpScreen = lazy(() => import("./pages/onboarding/SignUpScreen"));
 const VerifyEmailScreen = lazy(() => import("./pages/onboarding/VerifyEmailScreen"));
+const PropertyProfileScreen = lazy(() => import("./pages/onboarding/PropertyProfileScreen"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const CreateOrganisationScreen = lazy(() => import("./pages/onboarding/CreateOrganisationScreen"));
@@ -216,6 +217,14 @@ const App = () => {
                         element={
                           <RouteBoundary title="Authentication">
                             <AuthCallback />
+                          </RouteBoundary>
+                        }
+                      />
+                      <Route
+                        path="/onboarding/property-profile"
+                        element={
+                          <RouteBoundary title="Property profile">
+                            <PropertyProfileScreen />
                           </RouteBoundary>
                         }
                       />

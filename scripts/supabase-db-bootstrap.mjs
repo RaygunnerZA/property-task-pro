@@ -10,14 +10,13 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { spawnSync } from "node:child_process";
-import { appendFileSync, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const LOG_PATH = join(root, ".cursor/debug-c349f9.log");
 const INIT_VERSION = "20251218201715";
 
 const STALE_REMOTE_VERSIONS = [
@@ -43,31 +42,6 @@ function loadEnv() {
   } else if (existsSync(join(root, ".env"))) {
     dotenv.config({ path: join(root, ".env") });
   }
-}
-
-function agentLog(message, data, hypothesisId) {
-  const line = JSON.stringify({
-    sessionId: "c349f9",
-    timestamp: Date.now(),
-    location: "supabase-db-bootstrap.mjs",
-    message,
-    hypothesisId,
-    data,
-    runId: "bootstrap",
-  });
-  try {
-    appendFileSync(LOG_PATH, line + "\n");
-  } catch {
-    /* ignore */
-  }
-  fetch("http://127.0.0.1:7489/ingest/d316ba9e-0be2-4ce9-a7ae-7380d7b3193b", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "c349f9",
-    },
-    body: line,
-  }).catch(() => {});
 }
 
 async function tableExists(supabase, table) {
@@ -114,13 +88,6 @@ async function main() {
   const migrationStdout = (list.stdout || "") + (list.stderr || "");
   const initApplied = migrationStdout.includes(INIT_VERSION) &&
     migrationStdout.includes("Applied");
-
-  agentLog("diagnose", {
-    orgExists,
-    attachmentsExists,
-    initApplied,
-    listExitCode: list.status,
-  }, "H1-H3");
 
   console.log("\n=== Filla Supabase DB bootstrap ===\n");
   console.log("Remote:", url.replace(/https?:\/\//, "").split(".")[0], "…");

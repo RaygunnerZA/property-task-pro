@@ -86,7 +86,7 @@ const Index = () => {
       }
 
       // Genuinely new user with no invitation — go to org creation
-      navigate("/onboarding/create-organisation");
+      navigate("/onboarding/property-profile");
     };
 
     checkAuth();

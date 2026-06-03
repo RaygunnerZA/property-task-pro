@@ -1,34 +1,43 @@
 import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import fillaLogo from "@/assets/filla-logo-teal.svg";
+import welcomeRadar from "@/assets/onboarding/welcome-radar.gif";
+
 export default function WelcomeScreen() {
   const navigate = useNavigate();
-  return <OnboardingContainer className="bg-[#2a293e]">
-      <div className="text-center animate-fade-in">
-        <div className="mb-8 flex justify-center">
-          <img src={fillaLogo} alt="Filla" className="h-60 w-auto object-contain" />
+
+  return (
+    <OnboardingContainer>
+      <div className="animate-fade-in text-center">
+        <div className="mb-8 flex h-[250px] justify-center">
+          <img
+            src={welcomeRadar}
+            alt=""
+            className="h-56 w-56 max-w-[min(70vw,14rem)] object-contain"
+            width={224}
+            height={224}
+            decoding="async"
+          />
         </div>
 
-        <h1 className="text-4xl font-semibold mb-4 text-primary heading-xl">
+        <h1 className="heading-xl mb-4 text-4xl font-semibold text-[#1C1C1C]">
           Welcome to Filla
         </h1>
-        
-        <p className="text-lg text-[#6D7480] mb-12 px-4">
-          The calm, tactile workspace for property teams.
-          <br />
-          Manage tasks, track compliance, and collaborate—all in one place.
+
+        <p className="mb-10 px-2 text-lg leading-relaxed text-[#6D7480]">
+          AI-powered property management for homes, buildings and portfolios.
         </p>
 
-        <div className="space-y-4 px-[51px]">
-          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")} className="px-0 mx-0 ml-0 mr-0 pr-0 shadow-e3 bg-primary">
+        <div className="space-y-3">
+          <NeomorphicButton variant="primary" onClick={() => navigate("/signup")}>
             Get Started
           </NeomorphicButton>
 
           <NeomorphicButton variant="ghost" onClick={() => navigate("/login")}>
-            I already have an account
+            Sign In
           </NeomorphicButton>
         </div>
       </div>
-    </OnboardingContainer>;
+    </OnboardingContainer>
+  );
 }

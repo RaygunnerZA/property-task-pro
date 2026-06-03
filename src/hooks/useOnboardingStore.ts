@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { PropertyProfileId } from '@/lib/propertyProfiles';
 
 interface OnboardingState {
   // User data
@@ -10,6 +11,9 @@ interface OnboardingState {
   orgName: string;
   orgSlug: string;
   orgId: string | null;
+
+  /** What the user is managing (replaces legacy org type / count / role / industry questions). */
+  propertyProfile: PropertyProfileId | null;
   
   // Property data
   propertyNickname: string;
@@ -34,6 +38,7 @@ interface OnboardingState {
   setOrgName: (name: string) => void;
   setOrgSlug: (slug: string) => void;
   setOrgId: (id: string | null) => void;
+  setPropertyProfile: (profile: PropertyProfileId | null) => void;
   setPropertyNickname: (nickname: string) => void;
   setPropertyAddress: (address: string) => void;
   setPropertyUnits: (units: number) => void;
@@ -55,6 +60,7 @@ const initialState = {
   orgName: '',
   orgSlug: '',
   orgId: null,
+  propertyProfile: null,
   propertyNickname: '',
   propertyAddress: '',
   propertyUnits: 1,
@@ -79,6 +85,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
   },
   setOrgSlug: (orgSlug) => set({ orgSlug }),
   setOrgId: (orgId) => set({ orgId }),
+  setPropertyProfile: (propertyProfile) => set({ propertyProfile }),
   setPropertyNickname: (propertyNickname) => set({ propertyNickname }),
   setPropertyAddress: (propertyAddress) => set({ propertyAddress }),
   setPropertyUnits: (propertyUnits) => set({ propertyUnits }),

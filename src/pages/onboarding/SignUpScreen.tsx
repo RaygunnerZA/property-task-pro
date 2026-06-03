@@ -7,6 +7,10 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicPasswordInput } from "@/components/onboarding/NeomorphicPasswordInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import {
+  AuthMethodDivider,
+  SocialAuthButtons,
+} from "@/components/auth/SocialAuthButtons";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { getAppBaseUrl } from "@/lib/utils";
@@ -120,6 +124,10 @@ export default function SignUpScreen() {
           showBack
           onBack={() => navigate("/welcome")}
         />
+
+        <SocialAuthButtons disabled={loading} className="mb-6" />
+
+        <AuthMethodDivider className="mb-6" />
 
         <form onSubmit={(e) => { e.preventDefault(); handleSignUp(); }} className="space-y-4">
           <NeomorphicInput
