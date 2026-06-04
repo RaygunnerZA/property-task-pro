@@ -1,8 +1,7 @@
-import { forwardRef, useCallback, useRef, type ChangeEvent, type MutableRefObject } from "react";
+import { forwardRef, useCallback, type ChangeEvent } from "react";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
-import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete";
+import { PlaceAutocompleteHost } from "@/components/ui/PlaceAutocompleteHost";
 import { getGoogleMapsApiKey } from "@/lib/googleMapsLoader";
-
 import type { PlaceSelection } from "@/lib/signals/signalTypes";
 
 interface NeomorphicAddressInputProps
@@ -13,41 +12,61 @@ interface NeomorphicAddressInputProps
 export const NeomorphicAddressInput = forwardRef<
   HTMLInputElement,
   NeomorphicAddressInputProps
->(({ onChange, onPlaceSelected, ...props }, ref) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+>(({ onChange, onPlaceSelected, label, error, placeholder, value, id, className, ...props }, ref) => {
+  const hasPlacesKey = !!getGoogleMapsApiKey();
 
-  const setRefs = useCallback(
-    (node: HTMLInputElement | null) => {
-      (inputRef as MutableRefObject<HTMLInputElement | null>).current = node;
-      if (typeof ref === "function") {
-        ref(node);
-      } else if (ref) {
-        (ref as MutableRefObject<HTMLInputElement | null>).current = node;
-      }
+  const emitChange = useCallback(
+    (nextValue: string) => {
+      onChange?.({
+        target: { value: nextValue },
+      } as ChangeEvent<HTMLInputElement>);
     },
-    [ref]
+    [onChange]
   );
 
   const handlePlaceSelected = useCallback(
     (place: PlaceSelection) => {
-      onChange?.({
-        target: { value: place.formattedAddress },
-      } as ChangeEvent<HTMLInputElement>);
+      emitChange(place.formattedAddress);
       onPlaceSelected?.(place);
     },
-    [onChange, onPlaceSelected]
+    [emitChange, onPlaceSelected]
   );
 
-  useGooglePlacesAutocomplete(inputRef, {
-    onPlaceSelected: handlePlaceSelected,
-    enabled: !!getGoogleMapsApiKey(),
-  });
+  if (hasPlacesKey) {
+    return (
+      <div className="mb-6">
+        {label && (
+          <label
+            htmlFor={id}
+            className="block text-sm font-medium text-[#6D7480] mb-2 text-center"
+          >
+            {label}
+          </label>
+        )}
+        <PlaceAutocompleteHost
+          variant="neomorphic"
+          className={className}
+          placeholder={placeholder}
+          value={typeof value === "string" ? value : undefined}
+          onInputChange={emitChange}
+          onPlaceSelected={handlePlaceSelected}
+        />
+        {error && <p className="mt-2 text-sm text-[#FF6B6B]">{error}</p>}
+      </div>
+    );
+  }
 
   return (
     <NeomorphicInput
-      ref={setRefs}
+      ref={ref}
+      label={label}
+      error={error}
+      id={id}
       onChange={onChange}
+      placeholder={placeholder}
+      value={value}
       autoComplete="off"
+      className={className}
       {...props}
     />
   );

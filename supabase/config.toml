@@ -11,3 +11,15 @@ verify_jwt = true
 
 [functions.compliance-clause-rewrite]
 verify_jwt = true
+
+[functions.property-geo-enrich]
+verify_jwt = true
+
+[functions.address-validate]
+verify_jwt = true
+
+[functions.environmental-scanner]
+verify_jwt = true
+
+[functions.signal-engine]
+verify_jwt = true

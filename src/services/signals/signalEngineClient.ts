@@ -6,7 +6,7 @@ export async function enrichPropertyGeo(
   orgId: string,
   place?: PlaceSelection
 ): Promise<void> {
-  void supabase.functions.invoke("property-geo-enrich", {
+  const { error } = await supabase.functions.invoke("property-geo-enrich", {
     body: {
       property_id: propertyId,
       org_id: orgId,
@@ -18,6 +18,9 @@ export async function enrichPropertyGeo(
       address_components: place?.addressComponents,
     },
   });
+  if (error) {
+    console.warn("[property-geo-enrich]", error.message);
+  }
 }
 
 export async function validateAddress(

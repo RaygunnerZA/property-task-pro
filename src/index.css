@@ -888,3 +888,21 @@
 .pac-matched {
   font-weight: 600;
 }
+
+/* Google Place Autocomplete (New) — gmp-place-autocomplete widget */
+.filla-place-autocomplete-host {
+  display: block;
+  width: 100%;
+}
+
+.filla-place-autocomplete-host gmp-place-autocomplete {
+  width: 100%;
+  color-scheme: light;
+}
+
+.filla-place-autocomplete-host--neomorphic gmp-place-autocomplete {
+  --gmp-mat-color-surface: #f6f4f2;
+  --gmp-mat-color-on-surface: #1c1c1c;
+  --gmp-mat-color-on-surface-variant: #6d7480;
+  border-radius: 0.75rem;
+}
