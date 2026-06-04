@@ -15,6 +15,7 @@ export type IssuesSignalCardProps = {
   item: AttentionItem;
   attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
   resolveAttentionItem: (id: string) => void;
+  handleSignalAction?: (actionId: string, item: AttentionItem) => Promise<boolean>;
   addAttentionItemToCompliance: (item: AttentionItem) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
   onMessageClick?: (messageId: string) => void;
@@ -26,12 +27,24 @@ function runFixtureAction(
   item: AttentionItem,
   ctx: {
     resolveAttentionItem: (id: string) => void;
+    handleSignalAction?: (actionId: string, item: AttentionItem) => Promise<boolean>;
     addAttentionItemToCompliance: (item: AttentionItem) => void;
     onOpenIntake?: (mode: IntakeMode) => void;
     onMessageClick?: (messageId: string) => void;
   }
 ) {
-  const { resolveAttentionItem, addAttentionItemToCompliance, onOpenIntake, onMessageClick } = ctx;
+  const { resolveAttentionItem, handleSignalAction, addAttentionItemToCompliance, onOpenIntake, onMessageClick } = ctx;
+
+  if (item.signalId && handleSignalAction) {
+    void handleSignalAction(actionId, item).then((handled) => {
+      if (handled) return;
+      // fall through for unhandled actions
+    });
+    if (["signal-accept", "signal-snooze", "dismiss", "ignore"].includes(actionId)) {
+      return;
+    }
+  }
+
   switch (actionId) {
     case "report-issue":
       onOpenIntake?.("report_issue");
@@ -74,6 +87,7 @@ export function IssuesSignalCard({
   item,
   attentionCardRefs,
   resolveAttentionItem,
+  handleSignalAction,
   addAttentionItemToCompliance,
   onOpenIntake,
   onMessageClick,
@@ -81,6 +95,7 @@ export function IssuesSignalCard({
 }: IssuesSignalCardProps) {
   const ctx = {
     resolveAttentionItem,
+    handleSignalAction,
     addAttentionItemToCompliance,
     onOpenIntake,
     onMessageClick,

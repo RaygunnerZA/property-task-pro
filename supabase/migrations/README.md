@@ -4,7 +4,13 @@ Active migrations in this folder apply in filename order starting at **`20251218
 
 Older **`202501…` / `202502…`** patches live in **`archive/legacy_pre_v2_init/`** (not run by `supabase db push`). They predate init and caused `attachments does not exist` / ordering failures on empty databases.
 
-**Fresh remote setup:** Dashboard → reset database (if tables already exist) → `npm run db:push`. Optional: `npm run db:repair-stale-remote` if the CLI complains about Dec 2025 remote-only IDs.
+**Fresh remote setup:** Dashboard → reset database (if tables already exist) → `npm run db:push`.
+
+**Drift recovery** (remote has `202501…`/`202502…` history or tables exist but v2 init is not recorded):
+
+1. `npm run db:repair-stale-remote` — reverts archived legacy + Dec 2025 remote-only IDs
+2. `npm run db:mark-local-applied` — records all local migration files as applied (schema already live)
+3. `npm run db:push` — applies any new migrations only
 
 ---
 

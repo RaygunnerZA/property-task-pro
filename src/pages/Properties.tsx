@@ -9,6 +9,7 @@ import { StandardPage } from '@/components/design-system/StandardPage';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 import { EmptyState } from '@/components/design-system/EmptyState';
 import { LoadingState } from '@/components/design-system/LoadingState';
+import { PropertyPortfolioMap } from '@/components/properties/PropertyPortfolioMap';
 
 const Properties = () => {
   const { data: properties = [], isLoading: loading } = usePropertiesQuery();
@@ -63,6 +64,25 @@ const Properties = () => {
     });
     return counts;
   }, [properties]);
+
+  const mapPins = useMemo(
+    () =>
+      (properties as Array<{
+        id: string;
+        latitude?: number | null;
+        longitude?: number | null;
+        nickname?: string | null;
+        address?: string | null;
+      }>)
+        .filter((p) => p.latitude != null && p.longitude != null)
+        .map((p) => ({
+          id: p.id,
+          latitude: p.latitude as number,
+          longitude: p.longitude as number,
+          label: p.nickname || p.address || p.id,
+        })),
+    [properties]
+  );
 
   // Filter properties based on active filter
   const filteredProperties = useMemo(() => {
@@ -172,6 +192,14 @@ const Properties = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {!activePropertyId && mapPins.length > 0 && (
+        <PropertyPortfolioMap
+          properties={mapPins}
+          className="mb-6"
+          onPropertyClick={(id) => setFilteredPropertyId(id)}
+        />
       )}
 
       {properties.length === 0 ? (

@@ -21,6 +21,7 @@
     "check:edge-functions": "node scripts/check-edge-functions.mjs",
     "db:diagnose": "node scripts/supabase-db-bootstrap.mjs",
     "db:repair-stale-remote": "node scripts/supabase-db-bootstrap.mjs --repair-stale-remote",
+    "db:mark-local-applied": "node scripts/supabase-db-bootstrap.mjs --mark-local-applied",
     "db:push": "supabase db push",
     "db:repair-partial": "node scripts/apply-partial-remote-repair.mjs"
   },

@@ -48,6 +48,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { AddressAutocompleteInput } from "@/components/ui/AddressAutocompleteInput";
+import { PropertyMapPreview } from "@/components/properties/PropertyMapPreview";
+import type { PlaceSelection } from "@/lib/signals/signalTypes";
+import { enrichPropertyGeo } from "@/services/signals/signalEngineClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 function humanizeSiteType(value: string): string {
@@ -68,6 +72,8 @@ export type PropertyForStrip = {
   contact_name?: string | null;
   contact_email?: string | null;
   contact_phone?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   open_tasks_count?: number | null;
   assets_count?: number | null;
   spaces_count?: number | null;
@@ -169,6 +175,7 @@ export function PropertyIdentityStrip({
 
   // Details edit state
   const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSelection | null>(null);
   const [detailsForm, setDetailsForm] = useState({
     nickname: property.nickname ?? "",
     address: property.address ?? "",
@@ -264,6 +271,13 @@ export function PropertyIdentityStrip({
     if (!error) {
       queryClient.invalidateQueries({ queryKey: ["properties"] });
       setIsEditingDetails(false);
+      if (orgId) {
+        void enrichPropertyGeo(
+          property.id,
+          orgId,
+          selectedPlace ?? { formattedAddress: detailsForm.address }
+        );
+      }
     }
   };
 
@@ -638,13 +652,13 @@ export function PropertyIdentityStrip({
                     <label className="text-[10px] text-muted-foreground uppercase tracking-wide">
                       Address
                     </label>
-                    <input
-                      type="text"
+                    <AddressAutocompleteInput
                       value={detailsForm.address}
                       onChange={(e) =>
                         setDetailsForm((f) => ({ ...f, address: e.target.value }))
                       }
-                      className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50"
+                      onPlaceSelected={setSelectedPlace}
+                      className="w-full mt-0.5 text-xs bg-background/50 border border-border/50 rounded px-2 py-1.5 focus:outline-none focus:border-primary/50 h-auto"
                     />
                   </div>
                   <div className="flex gap-2 pt-0.5">
@@ -685,6 +699,13 @@ export function PropertyIdentityStrip({
                         {property.address}
                       </p>
                     </div>
+                    {property.latitude != null && property.longitude != null && (
+                      <PropertyMapPreview
+                        latitude={property.latitude}
+                        longitude={property.longitude}
+                        className="mt-2 h-[120px]"
+                      />
+                    )}
                   </div>
                   <button
                     type="button"

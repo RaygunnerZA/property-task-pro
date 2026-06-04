@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, MessageSquare } from "lucide-react";
-import { useTaskDetails } from "@/hooks/use-task-details";
+import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
@@ -84,6 +84,7 @@ interface TaskDetailPanelProps {
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
+  const { capture: captureGeo } = useGeoCaptureOnAction();
   const {
     data: timelineEvents,
     isLoading: timelineLoading,
@@ -1321,6 +1322,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     if (propId) updateBriefingCache(["tasks-briefing", orgId, propId]);
                   }
                   toast({ title: "Task completed" });
+                  captureGeo("task_complete", {
+                    taskId,
+                    propertyId: propId,
+                    scanNearby: true,
+                  });
                 } catch (err: any) {
                   toast({ title: "Couldn't complete task", description: err.message, variant: "destructive" });
                 } finally {

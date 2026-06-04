@@ -108,6 +108,7 @@ export function IssuesTriagePanel({
     groupedAttentionItems: baseGroupedAttentionItems,
     attentionCardRefs,
     resolveAttentionItem,
+    handleSignalAction,
     addAttentionItemToCompliance,
   } = useWorkbenchAttentionStream({
     properties,
@@ -278,6 +279,7 @@ export function IssuesTriagePanel({
                           doneWorkbenchTasks={doneWorkbenchTasks}
                           attentionCardRefs={attentionCardRefs}
                           resolveAttentionItem={resolveAttentionItem}
+                          handleSignalAction={handleSignalAction}
                           addAttentionItemToCompliance={addAttentionItemToCompliance}
                           onOpenIntake={onOpenIntake}
                           onMessageClick={onMessageClick}
@@ -304,6 +306,7 @@ export function IssuesTriagePanel({
                                     item={item}
                                     attentionCardRefs={attentionCardRefs}
                                     resolveAttentionItem={resolveAttentionItem}
+                                    handleSignalAction={handleSignalAction}
                                     addAttentionItemToCompliance={addAttentionItemToCompliance}
                                     onOpenIntake={onOpenIntake}
                                     onMessageClick={onMessageClick}

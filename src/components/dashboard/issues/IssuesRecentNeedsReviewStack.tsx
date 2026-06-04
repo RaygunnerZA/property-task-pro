@@ -28,6 +28,7 @@ export type IssuesRecentNeedsReviewStackProps = {
   reviewItems: AttentionItem[];
   attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
   resolveAttentionItem: (id: string) => void;
+  handleSignalAction?: (actionId: string, item: AttentionItem) => Promise<boolean>;
   addAttentionItemToCompliance: (item: AttentionItem) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
   onMessageClick?: (messageId: string) => void;
@@ -44,6 +45,7 @@ export function IssuesRecentNeedsReviewStack({
   reviewItems,
   attentionCardRefs,
   resolveAttentionItem,
+  handleSignalAction,
   addAttentionItemToCompliance,
   onOpenIntake,
   onMessageClick,
@@ -59,6 +61,7 @@ export function IssuesRecentNeedsReviewStack({
       item={item}
       attentionCardRefs={attentionCardRefs}
       resolveAttentionItem={resolveAttentionItem}
+      handleSignalAction={handleSignalAction}
       addAttentionItemToCompliance={addAttentionItemToCompliance}
       onOpenIntake={onOpenIntake}
       onMessageClick={onMessageClick}

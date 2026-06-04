@@ -21,6 +21,9 @@ import { Pencil, Upload, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
+import { PropertyCsvImport } from "@/components/properties/PropertyCsvImport";
+import type { PlaceSelection } from "@/lib/signals/signalTypes";
+import { enrichPropertyGeo } from "@/services/signals/signalEngineClient";
 import {
   buildPropertyVisualOccupancy,
   firstFreeColorFromPalette,
@@ -55,6 +58,7 @@ export default function AddPropertyScreen() {
 
   const [loading, setLoading] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSelection | null>(null);
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [hasExistingProperties, setHasExistingProperties] = useState(false);
@@ -274,6 +278,8 @@ export default function AddPropertyScreen() {
 
       toast.success("Property added! Sample tasks and examples are being added to your workspace.");
 
+      void enrichPropertyGeo(propertyId, orgId, selectedPlace ?? { formattedAddress: finalAddress });
+
       // Mark that we're navigating from onboarding to prevent AppInitializer interference
       (window as any).__lastOnboardingNavigation = Date.now();
 
@@ -429,20 +435,12 @@ export default function AddPropertyScreen() {
             placeholder="Start typing an address…"
             value={propertyAddress}
             onChange={(e) => setPropertyAddress(e.target.value)}
+            onPlaceSelected={setSelectedPlace}
           />
 
           <div className="text-center pt-4">
             <p className="text-sm text-[#6D7480]">
-              If you have multiple properties,{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  toast.info("CSV upload coming soon");
-                }}
-                className="text-[#FF6B6B] font-medium hover:underline"
-              >
-                click here to upload CSV
-              </button>
+              If you have multiple properties, <PropertyCsvImport />
             </p>
           </div>
 

@@ -25,6 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddressAutocompleteInput } from "@/components/ui/AddressAutocompleteInput";
+import type { PlaceSelection } from "@/lib/signals/signalTypes";
+import { enrichPropertyGeo } from "@/services/signals/signalEngineClient";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
@@ -105,6 +108,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
   const [propertyImage, setPropertyImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<PlaceSelection | null>(null);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -190,6 +194,8 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
         icon_color_hex: iconColor,
       };
 
+      void enrichPropertyGeo(propertyId, orgId, selectedPlace ?? { formattedAddress: finalAddress });
+
       if (propertyImage && propertyId) {
         try {
           const { displayUrl } = await uploadPropertyImageWithThumbnail(supabase, {
@@ -274,12 +280,13 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
 
           {/* Address */}
           <div className="grid gap-2">
-            <Label htmlFor="address">Address (optional)</Label>
-            <Input
+            <AddressAutocompleteInput
               id="address"
-              placeholder="123 Main St, City, State ZIP"
+              label="Address (optional)"
+              placeholder="Start typing an address…"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              onPlaceSelected={setSelectedPlace}
               disabled={loading}
             />
           </div>

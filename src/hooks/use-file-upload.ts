@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "./useActiveOrg";
-import { track } from "@/lib/analytics";
+import { captureGeoForAction } from "@/services/location/geoCapture";
 
 interface UseFileUploadOptions {
   taskId?: string;
@@ -176,6 +176,11 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
         org_id: data.orgId,
         document_type: "task_image",
         via_ai: false,
+      });
+      void captureGeoForAction(data.orgId, "photo_upload", {
+        taskId: taskId ?? null,
+        propertyId: propertyId ?? null,
+        attachmentId: data.attachment.id,
       });
       onUploadComplete?.(data.attachment.id, data.publicUrl);
       setProgress((prev) =>

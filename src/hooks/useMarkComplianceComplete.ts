@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyUtils";
 import { createTask } from "@/services/tasks/taskMutations";
+import { captureGeoForAction } from "@/services/location/geoCapture";
 import { track } from "@/lib/analytics";
 
 /** Returned for §24.5 `compliance_item_completed` analytics (`onSuccess`). */
@@ -182,24 +183,28 @@ export function useMarkComplianceComplete() {
       return analyticsPayload;
     },
     onSuccess: (data, variables) => {
-      if (!orgId) return;
-      track("compliance_item_completed", {
-        org_id: orgId,
-        document_id: data.document_id,
-        document_type: data.document_type ?? "unknown",
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["compliance", orgId, variables.propertyId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["compliance_rules", orgId, variables.propertyId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["compliance_recommendations", orgId, variables.propertyId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["property-drift", orgId, variables.propertyId],
-      });
+      if (orgId) {
+        void captureGeoForAction(orgId, "compliance_record", {
+          propertyId: variables.propertyId,
+        });
+        track("compliance_item_completed", {
+          org_id: orgId,
+          document_id: data.document_id,
+          document_type: data.document_type ?? "unknown",
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["compliance", orgId, variables.propertyId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["compliance_rules", orgId, variables.propertyId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["compliance_recommendations", orgId, variables.propertyId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["property-drift", orgId, variables.propertyId],
+        });
+      }
     },
   });
 }

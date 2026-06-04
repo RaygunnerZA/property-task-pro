@@ -23,6 +23,9 @@ export type SignalFeedDetailSnapshot = {
     propertyId?: string | null;
     complianceType: string;
   };
+  recommendation?: Record<string, unknown>;
+  signalSubtype?: string;
+  signalId?: string;
 };
 
 /** Card click on Issues stream → workbench third column / modal (not a DB entity). */
@@ -96,6 +99,21 @@ export function SignalFeedDetailPanel({
             <p className="mt-1 text-xs text-muted-foreground">
               {snapshot.complianceSeed.propertyName} · {snapshot.complianceSeed.complianceType}
             </p>
+          </div>
+        ) : null}
+        {snapshot.recommendation ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Recommended action
+            </p>
+            <p className="mt-1 font-medium text-foreground">
+              {String(snapshot.recommendation.title ?? snapshot.recommendation.action ?? "Review")}
+            </p>
+            {snapshot.recommendation.body ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {String(snapshot.recommendation.body)}
+              </p>
+            ) : null}
           </div>
         ) : null}
         {onOpenIntake ? (

@@ -1,8 +1,9 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { loadGoogleMapsPlaces } from "@/lib/googleMapsLoader";
+import type { PlaceSelection } from "@/lib/signals/signalTypes";
 
 interface UseGooglePlacesAutocompleteOptions {
-  onPlaceSelected: (address: string) => void;
+  onPlaceSelected: (place: PlaceSelection) => void;
   enabled?: boolean;
 }
 
@@ -25,15 +26,26 @@ export function useGooglePlacesAutocomplete(
 
         const instance = new google.maps.places.Autocomplete(inputRef.current, {
           types: ["address"],
-          fields: ["formatted_address"],
+          fields: [
+            "formatted_address",
+            "place_id",
+            "geometry",
+            "address_components",
+          ],
         });
         autocomplete = instance;
 
         instance.addListener("place_changed", () => {
           const place = instance.getPlace();
-          if (place?.formatted_address) {
-            onPlaceSelectedRef.current(place.formatted_address);
-          }
+          if (!place?.formatted_address) return;
+          const loc = place.geometry?.location;
+          onPlaceSelectedRef.current({
+            formattedAddress: place.formatted_address,
+            placeId: place.place_id,
+            latitude: loc?.lat(),
+            longitude: loc?.lng(),
+            addressComponents: place.address_components,
+          });
         });
       })
       .catch(() => {

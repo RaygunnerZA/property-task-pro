@@ -138,6 +138,7 @@ export function MyWorkPanel({
     groupedAttentionItems,
     attentionCardRefs,
     resolveAttentionItem,
+    handleSignalAction,
     addAttentionItemToCompliance,
   } = useWorkbenchAttentionStream({
     properties,
@@ -211,6 +212,7 @@ export function MyWorkPanel({
           reviewItems={groupedAttentionItems.review}
           attentionCardRefs={attentionCardRefs}
           resolveAttentionItem={resolveAttentionItem}
+          handleSignalAction={handleSignalAction}
           addAttentionItemToCompliance={addAttentionItemToCompliance}
           onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}

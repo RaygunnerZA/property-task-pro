@@ -200,6 +200,20 @@ Deno.serve(async (req) => {
 
         const taskTitle = `${getTaskTitleFromDocType(doc.document_type)} – ${doc.title || doc.document_type || "Compliance"}`;
 
+        const { data: emittedSignalId } = await admin.rpc("emit_signal", {
+          p_org_id: doc.org_id,
+          p_subtype: `compliance.auto_${autoType}`,
+          p_title: taskTitle,
+          p_body: `Compliance automation recommends a ${autoType} task. Due: ${dueDate}.`,
+          p_kind: "document",
+          p_category: "compliance",
+          p_severity: autoType === "critical" ? "critical" : autoType === "high" ? "urgent" : "warning",
+          p_property_id: doc.property_id,
+          p_source: "compliance_auto_engine",
+          p_dedupe_key: `${doc.id}:compliance.auto_${autoType}:${dueDate}`,
+          p_disposition: autoType === "critical" ? "urgent" : "needs_review",
+        });
+
         const { data: newTask, error: taskErr } = await admin
           .from("tasks")
           .insert({
@@ -221,6 +235,18 @@ Deno.serve(async (req) => {
         }
 
         if (!newTask) continue;
+
+        if (emittedSignalId) {
+          await admin
+            .from("signals")
+            .update({
+              disposition: "converted_to_issue",
+              resolved_at: new Date().toISOString(),
+              converted_entity_type: "task",
+              converted_entity_id: newTask.id,
+            })
+            .eq("id", emittedSignalId);
+        }
 
         await admin.from("task_compliance").insert({
           task_id: newTask.id,

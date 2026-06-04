@@ -5,12 +5,13 @@
  * Usage:
  *   node scripts/supabase-db-bootstrap.mjs
  *   node scripts/supabase-db-bootstrap.mjs --repair-stale-remote
+ *   node scripts/supabase-db-bootstrap.mjs --mark-local-applied
  *
  * Requires .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  */
 import { createClient } from "@supabase/supabase-js";
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -18,6 +19,19 @@ import dotenv from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const INIT_VERSION = "20251218201715";
+
+/** Remote-only IDs from archived `legacy_pre_v2_init/` (blocks `db push`). */
+const ARCHIVED_LEGACY_PRE_V2_REMOTE_VERSIONS = [
+  "20250101000000", "20250130000000", "20250130000001", "20250130000002",
+  "20250131000000", "20250201000000", "20250201000001", "20250201000002",
+  "20250201000003", "20250201000004", "20250201000005", "20250201000006",
+  "20250201000008", "20250201000009", "20250201000010", "20250202000000",
+  "20250202000001", "20250202000002", "20250202000003", "20250202000004",
+  "20250202000005", "20250202000006", "20250202000007", "20250202000008",
+  "20250202000009", "20250202000011", "20250202000012", "20250202000013",
+  "20250202000014", "20250202000015", "20250202000016", "20250202000017",
+  "20250202000018", "20250202000019",
+];
 
 const STALE_REMOTE_VERSIONS = [
   "20251208190515", "20251208195211", "20251209135842", "20251209140114",
@@ -35,6 +49,19 @@ const STALE_REMOTE_VERSIONS = [
   "20251210221026", "20251210221316", "20251210221449", "20251210221638",
   "20251210221901",
 ];
+
+const ALL_STALE_REMOTE_VERSIONS = [
+  ...ARCHIVED_LEGACY_PRE_V2_REMOTE_VERSIONS,
+  ...STALE_REMOTE_VERSIONS,
+];
+
+function listLocalMigrationVersions() {
+  const dir = join(root, "supabase/migrations");
+  return readdirSync(dir)
+    .filter((f) => /^\d{14}_.+\.sql$/.test(f))
+    .map((f) => f.slice(0, 14))
+    .sort();
+}
 
 function loadEnv() {
   if (existsSync(join(root, ".env.local"))) {
@@ -68,6 +95,7 @@ async function main() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const repairStale = process.argv.includes("--repair-stale-remote");
+  const markLocalApplied = process.argv.includes("--mark-local-applied");
 
   if (!url || !key) {
     console.error("Missing VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local");
@@ -96,14 +124,42 @@ async function main() {
   console.log(`${INIT_VERSION} (filla_v2_init) in migration list as Applied:`, initApplied ? "yes" : "no / pending");
 
   if (repairStale) {
-    console.log("\nRepairing stale Dec 2025 remote-only migration IDs (reverted)…");
+    console.log(
+      "\nRepairing remote-only migration IDs (archived legacy + Dec 2025) as reverted…"
+    );
     const r = spawnSync(
       "supabase",
-      ["migration", "repair", "--status", "reverted", ...STALE_REMOTE_VERSIONS],
+      ["migration", "repair", "--status", "reverted", ...ALL_STALE_REMOTE_VERSIONS],
       { cwd: root, stdio: "inherit" }
     );
     if (r.status !== 0) process.exit(r.status ?? 1);
-    console.log("Done. Run: npm run db:push\n");
+    console.log("Done. If schema already exists: npm run db:mark-local-applied");
+    console.log("Then: npm run db:push\n");
+    return;
+  }
+
+  if (markLocalApplied) {
+    if (!orgExists) {
+      console.error(
+        "Refusing --mark-local-applied: organisations table missing (use db:push on a clean DB)."
+      );
+      process.exit(1);
+    }
+    const versions = listLocalMigrationVersions();
+    console.log(
+      `\nMarking ${versions.length} local migrations as applied (schema drift recovery)…`
+    );
+    const batchSize = 40;
+    for (let i = 0; i < versions.length; i += batchSize) {
+      const batch = versions.slice(i, i + batchSize);
+      const r = spawnSync(
+        "supabase",
+        ["migration", "repair", "--status", "applied", ...batch],
+        { cwd: root, stdio: "inherit" }
+      );
+      if (r.status !== 0) process.exit(r.status ?? 1);
+    }
+    console.log("Done. Run: npm run db:push (should report nothing pending)\n");
     return;
   }
 
@@ -117,8 +173,9 @@ Fix (dev):
   2. Wait until Table Editor shows no tables
   3. npm run db:push
 
-If you still see remote-only Dec 2025 migration errors first:
-  node scripts/supabase-db-bootstrap.mjs --repair-stale-remote
+If db push fails with "Remote migration versions not found in local":
+  npm run db:repair-stale-remote
+  npm run db:mark-local-applied
   npm run db:push
 `);
     process.exit(1);

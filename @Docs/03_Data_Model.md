@@ -17,9 +17,16 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   Admin RPCs (each checks admin, logs to `audit_logs`, returns empty if not admin): `admin_list_orgs`, `admin_get_org`, `admin_list_org_members`, `admin_get_org_activity`, `admin_get_org_ai_requests`.
 
 **Properties & Assets:**
-*   `properties` (address, type)
+*   `properties` (address, type, nickname, icon fields, thumbnail; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
 *   `spaces` (property_id, type)
 *   `assets` (property_id, space_id, serial, condition_score)
+
+**Signals (infrastructure — Issues triage):**
+*   `signals` — org-scoped platform signals: `kind`, `category` (`environmental` | `location` | `property` | `compliance` | `operational`), `subtype`, `severity`, `title`, `body`, `review_state`, `disposition`, `source`, `payload`, `recommendation`, `dedupe_key`, lifecycle fields (`expires_at`, `resolved_at`, `converted_entity_type/id`). RLS: org members SELECT; managers UPDATE. Emitted via `emit_signal()` (service role, idempotent on `dedupe_key`).
+*   `signal_recommendation_templates` — maps `subtype` → recommended action (`create_task`, `create_record`, `alert`).
+*   `geo_captures` — one-shot GPS at work actions: `latitude`, `longitude`, `accuracy_m`, `capture_context`, links to `task_id`, `attachment_id`, `property_id`, etc. RLS: org SELECT; user INSERT own capture only.
+
+**Signal RPCs:** `emit_signal`, `resolve_signal`, `snooze_signal`, `convert_signal_to_task`, `update_property_geo`.
 
 **Tasks & Schedule:**
 *   `tasks` — `status` enum: `open` | `in_progress` | `waiting_review` (vendor work submitted; manager sign-off pending) | `completed` | `archived`; plus `priority`, `due_date`, assignments, property/spaces/assets links.

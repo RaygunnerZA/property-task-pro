@@ -42,6 +42,10 @@ export interface AttentionItem {
   description?: string;
   imageUrl?: string | null;
   messageId?: string;
+  /** Persisted platform signal id (when sourced from signals table) */
+  signalId?: string;
+  signalSubtype?: string;
+  recommendation?: Record<string, unknown>;
   complianceSeed?: {
     title: string;
     propertyName: string;
@@ -160,5 +164,8 @@ export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDe
     signalKind: item.signalKind,
     messageId: item.messageId,
     complianceSeed: item.complianceSeed,
+    recommendation: item.recommendation,
+    signalSubtype: item.signalSubtype,
+    signalId: item.signalId,
   };
 }

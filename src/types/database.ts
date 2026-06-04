@@ -174,18 +174,35 @@ export type SpaceRow = Tables<"spaces">;
 export type TeamRow = Tables<"teams">;
 
 // ===== SIGNAL TYPES =====
-// pending-migration: signals table not in generated schema
+// Signal Engine (see migration 20260603100000_signal_engine_and_location_intelligence.sql)
 export interface SignalRow {
   id: string;
-  org_id?: string | null;
+  org_id: string;
   property_id?: string | null;
-  task_id?: string | null;
+  space_id?: string | null;
+  asset_id?: string | null;
+  kind?: string | null;
+  category?: string | null;
+  subtype?: string | null;
+  severity?: SignalSeverity | null;
+  title?: string | null;
+  body?: string | null;
+  review_state?: string | null;
+  disposition?: string | null;
+  source?: string | null;
+  payload?: Record<string, unknown> | null;
+  recommendation?: Record<string, unknown> | null;
+  dedupe_key?: string | null;
+  expires_at?: string | null;
+  resolved_at?: string | null;
+  converted_entity_type?: string | null;
+  converted_entity_id?: string | null;
+  /** @deprecated legacy reminders stub */
+  due_at?: string | null;
   type?: string | null;
-  severity?: string | null;
   message?: string | null;
-  resolved?: boolean | null;
   created_at?: string;
-  [key: string]: unknown;
+  updated_at?: string;
 }
 export type SignalSeverity = "info" | "warning" | "urgent" | "critical";
 export type SignalScope = "task" | "property" | "org-wide";

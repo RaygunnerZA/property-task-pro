@@ -3,13 +3,17 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete";
 import { getGoogleMapsApiKey } from "@/lib/googleMapsLoader";
 
+import type { PlaceSelection } from "@/lib/signals/signalTypes";
+
 interface NeomorphicAddressInputProps
-  extends React.ComponentPropsWithoutRef<typeof NeomorphicInput> {}
+  extends React.ComponentPropsWithoutRef<typeof NeomorphicInput> {
+  onPlaceSelected?: (place: PlaceSelection) => void;
+}
 
 export const NeomorphicAddressInput = forwardRef<
   HTMLInputElement,
   NeomorphicAddressInputProps
->(({ onChange, ...props }, ref) => {
+>(({ onChange, onPlaceSelected, ...props }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const setRefs = useCallback(
@@ -25,12 +29,13 @@ export const NeomorphicAddressInput = forwardRef<
   );
 
   const handlePlaceSelected = useCallback(
-    (address: string) => {
+    (place: PlaceSelection) => {
       onChange?.({
-        target: { value: address },
+        target: { value: place.formattedAddress },
       } as ChangeEvent<HTMLInputElement>);
+      onPlaceSelected?.(place);
     },
-    [onChange]
+    [onChange, onPlaceSelected]
   );
 
   useGooglePlacesAutocomplete(inputRef, {

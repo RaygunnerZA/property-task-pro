@@ -12,6 +12,9 @@ import {
 import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
+import { useSignalsQuery } from "@/hooks/useSignalsQuery";
+import { useSignalActions } from "@/hooks/useSignalActions";
+import { mapSignalRowToAttentionItem } from "@/lib/signals/mapSignalRowToAttentionItem";
 import {
   SIGNAL_UI_FIXTURES_RECENT,
   SIGNAL_UI_FIXTURES_REVIEW,
@@ -20,11 +23,20 @@ import {
 import type { RecordsView } from "@/lib/propertyRoutes";
 
 export type UseWorkbenchAttentionStreamOptions = {
-  properties: { id: string }[];
+  properties: { id: string; nickname?: string; address?: string }[];
   selectedPropertyIds?: Set<string>;
   onTabChange?: (tab: string) => void;
   onRecordsViewChange?: (view: RecordsView) => void;
 };
+
+function propertyLabel(
+  properties: { id: string; nickname?: string; address?: string }[],
+  propertyId: string | null
+): string | undefined {
+  if (!propertyId) return undefined;
+  const p = properties.find((x) => x.id === propertyId);
+  return p?.nickname || p?.address;
+}
 
 export function useWorkbenchAttentionStream({
   properties,
@@ -50,9 +62,19 @@ export function useWorkbenchAttentionStream({
     };
   }, [properties.length, selectedPropertyIds]);
 
+  const propertyIdsForSignals = useMemo(() => {
+    if (!selectedPropertyIds || selectedPropertyIds.size === 0) return undefined;
+    if (selectedPropertyIds.size >= properties.length) return undefined;
+    return Array.from(selectedPropertyIds);
+  }, [selectedPropertyIds, properties.length]);
+
   const { messages } = useMessages(messagesOptions);
   const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
+  const { data: platformSignals = [] } = useSignalsQuery({
+    propertyIds: propertyIdsForSignals,
+  });
+  const { dismiss, snooze, acceptRecommendation } = useSignalActions();
 
   const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
   const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
@@ -114,6 +136,14 @@ export function useWorkbenchAttentionStream({
       ? SIGNAL_UI_FIXTURES_RECENT.map((f, i) => mapSignalFixtureToAttentionItem(f, i))
       : [];
 
+    const fromPlatformSignals = platformSignals.map((row) =>
+      mapSignalRowToAttentionItem(row, propertyLabel(properties, row.property_id))
+    );
+
+    const urgentFromSignals = fromPlatformSignals.filter((i) => i.group === "urgent");
+    const reviewFromSignals = fromPlatformSignals.filter((i) => i.group === "review");
+    const recentFromSignals = fromPlatformSignals.filter((i) => i.group === "recent");
+
     const urgentFromData: AttentionItem[] = complianceRecords
       .filter((record) => record.status === "overdue")
       .slice(0, 4)
@@ -174,9 +204,9 @@ export function useWorkbenchAttentionStream({
       };
     });
 
-    const urgent = [...fixtureUrgent, ...urgentFromData];
-    const review = [...fixtureReview, ...reviewFromData];
-    const recent = [...fixtureRecent, ...recentFromData];
+    const urgent = [...fixtureUrgent, ...urgentFromSignals, ...urgentFromData];
+    const review = [...fixtureReview, ...reviewFromSignals, ...reviewFromData];
+    const recent = [...fixtureRecent, ...recentFromSignals, ...recentFromData];
 
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
       return [
@@ -193,7 +223,7 @@ export function useWorkbenchAttentionStream({
     }
 
     return [...urgent, ...review, ...recent];
-  }, [complianceRecords, messages, signalUiFixturesEnabled]);
+  }, [complianceRecords, messages, platformSignals, properties, signalUiFixturesEnabled]);
 
   const unresolvedAttentionItems = useMemo(
     () => attentionItems.filter((item) => !resolvedAttentionIds.has(item.id)),
@@ -213,6 +243,29 @@ export function useWorkbenchAttentionStream({
       next.add(itemId);
       return next;
     });
+  };
+
+  const handleSignalAction = async (
+    actionId: string,
+    item: AttentionItem
+  ): Promise<boolean> => {
+    if (!item.signalId) return false;
+    if (actionId === "signal-accept") {
+      await acceptRecommendation.mutateAsync(item.signalId);
+      resolveAttentionItem(item.id);
+      return true;
+    }
+    if (actionId === "signal-snooze") {
+      await snooze.mutateAsync(item.signalId);
+      resolveAttentionItem(item.id);
+      return true;
+    }
+    if (actionId === "dismiss" || actionId === "ignore") {
+      await dismiss.mutateAsync(item.signalId);
+      resolveAttentionItem(item.id);
+      return true;
+    }
+    return false;
   };
 
   const addAttentionItemToCompliance = (item: AttentionItem) => {
@@ -244,6 +297,7 @@ export function useWorkbenchAttentionStream({
     groupedAttentionItems,
     attentionCardRefs,
     resolveAttentionItem,
+    handleSignalAction,
     addAttentionItemToCompliance,
   };
 }
