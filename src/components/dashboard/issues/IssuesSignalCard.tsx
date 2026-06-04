@@ -81,7 +81,7 @@ function runFixtureAction(
 }
 
 /**
- * Signal row in Issues triage — delegates review/recent to horizontal row cards via OperationalStreamCard.
+ * Signal row in Issues triage — delegates review/recent to row cards via OperationalStreamCard.
  */
 export function IssuesSignalCard({
   item,

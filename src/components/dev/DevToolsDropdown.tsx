@@ -39,6 +39,7 @@ import {
   Users,
   MessageSquare,
   Loader2,
+  Radio,
 } from "lucide-react";
 import { useDevEmbedLayout } from "@/hooks/useDevEmbedLayout";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SignalDiagnosticsPanel } from "@/components/dev/SignalDiagnosticsPanel";
 
 const UI_ROLE_OVERRIDES: { value: DevUserRole | null; label: string }[] = [
   { value: null, label: "Use real membership role" },
@@ -417,6 +419,18 @@ function DevToolsDropdownInner() {
             )}
           </DropdownMenuItem>
         </DropdownMenuGroup>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Radio className="mr-2 h-4 w-4" />
+            Signal Diagnostics
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="p-0" sideOffset={4}>
+            <SignalDiagnosticsPanel />
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuSeparator />
 

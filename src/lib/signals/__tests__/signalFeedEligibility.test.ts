@@ -18,6 +18,7 @@ function row(partial: Partial<SignalRow>): SignalRow {
     review_state: "none",
     disposition: "urgent",
     source: "open_meteo",
+    source_key: "weather",
     payload: {},
     recommendation: { action: "create_task" },
     dedupe_key: null,

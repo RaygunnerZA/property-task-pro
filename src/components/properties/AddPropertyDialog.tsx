@@ -214,7 +214,9 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
           }
         } catch (uploadErr) {
           console.error("Image upload failed:", uploadErr);
-          toast.warning("Property created but image upload failed");
+          const detail =
+            uploadErr instanceof Error ? uploadErr.message : "Image upload failed";
+          toast.warning(`Property created, but photo could not be saved: ${detail}`);
         }
       }
 

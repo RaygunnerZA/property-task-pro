@@ -38,7 +38,7 @@ export type IssuesRecentNeedsReviewStackProps = {
 };
 
 /**
- * Stacked Needs review + Recent sections using horizontal row formatting in each list.
+ * Stacked Needs review + Recent sections — one signal per row in each list.
  */
 export function IssuesRecentNeedsReviewStack({
   recentItems,

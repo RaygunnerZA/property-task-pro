@@ -2486,6 +2486,74 @@ export type Database = {
         }
         Relationships: []
       }
+      signal_source_runs: {
+        Row: {
+          api_calls: number
+          created_at: string
+          duplicates_ignored: number
+          errors: Json
+          expired_cleared: number
+          finished_at: string | null
+          id: string
+          metadata: Json
+          org_id: string | null
+          orgs_scanned: number
+          properties_scanned: number
+          run_type: string
+          signals_created: number
+          skipped: number
+          source_key: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          api_calls?: number
+          created_at?: string
+          duplicates_ignored?: number
+          errors?: Json
+          expired_cleared?: number
+          finished_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          orgs_scanned?: number
+          properties_scanned?: number
+          run_type?: string
+          signals_created?: number
+          skipped?: number
+          source_key: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          api_calls?: number
+          created_at?: string
+          duplicates_ignored?: number
+          errors?: Json
+          expired_cleared?: number
+          finished_at?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string | null
+          orgs_scanned?: number
+          properties_scanned?: number
+          run_type?: string
+          signals_created?: number
+          skipped?: number
+          source_key?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signal_source_runs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signals: {
         Row: {
           ai_recommendation: Json | null
@@ -2502,6 +2570,7 @@ export type Database = {
           severity: string | null
           snooze_until: string | null
           source: string
+          source_key: string | null
           status: string
           task_id: string | null
           title: string
@@ -2523,6 +2592,7 @@ export type Database = {
           severity?: string | null
           snooze_until?: string | null
           source?: string
+          source_key?: string | null
           status?: string
           task_id?: string | null
           title: string
@@ -2544,6 +2614,7 @@ export type Database = {
           severity?: string | null
           snooze_until?: string | null
           source?: string
+          source_key?: string | null
           status?: string
           task_id?: string | null
           title?: string
@@ -4617,6 +4688,29 @@ export type Database = {
       delete_task_full: {
         Args: { p_org: string; p_task_id: string }
         Returns: undefined
+      }
+      emit_signal: {
+        Args: {
+          p_asset_id?: string
+          p_body?: string
+          p_category?: string
+          p_dedupe_key?: string
+          p_disposition?: string
+          p_expires_at?: string
+          p_kind?: string
+          p_org_id: string
+          p_payload?: Json
+          p_property_id?: string
+          p_recommendation?: Json
+          p_review_state?: string
+          p_severity?: string
+          p_source?: string
+          p_source_key?: string
+          p_space_id?: string
+          p_subtype: string
+          p_title: string
+        }
+        Returns: string
       }
       expire_stale_environmental_signals: { Args: never; Returns: number }
       generate_recurring_task_instance: {

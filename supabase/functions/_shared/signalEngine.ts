@@ -12,7 +12,10 @@ export interface EmitSignalInput {
   property_id?: string;
   space_id?: string;
   asset_id?: string;
+  /** Low-level API provider: open_meteo, google_air_quality, device_gps, … */
   source?: string;
+  /** Governance bucket: weather, air_quality, pollen, gps_evidence, … */
+  source_key?: string;
   payload?: Record<string, unknown>;
   recommendation?: Record<string, unknown>;
   dedupe_key?: string;
@@ -37,6 +40,7 @@ export async function emitSignal(
     p_space_id: input.space_id ?? null,
     p_asset_id: input.asset_id ?? null,
     p_source: input.source ?? "system",
+    p_source_key: input.source_key ?? null,
     p_payload: input.payload ?? {},
     p_recommendation: input.recommendation ?? null,
     p_dedupe_key: input.dedupe_key ?? null,

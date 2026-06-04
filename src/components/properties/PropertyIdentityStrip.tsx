@@ -246,14 +246,24 @@ export function PropertyIdentityStrip({
     if (!file || !orgId) return;
     setIsUploadingPhoto(true);
     try {
-      await uploadPropertyImageWithThumbnail(supabase, {
+      const { displayUrl } = await uploadPropertyImageWithThumbnail(supabase, {
         orgId,
         propertyId: property.id,
         file,
       });
-      queryClient.invalidateQueries({ queryKey: ["properties"] });
+      queryClient.setQueryData(["properties", orgId], (prev: unknown) => {
+        const list = prev as PropertyForStrip[] | undefined;
+        if (!list) return list;
+        return list.map((p) =>
+          p.id === property.id ? { ...p, thumbnail_url: displayUrl } : p
+        );
+      });
+      await queryClient.invalidateQueries({ queryKey: ["properties", orgId] });
+      toast.success("Property photo updated");
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to upload photo";
       console.error("[PropertyIdentityStrip] Photo upload failed:", err);
+      toast.error(message);
     } finally {
       setIsUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

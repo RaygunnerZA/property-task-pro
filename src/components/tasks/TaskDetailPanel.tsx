@@ -53,6 +53,7 @@ import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTaskDetails } from "@/hooks/use-task-details";
 import { useTaskTimeline } from "@/hooks/useTaskTimeline";
 import { TaskTimeline } from "./TaskTimeline";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";

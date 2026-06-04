@@ -21,6 +21,7 @@ export interface SignalRow {
   review_state: string;
   disposition: string;
   source: string;
+  source_key: string | null;
   payload: Record<string, unknown>;
   recommendation: Record<string, unknown> | null;
   dedupe_key: string | null;

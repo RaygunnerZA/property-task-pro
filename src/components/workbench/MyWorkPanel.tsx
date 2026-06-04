@@ -217,7 +217,6 @@ export function MyWorkPanel({
           onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
-          layout="horizontal"
           onViewAllIssues={handleViewAllIssues}
         />
 
