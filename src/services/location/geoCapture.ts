@@ -26,7 +26,7 @@ export async function recordGeoCapture(input: GeoCaptureInput): Promise<string |
   if (!userId) return null;
 
   const { data, error } = await supabase
-    .from("geo_captures" as "tasks")
+    .from("geo_captures")
     .insert({
       org_id: input.orgId,
       user_id: userId,
@@ -53,7 +53,7 @@ export async function recordGeoCapture(input: GeoCaptureInput): Promise<string |
     body: {
       action: "assess_geo_capture",
       geo_capture_id: captureId,
-      scan_nearby: input.scanNearby ?? input.context === "site_visit",
+      scan_nearby: input.scanNearby === true,
     },
   });
 

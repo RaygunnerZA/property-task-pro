@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import type { SignalRow } from "@/lib/signals/signalTypes";
+import { isSignalEligibleForIssuesFeed } from "@/lib/signals/signalFeedEligibility";
 
 export function useSignalsQuery(options?: {
   propertyIds?: string[];
@@ -17,7 +18,7 @@ export function useSignalsQuery(options?: {
       if (!orgId) return [] as SignalRow[];
 
       const { data, error } = await supabase
-        .from("signals" as "tasks")
+        .from("signals")
         .select("*")
         .eq("org_id", orgId)
         .is("resolved_at", null)
@@ -33,16 +34,20 @@ export function useSignalsQuery(options?: {
 
       const rows = (data ?? []) as unknown as SignalRow[];
       const now = Date.now();
-      return rows.filter((s) => {
-        if (s.disposition === "dismissed") return false;
-        if (s.disposition === "snoozed" && s.expires_at) {
-          return new Date(s.expires_at).getTime() <= now;
-        }
-        if (propertyIds && propertyIds.length > 0 && s.property_id) {
-          return propertyIds.includes(s.property_id);
-        }
-        return true;
-      }).slice(0, 50);
+      return rows
+        .filter((s) => {
+          if (s.disposition === "dismissed") return false;
+          if (s.disposition === "snoozed") {
+            if (!s.expires_at) return false;
+            return new Date(s.expires_at).getTime() <= now;
+          }
+          if (!isSignalEligibleForIssuesFeed(s)) return false;
+          if (propertyIds && propertyIds.length > 0 && s.property_id) {
+            return propertyIds.includes(s.property_id);
+          }
+          return true;
+        })
+        .slice(0, 50);
     },
     staleTime: 30_000,
   });

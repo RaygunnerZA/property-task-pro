@@ -75,22 +75,6 @@ Deno.serve(async (req) => {
       p_address_validated: false,
     });
 
-    // Coastline heuristic: within ~5km of sea level grid (simplified — lat/lng near coast UK/EU)
-    // For MVP: emit geocoded success signal only; property intelligence rules expand later
-    await emitSignal(admin, {
-      org_id: resolvedOrgId,
-      property_id: propertyId,
-      subtype: "property.geocoded",
-      title: "Property location confirmed",
-      body: `${property.nickname || property.address} is ready for environmental monitoring.`,
-      category: "property",
-      kind: "system",
-      severity: "info",
-      source: "google_geocoding",
-      payload: { lat: resolvedLat, lng: resolvedLng, place_id: resolvedPlaceId },
-      dedupe_key: propertyDedupeKey(propertyId, "property.geocoded"),
-    });
-
     return jsonResponse({
       ok: true,
       latitude: resolvedLat,

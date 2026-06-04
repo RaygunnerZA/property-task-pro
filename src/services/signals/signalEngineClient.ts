@@ -35,8 +35,15 @@ export async function validateAddress(
   return data as { valid: boolean; signals: string[]; formatted?: string };
 }
 
-export async function runEnvironmentalScanner(orgId?: string): Promise<void> {
+/** Manual scanner invoke — pass force: true to bypass 12h per-property cooldown. */
+export async function runEnvironmentalScanner(
+  orgId?: string,
+  options?: { force?: boolean }
+): Promise<void> {
   void supabase.functions.invoke("environmental-scanner", {
-    body: orgId ? { org_id: orgId } : {},
+    body: {
+      ...(orgId ? { org_id: orgId } : {}),
+      ...(options?.force ? { force: true } : {}),
+    },
   });
 }

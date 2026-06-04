@@ -94,21 +94,7 @@ Deno.serve(async (req) => {
         prop.longitude
       );
       const verified = dist <= (body.geofence_m ?? 200);
-      if (verified) {
-        await emitSignal(admin, {
-          org_id: orgId,
-          property_id: propertyId ?? undefined,
-          subtype: "location.gps_verified",
-          title: "GPS verified on-site",
-          body: `Work at ${propertyName} completed with verified on-site location (${Math.round(dist)}m).`,
-          category: "location",
-          kind: "system",
-          severity: "info",
-          source: "device_gps",
-          payload: { geo_capture_id: captureId, distance_m: dist },
-          dedupe_key: propertyDedupeKey(propertyId ?? captureId, "location.gps_verified"),
-        });
-      } else {
+      if (!verified) {
         await emitSignal(admin, {
           org_id: orgId,
           property_id: propertyId ?? undefined,
@@ -126,8 +112,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Nearby overdue tasks (operational)
-    if (propertyId && body.scan_nearby) {
+    if (propertyId && body.scan_nearby === true) {
       const { data: overdueTasks } = await admin
         .from("tasks")
         .select("id, title, due_date")

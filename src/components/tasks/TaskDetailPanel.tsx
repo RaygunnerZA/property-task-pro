@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } fro
 import { createPortal } from "react-dom";
 import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, MessageSquare } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
+import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
@@ -1325,7 +1326,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   captureGeo("task_complete", {
                     taskId,
                     propertyId: propId,
-                    scanNearby: true,
                   });
                 } catch (err: any) {
                   toast({ title: "Couldn't complete task", description: err.message, variant: "destructive" });
@@ -1416,6 +1416,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </DropdownMenu>
           )}
         </div>
+        {canManageTask && status !== "completed" ? (
+          <p className="text-[11px] leading-snug text-muted-foreground px-0.5">
+            {GEO_EVIDENCE_CONSENT_LINE}
+          </p>
+        ) : null}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

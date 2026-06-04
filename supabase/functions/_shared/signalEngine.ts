@@ -54,9 +54,35 @@ export async function emitSignal(
 export function propertyDedupeKey(
   propertyId: string,
   subtype: string,
-  date = todayDedupeSuffix()
+  date = todayDedupeSuffix(),
+  source?: string
 ): string {
+  if (source) return `${propertyId}:${subtype}:${source}:${date}`;
   return `${propertyId}:${subtype}:${date}`;
+}
+
+const WEATHER_SEVERITY_RANK: Record<string, number> = {
+  info: 0,
+  warning: 1,
+  urgent: 2,
+  critical: 3,
+};
+
+/** Cap weather noise: keep the most important forecasts per scan. */
+export function pickTopWeatherSignals<
+  T extends { subtype: string; severity: string },
+>(signals: T[], limit = 2): T[] {
+  return [...signals]
+    .sort(
+      (a, b) =>
+        (WEATHER_SEVERITY_RANK[b.severity] ?? 0) -
+        (WEATHER_SEVERITY_RANK[a.severity] ?? 0)
+    )
+    .slice(0, limit);
+}
+
+export function weatherExpiresAt(forecastDate: string): string {
+  return `${forecastDate}T23:59:59.999Z`;
 }
 
 export interface WeatherDay {
@@ -102,8 +128,16 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
   body: string;
   severity: string;
   kind: string;
+  date: string;
 }> {
-  const out: Array<{ subtype: string; title: string; body: string; severity: string; kind: string }> = [];
+  const out: Array<{
+    subtype: string;
+    title: string;
+    body: string;
+    severity: string;
+    kind: string;
+    date: string;
+  }> = [];
   for (const d of days) {
     if (d.precipitationMm >= 25) {
       out.push({
@@ -112,6 +146,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `${d.precipitationMm.toFixed(0)}mm rain expected on ${d.date}. Drainage inspection recommended.`,
         severity: "warning",
         kind: "weather",
+        date: d.date,
       });
     }
     if ([95, 96, 99].includes(d.weatherCode)) {
@@ -121,6 +156,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `Storm conditions expected on ${d.date}. Roof inspection recommended.`,
         severity: "urgent",
         kind: "weather",
+        date: d.date,
       });
     }
     if (d.weatherCode === 96 || d.weatherCode === 99) {
@@ -130,6 +166,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `Thunderstorm activity on ${d.date}. Check electrical infrastructure.`,
         severity: "urgent",
         kind: "weather",
+        date: d.date,
       });
     }
     if (d.tempMinC <= 0) {
@@ -139,6 +176,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `Sub-zero temperatures (${d.tempMinC.toFixed(0)}°C) on ${d.date}. Pipe freeze prevention recommended.`,
         severity: "urgent",
         kind: "weather",
+        date: d.date,
       });
     }
     if (d.tempMaxC >= 32) {
@@ -148,6 +186,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `High temperatures (${d.tempMaxC.toFixed(0)}°C) on ${d.date}. HVAC maintenance check recommended.`,
         severity: "warning",
         kind: "weather",
+        date: d.date,
       });
     }
     if (d.windMaxKmh >= 60) {
@@ -157,6 +196,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `Winds up to ${d.windMaxKmh.toFixed(0)} km/h on ${d.date}. External asset inspection recommended.`,
         severity: "warning",
         kind: "weather",
+        date: d.date,
       });
     }
     if ([71, 73, 75, 77, 85, 86].includes(d.weatherCode)) {
@@ -166,6 +206,7 @@ export function detectWeatherSignals(days: WeatherDay[]): Array<{
         body: `Snow expected on ${d.date}. Review access routes and gritting.`,
         severity: "warning",
         kind: "weather",
+        date: d.date,
       });
     }
   }
