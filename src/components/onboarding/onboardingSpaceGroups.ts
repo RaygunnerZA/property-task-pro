@@ -16,6 +16,38 @@ export type SpaceGroup = {
   suggestedSpaces: string[];
 };
 
+/** User-created collection card in Add Spaces onboarding (not a predefined category). */
+export const CUSTOM_COLLECTION_ID_PREFIX = "custom-";
+
+export const CUSTOM_COLLECTION_DEFAULT_LABEL = "Custom Collection";
+
+export const CUSTOM_COLLECTION_DESCRIPTION =
+  "Create your own group of spaces.";
+
+export type OnboardingCustomCollection = {
+  id: string;
+  name: string;
+  /** Blob or static URL for the card banner. */
+  imageSrc?: string;
+};
+
+export function createCustomCollectionId(): string {
+  return `${CUSTOM_COLLECTION_ID_PREFIX}${crypto.randomUUID()}`;
+}
+
+export function isCustomCollectionGroupId(groupId: string): boolean {
+  return groupId.startsWith(CUSTOM_COLLECTION_ID_PREFIX);
+}
+
+/** Custom or duplicated space shown on a group card (optionally placed after another space). */
+export type GroupExtraSpace = {
+  name: string;
+  insertAfter?: string;
+};
+
+/** Renamed display label for a static suggestion chip (key = original suggestion, lowercased). */
+export type SuggestionLabelOverrides = Record<string, string>;
+
 /** Get a space group by id (for routing). */
 export function getSpaceGroupById(id: string): SpaceGroup | undefined {
   return ONBOARDING_SPACE_GROUPS.find((g) => g.id === id);

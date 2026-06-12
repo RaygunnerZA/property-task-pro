@@ -11,6 +11,17 @@ function kebabToPascal(kebab: string): string {
     .join("");
 }
 
+/** True when `iconName` maps to a real Lucide icon (not the Package fallback). */
+export function isValidLucideIcon(iconName: string | null | undefined): boolean {
+  if (!iconName || typeof iconName !== "string") return false;
+  const pascal = kebabToPascal(iconName.trim());
+  return Boolean((icons as Record<string, LucideIcon>)[pascal]);
+}
+
+export function filterValidLucideIcons(names: readonly string[]): string[] {
+  return names.filter(isValidLucideIcon);
+}
+
 /**
  * Get Lucide icon component by kebab-case name (e.g. "fire-extinguisher").
  * Falls back to Package if not found.

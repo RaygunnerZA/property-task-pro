@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
@@ -9,13 +9,23 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { ExpandableSpaceChip } from "@/components/chips/semantic";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
-import { ONBOARDING_SPACE_GROUPS, shortSpaceLabel } from "@/components/onboarding/onboardingSpaceGroups";
+import { OnboardingCustomCollectionCard } from "@/components/onboarding/OnboardingCustomCollectionCard";
+import { OnboardingCustomCollectionDraftCard } from "@/components/onboarding/OnboardingCustomCollectionDraftCard";
+import {
+  ONBOARDING_SPACE_GROUPS,
+  createCustomCollectionId,
+  shortSpaceLabel,
+  type GroupExtraSpace,
+  type OnboardingCustomCollection,
+  type SuggestionLabelOverrides,
+} from "@/components/onboarding/onboardingSpaceGroups";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { useBuildingPlans } from "@/hooks/property/useBuildingPlans";
 import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { Plus, Layers, FileUp, Loader2 } from "lucide-react";
+import { paperTexturedColorStyle } from "@/lib/paperTexture";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +33,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+
+// Hidden until plan upload/extraction has been tested more.
+const SHOW_PROPERTY_PLANS_PANEL = false;
 
 export default function AddSpaceScreen() {
   const navigate = useNavigate();
@@ -40,17 +53,31 @@ export default function AddSpaceScreen() {
   const [copyModal, setCopyModal] = useState<{
     baseName: string;
     suggestedName: string;
+    groupId?: string;
   } | null>(null);
   const [copyModalInput, setCopyModalInput] = useState("");
+  const [renameModal, setRenameModal] = useState<{ currentName: string } | null>(null);
+  const [renameModalInput, setRenameModalInput] = useState("");
+  /** Lowercase space name → onboarding group id (for card chip display). */
+  const [spaceGroupByName, setSpaceGroupByName] = useState<Record<string, string>>({});
+  /** Extra space names per group card (custom adds + duplicates not in suggestions). */
+  const [groupExtraSpaces, setGroupExtraSpaces] = useState<Record<string, GroupExtraSpace[]>>({});
+  /** Renamed labels for static suggestion chips on group cards (key = original suggestion). */
+  const [suggestionLabelOverrides, setSuggestionLabelOverrides] =
+    useState<SuggestionLabelOverrides>({});
+  /** User-created custom collection cards (each gets a unique group id). */
+  const [customCollections, setCustomCollections] = useState<OnboardingCustomCollection[]>([]);
   const [planFiles, setPlanFiles] = useState<FileList | null>(null);
-  const plans = useBuildingPlans(propertyId || undefined);
+  const spaceInputRef = useRef<HTMLInputElement>(null);
+  // Pass undefined while the panel is hidden so the hook's queries stay disabled
+  // (the plan tables don't exist in the remote DB yet).
+  const plans = useBuildingPlans(SHOW_PROPERTY_PLANS_PANEL ? propertyId || undefined : undefined);
 
   useEffect(() => {
     if (!orgLoading && orgId) {
       // Add a small delay to ensure property is committed after creation
       const timer = setTimeout(() => {
         fetchLatestProperty();
-        checkExistingSpaces();
       }, 500);
       return () => clearTimeout(timer);
     } else if (!orgLoading && !orgId) {
@@ -59,14 +86,14 @@ export default function AddSpaceScreen() {
     }
   }, [orgId, orgLoading]);
 
-  const checkExistingSpaces = async () => {
-    if (!orgId) return;
-    
+  // Scoped to the current property: spaces on other properties in the org
+  // shouldn't trigger the "you already have spaces" messaging during onboarding.
+  const checkExistingSpaces = async (currentPropertyId: string) => {
     try {
       const { data: existingSpaces } = await supabase
         .from('spaces')
         .select('id')
-        .eq('org_id', orgId)
+        .eq('property_id', currentPropertyId)
         .limit(1);
       
       setHasExistingSpaces(existingSpaces && existingSpaces.length > 0);
@@ -123,6 +150,7 @@ export default function AddSpaceScreen() {
         const property = properties[0];
         setPropertyId(property.id);
         setHasProperties(true);
+        checkExistingSpaces(property.id);
         
         // Fetch property name/address for breadcrumb
         const { data: propertyData } = await supabase
@@ -159,7 +187,105 @@ export default function AddSpaceScreen() {
     }
 
     setSpaces([...spaces, trimmed]);
+    const key = trimmed.toLowerCase().trim();
+    const matchingGroups = ONBOARDING_SPACE_GROUPS.filter((g) =>
+      g.suggestedSpaces.some((s) => s.toLowerCase().trim() === key)
+    );
+    if (matchingGroups.length === 1) {
+      addSpaceToGroupCard(trimmed, matchingGroups[0].id);
+    }
     setSpaceName("");
+  };
+
+  const addToGroupExtraSpaces = (
+    groupId: string,
+    name: string,
+    options?: { insertAfter?: string }
+  ) => {
+    const trimmed = typeof name === "string" ? name.trim() : "";
+    if (!trimmed) {
+      return;
+    }
+    const key = trimmed.toLowerCase();
+    setGroupExtraSpaces((prev) => {
+      const list = prev[groupId] ?? [];
+      if (list.some((s) => s.name.toLowerCase().trim() === key)) return prev;
+      return {
+        ...prev,
+        [groupId]: [...list, { name: trimmed, insertAfter: options?.insertAfter }],
+      };
+    });
+  };
+
+  const associateSpaceWithGroup = (name: string, groupId: string) => {
+    const key = name.toLowerCase().trim();
+    setSpaceGroupByName((prev) => ({ ...prev, [key]: groupId }));
+  };
+
+  const unlinkSpaceFromGroup = (name: string) => {
+    const key = name.toLowerCase().trim();
+    setSpaceGroupByName((prev) => {
+      const groupId = prev[key];
+      if (groupId) {
+        setGroupExtraSpaces((gprev) => ({
+          ...gprev,
+          [groupId]: (gprev[groupId] ?? []).filter(
+            (s) => s.name.toLowerCase().trim() !== key
+          ),
+        }));
+      }
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const isNameInGroupSuggestions = (name: string, groupId: string) => {
+    const key = name.toLowerCase().trim();
+    const group = ONBOARDING_SPACE_GROUPS.find((g) => g.id === groupId);
+    return group?.suggestedSpaces.some((s) => s.toLowerCase().trim() === key) ?? false;
+  };
+
+  const addSpaceToGroupCard = (
+    name: string,
+    groupId: string,
+    extra = false,
+    insertAfter?: string
+  ) => {
+    associateSpaceWithGroup(name, groupId);
+    if (extra || !isNameInGroupSuggestions(name, groupId)) {
+      addToGroupExtraSpaces(groupId, name, insertAfter ? { insertAfter } : undefined);
+    }
+  };
+
+  const isStaticSuggestionName = (nameKey: string) =>
+    ONBOARDING_SPACE_GROUPS.some((g) =>
+      g.suggestedSpaces.some((s) => s.toLowerCase().trim() === nameKey)
+    );
+
+  const resolveOriginalSuggestionKey = (
+    nameKey: string,
+    overrides: SuggestionLabelOverrides
+  ): string | null => {
+    if (isStaticSuggestionName(nameKey)) return nameKey;
+    for (const [sourceKey, label] of Object.entries(overrides)) {
+      if (label.toLowerCase().trim() === nameKey) return sourceKey;
+    }
+    return null;
+  };
+
+  const clearSuggestionLabelOverride = (nameKey: string) => {
+    setSuggestionLabelOverrides((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [sourceKey, label] of Object.entries(prev)) {
+        if (sourceKey === nameKey || label.toLowerCase().trim() === nameKey) {
+          delete next[sourceKey];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
   };
 
   const handleRemoveSpace = (index: number) => {
@@ -167,12 +293,83 @@ export default function AddSpaceScreen() {
     setSpaces(spaces.filter((_, i) => i !== index));
     if (removed) {
       const key = removed.toLowerCase().trim();
+      unlinkSpaceFromGroup(removed);
+      clearSuggestionLabelOverride(key);
       setSubSpacesByParent((prev) => {
         const next = { ...prev };
         delete next[key];
         return next;
       });
     }
+  };
+
+  const handleRemoveSpaceByName = (name: string) => {
+    const key = name.toLowerCase().trim();
+    const index = spaces.findIndex((s) => s.toLowerCase().trim() === key);
+    if (index >= 0) handleRemoveSpace(index);
+  };
+
+  const openRenameModal = (name: string) => {
+    setRenameModal({ currentName: name });
+    setRenameModalInput(name);
+  };
+
+  const closeRenameModal = () => {
+    setRenameModal(null);
+    setRenameModalInput("");
+  };
+
+  const confirmRenameSpace = () => {
+    if (!renameModal) return;
+    const trimmed = renameModalInput.trim();
+    if (!trimmed) return;
+    const oldKey = renameModal.currentName.toLowerCase().trim();
+    const newKey = trimmed.toLowerCase().trim();
+    if (newKey !== oldKey && allSpaceNames.some((s) => s.toLowerCase().trim() === newKey)) {
+      toast.error("Space already added");
+      return;
+    }
+    setSpaces((prev) =>
+      prev.map((s) => (s.toLowerCase().trim() === oldKey ? trimmed : s))
+    );
+    setSubSpacesByParent((prev) => {
+      if (!prev[oldKey]) return prev;
+      const next = { ...prev };
+      next[newKey] = next[oldKey];
+      delete next[oldKey];
+      return next;
+    });
+    setSpaceGroupByName((prev) => {
+      const groupId = prev[oldKey];
+      if (!groupId) return prev;
+      const next = { ...prev };
+      delete next[oldKey];
+      next[newKey] = groupId;
+      return next;
+    });
+    setGroupExtraSpaces((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const groupId of Object.keys(next)) {
+        const updated = next[groupId].map((s) => {
+          const nextItem = { ...s };
+          if (s.name.toLowerCase().trim() === oldKey) nextItem.name = trimmed;
+          if (s.insertAfter?.toLowerCase().trim() === oldKey) nextItem.insertAfter = trimmed;
+          return nextItem;
+        });
+        if (updated.some((s, i) => s.name !== next[groupId][i].name || s.insertAfter !== next[groupId][i].insertAfter)) {
+          next[groupId] = updated;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    setSuggestionLabelOverrides((prev) => {
+      const sourceKey = resolveOriginalSuggestionKey(oldKey, prev);
+      if (!sourceKey) return prev;
+      return { ...prev, [sourceKey]: trimmed };
+    });
+    closeRenameModal();
   };
 
   const handleAddSubSpace = (parentSpace: string, subSpaceName: string) => {
@@ -191,6 +388,22 @@ export default function AddSpaceScreen() {
       toast.error("Maximum 20 spaces allowed");
       return;
     }
+    setSpaces([...spaces, suggestion]);
+  };
+
+  const handleAddSuggestionFromGroup = (
+    suggestion: string,
+    groupId: string,
+    extra = false
+  ) => {
+    if (spaces.some((s) => s.toLowerCase() === suggestion.toLowerCase())) {
+      return;
+    }
+    if (spaces.length >= 20) {
+      toast.error("Maximum 20 spaces allowed");
+      return;
+    }
+    addSpaceToGroupCard(suggestion, groupId, extra);
     setSpaces([...spaces, suggestion]);
   };
 
@@ -214,9 +427,32 @@ export default function AddSpaceScreen() {
     return `${base} ${maxNum + 1}`;
   };
 
-  const openCopyModal = (name: string) => {
+  const resolveSpaceGroupId = (name: string, explicitGroupId?: string): string | undefined => {
+    if (explicitGroupId) return explicitGroupId;
+    const key = name.toLowerCase().trim();
+    if (spaceGroupByName[key]) return spaceGroupByName[key];
+
+    const groupsWithExtra = ONBOARDING_SPACE_GROUPS.filter((g) =>
+      (groupExtraSpaces[g.id] ?? []).some((s) => s.name.toLowerCase().trim() === key)
+    );
+    if (groupsWithExtra.length === 1) return groupsWithExtra[0].id;
+
+    const customGroupsWithExtra = customCollections.filter((c) =>
+      (groupExtraSpaces[c.id] ?? []).some((s) => s.name.toLowerCase().trim() === key)
+    );
+    if (customGroupsWithExtra.length === 1) return customGroupsWithExtra[0].id;
+
+    const groupsWithSuggestion = ONBOARDING_SPACE_GROUPS.filter((g) =>
+      g.suggestedSpaces.some((s) => s.toLowerCase().trim() === key)
+    );
+    if (groupsWithSuggestion.length === 1) return groupsWithSuggestion[0].id;
+
+    return undefined;
+  };
+
+  const openCopyModal = (name: string, groupId?: string) => {
     const suggested = getSuggestedCopyName(name);
-    setCopyModal({ baseName: name, suggestedName: suggested });
+    setCopyModal({ baseName: name, suggestedName: suggested, groupId });
     setCopyModalInput(suggested);
   };
 
@@ -237,7 +473,18 @@ export default function AddSpaceScreen() {
       toast.error("Maximum 20 spaces allowed");
       return;
     }
-    setSpaces([...spaces, trimmed]);
+    const baseKey = copyModal.baseName.toLowerCase().trim();
+    setSpaces((prev) => {
+      const baseIndex = prev.findIndex((s) => s.toLowerCase().trim() === baseKey);
+      if (baseIndex < 0) return [...prev, trimmed];
+      const next = [...prev];
+      next.splice(baseIndex + 1, 0, trimmed);
+      return next;
+    });
+    const groupId = resolveSpaceGroupId(copyModal.baseName, copyModal.groupId);
+    if (groupId) {
+      addSpaceToGroupCard(trimmed, groupId, true, copyModal.baseName);
+    }
     closeCopyModal();
   };
 
@@ -282,6 +529,29 @@ export default function AddSpaceScreen() {
     navigate("/onboarding/invite-team");
   };
 
+  const handleCreateCustomCollection = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const id = createCustomCollectionId();
+    setCustomCollections((prev) => [...prev, { id, name: trimmed }]);
+    setGroupExtraSpaces((prev) => ({ ...prev, [id]: [] }));
+  };
+
+  const handleUpdateCustomCollection = (
+    id: string,
+    updates: { name?: string; imageSrc?: string }
+  ) => {
+    setCustomCollections((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c;
+        if (updates.imageSrc && c.imageSrc?.startsWith("blob:") && c.imageSrc !== updates.imageSrc) {
+          URL.revokeObjectURL(c.imageSrc);
+        }
+        return { ...c, ...updates };
+      })
+    );
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -314,6 +584,13 @@ export default function AddSpaceScreen() {
     [spaces]
   );
 
+  const stepIconStyle = {
+    ...paperTexturedColorStyle("#8EC9CE"),
+    backgroundColor: "rgba(255, 255, 255, 1)",
+    boxShadow:
+      "2px 3px 3px 0px rgba(255, 255, 255, 0.75), -1px -1px 1px 1px rgba(0, 0, 0, 0.15), inset 1px 3px 3px 0px rgba(0, 0, 0, 0.15)",
+  } as const;
+
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
@@ -328,28 +605,26 @@ export default function AddSpaceScreen() {
           />
         )}
         
-        {/* Spaces icon above title, left-aligned */}
-        <div className="flex justify-center items-center text-center mt-[33px] mb-[33px]">
+        {/* Spaces icon above title — matches Add Property step icon */}
+        <div className="flex flex-col items-center mt-[33px] mb-[10px]">
           <div
-            className="p-4 rounded-2xl"
-            style={{
-              backgroundColor: "#0EA5E9",
-              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)"
-            }}
+            className="paper-textured-color relative overflow-hidden p-4 rounded-2xl"
+            style={stepIconStyle}
           >
-            <Layers className="w-10 h-10 text-white" />
+            <Layers className="relative z-10 w-10 h-10 text-white drop-shadow-sm" />
           </div>
         </div>
 
         <OnboardingHeader
           title="Add spaces"
           subtitle={hasExistingSpaces 
-            ? "You already have spaces. Add more or skip to continue."
+            ? "Spaces are the areas inside your property. Filla uses them to organise tasks, schedules, and records."
             : "Define areas within your property"
           }
           showLogout={false}
         />
 
+        {SHOW_PROPERTY_PLANS_PANEL && (
         <div className="mb-6 rounded-xl bg-card/60 p-4 shadow-e1">
           <div className="flex items-center justify-between gap-2 mb-3">
             <div>
@@ -382,6 +657,7 @@ export default function AddSpaceScreen() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
         <div className="mb-6">
@@ -391,10 +667,38 @@ export default function AddSpaceScreen() {
                 key={group.id}
                 group={group}
                 selectedSpacesSet={selectedSpacesSet}
-                onAddSpace={handleAddSuggestion}
+                extraSpaces={groupExtraSpaces[group.id] ?? []}
+                suggestionLabelOverrides={suggestionLabelOverrides}
+                subSpacesByParent={subSpacesByParent}
+                onAddSpace={(name, extra) =>
+                  handleAddSuggestionFromGroup(name, group.id, extra)
+                }
+                onRemoveSpace={handleRemoveSpaceByName}
+                onRenameSpace={openRenameModal}
                 onCopySpace={openCopyModal}
+                onAddSubSpace={handleAddSubSpace}
               />
             ))}
+            {customCollections.map((collection) => (
+              <OnboardingCustomCollectionCard
+                key={collection.id}
+                collection={collection}
+                selectedSpacesSet={selectedSpacesSet}
+                extraSpaces={groupExtraSpaces[collection.id] ?? []}
+                subSpacesByParent={subSpacesByParent}
+                onAddSpace={(name, extra) =>
+                  handleAddSuggestionFromGroup(name, collection.id, extra ?? true)
+                }
+                onRemoveSpace={handleRemoveSpaceByName}
+                onRenameSpace={openRenameModal}
+                onCopySpace={openCopyModal}
+                onAddSubSpace={handleAddSubSpace}
+                onUpdateCollection={handleUpdateCustomCollection}
+              />
+            ))}
+            <OnboardingCustomCollectionDraftCard
+              onCreateCollection={handleCreateCustomCollection}
+            />
           </div>
         </div>
 
@@ -403,6 +707,7 @@ export default function AddSpaceScreen() {
           <div className="flex gap-2">
             <div className="flex-1">
               <NeomorphicInput
+                ref={spaceInputRef}
                 placeholder="Enter space name..."
                 value={spaceName}
                 onChange={(e) => setSpaceName(e.target.value)}
@@ -422,6 +727,45 @@ export default function AddSpaceScreen() {
             </button>
           </div>
         </div>
+
+        {/* Rename-space modal */}
+        <Dialog open={!!renameModal} onOpenChange={(open) => !open && closeRenameModal()}>
+          <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-mono uppercase tracking-wide">
+                Rename space
+              </DialogTitle>
+            </DialogHeader>
+            <input
+              type="text"
+              value={renameModalInput}
+              onChange={(e) => setRenameModalInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmRenameSpace();
+                }
+                if (e.key === "Escape") closeRenameModal();
+              }}
+              placeholder="Space name"
+              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wide rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+            <DialogFooter className="gap-2 sm:gap-0">
+              <NeomorphicButton variant="ghost" onClick={closeRenameModal}>
+                Cancel
+              </NeomorphicButton>
+              <NeomorphicButton
+                variant="primary"
+                onClick={confirmRenameSpace}
+                disabled={!renameModalInput.trim()}
+                style={{ backgroundColor: "#8EC9CE" }}
+              >
+                Save
+              </NeomorphicButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Copy-space modal: new name (e.g. Bedroom 2), editable or accept */}
         <Dialog open={!!copyModal} onOpenChange={(open) => !open && closeCopyModal()}>
@@ -474,6 +818,8 @@ export default function AddSpaceScreen() {
                   subSpaces={subSpacesByParent[space.toLowerCase().trim()] ?? []}
                   onRemove={() => handleRemoveSpace(index)}
                   onAddSubSpace={(name) => handleAddSubSpace(space, name)}
+                  onRename={() => openRenameModal(space)}
+                  onDuplicate={() => openCopyModal(space)}
                   className="!shadow-none"
                 />
               ))}
@@ -495,7 +841,7 @@ export default function AddSpaceScreen() {
             variant="ghost"
             onClick={handleSkip}
           >
-            {hasExistingSpaces ? "Continue (you already have spaces)" : "Skip for now"}
+            Skip for now
           </NeomorphicButton>
         </div>
       </div>

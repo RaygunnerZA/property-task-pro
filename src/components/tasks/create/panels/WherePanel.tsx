@@ -25,6 +25,7 @@ import {
 import { SemanticChip } from "@/components/chips/semantic";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import { PROPERTY_CORE_ICON_POOL, PROPERTY_DEFAULT_ICON_POOL } from "@/lib/propertyVisualUniqueness";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -519,7 +520,8 @@ export function WherePanel({
                 setPropertyIcon(icon);
                 setPropertyColor(color);
               }}
-              defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+              defaultIcons={PROPERTY_CORE_ICON_POOL.slice(0, 5)}
+              iconRotationPool={PROPERTY_DEFAULT_ICON_POOL}
               fallbackSearch="building"
               disabled={creating}
             />

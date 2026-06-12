@@ -151,7 +151,7 @@ export function SemanticChip({
   const epistemicStyles =
     epistemic === "fact"
       ? "bg-card text-foreground"
-      : "bg-background text-muted-foreground shadow-e1 opacity-75";
+      : "bg-background text-muted-foreground opacity-75";
 
   const interactionStyles =
     interaction === "entry"
@@ -168,11 +168,16 @@ export function SemanticChip({
     textClass,
     epistemicStyles,
     interactionStyles,
-    epistemic === "fact" && !removable && "px-[10px] min-w-[40px] max-w-[120px]",
+    epistemic === "fact" &&
+      !removable &&
+      cn("min-w-[40px] max-w-[120px]", dropdown ? "pl-2 pr-[2px]" : "px-2"),
     epistemic === "fact" &&
       removable &&
-      "pl-[10px] pr-[10px] min-w-[40px] max-w-[200px] group-hover:max-w-none group-hover:z-10",
-    epistemic === "proposal" && "px-2 py-1 max-w-[160px]",
+      "px-2 min-w-[40px] max-w-[200px] group-hover:max-w-none group-hover:z-10",
+    epistemic === "proposal" &&
+      (removable
+        ? "pl-2 pr-[2px] py-1 min-w-[40px] max-w-[160px] group-hover:max-w-none group-hover:z-10"
+        : "px-2 py-1 max-w-[160px]"),
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
     (onPress || dropdown) && "cursor-pointer select-none",
     onPress && !isPressed && "hover:opacity-90",
@@ -234,7 +239,7 @@ export function SemanticChip({
       >
         {label}
       </span>
-      {removable && onRemove && epistemic === "fact" && (
+      {removable && onRemove && (
         <span
           role="button"
           tabIndex={0}
@@ -245,7 +250,7 @@ export function SemanticChip({
             "inline-flex items-center justify-center flex-shrink-0 overflow-hidden",
             "w-0 opacity-0 pointer-events-none",
             "transition-[width,opacity] duration-200 ease-out",
-            "group-hover:w-4 group-hover:ml-1 group-hover:opacity-70 group-hover:pointer-events-auto",
+            "group-hover:w-[12px] group-hover:ml-1 group-hover:opacity-70 group-hover:pointer-events-auto",
             "hover:opacity-100"
           )}
         >
@@ -256,7 +261,7 @@ export function SemanticChip({
         <span
           className={cn(
             "flex items-center justify-end flex-shrink-0 overflow-hidden transition-[width] duration-150",
-            "w-0 group-hover:w-[20px] group-data-[state=open]:w-[20px]"
+            "w-0 group-hover:w-[12px] group-data-[state=open]:w-[12px]"
           )}
         >
           <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform duration-150" />
@@ -294,7 +299,7 @@ export function SemanticChip({
           align="start"
           side="bottom"
           sideOffset={4}
-          className="min-w-[160px] p-0 text-[10px]"
+          className="min-w-[177px] px-0 py-[3px] text-[10px]"
         >
           {dropdownContent}
         </DropdownMenuContent>

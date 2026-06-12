@@ -112,3 +112,71 @@ export function cleanupTempImage(tempImage: TempImage) {
     URL.revokeObjectURL(tempImage.optimized_url);
   }
 }
+
+/**
+ * Resize and center-crop an image for space group card banners (200×130 display @2x).
+ * Returns an object URL for the resulting WebP blob.
+ */
+export async function resizeImageForCardBanner(
+  file: File,
+  targetWidth = 400,
+  targetHeight = 260
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      reject(new Error("Could not get canvas context"));
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      try {
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const srcAspect = img.width / img.height;
+        const targetAspect = targetWidth / targetHeight;
+
+        let sx = 0;
+        let sy = 0;
+        let sw = img.width;
+        let sh = img.height;
+
+        if (srcAspect > targetAspect) {
+          sw = img.height * targetAspect;
+          sx = (img.width - sw) / 2;
+        } else if (srcAspect < targetAspect) {
+          sh = img.width / targetAspect;
+          sy = (img.height - sh) / 2;
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+
+        const blob = await new Promise<Blob>((res, rej) => {
+          canvas.toBlob(
+            (b) => (b ? res(b) : rej(new Error("Banner resize failed"))),
+            "image/webp",
+            0.85
+          );
+        });
+
+        URL.revokeObjectURL(objectUrl);
+        resolve(URL.createObjectURL(blob));
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = objectUrl;
+  });
+}

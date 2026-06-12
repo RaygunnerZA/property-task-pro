@@ -6,19 +6,22 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
-import { getAssetIcon } from "@/lib/icon-resolver";
+import { getAssetIcon, isValidLucideIcon, filterValidLucideIcons } from "@/lib/icon-resolver";
 import {
   PROPERTY_COLOR_PALETTE,
   normalizePropertyColorHex,
   normalizePropertyIconKey,
   firstFreeIconFromList,
+  pickIconsFromRotationPool,
+  buildPropertyIconRotationPool,
+  PROPERTY_DEFAULT_ICON_POOL,
 } from "@/lib/propertyVisualUniqueness";
 import { cn } from "@/lib/utils";
 import { paperTexturedChipStyle, paperTexturedColorStyle } from "@/lib/paperTexture";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Search } from "lucide-react";
 
-const DEFAULT_FALLBACK = ["box", "home", "building", "package", "tag"];
+const DEFAULT_FALLBACK = ["home", "building", "landmark", "store", "tag"];
 
 /** @deprecated Use PROPERTY_COLOR_PALETTE from @/lib/propertyVisualUniqueness */
 const COLORS_6 = [...PROPERTY_COLOR_PALETTE];
@@ -30,6 +33,11 @@ interface AIIconColorPickerProps {
   onChange: (iconName: string, color: string) => void;
   /** 5 thematic icons shown initially (e.g. buildings for property, rooms for spaces). When user types, AI replaces first if relevant. */
   defaultIcons?: string[];
+  /**
+   * Property flow: larger pool cycled on regenerate. Slot 1 uses AI name match when `searchText` is set;
+   * remaining slots advance through this pool on each refresh.
+   */
+  iconRotationPool?: readonly string[];
   /** Entity type for fallback when AI returns nothing */
   fallbackSearch?: string;
   /** When provided (e.g. from space_types lookup), takes precedence over ai_icon_search */
@@ -51,6 +59,7 @@ export function AIIconColorPicker({
   value,
   onChange,
   defaultIcons = DEFAULT_FALLBACK,
+  iconRotationPool,
   fallbackSearch = "room",
   suggestedIcon,
   showSearchInput = false,
@@ -61,6 +70,8 @@ export function AIIconColorPicker({
   showLabels = true,
 }: AIIconColorPickerProps) {
   const [aiIcons, setAiIcons] = useState<string[]>([]);
+  const [nameMatchedIcon, setNameMatchedIcon] = useState<string | null>(null);
+  const [rotationOffset, setRotationOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [localSearchText, setLocalSearchText] = useState(searchText);
@@ -91,18 +102,36 @@ export function AIIconColorPicker({
     [defaultIconsKey]
   );
 
-  const rawDisplayIcons =
-    aiIcons.length > 0
+  const rotationPool = useMemo(() => {
+    if (!iconRotationPool?.length) return [];
+    return buildPropertyIconRotationPool(refreshKey);
+  }, [iconRotationPool, refreshKey]);
+
+  const poolRotationIcons = useMemo(() => {
+    if (!rotationPool.length) return [];
+    const exclude = nameMatchedIcon ? [nameMatchedIcon] : [];
+    const count = nameMatchedIcon ? 4 : 5;
+    return pickIconsFromRotationPool(rotationPool, rotationOffset, count, exclude);
+  }, [rotationPool, rotationOffset, nameMatchedIcon]);
+
+  const rawDisplayIcons = iconRotationPool?.length
+    ? nameMatchedIcon
+      ? [nameMatchedIcon, ...poolRotationIcons].slice(0, 5)
+      : poolRotationIcons.slice(0, 5)
+    : aiIcons.length > 0
       ? aiIcons
       : suggestedIcon
         ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
         : themeIcons;
 
   const displayIcons = useMemo(() => {
-    if (iconTakenSet.size === 0) return rawDisplayIcons.slice(0, 5);
+    const validRaw = rawDisplayIcons.filter(isValidLucideIcon);
+    if (iconTakenSet.size === 0) return validRaw.slice(0, 5);
     const currentKey = normalizePropertyIconKey(value.iconName);
-    const pool = [...rawDisplayIcons];
-    if (value.iconName && !pool.includes(value.iconName)) pool.unshift(value.iconName);
+    const pool = [...validRaw];
+    if (value.iconName && isValidLucideIcon(value.iconName) && !pool.includes(value.iconName)) {
+      pool.unshift(value.iconName);
+    }
     const deduped = [...new Set(pool)];
     const available = deduped.filter(
       (n) =>
@@ -110,7 +139,9 @@ export function AIIconColorPicker({
         normalizePropertyIconKey(n) === currentKey
     );
     const out = [...available];
-    const pad = [...themeIcons, ...DEFAULT_FALLBACK];
+    const pad = iconRotationPool?.length
+      ? buildPropertyIconRotationPool(refreshKey)
+      : filterValidLucideIcons([...themeIcons, ...DEFAULT_FALLBACK]);
     for (const p of pad) {
       if (out.length >= 5) break;
       if (
@@ -121,7 +152,7 @@ export function AIIconColorPicker({
       }
     }
     return out.slice(0, 5);
-  }, [rawDisplayIcons, themeIcons, iconTakenSet, value.iconName]);
+  }, [rawDisplayIcons, themeIcons, iconTakenSet, value.iconName, iconRotationPool, refreshKey]);
 
   const visibleColors = useMemo(() => {
     const current = normalizePropertyColorHex(value.color);
@@ -131,6 +162,60 @@ export function AIIconColorPicker({
   }, [colorTakenSet, value.color]);
 
   useEffect(() => {
+    if (!iconRotationPool?.length) return;
+
+    const query = debouncedSearch || (refreshKey > 0 ? effectiveSearchText.trim() : "");
+    if (!query) {
+      setNameMatchedIcon(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    void Promise.resolve(supabase.rpc("ai_icon_search", { query_text: query }))
+      .then(({ data }) => {
+        if (cancelled) return;
+        const first = (data ?? [])
+          .map((r: { name?: string }) => r?.name)
+          .filter(isValidLucideIcon)[0] as string | undefined;
+        setNameMatchedIcon(first ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setNameMatchedIcon(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, refreshKey, effectiveSearchText, iconRotationPool]);
+
+  useEffect(() => {
+    if (iconRotationPool?.length) {
+      const pickDefaultIcon = () =>
+        firstFreeIconFromList(rawDisplayIcons, iconTakenSet) ??
+        firstFreeIconFromList([...PROPERTY_DEFAULT_ICON_POOL], iconTakenSet) ??
+        rawDisplayIcons[0];
+
+      if (
+        !value.iconName ||
+        !rawDisplayIcons.some(
+          (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(value.iconName)
+        ) ||
+        iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+      ) {
+        const d = pickDefaultIcon();
+        if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
+          onChange(d, value.color);
+        }
+      }
+      return;
+    }
+
     const pickDefaultIcon = () =>
       firstFreeIconFromList(themeIcons, iconTakenSet) ??
       firstFreeIconFromList([...DEFAULT_FALLBACK], iconTakenSet) ??
@@ -229,10 +314,20 @@ export function AIIconColorPicker({
     fallbackSearch,
     effectiveSearchText,
     themeIcons,
+    iconRotationPool,
+    rawDisplayIcons,
     takenPropertyIconsFingerprint,
     value.iconName,
     value.color,
   ]);
+
+  const handleRefresh = () => {
+    if (iconRotationPool?.length) {
+      const step = nameMatchedIcon || debouncedSearch ? 4 : 5;
+      setRotationOffset((o) => o + step);
+    }
+    setRefreshKey((k) => k + 1);
+  };
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -293,7 +388,7 @@ export function AIIconColorPicker({
           <button
             type="button"
             disabled={disabled || loading}
-            onClick={() => setRefreshKey((k) => k + 1)}
+            onClick={handleRefresh}
             className={cn(
               "paper-textured-chip w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
               "border-2 border-border hover:opacity-90",

@@ -17,6 +17,13 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "@/pages/Login";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
+// Onboarding wizard — eager imports so step-to-step navigation never hits a lazy chunk fetch failure.
+import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
+import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
+import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
+import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
+import PreferencesScreen from "./pages/onboarding/PreferencesScreen";
+import OnboardingCompleteScreen from "./pages/onboarding/OnboardingCompleteScreen";
 
 initAnalytics();
 
@@ -34,14 +41,8 @@ const VerifyEmailScreen = lazy(() => import("./pages/onboarding/VerifyEmailScree
 const PropertyProfileScreen = lazy(() => import("./pages/onboarding/PropertyProfileScreen"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
-const CreateOrganisationScreen = lazy(() => import("./pages/onboarding/CreateOrganisationScreen"));
 const StaffOnboardingScreen = lazy(() => import("./pages/onboarding/StaffOnboardingScreen"));
-const AddPropertyScreen = lazy(() => import("./pages/onboarding/AddPropertyScreen"));
-const AddSpaceScreen = lazy(() => import("./pages/onboarding/AddSpaceScreen"));
 const DesignLibrary = lazy(() => import("./pages/DesignLibrary"));
-const InviteTeamScreen = lazy(() => import("./pages/onboarding/InviteTeamScreen"));
-const PreferencesScreen = lazy(() => import("./pages/onboarding/PreferencesScreen"));
-const OnboardingCompleteScreen = lazy(() => import("./pages/onboarding/OnboardingCompleteScreen"));
 
 // WORK pillar
 const WorkTasks = lazy(() => import("./pages/work/WorkTasks"));

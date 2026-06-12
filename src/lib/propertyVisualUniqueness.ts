@@ -1,6 +1,7 @@
 /**
  * Org-wide uniqueness for property icon keys and palette colours (UI + save guards).
  */
+import { filterValidLucideIcons } from "@/lib/icon-resolver";
 
 /** Canonical palette for property icon backgrounds; aligns Add Property and Property detail edit. */
 export const PROPERTY_COLOR_PALETTE = [
@@ -70,4 +71,99 @@ export function firstFreeIconFromList(
     if (!takenIcons.has(normalizePropertyIconKey(icon))) return icon;
   }
   return undefined;
+}
+
+/** Fixed-order home / property icons — always lead the rotation. */
+export const PROPERTY_CORE_ICON_POOL = [
+  "house",
+  "building",
+  "building-2",
+  "castle",
+  "bird",
+  "heart",
+  "fence",
+] as const;
+
+/** Decorative / thematic icons — shuffled after core on each regenerate. */
+export const PROPERTY_VARIETY_ICON_POOL = [
+  "mountain",
+  "cable-car",
+  "caravan",
+  "umbrella",
+  "shell",
+  "volleyball",
+  "sun",
+  "sailboat",
+  "fish-symbol",
+  "bike",
+  "anchor",
+  "waves",
+  "tree-palm",
+  "flower",
+  "tree-pine",
+  "ice-cream-bowl",
+  "cat",
+  "rabbit",
+  "squirrel",
+  "turtle",
+  "fish",
+  "telescope",
+  "chef-hat",
+  "martini",
+  "wine",
+  "cherry",
+  "apple",
+  "crown",
+  "swords",
+  "shield",
+  "clover",
+  "gem",
+] as const;
+
+/** Full pool (core + variety) for uniqueness checks and fallbacks. */
+export const PROPERTY_DEFAULT_ICON_POOL = [
+  ...PROPERTY_CORE_ICON_POOL,
+  ...PROPERTY_VARIETY_ICON_POOL,
+] as const;
+
+function seededShuffle<T>(items: readonly T[], seed: number): T[] {
+  const arr = [...items];
+  let s = seed >>> 0 || 1;
+  for (let i = arr.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    const j = s % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/** Core icons first, then variety in a seed-based random order (changes on regenerate). */
+export function buildPropertyIconRotationPool(shuffleSeed: number): string[] {
+  const pool = [
+    ...PROPERTY_CORE_ICON_POOL,
+    ...seededShuffle(PROPERTY_VARIETY_ICON_POOL, shuffleSeed),
+  ];
+  return filterValidLucideIcons(pool);
+}
+
+/** Pick `count` distinct icons from `pool`, starting at `offset` (wraps). */
+export function pickIconsFromRotationPool(
+  pool: readonly string[],
+  offset: number,
+  count: number,
+  exclude: string[] = []
+): string[] {
+  const excludeSet = new Set(exclude.map(normalizePropertyIconKey));
+  const available = pool.filter((icon) => !excludeSet.has(normalizePropertyIconKey(icon)));
+  if (available.length === 0) return [];
+
+  const result: string[] = [];
+  for (let i = 0; i < available.length && result.length < count; i++) {
+    const icon = available[(offset + i) % available.length];
+    const key = normalizePropertyIconKey(icon);
+    if (!result.some((r) => normalizePropertyIconKey(r) === key)) {
+      result.push(icon);
+    }
+  }
+  return result;
 }

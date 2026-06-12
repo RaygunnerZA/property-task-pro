@@ -30,8 +30,11 @@ import {
   firstFreeIconFromList,
   normalizePropertyColorHex,
   normalizePropertyIconKey,
+  PROPERTY_CORE_ICON_POOL,
+  PROPERTY_DEFAULT_ICON_POOL,
   type PropertyVisualRow,
 } from "@/lib/propertyVisualUniqueness";
+import { isPropertyProfileId } from "@/lib/propertyProfiles";
 
 export default function AddPropertyScreen() {
   const navigate = useNavigate();
@@ -46,10 +49,12 @@ export default function AddPropertyScreen() {
     propertyUnits,
     propertyIcon,
     propertyIconColor,
+    propertyProfile,
     setPropertyNickname,
     setPropertyAddress,
     setPropertyIcon,
-    setPropertyIconColor
+    setPropertyIconColor,
+    setPropertyProfile,
   } = useOnboardingStore();
 
   // Use orgId from navigation state when coming from create-org (avoids race before DB/cache propagate)
@@ -68,6 +73,16 @@ export default function AddPropertyScreen() {
     const o = buildPropertyVisualOccupancy(orgPropertyVisualRows);
     return { takenIconsArr: [...o.takenIcons], takenColorsArr: [...o.takenColors] };
   }, [orgPropertyVisualRows]);
+
+  useEffect(() => {
+    if (propertyProfile) return;
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      const stored = user?.user_metadata?.property_profile;
+      if (isPropertyProfileId(stored)) {
+        setPropertyProfile(stored);
+      }
+    });
+  }, [propertyProfile, setPropertyProfile]);
 
   useEffect(() => {
     if (orgId) {
@@ -117,21 +132,7 @@ export default function AddPropertyScreen() {
       if (next) setPropertyIconColor(next);
     }
     if (takenIcons.has(normalizePropertyIconKey(ic || "building"))) {
-      const next = firstFreeIconFromList(
-        [
-          "building",
-          "home",
-          "hotel",
-          "warehouse",
-          "store",
-          "castle",
-          "landmark",
-          "trees",
-          "factory",
-          "school",
-        ],
-        takenIcons
-      );
+      const next = firstFreeIconFromList([...PROPERTY_DEFAULT_ICON_POOL], takenIcons);
       if (next) setPropertyIcon(next);
     }
   }, [orgPropertyVisualRows]);
@@ -282,14 +283,16 @@ export default function AddPropertyScreen() {
 
       // Mark that we're navigating from onboarding to prevent AppInitializer interference
       (window as any).__lastOnboardingNavigation = Date.now();
-
-      // Navigate to next step
-      navigate("/onboarding/add-spaces");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding property:", error);
-      toast.error(error.message || "Failed to add property");
+      const message = error instanceof Error ? error.message : "Failed to add property";
+      toast.error(message);
+      return;
+    } finally {
       setLoading(false);
     }
+
+    navigate("/onboarding/add-spaces");
   };
 
   const handleSkip = () => {
@@ -356,7 +359,8 @@ export default function AddPropertyScreen() {
                   setPropertyIcon(icon);
                   setPropertyIconColor(color);
                 }}
-                defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+                defaultIcons={PROPERTY_CORE_ICON_POOL.slice(0, 5)}
+                iconRotationPool={PROPERTY_DEFAULT_ICON_POOL}
                 fallbackSearch="building"
                 disabled={loading}
                 takenPropertyIconNames={takenIconsArr}
@@ -438,11 +442,13 @@ export default function AddPropertyScreen() {
             onPlaceSelected={setSelectedPlace}
           />
 
-          <div className="text-center pt-4">
-            <p className="text-sm text-[#6D7480]">
-              If you have multiple properties, <PropertyCsvImport />
-            </p>
-          </div>
+          {propertyProfile === "portfolio" && (
+            <div className="text-center pt-4">
+              <p className="text-sm text-[#6D7480]">
+                If you have multiple properties, <PropertyCsvImport />
+              </p>
+            </div>
+          )}
 
           <div className="pt-4 space-y-3">
             <NeomorphicButton

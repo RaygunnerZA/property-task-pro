@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const BANNER_INNER_SHADOW =
-  "inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 3px 0px 6px rgba(0, 0, 0, 0.15)";
+  "inset 1px 1px 1px 0px rgba(255, 255, 255, 0.87), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)";
 
 interface SpaceGroupCardBannerProps {
   imageSrc?: string;
@@ -27,8 +27,11 @@ export function SpaceGroupCardBanner({
         <img src={imageSrc} alt="" className="h-full w-full object-cover object-center" decoding="async" />
       ) : null}
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{ boxShadow: BANNER_INNER_SHADOW }}
+        className="pointer-events-none absolute inset-0 rounded-t-[8px]"
+        style={{
+          boxShadow: BANNER_INNER_SHADOW,
+          color: "rgba(41, 39, 53, 0.87)",
+        }}
         aria-hidden
       />
       <span className="sr-only">{alt}</span>

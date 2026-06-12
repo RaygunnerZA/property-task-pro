@@ -7,6 +7,7 @@ export const SPACE_GROUP_CARD_ILLUSTRATION: Record<string, string> = {
   storage: "/spaces/group-cards/storage.png",
   technical: "/spaces/group-cards/technical.png",
   external: "/spaces/group-cards/external.png",
+  custom: "/spaces/group-cards/custom.png",
 };
 
 export function getSpaceGroupCardIllustration(groupId: string): string | undefined {

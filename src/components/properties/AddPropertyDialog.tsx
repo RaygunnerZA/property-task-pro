@@ -14,6 +14,8 @@ import {
   firstFreeIconFromList,
   normalizePropertyColorHex,
   normalizePropertyIconKey,
+  PROPERTY_CORE_ICON_POOL,
+  PROPERTY_DEFAULT_ICON_POOL,
 } from "@/lib/propertyVisualUniqueness";
 import {
   Dialog,
@@ -81,23 +83,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
     setIconName((prev) => {
       const key = normalizePropertyIconKey(prev || "building");
       if (!takenIcons.has(key)) return prev || "building";
-      return (
-        firstFreeIconFromList(
-          [
-            "building",
-            "home",
-            "hotel",
-            "warehouse",
-            "store",
-            "castle",
-            "landmark",
-            "trees",
-            "factory",
-            "school",
-          ],
-          takenIcons
-        ) ?? "building"
-      );
+      return firstFreeIconFromList([...PROPERTY_DEFAULT_ICON_POOL], takenIcons) ?? "building";
     });
   }, [open, orgProperties]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -301,7 +287,8 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
               setIconName(icon);
               setIconColor(color);
             }}
-            defaultIcons={["building", "home", "hotel", "warehouse", "store"]}
+            defaultIcons={PROPERTY_CORE_ICON_POOL.slice(0, 5)}
+            iconRotationPool={PROPERTY_DEFAULT_ICON_POOL}
             fallbackSearch="building"
             disabled={loading}
             takenPropertyIconNames={takenIconsArr}

@@ -1,81 +1,100 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { SemanticChip } from "@/components/chips/semantic";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { CopyPlus } from "lucide-react";
-import type { SpaceGroup } from "./onboardingSpaceGroups";
+import { SemanticChip, ExpandableSpaceChip } from "@/components/chips/semantic";
+import { Plus } from "lucide-react";
+import type {
+  GroupExtraSpace,
+  SpaceGroup,
+  SuggestionLabelOverrides,
+} from "./onboardingSpaceGroups";
 import { shortSpaceLabel } from "./onboardingSpaceGroups";
 import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
 import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 
-const FLIP_IN_DURATION_MS = 250;
-const FLIP_OUT_DURATION_MS = 600;
-const LEAVE_DELAY_MS = 1500;
+const HOVER_EXPAND_DELAY_MS = 450;
+const EXPAND_DURATION_MS = 350;
+const COLLAPSE_DURATION_MS = 450;
 
-// Back card height from chip count: ~2 chips per row; one chip row of padding at bottom
-const CHIP_ROW_HEIGHT = 34;
-const COLS = 2;
-const BACK_HEADER_PX = 50;
-const CARD_HEIGHT_MIN = 140;
-const CARD_HEIGHT_MAX = 260;
-
-function cardHeightFromChipCount(count: number): number {
-  const rows = Math.ceil(count / COLS);
-  const backContent = BACK_HEADER_PX + rows * CHIP_ROW_HEIGHT + CHIP_ROW_HEIGHT; // +1 row padding at bottom
-  return Math.min(CARD_HEIGHT_MAX, Math.max(CARD_HEIGHT_MIN, backContent));
-}
-
-// Selected chip teal for copy action
 const SELECTED_CHIP_TEAL = "#85BABC";
+
+const DASHED_LINE_STYLE = {
+  height: "1px",
+  backgroundImage:
+    "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+  backgroundSize: "7px 1px",
+  backgroundRepeat: "repeat-x" as const,
+};
 
 interface OnboardingSpaceGroupCardProps {
   group: SpaceGroup;
   /** Set of space names already selected (case-insensitive). Used to show copy-plus on selected chips. */
   selectedSpacesSet: Set<string>;
-  onAddSpace: (name: string) => void;
-  /** When user clicks copy-plus on a selected chip, suggests a new name (e.g. "Bedroom 2") and adds it. */
-  onCopySpace?: (name: string) => void;
+  /** Custom and duplicated spaces shown on this card (not in suggestedSpaces). */
+  extraSpaces?: GroupExtraSpace[];
+  /** Display names for renamed suggestion chips (key = original suggestion, lowercased). */
+  suggestionLabelOverrides?: SuggestionLabelOverrides;
+  subSpacesByParent?: Record<string, string[]>;
+  onAddSpace: (name: string, extra?: boolean) => void;
+  onRemoveSpace?: (name: string) => void;
+  onRenameSpace?: (name: string) => void;
+  /** When user chooses Duplicate, suggests a new name (e.g. "Bedroom 2") and adds it. */
+  onCopySpace?: (name: string, groupId: string) => void;
+  onAddSubSpace?: (parentSpace: string, subSpaceName: string) => void;
   className?: string;
 }
+
+const BANNER_HEIGHT_PX = 130;
+const BANNER_COLLAPSED_HEIGHT_PX = 70;
 
 export function OnboardingSpaceGroupCard({
   group,
   selectedSpacesSet,
+  extraSpaces = [],
+  suggestionLabelOverrides = {},
+  subSpacesByParent = {},
   onAddSpace,
+  onRemoveSpace,
+  onRenameSpace,
   onCopySpace,
+  onAddSubSpace,
   className,
 }: OnboardingSpaceGroupCardProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [flipDurationMs, setFlipDurationMs] = useState(FLIP_IN_DURATION_MS);
-  const leaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flipBackEndRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [transitionMs, setTransitionMs] = useState(EXPAND_DURATION_MS);
+  const [customSpaceName, setCustomSpaceName] = useState("");
+  const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
+  const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** After collapsing via banner click, ignore hover until pointer leaves the card. */
+  const suppressHoverExpandRef = useRef(false);
 
   const handleMouseEnter = useCallback(() => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-    if (flipBackEndRef.current) {
-      clearTimeout(flipBackEndRef.current);
-      flipBackEndRef.current = null;
-    }
-    setFlipDurationMs(FLIP_IN_DURATION_MS);
-    setIsFlipped(true);
+    if (suppressHoverExpandRef.current) return;
+    if (enterTimeoutRef.current) return;
+    enterTimeoutRef.current = setTimeout(() => {
+      enterTimeoutRef.current = null;
+      setTransitionMs(EXPAND_DURATION_MS);
+      setIsExpanded(true);
+    }, HOVER_EXPAND_DELAY_MS);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    leaveTimeoutRef.current = setTimeout(() => {
-      leaveTimeoutRef.current = null;
-      setFlipDurationMs(FLIP_OUT_DURATION_MS);
-      requestAnimationFrame(() => {
-        setIsFlipped(false);
-        flipBackEndRef.current = setTimeout(() => {
-          flipBackEndRef.current = null;
-          setFlipDurationMs(FLIP_IN_DURATION_MS);
-        }, FLIP_OUT_DURATION_MS);
-      });
-    }, LEAVE_DELAY_MS);
+    suppressHoverExpandRef.current = false;
+    if (enterTimeoutRef.current) {
+      clearTimeout(enterTimeoutRef.current);
+      enterTimeoutRef.current = null;
+    }
   }, []);
+
+  const handleBannerClick = useCallback(() => {
+    if (!isExpanded) return;
+    if (enterTimeoutRef.current) {
+      clearTimeout(enterTimeoutRef.current);
+      enterTimeoutRef.current = null;
+    }
+    suppressHoverExpandRef.current = true;
+    setTransitionMs(COLLAPSE_DURATION_MS);
+    setIsExpanded(false);
+  }, [isExpanded]);
 
   const handleChipClick = (name: string) => {
     const key = name.toLowerCase().trim();
@@ -83,111 +102,232 @@ export function OnboardingSpaceGroupCard({
     onAddSpace(name);
   };
 
-  // Slightly darker paper for flipped (back) face. Paper bg = #F1EEE8.
-  const paperBackBg = "#E8E5E0";
-  const cardHeightPx = cardHeightFromChipCount(group.suggestedSpaces.length);
+  const handleAddCustomSpace = () => {
+    const trimmed = customSpaceName.trim();
+    if (!trimmed) return;
+    onAddSpace(trimmed, true);
+    setCustomSpaceName("");
+  };
+
+  const handleDismissSuggestion = (sourceKey: string) => {
+    setDismissedSuggestions((prev) => new Set(prev).add(sourceKey));
+  };
+
+  const resolveSuggestionSourceKey = (displayName: string): string => {
+    const displayKey = displayName.toLowerCase().trim();
+    for (const [sourceKey, label] of Object.entries(suggestionLabelOverrides)) {
+      if (label.toLowerCase().trim() === displayKey) return sourceKey;
+    }
+    for (const name of group.suggestedSpaces) {
+      if (name.toLowerCase().trim() === displayKey) return displayKey;
+    }
+    return displayKey;
+  };
+
+  const visibleSpaceNames = useMemo(() => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+
+    // #region agent log
+    const badSuggested = group.suggestedSpaces
+      .map((n, i) => ({ i, n, type: typeof n }))
+      .filter((x) => typeof x.n !== "string" || !x.n.trim());
+    const badExtras = extraSpaces.map((e, i) => ({
+      i,
+      e,
+      type: typeof e,
+      nameType: typeof (e as GroupExtraSpace)?.name,
+    })).filter((x) => typeof x.e !== "object" || x.e === null || typeof (x.e as GroupExtraSpace).name !== "string" || !(x.e as GroupExtraSpace).name.trim());
+    if (badSuggested.length > 0 || badExtras.length > 0) {
+      fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'83d644'},body:JSON.stringify({sessionId:'83d644',hypothesisId:'H1-H3',location:'OnboardingSpaceGroupCard.tsx:visibleSpaceNames',message:'bad space entries before crash',data:{groupId:group.id,badSuggested,badExtras,extraSpacesLen:extraSpaces.length,suggestedLen:group.suggestedSpaces.length},timestamp:Date.now()})}).catch(()=>{});
+    }
+    // #endregion
+
+    for (const name of group.suggestedSpaces) {
+      if (typeof name !== "string" || !name.trim()) continue;
+      const sourceKey = name.toLowerCase().trim();
+      if (dismissedSuggestions.has(sourceKey)) continue;
+      const displayName = suggestionLabelOverrides[sourceKey] ?? name;
+      const displayKey = displayName.toLowerCase().trim();
+      if (!seen.has(displayKey)) {
+        seen.add(displayKey);
+        names.push(displayName);
+      }
+    }
+
+    for (const extra of extraSpaces) {
+      const extraName =
+        typeof extra === "string"
+          ? extra
+          : typeof extra?.name === "string"
+            ? extra.name
+            : null;
+      if (!extraName?.trim()) continue;
+      const key = extraName.toLowerCase().trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (extra.insertAfter) {
+        const afterKey = extra.insertAfter.toLowerCase().trim();
+        const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
+        if (afterIdx >= 0) {
+          names.splice(afterIdx + 1, 0, extraName);
+          continue;
+        }
+      }
+      names.push(extraName);
+    }
+
+    return names;
+  }, [group.suggestedSpaces, extraSpaces, dismissedSuggestions, suggestionLabelOverrides]);
+
+  const transitionStyle = { transitionDuration: `${transitionMs}ms` };
 
   return (
     <div
-      className={cn("w-[200px] flex-shrink-0 perspective-[800px]", className)}
-      style={{ perspectiveOrigin: "50% 50%", height: `${cardHeightPx}px` }}
+      className={cn("w-[200px] h-[272px] flex-shrink-0", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div
-        className="relative w-full h-full transition-transform ease-out"
-        style={{
-          transformStyle: "preserve-3d",
-          transformOrigin: "50% 50%",
-          transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-          transitionDuration: `${flipDurationMs}ms`,
-        }}
-      >
-        {/* Front: title + description; pointer-events-none so the back face receives clicks when flipped */}
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[8px] bg-card shadow-e1">
+        {/* Banner — collapses to 70px on expand */}
         <div
-          className="absolute inset-0 rounded-[8px] overflow-hidden bg-card shadow-e1 flex flex-col pointer-events-none"
+          role={isExpanded ? "button" : undefined}
+          tabIndex={isExpanded ? 0 : undefined}
+          aria-label={isExpanded ? `Collapse ${group.label}` : undefined}
+          onClick={isExpanded ? handleBannerClick : undefined}
+          onKeyDown={
+            isExpanded
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleBannerClick();
+                  }
+                }
+              : undefined
+          }
+          className={cn(
+            "overflow-hidden transition-all ease-out",
+            isExpanded && "cursor-pointer"
+          )}
           style={{
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
+            ...transitionStyle,
+            height: isExpanded ? BANNER_COLLAPSED_HEIGHT_PX : BANNER_HEIGHT_PX,
           }}
         >
           <SpaceGroupCardBanner
             imageSrc={getSpaceGroupCardIllustration(group.id)}
             alt={group.label}
             color={group.color}
+            className="h-full"
           />
-          <div className="flex-1 pt-2 pb-3 px-3 space-y-3">
-            <h3 className="font-semibold text-lg text-foreground leading-tight">
-              {group.label}
-            </h3>
-            <div
-              className="-ml-1 -mr-1 pt-1"
-              style={{
-                height: "1px",
-                backgroundImage: "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
-                backgroundSize: "7px 1px",
-                backgroundRepeat: "repeat-x",
-              }}
-            />
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
-              {group.description}
-            </p>
-          </div>
         </div>
 
-        {/* Back: ghost chips — slightly darker paper + texture; pointer-events-auto so chips receive clicks */}
-        <div
-          className="absolute inset-0 rounded-[8px] overflow-hidden shadow-e1 flex flex-col pointer-events-auto"
-          style={{
-            backgroundColor: paperBackBg,
-            backgroundImage: "var(--paper-texture)",
-            backgroundSize: "100%",
-            backfaceVisibility: "hidden",
-            WebkitBackfaceVisibility: "hidden",
-            transform: "rotateY(180deg)",
-          }}
-        >
-          <div className="flex-1 pt-3 pb-3 px-3 overflow-auto">
-            <p className="text-xs text-muted-foreground mb-3 mt-1 ml-2 font-medium font-mono uppercase tracking-wide">
-              {group.label}
-            </p>
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {group.suggestedSpaces.map((name) => {
-                const key = name.toLowerCase().trim();
-                const isSelected = selectedSpacesSet.has(key);
-                if (isSelected && onCopySpace) {
-                  return (
-                    <SemanticChip
-                      key={name}
-                      epistemic="fact"
-                      label={shortSpaceLabel(name)}
-                      color={SELECTED_CHIP_TEAL}
-                      dropdown
-                      dropdownContent={
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            onCopySpace(name);
-                          }}
-                          className="font-mono text-[10px] uppercase tracking-wide py-1 px-1.5 flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <CopyPlus className="h-3.5 w-3.5" />
-                          Add copy
-                        </DropdownMenuItem>
-                      }
-                    />
-                  );
-                }
+        <div className="flex min-h-0 flex-1 flex-col px-3 pb-2 pt-2">
+          {/* Title + dashed rule — slides to card top as banner collapses */}
+          <div className="shrink-0 space-y-2 transition-transform ease-out" style={transitionStyle}>
+            <h3 className="text-lg font-semibold leading-tight text-foreground">{group.label}</h3>
+            <div className="-ml-1 -mr-1 pt-1" style={DASHED_LINE_STYLE} />
+          </div>
+
+          {/* Description — fades out on expand */}
+          <p
+            className={cn(
+              "mt-[5px] text-xs leading-[18px] text-muted-foreground transition-all ease-out",
+              isExpanded
+                ? "pointer-events-none max-h-0 overflow-hidden opacity-0"
+                : "line-clamp-4 h-[72px] max-h-24 opacity-100"
+            )}
+            style={transitionStyle}
+          >
+            {group.description}
+          </p>
+
+          {/* Space chips — slide in below title + rule */}
+          <div
+            className={cn(
+              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-all ease-out",
+              isExpanded
+                ? "mt-[6px] min-h-0 flex-1 overflow-auto opacity-100 translate-y-0"
+                : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
+            )}
+            style={transitionStyle}
+          >
+            {visibleSpaceNames.map((name) => {
+              const key = name.toLowerCase().trim();
+              const isSelected = selectedSpacesSet.has(key);
+              if (isSelected) {
                 return (
-                  <SemanticChip
+                  <ExpandableSpaceChip
                     key={name}
-                    epistemic="proposal"
                     label={shortSpaceLabel(name)}
-                    onPress={() => handleChipClick(name)}
+                    color={SELECTED_CHIP_TEAL}
+                    subSpaces={subSpacesByParent[key] ?? []}
+                    onRemove={() => onRemoveSpace?.(name)}
+                    onAddSubSpace={(subName) => onAddSubSpace?.(name, subName)}
+                    onRename={onRenameSpace ? () => onRenameSpace(name) : undefined}
+                    onDuplicate={onCopySpace ? () => onCopySpace(name, group.id) : undefined}
+                    className="!shadow-none"
                   />
                 );
-              })}
-            </div>
+              }
+              return (
+                <SemanticChip
+                  key={name}
+                  epistemic="proposal"
+                  label={shortSpaceLabel(name)}
+                  removable
+                  onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
+                  onPress={() => handleChipClick(name)}
+                />
+              );
+            })}
+          </div>
+
+          {/* Add Space — pinned to card bottom when expanded */}
+          <div
+            className={cn(
+              "mt-auto flex w-full shrink-0 items-center gap-1.5 pt-1 transition-all ease-out",
+              isExpanded
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none max-h-0 overflow-hidden pt-0 opacity-0 translate-y-2"
+            )}
+            style={transitionStyle}
+          >
+            <input
+              type="text"
+              value={customSpaceName}
+              onChange={(e) => setCustomSpaceName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddCustomSpace();
+                }
+              }}
+              placeholder="Add Space"
+              className={cn(
+                "min-w-0 flex-1 rounded-lg bg-[#F6F4F2] px-2.5 py-1.5",
+                "font-mono text-[11px] uppercase tracking-wide text-foreground",
+                "placeholder:text-[#6D7480]/60 outline-none",
+                "focus:ring-2 focus:ring-[#8EC9CE]/40"
+              )}
+              style={{
+                boxShadow:
+                  "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomSpace}
+              disabled={!customSpaceName.trim()}
+              className={cn(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-all",
+                "disabled:opacity-50"
+              )}
+              style={{ backgroundColor: "#14B8A6" }}
+              aria-label="Add space"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </div>
