@@ -64,13 +64,51 @@ export async function fetchResendReceivedEmail(
   apiKey: string,
   emailId: string
 ): Promise<ResendReceivedEmail> {
+  const key = apiKey.trim();
+  if (key.startsWith("whsec_")) {
+    throw new Error(
+      "RESEND_API_KEY looks like a webhook secret (whsec_). Use a Full access API key (re_...) from Resend → API Keys."
+    );
+  }
+
   const res = await fetch(`https://api.resend.com/emails/receiving/${emailId}`, {
-    headers: { Authorization: `Bearer ${apiKey}` },
+    headers: { Authorization: `Bearer ${key}` },
   });
   if (!res.ok) {
-    throw new Error(`Resend get email failed (${res.status})`);
+    let detail = "";
+    try {
+      const body = (await res.json()) as { message?: string; name?: string };
+      detail = body.message || body.name || "";
+    } catch {
+      // ignore
+    }
+    if (res.status === 401) {
+      throw new Error(
+        `Resend get email failed (401)${detail ? `: ${detail}` : ""}. ` +
+          "Create a Full access API key (not Sending only) in Resend → API Keys, then: supabase secrets set RESEND_API_KEY=re_..."
+      );
+    }
+    throw new Error(`Resend get email failed (${res.status})${detail ? `: ${detail}` : ""}`);
   }
   return (await res.json()) as ResendReceivedEmail;
+}
+
+/** Webhook metadata only — no body until Receiving API fetch succeeds. */
+export function receivedEmailFromWebhook(
+  event: ResendWebhookEvent,
+  emailId: string
+): ResendReceivedEmail {
+  const d = event.data;
+  return {
+    id: emailId,
+    from: d?.from ?? "",
+    to: d?.to ?? [],
+    subject: d?.subject,
+    text: null,
+    html: null,
+    message_id: d?.message_id,
+    attachments: d?.attachments,
+  };
 }
 
 export async function fetchResendAttachmentDownload(

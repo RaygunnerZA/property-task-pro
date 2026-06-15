@@ -7,7 +7,9 @@ import {
   parseIntakeTokenFromAddress,
   parseSenderEmail,
   plainTextFromEmail,
+  receivedEmailFromWebhook,
   verifyResendWebhook,
+  type ResendReceivedEmail,
   type ResendWebhookEvent,
 } from "../_shared/resendInbound.ts";
 
@@ -76,7 +78,16 @@ async function handleEmailReceived(
   const emailId = event.data?.email_id;
   if (!emailId) throw new Error("Missing email_id");
 
-  const email = await fetchResendReceivedEmail(resendApiKey, emailId);
+  let email: ResendReceivedEmail;
+  let usedWebhookFallback = false;
+  try {
+    email = await fetchResendReceivedEmail(resendApiKey, emailId);
+  } catch (fetchErr) {
+    console.error("[inbound-email] Receiving API fetch failed:", fetchErr);
+    email = receivedEmailFromWebhook(event, emailId);
+    usedWebhookFallback = true;
+  }
+
   const toAddresses = email.to ?? event.data?.to ?? [];
   let orgId: string | null = null;
 
@@ -104,7 +115,13 @@ async function handleEmailReceived(
   });
 
   const subject = email.subject ?? event.data?.subject ?? "Forwarded email";
-  const bodyText = plainTextFromEmail(email);
+  let bodyText = plainTextFromEmail(email);
+  if (usedWebhookFallback) {
+    bodyText =
+      subject +
+      (subject ? "\n\n" : "") +
+      "(Full conversation text requires a Resend Full access API key on RESEND_API_KEY.)";
+  }
   const messageId = email.message_id ?? event.data?.message_id ?? emailId;
   const dedupeKey = `email_inbound:${orgId}:${messageId}`;
 
@@ -113,6 +130,10 @@ async function handleEmailReceived(
 
   for (const att of attachments) {
     if (!att.id) continue;
+    if (usedWebhookFallback) {
+      console.warn("[inbound-email] skipping attachment download — Receiving API unavailable");
+      break;
+    }
     try {
       const meta = await fetchResendAttachmentDownload(resendApiKey, emailId, att.id);
       const fileRes = await fetch(meta.download_url);
@@ -157,15 +178,16 @@ async function handleEmailReceived(
   }
 
   if (memberUserId) {
-    if (attachments.length === 0) {
+    if (attachments.length === 0 || usedWebhookFallback) {
       const intakeId = crypto.randomUUID();
+      const conversationLabel = subject || "Forwarded email";
       const { data: item, error } = await admin.rpc("create_intake_item_from_email", {
         p_org_id: orgId,
         p_created_by: memberUserId,
         p_id: intakeId,
         p_storage_path: null,
-        p_file_name: null,
-        p_mime_type: null,
+        p_file_name: usedWebhookFallback ? `${conversationLabel.slice(0, 80)}.eml` : null,
+        p_mime_type: usedWebhookFallback ? "text/plain" : null,
         p_file_size: null,
         p_raw_text: bodyText ? bodyText.slice(0, 4000) : subject,
       });
@@ -174,13 +196,19 @@ async function handleEmailReceived(
           .from("intake_items")
           .update({
             status: "ready",
-            ai_classification: "Email",
+            ai_classification: usedWebhookFallback ? "Email (preview)" : "Email",
             processed_at: new Date().toISOString(),
           })
           .eq("id", item.id);
       }
     }
-    return { ok: true, route: "intake_items", org_id: orgId, attachments: storagePaths.length };
+    return {
+      ok: true,
+      route: "intake_items",
+      org_id: orgId,
+      attachments: storagePaths.length,
+      webhook_fallback: usedWebhookFallback,
+    };
   }
 
   // Unknown external sender → signal for manager triage

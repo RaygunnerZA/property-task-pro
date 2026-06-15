@@ -11,9 +11,13 @@
 
 ## Supabase secrets
 ```bash
+# API key MUST be Full access (re_...) — Sending-only keys return 401 on Receiving API.
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set RESEND_WEBHOOK_SECRET=whsec_...
 ```
+
+In Resend → **API Keys** → create key with **Full access** (not "Sending access" only).  
+Do not put `whsec_...` in `RESEND_API_KEY` — that is the webhook signing secret.
 
 Optional OAuth (Phase 2+):
 ```bash

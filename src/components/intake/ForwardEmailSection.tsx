@@ -50,7 +50,7 @@ export function ForwardEmailSection({ className }: ForwardEmailSectionProps) {
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 pt-2">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          In Apple Mail, Outlook, or Gmail: open the message → <strong className="font-medium text-foreground">Forward</strong> → paste this address. Keep attachments on the forward.
+          In Apple Mail, Outlook, or Gmail: open the message → <strong className="font-medium text-foreground">Forward</strong> → paste this address. Works for conversations and threads too — a PDF is not required.
         </p>
         {loginEmail ? (
           <p className="text-xs leading-relaxed text-muted-foreground">
