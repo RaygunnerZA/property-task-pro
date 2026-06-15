@@ -33,6 +33,21 @@ export function isImageMime(mime: string | null | undefined): boolean {
   return (mime || "").toLowerCase().startsWith("image/");
 }
 
+export function isPdfMime(mime: string | null | undefined, fileName?: string | null): boolean {
+  const m = (mime || "").toLowerCase();
+  if (m.includes("pdf")) return true;
+  return (fileName || "").toLowerCase().endsWith(".pdf");
+}
+
+export function isPreviewableDocument(
+  mime: string | null | undefined,
+  fileName?: string | null
+): boolean {
+  const m = (mime || "").toLowerCase();
+  if (isImageMime(m) || isPdfMime(m, fileName)) return true;
+  return m.includes("text/plain") || (fileName || "").toLowerCase().endsWith(".txt");
+}
+
 export function formatIntakeFileSize(bytes: number | null | undefined): string {
   if (bytes == null || bytes <= 0) return "";
   if (bytes < 1024) return `${bytes} B`;

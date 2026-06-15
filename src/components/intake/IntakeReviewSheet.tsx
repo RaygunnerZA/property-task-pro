@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  ExternalLink,
   FileText,
   ImageIcon,
   Loader2,
@@ -31,6 +32,7 @@ import {
   intakeReviewSuggestionReason,
   intakeReviewSummaryText,
   isImageMime,
+  isPdfMime,
   suggestIntakeMode,
 } from "@/lib/intakeReviewSummary";
 import { cn } from "@/lib/utils";
@@ -44,7 +46,6 @@ interface IntakeReviewSheetProps {
   onOpenChange: (open: boolean) => void;
   payload: IntakeReviewPayload | null;
   onContinue: (mode: IntakeMode) => void;
-  /** Re-open the upload sheet when user taps back */
   onBackToUploads?: () => void;
 }
 
@@ -70,8 +71,10 @@ export function IntakeReviewSheet({
   const confidence = payload?.aiConfidence;
   const fileSizeLabel = formatIntakeFileSize(payload?.fileSize ?? null);
   const isImage = artifact ? isImageMime(artifact.mimeType) : false;
+  const isPdf = artifact ? isPdfMime(artifact.mimeType, artifact.fileName) : false;
   const isEmailOnly = !artifact?.storagePath && !!artifact?.rawText;
   const displayName = artifact?.fileName || (isEmailOnly ? "Forwarded email" : "Upload");
+  const hasFilePreview = Boolean(artifact?.storagePath && (isImage || isPdf));
 
   useEffect(() => {
     if (!open || !artifact?.storagePath) {
@@ -130,7 +133,7 @@ export function IntakeReviewSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-[20px] pb-8 max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-[20px] pb-8 max-h-[92vh] overflow-y-auto">
         <SheetHeader className="text-left pb-1 space-y-1">
           <div className="flex items-center gap-2">
             {onBackToUploads ? (
@@ -145,40 +148,20 @@ export function IntakeReviewSheet({
             ) : null}
             <SheetTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              Review upload
+              Review document
             </SheetTitle>
           </div>
           <SheetDescription>
-            Filla analysed your file. Choose where to file it before adding details.
+            Check the file below, then choose where to file it.
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
-          {/* File preview */}
+          {/* Document preview — full width for PDFs and images */}
           <div className="rounded-[12px] bg-card/80 shadow-e1 overflow-hidden">
-            <div className="flex items-stretch min-h-[120px]">
-              <div
-                className={cn(
-                  "flex w-28 shrink-0 items-center justify-center bg-muted/40",
-                  isImage && previewUrl && "w-32"
-                )}
-              >
-                {previewLoading ? (
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                ) : isImage && previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt=""
-                    className="h-full w-full object-cover max-h-36"
-                  />
-                ) : isEmailOnly ? (
-                  <Mail className="h-10 w-10 text-primary/70" />
-                ) : (
-                  <FileText className="h-10 w-10 text-primary/70" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1 p-3 flex flex-col justify-center gap-1">
-                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+            <div className="flex items-center justify-between gap-2 border-b border-border/30 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   {isEmailOnly ? (
                     <span className="inline-flex items-center gap-1">
@@ -190,13 +173,57 @@ export function IntakeReviewSheet({
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1">
-                      <FileText className="h-3 w-3" /> Document
+                      <FileText className="h-3 w-3" /> {isPdf ? "PDF" : "Document"}
                     </span>
                   )}
                   {fileSizeLabel ? <span>{fileSizeLabel}</span> : null}
                 </div>
               </div>
+              {previewUrl ? (
+                <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                  <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    Open
+                  </a>
+                </Button>
+              ) : null}
             </div>
+
+            {previewLoading ? (
+              <div className="flex min-h-[200px] items-center justify-center bg-muted/30">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : hasFilePreview && previewUrl ? (
+              isImage ? (
+                <div className="bg-muted/20 p-2">
+                  <img
+                    src={previewUrl}
+                    alt={displayName}
+                    className="mx-auto max-h-[min(45vh,400px)] w-full object-contain rounded-md"
+                  />
+                </div>
+              ) : isPdf ? (
+                <div className="bg-muted/20">
+                  <iframe
+                    src={`${previewUrl}#toolbar=1&navpanes=0`}
+                    title={displayName}
+                    className="h-[min(50vh,440px)] w-full border-0 bg-white"
+                  />
+                  <p className="px-3 py-2 text-[11px] text-muted-foreground border-t border-border/30">
+                    Preview not showing? Use <strong className="font-medium">Open</strong> above — some mobile browsers need the full tab.
+                  </p>
+                </div>
+              ) : null
+            ) : isEmailOnly && artifact.rawText ? (
+              <div className="max-h-48 overflow-y-auto p-3 text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                {artifact.rawText}
+              </div>
+            ) : (
+              <div className="flex min-h-[120px] flex-col items-center justify-center gap-2 bg-muted/30 p-4 text-center">
+                <FileText className="h-10 w-10 text-primary/50" />
+                <p className="text-xs text-muted-foreground">Preview unavailable — you can still file this document.</p>
+              </div>
+            )}
           </div>
 
           {/* AI read */}
@@ -218,7 +245,7 @@ export function IntakeReviewSheet({
               <p className="text-sm text-foreground/90 leading-relaxed line-clamp-4">{summary}</p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No readable text extracted — you can still file this manually.
+                Limited text extracted — use the preview above to confirm before filing.
               </p>
             )}
             <p className="text-xs text-muted-foreground">
