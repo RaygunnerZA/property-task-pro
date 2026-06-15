@@ -46,6 +46,7 @@ export interface AttentionItem {
   signalId?: string;
   signalSubtype?: string;
   recommendation?: Record<string, unknown>;
+  signalPayload?: Record<string, unknown>;
   complianceSeed?: {
     title: string;
     propertyName: string;
@@ -167,5 +168,6 @@ export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDe
     recommendation: item.recommendation,
     signalSubtype: item.signalSubtype,
     signalId: item.signalId,
+    signalPayload: item.signalPayload,
   };
 }

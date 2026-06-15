@@ -10,7 +10,6 @@ import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { getCurrentStep } from "@/utils/onboardingSteps";
 import { isPropertyProfileId, orgTypeForPropertyProfile } from "@/lib/propertyProfiles";
 import { toast } from "sonner";
 
@@ -210,7 +209,7 @@ export default function CreateOrganisationScreen() {
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
-        <ProgressDots current={getCurrentStep(location.pathname)} />
+        <ProgressDots />
         
         <OnboardingHeader
           title="Create your organisation"

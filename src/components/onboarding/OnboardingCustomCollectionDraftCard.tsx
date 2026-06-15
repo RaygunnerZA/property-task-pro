@@ -8,6 +8,10 @@ import {
 } from "./onboardingSpaceGroups";
 import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
 import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
+import {
+  SPACE_GROUP_ADD_INPUT_CLASS,
+  SPACE_GROUP_ADD_INPUT_SHADOW,
+} from "./spaceGroupCardInputStyles";
 
 const DASHED_LINE_STYLE = {
   height: "1px",
@@ -17,17 +21,8 @@ const DASHED_LINE_STYLE = {
   backgroundRepeat: "repeat-x" as const,
 };
 
-const INLINE_INPUT_CLASS = cn(
-  "min-w-0 flex-1 rounded-lg bg-[#F6F4F2] px-2.5 py-1.5",
-  "font-mono text-[11px] uppercase tracking-wide text-foreground",
-  "placeholder:text-[#6D7480]/60 outline-none",
-  "focus:ring-2 focus:ring-[#8EC9CE]/40"
-);
-
-const INLINE_INPUT_SHADOW = {
-  boxShadow:
-    "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)",
-} as const;
+const INLINE_INPUT_CLASS = SPACE_GROUP_ADD_INPUT_CLASS;
+const INLINE_INPUT_SHADOW = SPACE_GROUP_ADD_INPUT_SHADOW;
 
 interface OnboardingCustomCollectionDraftCardProps {
   onCreateCollection: (name: string) => void;

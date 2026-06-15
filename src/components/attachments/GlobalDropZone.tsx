@@ -3,27 +3,27 @@ import { AlertTriangle, CheckCircle2, Inbox, Loader2, UploadCloud } from "lucide
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useIntakeItemsInvalidator } from "@/hooks/useIntakeItems";
+import {
+  triggerIntakeProcess,
+  uploadIntakeFile,
+} from "@/services/intake/intakeUpload";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 
 interface GlobalDropZoneProps {
   className?: string;
+  /** Compact layout for action sheets */
+  compact?: boolean;
   onUploadComplete?: (uploadedCount: number) => void;
 }
 
 const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
-const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
 
-const sanitizeFileName = (fileName: string) =>
-  fileName
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]/g, "")
-    .slice(0, 120);
-
-export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZoneProps) {
+export function GlobalDropZone({ className, compact = false, onUploadComplete }: GlobalDropZoneProps) {
   const { orgId } = useActiveOrg();
   const { toast } = useToast();
+  const invalidateIntakeItems = useIntakeItemsInvalidator();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -35,41 +35,9 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
       throw new Error("Active organisation not found");
     }
 
-    if (file.size > MAX_FILE_BYTES) {
-      throw new Error(`"${file.name}" exceeds 50MB limit`);
-    }
-
-    const sourceId = crypto.randomUUID();
-    const cleanedName = sanitizeFileName(file.name) || `upload-${Date.now()}`;
-    const storagePath = `orgs/${orgId}/inbox/${sourceId}/${Date.now()}-${cleanedName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("inbox")
-      .upload(storagePath, file, { cacheControl: "3600", upsert: false });
-
-    if (uploadError) {
-      throw new Error(`Upload failed for "${file.name}": ${uploadError.message}`);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: sourceError } = await (supabase as any).rpc("create_compliance_source_from_inbox", {
-      p_id: sourceId,
-      p_storage_path: storagePath,
-      p_file_name: file.name,
-      p_mime_type: file.type || null,
-      p_file_size: file.size,
-      p_source: "global_dropzone",
-    });
-
-    if (sourceError) {
-      const { error: cleanupError } = await supabase.storage.from("inbox").remove([storagePath]);
-      if (cleanupError) {
-        throw new Error(
-          `Failed to create source record for "${file.name}" and cleanup failed: ${cleanupError.message}`
-        );
-      }
-      throw new Error(`Failed to create source record for "${file.name}": ${sourceError.message}`);
-    }
+    const item = await uploadIntakeFile(supabase, { orgId, file });
+    void triggerIntakeProcess(supabase, item.id);
+    return item;
   };
 
   const handleFiles = async (files: FileList | null) => {
@@ -106,13 +74,14 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
     }
 
     if (uploaded > 0) {
+      void invalidateIntakeItems();
       onUploadComplete?.(uploaded);
     }
 
     if (uploaded > 0 && failures.length === 0) {
       toast({
-        title: "Inbox updated",
-        description: `${uploaded} file${uploaded === 1 ? "" : "s"} added to inbox intake.`,
+        title: "Added to Filla",
+        description: `${uploaded} file${uploaded === 1 ? "" : "s"} uploaded — AI is processing.`,
       });
       return;
     }
@@ -147,13 +116,15 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
   };
 
   return (
-    <section className={cn("rounded-[12px] bg-card/70 shadow-e1 p-4", className)}>
-      <div className="flex items-center gap-2 mb-3">
-        <Inbox className="h-4 w-4 text-primary" />
-        <PanelSectionTitle as="h3" className="mb-0">
-          Inbox Intake Bucket
-        </PanelSectionTitle>
-      </div>
+    <section className={cn(compact ? "p-0" : "rounded-[12px] bg-card/70 shadow-e1 p-4", className)}>
+      {!compact && (
+        <div className="flex items-center gap-2 mb-3">
+          <Inbox className="h-4 w-4 text-primary" />
+          <PanelSectionTitle as="h3" className="mb-0">
+            Upload
+          </PanelSectionTitle>
+        </div>
+      )}
 
       <input
         ref={fileInputRef}
@@ -171,7 +142,8 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
         onDrop={handleDrop}
         onClick={() => !uploading && fileInputRef.current?.click()}
         className={cn(
-          "rounded-[10px] p-8 text-center transition-all cursor-pointer bg-input",
+          "rounded-[10px] text-center transition-all cursor-pointer bg-input",
+          compact ? "p-6" : "p-8",
           "shadow-[inset_2px_2px_5px_rgba(0,0,0,0.08),inset_-2px_-2px_5px_rgba(255,255,255,0.9)]",
           dragActive && "ring-2 ring-primary/40",
           !dragActive && "hover:ring-1 hover:ring-primary/30",
@@ -185,10 +157,10 @@ export function GlobalDropZone({ className, onUploadComplete }: GlobalDropZonePr
             <UploadCloud className="h-8 w-8 text-primary" />
           )}
           <p className="text-sm font-medium text-foreground">
-            {uploading ? "Uploading to inbox..." : "Drop files here or click to add"}
+            {uploading ? "Uploading…" : "Drop files here or click to upload"}
           </p>
           <p className="text-xs text-muted-foreground">
-            Documents and images are stored in the org inbox bucket
+            Photos, PDFs, and documents up to 50MB
           </p>
         </div>
       </div>

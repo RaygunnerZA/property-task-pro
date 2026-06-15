@@ -23,3 +23,21 @@ verify_jwt = true
 
 [functions.signal-engine]
 verify_jwt = true
+
+[functions.intake-process]
+verify_jwt = false
+
+[functions.ai-doc-analyse]
+verify_jwt = false
+
+[functions.ai-image-analyse]
+verify_jwt = false
+
+[functions.inbound-email]
+verify_jwt = false
+
+[functions.oauth-connect-start]
+verify_jwt = true
+
+[functions.calendar-import]
+verify_jwt = true

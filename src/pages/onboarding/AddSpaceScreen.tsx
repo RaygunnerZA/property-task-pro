@@ -22,7 +22,9 @@ import {
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { useBuildingPlans } from "@/hooks/property/useBuildingPlans";
-import { getCurrentStep } from "@/utils/onboardingSteps";
+import { getPostAddSpacesRoute } from "@/lib/propertyProfiles";
+import { finishOwnerOnboarding } from "@/utils/completeOnboarding";
+import { useOnboardingPropertyProfile } from "@/hooks/useOnboardingPropertyProfile";
 import { toast } from "sonner";
 import { Plus, Layers, FileUp, Loader2 } from "lucide-react";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
@@ -69,6 +71,10 @@ export default function AddSpaceScreen() {
   const [customCollections, setCustomCollections] = useState<OnboardingCustomCollection[]>([]);
   const [planFiles, setPlanFiles] = useState<FileList | null>(null);
   const spaceInputRef = useRef<HTMLInputElement>(null);
+  const propertyProfile = useOnboardingPropertyProfile();
+  // #region agent log
+  fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'504ba9'},body:JSON.stringify({sessionId:'504ba9',runId:'post-fix',hypothesisId:'H1',location:'AddSpaceScreen.tsx:74',message:'AddSpaceScreen hooks initialized',data:{propertyProfile,spaceInputRefDeclared:spaceInputRef!=null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   // Pass undefined while the panel is hidden so the hook's queries stay disabled
   // (the plan tables don't exist in the remote DB yet).
   const plans = useBuildingPlans(SHOW_PROPERTY_PLANS_PANEL ? propertyId || undefined : undefined);
@@ -488,6 +494,15 @@ export default function AddSpaceScreen() {
     closeCopyModal();
   };
 
+  const navigateAfterAddSpaces = async () => {
+    const nextRoute = getPostAddSpacesRoute(propertyProfile);
+    if (nextRoute) {
+      navigate(nextRoute);
+      return;
+    }
+    await finishOwnerOnboarding(navigate);
+  };
+
   const handleSave = async () => {
     if (!propertyId) {
       toast.error("Property not found");
@@ -515,7 +530,7 @@ export default function AddSpaceScreen() {
       if (error) throw error;
 
       toast.success(`${allNames.length} space${allNames.length > 1 ? "s" : ""} added!`);
-      navigate("/onboarding/invite-team");
+      await navigateAfterAddSpaces();
     } catch (error: any) {
       toast.error(error.message || "Failed to add spaces");
     } finally {
@@ -524,9 +539,7 @@ export default function AddSpaceScreen() {
   };
 
   const handleSkip = () => {
-    // Mark navigation to prevent AppInitializer interference
-    (window as any).__lastOnboardingNavigation = Date.now();
-    navigate("/onboarding/invite-team");
+    void navigateAfterAddSpaces();
   };
 
   const handleCreateCustomCollection = (name: string) => {
@@ -594,7 +607,7 @@ export default function AddSpaceScreen() {
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
-        <ProgressDots current={getCurrentStep(location.pathname)} />
+        <ProgressDots />
         
         {(organization || propertyName) && (
           <OnboardingBreadcrumbs
@@ -660,9 +673,10 @@ export default function AddSpaceScreen() {
         )}
 
         {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
-        <div className="mb-6">
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hz-teal">
-            {ONBOARDING_SPACE_GROUPS.map((group) => (
+        <div className="mb-6 rounded-tr-xl rounded-bl-xl">
+          <div className="relative">
+            <div className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)]">
+              {ONBOARDING_SPACE_GROUPS.map((group) => (
               <OnboardingSpaceGroupCard
                 key={group.id}
                 group={group}
@@ -698,6 +712,11 @@ export default function AddSpaceScreen() {
             ))}
             <OnboardingCustomCollectionDraftCard
               onCreateCollection={handleCreateCustomCollection}
+            />
+            </div>
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[14px] rounded-tr-xl rounded-br-xl bg-gradient-to-r from-transparent to-black/20"
+              aria-hidden
             />
           </div>
         </div>

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
@@ -7,17 +7,29 @@ import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { getCurrentStep } from "@/utils/onboardingSteps";
+import { useOnboardingPropertyProfile } from "@/hooks/useOnboardingPropertyProfile";
+import {
+  getInviteTeamStepCopy,
+  shouldShowInviteTeamStep,
+} from "@/lib/propertyProfiles";
+import { finishOwnerOnboarding } from "@/utils/completeOnboarding";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function InviteTeamScreen() {
   const navigate = useNavigate();
-  const location = useLocation();
+  const propertyProfile = useOnboardingPropertyProfile();
   const { teamInvites, addTeamInvite, removeTeamInvite } = useOnboardingStore();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const [sending, setSending] = useState(false);
+  const inviteCopy = getInviteTeamStepCopy(propertyProfile);
+
+  useEffect(() => {
+    if (propertyProfile && !shouldShowInviteTeamStep(propertyProfile)) {
+      void finishOwnerOnboarding(navigate);
+    }
+  }, [propertyProfile, navigate]);
   
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<string>("member");
@@ -46,7 +58,7 @@ export default function InviteTeamScreen() {
 
   const handleSendInvites = async () => {
     if (teamInvites.length === 0) {
-      navigate("/onboarding/preferences");
+      await finishOwnerOnboarding(navigate);
       return;
     }
 
@@ -119,23 +131,22 @@ export default function InviteTeamScreen() {
       toast.error(err.message || "Failed to send invitations");
     } finally {
       setSending(false);
-      // Navigate to next step regardless of errors
-      navigate("/onboarding/preferences");
+      await finishOwnerOnboarding(navigate);
     }
   };
 
   const handleSkip = () => {
-    navigate("/onboarding/preferences");
+    void finishOwnerOnboarding(navigate);
   };
 
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
-        <ProgressDots current={getCurrentStep(location.pathname)} />
-        
+        <ProgressDots />
+
         <OnboardingHeader
-          title="Invite your team"
-          subtitle="Collaborate with colleagues"
+          title={inviteCopy.title}
+          subtitle={inviteCopy.subtitle}
           showLogout={false}
         />
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Plus, Mic, FileText } from 'lucide-react';
+import { Plus, Mic, FileText, Inbox } from 'lucide-react';
 import { IntakeModal } from '@/components/intake/IntakeModal';
+import { AddToFillaSheet } from '@/components/intake/AddToFillaSheet';
+import { useIntakeItems } from '@/hooks/useIntakeItems';
 import type { IntakeMode } from '@/types/intake';
 import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
@@ -13,9 +15,12 @@ interface FloatingAddButtonProps {
 
 export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showAddToFilla, setShowAddToFilla] = useState(false);
   const [fabIntakeMode, setFabIntakeMode] = useState<IntakeMode>('report_issue');
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { data: intakeItems = [] } = useIntakeItems('ready');
+  const readyCount = intakeItems.length;
 
   const handleMainButtonClick = () => {
     if (expanded) {
@@ -33,6 +38,11 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
 
   const handleMicClick = () => {
     setShowAudioRecorder(true);
+    setExpanded(false);
+  };
+
+  const handleAddToFillaClick = () => {
+    setShowAddToFilla(true);
     setExpanded(false);
   };
 
@@ -58,6 +68,23 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
               animateOnTap 
               animation="pulse"
             />
+          </button>
+          {/* Add to Filla — upload & review */}
+          <button
+            onClick={handleAddToFillaClick}
+            className="relative w-12 h-12 rounded-full bg-card shadow-e1 flex items-center justify-center text-primary hover:translate-y-[-2px] transition-transform active:scale-95"
+            style={{
+              backgroundColor: 'rgba(241, 238, 232, 0.95)',
+              boxShadow: '1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4)'
+            }}
+            aria-label="Add to Filla"
+          >
+            <AnimatedIcon icon={Inbox} size={20} animateOnHover animateOnTap animation="pulse" />
+            {readyCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8EC9CE] px-1 text-[10px] font-semibold text-white">
+                {readyCount > 9 ? '9+' : readyCount}
+              </span>
+            )}
           </button>
           {/* Task button - bottom */}
           <button
@@ -98,6 +125,12 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
       </button>
 
       {/* Modals */}
+      <AddToFillaSheet
+        open={showAddToFilla}
+        onOpenChange={setShowAddToFilla}
+        onTaskCreated={onTaskCreated}
+      />
+
       <IntakeModal
         open={showCreateModal} 
         onOpenChange={setShowCreateModal}

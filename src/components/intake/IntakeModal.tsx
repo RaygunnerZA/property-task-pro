@@ -52,6 +52,8 @@ import { cn } from "@/lib/utils";
 import {
   intakeFooterSubmitAddRecordClassName,
   intakeFooterSubmitReportIssueClassName,
+  INTAKE_ADD_RECORD_LABEL,
+  INTAKE_REPORT_ISSUE_LABEL,
 } from "@/lib/intake-action-buttons";
 import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { SemanticChip } from "@/components/chips/semantic";
@@ -71,7 +73,11 @@ import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import type { TempImage } from "@/types/temp-image";
-import { cleanupTempImage } from "@/utils/image-optimization";
+import { cleanupTempImage, createTempImage } from "@/utils/image-optimization";
+import type { IntakeSourceArtifact } from "@/types/intake-item";
+import type { TempImage } from "@/types/temp-image";
+import { confirmIntakeItem, downloadInboxFile } from "@/services/intake/intakeUpload";
+import { INTAKE_ITEMS_QUERY_KEY } from "@/hooks/useIntakeItems";
 import { format, addDays, addMonths, startOfDay } from "date-fns";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { Input } from "@/components/ui/input";
@@ -200,6 +206,14 @@ export interface IntakeModalProps {
   onIntakeModeChange?: (mode: IntakeMode) => void;
   /** `task_created` analytics `source` when this modal creates a task (defaults to `manual`). */
   taskCreatedSource?: TaskCreatedSource;
+  /** Pre-fill description when reviewing an intake item. */
+  initialDescription?: string;
+  /** Pre-loaded images (optional; usually loaded from initialSourceArtifact). */
+  initialImages?: TempImage[];
+  /** Intake queue artifact — file is loaded from inbox on open; marked confirmed on submit. */
+  initialSourceArtifact?: IntakeSourceArtifact;
+  /** Opened after IntakeReviewSheet — locked filing intent, review-oriented chrome. */
+  fromIntakeReview?: boolean;
 }
 
 interface UploadedAttachment {
@@ -223,6 +237,10 @@ export function IntakeModal({
   intakeMode: intakeModeProp,
   onIntakeModeChange,
   taskCreatedSource,
+  initialDescription,
+  initialImages,
+  initialSourceArtifact,
+  fromIntakeReview = false,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -258,6 +276,7 @@ export function IntakeModal({
   const [mismatchDismissed, setMismatchDismissed] = useState(false);
   const [userManuallySwitchedIntake, setUserManuallySwitchedIntake] = useState(false);
   const prevOpenRef = useRef(open);
+  const sourceArtifactRef = useRef<IntakeSourceArtifact | null>(null);
   const [intakeComplianceType, setIntakeComplianceType] = useState("");
   const [intakeComplianceExpiry, setIntakeComplianceExpiry] = useState("");
   const [createReminderFromCompliance, setCreateReminderFromCompliance] = useState(false);
@@ -1031,6 +1050,99 @@ export function IntakeModal({
     }
     prevOpenRef.current = open;
   }, [open, initialIntakeMode, isIntakeControlled]);
+
+  const markIntakeItemConfirmed = useCallback(async () => {
+    const artifact = sourceArtifactRef.current;
+    if (!artifact) return;
+    try {
+      await confirmIntakeItem(supabase, artifact.intakeItemId);
+      await queryClient.invalidateQueries({ queryKey: [INTAKE_ITEMS_QUERY_KEY] });
+    } catch (error) {
+      console.warn("[IntakeModal] could not confirm intake item:", error);
+    } finally {
+      sourceArtifactRef.current = null;
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    sourceArtifactRef.current = initialSourceArtifact ?? null;
+
+    if (initialDescription?.trim()) {
+      setDescription(initialDescription.trim());
+    }
+
+    if (initialImages?.length) {
+      setImages(initialImages);
+    }
+
+    if (!initialSourceArtifact?.storagePath) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const file = await downloadInboxFile(
+          supabase,
+          initialSourceArtifact.storagePath,
+          initialSourceArtifact.fileName,
+          initialSourceArtifact.mimeType
+        );
+        if (cancelled) return;
+
+        const isImage =
+          file.type.startsWith("image/") ||
+          initialSourceArtifact.mimeType.toLowerCase().startsWith("image/");
+
+        if (isImage) {
+          const temp = await createTempImage(file);
+          const ext = initialSourceArtifact.aiExtracted;
+          if (ext) {
+            temp.rawAnalysis = ext as import("@/types/temp-image").ImageAnalysisResult;
+            temp.aiOcrText = (ext.ocr_text as string) ?? "";
+            temp.detectedLabels = (ext.detected_labels as string[]) ?? [];
+          }
+          setImages([temp]);
+        } else {
+          setTaskFiles([
+            {
+              local_id: crypto.randomUUID(),
+              file,
+              display_name: file.name,
+              file_size: file.size,
+              file_type: file.type,
+            },
+          ]);
+        }
+
+        const extracted = initialSourceArtifact.aiExtracted;
+        if (extracted) {
+          const docType =
+            (extracted.document_type as string | undefined) ||
+            (extracted.document_type_hint as string | undefined) ||
+            initialSourceArtifact.aiClassification ||
+            "";
+          if (docType) setIntakeComplianceType(docType);
+          const expiry =
+            (extracted.expiry_date as string | undefined) ||
+            (extracted.expiry_date_hint as string | undefined);
+          if (expiry) setIntakeComplianceExpiry(expiry);
+        }
+      } catch (error) {
+        console.error("[IntakeModal] failed loading intake artifact:", error);
+        toast({
+          title: "Could not load file",
+          description: error instanceof Error ? error.message : "Try uploading again.",
+          variant: "destructive",
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, initialDescription, initialImages, initialSourceArtifact, toast]);
 
   useEffect(() => {
     if (primaryIsCompliance && analysis.document_type_hint && !intakeComplianceType) setIntakeComplianceType(analysis.document_type_hint);
@@ -3000,6 +3112,7 @@ export function IntakeModal({
         queryClient.invalidateQueries({ queryKey: ["compliance_recommendations"] });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         toast({ title: "Added to Compliance" });
+        await markIntakeItemConfirmed();
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
@@ -3029,6 +3142,7 @@ export function IntakeModal({
         });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         toast({ title: "Document saved" });
+        await markIntakeItemConfirmed();
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
@@ -3146,6 +3260,7 @@ export function IntakeModal({
       queryClient.invalidateQueries({ queryKey: ["task-attachments", newTask.id] });
       toast({ title: "Task created" });
       onTaskCreated?.(newTask.id);
+      await markIntakeItemConfirmed();
       onOpenChange(false);
       resetForm();
     } catch (err: unknown) {
@@ -3550,12 +3665,27 @@ export function IntakeModal({
     <>
       {variant !== "column" && (
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/30">
-          <DialogTitle className="sr-only">Report Issue or add a record</DialogTitle>
-          <DialogDescription className="sr-only">
-            Create a task from an issue report or add a compliance record with photos and context.
-          </DialogDescription>
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0 pt-0.5">{intakeModeSwitcher}</div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {fromIntakeReview ? (
+                <>
+                  <DialogTitle className="text-base font-semibold text-left">
+                    {intakeMode === "add_record" ? INTAKE_ADD_RECORD_LABEL : INTAKE_REPORT_ISSUE_LABEL}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground pt-1 text-left">
+                    Complete the details below to file this upload.
+                  </DialogDescription>
+                </>
+              ) : (
+                <>
+                  <DialogTitle className="sr-only">Report Issue or add a record</DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Create a task from an issue report or add a compliance record with photos and context.
+                  </DialogDescription>
+                  <div className="pt-0.5">{intakeModeSwitcher}</div>
+                </>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
@@ -3656,7 +3786,7 @@ export function IntakeModal({
             </div>
           </div>
 
-          {showMismatchSuggestion && (
+          {showMismatchSuggestion && !fromIntakeReview && (
             <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 shadow-e1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-foreground">
                 {intakeMode === "report_issue"
@@ -3773,6 +3903,7 @@ export function IntakeModal({
             {isSubmitting ? "Saving…" : primaryLabel}
           </Button>
         </div>
+        {!fromIntakeReview && (
         <div className="flex flex-col gap-1.5 text-center">
           <button
             type="button"
@@ -3791,6 +3922,7 @@ export function IntakeModal({
             </button>
           )}
         </div>
+        )}
       </div>
       {renderTemplateDialog()}
       {renderAlertDialogs()}

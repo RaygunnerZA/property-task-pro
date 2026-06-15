@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
   requireOrg?: boolean;
 }
 
-/** Onboarding completed is set only at /onboarding/complete (or staff /onboarding/staff). */
+/** Onboarding completed when owner setup finishes (home) or staff /onboarding/staff continues. */
 function getOnboardingCompleted(
   session: { user?: { user_metadata?: Record<string, unknown> } } | null,
   orgId: string | null

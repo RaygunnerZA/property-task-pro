@@ -6,7 +6,6 @@ import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboardin
 import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
-import { getCurrentStep } from "@/utils/onboardingSteps";
 import { getAppBaseUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import { Mail, RefreshCw } from "lucide-react";
@@ -87,7 +86,7 @@ export default function VerifyEmailScreen() {
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
-        <ProgressDots current={getCurrentStep(location.pathname)} />
+        <ProgressDots />
         
         <OnboardingHeader
           title="Check your email"

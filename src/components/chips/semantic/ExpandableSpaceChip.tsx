@@ -106,7 +106,7 @@ export function ExpandableSpaceChip({
               e.preventDefault();
               setIsAddingSubSpace(true);
             }}
-            className="flex-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
+            className="flex-1 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide cursor-pointer rounded py-1 px-1 min-h-0"
           >
             <Plus className="h-3 w-3" />
             Sub-space
@@ -128,14 +128,14 @@ export function ExpandableSpaceChip({
 
       <DropdownMenuSeparator className="my-0.5" />
 
-      <div className="flex items-center gap-0.5 px-0.5 py-0">
+      <div className="flex h-9 items-center gap-0.5 px-0.5 py-0">
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault();
             onDuplicate?.();
           }}
           disabled={!onDuplicate}
-          className="flex-1 flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
+          className="flex-1 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide cursor-pointer rounded py-1 px-0.5 min-h-0"
         >
           <CopyPlus className="h-3 w-3" />
           Duplicate
@@ -143,7 +143,7 @@ export function ExpandableSpaceChip({
         <span className="text-muted-foreground/60 font-mono text-[10px]">|</span>
         <DropdownMenuItem
           onSelect={() => onRemove()}
-          className="flex-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
+          className="flex-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0 min-h-0"
         >
           <X className="h-3 w-3" />
           Remove

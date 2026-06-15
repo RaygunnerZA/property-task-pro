@@ -43,6 +43,9 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
+import { AddToFillaSheet } from "@/components/intake/AddToFillaSheet";
+import { useIntakeItems } from "@/hooks/useIntakeItems";
+import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import {
@@ -123,6 +126,8 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
   const [recordsReanalyseBusy, setRecordsReanalyseBusy] = useState(false);
+  const [showAddToFilla, setShowAddToFilla] = useState(false);
+  const { data: readyIntakeItems = [] } = useIntakeItems("ready");
 
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
@@ -581,18 +586,45 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
               "shadow-[inset_2px_1px_2px_0px_rgba(0,0,0,0.1),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.61)]"
             )}
           >
-            <div className="grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-1.5 px-2 py-[6px]">
+            <div className="grid h-12 min-h-12 w-full grid-cols-[1fr_1fr_auto] items-stretch gap-1.5 px-2 py-[6px]">
               <IntakeActionButtonPair
                 variant="toolbar"
                 layout="grid"
                 onAddRecord={() => handleOpenIntake("add_record")}
                 onReportIssue={() => handleOpenIntake("report_issue")}
               />
+              <button
+                type="button"
+                onClick={() => setShowAddToFilla(true)}
+                className="relative inline-flex h-full min-w-10 items-center justify-center rounded-[8px] bg-[#8DC9CE]/15 text-[#5a9ea3] shadow-[inset_1px_1px_2px_rgba(255,255,255,0.5)] hover:bg-[#8DC9CE]/25"
+                aria-label="Add to Filla"
+                title="Add to Filla"
+              >
+                <Inbox className="h-4 w-4" />
+                {readyIntakeItems.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#8EC9CE] px-0.5 text-[9px] font-semibold text-white">
+                    {readyIntakeItems.length > 9 ? "9+" : readyIntakeItems.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="pb-[20px]">
+        <div className="pb-[20px] space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowAddToFilla(true)}
+            className="relative flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#8DC9CE]/10 px-3 py-2 text-sm font-medium text-[#5a9ea3] shadow-e1 hover:bg-[#8DC9CE]/20"
+          >
+            <Inbox className="h-4 w-4" />
+            Add to Filla
+            {readyIntakeItems.length > 0 && (
+              <span className="rounded-full bg-[#8EC9CE] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                {readyIntakeItems.length} ready
+              </span>
+            )}
+          </button>
           <IntakeModal
             open={true}
             onOpenChange={() => undefined}
@@ -807,6 +839,30 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
       />
       
       {/* Universal Intake Modal - primary entry on smaller layouts */}
+      <AddToFillaSheet
+        open={showAddToFilla}
+        onOpenChange={setShowAddToFilla}
+        onTaskCreated={handleTaskCreated}
+        defaultPropertyId={intakeScopedPropertyId}
+      />
+
+      {!isLargeScreen && (
+        <button
+          type="button"
+          onClick={() => setShowAddToFilla(true)}
+          className="fixed bottom-6 right-4 z-50 flex items-center gap-2 rounded-full bg-[#8EC9CE] px-4 py-3 text-sm font-semibold text-white shadow-lg active:scale-95"
+          aria-label="Add to Filla"
+        >
+          <Inbox className="h-4 w-4" />
+          Add to Filla
+          {readyIntakeItems.length > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/90 px-1 text-[10px] font-bold text-[#5a9ea3]">
+              {readyIntakeItems.length > 9 ? "9+" : readyIntakeItems.length}
+            </span>
+          )}
+        </button>
+      )}
+
       {showCreateTask && !isLargeScreen && (
         <IntakeModal
           open={showCreateTask}

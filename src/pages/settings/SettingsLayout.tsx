@@ -1,5 +1,5 @@
 import { Outlet, useLocation, NavLink, Navigate } from "react-router-dom";
-import { Settings, Users, CreditCard, Zap, UserCircle } from "lucide-react";
+import { Settings, Users, CreditCard, Zap, UserCircle, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { StandardPage } from "@/components/design-system/StandardPage";
@@ -19,6 +19,7 @@ const navItems: SettingsNavItem[] = [
   { label: "General", path: "/settings", icon: Settings },
   { label: "Profile", path: "/settings/profile", icon: UserCircle },
   { label: "Automation & AI", path: "/settings/automation", icon: Zap },
+  { label: "Integrations", path: "/settings/integrations", icon: Plug },
   { label: "Team", path: "/settings/team", icon: Users },
   { label: "Billing", path: "/settings/billing", icon: CreditCard, requiresOwner: true },
 ];

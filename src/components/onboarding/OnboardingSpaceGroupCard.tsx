@@ -10,6 +10,10 @@ import type {
 import { shortSpaceLabel } from "./onboardingSpaceGroups";
 import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
 import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
+import {
+  SPACE_GROUP_ADD_INPUT_CLASS,
+  SPACE_GROUP_ADD_INPUT_SHADOW,
+} from "./spaceGroupCardInputStyles";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -184,11 +188,11 @@ export function OnboardingSpaceGroupCard({
 
   return (
     <div
-      className={cn("w-[200px] h-[272px] flex-shrink-0", className)}
+      className={cn("w-[230px] h-[295px] flex-shrink-0", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[8px] bg-card shadow-e1">
+      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-[8px] bg-card pb-[3px] shadow-e1">
         {/* Banner — collapses to 70px on expand */}
         <div
           role={isExpanded ? "button" : undefined}
@@ -222,7 +226,7 @@ export function OnboardingSpaceGroupCard({
           />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-3 pb-2 pt-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-0 px-3 pb-2 pt-2">
           {/* Title + dashed rule — slides to card top as banner collapses */}
           <div className="shrink-0 space-y-2 transition-transform ease-out" style={transitionStyle}>
             <h3 className="text-lg font-semibold leading-tight text-foreground">{group.label}</h3>
@@ -245,7 +249,7 @@ export function OnboardingSpaceGroupCard({
           {/* Space chips — slide in below title + rule */}
           <div
             className={cn(
-              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-all ease-out",
+              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-2 pt-0 pb-0 transition-all ease-out",
               isExpanded
                 ? "mt-[6px] min-h-0 flex-1 overflow-auto opacity-100 translate-y-0"
                 : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
@@ -303,24 +307,16 @@ export function OnboardingSpaceGroupCard({
                   handleAddCustomSpace();
                 }
               }}
-              placeholder="Add Space"
-              className={cn(
-                "min-w-0 flex-1 rounded-lg bg-[#F6F4F2] px-2.5 py-1.5",
-                "font-mono text-[11px] uppercase tracking-wide text-foreground",
-                "placeholder:text-[#6D7480]/60 outline-none",
-                "focus:ring-2 focus:ring-[#8EC9CE]/40"
-              )}
-              style={{
-                boxShadow:
-                  "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)",
-              }}
+              placeholder="Add space"
+              className={cn(SPACE_GROUP_ADD_INPUT_CLASS, "h-[34px]")}
+              style={SPACE_GROUP_ADD_INPUT_SHADOW}
             />
             <button
               type="button"
               onClick={handleAddCustomSpace}
               disabled={!customSpaceName.trim()}
               className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-all",
+                "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg text-white transition-all",
                 "disabled:opacity-50"
               )}
               style={{ backgroundColor: "#14B8A6" }}

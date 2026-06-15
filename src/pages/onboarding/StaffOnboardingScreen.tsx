@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { markOnboardingComplete } from "@/utils/completeOnboarding";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -22,14 +22,9 @@ export default function StaffOnboardingScreen() {
   const handleContinue = async () => {
     setSettingComplete(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.auth.updateUser({
-          data: { ...user.user_metadata, onboarding_completed: true },
-        });
-        await supabase.auth.refreshSession();
-      }
-      (window as any).__lastOnboardingNavigation = Date.now();
+      await markOnboardingComplete();
+      (window as unknown as { __lastOnboardingNavigation?: number }).__lastOnboardingNavigation =
+        Date.now();
       navigate("/", { replace: true });
     } catch {
       setSettingComplete(false);

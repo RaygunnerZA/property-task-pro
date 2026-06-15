@@ -43,19 +43,37 @@ export function mapSignalRowToAttentionItem(
   const action = rec?.action as string | undefined;
   const canCreateTask = action === "create_task";
 
+  const isExternalEmail = row.subtype === "ingestion.external_email";
+  const emailFrom = isExternalEmail ? String(row.payload?.from ?? "") : "";
+  const emailSubject = isExternalEmail ? String(row.payload?.subject ?? row.title) : row.title;
+
+  const context = isExternalEmail
+    ? emailFrom
+      ? `From ${emailFrom}`
+      : "External email"
+    : propertyName
+      ? `${propertyName} • ${row.source.replace(/_/g, " ")}`
+      : row.source.replace(/_/g, " ");
+
   return {
     id: `signal-${row.id}`,
     signalId: row.id,
     group,
-    title: row.title,
-    context: propertyName ? `${propertyName} • ${row.source.replace(/_/g, " ")}` : row.source.replace(/_/g, " "),
-    description: row.body ?? undefined,
+    title: isExternalEmail ? emailSubject : row.title,
+    context,
+    description: isExternalEmail
+      ? String(row.payload?.preview ?? row.body ?? "")
+      : row.body ?? undefined,
     signalKind: kind,
     footChipLabel: group === "review" ? undefined : SIGNAL_KIND_FOOT_LABEL[kind],
     categoryTag: categoryTag(row.category),
     occurredAt: new Date(row.created_at).getTime(),
     recommendation: row.recommendation ?? undefined,
     signalSubtype: row.subtype,
+    signalPayload: isExternalEmail ? row.payload : undefined,
+    whyHere: isExternalEmail
+      ? "This email came from an address that is not a member of your organisation."
+      : undefined,
     fixtureActions: {
       primary: {
         id: canCreateTask ? "signal-accept" : "signal-open",

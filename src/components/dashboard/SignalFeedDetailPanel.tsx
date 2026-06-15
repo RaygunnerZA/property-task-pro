@@ -26,6 +26,7 @@ export type SignalFeedDetailSnapshot = {
   recommendation?: Record<string, unknown>;
   signalSubtype?: string;
   signalId?: string;
+  signalPayload?: Record<string, unknown>;
 };
 
 /** Card click on Issues stream → workbench third column / modal (not a DB entity). */
@@ -99,6 +100,35 @@ export function SignalFeedDetailPanel({
             <p className="mt-1 text-xs text-muted-foreground">
               {snapshot.complianceSeed.propertyName} · {snapshot.complianceSeed.complianceType}
             </p>
+          </div>
+        ) : null}
+        {snapshot.signalSubtype === "ingestion.external_email" && snapshot.signalPayload ? (
+          <div className="space-y-3 rounded-xl bg-muted/25 p-3 text-sm shadow-e1">
+            {snapshot.signalPayload.from ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Sender</p>
+                <p className="mt-0.5 text-foreground">{String(snapshot.signalPayload.from)}</p>
+              </div>
+            ) : null}
+            {snapshot.signalPayload.subject ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Subject</p>
+                <p className="mt-0.5 text-foreground">{String(snapshot.signalPayload.subject)}</p>
+              </div>
+            ) : null}
+            {Array.isArray(snapshot.signalPayload.attachment_paths) &&
+            snapshot.signalPayload.attachment_paths.length > 0 ? (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Attachments</p>
+                <ul className="mt-1 list-inside list-disc text-xs text-foreground">
+                  {(snapshot.signalPayload.attachment_paths as string[]).map((path) => (
+                    <li key={path} className="truncate">
+                      {path.split("/").pop()}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ) : null}
         {snapshot.recommendation ? (

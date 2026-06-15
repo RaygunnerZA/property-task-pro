@@ -145,8 +145,8 @@ export function SemanticChip({
     onRemove?.();
   };
 
-  const heightClass = size === "compact" ? "h-[20px]" : "h-[24px]";
-  const textClass = size === "compact" ? "text-[10px]" : "text-[11px]";
+  const heightClass = size === "compact" ? "h-[20px]" : "h-[32px]";
+  const textClass = size === "compact" ? "text-[10px]" : "text-[12px]";
 
   const epistemicStyles =
     epistemic === "fact"
@@ -176,7 +176,7 @@ export function SemanticChip({
       "px-2 min-w-[40px] max-w-[200px] group-hover:max-w-none group-hover:z-10",
     epistemic === "proposal" &&
       (removable
-        ? "pl-2 pr-[2px] py-1 min-w-[40px] max-w-[160px] group-hover:max-w-none group-hover:z-10"
+        ? "pl-2.5 pr-1 py-1 min-w-[40px] max-w-[160px] group-hover:max-w-none group-hover:z-10"
         : "px-2 py-1 max-w-[160px]"),
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
     (onPress || dropdown) && "cursor-pointer select-none",
@@ -299,7 +299,7 @@ export function SemanticChip({
           align="start"
           side="bottom"
           sideOffset={4}
-          className="min-w-[177px] px-0 py-[3px] text-[10px]"
+          className="min-w-[209px] px-0 py-[3px] text-[10px]"
         >
           {dropdownContent}
         </DropdownMenuContent>

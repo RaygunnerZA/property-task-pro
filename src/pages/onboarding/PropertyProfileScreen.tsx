@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
@@ -7,13 +7,11 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { PropertyProfileSlider } from "@/components/onboarding/PropertyProfileSlider";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
-import { getCurrentStep } from "@/utils/onboardingSteps";
 import type { PropertyProfileId } from "@/lib/propertyProfiles";
 import { toast } from "sonner";
 
 export default function PropertyProfileScreen() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { setPropertyProfile } = useOnboardingStore();
 
   const [confirmedId, setConfirmedId] = useState<PropertyProfileId | null>(null);
@@ -54,7 +52,7 @@ export default function PropertyProfileScreen() {
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
-        <ProgressDots current={getCurrentStep(location.pathname)} />
+        <ProgressDots />
 
         <OnboardingHeader
           title="What are you managing?"

@@ -15,7 +15,6 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useCreatePropertyMutation } from "@/hooks/mutations/useCreatePropertyMutation";
 import { uploadPropertyImageWithThumbnail } from "@/services/properties/propertyImageUpload";
 import { useOrganization } from "@/hooks/use-organization";
-import { getCurrentStep } from "@/utils/onboardingSteps";
 import { toast } from "sonner";
 import { Pencil, Upload, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -142,7 +141,7 @@ export default function AddPropertyScreen() {
     return (
       <OnboardingContainer>
         <div className="animate-fade-in">
-          <ProgressDots current={getCurrentStep(location.pathname)} />
+          <ProgressDots />
           <OnboardingHeader
             title="Loading..."
             subtitle="Setting up your workspace"
@@ -157,7 +156,7 @@ export default function AddPropertyScreen() {
     return (
       <OnboardingContainer>
         <div className="animate-fade-in">
-          <ProgressDots current={getCurrentStep(location.pathname)} />
+          <ProgressDots />
           <OnboardingHeader
             title="Organisation not found"
             subtitle="Please create an organisation first"

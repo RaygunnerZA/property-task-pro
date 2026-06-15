@@ -57,6 +57,33 @@ export function isPropertyProfileId(value: unknown): value is PropertyProfileId 
   return typeof value === "string" && PROFILE_IDS.has(value as PropertyProfileId);
 }
 
+/** Primary homeowners manage solo — skip invite step in onboarding. */
+export function shouldShowInviteTeamStep(profile: PropertyProfileId | null): boolean {
+  return profile !== "home";
+}
+
+/** Next route after add-spaces: invite step, or null to finish onboarding at home. */
+export function getPostAddSpacesRoute(profile: PropertyProfileId | null): string | null {
+  return shouldShowInviteTeamStep(profile) ? "/onboarding/invite-team" : null;
+}
+
+export function getInviteTeamStepCopy(profile: PropertyProfileId | null): {
+  title: string;
+  subtitle: string;
+} {
+  if (profile === "holiday_home") {
+    return {
+      title: "Invite a helper",
+      subtitle: "Share with a partner, cleaner, or caretaker",
+    };
+  }
+
+  return {
+    title: "Invite your team",
+    subtitle: "Collaborate with colleagues",
+  };
+}
+
 /** Maps onboarding property profile to organisation org_type at creation time. */
 export function orgTypeForPropertyProfile(
   profile: PropertyProfileId

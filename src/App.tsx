@@ -22,8 +22,6 @@ import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScree
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
 import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
 import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
-import PreferencesScreen from "./pages/onboarding/PreferencesScreen";
-import OnboardingCompleteScreen from "./pages/onboarding/OnboardingCompleteScreen";
 
 initAnalytics();
 
@@ -119,6 +117,7 @@ const SettingsAutomationPanel = lazy(() => import("./pages/settings/SettingsAuto
 const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
 const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
 const SettingsProfile = lazy(() => import("./pages/settings/SettingsProfile"));
+const SettingsIntegrations = lazy(() => import("./pages/settings/SettingsIntegrations"));
 const DebugData = lazy(() => import("./pages/DebugData"));
 
 // Admin panel (lazy, guarded by AdminLayout)
@@ -269,22 +268,6 @@ const App = () => {
                           </RouteBoundary>
                         }
                       />
-                      <Route
-                        path="/onboarding/preferences"
-                        element={
-                          <RouteBoundary title="Preferences">
-                            <PreferencesScreen />
-                          </RouteBoundary>
-                        }
-                      />
-                      <Route
-                        path="/onboarding/complete"
-                        element={
-                          <RouteBoundary title="Onboarding complete">
-                            <OnboardingCompleteScreen />
-                          </RouteBoundary>
-                        }
-                      />
                       
                       {/* Login route (no layout) */}
                       <Route path="/login" element={
@@ -364,6 +347,7 @@ const App = () => {
                                   <Route index element={<RouteBoundary title="Settings — General"><SettingsGeneral /></RouteBoundary>} />
                                   <Route path="profile" element={<RouteBoundary title="Settings — Profile"><SettingsProfile /></RouteBoundary>} />
                                   <Route path="automation" element={<RouteBoundary title="Settings — Automation"><SettingsAutomationPanel /></RouteBoundary>} />
+                                  <Route path="integrations" element={<RouteBoundary title="Settings — Integrations"><SettingsIntegrations /></RouteBoundary>} />
                                   <Route path="team" element={<RouteBoundary title="Settings — Team"><SettingsTeam /></RouteBoundary>} />
                                   <Route path="billing" element={<RouteBoundary title="Settings — Billing"><SettingsBilling /></RouteBoundary>} />
                                 </Route>
