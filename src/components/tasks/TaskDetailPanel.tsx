@@ -169,7 +169,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setSelectedUserId(task.assigned_user_id || undefined);
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
       setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
-      setDueDate((task as any)?.due_date || "");
+      setDueDate((task as any)?.due_date || (task as any)?.due_at || "");
       setLocalPropertyId((task as any)?.property_id || "");
       setSelectedPropertyIds((task as any)?.property_id ? [(task as any).property_id] : []);
       setSelectedSpaceIds((task.spaces as any[])?.map((s: any) => s.id) || []);
@@ -876,7 +876,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       title !== ((task as any)?.title || "") ||
       status !== ((task as any)?.status || "open") ||
       priority !== ((task as any)?.priority || "normal") ||
-      dueDate !== ((task as any)?.due_date || "") ||
+      dueDate !== ((task as any)?.due_date || (task as any)?.due_at || "") ||
       JSON.stringify(milestones) !== origMsJson
     );
   }, [task, title, status, priority, dueDate, milestones]);

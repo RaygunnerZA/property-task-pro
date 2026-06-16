@@ -115,7 +115,13 @@ export async function uploadPropertyImageWithThumbnail(
     });
 
   if (uploadError) {
-    throw new Error(uploadError.message || "Failed to upload image to storage.");
+    const msg = uploadError.message || "Failed to upload image to storage.";
+    if (/bucket not found/i.test(msg)) {
+      throw new Error(
+        "Property photo storage is not set up yet. Ask an admin to run the latest database migrations (property-images bucket)."
+      );
+    }
+    throw new Error(msg);
   }
 
   const { data: urlData } = supabase.storage.from("property-images").getPublicUrl(storagePath);

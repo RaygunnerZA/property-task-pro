@@ -120,6 +120,7 @@ function TaskCardComponent({
   onClick,
   isSelected = false,
   layout = 'horizontal',
+  imagePosition = 'right',
   metaDensity = 'default',
 }: { 
   task: any; 
@@ -127,6 +128,8 @@ function TaskCardComponent({
   onClick?: () => void;
   isSelected?: boolean;
   layout?: 'horizontal' | 'vertical';
+  /** Horizontal layout only — thumbnail side. */
+  imagePosition?: 'left' | 'right';
   /** "compact" = fewer badges (Issues Open work). */
   metaDensity?: 'default' | 'compact';
 }) {
@@ -289,8 +292,29 @@ function TaskCardComponent({
       </span>
     ) : null;
 
-  // Horizontal layout (image on right)
+  // Horizontal layout (thumbnail left or right)
   if (layout === 'horizontal') {
+    const thumbnailFirst = imagePosition === 'left';
+
+    const horizontalMedia = (
+      <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
+        {dueUrgencyChip}
+        {showDoneButton && !metaCompact ? (
+          <div
+            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDone();
+            }}
+          >
+            <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
+              DONE
+            </Badge>
+          </div>
+        ) : null}
+      </TaskCardMediaZone>
+    );
+
     return (
       <div 
         className={cn(
@@ -312,6 +336,7 @@ function TaskCardComponent({
           )}
         />
         ) : null}
+        {thumbnailFirst ? horizontalMedia : null}
         {/* Content */}
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
           {/* Theme/Category */}
@@ -382,22 +407,7 @@ function TaskCardComponent({
           </div>
         </div>
 
-        <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
-          {dueUrgencyChip}
-          {showDoneButton && !metaCompact ? (
-            <div
-              className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDone();
-              }}
-            >
-              <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
-                DONE
-              </Badge>
-            </div>
-          ) : null}
-        </TaskCardMediaZone>
+        {!thumbnailFirst ? horizontalMedia : null}
       </div>
     );
   }
@@ -578,6 +588,8 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
   
   // If layout changed, re-render
   if (prevProps.layout !== nextProps.layout) return false;
+
+  if (prevProps.imagePosition !== nextProps.imagePosition) return false;
 
   if (prevProps.metaDensity !== nextProps.metaDensity) return false;
   

@@ -22,6 +22,8 @@ import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScree
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
 import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
 import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
+// Primary nav — eager import so sidebar/mobile "My Tasks" never hits a lazy chunk fetch failure.
+import Tasks from "./pages/Tasks";
 
 initAnalytics();
 
@@ -99,7 +101,6 @@ const VendorReporting = lazy(() => import("./pages/VendorReporting"));
 const ManagerDashboard = lazy(() => import("./pages/ManagerDashboard"));
 const Dashboard = lazy(() => import("./app/page"));
 const Properties = lazy(() => import("./pages/Properties"));
-const Tasks = lazy(() => import("./pages/Tasks"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Reports = lazy(() => import("./pages/Reports"));

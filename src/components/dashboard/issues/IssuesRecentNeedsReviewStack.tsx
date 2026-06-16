@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { MutableRefObject } from "react";
+import type { MutableRefObject, ReactNode } from "react";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
 import type { AttentionItem } from "@/components/dashboard/issues/issuesAttentionItem";
@@ -23,6 +23,14 @@ export const ISSUES_RECENT_SIGNALS_SECTION = {
   emptyDescription: "When photos, messages, or uploads arrive, they show up here first.",
 } as const;
 
+/** Home Attention centre — same rows, shorter section label. */
+export const ATTENTION_SIGNALS_SECTION = {
+  title: "Signals",
+  subtitle: "New updates and information detected across the system",
+  emptyTitle: "No new signals",
+  emptyDescription: "When messages, uploads, or environmental scans arrive, they appear here.",
+} as const;
+
 export type IssuesRecentNeedsReviewStackProps = {
   recentItems: AttentionItem[];
   reviewItems: AttentionItem[];
@@ -35,6 +43,15 @@ export type IssuesRecentNeedsReviewStackProps = {
   onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
   layout?: "vertical" | "horizontal";
   onViewAllIssues?: () => void;
+  /** Override default “Recent signals” section copy (e.g. Home Attention centre). */
+  signalsSection?: {
+    title: string;
+    subtitle: string;
+    emptyTitle: string;
+    emptyDescription: string;
+  };
+  /** Rendered between Needs review and Signals (e.g. Home Open work). */
+  middleSlot?: ReactNode;
 };
 
 /**
@@ -52,6 +69,8 @@ export function IssuesRecentNeedsReviewStack({
   onAttentionItemSelect,
   layout = "vertical",
   onViewAllIssues,
+  signalsSection = ISSUES_RECENT_SIGNALS_SECTION,
+  middleSlot,
 }: IssuesRecentNeedsReviewStackProps) {
   const displayReviewItems = useMemo(() => pickTopReviewSignals(reviewItems), [reviewItems]);
   const displayRecentItems = useMemo(() => pickTopRecentSignals(recentItems), [recentItems]);
@@ -83,14 +102,15 @@ export function IssuesRecentNeedsReviewStack({
         layout={layout}
         onViewAll={onViewAllIssues}
       />
+      {middleSlot}
       <IssuesScrollColumn
-        title={ISSUES_RECENT_SIGNALS_SECTION.title}
-        subtitle={ISSUES_RECENT_SIGNALS_SECTION.subtitle}
+        title={signalsSection.title}
+        subtitle={signalsSection.subtitle}
         countVariant="recent"
         items={displayRecentItems}
         totalCount={recentItems.length}
-        emptyTitle={ISSUES_RECENT_SIGNALS_SECTION.emptyTitle}
-        emptyDescription={ISSUES_RECENT_SIGNALS_SECTION.emptyDescription}
+        emptyTitle={signalsSection.emptyTitle}
+        emptyDescription={signalsSection.emptyDescription}
         renderCard={renderSignal}
         layout={layout}
         onViewAll={onViewAllIssues}

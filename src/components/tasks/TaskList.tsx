@@ -75,6 +75,8 @@ interface TaskListProps {
   hideDoneSection?: boolean;
   /** Home open-work strip: horizontal slider only, no tall scroll region. */
   embeddedSliderOnly?: boolean;
+  /** Attention centre: stacked horizontal task rows (no filter chrome). */
+  embeddedVerticalList?: boolean;
 }
 
 export function TaskList({ 
@@ -93,6 +95,7 @@ export function TaskList({
   onExternalTaskSearchQueryChange,
   hideDoneSection = false,
   embeddedSliderOnly = false,
+  embeddedVerticalList = false,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -659,6 +662,7 @@ export function TaskList({
   }
 
   if (tasks.length === 0) {
+    if (embeddedVerticalList) return null;
     return (
       <EmptyState 
         title="No tasks" 
@@ -674,6 +678,7 @@ export function TaskList({
   return (
     <div ref={tasksPanelInteractionRef} className="flex flex-col h-full min-h-0">
       {/* Filter Bar - fixed at top, does not scroll with list */}
+      {!embeddedVerticalList ? (
       <div
         className={cn(
           "flex-shrink-0 mt-0 pb-0",
@@ -743,12 +748,13 @@ export function TaskList({
         </div>
         ) : null}
       </div>
+      ) : null}
 
       {/* Scrollable task list area - independent of filter bar */}
       <div
         className={cn(
           "flex-1 flex flex-col min-h-0 rounded-[12px]",
-          embeddedSliderOnly
+          embeddedSliderOnly || embeddedVerticalList
             ? "max-h-none overflow-visible"
             : "max-h-[calc(100vh-280px)] overflow-y-auto"
         )}
@@ -765,7 +771,20 @@ export function TaskList({
             {groupedTasks.todo.length > 0 && (
             <div>
               {view === 'vertical' ? (
-                embeddedInIssuesWorkbench ? (
+                embeddedVerticalList ? (
+                  <div className="divide-y divide-input-bg">
+                    {memoizedTaskCards.todo.map((props) => (
+                      <div key={props.task.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
+                        <TaskCard
+                          {...props}
+                          layout="horizontal"
+                          imagePosition="left"
+                          metaDensity={compactTaskMeta ? "compact" : "default"}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : embeddedInIssuesWorkbench ? (
                   <div className="relative mt-[7px]">
                     <div className="overflow-x-auto -mx-1 px-1 scrollbar-hz-teal">
                       <div className="flex gap-3 min-w-max pb-0.5">

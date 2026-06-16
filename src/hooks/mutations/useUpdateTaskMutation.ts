@@ -10,6 +10,16 @@ import type { Database } from "@/integrations/supabase/types";
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 type TaskPriority = Database["public"]["Tables"]["tasks"]["Row"]["priority"];
 
+/** Remote `tasks` table uses `due_at`; reads expose `due_date` via `tasks_view`. */
+function mapUpdatesToTasksTable(updates: UpdateTaskVariables["updates"]): Record<string, unknown> {
+  const { due_date, ...rest } = updates;
+  const payload: Record<string, unknown> = { ...rest };
+  if (due_date !== undefined) {
+    payload.due_at = due_date;
+  }
+  return payload;
+}
+
 export interface UpdateTaskVariables {
   taskId: string;
   orgId: string;
@@ -28,9 +38,10 @@ export function useUpdateTaskMutation() {
 
   return useMutation({
     mutationFn: async ({ taskId, updates }: UpdateTaskVariables) => {
+      const tableUpdates = mapUpdatesToTasksTable(updates);
       const { data, error } = await supabase
         .from("tasks")
-        .update(updates)
+        .update(tableUpdates)
         .eq("id", taskId)
         .select("id, org_id, property_id, status")
         .single();
