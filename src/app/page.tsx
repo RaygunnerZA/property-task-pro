@@ -21,6 +21,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { buildTasksByDate } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import { getEffectiveDefaultPropertyId } from "@/lib/propertySelectorPreferences";
 import type { IntakeMode } from "@/types/intake";
 import {
   ISSUES_OPEN_TASK_FILTER_IDS,
@@ -37,7 +38,6 @@ import {
   type WorkbenchPanelTab,
   type DashboardWorkbenchPanel,
 } from "@/lib/propertyRoutes";
-import { PropertyScopeFilterBar } from "@/components/properties/PropertyScopeFilterBar";
 import { RecordsActionRail } from "@/components/records/RecordsActionRail";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,6 +162,9 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
           if (skipStaleUrlWhileClearing) {
             return prev;
           }
+          if (isAllPropertiesActive(prev, allIds)) {
+            return prev;
+          }
           const skipMulti = prev.size > 1 && !isAllPropertiesActive(prev, allIds);
           if (skipMulti) {
             return prev;
@@ -187,10 +190,28 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
       return;
     }
 
-    setSelectedPropertyIds((prev) =>
-      prev.size === 0 ? new Set(allIds) : prev
-    );
-  }, [properties, searchParams, setSearchParams]);
+    setSelectedPropertyIds((prev) => {
+      if (prev.size > 0) return prev;
+      if (allIds.length > 1 && orgId) {
+        const effectiveDefault = getEffectiveDefaultPropertyId(orgId);
+        if (effectiveDefault && allIds.includes(effectiveDefault)) {
+          return new Set([effectiveDefault]);
+        }
+      }
+      return new Set(allIds);
+    });
+
+    // Seed ?property= from pinned/learned default only on first URL sync — not when other
+    // query params change (e.g. issuesFilter) while the user has widened scope to ALL.
+    if (prevSearch === undefined && allIds.length > 1 && orgId && !pid) {
+      const effectiveDefault = getEffectiveDefaultPropertyId(orgId);
+      if (effectiveDefault && allIds.includes(effectiveDefault)) {
+        const next = new URLSearchParams(searchParams);
+        next.set("property", effectiveDefault);
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [properties, searchParams, setSearchParams, orgId]);
 
   const handlePropertySelectionChange = useCallback(
     (next: Set<string>) => {
@@ -763,16 +784,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
             propertyCardWeather={undefined}
-            scopeFilterBar={
-              <PropertyScopeFilterBar
-                variant="primary"
-                placement="leftColumn"
-                properties={properties}
-                selectedPropertyIds={selectedPropertyIds}
-                onSelectionChange={handlePropertySelectionChange}
-                onFilterClick={handleFilterClick}
-              />
-            }
           />
           </ErrorBoundary>
         }

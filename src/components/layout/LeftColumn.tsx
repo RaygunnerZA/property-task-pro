@@ -2,8 +2,8 @@ import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
-import { PropertyCard } from "@/components/properties/PropertyCard";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
+import { PropertySelectorStack } from "@/components/properties/PropertySelectorStack";
 import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +37,7 @@ interface LeftColumnProps {
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
-  /** e.g. workbench property scope chips — kept in the 265px column, not full workbench width */
+  /** @deprecated Replaced by PropertySelectorStack inside LeftColumn */
   scopeFilterBar?: ReactNode;
   /** When non-null, identity strip shows Today + weather on the thumbnail (dashboard passes briefing weather). */
   propertyCardWeather?: PropertyCardWeather;
@@ -109,15 +109,6 @@ export function LeftColumn({
     }
   }, [ALL_PROPERTY_IDS, properties.length, externalSelectedPropertyIds]);
 
-  // Extract task counts from properties_view (properties now have open_tasks_count)
-  const taskCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    properties.forEach((p: any) => {
-      counts[p.id] = p.open_tasks_count || 0;
-    });
-    return counts;
-  }, [properties]);
-
   // Calculate urgent task counts per property
   const urgentTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -134,7 +125,7 @@ export function LeftColumn({
     return counts;
   }, [tasks]);
 
-  // Single selected property: identity strip; multiple: horizontal cards.
+  // Single selected property: identity strip below the selector stack.
   const focusedProperty = useMemo(() => {
     if (selectedPropertyIds.size !== 1) return null;
     const id = Array.from(selectedPropertyIds)[0];
@@ -154,23 +145,31 @@ export function LeftColumn({
       className="h-auto sm:h-[calc(100vh-var(--header-height))] flex flex-col overflow-y-auto w-full max-w-full px-0"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
-      {/* Properties: scope chips + cards / identity strip */}
+      {/* Properties: selector stack + identity strip */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-[5px]">
+        <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-0">
         {scopeFilterBar}
-        {isHubHome && !scopeFilterBar && (
+        {!scopeFilterBar && !hideProperties && properties.length > 1 && !propertiesLoading ? (
+          <div ref={propertiesRef} className="px-[3px] pb-1 pt-0">
+            <PropertySelectorStack
+              properties={properties}
+              tasks={tasks}
+              selectedPropertyIds={selectedPropertyIds}
+              onSelectionChange={setSelectedPropertyIds}
+              onFilterClick={onFilterClick}
+              className="max-w-[247px]"
+            />
+          </div>
+        ) : null}
+        {isHubHome && !scopeFilterBar && properties.length <= 1 && (
           <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
             <WorkbenchMobileNavCluster />
           </div>
         )}
         {!hideProperties && (
-        <div
-          className="px-0 w-full max-w-full overflow-x-visible"
-          style={{ height: focusedProperty ? 'auto' : '228px' }}
-        >
+        <div className="px-0 w-full max-w-full overflow-x-visible">
           {propertiesLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-24 w-full rounded-lg" />
+            <div className="space-y-3 px-[3px]">
               <Skeleton className="h-24 w-full rounded-lg" />
               <Skeleton className="h-24 w-full rounded-lg" />
             </div>
@@ -179,7 +178,6 @@ export function LeftColumn({
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
           ) : focusedProperty ? (
-            /* Single property in focus: identity strip + hub dashboard (same 252px rail as homepage) */
             <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full px-[3px] pt-[2px] pb-[7px]">
               {showOnboardingDemoBanner && (
                 <OnboardingDemoBanner
@@ -187,7 +185,7 @@ export function LeftColumn({
                   className="mx-0 mb-2 max-sm:px-[12px] sm:mx-0"
                 />
               )}
-              <div className="w-full max-w-[252px]">
+              <div className="w-full max-w-[247px]">
                 <PropertyIdentityStrip
                   key={focusedProperty.id}
                   property={focusedProperty}
@@ -206,40 +204,7 @@ export function LeftColumn({
                 />
               </div>
             </div>
-          ) : (
-            /* Multiple properties selected: horizontal card scroller */
-            <div
-              ref={propertiesRef}
-              className="relative w-full max-w-full overflow-x-visible overflow-y-visible"
-              style={{ borderRadius: '13px 13px 10px 0px' }}
-            >
-              <div className="overflow-x-auto overflow-y-hidden -ml-4 pl-4 pr-[7px] scrollbar-hz-teal min-w-0" style={{ height: '228px', width: 'calc(100% + 15px)' }}>
-                <div className="flex gap-4 items-start py-2" style={{ width: 'max-content', height: '228px' }}>
-                  {properties.map((property) => (
-                    <div key={property.id} className="w-[195px] flex-shrink-0" style={{ maxHeight: '228px' }}>
-                      <PropertyCard
-                        property={{
-                          ...property,
-                          taskCount: taskCounts[property.id] || 0,
-                          urgentTaskCount: urgentTaskCounts[property.id] || 0,
-                          lastInspectedDate: null,
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Right-side fade scroll affordance */}
-              <div
-                className="absolute top-0 right-0 bottom-0 pointer-events-none rounded-tr-lg rounded-br-lg"
-                style={{
-                  width: '48px',
-                  background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.12))',
-                  zIndex: 20,
-                }}
-              />
-            </div>
-          )}
+          ) : null}
         </div>
         )}
         </div>
@@ -294,7 +259,7 @@ export function LeftColumn({
                 id={WORKBENCH_OVERVIEW_TIP_ID}
                 denseRail
                 title="How this column works"
-                description="Pick a date to focus the task list in the middle. Use the property row above to narrow work to one building, or keep every property selected to see everything at once."
+                description="Pick a date to focus the task list in the middle. Use the property selector above to focus one building, or choose all properties to see everything at once."
                 onDismiss={() => {
                   try {
                     localStorage.setItem(
