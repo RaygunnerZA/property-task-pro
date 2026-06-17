@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useSpaces } from "@/hooks/useSpaces";
+import { useCategories } from "@/hooks/useCategories";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
@@ -138,6 +140,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [localPropertyId, setLocalPropertyId] = useState("");
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const { spaces: propertySpaces = [] } = useSpaces(localPropertyId || propertyId || undefined);
+  const { categories: orgCategories } = useCategories();
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [selectedThemeIds, setSelectedThemeIds] = useState<string[]>([]);
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
@@ -153,6 +157,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
+  const prevHydratedTaskIdRef = useRef<string | null>(null);
+  const prevAssetTaskIdRef = useRef<string | null>(null);
 
   // Reset edit UI when switching tasks
   useEffect(() => {
@@ -160,7 +166,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     setOpenChipSlot(null);
   }, [taskId]);
 
-  // Update local state when task data loads
+  // Update scalar local state when task data loads
   useEffect(() => {
     if (task) {
       setTitle((task as any).title || "");
@@ -172,8 +178,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setDueDate((task as any)?.due_date || (task as any)?.due_at || "");
       setLocalPropertyId((task as any)?.property_id || "");
       setSelectedPropertyIds((task as any)?.property_id ? [(task as any).property_id] : []);
-      setSelectedSpaceIds((task.spaces as any[])?.map((s: any) => s.id) || []);
-      setSelectedThemeIds((task.categories ?? []).map((c: any) => c.id));
       const rawMs = (task as any)?.milestones;
       setMilestones(Array.isArray(rawMs) ? rawMs : (typeof rawMs === 'string' ? JSON.parse(rawMs) : []));
       const attachmentList = Array.isArray((task as any).images) ? (task as any).images : [];
@@ -186,12 +190,50 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   }, [task]);
 
-  // Initialize asset IDs from separate query
+  // Collection ids: replace when switching tasks; merge on refresh (preserve optimistic edits)
   useEffect(() => {
-    if (taskAssets.length > 0) {
-      setSelectedAssetIds(taskAssets.map(a => a.id));
+    if (!task) return;
+    const fromTaskSpaces = (task.spaces as any[])?.map((s: any) => s.id).filter(Boolean) || [];
+    const fromTaskThemes = (task.categories ?? []).map((c: any) => c.id).filter(Boolean);
+
+    if (prevHydratedTaskIdRef.current !== taskId) {
+      prevHydratedTaskIdRef.current = taskId;
+      setSelectedSpaceIds(fromTaskSpaces);
+      setSelectedThemeIds(fromTaskThemes);
+      return;
     }
-  }, [taskAssets]);
+
+    setSelectedSpaceIds((prev) => {
+      if (prev.length === 0) return fromTaskSpaces;
+      const merged = new Set([...prev, ...fromTaskSpaces]);
+      const next = [...merged];
+      return next.length === prev.length && prev.every((id) => merged.has(id)) ? prev : next;
+    });
+
+    setSelectedThemeIds((prev) => {
+      if (prev.length === 0) return fromTaskThemes;
+      const merged = new Set([...prev, ...fromTaskThemes]);
+      const next = [...merged];
+      return next.length === prev.length && prev.every((id) => merged.has(id)) ? prev : next;
+    });
+  }, [task, taskId]);
+
+  // Initialize asset IDs from separate query (replace on task switch; merge on refetch)
+  useEffect(() => {
+    if (prevAssetTaskIdRef.current !== taskId) {
+      prevAssetTaskIdRef.current = taskId;
+      setSelectedAssetIds(taskAssets.map((a) => a.id));
+      return;
+    }
+    if (taskAssets.length === 0) return;
+    const fromQuery = taskAssets.map((a) => a.id);
+    setSelectedAssetIds((prev) => {
+      if (prev.length === 0) return fromQuery;
+      const merged = new Set([...prev, ...fromQuery]);
+      const next = [...merged];
+      return next.length === prev.length && prev.every((id) => merged.has(id)) ? prev : next;
+    });
+  }, [taskId, taskAssets]);
 
 
   // Update assigned user
@@ -350,6 +392,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       if (spaceIds.length > 0) {
         await supabase.from("task_spaces").insert(spaceIds.map(id => ({ task_id: taskId, space_id: id })));
       }
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
     } catch (err: any) {
@@ -445,6 +488,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return [];
   }, [task]);
 
+  const resolveSpaceLabel = useCallback(
+    (spaceId: string) => {
+      const spacesRaw = (task as any)?.spaces;
+      const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
+      const fromTask = spacesArr.find((s: { id?: string }) => s.id === spaceId);
+      if (fromTask?.name) return fromTask.name as string;
+      const fromQuery = propertySpaces.find((s) => s.id === spaceId);
+      return fromQuery?.name || "Space";
+    },
+    [task, propertySpaces]
+  );
+
   const metaLine = useMemo(() => {
     const parts: string[] = [];
     if (dueDate) {
@@ -466,10 +521,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       "";
     const spacesRaw = (task as any)?.spaces;
     const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
-    const spaceNames = spacesArr
-      .filter((s: { id?: string }) => selectedSpaceIds.length === 0 || (s.id && selectedSpaceIds.includes(s.id)))
-      .map((s: { name?: string }) => s.name)
-      .filter(Boolean) as string[];
+    const spaceNames = (selectedSpaceIds.length > 0 ? selectedSpaceIds : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean))
+      .map((id) => resolveSpaceLabel(id as string))
+      .filter(Boolean);
     if (propName) {
       parts.push(
         spaceNames.length > 0
@@ -480,7 +534,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       parts.push(spaceNames.map((n) => n.toUpperCase()).join(", "));
     }
     return parts.join(" • ");
-  }, [dueDate, members, selectedUserId, selectedTeamIds, task, taskTeams, selectedSpaceIds]);
+  }, [dueDate, members, selectedUserId, selectedTeamIds, task, taskTeams, selectedSpaceIds, resolveSpaceLabel]);
 
   const formatDueChipLabel = useCallback((dateStr: string) => {
     const d = dateStr.includes("T") ? parseISO(dateStr) : parseISO(`${dateStr}T12:00:00`);
@@ -522,21 +576,17 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
     const propName =
       (task as any)?.property?.nickname || (task as any)?.property_name || "";
-    const spacesRaw = (task as any)?.spaces;
-    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
-    spacesArr
-      .filter((s: { id?: string }) => s.id && selectedSpaceIds.includes(s.id))
-      .forEach((space: { id: string; name?: string }) => {
-        chips.push({
-          id: `where-space-${space.id}`,
-          slot: "where",
-          label: (space.name || "Space").toUpperCase(),
-          epistemic: "fact",
-          removable: true,
-          onPress: () => openSlot("where"),
-          onRemove: () => handleSpacesChange(selectedSpaceIds.filter((id) => id !== space.id)),
-        });
+    selectedSpaceIds.forEach((spaceId) => {
+      chips.push({
+        id: `where-space-${spaceId}`,
+        slot: "where",
+        label: resolveSpaceLabel(spaceId).toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("where"),
+        onRemove: () => handleSpacesChange(selectedSpaceIds.filter((id) => id !== spaceId)),
       });
+    });
 
     if (dueDate) {
       chips.push({
@@ -588,20 +638,36 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       });
     }
 
-    const categories = Array.isArray((task as any)?.categories) ? (task as any).categories : [];
-    categories
-      .filter((c: { id: string }) => selectedThemeIds.includes(c.id))
-      .forEach((cat: { id: string; name?: string }) => {
+    const taskCategories = Array.isArray((task as any)?.categories) ? (task as any).categories : [];
+    selectedThemeIds.forEach((themeId) => {
+      if (themeId.startsWith("ghost-theme-")) {
+        const ghostMatch = themeId.match(/^ghost-theme-(.+?)-category$/);
+        const ghostName = ghostMatch?.[1]?.replace(/-/g, " ");
         chips.push({
-          id: `category-${cat.id}`,
+          id: `category-${themeId}`,
           slot: "category",
-          label: (cat.name || "Tag").toUpperCase(),
+          label: (ghostName || "Tag").toUpperCase(),
           epistemic: "fact",
           removable: true,
           onPress: () => openSlot("category"),
-          onRemove: () => handleThemesChange(selectedThemeIds.filter((id) => id !== cat.id)),
+          onRemove: () => handleThemesChange(selectedThemeIds.filter((id) => id !== themeId)),
         });
+        return;
+      }
+      const fromTask = taskCategories.find((c: { id: string }) => c.id === themeId);
+      const fromOrg = orgCategories.find((c) => c.id === themeId);
+      const label = fromTask?.name || fromOrg?.name;
+      if (!label) return;
+      chips.push({
+        id: `category-${themeId}`,
+        slot: "category",
+        label: label.toUpperCase(),
+        epistemic: "fact",
+        removable: true,
+        onPress: () => openSlot("category"),
+        onRemove: () => handleThemesChange(selectedThemeIds.filter((id) => id !== themeId)),
       });
+    });
 
     if (propName && chips.length > 0) {
       chips.unshift({
@@ -635,6 +701,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     handleDueDateChange,
     handleAssetsChange,
     handleThemesChange,
+    resolveSpaceLabel,
+    orgCategories,
   ]);
 
   const renderTaskDetailSlotContent = useCallback(
@@ -646,6 +714,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             row2: (
               <WhoSection
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("who")}
                 assignedUserId={selectedUserId}
                 assignedTeamIds={selectedTeamIds}
@@ -674,6 +743,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           return {
             row2: (
               <WhereSection
+                isActive
+                embedded
                 propertyId={localPropertyId}
                 selectedPropertyIds={selectedPropertyIds}
                 selectedSpaceIds={selectedSpaceIds}
@@ -689,6 +760,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             row2: (
               <WhenSection
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("when")}
                 onDeactivate={onClose}
                 dueDate={dueDate}
@@ -706,6 +778,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             row2: (
               <AssetSection
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("asset")}
                 propertyId={localPropertyId || undefined}
                 spaceId={selectedSpaceIds[0]}
@@ -724,6 +797,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 instruction="Add Priority"
                 valueLabel="+Priority"
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("priority")}
                 factChips={priorityFactChips}
                 hoverChips={[
@@ -745,6 +819,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 instruction="Set Status"
                 valueLabel="+Status"
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("status")}
                 factChips={statusFactChips}
                 hoverChips={[
@@ -763,6 +838,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             row2: (
               <CategorySection
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("category")}
                 selectedThemeIds={selectedThemeIds}
                 onThemesChange={handleThemesChange}
@@ -779,6 +855,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 instruction="Add Compliance Rule"
                 valueLabel="+Rule"
                 isActive
+                embedded
                 onActivate={() => setOpenChipSlot("compliance")}
                 factChips={[]}
               >

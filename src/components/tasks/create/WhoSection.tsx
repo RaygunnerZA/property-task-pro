@@ -16,9 +16,10 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { SemanticChip } from "@/components/chips/semantic";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
-import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
+import { useWhoSuggestions, computeWhoProposals, type WhoProposal } from "@/hooks/useWhoSuggestions";
 import type { PendingInvitation } from "./tabs/WhoTab";
 import type { SuggestedChip } from "@/types/chip-suggestions";
+import { scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 
 interface WhoSectionProps {
   isActive: boolean;
@@ -34,6 +35,8 @@ interface WhoSectionProps {
   onAddAsContractor?: () => void;
   hasUnresolved?: boolean;
   children?: React.ReactNode;
+  /** Slot is open in IntakeChipRow — show + chips immediately and hide duplicate row icon. */
+  embedded?: boolean;
   /** AI-suggested chips from useChipSuggestions (person / team types) */
   suggestedChips?: SuggestedChip[];
   /** Called when user taps an AI suggestion chip */
@@ -62,6 +65,7 @@ export function WhoSection({
   children,
   suggestedChips = [],
   onSuggestionClick,
+  embedded = false,
 }: WhoSectionProps) {
   const { members } = useOrgMembers();
   const { teams, refresh: refreshTeams } = useTeams();
@@ -72,6 +76,7 @@ export function WhoSection({
   const [inputValue, setInputValue] = useState("");
   const [entryMode, setEntryMode] = useState<"person" | "team">("person");
   const inputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   /** Pending team: user clicked CREATE but hasn't added members yet. Not in DB. */
   const [pendingTeam, setPendingTeam] = useState<{ name: string } | null>(null);
@@ -267,19 +272,29 @@ export function WhoSection({
   };
 
   const handleAddMembersInputBlur = () => {
-    setTimeout(() => {
+    scheduleInlineInputBlur(rowRef.current, () => {
       setIsAddingMembers(false);
       setAddMembersInputValue("");
       setAddingMembersForTeamId(null);
-    }, 150);
+    });
   };
 
   const handleInputBlur = () => {
-    if (visibleProposals.length === 0 && !pendingTeam) {
-      setTimeout(() => {
-        setIsEditing(false);
-        setInputValue("");
-      }, 150);
+    scheduleInlineInputBlur(rowRef.current, () => {
+      setIsEditing(false);
+      setInputValue("");
+    });
+  };
+
+  const commitWhoFromInput = () => {
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+    const proposals =
+      visibleProposals.length > 0
+        ? visibleProposals
+        : computeWhoProposals(trimmed, members, teams);
+    if (proposals.length > 0) {
+      handleProposalClick(proposals[0]);
     }
   };
 
@@ -356,17 +371,21 @@ export function WhoSection({
 
   return (
     <div
+      ref={rowRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-1 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <User className="h-4 w-4 text-muted-foreground" />
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -458,9 +477,9 @@ export function WhoSection({
                   setIsEditing(false);
                   setInputValue("");
                 }
-                if (e.key === "Enter" && visibleProposals.length > 0) {
+                if (e.key === "Enter") {
                   e.preventDefault();
-                  handleProposalClick(visibleProposals[0]);
+                  commitWhoFromInput();
                 }
               }}
               placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
@@ -473,7 +492,7 @@ export function WhoSection({
               )}
               style={{ width: inputWidth, minWidth: INPUT_MIN_WIDTH }}
             />
-          ) : isHovered && !pendingTeam ? (
+          ) : (isHovered || isActive) && !pendingTeam ? (
             <>
               <SemanticChip
                 epistemic="proposal"
@@ -533,9 +552,18 @@ export function WhoSection({
                     setAddMembersInputValue("");
                     setAddingMembersForTeamId(null);
                   }
-                  if (e.key === "Enter" && memberProposals.length > 0) {
+                  if (e.key === "Enter") {
                     e.preventDefault();
-                    handleSelectMemberForAddFlow(memberProposals[0].user_id);
+                    const trimmed = addMembersInputValue.trim().toLowerCase();
+                    const eligible = memberProposals.filter((m) =>
+                      pendingTeam
+                        ? !pendingTeamMemberIds.includes(m.user_id)
+                        : !(teamMembersMap[addingMembersForTeamId!] ?? []).includes(m.user_id)
+                    );
+                    const match =
+                      eligible.find((m) => m.display_name.toLowerCase() === trimmed) ??
+                      eligible.find((m) => m.display_name.toLowerCase().includes(trimmed));
+                    if (match) handleSelectMemberForAddFlow(match.user_id);
                   }
                 }}
                 placeholder={`Add person to ${secondaryRowTeamName}`}

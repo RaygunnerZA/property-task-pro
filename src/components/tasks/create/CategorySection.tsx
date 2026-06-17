@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { pickBestNameMatch, scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 
 const INPUT_MIN_WIDTH = 100;
 const INPUT_MAX_WIDTH = 240;
@@ -38,6 +39,7 @@ interface CategorySectionProps {
   selectedThemeIds: string[];
   onThemesChange: (themeIds: string[]) => void;
   hasUnresolved?: boolean;
+  embedded?: boolean;
 }
 
 function parseGhostCategoryId(id: string): { name: string } | null {
@@ -54,6 +56,7 @@ export function CategorySection({
   selectedThemeIds,
   onThemesChange,
   hasUnresolved = false,
+  embedded = false,
 }: CategorySectionProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -63,6 +66,7 @@ export function CategorySection({
   const [isEditing, setIsEditing] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [createName, setCreateName] = useState("");
@@ -182,12 +186,28 @@ export function CategorySection({
     }
   };
 
+  const commitTagFromQuery = () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    const match = pickBestNameMatch(
+      categories.filter((c) => !selectedCategoryIds.includes(c.id)),
+      trimmed
+    );
+    if (match) {
+      addCategory(match.id);
+      return;
+    }
+    if (!hasExactMatch) openCreate(trimmed);
+  };
+
   return (
     <div
+      ref={rowRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
@@ -224,9 +244,11 @@ export function CategorySection({
       </Dialog>
 
       <div className="flex items-center gap-2 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <Tag className="h-4 w-4 text-muted-foreground" />
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -274,16 +296,14 @@ export function CategorySection({
                   }
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    const first = suggestions[0];
-                    if (first) addCategory(first.id);
-                    else if (query.trim() && !hasExactMatch) openCreate(query.trim());
+                    commitTagFromQuery();
                   }
                 }}
                 onBlur={() => {
-                  setTimeout(() => {
+                  scheduleInlineInputBlur(rowRef.current, () => {
                     setIsEditing(false);
                     setQuery("");
-                  }, 150);
+                  });
                 }}
                 placeholder="ADD TAG"
                 className={cn(
@@ -317,7 +337,7 @@ export function CategorySection({
                 />
               )}
             </>
-          ) : isHovered ? (
+          ) : isHovered || isActive ? (
             <SemanticChip
               epistemic="proposal"
               label="+ Tag"

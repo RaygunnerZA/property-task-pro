@@ -372,7 +372,8 @@ export function ImageUploadSection({
         onDrop={handleDrop}
         onClick={() => !dragActive && fileInputRef.current?.click()}
         className={cn(
-          "relative min-h-[65px] rounded-[12px] border-2 border-dashed border-white/90 bg-muted/35 transition-colors",
+          "relative min-h-[65px] rounded-[12px] border-2 border-solid border-white bg-muted/35 transition-colors",
+          "shadow-[-1px_-2px_2px_0px_rgba(0,0,0,0.05),2px_3px_2px_0px_rgba(255,255,255,0.5)]",
           "flex items-start justify-start px-4 pr-[88px] pt-[13px] pb-5 cursor-pointer",
           dragActive && "bg-primary/15 border-white"
         )}

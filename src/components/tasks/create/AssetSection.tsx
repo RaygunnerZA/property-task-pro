@@ -17,6 +17,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { SemanticChip } from "@/components/chips/semantic";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
+import { pickBestNameMatch, scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 
 const INPUT_MIN_WIDTH = 100;
 const INPUT_MAX_WIDTH = 240;
@@ -38,6 +39,7 @@ interface AssetSectionProps {
   onAssetsChange: (assetIds: string[]) => void;
   /** AI-detected asset chips (from rule-based extractor) */
   suggestedChips?: AssetSuggestion[];
+  embedded?: boolean;
 }
 
 export function AssetSection({
@@ -48,6 +50,7 @@ export function AssetSection({
   selectedAssetIds,
   onAssetsChange,
   suggestedChips = [],
+  embedded = false,
 }: AssetSectionProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -56,8 +59,10 @@ export function AssetSection({
   const [isEditing, setIsEditing] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const [assets, setAssets] = useState<Array<{ id: string; name: string }>>([]);
+  const [assetNameOverrides, setAssetNameOverrides] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const [showCreateAsset, setShowCreateAsset] = useState(false);
@@ -108,11 +113,16 @@ export function AssetSection({
   }, [isEditing]);
 
   const selectedAssets = useMemo(() => {
-    const map = new Map(assets.map((a) => [a.id, a.name]));
     return selectedAssetIds
-      .map((id) => ({ id, name: map.get(id) }))
-      .filter((x): x is { id: string; name: string } => !!x.name);
-  }, [assets, selectedAssetIds]);
+      .map((id) => {
+        const fromList = assets.find((a) => a.id === id);
+        if (fromList?.name) return { id, name: fromList.name };
+        const override = assetNameOverrides[id];
+        if (override) return { id, name: override };
+        return null;
+      })
+      .filter((x): x is { id: string; name: string } => !!x);
+  }, [assets, selectedAssetIds, assetNameOverrides]);
 
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -154,12 +164,32 @@ export function AssetSection({
     setQuery("");
   };
 
+  const commitAssetFromQuery = () => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    const match = pickBestNameMatch(assets, trimmed);
+    if (match) {
+      addAsset(match.id);
+      return;
+    }
+    if (!hasExactMatch) {
+      if (!propertyId) {
+        toast({ title: "Select a property first", variant: "destructive" });
+        return;
+      }
+      setCreateAssetDefaultName(trimmed);
+      setShowCreateAsset(true);
+    }
+  };
+
   return (
     <div
+      ref={rowRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
@@ -170,15 +200,23 @@ export function AssetSection({
         spaceId={spaceId}
         defaultName={createAssetDefaultName}
         onAssetCreated={(assetId) => {
+          const label = createAssetDefaultName.trim();
+          if (label) {
+            setAssetNameOverrides((prev) => ({ ...prev, [assetId]: label }));
+          }
           onAssetsChange([...selectedAssetIds, assetId]);
-          loadAssets();
+          setIsEditing(false);
+          setQuery("");
+          void loadAssets();
         }}
       />
 
       <div className="flex items-center gap-2 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <Box className="h-4 w-4 text-muted-foreground" />
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -230,23 +268,14 @@ export function AssetSection({
                   }
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    const first = suggestions[0];
-                    if (first) addAsset(first.id);
-                    else if (query.trim() && !hasExactMatch) {
-                      if (!propertyId) {
-                        toast({ title: "Select a property first", variant: "destructive" });
-                        return;
-                      }
-                      setCreateAssetDefaultName(query.trim());
-                      setShowCreateAsset(true);
-                    }
+                    commitAssetFromQuery();
                   }
                 }}
                 onBlur={() => {
-                  setTimeout(() => {
+                  scheduleInlineInputBlur(rowRef.current, () => {
                     setIsEditing(false);
                     setQuery("");
-                  }, 150);
+                  });
                 }}
                 placeholder="+ Asset"
                 className={cn(
@@ -287,7 +316,7 @@ export function AssetSection({
                 />
               )}
             </>
-          ) : isHovered ? (
+          ) : isHovered || isActive ? (
             <SemanticChip
               epistemic="proposal"
               label="+ Asset"

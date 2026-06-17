@@ -22,6 +22,56 @@ export function isAllPropertiesActive(
   return allProperties.length > 0 && activeSet.size === allProperties.length;
 }
 
+/** True when the workbench focuses a strict subset of properties (not ALL). */
+export function isPropertySubsetSelected(
+  selectedPropertyIds: Set<string> | undefined,
+  allPropertyIds: string[]
+): boolean {
+  if (!selectedPropertyIds || allPropertyIds.length === 0) return false;
+  if (selectedPropertyIds.size === 0) return false;
+  return !isAllPropertiesActive(selectedPropertyIds, allPropertyIds);
+}
+
+/** Property ids in scope for lists/counts — all ids when no subset filter is active. */
+export function scopedPropertyIdSet(
+  selectedPropertyIds: Set<string> | undefined,
+  allPropertyIds: string[]
+): Set<string> {
+  if (allPropertyIds.length === 0) return new Set();
+  if (
+    !selectedPropertyIds ||
+    selectedPropertyIds.size === 0 ||
+    isAllPropertiesActive(selectedPropertyIds, allPropertyIds)
+  ) {
+    return new Set(allPropertyIds);
+  }
+  return new Set(
+    [...selectedPropertyIds].filter((id) => allPropertyIds.includes(id))
+  );
+}
+
+export function recordMatchesPropertyScope(
+  propertyId: string | null | undefined,
+  selectedPropertyIds: Set<string> | undefined,
+  allPropertyIds: string[]
+): boolean {
+  if (!isPropertySubsetSelected(selectedPropertyIds, allPropertyIds)) return true;
+  if (!propertyId) return false;
+  return scopedPropertyIdSet(selectedPropertyIds, allPropertyIds).has(propertyId);
+}
+
+export function taskMatchesPropertyScope(
+  task: { property_id?: string | null },
+  selectedPropertyIds: Set<string> | undefined,
+  allPropertyIds: string[]
+): boolean {
+  if (!isPropertySubsetSelected(selectedPropertyIds, allPropertyIds)) return true;
+  return (
+    task.property_id != null &&
+    scopedPropertyIdSet(selectedPropertyIds, allPropertyIds).has(task.property_id)
+  );
+}
+
 /**
  * Pure helper: given current active set and a clicked property id, returns the new active set.
  * Invariants: returned set is never empty; if removal would empty the set, returns ALL_PROPERTIES.

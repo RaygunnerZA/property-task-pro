@@ -252,6 +252,14 @@ export function IntakeChipRow({
     </HorizontalOverflowRow>
   );
 
+  const panelRow2 = panel ? (
+    layout === "interleaved" ? (
+      <div className="min-w-0 w-full">{panel.row2}</div>
+    ) : (
+      <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
+    )
+  ) : null;
+
   const panelBlock = (
     <div
       className={cn(
@@ -263,7 +271,7 @@ export function IntakeChipRow({
         {panel && (
           <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
             <div className="min-w-0 border-b border-border/15 pb-px">
-              <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
+              {panelRow2}
             </div>
             <div className="min-w-0 space-y-1 pt-0">
               <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row3}</HorizontalOverflowRow>

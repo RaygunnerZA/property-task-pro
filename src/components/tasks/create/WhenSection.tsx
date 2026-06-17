@@ -50,6 +50,8 @@ interface WhenSectionProps {
   suggestedDateLabel?: string;
   /** Called when the user taps the suggested date chip */
   onSuggestedDateAccept?: () => void;
+  /** Hide duplicate left icon when rendered inside IntakeChipRow row 2 */
+  embedded?: boolean;
 }
 
 export function WhenSection({
@@ -65,6 +67,7 @@ export function WhenSection({
   onMilestonesChange,
   suggestedDateLabel,
   onSuggestedDateAccept,
+  embedded = false,
 }: WhenSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showRepeatOptions, setShowRepeatOptions] = useState(false);
@@ -231,13 +234,16 @@ export function WhenSection({
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-2 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <Calendar className="h-4 w-4 text-muted-foreground" />
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -313,7 +319,7 @@ export function WhenSection({
           ))}
 
           {/* Hover chips: quick dates when no date, or Repeat/Milestone when date set */}
-          {isHovered && (
+          {(isHovered || isActive) && (
             <>
               {!hasDate ? (
                 <>

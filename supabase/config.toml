@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.calendar-import]
 verify_jwt = true
+
+[functions.invite-team-member]
+verify_jwt = true
+
+[functions.manage-invited-users]
+verify_jwt = true

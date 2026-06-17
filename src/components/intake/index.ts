@@ -1,5 +1,6 @@
 export { IntakeModal } from "./IntakeModal";
 export { AddToFillaSheet } from "./AddToFillaSheet";
+export { AddToFillaDropPanel } from "./AddToFillaDropPanel";
 export { IntakeReviewSheet } from "./IntakeReviewSheet";
 export { IntakeInboxPanel } from "./IntakeInboxPanel";
 export type { IntakeReviewPayload } from "./IntakeInboxPanel";

@@ -20,6 +20,7 @@ import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import { pickBestNameMatch, scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 
 interface SpaceSuggestion {
   id: string;
@@ -36,6 +37,9 @@ interface WhereSectionProps {
   onSpacesChange: (spaceIds: string[]) => void;
   /** When true, show selected property/space facts even when not hovered (e.g. modal opened from a specific property context). */
   showFactsByDefault?: boolean;
+  /** Slot is open in IntakeChipRow — show + chips immediately and hide duplicate row icon. */
+  isActive?: boolean;
+  embedded?: boolean;
   /** AI-detected space chips (from rule-based extractor) */
   suggestedChips?: SpaceSuggestion[];
 }
@@ -48,6 +52,8 @@ export function WhereSection({
   onSpacesChange,
   showFactsByDefault = false,
   suggestedChips = [],
+  isActive = false,
+  embedded = false,
 }: WhereSectionProps) {
   const { toast } = useToast();
   const { data: properties = [] } = usePropertiesQuery();
@@ -68,6 +74,10 @@ export function WhereSection({
   const [isSpaceEditing, setIsSpaceEditing] = useState(false);
   const [spaceQuery, setSpaceQuery] = useState("");
   const spaceInputRef = useRef<HTMLInputElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [createdSpaceOverrides, setCreatedSpaceOverrides] = useState<
+    Record<string, { id: string; name: string; icon_name?: string }>
+  >({});
 
   const [showCreateSpace, setShowCreateSpace] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
@@ -76,7 +86,13 @@ export function WhereSection({
     properties.find((p: any) => p.id === propertyId) ??
     (createdPropertyOverride?.id === propertyId ? createdPropertyOverride : null);
   const selectedSpaceObjects = selectedSpaceIds
-    .map((id) => spaces.find((s) => s.id === id))
+    .map((id) => {
+      const fromHook = spaces.find((s) => s.id === id);
+      if (fromHook) return fromHook;
+      const override = createdSpaceOverrides[id];
+      if (override) return override;
+      return null;
+    })
     .filter(Boolean) as Array<{ id: string; name: string; icon_name?: string }>;
 
   const spaceSuggestions = useMemo(() => {
@@ -137,35 +153,53 @@ export function WhereSection({
   };
 
   const handleSpaceCreated = (space: { id: string; name: string; icon_name: string }) => {
+    setCreatedSpaceOverrides((prev) => ({ ...prev, [space.id]: space }));
     onSpacesChange([...selectedSpaceIds, space.id]);
     setHasExplicitSelection(true);
     setShowCreateSpace(false);
     setNewSpaceName("");
-    refreshSpaces();
+    setIsSpaceEditing(false);
+    setSpaceQuery("");
+    void refreshSpaces();
+  };
+
+  const commitSpaceFromQuery = () => {
+    const trimmed = spaceQuery.trim();
+    if (!trimmed) return;
+    const match = pickBestNameMatch(spaces, trimmed);
+    if (match) {
+      commitSpace(match.id);
+      return;
+    }
+    if (!hasExactSpaceMatch) {
+      setNewSpaceName(trimmed);
+      setShowCreateSpace(true);
+    }
   };
 
   const spaceInputWidth = Math.min(240, Math.max(100, (spaceQuery.length + 2) * 8));
-  const showFacts = isHovered || showFactsByDefault || hasExplicitSelection;
-  const showControls = isHovered || propertyPickerOpen || isSpaceEditing;
+  const showFacts =
+    isHovered || showFactsByDefault || hasExplicitSelection || selectedSpaceIds.length > 0 || isActive;
+  const showControls =
+    isHovered || propertyPickerOpen || isSpaceEditing || showFactsByDefault || isActive;
 
   return (
     <div
+      ref={rowRef}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setPropertyPickerOpen(false);
-        setIsSpaceEditing(false);
-        setSpaceQuery("");
-      }}
+      onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-2 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           <MapPin className="h-4 w-4 text-muted-foreground" />
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -237,19 +271,14 @@ export function WhereSection({
                   }
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    const first = spaceSuggestions[0];
-                    if (first) commitSpace(first.id);
-                    else if (spaceQuery.trim() && !hasExactSpaceMatch) {
-                      setNewSpaceName(spaceQuery.trim());
-                      setShowCreateSpace(true);
-                    }
+                    commitSpaceFromQuery();
                   }
                 }}
                 onBlur={() => {
-                  setTimeout(() => {
+                  scheduleInlineInputBlur(rowRef.current, () => {
                     setIsSpaceEditing(false);
                     setSpaceQuery("");
-                  }, 150);
+                  });
                 }}
                 placeholder="+ Space"
                 className={cn(

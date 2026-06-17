@@ -16,6 +16,7 @@ import { finishOwnerOnboarding } from "@/utils/completeOnboarding";
 import { toast } from "sonner";
 import { X, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { edgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 
 export default function InviteTeamScreen() {
   const navigate = useNavigate();
@@ -102,7 +103,9 @@ export default function InviteTeamScreen() {
 
           if (error || data?.error) {
             errorCount++;
-            errors.push(`${invite.email}: ${error?.message || data?.error || "Failed to send"}`);
+            errors.push(
+              `${invite.email}: ${edgeFunctionErrorMessage(error, data, data?.error || "Failed to send")}`
+            );
           } else {
             successCount++;
           }

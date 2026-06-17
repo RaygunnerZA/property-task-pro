@@ -40,6 +40,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useTeams } from "@/hooks/useTeams";
 import { supabase } from "@/integrations/supabase/client";
 import { EXTERNAL_ORG_ROLES, INTERNAL_ORG_ROLES } from "@/lib/orgRoles";
+import { edgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 
 type UserType = "internal" | "external";
 
@@ -279,7 +280,7 @@ export function InviteUserForm({
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (error) throw error;
+      if (error) throw new Error(edgeFunctionErrorMessage(error, data, "Failed to send invitation"));
       if (data?.error) throw new Error(data.error);
 
       toast.success(

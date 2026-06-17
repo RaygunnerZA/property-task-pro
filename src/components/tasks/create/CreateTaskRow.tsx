@@ -12,6 +12,7 @@ import React, { useRef, useEffect, useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { SemanticChipStrip } from "@/components/chips/semantic";
 import { suggestedChipToChipData } from "@/lib/task-chip-utils";
+import { scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 import type { ChipData } from "@/types/task-chip";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 
@@ -42,6 +43,8 @@ export interface CreateTaskRowProps {
   onInlineSearch?: (query: string) => void;
   /** When provided, show these chips on hover instead of single instruction chip (e.g. PRIORITY: LOW/NORMAL/HIGH/URGENT) */
   hoverChips?: Array<{ id: string; label: string; onPress: () => void }>;
+  /** Hide duplicate left icon when rendered inside IntakeChipRow row 2 */
+  embedded?: boolean;
 }
 
 export function CreateTaskRow({
@@ -62,6 +65,7 @@ export function CreateTaskRow({
   hasUnresolved = false,
   onInlineSearch,
   hoverChips,
+  embedded = false,
 }: CreateTaskRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +111,7 @@ export function CreateTaskRow({
     const suggested: ChipData[] = suggestedChips.map((c) =>
       suggestedChipToChipData(c)
     );
-    if (!isHovered) return [...facts, ...verbs, ...suggested];
+    if (!isHovered && !isActive) return [...facts, ...verbs, ...suggested];
     // Hover: show hoverChips (e.g. PRIORITY) or single instruction chip
     if (hoverChips && hoverChips.length > 0) {
       const hoverAsChips: ChipData[] = hoverChips.map((h) => ({
@@ -125,7 +129,7 @@ export function CreateTaskRow({
       kind: "instruction",
     };
     return [...facts, ...verbs, ...suggested, instructionChip];
-  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered, hoverChips, valueLabel]);
+  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered, isActive, hoverChips, valueLabel]);
 
   const handleChipPress = (chip: ChipData) => {
     if (chip.variant === "fact") {
@@ -168,13 +172,16 @@ export function CreateTaskRow({
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         "flex flex-col rounded-[8px] transition-all duration-200",
+        embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-2 h-[33px] min-w-0">
+        {!embedded ? (
         <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
           {icon}
         </div>
+        ) : null}
 
         <div
           className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
@@ -202,10 +209,10 @@ export function CreateTaskRow({
                   }
                 }}
                 onBlur={() => {
-                  setTimeout(() => {
+                  scheduleInlineInputBlur(containerRef.current, () => {
                     setIsInlineEditing(false);
                     setInlineValue("");
-                  }, 200);
+                  });
                 }}
                 placeholder={instruction}
                 className={cn(

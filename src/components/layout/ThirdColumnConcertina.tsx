@@ -22,9 +22,11 @@ const SECTION_HEADER_CLASS = cn(
 export interface ConcertinaSection {
   id: string;
   title: string;
-  isExpanded: boolean;
-  onToggle: () => void;
+  isExpanded?: boolean;
+  onToggle?: () => void;
   children: React.ReactNode;
+  /** Inline block without accordion header (e.g. drop zone). */
+  variant?: "accordion" | "static";
 }
 
 interface ThirdColumnConcertinaProps {
@@ -44,7 +46,23 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
       {sections.map((section, index) => {
         const isFirst = index === 0;
         const isLast = index === sections.length - 1;
-        const isExpanded = section.isExpanded;
+        const isStatic = section.variant === "static";
+
+        if (isStatic) {
+          return (
+            <div
+              key={section.id}
+              className={cn(
+                "px-1 py-[5px]",
+                !isFirst && "border-t border-border/10"
+              )}
+            >
+              {section.children}
+            </div>
+          );
+        }
+
+        const isExpanded = section.isExpanded ?? false;
 
         return (
           <div key={section.id} className="flex flex-col">

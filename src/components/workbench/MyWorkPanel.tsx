@@ -11,7 +11,9 @@ import { WorkbenchHorizontalScroller } from "@/components/workbench/WorkbenchHor
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useWorkbenchAttentionStream } from "@/hooks/useWorkbenchAttentionStream";
+import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
+import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import { cn } from "@/lib/utils";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView } from "@/lib/propertyRoutes";
@@ -36,6 +38,27 @@ export interface MyWorkPanelProps {
 const centreScrollClass =
   "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-[10px] max-sm:px-0 pt-2 pb-4 max-pane:px-2";
 
+function AttentionPanelHeader() {
+  return (
+    <header className="flex items-start justify-between gap-3 px-0.5">
+      <div className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Attention</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Everything that needs your attention, in one place.
+        </p>
+      </div>
+      <div className="flex shrink-0 items-end justify-end self-stretch">
+        <img
+          src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
+          alt=""
+          className="h-16 w-16 object-contain object-right drop-shadow-sm sm:h-20 sm:w-20"
+          decoding="async"
+        />
+      </div>
+    </header>
+  );
+}
+
 const OPEN_WORK_SECTION = {
   title: "Open work",
   subtitle: "Approved tasks awaiting completion",
@@ -43,12 +66,18 @@ const OPEN_WORK_SECTION = {
   emptyDescription: "When issues are approved and ready to execute, they appear here.",
 } as const;
 
-function countOpenTasks(tasks: any[]) {
+function countOpenTasks(
+  tasks: any[],
+  selectedPropertyIds: Set<string> | undefined,
+  properties: { id: string }[]
+) {
+  const propertyIds = properties.map((p) => p.id);
   return tasks.filter(
     (task) =>
-      task.status === "open" ||
-      task.status === "in_progress" ||
-      task.status === "waiting_review"
+      (task.status === "open" ||
+        task.status === "in_progress" ||
+        task.status === "waiting_review") &&
+      taskMatchesPropertyScope(task, selectedPropertyIds, propertyIds)
   ).length;
 }
 
@@ -78,7 +107,10 @@ export function MyWorkPanel({
   const properties = propertiesProp ?? propertiesFromQuery;
   const tasksLoading = tasksLoadingProp ?? tasksLoadingFromQuery;
 
-  const openWorkCount = useMemo(() => countOpenTasks(tasks), [tasks]);
+  const openWorkCount = useMemo(
+    () => countOpenTasks(tasks, selectedPropertyIds, properties),
+    [tasks, selectedPropertyIds, properties]
+  );
 
   const {
     groupedAttentionItems,
@@ -102,12 +134,7 @@ export function MyWorkPanel({
   if (tasksLoading) {
     return (
       <div className={cn(centreScrollClass, "flex-1 min-h-0 space-y-6")}>
-        <header className="px-0.5">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Attention</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Everything that needs your attention, in one place.
-          </p>
-        </header>
+        <AttentionPanelHeader />
         <div className="space-y-3 rounded-xl bg-muted/20 p-2">
           <IssuesWorkbenchSectionHeader
             title={OPEN_WORK_SECTION.title}
@@ -128,12 +155,7 @@ export function MyWorkPanel({
   return (
     <div className={cn(centreScrollClass, "flex-1 min-h-0")}>
       <div className="min-w-0 space-y-6">
-        <header className="px-0.5">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Attention</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Everything that needs your attention, in one place.
-          </p>
-        </header>
+        <AttentionPanelHeader />
 
         <section className="min-w-0 rounded-2xl bg-transparent py-1">
           <IssuesWorkbenchSectionHeader

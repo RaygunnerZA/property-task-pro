@@ -42,7 +42,8 @@ export function useSignalsQuery(options?: {
             return new Date(s.expires_at).getTime() <= now;
           }
           if (!isSignalEligibleForIssuesFeed(s)) return false;
-          if (propertyIds && propertyIds.length > 0 && s.property_id) {
+          if (propertyIds && propertyIds.length > 0) {
+            if (!s.property_id) return false;
             return propertyIds.includes(s.property_id);
           }
           return true;

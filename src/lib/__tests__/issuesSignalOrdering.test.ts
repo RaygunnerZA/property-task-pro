@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ISSUES_SIGNAL_PREVIEW_LIMIT,
+  countAttentionSectionItems,
   pickTopRecentSignals,
   pickTopReviewSignals,
   rankReviewImportance,
@@ -49,5 +50,14 @@ describe("issuesSignalOrdering", () => {
   it("preserves the empty-state seed row", () => {
     const seed = [{ id: "recent-empty-seed" }];
     expect(pickTopRecentSignals(seed)).toEqual(seed);
+  });
+
+  it("excludes the empty-state seed from section counts", () => {
+    expect(
+      countAttentionSectionItems([
+        { id: "recent-empty-seed" },
+        { id: "signal-1" },
+      ])
+    ).toBe(1);
   });
 });

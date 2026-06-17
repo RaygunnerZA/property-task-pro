@@ -2,6 +2,13 @@ import type { SignalConfidenceLevel } from "@/components/dashboard/issues/Issues
 
 export const ISSUES_SIGNAL_PREVIEW_LIMIT = 3;
 
+const ATTENTION_EMPTY_SEED_ID = "recent-empty-seed";
+
+/** Count attention rows for section badges (excludes global empty-state placeholder). */
+export function countAttentionSectionItems<T extends { id: string }>(items: T[]): number {
+  return items.filter((item) => item.id !== ATTENTION_EMPTY_SEED_ID).length;
+}
+
 const CONFIDENCE_IMPORTANCE: Record<SignalConfidenceLevel, number> = {
   low: 0,
   medium: 1,

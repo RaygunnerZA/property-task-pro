@@ -21,6 +21,10 @@ import {
   SIGNAL_UI_FIXTURES_URGENT,
 } from "@/fixtures/signalUiSamples";
 import type { RecordsView } from "@/lib/propertyRoutes";
+import {
+  isPropertySubsetSelected,
+  recordMatchesPropertyScope,
+} from "@/utils/propertyFilter";
 
 export type UseWorkbenchAttentionStreamOptions = {
   properties: { id: string; nickname?: string; address?: string }[];
@@ -44,6 +48,9 @@ export function useWorkbenchAttentionStream({
   onTabChange,
   onRecordsViewChange,
 }: UseWorkbenchAttentionStreamOptions) {
+  const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
+  const propertySubsetSelected = isPropertySubsetSelected(selectedPropertyIds, allPropertyIds);
+
   const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
     const n = properties.length;
     if (n === 0) return undefined;
@@ -63,10 +70,9 @@ export function useWorkbenchAttentionStream({
   }, [properties.length, selectedPropertyIds]);
 
   const propertyIdsForSignals = useMemo(() => {
-    if (!selectedPropertyIds || selectedPropertyIds.size === 0) return undefined;
-    if (selectedPropertyIds.size >= properties.length) return undefined;
-    return Array.from(selectedPropertyIds);
-  }, [selectedPropertyIds, properties.length]);
+    if (!propertySubsetSelected || !selectedPropertyIds) return undefined;
+    return Array.from(selectedPropertyIds).filter((id) => allPropertyIds.includes(id));
+  }, [propertySubsetSelected, selectedPropertyIds, allPropertyIds]);
 
   const { messages } = useMessages(messagesOptions);
   const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
@@ -81,7 +87,13 @@ export function useWorkbenchAttentionStream({
   const attentionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const complianceRecords = useMemo<ComplianceRecord[]>(() => {
-    const recordsFromView = (compliancePortfolio as any[]).map((row) => {
+    const portfolioRows = propertySubsetSelected
+      ? (compliancePortfolio as any[]).filter((row) =>
+          recordMatchesPropertyScope(row.property_id, selectedPropertyIds, allPropertyIds)
+        )
+      : (compliancePortfolio as any[]);
+
+    const recordsFromView = portfolioRows.map((row) => {
       const title = row.title || row.document_type || "Compliance Record";
       const propertyName = row.property_name || "Unassigned property";
       const dueOrExpiry = row.next_due_date || row.expiry_date;
@@ -117,22 +129,34 @@ export function useWorkbenchAttentionStream({
       } as ComplianceRecord;
     });
 
-    const merged = [...attentionComplianceDrafts, ...recordsFromView];
+    const merged = [
+      ...attentionComplianceDrafts.filter((record) =>
+        recordMatchesPropertyScope(record.propertyId, selectedPropertyIds, allPropertyIds)
+      ),
+      ...recordsFromView,
+    ];
     const byId = new Map<string, ComplianceRecord>();
     merged.forEach((record) => {
       if (!byId.has(record.id)) byId.set(record.id, record);
     });
     return Array.from(byId.values());
-  }, [attentionComplianceDrafts, compliancePortfolio]);
+  }, [
+    attentionComplianceDrafts,
+    compliancePortfolio,
+    propertySubsetSelected,
+    selectedPropertyIds,
+    allPropertyIds,
+  ]);
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
-    const fixtureUrgent = signalUiFixturesEnabled
+    const includeFixtures = signalUiFixturesEnabled && !propertySubsetSelected;
+    const fixtureUrgent = includeFixtures
       ? SIGNAL_UI_FIXTURES_URGENT.map(mapSignalFixtureToAttentionItem)
       : [];
-    const fixtureReview = signalUiFixturesEnabled
+    const fixtureReview = includeFixtures
       ? SIGNAL_UI_FIXTURES_REVIEW.map(mapSignalFixtureToAttentionItem)
       : [];
-    const fixtureRecent = signalUiFixturesEnabled
+    const fixtureRecent = includeFixtures
       ? SIGNAL_UI_FIXTURES_RECENT.map((f, i) => mapSignalFixtureToAttentionItem(f, i))
       : [];
 
@@ -209,6 +233,9 @@ export function useWorkbenchAttentionStream({
     const recent = [...fixtureRecent, ...recentFromSignals, ...recentFromData];
 
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
+      if (propertySubsetSelected) {
+        return [];
+      }
       return [
         {
           id: "recent-empty-seed",
@@ -223,7 +250,14 @@ export function useWorkbenchAttentionStream({
     }
 
     return [...urgent, ...review, ...recent];
-  }, [complianceRecords, messages, platformSignals, properties, signalUiFixturesEnabled]);
+  }, [
+    complianceRecords,
+    messages,
+    platformSignals,
+    properties,
+    propertySubsetSelected,
+    signalUiFixturesEnabled,
+  ]);
 
   const unresolvedAttentionItems = useMemo(
     () => attentionItems.filter((item) => !resolvedAttentionIds.has(item.id)),

@@ -4,7 +4,7 @@ import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollCo
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
 import type { AttentionItem } from "@/components/dashboard/issues/issuesAttentionItem";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
-import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
+import { pickTopRecentSignals, pickTopReviewSignals, countAttentionSectionItems } from "@/lib/issuesSignalOrdering";
 import type { IntakeMode } from "@/types/intake";
 
 /** Needs review queue — row cards via IssuesReviewSignalRow (through OperationalStreamCard). */
@@ -95,7 +95,7 @@ export function IssuesRecentNeedsReviewStack({
         subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}
         countVariant="review"
         items={displayReviewItems}
-        totalCount={reviewItems.length}
+        totalCount={countAttentionSectionItems(reviewItems)}
         emptyTitle={ISSUES_NEEDS_REVIEW_SECTION.emptyTitle}
         emptyDescription={ISSUES_NEEDS_REVIEW_SECTION.emptyDescription}
         renderCard={renderSignal}
@@ -108,7 +108,7 @@ export function IssuesRecentNeedsReviewStack({
         subtitle={signalsSection.subtitle}
         countVariant="recent"
         items={displayRecentItems}
-        totalCount={recentItems.length}
+        totalCount={countAttentionSectionItems(recentItems)}
         emptyTitle={signalsSection.emptyTitle}
         emptyDescription={signalsSection.emptyDescription}
         renderCard={renderSignal}
