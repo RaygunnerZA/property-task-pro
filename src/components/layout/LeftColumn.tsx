@@ -212,7 +212,7 @@ export function LeftColumn({
 
       {/* Calendar + hub summary — dashboard sits directly above the calendar */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
-        {isHubHome && !propertiesLoading && properties.length > 0 ? (
+        {isHubHome && !propertiesLoading && properties.length > 0 && !focusedProperty ? (
           <div className="w-full min-w-0 max-w-full shrink-0 px-[3px] pb-2 pt-1">
             <HubSummaryPanel
               tasks={tasks}
