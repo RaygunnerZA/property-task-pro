@@ -9,29 +9,29 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 
 const statNumberClass =
-  "pb-1 text-[38px] font-normal tabular-nums leading-none text-teal-600 sm:pb-[3px] sm:text-[30px]";
+  "pb-1 text-[38px] font-medium tabular-nums leading-none text-[#5aa3a9] sm:pb-[3px] sm:text-[24px]";
 
 const statWordClass =
   "w-full font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-muted-foreground sm:text-[10px] sm:tracking-[0.1px]";
 
 const statCellClass =
-  "flex min-w-0 w-full flex-col items-center rounded-[10px] px-2 pb-2.5 pt-3 text-center sm:px-0.5 sm:pb-2 sm:pt-4";
+  "flex min-w-0 w-[70px] flex-col items-center justify-center rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-center shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] sm:px-0.5 sm:pb-3";
 
 type PropertySummaryPanelProps = {
   property: PropertyForStrip;
   tasks?: unknown[];
   documents?: PropertyDocument[];
-  messagesCount?: number;
+  peopleCount?: number;
   urgentOpenTaskCount?: number;
   loading?: boolean;
   onOpenUrgent?: () => void;
   onOpenTasks?: () => void;
   onOpenCompliance?: () => void;
   onOpenInspections?: () => void;
-  onOpenMessages?: () => void;
   onOpenSpaces?: () => void;
   onOpenAssets?: () => void;
-  onOpenDocuments?: () => void;
+  onOpenPeople?: () => void;
+  onOpenRecords?: () => void;
   className?: string;
 };
 
@@ -113,17 +113,17 @@ export function PropertySummaryPanel({
   property,
   tasks = [],
   documents = [],
-  messagesCount = 0,
+  peopleCount = 0,
   urgentOpenTaskCount = 0,
   loading = false,
   onOpenUrgent,
   onOpenTasks,
   onOpenCompliance,
   onOpenInspections,
-  onOpenMessages,
   onOpenSpaces,
   onOpenAssets,
-  onOpenDocuments,
+  onOpenPeople,
+  onOpenRecords,
   className,
 }: PropertySummaryPanelProps) {
   const metrics = useMemo(
@@ -132,10 +132,10 @@ export function PropertySummaryPanel({
         property,
         tasks as Parameters<typeof computePropertySummaryMetrics>[1],
         documents,
-        messagesCount,
+        0,
         urgentOpenTaskCount
       ),
-    [property, tasks, documents, messagesCount, urgentOpenTaskCount]
+    [property, tasks, documents, urgentOpenTaskCount]
   );
 
   const summaryLines = useMemo(
@@ -150,7 +150,7 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        <div className="grid grid-cols-4 grid-rows-1 divide-x divide-border/30 border-b border-border/30">
+        <div className="grid grid-cols-4 grid-rows-1 gap-y-[5px] divide-x divide-border/30 border-b border-border/30 justify-items-center py-[10px]">
           <StatColumn
             value={metrics.openTasks}
             line1="open"
@@ -177,7 +177,7 @@ export function PropertySummaryPanel({
           />
         </div>
 
-        <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-2 pt-1">
+        <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-1">
           <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
             <RadialProgress
               value={metrics.completionPct}
@@ -194,20 +194,20 @@ export function PropertySummaryPanel({
             </p>
           </div>
 
-          <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-2 pr-[10px] pt-2">
-            <CountRow label="Messages" count={metrics.messagesCount} onActivate={onOpenMessages} />
+          <div className="flex min-w-0 flex-1 flex-col gap-0 border-l border-dashed border-border/35 pl-2">
             <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
             <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
-            <CountRow label="Documents" count={metrics.documentsCount} onActivate={onOpenDocuments} />
+            <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
+            <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
           </div>
         </div>
 
-        <div className="grid grid-cols-[auto_1fr] items-start gap-2.5 px-3 py-3">
+        <div className="grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3">
           <div
-            className="flex h-9 w-9 shrink-0 items-start justify-end rounded-2xl rounded-bl-sm shadow-sm"
+            className="flex h-9 w-[21px] shrink-0 items-start justify-center rounded-2xl rounded-bl-sm"
             aria-hidden
           >
-            <FillaIcon size={20} className="opacity-90" />
+            <FillaIcon size={24} className="opacity-90" />
           </div>
           <div className="min-w-0 space-y-1 text-[14px] leading-snug text-foreground/85">
             {summaryLines.map((line) => (

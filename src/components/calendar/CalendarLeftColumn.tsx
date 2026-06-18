@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
-import { PropertySelectorStack } from "@/components/properties/PropertySelectorStack";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { CalendarTypeFilters } from "@/components/calendar/CalendarTypeFilters";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,15 +55,6 @@ export function CalendarLeftColumn({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      {!propertiesLoading && properties.length > 1 ? (
-        <PropertySelectorStack
-          properties={properties}
-          tasks={displayTasks}
-          selectedPropertyIds={selectedPropertyIds}
-          onSelectionChange={onPropertySelectionChange}
-        />
-      ) : null}
-
       <div className="min-h-0 shrink-0">
         {propertiesLoading ? (
           <Skeleton className="h-[200px] w-full rounded-xl" />

@@ -3,7 +3,6 @@ import { Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { useNavigate } from "react-router-dom";
-import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import {
   propertyHubPath,
   propertyHubIssuesPath,
@@ -14,14 +13,14 @@ import {
 } from "@/lib/propertyRoutes";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
-import { useMessages } from "@/hooks/useMessages";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { PropertySummaryPanel } from "@/components/properties/PropertySummaryPanel";
 import {
   PropertyHubNavCards,
+  countPropertyPeople,
   type PropertyHubNavCardId,
 } from "@/components/properties/PropertyHubNavCards";
 import { PropertyEditSheet } from "@/components/properties/PropertyEditSheet";
-import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { propertiesService } from "@/services/properties/properties";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -64,7 +63,6 @@ interface PropertyIdentityStripProps {
   onPropertyArchived?: () => void;
   onOpenTasksClick?: () => void;
   onFilterClick?: (filterId: string) => void;
-  propertyCardWeather?: PropertyCardWeather;
   externalDashboard?: boolean;
 }
 
@@ -78,7 +76,6 @@ export function PropertyIdentityStrip({
   onPropertyArchived,
   onOpenTasksClick,
   onFilterClick,
-  propertyCardWeather,
   externalDashboard = false,
 }: PropertyIdentityStripProps) {
   const navigate = useNavigate();
@@ -87,9 +84,7 @@ export function PropertyIdentityStrip({
     limit: 500,
   });
   const { data: propertyTasksView = [] } = useTasksQuery(property.id);
-  const { messages } = useMessages({
-    propertyScope: { selectedIds: [property.id], totalPropertyCount: 2 },
-  });
+  const { members } = useOrgMembers();
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showArchivePropertyDialog, setShowArchivePropertyDialog] = useState(false);
@@ -98,16 +93,11 @@ export function PropertyIdentityStrip({
   const displayName = property.nickname || property.address;
   const iconColor = property.icon_color_hex || "#8EC9CE";
   const IconComponent = getPropertyChipIcon(property.icon_name);
-  const WeatherIcon = getWeatherLucideIcon(propertyCardWeather?.conditionCode ?? null);
 
-  const messagesCount = useMemo(() => {
-    return messages.filter((m) => {
-      const c = m.conversations;
-      if (!c) return false;
-      if (c.property_id === property.id) return true;
-      return c.tasks?.property_id === property.id;
-    }).length;
-  }, [messages, property.id]);
+  const peopleCount = useMemo(
+    () => countPropertyPeople(property.id, property.owner_name, property.contact_name, members),
+    [property.id, property.owner_name, property.contact_name, members]
+  );
 
   const handleConfirmArchiveProperty = async () => {
     setIsArchivingProperty(true);
@@ -194,20 +184,6 @@ export function PropertyIdentityStrip({
             ) : null}
           </div>
 
-          {propertyCardWeather !== undefined ? (
-            <div className="pointer-events-none absolute bottom-2 right-2 z-10 flex flex-col items-end gap-0.5 text-right">
-              <span className="text-[13px] font-semibold leading-tight text-white drop-shadow-sm">
-                Today
-              </span>
-              <div className="flex items-center justify-end gap-1.5 text-white/90">
-                <WeatherIcon className="h-4 w-4 shrink-0 drop-shadow-sm" aria-hidden />
-                <span className="whitespace-nowrap text-xs font-medium drop-shadow-sm">
-                  {propertyCardWeather ? `${propertyCardWeather.temp}°C` : "--°C"}
-                </span>
-              </div>
-            </div>
-          ) : null}
-
           <button
             type="button"
             onClick={() => setShowEditSheet(true)}
@@ -249,7 +225,7 @@ export function PropertyIdentityStrip({
             property={property}
             tasks={propertyTasksView}
             documents={propertyDocuments}
-            messagesCount={messagesCount}
+            peopleCount={peopleCount}
             urgentOpenTaskCount={urgentOpenTaskCount}
             onOpenUrgent={() =>
               onFilterClick
@@ -268,15 +244,27 @@ export function PropertyIdentityStrip({
             }
             onOpenCompliance={() => navigate(propertyHubRecordsPath(property.id, "compliance"))}
             onOpenInspections={() => navigate(propertyHubRecordsPath(property.id, "expiring"))}
-            onOpenMessages={() => navigate(`/work/inbox?property=${encodeURIComponent(property.id)}`)}
             onOpenSpaces={() => openHubNav("spaces")}
             onOpenAssets={() => openHubNav("assets")}
-            onOpenDocuments={() => navigate(propertyHubRecordsPath(property.id, "documents"))}
+            onOpenPeople={() => openHubNav("people")}
+            onOpenRecords={() => openHubNav("records")}
           />
         </div>
       </div>
 
-      <PropertyHubNavCards onOpen={openHubNav} />
+      <PropertyHubNavCards
+        propertyId={property.id}
+        ownerName={property.owner_name}
+        contactName={property.contact_name}
+        onOpen={openHubNav}
+        onAdd={(id) => {
+          if (id === "people") {
+            setShowEditSheet(true);
+            return;
+          }
+          openHubNav(id);
+        }}
+      />
 
       <PropertyEditSheet
         property={property}

@@ -83,11 +83,6 @@ function Calendar({
           align-items: center !important;
           justify-items: center !important;
         }
-
-        /* Weekend date numbers at 50% opacity (text only) */
-        .rdp-day.weekend-date {
-          color: hsl(var(--foreground) / 0.5) !important;
-        }
       `}</style>
     </>
   );

@@ -1,7 +1,12 @@
 import type { CSSProperties } from "react";
-import type { LucideIcon } from "lucide-react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import {
+  PropertySelectorStack,
+  type PropertySelectorStackProps,
+} from "@/components/properties/PropertySelectorStack";
+import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
+import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { cn } from "@/lib/utils";
 
 /** Gradient strip: colour solid until ~28%, then fades to transparent. */
@@ -13,32 +18,31 @@ export function createGradientHeaderStyle(color: string): CSSProperties {
 
 export type WorkbenchGradientHeaderProps = {
   headerStyle: CSSProperties;
-  showTodayWeather?: boolean;
-  WeatherIcon: LucideIcon;
-  weather: { temp?: number } | null | undefined;
-  properties: {
-    id: string;
-    name?: string | null;
-    nickname?: string | null;
-    address?: string | null;
-  }[];
+  properties: PropertySelectorRowProperty[];
+  tasks?: PropertySelectorStackProps["tasks"];
+  selectedPropertyIds: Set<string>;
+  onPropertySelectionChange: (next: Set<string>) => void;
+  onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
 };
 
 export function WorkbenchGradientHeader({
   headerStyle,
-  showTodayWeather = true,
-  WeatherIcon,
-  weather,
   properties,
+  tasks = [],
+  selectedPropertyIds,
+  onPropertySelectionChange,
+  onFilterClick,
   onAskFilla,
 }: WorkbenchGradientHeaderProps) {
+  const showPropertySelector = properties.length > 1;
+
   return (
     <PageHeader showAccountMenu={false}>
       <div
         className={cn(
-          "grid h-[80px] w-full min-w-0 items-start rounded-bl-[12px] pr-28 sm:pr-40",
-          /* Match DualPaneLayout: mobile-width side rails | center column (700px at layout+) */
+          "grid w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[80px] sm:gap-0 sm:pr-40",
+          "min-h-[72px] pb-3 pt-3 sm:pb-0 sm:pt-0",
           "grid-cols-1",
           "sm:grid-cols-workbench-dual",
           "layout:grid-cols-workbench-triple"
@@ -47,27 +51,29 @@ export function WorkbenchGradientHeader({
       >
         <div
           className={cn(
-            "hidden min-w-0 items-start justify-start gap-[7px] px-[18px] pt-[25px] sm:flex",
-            !showTodayWeather && "sm:invisible"
+            "flex min-w-0 items-center justify-between gap-2 px-3 sm:justify-start sm:px-[18px] sm:pt-[25px]",
+            !showPropertySelector && "hidden sm:block sm:invisible"
           )}
         >
-          {showTodayWeather ? (
+          {showPropertySelector ? (
             <>
-              <h1 className="shrink-0 text-[18px] font-semibold leading-tight text-white">Today</h1>
-              <div className="mx-2 h-6 w-px shrink-0 bg-white/30" />
-              <div className="flex items-center justify-start gap-2 text-left">
-                <WeatherIcon className="h-4 w-4 shrink-0 text-white/90" />
-                <span className="whitespace-nowrap text-sm text-white/90">
-                  {weather ? `${weather.temp}°C` : "--°C"}
-                </span>
-              </div>
+              <PropertySelectorStack
+                variant="gradientHeader"
+                properties={properties}
+                tasks={tasks}
+                selectedPropertyIds={selectedPropertyIds}
+                onSelectionChange={onPropertySelectionChange}
+                onFilterClick={onFilterClick}
+                className="min-w-0 flex-1"
+              />
+              <WorkbenchMobileNavCluster className="shrink-0 sm:hidden" />
             </>
           ) : null}
         </div>
 
         <div
           className={cn(
-            "flex min-w-0 items-start px-3 pt-5 sm:col-start-2 sm:px-1 sm:max-w-[700px]",
+            "flex min-w-0 items-start px-3 sm:col-start-2 sm:px-1 sm:pt-5 sm:max-w-[700px]",
             "layout:max-w-[700px]"
           )}
         >

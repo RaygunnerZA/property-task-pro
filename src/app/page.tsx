@@ -14,11 +14,9 @@ import {
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
-import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDailyBriefing } from "@/hooks/use-daily-briefing";
 import { buildTasksByDate } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { getEffectiveDefaultPropertyId } from "@/lib/propertySelectorPreferences";
@@ -133,7 +131,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
-  const { weather } = useDailyBriefing();
 
   // URL ↔ selection: ?property=id opens the single-property workbench; clearing the param (e.g. Hub) widens to all.
   useEffect(() => {
@@ -543,11 +540,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     setTimeout(() => setFilterToApply(null), 100);
   };
 
-  const WeatherIcon = getWeatherLucideIcon(weather?.conditionCode ?? null);
-
-  /** Single-property workbench: Today + weather live on the property card thumbnail instead of the gradient header. */
-  const showTodayWeatherOnPropertyCard = selectedPropertyIds.size === 1;
-
   const showWorkbenchDetailSection =
     selectedItem?.type === "task" ||
     selectedItem?.type === "message" ||
@@ -757,10 +749,11 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}
-              showTodayWeather={!showTodayWeatherOnPropertyCard}
-              WeatherIcon={WeatherIcon}
-              weather={weather}
               properties={properties}
+              tasks={tasks}
+              selectedPropertyIds={selectedPropertyIds}
+              onPropertySelectionChange={handlePropertySelectionChange}
+              onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
             />
           }
@@ -783,7 +776,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
-            propertyCardWeather={undefined}
           />
           </ErrorBoundary>
         }

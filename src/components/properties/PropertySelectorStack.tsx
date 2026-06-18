@@ -14,6 +14,7 @@ import { PropertySelectorAllThumbnail } from "@/components/properties/PropertySe
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export type PropertySelectorStackProps = {
@@ -31,6 +32,8 @@ export type PropertySelectorStackProps = {
   onSelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   className?: string;
+  /** `gradientHeader` — compact popover trigger for the workbench gradient strip. */
+  variant?: "default" | "gradientHeader";
 };
 
 export function PropertySelectorStack({
@@ -40,9 +43,11 @@ export function PropertySelectorStack({
   onSelectionChange,
   onFilterClick,
   className,
+  variant = "default",
 }: PropertySelectorStackProps) {
   const { orgId } = useActiveOrg();
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(variant === "default");
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [pinnedRevision, setPinnedRevision] = useState(0);
 
@@ -96,7 +101,7 @@ export function PropertySelectorStack({
     return "Select Property";
   }, [focusedProperty, isAllActive, selectedPropertyIds.size]);
 
-  const showAllThumbnailInHeader = !expanded && isAllActive;
+  const showAllThumbnailInHeader = variant === "gradientHeader" ? isAllActive : !expanded && isAllActive;
   const collapsedPropertyIcon = useMemo(() => {
     if (!focusedProperty) return null;
     const Icon = getPropertyChipIcon(focusedProperty.icon_name || "home");
@@ -104,12 +109,11 @@ export function PropertySelectorStack({
     return { Icon, color };
   }, [focusedProperty]);
 
-  // Collapse when a single property is focused (e.g. default property on load).
   useEffect(() => {
-    if (singleSelectedId) {
+    if (variant === "default" && singleSelectedId) {
       setExpanded(false);
     }
-  }, [singleSelectedId]);
+  }, [singleSelectedId, variant]);
 
   const handleTogglePinned = useCallback(
     (propertyId: string) => {
@@ -123,23 +127,152 @@ export function PropertySelectorStack({
 
   if (properties.length <= 1) return null;
 
+  const closeMenu = () => {
+    setExpanded(false);
+    setPopoverOpen(false);
+  };
+
   const handleSelectProperty = (propertyId: string) => {
     if (orgId) {
       recordPropertySelection(orgId, propertyId);
     }
     onSelectionChange(new Set([propertyId]));
     onFilterClick?.(`filter-property-${propertyId}`);
-    setExpanded(false);
+    closeMenu();
   };
 
   const handleSelectAll = () => {
     onSelectionChange(new Set(allPropertyIds));
     onFilterClick?.("show-tasks");
-    setExpanded(false);
+    closeMenu();
   };
 
   const toggleExpanded = () => setExpanded((v) => !v);
   const CollapsedHeaderIcon = collapsedPropertyIcon?.Icon;
+  const isGradientHeader = variant === "gradientHeader";
+
+  const triggerLabelContent =
+    expanded && !isGradientHeader ? (
+      <span
+        className={cn(
+          "truncate text-sm font-semibold",
+          isGradientHeader ? "text-white" : "text-foreground"
+        )}
+      >
+        Select Property
+      </span>
+    ) : showAllThumbnailInHeader ? (
+      <>
+        <PropertySelectorAllThumbnail properties={properties} size="header" />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-semibold",
+            isGradientHeader ? "text-white" : "text-foreground"
+          )}
+        >
+          All Properties
+        </span>
+      </>
+    ) : (
+      <>
+        {CollapsedHeaderIcon && collapsedPropertyIcon ? (
+          <CollapsedHeaderIcon
+            className="h-4 w-4 shrink-0"
+            style={{ color: isGradientHeader ? "white" : collapsedPropertyIcon.color }}
+            aria-hidden
+          />
+        ) : null}
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-sm font-semibold",
+            isGradientHeader ? "text-white" : "text-foreground"
+          )}
+        >
+          {collapsedHeaderLabel}
+        </span>
+      </>
+    );
+
+  const propertyListPanel = (
+    <>
+      <div className="max-h-[min(420px,55vh)] overflow-y-auto overscroll-contain">
+        <button
+          type="button"
+          onClick={handleSelectAll}
+          className={cn(
+            "flex w-full items-stretch gap-2.5 border-b border-border/40 px-2 py-2.5 text-left transition-colors hover:bg-muted/45",
+            isAllActive && "bg-primary/[0.06]"
+          )}
+        >
+          <PropertySelectorAllThumbnail properties={properties} size="row" />
+          <span className="flex min-w-0 flex-1 items-center text-sm font-semibold text-foreground">
+            All Properties
+          </span>
+        </button>
+
+        {properties.map((property) => (
+          <PropertySelectorRow
+            key={property.id}
+            property={property}
+            taskCount={taskCounts[property.id] ?? 0}
+            urgentCount={urgentTaskCounts[property.id] ?? 0}
+            highlight={getPropertySelectorHighlight(property.id, tasks, property)}
+            isSelected={!isAllActive && selectedPropertyIds.has(property.id)}
+            isDefaultPinned={
+              orgId ? pinnedRevision >= 0 && isPropertyPinnedDefault(orgId, property.id) : false
+            }
+            onToggleDefault={() => handleTogglePinned(property.id)}
+            onSelect={() => handleSelectProperty(property.id)}
+          />
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowAddProperty(true)}
+        className="flex w-full min-h-[36px] items-center justify-center gap-1.5 border-t border-border/40 px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+      >
+        <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Add Property
+      </button>
+    </>
+  );
+
+  if (isGradientHeader) {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex min-h-[32px] min-w-0 max-w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left transition-colors",
+                "hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              )}
+              aria-expanded={popoverOpen}
+              aria-label="Select property"
+            >
+              <span className="flex min-w-0 flex-1 items-center gap-2">{triggerLabelContent}</span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-white/90 transition-transform duration-200",
+                  popoverOpen && "rotate-180"
+                )}
+              />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            sideOffset={8}
+            className="w-[min(92vw,380px)] overflow-hidden rounded-[12px] p-0 shadow-e1"
+          >
+            {propertyListPanel}
+          </PopoverContent>
+        </Popover>
+        <AddPropertyDialog open={showAddProperty} onOpenChange={setShowAddProperty} />
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -155,35 +288,10 @@ export function PropertySelectorStack({
             <button
               type="button"
               onClick={toggleExpanded}
-              className={cn(
-                "flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/30",
-                showAllThumbnailInHeader ? "min-h-[44px]" : "min-h-[44px]"
-              )}
+              className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/30"
               aria-expanded={expanded}
             >
-              {expanded ? (
-                <span className="truncate text-sm font-semibold text-foreground">Select Property</span>
-              ) : showAllThumbnailInHeader ? (
-                <>
-                  <PropertySelectorAllThumbnail properties={properties} size="header" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                    All Properties
-                  </span>
-                </>
-              ) : (
-                <>
-                  {CollapsedHeaderIcon && collapsedPropertyIcon ? (
-                    <CollapsedHeaderIcon
-                      className="h-4 w-4 shrink-0"
-                      style={{ color: collapsedPropertyIcon.color }}
-                      aria-hidden
-                    />
-                  ) : null}
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
-                    {collapsedHeaderLabel}
-                  </span>
-                </>
-              )}
+              {triggerLabelContent}
             </button>
 
             <button
@@ -205,50 +313,7 @@ export function PropertySelectorStack({
             ) : null}
           </div>
 
-          {expanded ? (
-            <>
-              <div className="max-h-[min(420px,55vh)] overflow-y-auto overscroll-contain">
-                <button
-                  type="button"
-                  onClick={handleSelectAll}
-                  className={cn(
-                    "flex w-full items-stretch gap-2.5 border-b border-border/40 px-2 py-2.5 text-left transition-colors hover:bg-muted/45",
-                    isAllActive && "bg-primary/[0.06]"
-                  )}
-                >
-                  <PropertySelectorAllThumbnail properties={properties} size="row" />
-                  <span className="flex min-w-0 flex-1 items-center text-sm font-semibold text-foreground">
-                    All Properties
-                  </span>
-                </button>
-
-                {properties.map((property) => (
-                  <PropertySelectorRow
-                    key={property.id}
-                    property={property}
-                    taskCount={taskCounts[property.id] ?? 0}
-                    urgentCount={urgentTaskCounts[property.id] ?? 0}
-                    highlight={getPropertySelectorHighlight(property.id, tasks, property)}
-                    isSelected={!isAllActive && selectedPropertyIds.has(property.id)}
-                    isDefaultPinned={
-                      orgId ? pinnedRevision >= 0 && isPropertyPinnedDefault(orgId, property.id) : false
-                    }
-                    onToggleDefault={() => handleTogglePinned(property.id)}
-                    onSelect={() => handleSelectProperty(property.id)}
-                  />
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowAddProperty(true)}
-                className="flex w-full min-h-[36px] items-center justify-center gap-1.5 border-t border-border/40 px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-              >
-                <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Add Property
-              </button>
-            </>
-          ) : null}
+          {expanded ? propertyListPanel : null}
         </div>
 
         <AddPropertyDialog open={showAddProperty} onOpenChange={setShowAddProperty} />

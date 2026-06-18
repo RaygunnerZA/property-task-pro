@@ -13,8 +13,6 @@ import {
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
-import { useDailyBriefing } from "@/hooks/use-daily-briefing";
-import { getWeatherLucideIcon } from "@/lib/weatherIcon";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
@@ -37,7 +35,6 @@ const PRIMARY_COLOR = "#8EC9CE";
 function CalendarPageContent() {
   const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
-  const { weather } = useDailyBriefing();
   const { userId } = useDataContext();
   const { orgId } = useActiveOrg();
   const { searchQuery, selectedFilters } = useWorkbenchControls();
@@ -138,7 +135,6 @@ function CalendarPageContent() {
   }, [properties, selectedPropertyIds]);
 
   const headerStyle = createGradientHeaderStyle(headerAccentColor);
-  const WeatherIcon = getWeatherLucideIcon(weather?.conditionCode ?? null);
 
   const handleAskFilla = useCallback(
     (query: string) => {
@@ -214,9 +210,10 @@ function CalendarPageContent() {
         header={
           <WorkbenchGradientHeader
             headerStyle={headerStyle}
-            WeatherIcon={WeatherIcon}
-            weather={weather}
             properties={properties}
+            tasks={displayTasks}
+            selectedPropertyIds={selectedPropertyIds}
+            onPropertySelectionChange={setSelectedPropertyIds}
             onAskFilla={handleAskFilla}
           />
         }

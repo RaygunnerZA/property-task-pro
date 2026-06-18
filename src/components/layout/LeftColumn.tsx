@@ -3,8 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
-import { PropertySelectorStack } from "@/components/properties/PropertySelectorStack";
-import type { PropertyCardWeather } from "@/types/propertyCardWeather";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -37,10 +35,8 @@ interface LeftColumnProps {
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
-  /** @deprecated Replaced by PropertySelectorStack inside LeftColumn */
+  /** @deprecated Replaced by PropertySelectorStack in WorkbenchGradientHeader */
   scopeFilterBar?: ReactNode;
-  /** When non-null, identity strip shows Today + weather on the thumbnail (dashboard passes briefing weather). */
-  propertyCardWeather?: PropertyCardWeather;
 }
 
 /**
@@ -65,7 +61,6 @@ export function LeftColumn({
   onPropertySelectionChange,
   onOpenIntake,
   scopeFilterBar,
-  propertyCardWeather,
 }: LeftColumnProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -149,18 +144,6 @@ export function LeftColumn({
       <div className="flex-shrink-0 w-full">
         <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-0">
         {scopeFilterBar}
-        {!scopeFilterBar && !hideProperties && properties.length > 1 && !propertiesLoading ? (
-          <div ref={propertiesRef} className="px-[3px] pb-1 pt-0">
-            <PropertySelectorStack
-              properties={properties}
-              tasks={tasks}
-              selectedPropertyIds={selectedPropertyIds}
-              onSelectionChange={setSelectedPropertyIds}
-              onFilterClick={onFilterClick}
-              className="max-w-full sm:max-w-none"
-            />
-          </div>
-        ) : null}
         {isHubHome && !scopeFilterBar && properties.length <= 1 && (
           <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
             <WorkbenchMobileNavCluster />
@@ -200,7 +183,6 @@ export function LeftColumn({
                     setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
                     onFilterClick?.("show-tasks");
                   }}
-                  propertyCardWeather={propertyCardWeather}
                 />
               </div>
             </div>
@@ -239,11 +221,11 @@ export function LeftColumn({
         >
           <div className="px-0 w-full min-w-0 max-w-full overflow-x-visible">
             {tasksLoading ? (
-              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
+              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
+              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
                 <FillaMiniCalendar
                   tasks={tasks}
                   selectedDate={selectedDate}
@@ -259,7 +241,7 @@ export function LeftColumn({
                 id={WORKBENCH_OVERVIEW_TIP_ID}
                 denseRail
                 title="How this column works"
-                description="Pick a date to focus the task list in the middle. Use the property selector above to focus one building, or choose all properties to see everything at once."
+                description="Pick a date to focus the task list in the middle. Use the property selector in the header to focus one building, or choose all properties to see everything at once."
                 onDismiss={() => {
                   try {
                     localStorage.setItem(

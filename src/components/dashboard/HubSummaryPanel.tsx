@@ -60,7 +60,7 @@ function StatusRow({
       </span>
       <span
         className={cn(
-          "inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums",
+          "inline-flex h-6 min-w-6 items-center justify-center rounded-card px-1.5 text-xs font-semibold tabular-nums",
           tone === "danger"
             ? "bg-destructive/10 text-destructive"
             : "bg-muted/50 text-muted-foreground"

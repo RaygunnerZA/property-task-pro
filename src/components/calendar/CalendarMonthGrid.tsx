@@ -199,6 +199,7 @@ type CalendarDayCellProps = {
   selectedTaskId?: string | null;
   propertyMap: Map<string, { nickname?: string; name?: string; address?: string }>;
   isDragging: boolean;
+  isWeekendColumn?: boolean;
 };
 
 function CalendarDayCell({
@@ -211,6 +212,7 @@ function CalendarDayCell({
   selectedTaskId,
   propertyMap,
   isDragging,
+  isWeekendColumn = false,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
@@ -225,7 +227,8 @@ function CalendarDayCell({
       className={cn(
         "relative flex h-full min-h-[118px] flex-col border-b border-r border-white/60 px-[3px] pt-[3px] pb-1.5 text-left",
         !inMonth && "bg-muted/10 text-muted-foreground/50",
-        isDragging && "hover:bg-muted/20"
+        isDragging && "hover:bg-muted/20",
+        isWeekendColumn && "opacity-50"
       )}
     >
       <button
@@ -361,7 +364,7 @@ export function CalendarMonthGrid({
               key={label}
               className={cn(
                 "text-center font-mono text-[10px] font-semibold uppercase tracking-wide",
-                index < 5 ? "text-foreground" : "text-muted-foreground/50"
+                index < 5 ? "text-foreground" : "opacity-50"
               )}
             >
               {label}
@@ -369,8 +372,9 @@ export function CalendarMonthGrid({
           ))}
         </div>
         <div className="grid shrink-0 grid-cols-7 [grid-template-rows:repeat(6,118px)]">
-          {flatDays.map((date) => {
+          {flatDays.map((date, index) => {
             const key = format(date, "yyyy-MM-dd");
+            const isWeekendColumn = index % 7 >= 5;
             return (
               <CalendarDayCell
                 key={key}
@@ -383,6 +387,7 @@ export function CalendarMonthGrid({
                 selectedTaskId={selectedTaskId}
                 propertyMap={propertyMap}
                 isDragging={activePlacement != null}
+                isWeekendColumn={isWeekendColumn}
               />
             );
           })}
