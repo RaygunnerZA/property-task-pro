@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { LAYOUT_BREAKPOINTS } from "./src/lib/layoutBreakpoints";
+import { LAYOUT_BREAKPOINTS, WORKBENCH_SIDE_RAIL_PX, WORK_SURFACE_MAX_PX } from "./src/lib/layoutBreakpoints";
 
 export default {
   darkMode: ["class"],
@@ -23,6 +23,17 @@ export default {
         "space-md": "var(--space-md)",
         "space-lg": "var(--space-lg)",
         "space-xl": "var(--space-xl)",
+      },
+      width: {
+        "workbench-side-rail": `${WORKBENCH_SIDE_RAIL_PX}px`,
+      },
+      maxWidth: {
+        "workbench-side-rail": `${WORKBENCH_SIDE_RAIL_PX}px`,
+      },
+      gridTemplateColumns: {
+        "workbench-dual": `${WORKBENCH_SIDE_RAIL_PX}px minmax(0, 1fr)`,
+        "workbench-center-max": `${WORKBENCH_SIDE_RAIL_PX}px minmax(450px, ${WORK_SURFACE_MAX_PX}px)`,
+        "workbench-triple": `${WORKBENCH_SIDE_RAIL_PX}px ${WORK_SURFACE_MAX_PX}px minmax(0, ${WORKBENCH_SIDE_RAIL_PX}px)`,
       },
       screens: {
         /** Property workspace / compliance: stacked → three-column */

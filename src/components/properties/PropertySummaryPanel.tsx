@@ -9,10 +9,13 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 
 const statNumberClass =
-  "pb-[3px] text-[31px] font-normal tabular-nums leading-none text-teal-600";
+  "pb-1 text-[38px] font-normal tabular-nums leading-none text-teal-600 sm:pb-[3px] sm:text-[30px]";
 
 const statWordClass =
-  "font-mono text-[9px] font-semibold uppercase leading-tight tracking-[0.15px] text-muted-foreground";
+  "w-full font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-muted-foreground sm:text-[10px] sm:tracking-[0.1px]";
+
+const statCellClass =
+  "flex min-w-0 w-full flex-col items-center rounded-[10px] px-2 pb-2.5 pt-3 text-center sm:px-0.5 sm:pb-2 sm:pt-4";
 
 type PropertySummaryPanelProps = {
   property: PropertyForStrip;
@@ -53,7 +56,7 @@ function StatColumn({
 
   if (!onActivate) {
     return (
-      <div className="flex min-w-0 flex-col items-center px-0.5 pb-2 pt-4 text-center">
+      <div className={statCellClass}>
         {inner}
       </div>
     );
@@ -63,7 +66,10 @@ function StatColumn({
     <button
       type="button"
       onClick={onActivate}
-      className="flex min-w-0 flex-col items-center rounded-[10px] px-0.5 pb-2 pt-4 text-center transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className={cn(
+        statCellClass,
+        "transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      )}
     >
       {inner}
     </button>
@@ -81,8 +87,8 @@ function CountRow({
 }) {
   const content = (
     <>
-      <span className="text-[12px] font-medium text-muted-foreground">{label}</span>
-      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-muted/50 px-1 text-[11px] font-semibold tabular-nums text-muted-foreground">
+      <span className="text-[14px] font-medium text-muted-foreground">{label}</span>
+      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-md bg-white px-1 text-[14px] font-semibold tabular-nums text-muted-foreground">
         {count}
       </span>
     </>
@@ -96,7 +102,7 @@ function CountRow({
     <button
       type="button"
       onClick={onActivate}
-      className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left text-sm transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
       {content}
     </button>
@@ -144,7 +150,7 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        <div className="grid grid-cols-4 border-b border-border/30">
+        <div className="grid grid-cols-4 grid-rows-1 divide-x divide-border/30 border-b border-border/30">
           <StatColumn
             value={metrics.openTasks}
             line1="open"
@@ -175,9 +181,9 @@ export function PropertySummaryPanel({
           <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
             <RadialProgress
               value={metrics.completionPct}
-              size={68}
+              size={78}
               thickness={5}
-              innerDiscSize={50}
+              innerDiscSize={57}
               labelMarginLeft={4}
               embed
               visualWeight="soft"
@@ -188,7 +194,7 @@ export function PropertySummaryPanel({
             </p>
           </div>
 
-          <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-2 pr-1 pt-2">
+          <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-2 pr-[10px] pt-2">
             <CountRow label="Messages" count={metrics.messagesCount} onActivate={onOpenMessages} />
             <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
             <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
@@ -198,12 +204,12 @@ export function PropertySummaryPanel({
 
         <div className="grid grid-cols-[auto_1fr] items-start gap-2.5 px-3 py-3">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl rounded-bl-sm bg-primary/15 shadow-sm"
+            className="flex h-9 w-9 shrink-0 items-start justify-end rounded-2xl rounded-bl-sm shadow-sm"
             aria-hidden
           >
             <FillaIcon size={20} className="opacity-90" />
           </div>
-          <div className="min-w-0 space-y-1 text-[11px] leading-snug text-foreground/85">
+          <div className="min-w-0 space-y-1 text-[14px] leading-snug text-foreground/85">
             {summaryLines.map((line) => (
               <p key={line}>{line}</p>
             ))}

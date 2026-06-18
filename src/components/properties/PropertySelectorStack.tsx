@@ -143,7 +143,7 @@ export function PropertySelectorStack({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn("w-full min-w-0 max-w-[252px]", className)}>
+      <div className={cn("w-full min-w-0 max-w-full", className)}>
         <div className="overflow-hidden rounded-[12px] bg-card/60 shadow-e1">
           <div
             className={cn(

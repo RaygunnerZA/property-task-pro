@@ -47,7 +47,7 @@ interface LeftColumnProps {
  * Left Column Component
  * Calendar + Properties
  * 
- * Desktop: Fixed 265px width, sticky on scroll
+ * Desktop: Fixed side rail (~330px), sticky on scroll
  * Mobile: Full width, stacked above RightColumn
  */
 export function LeftColumn({ 
@@ -157,7 +157,7 @@ export function LeftColumn({
               selectedPropertyIds={selectedPropertyIds}
               onSelectionChange={setSelectedPropertyIds}
               onFilterClick={onFilterClick}
-              className="max-w-[247px]"
+              className="max-w-full sm:max-w-none"
             />
           </div>
         ) : null}
@@ -185,7 +185,7 @@ export function LeftColumn({
                   className="mx-0 mb-2 max-sm:px-[12px] sm:mx-0"
                 />
               )}
-              <div className="w-full max-w-[247px]">
+              <div className="w-full max-w-full">
                 <PropertyIdentityStrip
                   key={focusedProperty.id}
                   property={focusedProperty}
@@ -237,13 +237,13 @@ export function LeftColumn({
           ref={calendarRef}
           className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
         >
-          <div className="px-0 w-full min-w-0 max-w-[250px] overflow-x-visible">
+          <div className="px-0 w-full min-w-0 max-w-full overflow-x-visible">
             {tasksLoading ? (
-              <div className="w-full max-w-[252px] rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
+              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
                 <Skeleton className="h-64 w-full" />
               </div>
             ) : (
-              <div className="w-full max-w-[252px] rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
+              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-4 pb-2 pr-0 shadow-none">
                 <FillaMiniCalendar
                   tasks={tasks}
                   selectedDate={selectedDate}

@@ -244,7 +244,7 @@ export function PropertyIdentityStrip({
           }}
         />
 
-        <div className="p-0">
+        <div className="px-[10px] py-0">
           <PropertySummaryPanel
             property={property}
             tasks={propertyTasksView}

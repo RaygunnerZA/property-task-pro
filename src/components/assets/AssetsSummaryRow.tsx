@@ -110,7 +110,7 @@ export function AssetsSummaryRow({
   }, [assets]);
 
   return (
-    <div className="flex w-full max-w-[265px] min-w-0 flex-col gap-2.5 px-0">
+    <div className="flex w-full max-w-full min-w-0 flex-col gap-2.5 px-0">
       <AssetMetricTile
         title="Active Assets"
         count={counts.active}

@@ -13,16 +13,16 @@ interface DualPaneLayoutProps {
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
  * Narrow (< sm): stacked calendar + tasks
- * sm–layout: 265px | tasks (max 700px)
- * layout+: 265px | tasks (700px) [| optional third column — minmax(0,1fr)]
+ * sm–layout: 330px side rail | tasks (max 700px)
+ * layout+: 330px | tasks (700px) [| optional third column — max 330px]
  */
 export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
 
   const stickyColClass = hasHeader
-    ? "sm:sticky sm:top-[var(--header-height)] sm:h-[calc(100vh-var(--header-height))] sm:w-[265px] sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]"
-    : "sm:sticky sm:top-0 sm:h-screen sm:w-[265px] sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]";
+    ? "sm:sticky sm:top-[var(--header-height)] sm:h-[calc(100vh-var(--header-height))] sm:w-workbench-side-rail sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]"
+    : "sm:sticky sm:top-0 sm:h-screen sm:w-workbench-side-rail sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]";
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
@@ -31,10 +31,10 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
       <div
         className={cn(
           "flex min-h-0 w-full min-w-0 flex-1 flex-col",
-          "sm:grid sm:min-h-0 sm:grid-cols-[265px_1fr]",
+          "sm:grid sm:min-h-0 sm:grid-cols-workbench-dual",
           hasThirdColumn
-            ? "layout:grid layout:grid-cols-[265px_700px_minmax(0,1fr)]"
-            : "layout:grid layout:grid-cols-[265px_minmax(450px,_700px)]"
+            ? "layout:grid layout:grid-cols-workbench-triple"
+            : "layout:grid layout:grid-cols-workbench-center-max"
         )}
       >
         <div
@@ -59,7 +59,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {hasThirdColumn && (
-          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:overflow-x-hidden layout:overflow-y-auto">
+          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto">
             {thirdColumn}
           </div>
         )}

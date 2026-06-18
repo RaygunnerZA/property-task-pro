@@ -6,7 +6,7 @@
  * - `sm` (640px): hub dual-pane (calendar/properties | tasks) — see `workbenchTwoColumn`.
  * - `sidebarRail` / Tailwind `lg` (1024px): persistent app nav rail vs offcanvas drawer.
  * - `workspace`: property hub modules (three columns).
- * - `layout`: app shell three-column dashboard / property right rail (1420px; 265 + 700 work surface + third rail).
+ * - `layout`: app shell three-column dashboard / property right rail (1480px; side rail + 700 work surface + side rail).
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
  */
 export const LAYOUT_BREAKPOINTS = {
@@ -22,8 +22,11 @@ export const LAYOUT_BREAKPOINTS = {
   /** Property workspace / compliance: stacked → three-column */
   workspace: 1100,
   /** App shell: two-column tablet → three-column desktop */
-  layout: 1420,
+  layout: 1480,
 } as const;
+
+/** Hub left / right rails on desktop (DualPaneLayout, WorkbenchGradientHeader). */
+export const WORKBENCH_SIDE_RAIL_PX = 330;
 
 /** Hub / workbench middle column max width (DualPaneLayout, PropertyScreenLayout, etc.) */
 export const WORK_SURFACE_MAX_PX = 700;

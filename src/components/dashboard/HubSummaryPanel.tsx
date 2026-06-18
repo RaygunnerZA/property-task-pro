@@ -114,14 +114,14 @@ export function HubSummaryPanel({
 
   if (loading) {
     return (
-      <div className={cn("w-full max-w-[252px]", className)}>
+      <div className={cn("w-full max-w-full", className)}>
         <Skeleton className="h-[244px] w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className={cn("w-full max-w-[252px]", className)}>
+    <div className={cn("w-full max-w-full", className)}>
       <div className="h-[244px] w-full rounded-xl border border-border/40 bg-card/60 shadow-e1">
         {/* Top stats row */}
         <div className="grid grid-cols-3 pt-0">

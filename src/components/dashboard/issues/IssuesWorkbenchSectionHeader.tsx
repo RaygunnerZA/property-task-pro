@@ -67,7 +67,7 @@ export function IssuesWorkbenchSectionHeader({
     <div className={cn("min-w-0 px-0.5", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="text-base font-semibold leading-tight text-foreground">{title}</h2>
+          <h2 className="text-lg font-semibold leading-tight text-foreground">{title}</h2>
           {typeof count === "number" ? (
             <span
               className={cn(
