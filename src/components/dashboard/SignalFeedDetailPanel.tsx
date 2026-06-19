@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { columnShellClass, slideOverPanelClass } from "@/lib/layoutClasses";
 import type { SignalKind } from "@/types/workbenchSignals";
 import { ISSUES_STREAM_META_CLASSNAME } from "@/components/dashboard/OperationalStreamCard";
 import type { IntakeMode } from "@/types/intake";
@@ -159,7 +160,7 @@ export function SignalFeedDetailPanel({
   );
 
   if (variant === "column") {
-    return <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">{panelInner}</div>;
+    return <div className={cn(columnShellClass, "overflow-hidden bg-card")}>{panelInner}</div>;
   }
 
   return (
@@ -167,7 +168,7 @@ export function SignalFeedDetailPanel({
       <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={onClose} aria-hidden="true" />
       <div
         className={cn(
-          "fixed right-0 top-0 z-50 flex h-full w-full flex-col bg-card shadow-2xl md:w-[min(100%,480px)]",
+          slideOverPanelClass,
           "transform transition-transform duration-300 ease-out translate-x-0"
         )}
       >

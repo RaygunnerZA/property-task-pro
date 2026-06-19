@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { dialogContent960Class, dialogContentXWideClass } from "@/lib/layoutClasses";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   DropdownMenu,
@@ -412,7 +413,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className={cn(dialogContentXWideClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
           <DialogHeader className="sr-only">
             <DialogTitle>Loading Asset</DialogTitle>
           </DialogHeader>
@@ -427,7 +428,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   if (error || !asset) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className={cn(dialogContentXWideClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Error</DialogTitle>
           </DialogHeader>
@@ -447,7 +448,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="max-w-[960px] max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture">
+        <DialogContent className={cn(dialogContent960Class, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}>
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Details</DialogTitle>
             <DialogDescription>View and edit asset details</DialogDescription>

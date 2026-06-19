@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { sideSheetDesktopWidthClass } from "@/lib/layoutClasses";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
@@ -146,7 +147,7 @@ export function DocumentDetailDrawer({
     <Sheet open={!!documentId} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className={cn("w-[420px] max-w-[480px] overflow-y-auto p-0 flex flex-col")}
+        className={cn(sideSheetDesktopWidthClass, "overflow-y-auto p-0 flex flex-col")}
       >
         <SheetHeader className="p-4 border-b border-border/20 shrink-0">
           <div className="flex items-center justify-between">

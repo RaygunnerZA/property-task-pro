@@ -4033,7 +4033,7 @@ export function IntakeModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-w-lg max-h-[90vh] flex flex-col p-0 gap-0",
+          "max-h-[90vh] flex flex-col p-0 gap-0",
           "rounded-xl border-0 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"
         )}
         style={{

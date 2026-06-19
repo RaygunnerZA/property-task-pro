@@ -38,7 +38,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
   return (
     <div
       className={cn(
-        "flex flex-col bg-background rounded-[12px] shadow-none border-0 overflow-visible mx-0 box-content px-0",
+        "flex flex-col bg-background rounded-[12px] shadow-none border-0 overflow-visible mx-0 box-border min-w-0 w-full max-w-full px-0",
         className
       )}
       style={PAPER_TEXTURE_STYLE}

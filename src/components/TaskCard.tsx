@@ -15,6 +15,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
+import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
+import { isStaffTrainingTask } from "@/lib/staffTraining";
 import { OverlappingAvatars, APP_USER_AVATAR_SIZE } from "@/components/tasks/UserAvatar";
 import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
 import { resolveTaskAssigneeUsers } from "@/lib/userDisplayHelpers";
@@ -270,6 +272,11 @@ function TaskCardComponent({
     !metaCompact || task?.priority === "high" || task?.priority === "urgent";
   const dueUrgency = getTaskDueUrgency(task);
   const dueDateRaw = task?.due_date ?? t.due_at;
+  const educationChipLabel = isStaffTrainingTask(task)
+    ? "Learn Filla"
+    : isOnboardingDemoTask(task)
+      ? "Example"
+      : null;
   const dueFormattedLabel = dueDateRaw ? formatTaskDate(dueDateRaw) : null;
   const dueRelativeLabel = formatTaskDueRelative(dueDateRaw);
   const propertyLabel =
@@ -347,10 +354,19 @@ function TaskCardComponent({
           )}
           
           {/* Task Title */}
-          <div className="flex justify-start items-center gap-2 min-h-[44px]">
+          <div className="flex justify-start items-center gap-2 min-h-[44px] flex-wrap">
             <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
               {t.title}
             </h3>
+            {educationChipLabel ? (
+              <Badge
+                variant="neutral"
+                size="sm"
+                className="h-[20px] shrink-0 border-0 bg-[#8EC9CE]/15 px-1.5 text-[9px] font-mono font-semibold uppercase tracking-wide text-[#5a9ea3]"
+              >
+                {educationChipLabel}
+              </Badge>
+            ) : null}
           </div>
 
           {/* Property Icon + Space + Date/Time + Teams + Avatars */}

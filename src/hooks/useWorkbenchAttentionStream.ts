@@ -31,6 +31,8 @@ export type UseWorkbenchAttentionStreamOptions = {
   selectedPropertyIds?: Set<string>;
   onTabChange?: (tab: string) => void;
   onRecordsViewChange?: (view: RecordsView) => void;
+  /** When true, skip dev signal fixtures; education UI uses dedicated fixtures. */
+  onboardingEducationMode?: boolean;
 };
 
 function propertyLabel(
@@ -47,6 +49,7 @@ export function useWorkbenchAttentionStream({
   selectedPropertyIds,
   onTabChange,
   onRecordsViewChange,
+  onboardingEducationMode = false,
 }: UseWorkbenchAttentionStreamOptions) {
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
   const propertySubsetSelected = isPropertySubsetSelected(selectedPropertyIds, allPropertyIds);
@@ -149,7 +152,7 @@ export function useWorkbenchAttentionStream({
   ]);
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
-    const includeFixtures = signalUiFixturesEnabled && !propertySubsetSelected;
+    const includeFixtures = signalUiFixturesEnabled && !propertySubsetSelected && !onboardingEducationMode;
     const fixtureUrgent = includeFixtures
       ? SIGNAL_UI_FIXTURES_URGENT.map(mapSignalFixtureToAttentionItem)
       : [];
@@ -257,6 +260,7 @@ export function useWorkbenchAttentionStream({
     properties,
     propertySubsetSelected,
     signalUiFixturesEnabled,
+    onboardingEducationMode,
   ]);
 
   const unresolvedAttentionItems = useMemo(

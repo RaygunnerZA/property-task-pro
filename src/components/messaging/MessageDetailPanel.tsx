@@ -6,6 +6,7 @@ import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { columnShellClass, slideOverPanelWideClass } from "@/lib/layoutClasses";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -131,7 +132,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
 
     if (variant === "column") {
       return (
-        <div className="h-full flex flex-col bg-card">
+        <div className={cn(columnShellClass, "h-full bg-card")}>
           {loadingContent}
         </div>
       );
@@ -146,11 +147,8 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
         />
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-full md:w-[600px]",
-            "bg-card shadow-2xl z-50",
-            "flex flex-col",
-            "transform transition-transform duration-300 ease-out",
-            "translate-x-0"
+            slideOverPanelWideClass,
+            "transform transition-transform duration-300 ease-out translate-x-0"
           )}
         >
           {loadingContent}
@@ -177,7 +175,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
 
     if (variant === "column") {
       return (
-        <div className="h-full flex flex-col bg-card">
+        <div className={cn(columnShellClass, "h-full bg-card")}>
           {errorContent}
         </div>
       );
@@ -192,11 +190,8 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
         />
         <div
           className={cn(
-            "fixed right-0 top-0 h-full w-full md:w-[600px]",
-            "bg-card shadow-2xl z-50",
-            "flex flex-col",
-            "transform transition-transform duration-300 ease-out",
-            "translate-x-0"
+            slideOverPanelWideClass,
+            "transform transition-transform duration-300 ease-out translate-x-0"
           )}
         >
           {errorContent}
@@ -449,7 +444,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
   if (variant === "column") {
     // Column variant: render as regular div (no backdrop, no fixed positioning)
     return (
-      <div className="h-full flex flex-col bg-card">
+      <div className={cn(columnShellClass, "h-full bg-card")}>
         {panelContent}
       </div>
     );
@@ -468,11 +463,8 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
       {/* Panel */}
       <div
         className={cn(
-          "fixed right-0 top-0 h-full w-full md:w-[600px]",
-          "bg-card shadow-2xl z-50",
-          "flex flex-col",
-          "transform transition-transform duration-300 ease-out",
-          "translate-x-0"
+          slideOverPanelWideClass,
+          "transform transition-transform duration-300 ease-out translate-x-0"
         )}
       >
         {panelContent}

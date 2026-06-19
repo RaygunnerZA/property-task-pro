@@ -59,7 +59,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         </div>
 
         {hasThirdColumn && (
-          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto">
+          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto">
             {thirdColumn}
           </div>
         )}

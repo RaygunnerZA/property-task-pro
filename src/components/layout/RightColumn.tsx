@@ -6,6 +6,7 @@ import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
+import { cn } from "@/lib/utils";
 
 interface RightColumnProps {
   children?: ReactNode;
@@ -30,8 +31,10 @@ interface RightColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
 }
 
+import { columnShellClass } from "@/lib/layoutClasses";
+
 const panelShellClass =
-  "flex-1 min-h-0 min-w-0 w-full sm:w-auto rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]";
+  cn(columnShellClass, "rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]");
 
 const panelShellStyle = {
   background:
@@ -144,7 +147,7 @@ export function RightColumn({
   };
 
   return (
-    <div className="h-full flex flex-col min-w-0 px-0 w-full sm:w-auto">
+    <div className={cn(columnShellClass, "h-full px-0 sm:w-auto")}>
       <div className={panelShellClass} style={panelShellStyle}>
         {children || renderCentre()}
       </div>

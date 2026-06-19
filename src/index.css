@@ -248,6 +248,15 @@
     background-size: 100% !important;
   }
 
+  /* Narrow viewports: cap centered dialogs/sheets to viewport minus gutter */
+  @media (max-width: 639px) {
+    .dialog-content[role="dialog"] {
+      width: min(100%, calc(100vw - 2rem)) !important;
+      max-width: min(100%, calc(100vw - 2rem)) !important;
+      min-width: 0 !important;
+    }
+  }
+
   /* Apply to specific background color classes */
   .bg-\[#F2F2EE\],
   .bg-\[#F4F3F0\],

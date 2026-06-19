@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/filla/Button";
+import { dialogContentWideClass } from "@/lib/layoutClasses";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -185,7 +187,7 @@ export function PropertyImageDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className={cn(dialogContentWideClass, "max-h-[90vh]")}>
           <DialogHeader>
             <DialogTitle>Property Image</DialogTitle>
             <DialogDescription>View, archive, or replace the property image</DialogDescription>

@@ -59,6 +59,8 @@ export interface AttentionItem {
   reviewBanner?: string;
   whyHere?: string;
   isUiFixture?: boolean;
+  /** Onboarding / education example row (not real operational data). */
+  isOnboardingExample?: boolean;
   fixtureActions?: {
     primary: { id: string; label: string };
     secondary?: { id: string; label: string }[];

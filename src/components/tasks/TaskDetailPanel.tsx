@@ -34,6 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { columnShellClass, dialogContentWideClass } from "@/lib/layoutClasses";
 import { useDataContext } from "@/contexts/DataContext";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
@@ -976,7 +977,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const panelWrapper = (content: ReactNode, title?: string) => {
     if (variant === "column") {
       return (
-        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden rounded-[12px] shadow-none border-0 bg-background">
+        <div className={cn(columnShellClass, "overflow-hidden rounded-[12px] shadow-none border-0 bg-background")}>
           {content}
         </div>
       );
@@ -990,7 +991,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         }}
       >
         <DialogContent
-          className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col p-0"
+          className="max-h-[90vh] overflow-hidden flex flex-col p-0 min-w-0"
           aria-describedby="task-detail-panel-desc"
         >
           <DialogHeader className="sr-only">
@@ -1578,7 +1579,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     />
 
     <Dialog open={Boolean(selectedDocument)} onOpenChange={(open) => !open && setSelectedDocument(null)}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+      <DialogContent className={cn(dialogContentWideClass, "max-h-[90vh] p-0 overflow-hidden")}>
         <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/20">
           <DialogTitle className="truncate text-base">
             {selectedDocument?.file_name || "Document"}

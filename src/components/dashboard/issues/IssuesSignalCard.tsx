@@ -75,6 +75,10 @@ function runFixtureAction(
       else onOpenIntake?.("add_record");
       resolveAttentionItem(item.id);
       break;
+    case "onboarding-quick-win":
+      onOpenIntake?.("add_record");
+      resolveAttentionItem(item.id);
+      break;
     default:
       resolveAttentionItem(item.id);
   }
