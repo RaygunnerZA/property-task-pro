@@ -132,21 +132,6 @@ export function OnboardingSpaceGroupCard({
     const names: string[] = [];
     const seen = new Set<string>();
 
-    // #region agent log
-    const badSuggested = group.suggestedSpaces
-      .map((n, i) => ({ i, n, type: typeof n }))
-      .filter((x) => typeof x.n !== "string" || !x.n.trim());
-    const badExtras = extraSpaces.map((e, i) => ({
-      i,
-      e,
-      type: typeof e,
-      nameType: typeof (e as GroupExtraSpace)?.name,
-    })).filter((x) => typeof x.e !== "object" || x.e === null || typeof (x.e as GroupExtraSpace).name !== "string" || !(x.e as GroupExtraSpace).name.trim());
-    if (badSuggested.length > 0 || badExtras.length > 0) {
-      fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'83d644'},body:JSON.stringify({sessionId:'83d644',hypothesisId:'H1-H3',location:'OnboardingSpaceGroupCard.tsx:visibleSpaceNames',message:'bad space entries before crash',data:{groupId:group.id,badSuggested,badExtras,extraSpacesLen:extraSpaces.length,suggestedLen:group.suggestedSpaces.length},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
-
     for (const name of group.suggestedSpaces) {
       if (typeof name !== "string" || !name.trim()) continue;
       const sourceKey = name.toLowerCase().trim();

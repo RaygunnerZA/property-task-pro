@@ -48,9 +48,6 @@ export function useBuildingPlans(propertyId?: string) {
     queryKey: ["building-plans", "files", orgId, propertyId],
     enabled: Boolean(orgId && propertyId),
     queryFn: async (): Promise<PlanFile[]> => {
-      // #region agent log
-      fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cdfb97'},body:JSON.stringify({sessionId:'cdfb97',hypothesisId:'gate-hook',location:'useBuildingPlans.ts:filesQuery',message:'property_plan_files query FIRED',data:{orgId,propertyId},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const { data, error } = await db
         .from("property_plan_files")
         .select("id, file_name, status, page_count, created_at, error_message")
@@ -66,9 +63,6 @@ export function useBuildingPlans(propertyId?: string) {
     queryKey: ["building-plans", "latest-run-by-file", orgId, propertyId],
     enabled: Boolean(orgId && propertyId),
     queryFn: async (): Promise<Record<string, ExtractionRun>> => {
-      // #region agent log
-      fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cdfb97'},body:JSON.stringify({sessionId:'cdfb97',hypothesisId:'gate-hook',location:'useBuildingPlans.ts:latestRunByFileQuery',message:'plan_extraction_runs query FIRED',data:{orgId,propertyId},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const { data, error } = await db
         .from("plan_extraction_runs")
         .select("id, plan_file_id, status, created_at, completed_at")

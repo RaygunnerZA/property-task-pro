@@ -31,7 +31,7 @@ import { APP_VERSION } from '@/config/version';
 // Property context — deep links (workbench home is global Home + scope chips)
 const propertyContextItems = [
   {
-    title: 'Issues',
+    title: 'Attention',
     icon: CheckSquare,
     getUrl: (id: string) => propertyHubIssuesPath(id),
   },
@@ -180,7 +180,7 @@ export function AppSidebar() {
     const liveRecordsView = normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
 
     const isActive = isContextItem
-      ? item.title === 'Issues'
+      ? item.title === 'Attention'
         ? currentPath === '/issues' && searchParams.get('property') === hubPropertyId
         : item.title === 'Compliance'
           ? currentPath === '/records' &&

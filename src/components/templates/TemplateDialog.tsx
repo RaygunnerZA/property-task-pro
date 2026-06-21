@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { SubtaskList, SubtaskData } from "@/components/tasks/subtasks";
 import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
+import { StarterTemplateCallout } from "@/components/templates/StarterTemplateCallout";
 
 export const CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; label: string }> = [
   { value: "compliance", label: "Compliance" },
@@ -40,6 +41,9 @@ interface TemplateDialogProps {
   initialValue?: Partial<TemplateDialogValue>;
   onSubmit: (value: TemplateDialogValue) => Promise<void>;
   loading?: boolean;
+  /** When editing a library copy of a starting template */
+  showStartingTemplateCallout?: boolean;
+  isRegulatedArea?: boolean;
 }
 
 function makeItem(title = ""): SubtaskData {
@@ -53,6 +57,8 @@ export function TemplateDialog({
   initialValue,
   onSubmit,
   loading = false,
+  showStartingTemplateCallout = false,
+  isRegulatedArea = false,
 }: TemplateDialogProps) {
   const [name, setName] = useState(initialValue?.name ?? "");
   const [category, setCategory] = useState<ChecklistTemplateCategory>(
@@ -95,6 +101,11 @@ export function TemplateDialog({
           <DialogTitle className="text-lg font-semibold">
             {mode === "create" ? "New Checklist Template" : "Edit Template"}
           </DialogTitle>
+          {showStartingTemplateCallout && (
+            <div className="pt-2">
+              <StarterTemplateCallout isRegulatedArea={isRegulatedArea} />
+            </div>
+          )}
         </DialogHeader>
 
         <div className="px-6 pb-2 space-y-5">

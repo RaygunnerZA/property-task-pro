@@ -110,6 +110,7 @@ export function CreateTaskModal({
     handlePropertyChange,
     rememberRecentTemplate,
     importTemplateItems,
+    importStarterPreset,
     openTemplateDialog,
     submitTemplateDialog,
     archiveActiveTemplate,
@@ -283,6 +284,7 @@ export function CreateTaskModal({
           recentTemplateIds={recentTemplateIds}
           activeTemplateName={activeTemplate?.name ?? null}
           onUseTemplate={importTemplateItems}
+          onUseStarterPreset={importStarterPreset}
           onSaveAsTemplate={() => openTemplateDialog("save")}
           onEditTemplate={() => openTemplateDialog("edit")}
           onDuplicateTemplate={() => openTemplateDialog("duplicate")}

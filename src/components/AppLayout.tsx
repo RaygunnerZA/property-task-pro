@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect, lazy, Suspense } from 'react';
+import { ReactNode, useRef, useEffect, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -27,9 +27,10 @@ function MobileAssistantButton() {
 import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { isDevBuild } from '@/context/DevModeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { lazyWithRetry } from '@/lib/lazyWithRetry';
 
-const AIDebugPanel = lazy(() => import('@/components/dev/AIDebugPanel'));
-const ViewportSimulator = lazy(() => import('@/components/dev/ViewportSimulator'));
+const AIDebugPanel = lazyWithRetry(() => import('@/components/dev/AIDebugPanel'));
+const ViewportSimulator = lazyWithRetry(() => import('@/components/dev/ViewportSimulator'));
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -44,6 +45,7 @@ export function AppLayout({
     pathname === '/' ||
     pathname === '' ||
     pathname === '/issues' ||
+    pathname === '/attention' ||
     pathname === '/records' ||
     pathname === '/agenda';
 

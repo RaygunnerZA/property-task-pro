@@ -224,7 +224,9 @@ export function CreateTaskDialogs({
                 if (!pendingTemplateImport) return;
                 setTemplateId(pendingTemplateImport.templateId);
                 setSubtasks((prev) => [...prev, ...pendingTemplateImport.subtasks]);
-                rememberRecentTemplate(pendingTemplateImport.templateId);
+                if (pendingTemplateImport.templateId) {
+                  rememberRecentTemplate(pendingTemplateImport.templateId);
+                }
                 const n = pendingTemplateImport.subtasks.length;
                 toast({ title: "Checklist appended", description: `${n} item${n === 1 ? "" : "s"} added from "${pendingTemplateImport.templateName}".` });
                 setPendingTemplateImport(null);
@@ -237,7 +239,9 @@ export function CreateTaskDialogs({
                 if (!pendingTemplateImport) return;
                 setTemplateId(pendingTemplateImport.templateId);
                 setSubtasks(pendingTemplateImport.subtasks);
-                rememberRecentTemplate(pendingTemplateImport.templateId);
+                if (pendingTemplateImport.templateId) {
+                  rememberRecentTemplate(pendingTemplateImport.templateId);
+                }
                 const n = pendingTemplateImport.subtasks.length;
                 toast({ title: "Checklist imported", description: `${n} item${n === 1 ? "" : "s"} loaded from "${pendingTemplateImport.templateName}".` });
                 setPendingTemplateImport(null);

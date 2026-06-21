@@ -1,12 +1,12 @@
 import { ReactNode } from "react";
 import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { HomeWorkbenchCentre } from "@/components/workbench/HomeWorkbenchCentre";
-import { IssuesTriagePanel } from "@/components/workbench/IssuesTriagePanel";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { cn } from "@/lib/utils";
+import { columnShellClass } from "@/lib/layoutClasses";
 
 interface RightColumnProps {
   children?: ReactNode;
@@ -31,8 +31,6 @@ interface RightColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
 }
 
-import { columnShellClass } from "@/lib/layoutClasses";
-
 const panelShellClass =
   cn(columnShellClass, "rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]");
 
@@ -43,7 +41,7 @@ const panelShellStyle = {
 
 /**
  * Product centre column (DualPaneLayout `rightColumn`).
- * Home → My Work; /issues → signal triage; /records & /agenda → TaskPanel.
+ * Home → org-wide Attention; `/issues` → property Attention hub; `/records` & `/agenda` → TaskPanel.
  */
 export function RightColumn({
   children,
@@ -101,23 +99,14 @@ export function RightColumn({
 
     if (workbenchPanel === "issues") {
       return (
-        <IssuesTriagePanel
-          tasks={tasks}
-          properties={properties}
-          tasksLoading={tasksLoading}
-          onTaskClick={onTaskClick}
+        <HomeWorkbenchCentre
+          {...sharedTaskListProps}
+          onTabChange={onTabChange}
+          onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
-          selectedItem={selectedItem}
-          filterToApply={filterToApply}
-          filtersToApply={filtersToApply}
-          issuesFilter={issuesFilter}
-          onIssuesFilterChange={onIssuesFilterChange}
-          selectedPropertyIds={selectedPropertyIds}
-          onOpenIntake={onOpenIntake}
-          onTabChange={onTabChange}
           onRecordsViewChange={onRecordsViewChange}
-          pageTitle="Issues"
+          hideViewAllLinks
         />
       );
     }

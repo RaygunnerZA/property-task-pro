@@ -23,6 +23,11 @@ import { getEffectiveDefaultPropertyId } from "@/lib/propertySelectorPreferences
 import type { IntakeMode } from "@/types/intake";
 import {
   ISSUES_OPEN_TASK_FILTER_IDS,
+  propertyHubAssetsPath,
+  propertyHubIssuesPath,
+  propertyHubPeoplePath,
+  propertyHubRecordsPath,
+  propertyHubSpacesPath,
   WORKBENCH_ISSUES_FILTER_QUERY,
   WORKBENCH_PANEL_TAB_QUERY,
   WORKBENCH_RECORDS_VIEW_QUERY,
@@ -340,6 +345,21 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     navigateToWorkbenchSection(merged);
   }, [workbenchPanel, searchParams, navigateToWorkbenchSection]);
 
+  /** Property-scoped hub lives on `/issues` (Attention) — redirect legacy `/?property=`. */
+  useEffect(() => {
+    if (workbenchPanel !== "home") return;
+    const pid = searchParams.get("property");
+    if (!pid) return;
+    if (searchParams.get(WORKBENCH_PANEL_TAB_QUERY) || searchParams.get(WORKBENCH_TAB_ALIAS_QUERY)) {
+      return;
+    }
+    const params = workbenchSearchParamsFromBrowser(searchParams);
+    params.delete(WORKBENCH_PANEL_TAB_QUERY);
+    params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+    const qs = params.toString();
+    navigate(`/issues${qs ? `?${qs}` : ""}`, { replace: true });
+  }, [workbenchPanel, searchParams, navigate]);
+
   // When property scope changes on a dedicated workbench page, strip stale panelTab query keys.
   useEffect(() => {
     if (!isDedicatedWorkbench || properties.length === 0) return;
@@ -493,29 +513,44 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     }
   };
 
+  const resolveScopedPropertyId = useCallback((): string | null => {
+    if (selectedPropertyIds.size === 1) {
+      return Array.from(selectedPropertyIds)[0];
+    }
+    return searchParams.get("property");
+  }, [selectedPropertyIds, searchParams]);
+
   const handleFilterClick = (filterId: string) => {
+    const pid = resolveScopedPropertyId();
+
     if (filterId === "show-spaces-urgent") {
-      const pid =
-        selectedPropertyIds.size === 1
-          ? Array.from(selectedPropertyIds)[0]
-          : searchParams.get("property");
-      if (pid) navigate(`/properties/${pid}/spaces/organise?workTab=issues&urgent=1`);
+      if (pid) navigate(`${propertyHubSpacesPath(pid)}?workTab=issues&urgent=1`);
       return;
     }
     if (filterId === "show-assets-attention") {
-      const pid =
-        selectedPropertyIds.size === 1
-          ? Array.from(selectedPropertyIds)[0]
-          : searchParams.get("property");
-      if (pid) navigate(`/assets?property=${encodeURIComponent(pid)}&attention=1`);
+      if (pid) navigate(`${propertyHubAssetsPath(pid)}&attention=1`);
       return;
     }
     if (filterId === "show-spaces") {
-      navigate("/manage/spaces");
+      if (pid) navigate(propertyHubSpacesPath(pid));
+      else navigate("/properties");
       return;
     }
     if (filterId === "show-assets") {
-      navigate("/assets");
+      if (pid) navigate(propertyHubAssetsPath(pid));
+      else navigate("/assets");
+      return;
+    }
+    if (filterId === "show-people") {
+      navigate(pid ? propertyHubPeoplePath(pid) : "/settings/team");
+      return;
+    }
+    if (filterId === "show-records") {
+      if (pid) {
+        navigate(propertyHubRecordsPath(pid));
+        return;
+      }
+      handleWorkbenchTabChange("records");
       return;
     }
 
@@ -723,6 +758,29 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     return "all";
   }, [selectedPropertyIds]);
 
+  /** Property hub / ?property= scope — no assignee or due-date defaults (Anyone, any date). */
+  const workbenchPropertyScopeId = useMemo(() => {
+    const pid = searchParams.get("property");
+    if (pid) return pid;
+    if (properties.length === 1) return properties[0].id;
+    if (
+      selectedPropertyIds.size === 1 &&
+      properties.length > 0 &&
+      !isAllPropertiesActive(selectedPropertyIds, properties.map((p) => p.id))
+    ) {
+      return Array.from(selectedPropertyIds)[0];
+    }
+    return null;
+  }, [searchParams, properties, selectedPropertyIds]);
+
+  const useEmptyWorkbenchFilters =
+    workbenchPanel === "home" || workbenchPropertyScopeId != null;
+
+  const workbenchControlsKey =
+    workbenchPanel === "home"
+      ? "home"
+      : `${workbenchPanel}-${workbenchPropertyScopeId ?? "org"}`;
+
   const handleAskFilla = useCallback(
     (query: string) => {
       openAssistant();
@@ -737,8 +795,9 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
 
   return (
     <WorkbenchControlsProvider
+      key={workbenchControlsKey}
       defaultPropertyId={defaultWorkbenchPropertyId}
-      initialFilters={workbenchPanel === "home" ? new Set<string>() : undefined}
+      initialFilters={useEmptyWorkbenchFilters ? new Set<string>() : undefined}
     >
       <WorkbenchFiltersSync
         filterIds={effectiveTaskListFiltersToApply}

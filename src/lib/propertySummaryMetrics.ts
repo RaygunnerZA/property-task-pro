@@ -1,4 +1,5 @@
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { isTaskMissingInfo } from "@/lib/hubSummaryMetrics";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 
 const TERMINAL_STATUSES = new Set(["completed", "archived", "done"]);
@@ -22,8 +23,13 @@ type PropertyLike = {
 export type PropertySummaryMetrics = {
   urgentItems: number;
   openTasks: number;
+  dueSoonTasks: number;
+  incompleteTasks: number;
   complianceReviews: number;
+  complianceDueSoon: number;
   upcomingInspections: number;
+  dueSoonInspections: number;
+  overdueInspections: number;
   spacesCount: number;
   assetsCount: number;
   documentsCount: number;
@@ -68,6 +74,49 @@ function countUpcomingInspections(tasks: TaskLike[], documents: PropertyDocument
   return docCount + taskCount;
 }
 
+function countComplianceDueSoon(documents: PropertyDocument[]): number {
+  const today = new Date().toISOString().split("T")[0];
+  const in30 = new Date();
+  in30.setDate(in30.getDate() + 30);
+  const in30Str = in30.toISOString().split("T")[0];
+
+  return documents.filter(
+    (d) => d.expiry_date && d.expiry_date >= today && d.expiry_date <= in30Str
+  ).length;
+}
+
+function countInspectionUrgency(tasks: TaskLike[], documents: PropertyDocument[]) {
+  const today = new Date().toISOString().split("T")[0];
+
+  let dueSoonInspections = 0;
+  let overdueInspections = 0;
+
+  for (const task of tasks) {
+    if (!isOpenTask(task) || !isInspectionLike(task.title)) continue;
+    const urgency = getTaskDueUrgency(task);
+    if (urgency === "due_soon") dueSoonInspections++;
+    if (urgency === "overdue") overdueInspections++;
+  }
+
+  for (const doc of documents) {
+    if (!isInspectionLike(doc.title) && !isInspectionLike(doc.document_type) && !isInspectionLike(doc.category)) {
+      continue;
+    }
+    if (!doc.expiry_date) continue;
+    if (doc.expiry_date < today) {
+      overdueInspections++;
+    } else {
+      const in7 = new Date();
+      in7.setDate(in7.getDate() + 7);
+      if (doc.expiry_date <= in7.toISOString().split("T")[0]) {
+        dueSoonInspections++;
+      }
+    }
+  }
+
+  return { dueSoonInspections, overdueInspections };
+}
+
 function countComplianceReviews(
   property: PropertyLike,
   documents: PropertyDocument[]
@@ -97,6 +146,16 @@ export function computePropertySummaryMetrics(
   }).length;
   const urgentItems = Math.max(urgentOpenTaskCount, urgentFromTasks);
 
+  let dueSoonTasks = 0;
+  let incompleteTasks = 0;
+  for (const task of tasks) {
+    if (!isOpenTask(task)) continue;
+    if (getTaskDueUrgency(task) === "due_soon") dueSoonTasks++;
+    if (isTaskMissingInfo(task)) incompleteTasks++;
+  }
+
+  const { dueSoonInspections, overdueInspections } = countInspectionUrgency(tasks, documents);
+
   const doneCount = tasks.filter((t) => {
     const status = (t.status ?? "").toLowerCase();
     return status === "completed" || status === "done";
@@ -108,8 +167,13 @@ export function computePropertySummaryMetrics(
   return {
     urgentItems,
     openTasks,
+    dueSoonTasks,
+    incompleteTasks,
     complianceReviews: countComplianceReviews(property, documents),
+    complianceDueSoon: countComplianceDueSoon(documents),
     upcomingInspections: countUpcomingInspections(tasks, documents),
+    dueSoonInspections,
+    overdueInspections,
     spacesCount: property.spaces_count ?? 0,
     assetsCount: property.assets_count ?? 0,
     documentsCount: documents.length,

@@ -49,6 +49,7 @@ export type WorkbenchIssuesFilter = "all" | "urgent" | "open" | "done";
 
 const LEGACY_PANEL_TAB_MAP: Record<string, WorkbenchPanelTab> = {
   attention: "issues",
+  issues: "issues",
   tasks: "issues",
   compliance: "records",
 };
@@ -87,18 +88,6 @@ export const ISSUES_OPEN_TASK_FILTER_IDS = [
   "filter-status-blocked",
 ] as const;
 
-/** Canonical URL for the property hub (Home) with optional query params. */
-export function propertyHubPath(propertyId: string, extra?: Record<string, string>): string {
-  const q = new URLSearchParams();
-  q.set("property", propertyId);
-  if (extra) {
-    for (const [k, v] of Object.entries(extra)) {
-      if (v) q.set(k, v);
-    }
-  }
-  return `/?${q.toString()}`;
-}
-
 function workbenchScopedPath(
   basePath: string,
   propertyId: string,
@@ -121,6 +110,48 @@ export function propertyHubRecordsPath(propertyId: string, recordsView?: Records
     extra[WORKBENCH_RECORDS_VIEW_QUERY] = recordsView;
   }
   return workbenchScopedPath("/records", propertyId, extra);
+}
+
+export type PropertySubRoute =
+  | "documents"
+  | "compliance"
+  | "photos"
+  | "plans"
+  | "spaces-organise";
+
+export function propertySubPath(propertyId: string, segment: PropertySubRoute): string {
+  switch (segment) {
+    case "documents":
+      return propertyHubRecordsPath(propertyId, "documents");
+    case "compliance":
+      return propertyHubRecordsPath(propertyId, "compliance");
+    case "photos":
+      return `/properties/${propertyId}/photos`;
+    case "plans":
+      return `/properties/${propertyId}/plans`;
+    case "spaces-organise":
+      return `/properties/${propertyId}/spaces/organise`;
+  }
+}
+
+/** Canonical URL for the property Attention hub (`/issues`) with optional query params. */
+export function propertyHubPath(propertyId: string, extra?: Record<string, string>): string {
+  return workbenchScopedPath("/issues", propertyId, extra);
+}
+
+/** Property-scoped spaces organise screen. */
+export function propertyHubSpacesPath(propertyId: string): string {
+  return propertySubPath(propertyId, "spaces-organise");
+}
+
+/** Property-scoped assets list. */
+export function propertyHubAssetsPath(propertyId: string): string {
+  return `/assets?property=${encodeURIComponent(propertyId)}`;
+}
+
+/** Org team settings — owners, contacts, and members (no per-property route yet). */
+export function propertyHubPeoplePath(_propertyId: string): string {
+  return "/settings/team";
 }
 
 /**
@@ -147,26 +178,4 @@ export function propertyHubAgendaPath(propertyId: string): string {
 /** @deprecated Prefer `propertyHubIssuesPath(id, { issuesFilter: "open" })`. */
 export function propertyHubTasksPath(propertyId: string): string {
   return propertyHubIssuesPath(propertyId, { issuesFilter: "open" });
-}
-
-export type PropertySubRoute =
-  | "documents"
-  | "compliance"
-  | "photos"
-  | "plans"
-  | "spaces-organise";
-
-export function propertySubPath(propertyId: string, segment: PropertySubRoute): string {
-  switch (segment) {
-    case "documents":
-      return propertyHubRecordsPath(propertyId, "documents");
-    case "compliance":
-      return propertyHubRecordsPath(propertyId, "compliance");
-    case "photos":
-      return `/properties/${propertyId}/photos`;
-    case "plans":
-      return `/properties/${propertyId}/plans`;
-    case "spaces-organise":
-      return `/properties/${propertyId}/spaces/organise`;
-  }
 }

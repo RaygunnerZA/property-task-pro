@@ -1,15 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { propertySubPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
-import { SpaceGroupLinkCard } from "@/components/spaces/SpaceGroupLinkCard";
-import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
+import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
+import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Layers, FileUp, Sparkles } from "lucide-react";
+import { Layers, FileUp, Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
@@ -29,6 +30,7 @@ type SpacesWorkTab = "groups" | "issues";
 export default function SpaceOrganisationScreen() {
   const { id: propertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const { property, loading: propertyLoading } = useProperty(propertyId);
   const { spaces } = useSpaces(propertyId);
@@ -36,6 +38,7 @@ export default function SpaceOrganisationScreen() {
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
+  const [showAddSpace, setShowAddSpace] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("workTab") === "issues" || searchParams.get("urgent") === "1") {
@@ -157,6 +160,17 @@ export default function SpaceOrganisationScreen() {
           />
         </div>
       </div>
+      <WorkspaceSurfaceCard
+        title="Floor plans & detection"
+        description="Upload a plan — Filla suggests spaces without process theatre. Review and add in one pass."
+      >
+        <Button className="w-full btn-accent-vibrant gap-2" asChild>
+          <Link to={`/properties/${propertyId}/plans`}>
+            <FileUp className="h-4 w-4" />
+            Open building plans
+          </Link>
+        </Button>
+      </WorkspaceSurfaceCard>
     </div>
   );
 
@@ -188,16 +202,10 @@ export default function SpaceOrganisationScreen() {
             </div>
             <h2 className="text-lg font-semibold text-foreground">Space groups</h2>
           </div>
-          <p className="text-sm text-muted-foreground">Select a group to add and organise spaces.</p>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hz-teal">
-            {ONBOARDING_SPACE_GROUPS.map((group) => (
-              <SpaceGroupLinkCard
-                key={group.id}
-                group={group}
-                to={`/properties/${propertyId}/spaces/organise/${group.id}`}
-              />
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Hover a group to browse suggestions, add spaces, or manage what you already have.
+          </p>
+          <PropertySpaceGroupCarousel propertyId={propertyId} />
         </div>
       ) : (
         <div className="space-y-3">
@@ -229,32 +237,45 @@ export default function SpaceOrganisationScreen() {
     </div>
   );
 
+  const invalidateSpaces = () => {
+    queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    queryClient.invalidateQueries({ queryKey: ["spaces-with-types"] });
+  };
+
   const actionColumn = (
     <div className="space-y-4">
-      <WorkspaceSurfaceCard
-        title="Floor plans & detection"
-        description="Upload a plan — Filla suggests spaces without process theatre. Review and add in one pass."
-      >
-        <Button className="w-full btn-accent-vibrant gap-2" asChild>
-          <Link to={`/properties/${propertyId}/plans`}>
-            <FileUp className="h-4 w-4" />
-            Open building plans
-          </Link>
-        </Button>
-      </WorkspaceSurfaceCard>
-      <WorkspaceSurfaceCard title="Manual add" description="Add a space when you already know the layout.">
-        <p className="text-xs text-muted-foreground flex gap-2 mb-3">
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
-          Pick a group first — you’ll add spaces inside that flow.
-        </p>
-        <Button variant="outline" className="w-full btn-neomorphic" asChild>
-          <Link
-            to={`/properties/${propertyId}/spaces/organise/${ONBOARDING_SPACE_GROUPS[0]?.id ?? "circulation"}`}
+      <div className="hidden workspace:block">
+        <WorkspaceSurfaceCard
+          title="Create space"
+          description="Add a space when you already know the name and type."
+        >
+          <AddSpaceDialog
+            open
+            onOpenChange={() => {}}
+            properties={property ? [property] : []}
+            propertyId={propertyId}
+            variant="column"
+            headless
+            onCreated={invalidateSpaces}
+          />
+        </WorkspaceSurfaceCard>
+      </div>
+      <div className="workspace:hidden">
+        <WorkspaceSurfaceCard
+          title="Create space"
+          description="Add a space when you already know the name and type."
+        >
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full btn-neomorphic gap-2"
+            onClick={() => setShowAddSpace(true)}
           >
-            Start in first group
-          </Link>
-        </Button>
-      </WorkspaceSurfaceCard>
+            <Plus className="h-4 w-4" />
+            Add space
+          </Button>
+        </WorkspaceSurfaceCard>
+      </div>
     </div>
   );
 
@@ -279,6 +300,18 @@ export default function SpaceOrganisationScreen() {
     <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
+      {showAddSpace && (
+        <AddSpaceDialog
+          open={showAddSpace}
+          onOpenChange={setShowAddSpace}
+          properties={property ? [property] : []}
+          propertyId={propertyId}
+          onCreated={() => {
+            invalidateSpaces();
+            setShowAddSpace(false);
+          }}
+        />
+      )}
     </div>
   );
 }

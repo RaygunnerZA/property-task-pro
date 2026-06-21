@@ -26,6 +26,8 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
 
 /** Former workbench tabs — now standalone routes. */
 export const WORKBENCH_SECTION_ROUTES = {
+  /** Property Attention hub (replaces legacy Issues triage). */
+  attention: "/issues",
   issues: "/issues",
   records: "/records",
   schedule: "/agenda",

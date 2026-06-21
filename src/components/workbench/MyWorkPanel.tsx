@@ -44,6 +44,8 @@ export interface MyWorkPanelProps {
   onOpenIntake?: (mode: IntakeMode) => void;
   onTabChange?: (tab: string) => void;
   onRecordsViewChange?: (view: RecordsView) => void;
+  /** When true, omits "View all" links (already on the dedicated Attention route). */
+  hideViewAllLinks?: boolean;
 }
 
 const centreScrollClass =
@@ -138,6 +140,7 @@ export function MyWorkPanel({
   onOpenIntake,
   onTabChange,
   onRecordsViewChange,
+  hideViewAllLinks = false,
 }: MyWorkPanelProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -366,7 +369,7 @@ export function MyWorkPanel({
                 subtitle={OPEN_WORK_SECTION.subtitle}
                 count={openWorkTasks.length}
                 countVariant="recent"
-                onViewAll={handleViewAllIssues}
+                onViewAll={hideViewAllLinks ? undefined : handleViewAllIssues}
               />
               {openWorkTasks.length === 0 ? (
                 <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
@@ -404,7 +407,7 @@ export function MyWorkPanel({
               onOpenIntake={onOpenIntake}
               onMessageClick={onMessageClick}
               onAttentionItemSelect={onAttentionItemSelect}
-              onViewAllIssues={handleViewAllIssues}
+              onViewAllIssues={hideViewAllLinks ? undefined : handleViewAllIssues}
               signalsSection={ATTENTION_SIGNALS_SECTION}
             />
           </>

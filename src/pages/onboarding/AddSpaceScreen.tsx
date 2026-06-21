@@ -72,9 +72,6 @@ export default function AddSpaceScreen() {
   const [planFiles, setPlanFiles] = useState<FileList | null>(null);
   const spaceInputRef = useRef<HTMLInputElement>(null);
   const propertyProfile = useOnboardingPropertyProfile();
-  // #region agent log
-  fetch('http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'504ba9'},body:JSON.stringify({sessionId:'504ba9',runId:'post-fix',hypothesisId:'H1',location:'AddSpaceScreen.tsx:74',message:'AddSpaceScreen hooks initialized',data:{propertyProfile,spaceInputRefDeclared:spaceInputRef!=null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   // Pass undefined while the panel is hidden so the hook's queries stay disabled
   // (the plan tables don't exist in the remote DB yet).
   const plans = useBuildingPlans(SHOW_PROPERTY_PLANS_PANEL ? propertyId || undefined : undefined);

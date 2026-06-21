@@ -66,6 +66,7 @@ import {
 } from "@/components/intake/IntakeChipRow";
 import { AISuggestionChips } from "@/components/tasks/create/AISuggestionChips";
 import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
+import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
 import type { SubtaskData } from "@/components/tasks/subtasks";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
@@ -688,6 +689,35 @@ export function IntakeModal({
       description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".`,
     });
   }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
+
+  const importStarterPreset = useCallback((preset: PresetTemplate) => {
+    const parsedSubtasks = presetItemsToSubtasks(preset.items);
+    if (parsedSubtasks.length === 0) {
+      toast({
+        title: "Template is empty",
+        description: "This template has no checklist items to import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const hasExistingSubtasks = subtasks.some((subtask) => subtask.title.trim().length > 0);
+    if (hasExistingSubtasks) {
+      setPendingTemplateImport({
+        subtasks: parsedSubtasks,
+        templateId: "",
+        templateName: preset.name,
+      });
+      return;
+    }
+
+    setTemplateId("");
+    setSubtasks(parsedSubtasks);
+    toast({
+      title: "Checklist imported",
+      description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${preset.name}".`,
+    });
+  }, [subtasks, toast]);
 
   const openTemplateDialog = useCallback((mode: ChecklistTemplateDialogMode) => {
     const normalizedItems = normalizeChecklistItems(subtasks);
@@ -3610,7 +3640,9 @@ export function IntakeModal({
                 if (!pendingTemplateImport) return;
                 setTemplateId(pendingTemplateImport.templateId);
                 setSubtasks((prev) => [...prev, ...pendingTemplateImport.subtasks]);
-                rememberRecentTemplate(pendingTemplateImport.templateId);
+                if (pendingTemplateImport.templateId) {
+                  rememberRecentTemplate(pendingTemplateImport.templateId);
+                }
                 toast({
                   title: "Checklist appended",
                   description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} added from "${pendingTemplateImport.templateName}".`,
@@ -3625,7 +3657,9 @@ export function IntakeModal({
                 if (!pendingTemplateImport) return;
                 setTemplateId(pendingTemplateImport.templateId);
                 setSubtasks(pendingTemplateImport.subtasks);
-                rememberRecentTemplate(pendingTemplateImport.templateId);
+                if (pendingTemplateImport.templateId) {
+                  rememberRecentTemplate(pendingTemplateImport.templateId);
+                }
                 toast({
                   title: "Checklist imported",
                   description: `${pendingTemplateImport.subtasks.length} item${pendingTemplateImport.subtasks.length === 1 ? "" : "s"} loaded from "${pendingTemplateImport.templateName}".`,
@@ -3776,6 +3810,7 @@ export function IntakeModal({
                     recentTemplateIds={recentTemplateIds}
                     activeTemplateName={activeTemplate?.name ?? null}
                     onUseTemplate={importTemplateItems}
+                    onUseStarterPreset={importStarterPreset}
                     onSaveAsTemplate={() => openTemplateDialog("save")}
                     onEditTemplate={() => openTemplateDialog("edit")}
                     onDuplicateTemplate={() => openTemplateDialog("duplicate")}

@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { includesMeetingSignal, minuteKeyFromDate } from "./createTaskModalMeetingSignals";
 import type { SubtaskInput } from "./SubtasksSection";
+import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
 import type { PendingTaskFile } from "./ImageUploadSection";
 import type { MilestoneItem } from "./WhenSection";
 import type { PendingInvitation } from "./tabs/WhoTab";
@@ -264,6 +265,29 @@ export function useCreateTaskForm({
     toast({ title: "Checklist imported", description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${template.name}".` });
   }, [makeSubtaskFromText, rememberRecentTemplate, subtasks, templates, toast]);
 
+  const importStarterPreset = useCallback((preset: PresetTemplate) => {
+    const parsedSubtasks = presetItemsToSubtasks(preset.items);
+    if (parsedSubtasks.length === 0) {
+      toast({ title: "Template is empty", description: "No checklist items to import.", variant: "destructive" });
+      return;
+    }
+    const hasExisting = subtasks.some((s) => s.title.trim().length > 0);
+    if (hasExisting) {
+      setPendingTemplateImport({
+        subtasks: parsedSubtasks,
+        templateId: "",
+        templateName: preset.name,
+      });
+      return;
+    }
+    setTemplateId("");
+    setSubtasks(parsedSubtasks);
+    toast({
+      title: "Checklist imported",
+      description: `${parsedSubtasks.length} item${parsedSubtasks.length === 1 ? "" : "s"} loaded from "${preset.name}".`,
+    });
+  }, [subtasks, toast]);
+
   const openTemplateDialog = useCallback((mode: ChecklistTemplateDialogMode) => {
     const items = normalizeChecklistItems(subtasks);
     if (items.length === 0) { toast({ title: "No checklist items", variant: "destructive" }); return; }
@@ -419,6 +443,7 @@ export function useCreateTaskForm({
     normalizeChecklistItems,
     rememberRecentTemplate,
     importTemplateItems,
+    importStarterPreset,
     openTemplateDialog,
     submitTemplateDialog,
     archiveActiveTemplate,

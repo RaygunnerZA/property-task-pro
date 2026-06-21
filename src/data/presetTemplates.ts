@@ -12,6 +12,8 @@ export interface PresetTemplate {
   category: ChecklistTemplateCategory;
   description: string;
   items: PresetItem[];
+  /** Fire, gas, electrical, legionella, H&S, building safety — stronger disclaimer badge */
+  isRegulatedArea?: boolean;
 }
 
 const yn = (title: string): PresetItem => ({ title, is_yes_no: true, requires_signature: false });
@@ -25,6 +27,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     name: "Gas Safety Check",
     category: "compliance",
     description: "Annual CP12 gas safety inspection for landlords.",
+    isRegulatedArea: true,
     items: [
       item("Book registered Gas Safe engineer"),
       yn("All gas appliances tested and in safe working order"),
@@ -41,6 +44,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     name: "Fire Risk Assessment",
     category: "compliance",
     description: "Periodic fire safety review for HMOs and managed properties.",
+    isRegulatedArea: true,
     items: [
       yn("Smoke alarms on every floor tested and working"),
       yn("Carbon monoxide alarm present in rooms with solid fuel appliances"),
@@ -58,6 +62,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     name: "Electrical Safety Inspection (EICR)",
     category: "compliance",
     description: "Mandatory electrical installation condition report every 5 years.",
+    isRegulatedArea: true,
     items: [
       item("Book NICEIC / NAPIT registered electrician"),
       yn("Consumer unit / fuse board inspected"),
@@ -75,6 +80,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     name: "Legionella Risk Assessment",
     category: "compliance",
     description: "Water hygiene risk assessment to comply with HSE L8.",
+    isRegulatedArea: true,
     items: [
       yn("Water system schematic reviewed and up to date"),
       yn("Hot water cylinder set to ≥60°C"),
@@ -111,6 +117,7 @@ export const PRESET_TEMPLATES: PresetTemplate[] = [
     name: "Boiler Annual Service",
     category: "maintenance",
     description: "Yearly boiler service to maintain warranty and efficiency.",
+    isRegulatedArea: true,
     items: [
       item("Book Gas Safe registered engineer"),
       yn("Boiler ignition and burner inspected"),
@@ -348,3 +355,98 @@ export const PRESET_BY_CATEGORY = PRESET_TEMPLATES.reduce<
   },
   { compliance: [], maintenance: [], security: [], operations: [] }
 );
+
+const PRESET_NAMES_LOWER = new Set(
+  PRESET_TEMPLATES.map((preset) => preset.name.trim().toLowerCase())
+);
+
+/** True when a library template name matches a built-in starter preset. */
+export function isStarterTemplateName(name: string): boolean {
+  return PRESET_NAMES_LOWER.has(name.trim().toLowerCase());
+}
+
+/** Match library templates to starter preset ids by name. */
+export function getPresetIdsInLibrary(templateNames: Iterable<string>): Set<string> {
+  const names = new Set(
+    Array.from(templateNames, (name) => name.trim().toLowerCase()).filter(Boolean)
+  );
+  return new Set(
+    PRESET_TEMPLATES.filter((preset) => names.has(preset.name.toLowerCase())).map((preset) => preset.id)
+  );
+}
+
+export function isRegulatedStarterPreset(preset: Pick<PresetTemplate, "isRegulatedArea">): boolean {
+  return Boolean(preset.isRegulatedArea);
+}
+
+export function findPresetByName(name: string): PresetTemplate | undefined {
+  const target = name.trim().toLowerCase();
+  return PRESET_TEMPLATES.find((preset) => preset.name.trim().toLowerCase() === target);
+}
+
+export function findLibraryTemplateForPreset(
+  preset: PresetTemplate,
+  templates: Array<{ id: string; name: string }>
+) {
+  const target = preset.name.trim().toLowerCase();
+  return templates.find((template) => template.name.trim().toLowerCase() === target);
+}
+
+export type ManageTemplateEntry =
+  | { kind: "library"; template: { id: string; name: string; category: ChecklistTemplateCategory; items: unknown }; isStarter: boolean }
+  | { kind: "preset"; preset: PresetTemplate };
+
+/** Starters always appear on Manage Templates; library rows replace presets when saved. */
+export function buildManageTemplateEntries(
+  templates: Array<{ id: string; name: string; category: ChecklistTemplateCategory; items: unknown }>
+): ManageTemplateEntry[] {
+  const matchedLibraryIds = new Set<string>();
+  const entries: ManageTemplateEntry[] = [];
+
+  for (const preset of PRESET_TEMPLATES) {
+    const library = findLibraryTemplateForPreset(preset, templates);
+    if (library) {
+      matchedLibraryIds.add(library.id);
+      const full = templates.find((template) => template.id === library.id);
+      if (full) {
+        entries.push({ kind: "library", template: full, isStarter: true });
+      }
+    } else {
+      entries.push({ kind: "preset", preset });
+    }
+  }
+
+  for (const template of templates) {
+    if (!matchedLibraryIds.has(template.id) && !isStarterTemplateName(template.name)) {
+      entries.push({ kind: "library", template, isStarter: false });
+    }
+  }
+
+  return entries;
+}
+
+export function getManageTemplateEntryKey(entry: ManageTemplateEntry): string {
+  return entry.kind === "preset" ? entry.preset.id : entry.template.id;
+}
+
+export function getManageTemplateEntryCategory(entry: ManageTemplateEntry): ChecklistTemplateCategory {
+  return entry.kind === "preset" ? entry.preset.category : entry.template.category;
+}
+
+export function presetItemsToSubtasks(
+  items: PresetItem[]
+): Array<{
+  id: string;
+  title: string;
+  is_yes_no: boolean;
+  requires_signature: boolean;
+  step_type: "check";
+}> {
+  return items.map((item) => ({
+    id: crypto.randomUUID(),
+    title: item.title,
+    is_yes_no: item.is_yes_no,
+    requires_signature: item.requires_signature,
+    step_type: "check" as const,
+  }));
+}

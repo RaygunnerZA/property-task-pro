@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { useNavigate } from "react-router-dom";
 import {
-  propertyHubPath,
   propertyHubIssuesPath,
   propertyHubRecordsPath,
-  propertySubPath,
+  propertyHubSpacesPath,
+  propertyHubAssetsPath,
+  propertyHubPeoplePath,
+  propertyHubPath,
   WORKBENCH_ISSUES_FILTER_QUERY,
   WORKBENCH_TASK_PRIORITY_QUERY,
 } from "@/lib/propertyRoutes";
@@ -118,21 +120,13 @@ export function PropertyIdentityStrip({
   const openHubNav = (id: PropertyHubNavCardId) => {
     switch (id) {
       case "spaces":
-        if (externalDashboard && onFilterClick) {
-          onFilterClick("show-spaces");
-        } else {
-          navigate(propertySubPath(property.id, "spaces-organise"));
-        }
+        navigate(propertyHubSpacesPath(property.id));
         return;
       case "assets":
-        if (externalDashboard && onFilterClick) {
-          onFilterClick("show-assets");
-        } else {
-          navigate(`/assets?property=${encodeURIComponent(property.id)}`);
-        }
+        navigate(propertyHubAssetsPath(property.id));
         return;
       case "people":
-        navigate(propertyHubPath(property.id));
+        navigate(propertyHubPeoplePath(property.id));
         return;
       case "records":
         navigate(propertyHubRecordsPath(property.id));

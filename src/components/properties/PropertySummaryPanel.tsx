@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
@@ -9,13 +10,33 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 
 const statNumberClass =
-  "pb-1 text-[38px] font-medium tabular-nums leading-none text-[#5aa3a9] sm:pb-[3px] sm:text-[24px]";
+  "self-start pl-1.5 pb-1 text-[38px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
 
 const statWordClass =
-  "w-full font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-muted-foreground sm:text-[10px] sm:tracking-[0.1px]";
+  "font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-muted-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
-  "flex min-w-0 w-[70px] flex-col items-center justify-center rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-center shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] sm:px-0.5 sm:pb-3";
+  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-[#3A4A6A] hover:shadow-none sm:px-1.5 sm:pb-3";
+
+type StatSecondaryTone = "urgent" | "warning" | "neutral";
+
+const secondaryCountBoxClass: Record<StatSecondaryTone, string> = {
+  urgent:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-destructive",
+  warning:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-amber-600",
+  neutral:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-muted-foreground",
+};
+
+const secondaryLabelClass: Record<StatSecondaryTone, string> = {
+  urgent:
+    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-destructive transition-colors group-hover:text-[#EB6834]",
+  warning:
+    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-amber-600 transition-colors group-hover:text-amber-300",
+  neutral:
+    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground transition-colors group-hover:text-white/90",
+};
 
 type PropertySummaryPanelProps = {
   property: PropertyForStrip;
@@ -39,18 +60,39 @@ function StatColumn({
   value,
   line1,
   line2,
+  secondaryCount,
+  secondaryLabel,
+  secondaryTone = "neutral",
   onActivate,
 }: {
   value: number;
   line1: string;
   line2: string;
+  secondaryCount: number;
+  secondaryLabel: string;
+  secondaryTone?: StatSecondaryTone;
   onActivate?: () => void;
 }) {
   const inner = (
     <>
       <span className={statNumberClass}>{value}</span>
-      <span className={statWordClass}>{line1}</span>
-      <span className={statWordClass}>{line2}</span>
+      <div className="flex w-full min-w-0 items-stretch gap-0.5">
+        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left">
+          <span className={statWordClass}>{line1}</span>
+          <span className={statWordClass}>{line2}</span>
+        </div>
+        <div className="ml-auto flex shrink-0 self-stretch items-center justify-end">
+          <ChevronRight
+            className="h-7 w-8 text-muted-foreground/70 transition-colors group-hover:font-bold group-hover:text-white"
+            strokeWidth={2.5}
+            aria-hidden
+          />
+        </div>
+      </div>
+      <div className="mt-1.5 flex w-full items-center gap-1.5">
+        <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
+        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+      </div>
     </>
   );
 
@@ -68,7 +110,7 @@ function StatColumn({
       onClick={onActivate}
       className={cn(
         statCellClass,
-        "transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
       )}
     >
       {inner}
@@ -143,6 +185,41 @@ export function PropertySummaryPanel({
     [tasks, documents]
   );
 
+  const tasksSecondary = useMemo(() => {
+    if (metrics.urgentItems > 0) {
+      return { count: metrics.urgentItems, label: "URGENT", tone: "urgent" as const };
+    }
+    if (metrics.dueSoonTasks > 0) {
+      return { count: metrics.dueSoonTasks, label: "DUE SOON", tone: "warning" as const };
+    }
+    return {
+      count: metrics.incompleteTasks,
+      label: "INCOMPLETE TASKS",
+      tone: "neutral" as const,
+    };
+  }, [metrics.dueSoonTasks, metrics.incompleteTasks, metrics.urgentItems]);
+
+  const complianceSecondary = useMemo(() => {
+    const expired = property.expired_compliance_count ?? 0;
+    if (expired > 0) {
+      return { count: expired, label: "EXPIRED", tone: "urgent" as const };
+    }
+    if (metrics.complianceDueSoon > 0) {
+      return { count: metrics.complianceDueSoon, label: "DUE SOON", tone: "warning" as const };
+    }
+    return { count: 0, label: "DUE SOON", tone: "neutral" as const };
+  }, [metrics.complianceDueSoon, property.expired_compliance_count]);
+
+  const eventsSecondary = useMemo(() => {
+    if (metrics.overdueInspections > 0) {
+      return { count: metrics.overdueInspections, label: "OVERDUE", tone: "urgent" as const };
+    }
+    if (metrics.dueSoonInspections > 0) {
+      return { count: metrics.dueSoonInspections, label: "DUE SOON", tone: "warning" as const };
+    }
+    return { count: 0, label: "SCHEDULED", tone: "neutral" as const };
+  }, [metrics.dueSoonInspections, metrics.overdueInspections]);
+
   if (loading) {
     return <Skeleton className={cn("h-[320px] w-full rounded-xl", className)} />;
   }
@@ -150,29 +227,32 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        <div className="grid grid-cols-4 grid-rows-1 gap-y-[5px] divide-x divide-border/30 border-b border-border/30 justify-items-center py-[10px]">
+        <div className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]">
           <StatColumn
             value={metrics.openTasks}
             line1="open"
             line2="tasks"
+            secondaryCount={tasksSecondary.count}
+            secondaryLabel={tasksSecondary.label}
+            secondaryTone={tasksSecondary.tone}
             onActivate={onOpenTasks}
           />
           <StatColumn
             value={metrics.complianceReviews}
-            line1="compliance"
-            line2="reviews"
+            line1="to"
+            line2="review"
+            secondaryCount={complianceSecondary.count}
+            secondaryLabel={complianceSecondary.label}
+            secondaryTone={complianceSecondary.tone}
             onActivate={onOpenCompliance}
-          />
-          <StatColumn
-            value={metrics.urgentItems}
-            line1="urgent"
-            line2="items"
-            onActivate={onOpenUrgent}
           />
           <StatColumn
             value={metrics.upcomingInspections}
             line1="upcoming"
-            line2="inspection"
+            line2="events"
+            secondaryCount={eventsSecondary.count}
+            secondaryLabel={eventsSecondary.label}
+            secondaryTone={eventsSecondary.tone}
             onActivate={onOpenInspections}
           />
         </div>

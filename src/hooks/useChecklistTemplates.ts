@@ -53,10 +53,47 @@ export function useChecklistTemplates(enabled: boolean = true) {
       }
     }
 
-    return (data ?? []).map((template) => ({
-      ...template,
-      category: toCategory((template as { category?: string }).category),
-    }));
+    const templates = data ?? [];
+    const needsLegacyItems = templates.some(
+      (template) => !Array.isArray((template as { items?: unknown }).items)
+    );
+
+    let legacyItemsByTemplate = new Map<string, unknown[]>();
+    if (needsLegacyItems && templates.length > 0) {
+      const templateIds = templates.map((template) => template.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: legacyItems } = await (supabase as any)
+        .from("checklist_template_items")
+        .select("template_id, title, is_yes_no, requires_signature, order_index")
+        .in("template_id", templateIds)
+        .eq("is_archived", false)
+        .order("order_index", { ascending: true });
+
+      legacyItemsByTemplate = (legacyItems ?? []).reduce((map, row) => {
+        const key = row.template_id as string;
+        const list = map.get(key) ?? [];
+        list.push({
+          title: row.title,
+          is_yes_no: Boolean(row.is_yes_no),
+          requires_signature: Boolean(row.requires_signature),
+        });
+        map.set(key, list);
+        return map;
+      }, new Map<string, unknown[]>());
+    }
+
+    return templates.map((template) => {
+      const rawItems = (template as { items?: unknown }).items;
+      const items = Array.isArray(rawItems)
+        ? rawItems
+        : legacyItemsByTemplate.get(template.id) ?? [];
+
+      return {
+        ...template,
+        items,
+        category: toCategory((template as { category?: string }).category),
+      };
+    });
   };
 
   const templatesQuery = useQuery({

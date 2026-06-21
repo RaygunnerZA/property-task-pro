@@ -7,7 +7,7 @@ export interface HomeWorkbenchCentreProps extends MyWorkPanelProps {
 }
 
 /**
- * Home workbench centre — single Attention feed (Needs review, Open work, Signals).
+ * Attention workbench centre — Needs review, Open work, Signals.
  */
 export function HomeWorkbenchCentre({
   onOpenIntake,

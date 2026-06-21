@@ -1986,6 +1986,7 @@ export type Database = {
           id: string
           name: string
           org_type: Database["public"]["Enums"]["org_type"]
+          starter_templates_disclaimer_accepted_at: string | null
           updated_at: string
         }
         Insert: {
@@ -1994,6 +1995,7 @@ export type Database = {
           id?: string
           name?: string
           org_type: Database["public"]["Enums"]["org_type"]
+          starter_templates_disclaimer_accepted_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -2002,6 +2004,7 @@ export type Database = {
           id?: string
           name?: string
           org_type?: Database["public"]["Enums"]["org_type"]
+          starter_templates_disclaimer_accepted_at?: string | null
           updated_at?: string
         }
         Relationships: []

@@ -80,9 +80,10 @@ const PropertyTasks = lazy(() => import("./pages/PropertyTasks"));
 const PropertyPhotos = lazy(() => import("./pages/PropertyPhotos"));
 const PropertyDocuments = lazy(() => import("./pages/PropertyDocuments"));
 const PropertyBuildingPlans = lazy(() => import("./pages/PropertyBuildingPlans"));
+// Property spaces — eager import so hub navigation never hits a lazy chunk fetch failure.
+import SpaceOrganisationScreen from "./pages/spaces/SpaceOrganisationScreen";
+import SpaceGroupScreen from "./pages/spaces/SpaceGroupScreen";
 const SpaceDetailPage = lazy(() => import("./pages/spaces/SpaceDetailPage"));
-const SpaceOrganisationScreen = lazy(() => import("./pages/spaces/SpaceOrganisationScreen"));
-const SpaceGroupScreen = lazy(() => import("./pages/spaces/SpaceGroupScreen"));
 const ComplianceReviews = lazy(() => import("./pages/ComplianceReviews"));
 const ReviewWorkspace = lazy(() => import("./pages/ReviewWorkspace"));
 const ReviewSummary = lazy(() => import("./pages/ReviewSummary"));
@@ -104,9 +105,6 @@ const Properties = lazy(() => import("./pages/Properties"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Reports = lazy(() => import("./pages/Reports"));
-const IssuesPage = lazy(() => import("./pages/workbench/IssuesPage"));
-const RecordsPage = lazy(() => import("./pages/workbench/RecordsPage"));
-const AgendaPage = lazy(() => import("./pages/workbench/AgendaPage"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"));
 const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
@@ -314,9 +312,10 @@ const App = () => {
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
 
                                 {/* Workbench pages (formerly Issues | Records | Schedule tabs) */}
-                                <Route path="/issues" element={<RouteBoundary title="Issues"><IssuesPage /></RouteBoundary>} />
-                                <Route path="/records" element={<RouteBoundary title="Records"><RecordsPage /></RouteBoundary>} />
-                                <Route path="/agenda" element={<RouteBoundary title="Schedule"><AgendaPage /></RouteBoundary>} />
+                                <Route path="/issues" element={<RouteBoundary title="Attention"><Dashboard workbenchPanel="issues" /></RouteBoundary>} />
+                                <Route path="/attention" element={<Navigate to="/issues" replace />} />
+                                <Route path="/records" element={<RouteBoundary title="Records"><Dashboard workbenchPanel="records" /></RouteBoundary>} />
+                                <Route path="/agenda" element={<RouteBoundary title="Schedule"><Dashboard workbenchPanel="schedule" /></RouteBoundary>} />
                                 
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
@@ -372,8 +371,8 @@ const App = () => {
                                 <Route path="/properties/:id" element={<PropertyHubRedirect />} />
                                 <Route path="/properties/:id/compliance" element={<PropertyCompliance />} />
                                 {/* Static segments before :spaceId — otherwise "organise" is captured as a space id */}
-                                <Route path="/properties/:id/spaces/organise/:groupSlug" element={<SpaceGroupScreen />} />
-                                <Route path="/properties/:id/spaces/organise" element={<SpaceOrganisationScreen />} />
+                                <Route path="/properties/:id/spaces/organise/:groupSlug" element={<RouteBoundary title="Spaces"><SpaceGroupScreen /></RouteBoundary>} />
+                                <Route path="/properties/:id/spaces/organise" element={<RouteBoundary title="Spaces"><SpaceOrganisationScreen /></RouteBoundary>} />
                                 <Route path="/properties/:propertyId/spaces/:spaceId" element={<SpaceDetailPage />} />
                                 <Route path="/properties/:id/tasks" element={<PropertyTasks />} />
                                 <Route path="/properties/:id/photos" element={<PropertyPhotos />} />

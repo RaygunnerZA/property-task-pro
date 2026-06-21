@@ -6,12 +6,22 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { FilterChip } from "@/components/chips/filter/Chip";
 import { FilterRow } from "@/components/filla/FilterRow";
 import { cn } from "@/lib/utils";
-import { PRESET_TEMPLATES, PRESET_BY_CATEGORY, type PresetTemplate } from "@/data/presetTemplates";
+import { PRESET_TEMPLATES, PRESET_BY_CATEGORY, type PresetTemplate, isRegulatedStarterPreset } from "@/data/presetTemplates";
 import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
 import { CATEGORY_OPTIONS } from "@/components/templates/TemplateDialog";
+import { StarterTemplateCallout, RegulatedAreaBadge } from "@/components/templates/StarterTemplateCallout";
+import { STARTER_TEMPLATE_SUMMARY } from "@/lib/starterTemplateDisclaimer";
 
 const FILTER_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: string }> = [
   { id: "all", label: "All" },
@@ -37,16 +47,26 @@ interface PresetCardProps {
   isAdded: boolean;
   isAdding: boolean;
   onAdd: (preset: PresetTemplate) => void;
+  onOpen: (preset: PresetTemplate) => void;
 }
 
-function PresetCard({ preset, isAdded, isAdding, onAdd }: PresetCardProps) {
+function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProps) {
   const yesNoCount = preset.items.filter((i) => i.is_yes_no).length;
   const sigCount = preset.items.filter((i) => i.requires_signature).length;
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(preset)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(preset);
+        }
+      }}
       className={cn(
-        "group relative rounded-2xl px-4 py-3.5 flex flex-col gap-2 transition-all duration-200",
+        "group relative rounded-2xl px-4 py-3.5 flex flex-col gap-2 transition-all duration-200 cursor-pointer text-left w-full",
         isAdded
           ? "bg-[#8EC9CE]/8 shadow-sm"
           : "bg-card shadow-md hover:shadow-lg hover:-translate-y-[1px]"
@@ -65,23 +85,34 @@ function PresetCard({ preset, isAdded, isAdding, onAdd }: PresetCardProps) {
 
         <button
           type="button"
-          onClick={() => !isAdded && onAdd(preset)}
-          disabled={isAdded || isAdding}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isAdded) {
+              onOpen(preset);
+              return;
+            }
+            onAdd(preset);
+          }}
+          disabled={isAdding}
           className={cn(
             "shrink-0 mt-0.5 h-7 rounded-lg px-2.5 text-[11px] font-semibold transition-all duration-150",
             isAdded
-              ? "bg-[#8EC9CE]/20 text-[#5aa3a9] cursor-default"
+              ? "bg-[#8EC9CE]/20 text-[#5aa3a9] hover:bg-[#8EC9CE]/30"
               : isAdding
                 ? "bg-muted text-muted-foreground cursor-wait"
                 : "bg-[#8EC9CE] text-white shadow-sm hover:brightness-105 active:scale-[0.97]"
           )}
         >
-          {isAdded ? "Added" : isAdding ? "Adding…" : "Add"}
+          {isAdded ? "Open" : isAdding ? "Adding…" : "Add"}
         </button>
       </div>
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-[#8EC9CE]/10 text-[#5aa3a9]">
+          Starting template
+        </span>
+        {isRegulatedStarterPreset(preset) && <RegulatedAreaBadge />}
         <span
           className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide ${CATEGORY_BG[preset.category]}`}
         >
@@ -112,7 +143,86 @@ interface PresetBrowserProps {
   onOpenChange: (open: boolean) => void;
   addedPresetIds: Set<string>;
   addingPresetId: string | null;
-  onAddPreset: (preset: PresetTemplate) => void;
+  onAddPreset: (preset: PresetTemplate) => void | Promise<void>;
+  /** When a starter is already in the library, open it for editing */
+  onOpenLibraryPreset?: (preset: PresetTemplate) => void;
+}
+
+export function PresetPreviewDialog({
+  preset,
+  isAdded,
+  isAdding,
+  onClose,
+  onAdd,
+  onOpenLibrary,
+}: {
+  preset: PresetTemplate | null;
+  isAdded: boolean;
+  isAdding: boolean;
+  onClose: () => void;
+  onAdd: (preset: PresetTemplate) => void;
+  onOpenLibrary?: (preset: PresetTemplate) => void;
+}) {
+  if (!preset) return null;
+
+  return (
+    <Dialog open={!!preset} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-base font-semibold pr-6">{preset.name}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{preset.description}</p>
+          <StarterTemplateCallout isRegulatedArea={isRegulatedStarterPreset(preset)} />
+        </DialogHeader>
+        <ul className="flex-1 min-h-0 overflow-y-auto space-y-2 py-1">
+          {preset.items.map((item, index) => (
+            <li
+              key={`${preset.id}-${index}`}
+              className="flex items-start gap-2 rounded-lg bg-card/80 px-3 py-2 text-sm shadow-e1"
+            >
+              <span className="text-muted-foreground/50 font-mono text-xs mt-0.5 shrink-0">
+                {index + 1}
+              </span>
+              <span className="flex-1 text-foreground">{item.title}</span>
+              <span className="flex items-center gap-1 shrink-0">
+                {item.is_yes_no && (
+                  <CheckSquare className="h-3.5 w-3.5 text-muted-foreground/50" aria-label="Yes/No" />
+                )}
+                {item.requires_signature && (
+                  <FileSignature className="h-3.5 w-3.5 text-muted-foreground/50" aria-label="Signature" />
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          {isAdded ? (
+            <Button
+              type="button"
+              className="bg-[#8EC9CE] text-white hover:brightness-105"
+              onClick={() => {
+                onOpenLibrary?.(preset);
+                onClose();
+              }}
+            >
+              Open in library
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="bg-[#8EC9CE] text-white hover:brightness-105"
+              disabled={isAdding}
+              onClick={() => onAdd(preset)}
+            >
+              {isAdding ? "Adding…" : "Add to library"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function PresetBrowser({
@@ -121,9 +231,11 @@ export function PresetBrowser({
   addedPresetIds,
   addingPresetId,
   onAddPreset,
+  onOpenLibraryPreset,
 }: PresetBrowserProps) {
   const [activeFilter, setActiveFilter] = useState<"all" | ChecklistTemplateCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [previewPreset, setPreviewPreset] = useState<PresetTemplate | null>(null);
 
   const filtered = useMemo(() => {
     let pool = PRESET_TEMPLATES;
@@ -162,10 +274,10 @@ export function PresetBrowser({
         <SheetHeader className="px-5 pt-5 pb-0 shrink-0">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-4 w-4 text-[#8EC9CE]" />
-            <SheetTitle className="text-base font-semibold">Starter Templates</SheetTitle>
+            <SheetTitle className="text-base font-semibold">Starting Templates</SheetTitle>
           </div>
           <p className="text-xs text-muted-foreground/70 leading-relaxed">
-            Ready-made checklists for UK property management. Add any to your library in one click.
+            {STARTER_TEMPLATE_SUMMARY} Add any to your library when you are ready.
           </p>
         </SheetHeader>
 
@@ -227,6 +339,7 @@ export function PresetBrowser({
                           isAdded={addedPresetIds.has(preset.id)}
                           isAdding={addingPresetId === preset.id}
                           onAdd={onAddPreset}
+                          onOpen={setPreviewPreset}
                         />
                       ))}
                     </div>
@@ -240,10 +353,20 @@ export function PresetBrowser({
                   isAdded={addedPresetIds.has(preset.id)}
                   isAdding={addingPresetId === preset.id}
                   onAdd={onAddPreset}
+                  onOpen={setPreviewPreset}
                 />
               ))}
         </div>
       </SheetContent>
+
+      <PresetPreviewDialog
+        preset={previewPreset}
+        isAdded={previewPreset ? addedPresetIds.has(previewPreset.id) : false}
+        isAdding={previewPreset ? addingPresetId === previewPreset.id : false}
+        onClose={() => setPreviewPreset(null)}
+        onAdd={onAddPreset}
+        onOpenLibrary={onOpenLibraryPreset}
+      />
     </Sheet>
   );
 }

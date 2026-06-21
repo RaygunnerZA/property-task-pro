@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { SubtaskList, SubtaskData } from "../subtasks";
 import type { ChecklistTemplate, ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
 import {
+  PRESET_TEMPLATES,
+  findLibraryTemplateForPreset,
+  type PresetTemplate,
+} from "@/data/presetTemplates";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -38,6 +43,7 @@ interface SubtasksSectionProps {
   recentTemplateIds?: string[];
   activeTemplateName?: string | null;
   onUseTemplate?: (templateId: string) => void;
+  onUseStarterPreset?: (preset: PresetTemplate) => void;
   onSaveAsTemplate?: () => void | Promise<void>;
   onEditTemplate?: () => void | Promise<void>;
   onDuplicateTemplate?: () => void | Promise<void>;
@@ -54,6 +60,7 @@ export function SubtasksSection({
   recentTemplateIds = [],
   activeTemplateName,
   onUseTemplate,
+  onUseStarterPreset,
   onSaveAsTemplate,
   onEditTemplate,
   onDuplicateTemplate,
@@ -62,7 +69,9 @@ export function SubtasksSection({
 }: SubtasksSectionProps) {
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerView, setPickerView] = useState<"root" | "recent" | "categories" | "category-options" | "search">("root");
+  const [pickerView, setPickerView] = useState<
+    "root" | "recent" | "categories" | "category-options" | "search" | "starters"
+  >("root");
   const [animationDirection, setAnimationDirection] = useState<"left-to-right" | "right-to-left" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<"all" | ChecklistTemplateCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,17 +141,31 @@ export function SubtasksSection({
       : "animate-wipe-left-to-right";
   };
 
+  const starterPresets = useMemo(() => {
+    return PRESET_TEMPLATES;
+  }, []);
+
+  const handleStarterSelect = (preset: PresetTemplate) => {
+    const libraryMatch = findLibraryTemplateForPreset(preset, templates);
+    if (libraryMatch) {
+      onUseTemplate?.(libraryMatch.id);
+    } else {
+      onUseStarterPreset?.(preset);
+    }
+    closePicker();
+  };
+
   const renderTemplateChips = (items: ChecklistTemplate[], emptyLabel: string) => {
     if (items.length === 0) {
       return (
-        <div className="text-[11px] text-muted-foreground/70 px-2 py-1 whitespace-nowrap">
+        <div className="text-[11px] text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
           {emptyLabel}
         </div>
       );
     }
 
     return (
-      <FilterRow className="py-1">
+      <FilterRow className="py-1 justify-end w-full min-w-0">
         {items.map((template) => (
           <FilterChip
             key={template.id}
@@ -158,7 +181,22 @@ export function SubtasksSection({
     );
   };
 
-  const openChildView = (view: "recent" | "categories" | "search") => {
+  const renderStarterChips = () => {
+    return (
+      <FilterRow className="py-1 justify-end w-full min-w-0">
+        {starterPresets.map((preset) => (
+          <FilterChip
+            key={preset.id}
+            label={preset.name}
+            className="h-[24px]"
+            onSelect={() => handleStarterSelect(preset)}
+          />
+        ))}
+      </FilterRow>
+    );
+  };
+
+  const openChildView = (view: "recent" | "categories" | "search" | "starters") => {
     setAnimationDirection("left-to-right");
     setPickerView(view);
   };
@@ -308,10 +346,13 @@ export function SubtasksSection({
           <div className="-mt-[6px] pl-1 pr-[7px] pt-[5px] pb-0 animate-fade-in">
             <div
               key={`${pickerView}-${selectedCategory}-${searchQuery.length > 0 ? "q" : "nq"}`}
-              className={cn("flex items-center justify-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]", getAnimationClass())}
+              className={cn(
+                "flex items-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]",
+                getAnimationClass()
+              )}
             >
               {pickerView === "root" && (
-                <>
+                <FilterRow className="py-0 justify-end w-full min-w-0 pb-0">
                   <FilterChip
                     label="Recent"
                     onSelect={() => openChildView("recent")}
@@ -327,13 +368,18 @@ export function SubtasksSection({
                     onSelect={() => openChildView("search")}
                     className="h-[24px]"
                   />
-                </>
+                  <FilterChip
+                    label="Starters"
+                    onSelect={() => openChildView("starters")}
+                    className="h-[24px]"
+                  />
+                </FilterRow>
               )}
 
               {pickerView !== "root" && (
                 <button
                   type="button"
-                  className="h-[24px] w-[24px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0"
+                  className="h-[24px] w-[24px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
                   onClick={handleBack}
                   aria-label="Back"
                 >
@@ -344,7 +390,7 @@ export function SubtasksSection({
               {pickerView === "recent" && renderTemplateChips(recentTemplates, "No recent checklists yet")}
 
               {pickerView === "categories" && (
-                <FilterRow className="py-1">
+                <FilterRow className="py-1 justify-end w-full min-w-0">
                   {CATEGORY_OPTIONS.map((option) => (
                     <FilterChip
                       key={option.id}
@@ -368,7 +414,7 @@ export function SubtasksSection({
                 )}
 
               {pickerView === "search" && (
-                <div className="h-9 min-w-[220px] px-3 rounded-[10px] bg-background shadow-engraved flex items-center gap-2">
+                <div className="h-9 min-w-[220px] max-w-full px-3 rounded-[10px] bg-background shadow-engraved flex items-center gap-2 ml-auto">
                   <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                   <input
                     value={searchQuery}
@@ -381,8 +427,14 @@ export function SubtasksSection({
             </div>
 
             {pickerView === "search" && (
-              <div className={cn("mt-1", getAnimationClass())}>
+              <div className={cn("mt-1 flex justify-end", getAnimationClass())}>
                 {renderTemplateChips(searchResults, searchQuery ? "No matching checklists" : "Type to search templates")}
+              </div>
+            )}
+
+            {pickerView === "starters" && (
+              <div className={cn("mt-1 flex justify-end", getAnimationClass())}>
+                {renderStarterChips()}
               </div>
             )}
           </div>
