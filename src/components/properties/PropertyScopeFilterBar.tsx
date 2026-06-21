@@ -5,7 +5,6 @@ import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
 import { cn } from "@/lib/utils";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
-import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { Button } from "@/components/ui/button";
 
@@ -328,7 +327,6 @@ function PropertyScopeFilterBarPrimary({
                   : properties.filter((p) => p.id !== singleSelectedId)
                 ).map((property) => renderPropertyChip(property, { asPrimary: false }))}
               </div>
-              {isLeftColumn && <WorkbenchMobileNavCluster className="shrink-0 lg:hidden" />}
             </div>
           ) : (
             <div className="mx-0 flex h-[32px] w-full min-w-max items-center gap-1 pr-0">

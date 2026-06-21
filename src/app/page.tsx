@@ -48,8 +48,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { AddToFillaDropPanel } from "@/components/intake/AddToFillaDropPanel";
 import { AddToFillaSheet } from "@/components/intake/AddToFillaSheet";
-import { useIntakeItems } from "@/hooks/useIntakeItems";
-import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import {
@@ -131,7 +129,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   const { orgId } = useActiveOrg();
   const [recordsReanalyseBusy, setRecordsReanalyseBusy] = useState(false);
   const [showAddToFilla, setShowAddToFilla] = useState(false);
-  const { data: readyIntakeItems = [] } = useIntakeItems("ready");
 
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
@@ -890,22 +887,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
         defaultPropertyId={intakeScopedPropertyId}
       />
 
-      {!isLargeScreen && (
-        <button
-          type="button"
-          onClick={() => setShowAddToFilla(true)}
-          className="fixed bottom-6 right-4 z-50 flex items-center gap-2 rounded-full bg-[#8EC9CE] px-4 py-3 text-sm font-semibold text-white shadow-lg active:scale-95"
-          aria-label="Add to Filla"
-        >
-          <Inbox className="h-4 w-4" />
-          Add to Filla
-          {readyIntakeItems.length > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/90 px-1 text-[10px] font-bold text-[#5a9ea3]">
-              {readyIntakeItems.length > 9 ? "9+" : readyIntakeItems.length}
-            </span>
-          )}
-        </button>
-      )}
 
       {showCreateTask && !isLargeScreen && (
         <IntakeModal

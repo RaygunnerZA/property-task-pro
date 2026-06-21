@@ -2,6 +2,7 @@ import { ReactNode, lazy, Suspense } from "react";
 import { cn } from "@/lib/utils";
 import { isDevBuild } from "@/context/DevModeContext";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
+import { MobileHeaderSearchButton } from "@/components/layout/MobileHeaderSearchButton";
 
 const DevToolsDropdown = lazy(() => import("@/components/dev/DevToolsDropdown"));
 
@@ -12,11 +13,13 @@ function PageHeaderToolbar({
   className,
   surface = "gradient",
   showAccountMenu = true,
+  showSearch = false,
 }: {
   className?: string;
   surface?: "gradient" | "plain";
   /** When false, account avatar is not shown in the header (e.g. hub uses workbench row + sidebar). */
   showAccountMenu?: boolean;
+  showSearch?: boolean;
 }) {
   const onGradient = surface === "gradient";
   return (
@@ -30,6 +33,11 @@ function PageHeaderToolbar({
         <Suspense fallback={null}>
           <DevToolsDropdown />
         </Suspense>
+      )}
+      {showSearch && (
+        <div className="lg:hidden">
+          <MobileHeaderSearchButton variant={onGradient ? "onGradient" : "default"} />
+        </div>
       )}
       {showAccountMenu && (
         <div className="lg:hidden">
@@ -49,6 +57,8 @@ interface PageHeaderProps {
   toolbarSurface?: "gradient" | "plain";
   /** Omit on hub so account opens from the workbench row; desktop never shows header account (sidebar + settings). */
   showAccountMenu?: boolean;
+  /** Mobile search icon in the header toolbar. */
+  showSearch?: boolean;
 }
 
 export function PageHeader({
@@ -57,6 +67,7 @@ export function PageHeader({
   toolbarClassName,
   toolbarSurface = "gradient",
   showAccountMenu = true,
+  showSearch = false,
 }: PageHeaderProps) {
   return (
     <header className={cn("page-header relative pl-space-sm", className)}>
@@ -64,6 +75,7 @@ export function PageHeader({
         className={toolbarClassName}
         surface={toolbarSurface}
         showAccountMenu={showAccountMenu}
+        showSearch={showSearch}
       />
       {children}
     </header>

@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Plus, FileText } from "lucide-react";
-import { MAIN_NAV_ITEMS } from "@/lib/mainNavigation";
-import { isMainNavActive } from "@/lib/mainNavigation";
+import { MOBILE_NAV_ITEMS, isMobileNavActive } from "@/lib/mainNavigation";
 import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
 import {
@@ -23,10 +22,9 @@ import { AudioRecorder } from "@/components/audio/AudioRecorder";
 
 /**
  * Mobile Bottom Navigation
- * 
- * Tabs: Home, My Tasks, Calendar, Properties (+ Create)
- * Only visible when the app sidebar is offcanvas (below `lg` / 1024px)
- * Fixed at bottom with high z-index and glassmorphism background
+ *
+ * Tabs: Home · Tasks · Schedule · Records + center FAB
+ * Only visible below lg (1024px)
  */
 export function MobileBottomNav() {
   const location = useLocation();
@@ -34,13 +32,8 @@ export function MobileBottomNav() {
   const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
   const [mobileIntakeInitial, setMobileIntakeInitial] = useState<IntakeMode>("report_issue");
 
-  const navItems = MAIN_NAV_ITEMS.filter(
-    (item) => !["Knowledge", "Reports"].includes(item.title)
-  ).map((item) => ({
-    to: item.url,
-    icon: item.icon,
-    label: item.title === "My Tasks" ? "Tasks" : item.title,
-  }));
+  const leftItems = MOBILE_NAV_ITEMS.slice(0, 2);
+  const rightItems = MOBILE_NAV_ITEMS.slice(2);
 
   const handleCreateClick = () => {
     setShowCreateDrawer(true);
@@ -58,82 +51,82 @@ export function MobileBottomNav() {
 
   const handleCloseDrawer = () => {
     setShowCreateDrawer(false);
-    // Reset to menu view after a short delay
     setTimeout(() => setCreateView("menu"), 200);
+  };
+
+  const renderNavLink = (to: string, icon: ComponentType<{ className?: string }>, label: string) => {
+    const Icon = icon;
+    const isActive = isMobileNavActive(location.pathname, to);
+
+    return (
+      <Link
+        key={to}
+        to={to}
+        className={cn(
+          "flex min-w-[4.5rem] flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200",
+          "hover:scale-105 active:scale-95",
+          isActive && "scale-105"
+        )}
+      >
+        <Icon
+          className={cn(
+            "h-5 w-5 transition-colors",
+            isActive ? "text-primary" : "text-muted-foreground"
+          )}
+        />
+        <span
+          className={cn(
+            "text-[10px] font-semibold tracking-tight transition-colors",
+            isActive ? "text-primary" : "text-muted-foreground"
+          )}
+        >
+          {label}
+        </span>
+      </Link>
+    );
   };
 
   return (
     <>
-      {/* Mobile Bottom Navigation - Only visible on screens < md */}
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden">
-        {/* Glassmorphism background */}
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-md border-t border-border/50" />
-        
-        {/* Content */}
-        <div className="relative max-w-md mx-auto px-2 py-2">
-          <div className="flex items-center justify-around">
-            {/* Regular nav items */}
-            {navItems.map(({ to, icon: Icon, label }) => {
-              const isActive = isMainNavActive(location.pathname, to);
-              
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  className={cn(
-                    "flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200",
-                    "hover:scale-105 active:scale-95",
-                    isActive && "scale-105"
-                  )}
-                >
-                  <Icon 
-                    className={cn(
-                      "h-5 w-5 transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    )} 
-                  />
-                  <span 
-                    className={cn(
-                      "text-[10px] font-semibold tracking-tight transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden" aria-label="Main navigation">
+        <div className="absolute inset-0 border-t border-border/50 bg-background/90 backdrop-blur-md" />
 
-            {/* Create button - Center, highlighted */}
+        <div className="relative mx-auto max-w-md px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
+          <div className="relative flex items-end justify-between">
+            <div className="flex flex-1 justify-around">
+              {leftItems.map(({ url, icon, title }) => renderNavLink(url, icon, title))}
+            </div>
+
+            <div className="w-14 shrink-0" aria-hidden />
+
+            <div className="flex flex-1 justify-around">
+              {rightItems.map(({ url, icon, title }) => renderNavLink(url, icon, title))}
+            </div>
+
             <button
+              type="button"
               onClick={handleCreateClick}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all duration-200",
-                "hover:scale-105 active:scale-95",
-                "bg-accent text-accent-foreground shadow-fab"
+                "absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+                "rounded-full bg-primary text-primary-foreground shadow-fab",
+                "transition-transform hover:scale-105 active:scale-95"
               )}
               aria-label="Create"
             >
-              <Plus className="h-5 w-5" />
-              <span className="text-[10px] font-semibold tracking-tight">
-                Create
-              </span>
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Create Menu Drawer */}
       {createView === "menu" && (
         <Drawer open={showCreateDrawer} onOpenChange={handleCloseDrawer}>
           <DrawerContent className="max-h-[85vh]">
             <DrawerHeader className="border-b border-border">
               <DrawerTitle>Create</DrawerTitle>
-              <DrawerDescription>
-                Choose what you'd like to create
-              </DrawerDescription>
+              <DrawerDescription>Choose what you&apos;d like to create</DrawerDescription>
             </DrawerHeader>
-            <div className="p-4 space-y-3">
+            <div className="space-y-3 p-4">
               <button onClick={() => openIntake("add_record")} className={intakeAddRecordDrawerCardClassName}>
                 <div className="flex items-center gap-3">
                   <div className={intakeDrawerIconWrapAddClassName}>
@@ -158,10 +151,10 @@ export function MobileBottomNav() {
               </button>
               <button
                 onClick={handleCreateAudio}
-                className="w-full p-4 rounded-lg bg-card shadow-e1 border border-border hover:shadow-md transition-all text-left"
+                className="w-full rounded-lg border border-border bg-card p-4 text-left shadow-e1 transition-all hover:shadow-md"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/10">
+                  <div className="rounded-lg bg-accent/10 p-2">
                     <Plus className="h-5 w-5 text-accent" />
                   </div>
                   <div>
@@ -175,31 +168,24 @@ export function MobileBottomNav() {
         </Drawer>
       )}
 
-      {/* Intake Modal - mobile create entry */}
       {createView === "task" && (
         <IntakeModal
-          open={true}
+          open
           onOpenChange={(open) => {
-            if (!open) {
-              handleCloseDrawer();
-            }
+            if (!open) handleCloseDrawer();
           }}
           initialIntakeMode={mobileIntakeInitial}
         />
       )}
 
-      {/* Audio Recorder - Handles its own Drawer on mobile */}
       {createView === "audio" && (
         <AudioRecorder
-          open={true}
+          open
           onOpenChange={(open) => {
-            if (!open) {
-              handleCloseDrawer();
-            }
+            if (!open) handleCloseDrawer();
           }}
         />
       )}
     </>
   );
 }
-

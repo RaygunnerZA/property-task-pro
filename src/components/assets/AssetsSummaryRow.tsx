@@ -60,23 +60,22 @@ function AssetMetricTile({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
       )}
     >
-      <div className={cn("h-1 w-full shrink-0", TOP_BAR[accent])} aria-hidden />
-      <div className="flex items-center justify-between gap-3 px-3 pt-2.5 pb-1">
-        <span className="text-sm font-medium leading-tight text-foreground min-w-0">{title}</span>
+      <div className={cn("h-[14px] w-full shrink-0", TOP_BAR[accent])} aria-hidden />
+      <div className="flex flex-col items-center justify-start gap-1.5 px-3 pt-2.5 pb-2.5">
         <span
           className={cn(
-            "shrink-0 tabular-nums text-2xl font-bold leading-none text-primary",
-            "min-w-[2.75rem] text-center rounded-[8px] px-2 py-1",
-            INSET,
-            "bg-muted/50"
+            "inline-flex w-[78px] shrink-0 items-center justify-center",
+            "rounded-[8px] bg-muted/50 px-2 py-1",
+            "tabular-nums text-[34px] font-bold leading-none text-primary shadow-none"
           )}
         >
           {count}
         </span>
+        <span className="min-w-0 text-center text-sm font-medium leading-tight text-foreground">{title}</span>
       </div>
       {onClick && (
-        <div className="px-3 pb-2.5 pt-0 flex justify-end">
-          <span className="text-[11px] font-mono uppercase tracking-wide text-primary font-medium">
+        <div className="flex h-[26px] items-center justify-center border-t-2 border-t-white px-3 pb-2.5 pt-2.5">
+          <span className="text-[11px] font-mono uppercase tracking-wide text-foreground font-medium">
             View
           </span>
         </div>
@@ -110,7 +109,7 @@ export function AssetsSummaryRow({
   }, [assets]);
 
   return (
-    <div className="flex w-full max-w-full min-w-0 flex-col gap-2.5 px-0">
+    <div className="grid w-full max-w-full min-w-0 grid-cols-2 gap-2.5 px-0">
       <AssetMetricTile
         title="Active Assets"
         count={counts.active}

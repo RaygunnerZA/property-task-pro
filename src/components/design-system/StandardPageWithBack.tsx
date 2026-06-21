@@ -110,7 +110,7 @@ export function StandardPageWithBack({
       )}
     >
       <PageHeader
-        className={cn(accent && "!bg-transparent shadow-none border-0", headerClassName)}
+        className={cn("hidden lg:block", accent && "!bg-transparent shadow-none border-0", headerClassName)}
         toolbarSurface={accent ? "gradient" : "plain"}
       >
         <div

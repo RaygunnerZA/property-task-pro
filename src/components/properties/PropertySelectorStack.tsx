@@ -12,7 +12,6 @@ import {
 import { PropertySelectorRow, type PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
 import { PropertySelectorAllThumbnail } from "@/components/properties/PropertySelectorAllThumbnail";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
-import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -32,8 +31,9 @@ export type PropertySelectorStackProps = {
   onSelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   className?: string;
-  /** `gradientHeader` — compact popover trigger for the workbench gradient strip. */
-  variant?: "default" | "gradientHeader";
+  /** `gradientHeader` — compact popover trigger for the workbench gradient strip.
+   *  `mobileHeader` — same popover UX on plain mobile app header. */
+  variant?: "default" | "gradientHeader" | "mobileHeader";
 };
 
 export function PropertySelectorStack({
@@ -90,6 +90,10 @@ export function PropertySelectorStack({
     return counts;
   }, [tasks]);
 
+  const isGradientHeader = variant === "gradientHeader";
+  const isMobileHeader = variant === "mobileHeader";
+  const isCompactPopover = isGradientHeader || isMobileHeader;
+
   const collapsedHeaderLabel = useMemo(() => {
     if (isAllActive) return "All Properties";
     if (focusedProperty) {
@@ -101,7 +105,7 @@ export function PropertySelectorStack({
     return "Select Property";
   }, [focusedProperty, isAllActive, selectedPropertyIds.size]);
 
-  const showAllThumbnailInHeader = variant === "gradientHeader" ? isAllActive : !expanded && isAllActive;
+  const showAllThumbnailInHeader = isCompactPopover ? isAllActive : !expanded && isAllActive;
   const collapsedPropertyIcon = useMemo(() => {
     if (!focusedProperty) return null;
     const Icon = getPropertyChipIcon(focusedProperty.icon_name || "home");
@@ -149,10 +153,9 @@ export function PropertySelectorStack({
 
   const toggleExpanded = () => setExpanded((v) => !v);
   const CollapsedHeaderIcon = collapsedPropertyIcon?.Icon;
-  const isGradientHeader = variant === "gradientHeader";
 
   const triggerLabelContent =
-    expanded && !isGradientHeader ? (
+    expanded && !isCompactPopover ? (
       <span
         className={cn(
           "truncate text-sm font-semibold",
@@ -238,7 +241,7 @@ export function PropertySelectorStack({
     </>
   );
 
-  if (isGradientHeader) {
+  if (isCompactPopover) {
     return (
       <TooltipProvider delayDuration={200}>
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
@@ -247,7 +250,9 @@ export function PropertySelectorStack({
               type="button"
               className={cn(
                 "flex min-h-[32px] min-w-0 max-w-full items-center gap-1.5 rounded-lg px-1 py-1 text-left transition-colors",
-                "hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                isGradientHeader
+                  ? "hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  : "hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
               )}
               aria-expanded={popoverOpen}
               aria-label="Select property"
@@ -255,7 +260,8 @@ export function PropertySelectorStack({
               <span className="flex min-w-0 flex-1 items-center gap-2">{triggerLabelContent}</span>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 shrink-0 text-white/90 transition-transform duration-200",
+                  "h-4 w-4 shrink-0 transition-transform duration-200",
+                  isGradientHeader ? "text-white/90" : "text-muted-foreground",
                   popoverOpen && "rotate-180"
                 )}
               />
@@ -307,10 +313,6 @@ export function PropertySelectorStack({
                 )}
               />
             </button>
-
-            {!expanded ? (
-              <WorkbenchMobileNavCluster className="shrink-0 lg:hidden" />
-            ) : null}
           </div>
 
           {expanded ? propertyListPanel : null}

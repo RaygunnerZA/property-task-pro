@@ -1,6 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { WorkbenchMobileNavCluster } from "@/components/layout/WorkbenchMobileNavCluster";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
@@ -144,11 +143,6 @@ export function LeftColumn({
       <div className="flex-shrink-0 w-full">
         <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-0">
         {scopeFilterBar}
-        {isHubHome && !scopeFilterBar && properties.length <= 1 && (
-          <div className="flex justify-end px-[12px] pb-1 pt-0 lg:hidden">
-            <WorkbenchMobileNavCluster />
-          </div>
-        )}
         {!hideProperties && (
         <div className="px-0 w-full max-w-full overflow-x-visible">
           {propertiesLoading ? (
