@@ -165,7 +165,7 @@ export function SignalFeedDetailPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={onClose} aria-hidden="true" />
+      <div className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden" onClick={onClose} aria-hidden="true" />
       <div
         className={cn(
           slideOverPanelClass,

@@ -55,7 +55,17 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
   ({ side = "right", className, children, "aria-describedby": ariaDescribedBy, ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} aria-describedby={ariaDescribedBy ?? undefined} className={cn("dialog-content", sheetVariants({ side }), className)} {...props}>
+      <SheetPrimitive.Content
+        ref={ref}
+        aria-describedby={ariaDescribedBy ?? undefined}
+        className={cn(
+          "dialog-content",
+          sheetVariants({ side }),
+          "max-lg:!left-1/2 max-lg:!right-auto max-lg:!top-4 max-lg:!bottom-auto max-lg:!h-auto max-lg:max-h-[calc(100dvh-2rem)] max-lg:!w-full max-lg:max-w-[min(32rem,calc(100vw-2rem))] max-lg:!-translate-x-1/2 max-lg:rounded-xl max-lg:border",
+          className
+        )}
+        {...props}
+      >
         {children}
         <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none shadow-none">
           <X className="h-4 w-4" />

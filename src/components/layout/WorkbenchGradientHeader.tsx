@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
 import {
@@ -6,6 +6,8 @@ import {
   type PropertySelectorStackProps,
 } from "@/components/properties/PropertySelectorStack";
 import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
+import fillaDarkLogo from "@/assets/filla-dark.png";
+import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { cn } from "@/lib/utils";
 
 /** Gradient strip: colour solid until ~28%, then fades to transparent. */
@@ -23,6 +25,8 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
+  /** Home hub: on mobile, show brand logo instead of the property dropdown while all properties are selected. */
+  mobileBrandLogoWhenAllProperties?: boolean;
 };
 
 export function WorkbenchGradientHeader({
@@ -33,8 +37,16 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
+  mobileBrandLogoWhenAllProperties = false,
 }: WorkbenchGradientHeaderProps) {
   const showPropertySelector = properties.length > 1;
+  const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
+  const isAllPropertiesSelected = useMemo(
+    () => isAllPropertiesActive(selectedPropertyIds, allPropertyIds),
+    [allPropertyIds, selectedPropertyIds]
+  );
+  const showMobileBrandLogo =
+    mobileBrandLogoWhenAllProperties && showPropertySelector && isAllPropertiesSelected;
 
   return (
     <PageHeader showAccountMenu showSearch toolbarClassName="lg:hidden">
@@ -46,7 +58,13 @@ export function WorkbenchGradientHeader({
         )}
         style={headerStyle}
       >
-        {showPropertySelector ? (
+        {showMobileBrandLogo ? (
+          <img
+            src={fillaDarkLogo}
+            alt="Filla"
+            className="h-[22px] w-auto shrink-0"
+          />
+        ) : showPropertySelector ? (
           <PropertySelectorStack
             variant="gradientHeader"
             properties={properties}

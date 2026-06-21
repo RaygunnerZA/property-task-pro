@@ -11,6 +11,7 @@ import { ExpandableSpaceChip } from "@/components/chips/semantic";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
 import { OnboardingCustomCollectionCard } from "@/components/onboarding/OnboardingCustomCollectionCard";
 import { OnboardingCustomCollectionDraftCard } from "@/components/onboarding/OnboardingCustomCollectionDraftCard";
+import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
 import {
   ONBOARDING_SPACE_GROUPS,
   createCustomCollectionId,
@@ -670,9 +671,7 @@ export default function AddSpaceScreen() {
         )}
 
         {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
-        <div className="mb-6 rounded-tr-xl rounded-bl-xl">
-          <div className="relative">
-            <div className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)]">
+        <SpaceGroupCarousel className="mb-6 rounded-tr-xl rounded-bl-xl">
               {ONBOARDING_SPACE_GROUPS.map((group) => (
               <OnboardingSpaceGroupCard
                 key={group.id}
@@ -710,13 +709,7 @@ export default function AddSpaceScreen() {
             <OnboardingCustomCollectionDraftCard
               onCreateCollection={handleCreateCustomCollection}
             />
-            </div>
-            <div
-              className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[14px] rounded-tr-xl rounded-br-xl bg-gradient-to-r from-transparent to-black/20"
-              aria-hidden
-            />
-          </div>
-        </div>
+        </SpaceGroupCarousel>
 
         {/* Input field */}
         <div className="mb-4">

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTrackpadCarouselWheel } from "@/hooks/useTrackpadHorizontalScroll";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Carousel,
@@ -29,9 +30,6 @@ const EMBLA_OPTS = {
   dragThreshold: 22,
 };
 
-const WHEEL_THRESHOLD = 110;
-const WHEEL_DELTA_SCALE = 0.45;
-
 const VIEWPORT_DRAG_CLASS =
   "touch-pan-x cursor-grab select-none overscroll-x-contain active:cursor-grabbing [-webkit-user-drag:none]";
 
@@ -42,9 +40,9 @@ export function PropertyProfileSlider({
 }: PropertyProfileSliderProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [activeIndex, setActiveIndex] = useState(0);
-  const wheelAccumRef = useRef(0);
-
   const skipNextSelectRef = useRef(false);
+
+  useTrackpadCarouselWheel(api);
 
   useEffect(() => {
     if (!api) return;
@@ -70,30 +68,6 @@ export function PropertyProfileSlider({
       api.off("select", onSelect);
     };
   }, [api, onSlideChange]);
-
-  useEffect(() => {
-    if (!api) return;
-    const node = api.rootNode();
-
-    const onWheel = (event: WheelEvent) => {
-      const { deltaX, deltaY } = event;
-      if (Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
-
-      event.preventDefault();
-      wheelAccumRef.current += deltaX * WHEEL_DELTA_SCALE;
-
-      if (wheelAccumRef.current >= WHEEL_THRESHOLD) {
-        api.scrollNext();
-        wheelAccumRef.current = 0;
-      } else if (wheelAccumRef.current <= -WHEEL_THRESHOLD) {
-        api.scrollPrev();
-        wheelAccumRef.current = 0;
-      }
-    };
-
-    node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
-  }, [api]);
 
   const scrollToIndex = (index: number) => {
     api?.scrollTo(index);

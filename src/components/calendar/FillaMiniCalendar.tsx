@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import {
-  addMonths,
+  addDays,
   addWeeks,
-  endOfMonth,
   format,
   format as formatDate,
   isSameDay,
-  isSameMonth,
   isToday,
   startOfMonth,
   startOfWeek,
-  subMonths,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
@@ -37,11 +34,9 @@ function resolveDayUrgency(data: TaskDateData | undefined): DayUrgency {
 const MINI_CALENDAR_DAY_SHADOW =
   "1px 2px 1px 0px rgba(255, 255, 255, 0.8), inset 1.5px 2px 2.4px 0px rgba(0, 0, 0, 0.2), -1px -1px 1px 0px rgba(0, 0, 0, 0.1)";
 
-const COLLAPSED_VISIBLE_ROWS = 2;
 const CALENDAR_WEEK_ROWS = 6;
 const WEEK_STARTS_ON = 1 as const;
-
-type PendingCollapsedScroll = "top" | "bottom" | "focus" | null;
+const WEEK_SLIDE_MS = 200;
 
 /** Row height = cell height + row top margin (mt-0.5) */
 function miniCalendarRowMetrics(variant: "sidebar" | "embedded") {
@@ -49,47 +44,152 @@ function miniCalendarRowMetrics(variant: "sidebar" | "embedded") {
   const rowHeight = cellHeight + 2;
   return {
     rowHeight,
-    collapsedHeight: rowHeight * COLLAPSED_VISIBLE_ROWS,
     expandedHeight: rowHeight * CALENDAR_WEEK_ROWS,
   };
 }
 
-function getMonthGridWeekCount(month: Date): number {
-  const monthStart = startOfMonth(month);
-  const monthEnd = endOfMonth(month);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: WEEK_STARTS_ON });
-  let weeks = 0;
-  let cursor = gridStart;
+function buildWeekDays(weekStart: Date): Date[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
 
-  while (cursor <= monthEnd || weeks < 4) {
-    weeks += 1;
-    cursor = addWeeks(cursor, 1);
-    if (weeks >= CALENDAR_WEEK_ROWS) break;
+type MiniCalendarWeekStripHandle = {
+  goWeek: (delta: -1 | 1) => void;
+};
+
+const MiniCalendarWeekStrip = forwardRef<
+  MiniCalendarWeekStripHandle,
+  {
+    weekStart: Date;
+    tasksByDate: Map<string, TaskDateData>;
+    selectedDate?: Date;
+    onDateSelect?: (date: Date | undefined) => void;
+    onWeekChange: (nextWeekStart: Date) => void;
+    isEmbedded: boolean;
   }
+>(function MiniCalendarWeekStrip(
+  { weekStart, tasksByDate, selectedDate, onDateSelect, onWeekChange, isEmbedded },
+  ref
+) {
+  const [slideDir, setSlideDir] = useState<"left" | "right" | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const weekDays = useMemo(() => buildWeekDays(weekStart), [weekStart]);
 
-  return weeks;
-}
+  const goWeek = useCallback(
+    (delta: -1 | 1) => {
+      if (slideDir) return;
+      setSlideDir(delta === 1 ? "left" : "right");
+      window.setTimeout(() => {
+        onWeekChange(addWeeks(weekStart, delta));
+        setSlideDir(null);
+      }, WEEK_SLIDE_MS);
+    },
+    [onWeekChange, slideDir, weekStart]
+  );
 
-function getWeekRowIndex(month: Date, date: Date): number {
-  const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: WEEK_STARTS_ON });
-  const dateWeekStart = startOfWeek(date, { weekStartsOn: WEEK_STARTS_ON });
-  const diffMs = dateWeekStart.getTime() - gridStart.getTime();
-  return Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
-}
+  useImperativeHandle(ref, () => ({ goWeek }), [goWeek]);
 
-function getRowStartForFocus(month: Date, focusDate: Date): number {
-  const weekCount = getMonthGridWeekCount(month);
-  const rowIndex = getWeekRowIndex(month, focusDate);
-  const maxStart = Math.max(0, weekCount - COLLAPSED_VISIBLE_ROWS);
-  return Math.min(Math.max(0, rowIndex), maxStart);
-}
+  const handleTouchStart = (event: React.TouchEvent) => {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
 
-function getFocusDateForMonth(month: Date, selectedDate?: Date): Date {
-  if (selectedDate && isSameMonth(selectedDate, month)) return selectedDate;
-  const today = new Date();
-  if (isSameMonth(today, month)) return today;
-  return startOfMonth(month);
-}
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const touch = event.changedTouches[0];
+    const dx = start.x - touch.clientX;
+    const dy = start.y - touch.clientY;
+    if (Math.abs(dx) < 36 || Math.abs(dx) <= Math.abs(dy) * 1.1) return;
+    goWeek(dx > 0 ? 1 : -1);
+  };
+
+  const daySizeClass = isEmbedded ? "h-7 w-7" : "h-[30px] w-[30px]";
+  const dayTextClass = isEmbedded ? "text-[11px]" : "text-[13px]";
+
+  return (
+    <div
+      className="w-full min-w-0 touch-pan-x overscroll-x-contain"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="overflow-hidden w-full">
+        <div
+          key={weekStart.toISOString()}
+          className={cn(
+            "w-full transition-transform duration-200 ease-out",
+            slideDir === "left" && "-translate-x-full opacity-0",
+            slideDir === "right" && "translate-x-full opacity-0"
+          )}
+        >
+          <div className="flex w-full justify-between px-0.5 mb-1.5">
+            {weekDays.map((date) => {
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              return (
+                <div
+                  key={format(date, "yyyy-MM-dd-dow")}
+                  className={cn(
+                    "flex-1 min-w-0 text-center font-mono font-medium uppercase",
+                    isEmbedded ? "text-[0.65rem]" : "text-[10px]",
+                    isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
+                  )}
+                >
+                  {formatDate(date, "EEE").toUpperCase()}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex w-full justify-between px-0.5">
+            {weekDays.map((date) => {
+              const dateKey = format(date, "yyyy-MM-dd");
+              const dateData = tasksByDate.get(dateKey);
+              const maxUrgency = resolveDayUrgency(dateData);
+              const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
+              const isTodayDate = isToday(date);
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              const fill = dayCellBackground(maxUrgency, isSelected);
+              const dot = dayDotColor(maxUrgency);
+
+              return (
+                <div key={dateKey} className="flex flex-1 min-w-0 items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => onDateSelect?.(date)}
+                    className={cn(
+                      "relative flex flex-col items-center justify-center rounded-[8px] font-mono font-medium transition-colors",
+                      daySizeClass,
+                      isWeekend && !isSelected && "text-muted-foreground/50"
+                    )}
+                    style={{
+                      backgroundColor: fill,
+                      ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
+                    }}
+                  >
+                    <span
+                      className={cn(
+                        dayTextClass,
+                        isTodayDate && !isSelected && "font-semibold"
+                      )}
+                    >
+                      {date.getDate()}
+                    </span>
+                    {dot ? (
+                      <span
+                        className="absolute top-[3px] left-[3px] h-1 w-1 rounded-full"
+                        style={{ backgroundColor: dot }}
+                        aria-hidden
+                      />
+                    ) : null}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 export type { TaskDateData };
 
@@ -143,13 +243,14 @@ export function FillaMiniCalendar({
   const [internalMonth, setInternalMonth] = useState(
     () => month ?? selectedDate ?? new Date()
   );
-  const { rowHeight, collapsedHeight, expandedHeight } = miniCalendarRowMetrics(variant);
-  const gridMaxHeight = isCollapsible && !isExpanded ? collapsedHeight : expandedHeight;
+  const [weekStart, setWeekStart] = useState(() =>
+    startOfWeek(selectedDate ?? new Date(), { weekStartsOn: WEEK_STARTS_ON })
+  );
+  const { expandedHeight } = miniCalendarRowMetrics(variant);
+  const gridMaxHeight = expandedHeight;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
-  const pendingScrollRef = useRef<PendingCollapsedScroll>(null);
-  const isCollapsedNavRef = useRef(false);
+  const weekStripRef = useRef<MiniCalendarWeekStripHandle>(null);
 
   const displayMonth = month ?? internalMonth;
 
@@ -157,10 +258,10 @@ export function FillaMiniCalendar({
     if (month) setInternalMonth(month);
   }, [month]);
 
-  const syncTbodyRef = useCallback(() => {
-    tbodyRef.current =
-      containerRef.current?.querySelector("tbody.rdp-tbody") ?? null;
-  }, []);
+  useEffect(() => {
+    if (!selectedDate) return;
+    setWeekStart(startOfWeek(selectedDate, { weekStartsOn: WEEK_STARTS_ON }));
+  }, [selectedDate]);
 
   const handleMonthChange = useCallback(
     (newMonth: Date) => {
@@ -170,122 +271,73 @@ export function FillaMiniCalendar({
     [month, onMonthChange]
   );
 
-  const applyCollapsedScroll = useCallback(
-    (mode: PendingCollapsedScroll, focusMonth: Date = displayMonth) => {
-      syncTbodyRef();
-      const tbody = tbodyRef.current;
-      if (!tbody || !mode) return;
-
-      if (mode === "bottom") {
-        tbody.scrollTop = Math.max(0, tbody.scrollHeight - collapsedHeight);
-      } else if (mode === "top") {
-        tbody.scrollTop = 0;
-      } else if (mode === "focus") {
-        const focusDate = getFocusDateForMonth(focusMonth, selectedDate);
-        tbody.scrollTop = getRowStartForFocus(focusMonth, focusDate) * rowHeight;
-      }
+  const handleWeekChange = useCallback(
+    (nextWeekStart: Date) => {
+      setWeekStart(nextWeekStart);
+      handleMonthChange(startOfMonth(nextWeekStart));
     },
-    [collapsedHeight, displayMonth, rowHeight, selectedDate, syncTbodyRef]
+    [handleMonthChange]
   );
 
-  const scrollCollapsedByWeek = useCallback(
-    (direction: -1 | 1) => {
-      syncTbodyRef();
-      const tbody = tbodyRef.current;
-      if (!tbody) return;
-
-      const maxScroll = Math.max(0, tbody.scrollHeight - collapsedHeight);
-      const nextScroll = tbody.scrollTop + direction * rowHeight;
-
-      if (direction < 0 && tbody.scrollTop <= 0) {
-        isCollapsedNavRef.current = true;
-        pendingScrollRef.current = "bottom";
-        handleMonthChange(subMonths(displayMonth, 1));
-        return;
-      }
-
-      if (direction > 0 && tbody.scrollTop >= maxScroll - 1) {
-        isCollapsedNavRef.current = true;
-        pendingScrollRef.current = "top";
-        handleMonthChange(addMonths(displayMonth, 1));
-        return;
-      }
-
-      tbody.scrollTo({
-        top: Math.min(maxScroll, Math.max(0, nextScroll)),
-        behavior: "smooth",
-      });
-    },
-    [collapsedHeight, displayMonth, handleMonthChange, rowHeight, syncTbodyRef]
-  );
-
-  useLayoutEffect(() => {
-    syncTbodyRef();
-    const tbody = tbodyRef.current;
-    if (!tbody || isExpanded || !isCollapsible) return;
-
-    const pending = pendingScrollRef.current;
-    if (pending) {
-      applyCollapsedScroll(pending, displayMonth);
-      pendingScrollRef.current = null;
-      isCollapsedNavRef.current = false;
-      return;
-    }
-
-    if (!isCollapsedNavRef.current) {
-      applyCollapsedScroll("focus", displayMonth);
-    }
-  }, [
-    applyCollapsedScroll,
-    displayMonth,
-    isCollapsible,
-    isExpanded,
-    selectedDate,
-    syncTbodyRef,
-  ]);
-
-  useLayoutEffect(() => {
-    syncTbodyRef();
-    const tbody = tbodyRef.current;
-    if (!tbody) return;
-
-    if (isExpanded) {
-      tbody.scrollTop = 0;
-    }
-  }, [isExpanded, syncTbodyRef]);
-
-  useEffect(() => {
-    syncTbodyRef();
-    const tbody = tbodyRef.current;
-    if (!tbody || isExpanded || !isCollapsible) return;
-
-    const onWheel = (event: WheelEvent) => {
-      const maxScroll = Math.max(0, tbody.scrollHeight - collapsedHeight);
-      const atTop = tbody.scrollTop <= 0;
-      const atBottom = tbody.scrollTop >= maxScroll - 1;
-
-      if (event.deltaY < 0 && atTop) {
-        event.preventDefault();
-        isCollapsedNavRef.current = true;
-        pendingScrollRef.current = "bottom";
-        handleMonthChange(subMonths(displayMonth, 1));
-      } else if (event.deltaY > 0 && atBottom) {
-        event.preventDefault();
-        isCollapsedNavRef.current = true;
-        pendingScrollRef.current = "top";
-        handleMonthChange(addMonths(displayMonth, 1));
-      }
-    };
-
-    tbody.addEventListener("wheel", onWheel, { passive: false });
-    return () => tbody.removeEventListener("wheel", onWheel);
-  }, [collapsedHeight, displayMonth, handleMonthChange, isCollapsible, isExpanded, syncTbodyRef]);
+  const navigateWeek = useCallback((delta: -1 | 1) => {
+    weekStripRef.current?.goWeek(delta);
+  }, []);
 
   const handleToggleExpanded = () => {
-    if (isExpanded) {
-      pendingScrollRef.current = "focus";
-    }
     setIsExpanded((expanded) => !expanded);
+  };
+
+  const showWeekStrip = isCollapsible && !isExpanded;
+
+  const renderDayButton = (props: {
+    date: Date;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    className?: string;
+  }) => {
+    const { date, onClick, className: propClassName } = props;
+    const dateKey = format(date, "yyyy-MM-dd");
+    const dateData = tasksByDate.get(dateKey);
+    const maxUrgency = resolveDayUrgency(dateData);
+    const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
+    const isTodayDate = isToday(date);
+    const fill = dayCellBackground(maxUrgency, isSelected);
+    const dot = dayDotColor(maxUrgency);
+
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          onClick?.(e);
+          onDateSelect?.(date);
+        }}
+        className={cn(
+          propClassName,
+          "relative font-mono rounded-[8px]",
+          isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]"
+        )}
+        style={{
+          backgroundColor: fill,
+          ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
+        }}
+      >
+        <span
+          className={cn(
+            isEmbedded ? "text-[11px]" : "text-[13px]",
+            "font-medium",
+            isTodayDate && !isSelected && "font-semibold"
+          )}
+        >
+          {date.getDate()}
+        </span>
+        {dot ? (
+          <span
+            className="absolute top-[3px] left-[3px] h-1 w-1 rounded-full"
+            style={{ backgroundColor: dot }}
+            aria-hidden
+          />
+        ) : null}
+      </button>
+    );
   };
 
   return (
@@ -294,165 +346,124 @@ export function FillaMiniCalendar({
       className={cn(
         "filla-mini-calendar w-full",
         variant === "sidebar" &&
-          "max-w-[311px] rounded-xl border border-border/40 bg-card/60 p-3 shadow-e1",
+          "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 p-3 shadow-e1",
         className
       )}
-      data-collapsed={isCollapsible && !isExpanded ? "true" : "false"}
+      data-collapsed={showWeekStrip ? "true" : "false"}
     >
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={onDateSelect}
-        month={displayMonth}
-        onMonthChange={handleMonthChange}
-        className={cn(isEmbedded ? "max-w-[247px]" : "max-w-[311px] w-full")}
-        classNames={{
-          months: "flex flex-col w-full",
-          month: "space-y-3 w-full",
-          caption: "flex justify-between items-center px-0.5 mb-1",
-          caption_label: cn(
-            "font-semibold text-foreground",
-            isEmbedded ? "text-base" : "text-sm"
-          ),
-          nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
-          nav_button: cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
-          ),
-          nav_button_previous: "",
-          nav_button_next: "",
-          table: "w-full border-collapse",
-          head: isEmbedded ? undefined : "h-6",
-          head_row: "flex w-full justify-between mb-0",
-          head_cell: cn(
-            "flex-1 text-center font-mono font-medium uppercase text-foreground",
-            "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-            isEmbedded ? "text-[0.65rem]" : "text-[11px]"
-          ),
-          row: "flex w-full justify-between mt-0.5",
-          tbody: cn(
-            "block",
-            isExpanded
-              ? "overflow-hidden transition-[max-height] duration-300 ease-in-out"
-              : "overflow-y-auto overscroll-y-contain touch-pan-y [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            isEmbedded ? "max-h-[192px]" : undefined
-          ),
-          cell: cn(
-            "relative flex flex-1 items-center justify-center p-0 text-center",
-            "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-            isEmbedded ? "h-[30px]" : "h-[28px]"
-          ),
-          day: cn(
-            "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
-            isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
-          ),
-          day_selected: "",
-          day_today: "",
-          day_outside: "text-muted-foreground/40",
-          day_disabled: "text-muted-foreground/30",
-          day_hidden: "invisible",
-        }}
-        modifiers={{ hasTasks: datesWithTasks }}
-        formatters={{
-          formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),
-        }}
-        components={{
-          IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />,
-          IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />,
-          PreviousMonthButton: ({ onClick, ...props }) => (
+      {showWeekStrip ? (
+        <div className="w-full">
+          <div className="mb-2 flex items-center justify-between px-0.5">
             <button
               type="button"
-              {...props}
-              onClick={(event) => {
-                if (isCollapsible && !isExpanded) {
-                  scrollCollapsedByWeek(-1);
-                  return;
-                }
-                onClick?.(event);
-              }}
-            />
-          ),
-          NextMonthButton: ({ onClick, ...props }) => (
-            <button
-              type="button"
-              {...props}
-              onClick={(event) => {
-                if (isCollapsible && !isExpanded) {
-                  scrollCollapsedByWeek(1);
-                  return;
-                }
-                onClick?.(event);
-              }}
-            />
-          ),
-          CaptionLabel: ({ displayMonth: captionMonth }) => (
+              onClick={() => navigateWeek(-1)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+              aria-label="Previous week"
+            >
+              <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />
+            </button>
             <CalendarMonthYearLabel
-              date={captionMonth}
-              monthClassName={cn(
-                "font-semibold text-ink pl-[7px]",
-                isEmbedded ? "text-base" : "text-xl"
-              )}
+              date={displayMonth}
+              monthClassName={cn("font-semibold text-ink pl-[7px]", isEmbedded ? "text-base" : "text-xl")}
             />
-          ),
-          Day: (props: {
-            date: Date;
-            onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-            className?: string;
-            displayMonth?: Date;
-          }) => {
-            const { date, onClick, className: propClassName } = props;
-            const dateKey = format(date, "yyyy-MM-dd");
-            const dateData = tasksByDate.get(dateKey);
-            const maxUrgency = resolveDayUrgency(dateData);
-            const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
-            const isTodayDate = isToday(date);
-            const fill = dayCellBackground(maxUrgency, isSelected);
-            const dot = dayDotColor(maxUrgency);
-
-            return (
-              <button
-                type="button"
-                onClick={(e) => {
-                  onClick?.(e);
-                  onDateSelect?.(date);
-                }}
-                className={cn(
-                  propClassName,
-                  "relative font-mono rounded-[8px]",
-                  isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]"
+            <button
+              type="button"
+              onClick={() => navigateWeek(1)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+              aria-label="Next week"
+            >
+              <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />
+            </button>
+          </div>
+          <MiniCalendarWeekStrip
+            ref={weekStripRef}
+            weekStart={weekStart}
+            tasksByDate={tasksByDate}
+            selectedDate={selectedDate}
+            onDateSelect={onDateSelect}
+            onWeekChange={handleWeekChange}
+            isEmbedded={isEmbedded}
+          />
+        </div>
+      ) : (
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={onDateSelect}
+          month={displayMonth}
+          onMonthChange={handleMonthChange}
+          className={cn(
+            isEmbedded ? "max-w-[247px]" : "w-full max-w-full sm:max-w-[311px]"
+          )}
+          classNames={{
+            months: "flex flex-col w-full",
+            month: "space-y-3 w-full",
+            caption: "flex justify-between items-center px-0.5 mb-1",
+            caption_label: cn(
+              "font-semibold text-foreground",
+              isEmbedded ? "text-base" : "text-sm"
+            ),
+            nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
+            nav_button: cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+            ),
+            nav_button_previous: "",
+            nav_button_next: "",
+            table: "w-full border-collapse",
+            head: isEmbedded ? undefined : "h-6",
+            head_row: "flex w-full justify-between mb-0",
+            head_cell: cn(
+              "flex-1 text-center font-mono font-medium uppercase text-foreground",
+              "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
+              isEmbedded ? "text-[0.65rem]" : "text-[11px]"
+            ),
+            row: "flex w-full justify-between mt-0.5",
+            tbody: cn(
+              "block overflow-hidden transition-[max-height] duration-300 ease-in-out",
+              isEmbedded ? "max-h-[192px]" : undefined
+            ),
+            cell: cn(
+              "relative flex flex-1 items-center justify-center p-0 text-center",
+              "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
+              isEmbedded ? "h-[30px]" : "h-[28px]"
+            ),
+            day: cn(
+              "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
+              isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
+            ),
+            day_selected: "",
+            day_today: "",
+            day_outside: "text-muted-foreground/40",
+            day_disabled: "text-muted-foreground/30",
+            day_hidden: "invisible",
+          }}
+          modifiers={{ hasTasks: datesWithTasks }}
+          formatters={{
+            formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),
+          }}
+          components={{
+            IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />,
+            IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />,
+            CaptionLabel: ({ displayMonth: captionMonth }) => (
+              <CalendarMonthYearLabel
+                date={captionMonth}
+                monthClassName={cn(
+                  "font-semibold text-ink pl-[7px]",
+                  isEmbedded ? "text-base" : "text-xl"
                 )}
-                style={{
-                  backgroundColor: fill,
-                  ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
-                }}
-              >
-                <span
-                  className={cn(
-                    isEmbedded ? "text-[11px]" : "text-[13px]",
-                    "font-medium",
-                    isTodayDate && !isSelected && "font-semibold"
-                  )}
-                >
-                  {date.getDate()}
-                </span>
-                {dot ? (
-                  <span
-                    className="absolute top-[3px] left-[3px] h-1 w-1 rounded-full"
-                    style={{ backgroundColor: dot }}
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
-            );
-          },
-        }}
-        styles={
-          isCollapsible
-            ? {
-                tbody: { maxHeight: gridMaxHeight },
-              }
-            : undefined
-        }
-      />
+              />
+            ),
+            Day: renderDayButton,
+          }}
+          styles={
+            isCollapsible
+              ? {
+                  tbody: { maxHeight: gridMaxHeight },
+                }
+              : undefined
+          }
+        />
+      )}
       {isCollapsible ? (
         <button
           type="button"
@@ -477,12 +488,6 @@ export function FillaMiniCalendar({
         .filla-mini-calendar .rdp-tbody .rdp-row {
           display: flex;
           width: 100%;
-        }
-        .filla-mini-calendar[data-collapsed="true"] .rdp-tbody {
-          scroll-snap-type: y mandatory;
-        }
-        .filla-mini-calendar[data-collapsed="true"] .rdp-tbody .rdp-row {
-          scroll-snap-align: start;
         }
       `}</style>
     </div>

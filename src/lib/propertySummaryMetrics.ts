@@ -182,3 +182,76 @@ export function computePropertySummaryMetrics(
     completedLabel: `${doneCount} of ${totalForCompletion} complete`,
   };
 }
+
+/** Portfolio-wide metrics for the home carousel "All properties" card. */
+export function computeAllPropertiesSummaryMetrics(
+  properties: PropertyLike[],
+  tasks: TaskLike[],
+  urgentOpenTaskCount: number
+): PropertySummaryMetrics {
+  const propertyIds = new Set(properties.map((p) => p.id));
+  const scopedTasks = tasks.filter(
+    (t) => t.property_id && propertyIds.has(t.property_id)
+  );
+
+  const openFromProperties = properties.reduce(
+    (sum, p) => sum + (p.open_tasks_count ?? 0),
+    0
+  );
+  const openTasksFromList = scopedTasks.filter(isOpenTask).length;
+  const openTasks = openFromProperties > 0 ? openFromProperties : openTasksFromList;
+
+  const urgentFromTasks = scopedTasks.filter((t) => {
+    if (!isOpenTask(t)) return false;
+    const pr = (t.priority ?? "").toLowerCase();
+    return pr === "urgent" || pr === "high";
+  }).length;
+  const urgentItems = Math.max(urgentOpenTaskCount, urgentFromTasks);
+
+  let dueSoonTasks = 0;
+  let incompleteTasks = 0;
+  for (const task of scopedTasks) {
+    if (!isOpenTask(task)) continue;
+    if (getTaskDueUrgency(task) === "due_soon") dueSoonTasks++;
+    if (isTaskMissingInfo(task)) incompleteTasks++;
+  }
+
+  const { dueSoonInspections, overdueInspections } = countInspectionUrgency(scopedTasks, []);
+
+  const doneCount = scopedTasks.filter((t) => {
+    const status = (t.status ?? "").toLowerCase();
+    return status === "completed" || status === "done";
+  }).length;
+  const totalForCompletion = openTasks + doneCount;
+  const completionPct =
+    totalForCompletion > 0 ? Math.round((doneCount / totalForCompletion) * 100) : 0;
+
+  const complianceReviews = properties.reduce(
+    (sum, p) =>
+      sum + (p.expired_compliance_count ?? 0) + (p.valid_compliance_count ?? 0),
+    0
+  );
+
+  const complianceDueSoon = properties.reduce((sum, p) => {
+    const valid = p.valid_compliance_count ?? 0;
+    return sum + valid;
+  }, 0);
+
+  return {
+    urgentItems,
+    openTasks,
+    dueSoonTasks,
+    incompleteTasks,
+    complianceReviews,
+    complianceDueSoon: Math.min(complianceDueSoon, complianceReviews),
+    upcomingInspections: countUpcomingInspections(scopedTasks, []),
+    dueSoonInspections,
+    overdueInspections,
+    spacesCount: properties.reduce((sum, p) => sum + (p.spaces_count ?? 0), 0),
+    assetsCount: properties.reduce((sum, p) => sum + (p.assets_count ?? 0), 0),
+    documentsCount: 0,
+    messagesCount: 0,
+    completionPct,
+    completedLabel: `${doneCount} of ${totalForCompletion} complete`,
+  };
+}

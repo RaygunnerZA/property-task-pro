@@ -19,7 +19,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildTasksByDate } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
-import { getEffectiveDefaultPropertyId } from "@/lib/propertySelectorPreferences";
+import { getEffectiveDefaultPropertyId, getPinnedDefaultPropertyId } from "@/lib/propertySelectorPreferences";
 import type { IntakeMode } from "@/types/intake";
 import {
   ISSUES_OPEN_TASK_FILTER_IDS,
@@ -191,6 +191,9 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
 
     setSelectedPropertyIds((prev) => {
       if (prev.size > 0) return prev;
+      if (workbenchPanel === "home" && orgId && !getPinnedDefaultPropertyId(orgId)) {
+        return new Set(allIds);
+      }
       if (allIds.length > 1 && orgId) {
         const effectiveDefault = getEffectiveDefaultPropertyId(orgId);
         if (effectiveDefault && allIds.includes(effectiveDefault)) {
@@ -200,17 +203,16 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
       return new Set(allIds);
     });
 
-    // Seed ?property= from pinned/learned default only on first URL sync — not when other
-    // query params change (e.g. issuesFilter) while the user has widened scope to ALL.
+    // Seed ?property= from pinned default only on first URL sync — not learned default on home.
     if (prevSearch === undefined && allIds.length > 1 && orgId && !pid) {
-      const effectiveDefault = getEffectiveDefaultPropertyId(orgId);
-      if (effectiveDefault && allIds.includes(effectiveDefault)) {
+      const pinnedDefault = getPinnedDefaultPropertyId(orgId);
+      if (pinnedDefault && allIds.includes(pinnedDefault)) {
         const next = new URLSearchParams(searchParams);
-        next.set("property", effectiveDefault);
+        next.set("property", pinnedDefault);
         setSearchParams(next, { replace: true });
       }
     }
-  }, [properties, searchParams, setSearchParams, orgId]);
+  }, [properties, searchParams, setSearchParams, orgId, workbenchPanel]);
 
   const handlePropertySelectionChange = useCallback(
     (next: Set<string>) => {
@@ -811,6 +813,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
+              mobileBrandLogoWhenAllProperties
             />
           }
         leftColumn={

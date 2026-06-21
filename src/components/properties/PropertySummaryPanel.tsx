@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { ChevronRight } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
 import { computePropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
+import type { PropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import { getPropertyAiSummaryLines } from "@/lib/propertyAiSummary";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
@@ -31,11 +31,11 @@ const secondaryCountBoxClass: Record<StatSecondaryTone, string> = {
 
 const secondaryLabelClass: Record<StatSecondaryTone, string> = {
   urgent:
-    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-destructive transition-colors group-hover:text-[#EB6834]",
+    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-destructive transition-colors group-hover:text-[#EB6834]",
   warning:
-    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-amber-600 transition-colors group-hover:text-amber-300",
+    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-amber-600 transition-colors group-hover:text-amber-300",
   neutral:
-    "font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground transition-colors group-hover:text-white/90",
+    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-muted-foreground transition-colors group-hover:text-white/90",
 };
 
 type PropertySummaryPanelProps = {
@@ -54,6 +54,11 @@ type PropertySummaryPanelProps = {
   onOpenPeople?: () => void;
   onOpenRecords?: () => void;
   className?: string;
+  /** Compact omits radial progress and entity count rows */
+  variant?: "full" | "compact";
+  /** Precomputed metrics for portfolio / aggregate cards */
+  metricsOverride?: PropertySummaryMetrics;
+  summaryLinesOverride?: string[];
 };
 
 function StatColumn({
@@ -81,15 +86,8 @@ function StatColumn({
           <span className={statWordClass}>{line1}</span>
           <span className={statWordClass}>{line2}</span>
         </div>
-        <div className="ml-auto flex shrink-0 self-stretch items-center justify-end">
-          <ChevronRight
-            className="h-7 w-8 text-muted-foreground/70 transition-colors group-hover:font-bold group-hover:text-white"
-            strokeWidth={2.5}
-            aria-hidden
-          />
-        </div>
       </div>
-      <div className="mt-1.5 flex w-full items-center gap-1.5">
+      <div className="mt-1.5 flex w-[77px] items-center gap-0.5 tracking-[0.3px]">
         <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
         <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
       </div>
@@ -167,9 +165,13 @@ export function PropertySummaryPanel({
   onOpenPeople,
   onOpenRecords,
   className,
+  variant = "full",
+  metricsOverride,
+  summaryLinesOverride,
 }: PropertySummaryPanelProps) {
   const metrics = useMemo(
     () =>
+      metricsOverride ??
       computePropertySummaryMetrics(
         property,
         tasks as Parameters<typeof computePropertySummaryMetrics>[1],
@@ -177,12 +179,14 @@ export function PropertySummaryPanel({
         0,
         urgentOpenTaskCount
       ),
-    [property, tasks, documents, urgentOpenTaskCount]
+    [property, tasks, documents, urgentOpenTaskCount, metricsOverride]
   );
 
   const summaryLines = useMemo(
-    () => getPropertyAiSummaryLines(tasks as Parameters<typeof getPropertyAiSummaryLines>[0], documents),
-    [tasks, documents]
+    () =>
+      summaryLinesOverride ??
+      getPropertyAiSummaryLines(tasks as Parameters<typeof getPropertyAiSummaryLines>[0], documents),
+    [tasks, documents, summaryLinesOverride]
   );
 
   const tasksSecondary = useMemo(() => {
@@ -257,39 +261,52 @@ export function PropertySummaryPanel({
           />
         </div>
 
-        <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-1">
-          <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
-            <RadialProgress
-              value={metrics.completionPct}
-              size={78}
-              thickness={5}
-              innerDiscSize={57}
-              labelMarginLeft={4}
-              embed
-              visualWeight="soft"
-              aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
-            />
-            <p className="mt-1 max-w-[96px] text-center text-[10px] font-medium leading-tight text-muted-foreground">
-              {metrics.completedLabel}
-            </p>
-          </div>
+        {variant === "full" ? (
+          <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-1">
+            <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
+              <RadialProgress
+                value={metrics.completionPct}
+                size={78}
+                thickness={5}
+                innerDiscSize={57}
+                labelMarginLeft={4}
+                embed
+                visualWeight="soft"
+                aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
+              />
+              <p className="mt-1 max-w-[96px] text-center text-[10px] font-medium leading-tight text-muted-foreground">
+                {metrics.completedLabel}
+              </p>
+            </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-0 border-l border-dashed border-border/35 pl-2">
-            <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
-            <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
-            <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
-            <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
+            <div className="flex min-w-0 flex-1 flex-col gap-0 border-l border-dashed border-border/35 pl-2">
+              <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
+              <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
+              <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
+              <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div className="grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3">
+        <div
+          className={cn(
+            "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
+            variant === "compact" &&
+              "gap-x-2.5 gap-y-[3px] border-t border-t-border/30 pl-0 pr-3 pt-[2px] pb-3"
+          )}
+        >
           <div
             className="flex h-9 w-[21px] shrink-0 items-start justify-center rounded-2xl rounded-bl-sm"
             aria-hidden
           >
             <FillaIcon size={24} className="opacity-90" />
           </div>
-          <div className="min-w-0 space-y-1 text-[14px] leading-snug text-foreground/85">
+          <div
+            className={cn(
+              "min-w-0 space-y-1 text-[14px] leading-snug text-foreground/85",
+              variant === "compact" && "w-[208px] text-[12px] tracking-[-0.4px]"
+            )}
+          >
             {summaryLines.map((line) => (
               <p key={line}>{line}</p>
             ))}

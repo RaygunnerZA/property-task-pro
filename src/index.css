@@ -249,7 +249,7 @@
   }
 
   /* Narrow viewports: cap centered dialogs/sheets to viewport minus gutter */
-  @media (max-width: 639px) {
+  @media (max-width: 1023px) {
     .dialog-content[role="dialog"] {
       width: min(100%, calc(100vw - 2rem)) !important;
       max-width: min(100%, calc(100vw - 2rem)) !important;

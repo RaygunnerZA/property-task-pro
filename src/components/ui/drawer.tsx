@@ -1,7 +1,13 @@
 import * as React from "react";
 import { Drawer as DrawerPrimitive } from "vaul";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  dialogContentClass,
+  modalCloseButtonClass,
+  modalHorizontalCenterClass,
+} from "@/lib/layoutClasses";
 
 const Drawer = ({ shouldScaleBackground = true, ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
@@ -31,12 +37,18 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "dialog-content fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto w-full min-w-0 max-w-full flex-col rounded-t-[10px] border bg-background",
-        className,
+        "dialog-content fixed top-4 z-50 flex h-auto w-full min-w-0 flex-col overflow-hidden rounded-xl border bg-background shadow-lg",
+        modalHorizontalCenterClass,
+        "max-h-[calc(100dvh-2rem)]",
+        dialogContentClass,
+        className
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      <DrawerClose className={modalCloseButtonClass}>
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DrawerClose>
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
@@ -44,7 +56,7 @@ const DrawerContent = React.forwardRef<
 DrawerContent.displayName = "DrawerContent";
 
 const DrawerHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("grid gap-1.5 p-4 text-center sm:text-left", className)} {...props} />
+  <div className={cn("grid gap-1.5 p-4 pr-12 text-left", className)} {...props} />
 );
 DrawerHeader.displayName = "DrawerHeader";
 

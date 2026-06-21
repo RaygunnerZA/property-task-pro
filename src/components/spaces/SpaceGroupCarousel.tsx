@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useTrackpadHorizontalElementScroll } from "@/hooks/useTrackpadHorizontalScroll";
 
 type SpaceGroupCarouselProps = {
   children: ReactNode;
@@ -7,10 +8,16 @@ type SpaceGroupCarouselProps = {
 
 /** Horizontal scroller for space group cards (matches onboarding Add Spaces layout). */
 export function SpaceGroupCarousel({ children, className }: SpaceGroupCarouselProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useTrackpadHorizontalElementScroll(scrollRef);
+
   return (
     <div className={className}>
       <div className="relative">
-        <div className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)]">
+        <div
+          ref={scrollRef}
+          className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] touch-pan-x overscroll-x-contain"
+        >
           {children}
         </div>
         <div

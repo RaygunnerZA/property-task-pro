@@ -141,7 +141,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -184,7 +184,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
     return (
       <>
         <div
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />

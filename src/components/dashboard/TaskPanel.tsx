@@ -45,6 +45,7 @@ import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
+import { isPropertySubsetSelected, recordMatchesPropertyScope } from "@/utils/propertyFilter";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import type { IntakeMode } from "@/types/intake";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
@@ -232,6 +233,9 @@ export function TaskPanel({
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
 
+  const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
+  const propertySubsetSelected = isPropertySubsetSelected(selectedPropertyIds, allPropertyIds);
+
   const propertyOptions = useMemo(() => {
     return properties
       .map((property: any) => ({
@@ -278,7 +282,13 @@ export function TaskPanel({
   }, [tasksForView, tasks.length]);
 
   const complianceRecords = useMemo<ComplianceRecord[]>(() => {
-    const recordsFromView = (compliancePortfolio as any[]).map((row) => {
+    const portfolioRows = propertySubsetSelected
+      ? (compliancePortfolio as any[]).filter((row) =>
+          recordMatchesPropertyScope(row.property_id, selectedPropertyIds, allPropertyIds)
+        )
+      : (compliancePortfolio as any[]);
+
+    const recordsFromView = portfolioRows.map((row) => {
       const title = row.title || row.document_type || "Compliance Record";
       const propertyName = row.property_name || "Unassigned property";
       const dueOrExpiry = row.next_due_date || row.expiry_date;
@@ -320,7 +330,7 @@ export function TaskPanel({
       if (!byId.has(record.id)) byId.set(record.id, record);
     });
     return Array.from(byId.values());
-  }, [attentionComplianceDrafts, compliancePortfolio]);
+  }, [attentionComplianceDrafts, compliancePortfolio, propertySubsetSelected, selectedPropertyIds, allPropertyIds]);
 
   const attentionItems = useMemo<AttentionItem[]>(() => {
     const fixtureUrgent = signalUiFixturesEnabled

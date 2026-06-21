@@ -1,7 +1,9 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
-import { PropertyIdentityStrip } from "@/components/properties/PropertyIdentityStrip";
+import { buildTasksByDate } from "@/lib/calendarDayMeta";
+import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import { PropertyIdentityStrip, type PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -11,7 +13,7 @@ import { propertyHasOnboardingDemoContent } from "@/lib/onboardingDemo";
 import { useEnsureOnboardingDemo } from "@/hooks/useEnsureOnboardingDemo";
 import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
 import { Button } from "@/components/ui/button";
-import { HubSummaryPanel } from "@/components/dashboard/HubSummaryPanel";
+import { PropertyDashboardCarousel } from "@/components/properties/PropertyDashboardCarousel";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -133,6 +135,20 @@ export function LeftColumn({
     return propertyHasOnboardingDemoContent(tasks, focusedProperty.id);
   }, [tasks, focusedProperty?.id]);
 
+  const calendarTasks = useMemo(() => {
+    if (properties.length === 0 || isAllPropertiesActive(selectedPropertyIds, ALL_PROPERTY_IDS)) {
+      return tasks;
+    }
+    return tasks.filter(
+      (task) => task.property_id && selectedPropertyIds.has(task.property_id)
+    );
+  }, [ALL_PROPERTY_IDS, properties.length, selectedPropertyIds, tasks]);
+
+  const scopedTasksByDate = useMemo(
+    () => tasksByDate ?? buildTasksByDate(calendarTasks),
+    [calendarTasks, tasksByDate]
+  );
+
   return (
     <div 
       ref={leftColumnRef}
@@ -154,8 +170,20 @@ export function LeftColumn({
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
+          ) : isHubHome ? (
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full pl-0 pr-[2px] pt-[2px] pb-[7px]">
+              <PropertyDashboardCarousel
+                properties={properties as PropertyForStrip[]}
+                tasks={tasks}
+                loading={propertiesLoading || tasksLoading}
+                selectedPropertyIds={selectedPropertyIds}
+                urgentTaskCounts={urgentTaskCounts}
+                onPropertySelectionChange={setSelectedPropertyIds}
+                onFilterClick={onFilterClick}
+              />
+            </div>
           ) : focusedProperty ? (
-            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full px-[3px] pt-[2px] pb-[7px]">
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full pl-0 pr-[2px] pt-[2px] pb-[7px]">
               {showOnboardingDemoBanner && (
                 <OnboardingDemoBanner
                   propertyId={focusedProperty.id}
@@ -188,27 +216,6 @@ export function LeftColumn({
 
       {/* Calendar + hub summary — dashboard sits directly above the calendar */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
-        {isHubHome && !propertiesLoading && properties.length > 0 && !focusedProperty ? (
-          <div className="w-full min-w-0 max-w-full shrink-0 px-[3px] pb-2 pt-1">
-            <HubSummaryPanel
-              tasks={tasks}
-              properties={properties}
-              selectedPropertyIds={selectedPropertyIds}
-              loading={tasksLoading}
-              onOpenTasks={onFilterClick ? () => onFilterClick("show-tasks") : undefined}
-              onOpenUrgentTasks={
-                onFilterClick ? () => onFilterClick("show-tasks-urgent") : undefined
-              }
-              onOpenSpaces={onFilterClick ? () => onFilterClick("show-spaces") : undefined}
-              onOpenAssets={onFilterClick ? () => onFilterClick("show-assets") : undefined}
-              onDueSoon={onFilterClick ? () => onFilterClick("filter-date-this-week") : undefined}
-              onOverdue={onFilterClick ? () => onFilterClick("filter-date-overdue") : undefined}
-              onMissingInfo={
-                onFilterClick ? () => onFilterClick("filter-task-missing-info") : undefined
-              }
-            />
-          </div>
-        ) : null}
         <div
           ref={calendarRef}
           className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
@@ -221,10 +228,10 @@ export function LeftColumn({
             ) : (
               <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
                 <FillaMiniCalendar
-                  tasks={tasks}
+                  tasks={calendarTasks}
                   selectedDate={selectedDate}
                   onDateSelect={onDateSelect}
-                  tasksByDate={tasksByDate}
+                  tasksByDate={scopedTasksByDate}
                 />
               </div>
             )}
