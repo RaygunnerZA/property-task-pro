@@ -38,7 +38,7 @@ export function useOrganization(): UseOrganizationResult {
         .from("organisations")
         .select("*")
         .eq("id", orgId)
-        .single();
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
       setOrganization(data);

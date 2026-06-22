@@ -1,9 +1,5 @@
 import { useMemo } from "react";
 import { Plus } from "lucide-react";
-import spacesIcon from "@/assets/property-hub/spaces-icon.png";
-import assetsIcon from "@/assets/property-hub/assets-icon.png";
-import peopleIcon from "@/assets/property-hub/people-icon.png";
-import recordsIcon from "@/assets/property-hub/records-icon.png";
 import { cn } from "@/lib/utils";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -30,33 +26,35 @@ type NavCard = {
   fill: string;
 };
 
+const PROPERTY_HUB_ICON_BASE = "/property-hub";
+
 const NAV_CARDS: NavCard[] = [
   {
     id: "spaces",
     title: "Spaces",
     description: "Rooms, zones, and layout",
-    iconSrc: spacesIcon,
+    iconSrc: `${PROPERTY_HUB_ICON_BASE}/spaces-icon.png`,
     fill: "hsl(185 40% 88%)",
   },
   {
     id: "assets",
     title: "Assets",
     description: "Equipment and fittings",
-    iconSrc: assetsIcon,
+    iconSrc: `${PROPERTY_HUB_ICON_BASE}/assets-icon.png`,
     fill: "hsl(16 83% 90%)",
   },
   {
     id: "people",
     title: "People",
     description: "Owners, contacts, and team",
-    iconSrc: peopleIcon,
+    iconSrc: `${PROPERTY_HUB_ICON_BASE}/people-icon.png`,
     fill: "hsl(43 100% 88%)",
   },
   {
     id: "records",
     title: "Records",
     description: "Documents and compliance",
-    iconSrc: recordsIcon,
+    iconSrc: `${PROPERTY_HUB_ICON_BASE}/records-icon.png`,
     fill: "hsl(248 15% 90%)",
   },
 ];

@@ -31,6 +31,8 @@ export type PropertySelectorStackProps = {
   onSelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   className?: string;
+  /** When true, closes any open popover (e.g. while mobile header search is open). */
+  suppressInteractions?: boolean;
   /** `gradientHeader` — compact popover trigger for the workbench gradient strip.
    *  `mobileHeader` — same popover UX on plain mobile app header. */
   variant?: "default" | "gradientHeader" | "mobileHeader";
@@ -44,6 +46,7 @@ export function PropertySelectorStack({
   onFilterClick,
   className,
   variant = "default",
+  suppressInteractions = false,
 }: PropertySelectorStackProps) {
   const { orgId } = useActiveOrg();
   const [expanded, setExpanded] = useState(variant === "default");
@@ -118,6 +121,13 @@ export function PropertySelectorStack({
       setExpanded(false);
     }
   }, [singleSelectedId, variant]);
+
+  useEffect(() => {
+    if (suppressInteractions) {
+      setExpanded(false);
+      setPopoverOpen(false);
+    }
+  }, [suppressInteractions]);
 
   const handleTogglePinned = useCallback(
     (propertyId: string) => {

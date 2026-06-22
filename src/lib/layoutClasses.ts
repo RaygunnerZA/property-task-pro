@@ -11,6 +11,21 @@ export const dialogContentClass =
 export const mobileTopModalShellClass =
   "max-lg:top-4 max-lg:translate-y-0 max-lg:rounded-xl max-lg:max-h-[calc(100dvh-2rem)]";
 
+/** Scrollable modal shell — header/footer stay fixed; body scrolls. Pair with `modalScrollBodyClass`. */
+export const modalScrollShellClass =
+  "flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0";
+
+/** Scrollable region inside a modal shell. */
+export const modalScrollBodyClass =
+  "min-h-0 flex-1 overflow-y-auto overscroll-contain px-6";
+
+/** Pinned modal header when using `modalScrollShellClass`. */
+export const modalScrollHeaderClass = "shrink-0 px-6 pt-6 pb-2";
+
+/** Pinned modal footer when using `modalScrollShellClass`. */
+export const modalScrollFooterClass =
+  "shrink-0 border-t border-border/40 px-6 pb-6 pt-4";
+
 /** Desktop (lg+): vertically centered dialog. */
 export const desktopCenterModalShellClass =
   "lg:top-1/2 lg:-translate-y-1/2 lg:rounded-lg";

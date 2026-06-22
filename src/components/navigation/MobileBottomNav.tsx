@@ -62,9 +62,8 @@ export function MobileBottomNav() {
       <Link
         key={to}
         to={to}
-        aria-label={label}
         className={cn(
-          "flex min-w-[4.5rem] items-center justify-center py-1.5 rounded-lg transition-all duration-200",
+          "flex min-w-[4.5rem] flex-col items-center gap-0.5 rounded-lg py-1 transition-all duration-200",
           "hover:scale-105 active:scale-95",
           to === "/tasks" && "pl-2 pr-5",
           to === "/agenda" && "pl-5 pr-2",
@@ -74,10 +73,18 @@ export function MobileBottomNav() {
       >
         <Icon
           className={cn(
-            "h-8 w-8 transition-colors",
-            isActive ? "text-foreground" : "text-muted-foreground/66"
+            "h-6 w-6 icon-shadow-neu-pressed transition-colors",
+            isActive ? "text-[#3A4A6A]" : "text-muted-foreground"
           )}
         />
+        <span
+          className={cn(
+            "text-[10px] font-semibold leading-none tracking-tight transition-colors",
+            isActive ? "text-[#3A4A6A]" : "text-muted-foreground"
+          )}
+        >
+          {label}
+        </span>
       </Link>
     );
   };

@@ -1,4 +1,4 @@
-import { ReactNode, lazy, Suspense } from "react";
+import { ReactNode, lazy, Suspense, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { isDevBuild } from "@/context/DevModeContext";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
@@ -14,12 +14,14 @@ function PageHeaderToolbar({
   surface = "gradient",
   showAccountMenu = true,
   showSearch = false,
+  mobileSearchSlot,
 }: {
   className?: string;
   surface?: "gradient" | "plain";
   /** When false, account avatar is not shown in the header (e.g. hub uses workbench row + sidebar). */
   showAccountMenu?: boolean;
   showSearch?: boolean;
+  mobileSearchSlot?: ReactNode;
 }) {
   const onGradient = surface === "gradient";
   return (
@@ -36,7 +38,9 @@ function PageHeaderToolbar({
       )}
       {showSearch && (
         <div className="lg:hidden">
-          <MobileHeaderSearchButton variant={onGradient ? "onGradient" : "default"} />
+          {mobileSearchSlot ?? (
+            <MobileHeaderSearchButton variant={onGradient ? "onGradient" : "default"} />
+          )}
         </div>
       )}
       {showAccountMenu && (
@@ -51,6 +55,7 @@ function PageHeaderToolbar({
 interface PageHeaderProps {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
   /** Extra classes for the absolute toolbar (e.g. vertical alignment tweaks). */
   toolbarClassName?: string;
   /** Controls contrast for toolbar controls (gradient strip vs neutral header). */
@@ -59,23 +64,28 @@ interface PageHeaderProps {
   showAccountMenu?: boolean;
   /** Mobile search icon in the header toolbar. */
   showSearch?: boolean;
+  /** Replaces the default mobile search button (e.g. inline workbench search). */
+  mobileSearchSlot?: ReactNode;
 }
 
 export function PageHeader({
   children,
   className,
+  style,
   toolbarClassName,
   toolbarSurface = "gradient",
   showAccountMenu = true,
   showSearch = false,
+  mobileSearchSlot,
 }: PageHeaderProps) {
   return (
-    <header className={cn("page-header relative pl-space-sm", className)}>
+    <header className={cn("page-header relative pl-space-sm", className)} style={style}>
       <PageHeaderToolbar
         className={toolbarClassName}
         surface={toolbarSurface}
         showAccountMenu={showAccountMenu}
         showSearch={showSearch}
+        mobileSearchSlot={mobileSearchSlot}
       />
       {children}
     </header>

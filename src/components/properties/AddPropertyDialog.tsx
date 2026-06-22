@@ -19,12 +19,15 @@ import {
 } from "@/lib/propertyVisualUniqueness";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { modalScrollFooterClass, modalScrollHeaderClass, modalScrollShellClass } from "@/lib/layoutClasses";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddressAutocompleteInput } from "@/components/ui/AddressAutocompleteInput";
@@ -231,15 +234,15 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className={cn("sm:max-w-[500px]", modalScrollShellClass)}>
+        <DialogHeader className={modalScrollHeaderClass}>
           <DialogTitle>Add New Property</DialogTitle>
           <DialogDescription>
             Enter the property details below.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <DialogBody className="space-y-6 py-4">
           {/* Icon Preview */}
           <div className="flex justify-center">
             <div
@@ -337,9 +340,9 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
             )}
           </div>
 
-        </div>
+        </DialogBody>
 
-        <DialogFooter>
+        <DialogFooter className={modalScrollFooterClass}>
           <Button
             variant="outline"
             onClick={() => {

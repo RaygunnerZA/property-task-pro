@@ -11,12 +11,14 @@ import {
 } from "@/lib/propertyVisualUniqueness";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { modalScrollFooterClass, modalScrollHeaderClass, modalScrollShellClass } from "@/lib/layoutClasses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,7 @@ import { uploadPropertyImageWithThumbnail } from "@/services/properties/property
 import { enrichPropertyGeo } from "@/services/signals/signalEngineClient";
 import type { PlaceSelection } from "@/lib/signals/signalTypes";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 
 type PropertyEditSheetProps = {
@@ -140,13 +143,13 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md gap-4">
-        <DialogHeader>
+      <DialogContent className={cn("max-w-md", modalScrollShellClass)}>
+        <DialogHeader className={modalScrollHeaderClass}>
           <DialogTitle>Edit property</DialogTitle>
           <DialogDescription>Update the photo, name, icon, and address.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <DialogBody className="space-y-4 py-2">
           <div>
             <Label className="text-xs">Photo</Label>
             <div className="mt-1.5 flex items-center gap-3">
@@ -243,9 +246,9 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
               takenPropertyColorHexes={takenColorsArr}
             />
           </div>
-        </div>
+        </DialogBody>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+        <DialogFooter className={cn(modalScrollFooterClass, "flex-col gap-2 sm:flex-col sm:space-x-0")}>
           <div className="flex w-full gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel

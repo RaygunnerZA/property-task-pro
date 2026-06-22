@@ -68,7 +68,7 @@ export function useInitialOrgQueries(orgId: string | null): UseInitialOrgQueries
             .from("organisations")
             .select("*")
             .eq("id", orgId)
-            .single(),
+            .maybeSingle(),
           
           // Fetch organisation member for current user
           supabase

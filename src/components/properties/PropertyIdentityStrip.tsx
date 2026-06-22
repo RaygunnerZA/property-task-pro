@@ -163,11 +163,11 @@ export function PropertyIdentityStrip({
           <div className="absolute bottom-2 left-2.5 right-10 z-10 min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <IconComponent
-                className="h-6 w-6 shrink-0 drop-shadow-sm stroke-[1.75]"
+                className="h-[30px] w-[30px] shrink-0 drop-shadow-sm stroke-[1.75]"
                 style={{ color: iconColor }}
                 aria-hidden
               />
-              <p className="min-w-0 truncate text-[22px] font-semibold leading-tight text-white drop-shadow-sm">
+              <p className="min-w-0 truncate text-[30px] font-semibold leading-tight text-white drop-shadow-sm">
                 {displayName}
               </p>
             </div>

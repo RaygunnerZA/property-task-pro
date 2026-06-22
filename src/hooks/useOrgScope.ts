@@ -6,9 +6,12 @@
  * Do NOT use requireOrgId() in render paths.
  */
 import { useActiveOrg } from "./useActiveOrg";
+import type { ActiveOrgType } from "@/contexts/ActiveOrgContext";
 
 export interface UseOrgScopeResult {
   orgId: string | null;
+  role: string | null;
+  orgType: ActiveOrgType | null;
   orgLoading: boolean;
   orgError: string | null;
   /** Use only in event handlers or explicit guards. Throws when !orgId && !orgLoading. */
@@ -16,7 +19,7 @@ export interface UseOrgScopeResult {
 }
 
 export function useOrgScope(): UseOrgScopeResult {
-  const { orgId, isLoading: orgLoading, error: orgError } = useActiveOrg();
+  const { orgId, role, orgType, isLoading: orgLoading, error: orgError } = useActiveOrg();
 
   const requireOrgId = (): string => {
     if (orgLoading) {
@@ -30,6 +33,8 @@ export function useOrgScope(): UseOrgScopeResult {
 
   return {
     orgId,
+    role,
+    orgType,
     orgLoading,
     orgError: orgError ?? null,
     requireOrgId,

@@ -1,7 +1,7 @@
 /**
  * AIIconColorPicker — Simplified icon + color picker for Add Space/Asset/Property modals.
  * - 5 icon slots: thematic defaults on load; when user types, AI replaces first slot if relevant
- * - 5 color options
+ * - 6 distinct color options
  */
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -156,9 +156,15 @@ export function AIIconColorPicker({
 
   const visibleColors = useMemo(() => {
     const current = normalizePropertyColorHex(value.color);
-    return PROPERTY_COLOR_PALETTE.filter(
+    const available = PROPERTY_COLOR_PALETTE.filter(
       (c) => !colorTakenSet.has(normalizePropertyColorHex(c)) || normalizePropertyColorHex(c) === current
     );
+    const hasCurrent = available.some((c) => normalizePropertyColorHex(c) === current);
+    const colors =
+      !hasCurrent && value.color
+        ? [value.color, ...available.filter((c) => normalizePropertyColorHex(c) !== current)]
+        : available;
+    return colors.slice(0, 6);
   }, [colorTakenSet, value.color]);
 
   useEffect(() => {

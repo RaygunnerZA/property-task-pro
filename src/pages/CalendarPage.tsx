@@ -17,6 +17,7 @@ import { useAssistantContext } from "@/contexts/AssistantContext";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -135,6 +136,7 @@ function CalendarPageContent() {
   }, [properties, selectedPropertyIds]);
 
   const headerStyle = createGradientHeaderStyle(headerAccentColor);
+  useThemeColor(headerAccentColor);
 
   const handleAskFilla = useCallback(
     (query: string) => {

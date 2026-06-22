@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useDataContext } from "@/contexts/DataContext";
-import { useOrgScope } from "@/hooks/useOrgScope";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,44 +29,13 @@ function isInvitedStaffRole(role: string | null): boolean {
 }
 
 export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
-  const { isAuthenticated, loading, session, user } = useDataContext();
-  const { orgId, orgLoading } = useOrgScope();
-  const userId = user?.id ?? null;
-  const [memberRole, setMemberRole] = useState<string | null>(null);
-  const [memberRoleLoading, setMemberRoleLoading] = useState(false);
+  const { isAuthenticated, loading, session } = useDataContext();
+  const { orgId, role: memberRole, isLoading: orgLoading } = useActiveOrg();
   const [checkingProperties, setCheckingProperties] = useState(false);
   const [hasProperties, setHasProperties] = useState<boolean | null>(null);
 
   const onboardingCompleted = getOnboardingCompleted(session, orgId);
   const isInvitedStaff = !!orgId && isInvitedStaffRole(memberRole);
-
-  // Fetch member role when user has an org (for role-aware onboarding)
-  useEffect(() => {
-    if (!orgId || !userId) {
-      setMemberRole(null);
-      setMemberRoleLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setMemberRoleLoading(true);
-    void Promise.resolve(
-      supabase
-        .from("organisation_members")
-        .select("role")
-        .eq("org_id", orgId)
-        .eq("user_id", userId)
-        .maybeSingle()
-    ).then(({ data, error }) => {
-      if (cancelled) return;
-      if (!error && data) setMemberRole(data.role ?? null);
-      else setMemberRole(null);
-    }).finally(() => {
-      if (!cancelled) setMemberRoleLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [orgId, userId]);
 
   // Check if user has properties when they have an org
   useEffect(() => {
@@ -83,12 +52,7 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     }).finally(() => setCheckingProperties(false));
   }, [orgId, loading, orgLoading]);
 
-  const needRoleForRedirect = !onboardingCompleted && !!orgId;
-  const showSkeleton =
-    loading ||
-    orgLoading ||
-    checkingProperties ||
-    (needRoleForRedirect && memberRoleLoading);
+  const showSkeleton = loading || orgLoading || checkingProperties;
 
   if (showSkeleton) {
     return <ProtectedRouteSkeleton />;

@@ -43,6 +43,7 @@ import {
 } from "@/lib/propertyRoutes";
 import { RecordsActionRail } from "@/components/records/RecordsActionRail";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
@@ -55,7 +56,7 @@ import {
   createGradientHeaderStyle,
 } from "@/components/layout/WorkbenchGradientHeader";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
-import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
+import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
 
 export type { DashboardWorkbenchPanel };
 
@@ -67,8 +68,6 @@ export type DashboardProps = {
 function workbenchRouteForTab(tab: WorkbenchPanelTab): string {
   return WORKBENCH_SECTION_ROUTES[tab];
 }
-
-const LG_BREAKPOINT = LAYOUT_BREAKPOINTS.layout;
 
 /** Use the live address bar when mutating query params so we never drop `property` or revert scope if React's `searchParams` is one frame behind (e.g. Hall selected then Compliance tab immediately). */
 function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchParams {
@@ -107,7 +106,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [intakeMinimized, setIntakeMinimized] = useState(false);
-  const [isLargeScreen, setIsLargeScreen] = useState<boolean>(false);
+  const isLargeScreen = useMinLayoutBreakpoint();
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
   const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
@@ -379,16 +378,6 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   }, [isDedicatedWorkbench, searchParams, setSearchParams, properties]);
 
   const tasksByDate = useMemo(() => buildTasksByDate(tasks), [tasks]);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
-      setIsLargeScreen(window.innerWidth >= LG_BREAKPOINT);
-    };
-    
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
 
   // Sync concertina with AssistantContext: when openAssistant is called, expand assistant section
   useEffect(() => {
@@ -784,6 +773,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   }, [properties, selectedPropertyIds, primaryColor]);
 
   const headerStyle = createGradientHeaderStyle(headerAccentColor);
+  useThemeColor(headerAccentColor);
 
   const defaultWorkbenchPropertyId = useMemo(() => {
     if (selectedPropertyIds.size === 1) return Array.from(selectedPropertyIds)[0];

@@ -8,6 +8,7 @@ import {
   mobileTopModalShellClass,
   modalCloseButtonClass,
   modalHorizontalCenterClass,
+  modalScrollBodyClass,
 } from "@/lib/layoutClasses";
 
 const Dialog = DialogPrimitive.Root;
@@ -22,7 +23,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[110] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -40,9 +41,9 @@ const DialogContent = React.forwardRef<
       ref={ref}
       aria-describedby={ariaDescribedBy ?? undefined}
       className={cn(
-        "dialog-content fixed z-50 grid w-full gap-4 border bg-background p-6 shadow-lg duration-200",
+        "dialog-content fixed z-[110] flex w-full flex-col gap-4 border bg-background p-6 shadow-lg duration-200",
         modalHorizontalCenterClass,
-        "top-4 max-h-[calc(100dvh-2rem)] translate-y-0 overflow-y-auto",
+        "top-4 max-h-[calc(100dvh-2rem)] translate-y-0 overflow-y-auto overscroll-contain",
         mobileTopModalShellClass,
         desktopCenterModalShellClass,
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -67,6 +68,11 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   <div className={cn("flex flex-col space-y-1.5 pr-8 text-center sm:text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
+
+const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn(modalScrollBodyClass, className)} {...props} />
+);
+DialogBody.displayName = "DialogBody";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
@@ -101,6 +107,7 @@ export {
   DialogTrigger,
   DialogContent,
   DialogHeader,
+  DialogBody,
   DialogFooter,
   DialogTitle,
   DialogDescription,

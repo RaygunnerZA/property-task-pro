@@ -1,14 +1,54 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useContext, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ActiveOrgContext, type UseActiveOrgResult } from "@/contexts/ActiveOrgContext";
+import {
+  ActiveOrgContext,
+  type ActiveOrgSnapshot,
+  type ActiveOrgType,
+  type UseActiveOrgResult,
+} from "@/contexts/ActiveOrgContext";
 import { isDevBuild } from "@/context/DevModeContext";
 import { TEST_PERSONA_ORG_STORAGE_KEY } from "@/lib/dev/testPersonas";
 
-export type { UseActiveOrgResult };
+export type { UseActiveOrgResult, ActiveOrgSnapshot, ActiveOrgType };
 
 /** Disambiguates PostgREST embed when multiple FKs exist to `organisations` (legacy DBs). */
 const ORG_MEMBER_ORG_EMBED = "organisations!organisation_members_org_id_fkey";
+
+const EMPTY_ACTIVE_ORG: ActiveOrgSnapshot = {
+  orgId: null,
+  role: null,
+  orgType: null,
+};
+
+type MembershipRow = {
+  org_id: string;
+  role: string;
+  created_at: string;
+  organisations: { org_type?: string } | null;
+};
+
+function parseOrgType(value: string | undefined): ActiveOrgType | null {
+  if (value === "personal" || value === "business" || value === "contractor") {
+    return value;
+  }
+  return null;
+}
+
+function snapshotFromMembership(row: MembershipRow): ActiveOrgSnapshot {
+  return {
+    orgId: row.org_id,
+    role: row.role,
+    orgType: parseOrgType(row.organisations?.org_type),
+  };
+}
+
+function pickActiveMembership(memberships: MembershipRow[]): MembershipRow {
+  const nonPersonal = memberships.find(
+    (m) => parseOrgType(m.organisations?.org_type) !== "personal"
+  );
+  return nonPersonal ?? memberships[0];
+}
 
 let activeOrgSubscriptionRefCount = 0;
 let activeOrgAuthSubscription: { unsubscribe: () => void } | null = null;
@@ -37,14 +77,14 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
 
   const userId = userData?.id;
 
-  const fetchActiveOrg = useCallback(async () => {
+  const fetchActiveOrg = useCallback(async (): Promise<ActiveOrgSnapshot> => {
     if (!userId) {
-      return null;
+      return EMPTY_ACTIVE_ORG;
     }
 
     const { data: memberships, error: membershipsError } = await supabase
       .from("organisation_members")
-      .select(`org_id, created_at, ${ORG_MEMBER_ORG_EMBED}(org_type)`)
+      .select(`org_id, role, created_at, ${ORG_MEMBER_ORG_EMBED}(org_type)`)
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
@@ -53,8 +93,10 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
         membershipsError.message.includes("AbortError") ||
         membershipsError.details?.includes("AbortError");
       if (isAbortError) {
-        const cachedOrgId = queryClient.getQueryData<string | null>(["activeOrg", userId]) ?? null;
-        return cachedOrgId;
+        const cached =
+          queryClient.getQueryData<ActiveOrgSnapshot>(["activeOrg", userId]) ??
+          EMPTY_ACTIVE_ORG;
+        return cached;
       }
 
       console.error("[useActiveOrg] Query error:", {
@@ -66,20 +108,23 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
       throw membershipsError;
     }
 
-    if (!memberships || memberships.length === 0) return null;
+    if (!memberships || memberships.length === 0) {
+      return EMPTY_ACTIVE_ORG;
+    }
+
+    const rows = memberships as MembershipRow[];
 
     if (isDevBuild && typeof sessionStorage !== "undefined") {
       const pinnedOrgId = sessionStorage.getItem(TEST_PERSONA_ORG_STORAGE_KEY);
-      if (pinnedOrgId && memberships.some((m) => m.org_id === pinnedOrgId)) {
-        return pinnedOrgId;
+      if (pinnedOrgId) {
+        const pinned = rows.find((m) => m.org_id === pinnedOrgId);
+        if (pinned) {
+          return snapshotFromMembership(pinned);
+        }
       }
     }
 
-    const nonPersonal = memberships.find(
-      (m) => (m.organisations as { org_type?: string } | null)?.org_type !== "personal"
-    );
-    const selectedOrgId = (nonPersonal ?? memberships[0]).org_id;
-    return selectedOrgId;
+    return snapshotFromMembership(pickActiveMembership(rows));
   }, [queryClient, userId]);
 
   useEffect(() => {
@@ -109,7 +154,7 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
     };
   }, [queryClient]);
 
-  const { data: orgId, isLoading: orgQueryLoading, error } = useQuery({
+  const { data: snapshot, isLoading: orgQueryLoading, error } = useQuery({
     queryKey: ["activeOrg", userId],
     queryFn: fetchActiveOrg,
     enabled: !!userId,
@@ -118,7 +163,9 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
   });
 
   return {
-    orgId: orgId ?? null,
+    orgId: snapshot?.orgId ?? null,
+    role: snapshot?.role ?? null,
+    orgType: snapshot?.orgType ?? null,
     isLoading: userLoading || (!!userId && orgQueryLoading),
     error: error ? (error as Error).message : null,
   };

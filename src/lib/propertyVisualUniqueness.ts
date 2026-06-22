@@ -5,10 +5,6 @@ import { filterValidLucideIcons } from "@/lib/icon-resolver";
 
 /** Canonical palette for property icon backgrounds; aligns Add Property and Property detail edit. */
 export const PROPERTY_COLOR_PALETTE = [
-  "#8EC9CE",
-  "#FF6B6B",
-  "#4ECDC4",
-  "#45B7D1",
   "#96CEB4",
   "#F5A623",
   "#FFEAA7",

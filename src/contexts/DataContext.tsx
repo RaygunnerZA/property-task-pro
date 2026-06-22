@@ -107,17 +107,13 @@ export function DataProvider({ children }: DataProviderProps) {
         .from("organisations")
         .select("*")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
-        if (fetchError.code === "PGRST116" || fetchError.message?.includes("0 rows")) {
-          // Expected during invitation acceptance — user not yet a member
-        } else {
-          console.error("Failed to fetch organisation:", fetchError);
-        }
+        console.error("Failed to fetch organisation:", fetchError);
         return null;
       }
-      return data as unknown as Organisation;
+      return data as unknown as Organisation | null;
     } catch (err) {
       console.error("Error fetching organisation:", err);
       return null;

@@ -1,6 +1,10 @@
-import { useMemo, type CSSProperties } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import {
+  MobileWorkbenchHeaderRow,
+  MobileWorkbenchHeaderSearchTrigger,
+} from "@/components/layout/MobileWorkbenchHeaderRow";
 import {
   PropertySelectorStack,
   type PropertySelectorStackProps,
@@ -13,6 +17,7 @@ import { cn } from "@/lib/utils";
 /** Gradient strip: colour solid until ~28%, then fades to transparent. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
   return {
+    backgroundColor: color,
     backgroundImage: `linear-gradient(90deg, ${color} 0%, ${color} 28%, transparent 97%, transparent 100%)`,
   };
 }
@@ -48,81 +53,100 @@ export function WorkbenchGradientHeader({
   const showMobileBrandLogo =
     mobileBrandLogoWhenAllProperties && showPropertySelector && isAllPropertiesSelected;
 
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+
+  const mobileLeftContent = showMobileBrandLogo ? (
+    <img src={fillaDarkLogo} alt="Filla" className="h-[28px] w-auto shrink-0" />
+  ) : showPropertySelector ? (
+    <PropertySelectorStack
+      variant="gradientHeader"
+      properties={properties}
+      tasks={tasks}
+      selectedPropertyIds={selectedPropertyIds}
+      onSelectionChange={onPropertySelectionChange}
+      onFilterClick={onFilterClick}
+      className="min-w-0 flex-1"
+      suppressInteractions={mobileSearchOpen}
+    />
+  ) : null;
+
   return (
-    <PageHeader showAccountMenu showSearch toolbarClassName="lg:hidden">
-      {/* Mobile: property selector row; search + avatar in PageHeader toolbar */}
-      <div
-        className={cn(
-          "flex h-[70px] w-full items-center justify-start pl-[13px] pr-[5.5rem] lg:hidden",
-          !showPropertySelector && "h-[48px]"
-        )}
-        style={headerStyle}
+    <>
+      {/* Mobile / tablet: compact header row (< lg) */}
+      <PageHeader
+        showAccountMenu
+        showSearch
+        className="page-header--workbench-mobile lg:hidden"
+        toolbarClassName="!top-[calc(env(safe-area-inset-top,0px)+35px)]"
+        mobileSearchSlot={
+          <MobileWorkbenchHeaderSearchTrigger
+            searchOpen={mobileSearchOpen}
+            onSearchOpenChange={setMobileSearchOpen}
+            variant="onGradient"
+          />
+        }
       >
-        {showMobileBrandLogo ? (
-          <img
-            src={fillaDarkLogo}
-            alt="Filla"
-            className="h-[28px] w-auto shrink-0"
+        <div style={headerStyle}>
+          <MobileWorkbenchHeaderRow
+            searchOpen={mobileSearchOpen}
+            onSearchOpenChange={setMobileSearchOpen}
+            showPropertySelector={showPropertySelector}
+            leftContent={mobileLeftContent}
           />
-        ) : showPropertySelector ? (
-          <PropertySelectorStack
-            variant="gradientHeader"
-            properties={properties}
-            tasks={tasks}
-            selectedPropertyIds={selectedPropertyIds}
-            onSelectionChange={onPropertySelectionChange}
-            onFilterClick={onFilterClick}
-            className="min-w-0 flex-1"
-          />
-        ) : null}
-      </div>
+        </div>
+      </PageHeader>
 
-      {/* Desktop: full workbench header grid */}
-      <div
-        className={cn(
-          "hidden w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[70px] sm:gap-0 sm:pr-40 lg:grid",
-          "min-h-[72px] pb-3 pt-3 sm:pb-0 sm:pt-0",
-          "grid-cols-1",
-          "sm:grid-cols-workbench-dual",
-          "layout:grid-cols-workbench-triple"
-        )}
-        style={headerStyle}
+      {/* Desktop: aligned 2/3-column workbench header grid (lg+) */}
+      <PageHeader
+        showAccountMenu={false}
+        showSearch={false}
+        className="page-header--workbench-desktop hidden lg:block"
       >
         <div
           className={cn(
-            "flex min-w-0 items-center justify-between gap-2 px-3 sm:justify-start sm:px-[18px] sm:pt-[25px]",
-            !showPropertySelector && "hidden sm:block sm:invisible"
+            "grid w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-0 sm:pr-40",
+            "grid-cols-1",
+            "sm:grid-cols-workbench-dual",
+            "layout:grid-cols-workbench-triple"
           )}
+          style={headerStyle}
         >
-          {showPropertySelector ? (
-            <PropertySelectorStack
-              variant="gradientHeader"
+          <div
+            className={cn(
+              "flex min-w-0 items-center justify-between gap-2 px-3 sm:justify-start sm:px-[18px] sm:pt-[25px]",
+              !showPropertySelector && "hidden sm:block sm:invisible"
+            )}
+          >
+            {showPropertySelector ? (
+              <PropertySelectorStack
+                variant="gradientHeader"
+                properties={properties}
+                tasks={tasks}
+                selectedPropertyIds={selectedPropertyIds}
+                onSelectionChange={onPropertySelectionChange}
+                onFilterClick={onFilterClick}
+                className="min-w-0 flex-1"
+              />
+            ) : null}
+          </div>
+
+          <div
+            className={cn(
+              "flex min-w-0 items-start px-3 sm:col-start-2 sm:px-1 sm:pt-5 sm:max-w-[700px]",
+              "layout:max-w-[700px]"
+            )}
+          >
+            <WorkbenchHeaderToolbar
+              variant="gradient"
+              className="w-full min-w-0"
               properties={properties}
-              tasks={tasks}
-              selectedPropertyIds={selectedPropertyIds}
-              onSelectionChange={onPropertySelectionChange}
-              onFilterClick={onFilterClick}
-              className="min-w-0 flex-1"
+              onAskFilla={onAskFilla}
             />
-          ) : null}
-        </div>
+          </div>
 
-        <div
-          className={cn(
-            "flex min-w-0 items-start px-3 sm:col-start-2 sm:px-1 sm:pt-5 sm:max-w-[700px]",
-            "layout:max-w-[700px]"
-          )}
-        >
-          <WorkbenchHeaderToolbar
-            variant="gradient"
-            className="w-full min-w-0"
-            properties={properties}
-            onAskFilla={onAskFilla}
-          />
+          <div className="hidden min-w-0 layout:block" aria-hidden />
         </div>
-
-        <div className="hidden min-w-0 layout:block" aria-hidden />
-      </div>
-    </PageHeader>
+      </PageHeader>
+    </>
   );
 }
