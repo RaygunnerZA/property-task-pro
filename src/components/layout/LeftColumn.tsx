@@ -157,7 +157,7 @@ export function LeftColumn({
     >
       {/* Properties: selector stack + identity strip */}
       <div className="flex-shrink-0 w-full">
-        <div className="sticky top-0 z-10 bg-background py-2 pl-0 pr-0">
+        <div className="sticky top-0 z-10 bg-background py-0 pl-0 pr-0">
         {scopeFilterBar}
         {!hideProperties && (
         <div className="px-0 w-full max-w-full overflow-x-visible">
@@ -171,7 +171,7 @@ export function LeftColumn({
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
           ) : isHubHome ? (
-            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full pl-0 pr-[2px] pt-[2px] pb-[7px]">
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
               <PropertyDashboardCarousel
                 properties={properties as PropertyForStrip[]}
                 tasks={tasks}
@@ -183,7 +183,7 @@ export function LeftColumn({
               />
             </div>
           ) : focusedProperty ? (
-            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full pl-0 pr-[2px] pt-[2px] pb-[7px]">
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
               {showOnboardingDemoBanner && (
                 <OnboardingDemoBanner
                   propertyId={focusedProperty.id}

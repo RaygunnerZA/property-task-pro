@@ -53,8 +53,8 @@ export function WorkbenchGradientHeader({
       {/* Mobile: property selector row; search + avatar in PageHeader toolbar */}
       <div
         className={cn(
-          "flex min-h-[56px] w-full items-center px-3 pr-[5.5rem] lg:hidden",
-          !showPropertySelector && "min-h-[48px]"
+          "flex h-[70px] w-full items-center justify-start pl-[13px] pr-[5.5rem] lg:hidden",
+          !showPropertySelector && "h-[48px]"
         )}
         style={headerStyle}
       >
@@ -62,7 +62,7 @@ export function WorkbenchGradientHeader({
           <img
             src={fillaDarkLogo}
             alt="Filla"
-            className="h-[22px] w-auto shrink-0"
+            className="h-[28px] w-auto shrink-0"
           />
         ) : showPropertySelector ? (
           <PropertySelectorStack
@@ -80,7 +80,7 @@ export function WorkbenchGradientHeader({
       {/* Desktop: full workbench header grid */}
       <div
         className={cn(
-          "hidden w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[80px] sm:gap-0 sm:pr-40 lg:grid",
+          "hidden w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[70px] sm:gap-0 sm:pr-40 lg:grid",
           "min-h-[72px] pb-3 pt-3 sm:pb-0 sm:pt-0",
           "grid-cols-1",
           "sm:grid-cols-workbench-dual",

@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2 } from "lucide-react";
+import { Edit2 } from "lucide-react";
+import allPropertiesHero from "@/assets/multiple-properties2.png";
+import { AllPropertiesDisplaySettingsSheet } from "@/components/properties/AllPropertiesDisplaySettingsSheet";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
+import {
+  getAllPropertiesDisplaySettings,
+  resolveAllPropertiesSubtitle,
+  resolveAllPropertiesTitle,
+} from "@/lib/allPropertiesDisplayPreferences";
 import {
   Carousel,
   CarouselContent,
@@ -9,7 +17,6 @@ import {
 } from "@/components/ui/carousel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PropertySummaryPanel } from "@/components/properties/PropertySummaryPanel";
-import { PropertySelectorAllThumbnail } from "@/components/properties/PropertySelectorAllThumbnail";
 import {
   countPropertyPeople,
   type PropertyHubNavCardId,
@@ -78,6 +85,25 @@ function AllPropertiesCarouselSlide({
   isSelected?: boolean;
   onSelectSlide?: () => void;
 }) {
+  const { orgId } = useActiveOrg();
+  const [showDisplaySettings, setShowDisplaySettings] = useState(false);
+  const [displayRevision, setDisplayRevision] = useState(0);
+
+  const displaySettings = useMemo(
+    () => (orgId ? getAllPropertiesDisplaySettings(orgId) : {}),
+    [orgId, displayRevision]
+  );
+
+  const cardTitle = useMemo(
+    () => resolveAllPropertiesTitle(displaySettings),
+    [displaySettings]
+  );
+
+  const cardSubtitle = useMemo(
+    () => resolveAllPropertiesSubtitle(displaySettings, properties.length),
+    [displaySettings, properties.length]
+  );
+
   const totalUrgent = useMemo(
     () => Object.values(urgentTaskCounts).reduce((sum, n) => sum + n, 0),
     [urgentTaskCounts]
@@ -109,35 +135,61 @@ function AllPropertiesCarouselSlide({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-[12px] border bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)] transition-shadow",
-        isSelected ? "border-primary/50 ring-2 ring-primary/40" : "border-border/20"
+        "w-full overflow-hidden rounded-[12px] border bg-card/60 pt-px pb-px shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
+        isSelected ? "border-primary/50" : "border-border/20"
       )}
     >
-      <button
-        type="button"
-        onClick={onSelectSlide}
-        aria-pressed={isSelected}
-        aria-label="Select all properties view"
-        className="relative flex w-full shrink-0 flex-col items-center justify-end overflow-hidden px-4 pb-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        style={{
-          height: "160px",
-          background:
-            "linear-gradient(135deg, rgba(142, 201, 206, 0.85) 0%, rgba(58, 74, 106, 0.92) 100%)",
-        }}
-      >
-        <div className="absolute inset-0 opacity-20" aria-hidden>
-          <PropertySelectorAllThumbnail properties={properties} size="header" className="mx-auto mt-6" />
-        </div>
-        <div className="relative z-10 flex w-full min-w-0 flex-col items-center text-center">
-          <Building2 className="mb-1.5 h-6 w-6 text-white/90" strokeWidth={1.75} aria-hidden />
-          <p className="text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
-            All properties
-          </p>
-          <p className="mt-0.5 text-[11px] font-medium text-white/85">
-            {properties.length} {properties.length === 1 ? "property" : "properties"} in your portfolio
-          </p>
-        </div>
-      </button>
+      <div className="group relative w-full shrink-0 overflow-hidden rounded-t-[12px]" style={{ height: "160px" }}>
+        <button
+          type="button"
+          onClick={onSelectSlide}
+          aria-pressed={isSelected}
+          aria-label="Select all properties view"
+          className="relative block h-full w-full overflow-hidden rounded-t-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          <img src={allPropertiesHero} alt="" className="h-full w-full object-cover" />
+
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(0deg, rgba(26, 44, 55, 0.65) 22%, rgba(0, 0, 0, 0) 48%)",
+            }}
+          />
+
+          <div className="absolute bottom-2 left-2.5 right-10 z-10 min-w-0">
+            <p className="min-w-0 truncate text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
+              {cardTitle}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-white/90 drop-shadow-sm">
+              {cardSubtitle}
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setShowDisplaySettings(true);
+          }}
+          className={cn(
+            "absolute right-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full",
+            "bg-black/30 text-white backdrop-blur-sm transition-opacity duration-200",
+            "opacity-0 hover:bg-black/50 group-hover:opacity-100 focus-visible:opacity-100"
+          )}
+          aria-label="Edit all properties display settings"
+        >
+          <Edit2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <AllPropertiesDisplaySettingsSheet
+        open={showDisplaySettings}
+        onOpenChange={setShowDisplaySettings}
+        propertyCount={properties.length}
+        onSaved={() => setDisplayRevision((revision) => revision + 1)}
+      />
 
       <div
         className="shrink-0 w-full overflow-hidden"
@@ -221,7 +273,7 @@ function PropertyCarouselSlide({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-[12px] border bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)] transition-shadow",
+        "w-full overflow-hidden rounded-[12px] border bg-card/60 shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
         isSelected ? "border-primary/50 ring-2 ring-primary/40" : "border-border/20"
       )}
     >
@@ -230,7 +282,7 @@ function PropertyCarouselSlide({
         onClick={onSelectSlide}
         aria-pressed={isSelected}
         aria-label={`Select ${displayName}`}
-        className="relative block w-full shrink-0 overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="relative block w-full shrink-0 overflow-hidden rounded-t-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         style={{
           height: "160px",
           backgroundColor: property.thumbnail_url ? undefined : iconColor,
@@ -248,7 +300,7 @@ function PropertyCarouselSlide({
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "linear-gradient(0deg, rgba(0, 0, 0, 0.65) 22%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0) 100%)",
+              "linear-gradient(0deg, rgba(26, 44, 55, 0.65) 22%, rgba(0, 0, 0, 0) 48%)",
           }}
         />
 
@@ -419,11 +471,14 @@ export function PropertyDashboardCarousel({
   if (properties.length === 0) return null;
 
   return (
-    <div className={cn("w-full min-w-0", className)} aria-label="Property dashboards">
-      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full">
-        <CarouselContent className="ml-0" viewportClassName={VIEWPORT_DRAG_CLASS}>
+    <div className={cn("w-full min-w-0 rounded-[12px]", className)} aria-label="Property dashboards">
+      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full overflow-hidden rounded-[12px]">
+        <CarouselContent
+          className="ml-0"
+          viewportClassName={cn(VIEWPORT_DRAG_CLASS, "rounded-[12px]")}
+        >
           {showAllSlide ? (
-            <CarouselItem key={ALL_PROPERTIES_SLIDE_ID} className={cn(SLIDE_BASIS, "min-w-0 shrink-0 grow-0 pl-0 pr-2.5")}>
+            <CarouselItem key={ALL_PROPERTIES_SLIDE_ID} className={cn(SLIDE_BASIS, "min-w-0 shrink-0 grow-0 pl-0 pr-3.5 pb-1.5")}>
               <AllPropertiesCarouselSlide
                 properties={properties}
                 tasks={tasks}
@@ -439,7 +494,7 @@ export function PropertyDashboardCarousel({
             return (
             <CarouselItem
               key={property.id}
-              className={cn(SLIDE_BASIS, "min-w-0 shrink-0 grow-0 pl-0 pr-2.5")}
+              className={cn(SLIDE_BASIS, "min-w-0 shrink-0 grow-0 pl-0 pr-3.5 pb-1.5")}
             >
               <PropertyCarouselSlide
                 property={property}

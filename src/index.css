@@ -101,12 +101,12 @@
   /* Dashboard + Calendar: gradient strip; property scope lives in the left column */
   .dashboard-workbench,
   .calendar-page {
-    --header-height: 80px;
+    --header-height: 70px;
   }
 
   .dashboard-workbench .page-header,
   .calendar-page .page-header {
-    height: 80px;
+    height: 70px;
     padding-top: 0;
     box-sizing: border-box;
   }

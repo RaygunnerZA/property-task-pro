@@ -21,16 +21,16 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
   const hasHeader = !!header;
 
   const stickyColClass = hasHeader
-    ? "sm:sticky sm:top-[var(--header-height)] sm:h-[calc(100vh-var(--header-height))] sm:w-workbench-side-rail sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]"
-    : "sm:sticky sm:top-0 sm:h-screen sm:w-workbench-side-rail sm:px-0 sm:pr-3 sm:max-lg:pl-[12px]";
+    ? "sm:sticky sm:top-[var(--header-height)] sm:h-[calc(100vh-var(--header-height))] sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+    : "sm:sticky sm:top-0 sm:h-screen sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]";
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
-      {hasHeader && <div className="h-[80px] w-full shrink-0 pt-0">{header}</div>}
+      {hasHeader && <div className="h-[70px] w-full shrink-0 pt-0">{header}</div>}
 
       <div
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-1 flex-col",
+          "flex min-h-0 w-full min-w-0 flex-1 flex-col pt-[14px]",
           "sm:grid sm:min-h-0 sm:grid-cols-workbench-dual",
           hasThirdColumn
             ? "layout:grid layout:grid-cols-workbench-triple"
