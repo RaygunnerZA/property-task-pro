@@ -8,14 +8,22 @@ import {
 } from "@/components/ui/drawer";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { cn } from "@/lib/utils";
+import {
+  GradientHeaderMaskedIcon,
+  gradientHeaderControlClassName,
+} from "@/lib/gradientHeaderControls";
 
 const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
 
 type MobileHeaderSearchButtonProps = {
   variant?: "default" | "onGradient";
+  accentColor?: string;
 };
 
-export function MobileHeaderSearchButton({ variant = "default" }: MobileHeaderSearchButtonProps) {
+export function MobileHeaderSearchButton({
+  variant = "default",
+  accentColor = "#8EC9CE",
+}: MobileHeaderSearchButtonProps) {
   const navigate = useNavigate();
   const workbenchControls = useOptionalWorkbenchControls();
   const [open, setOpen] = useState(false);
@@ -49,20 +57,23 @@ export function MobileHeaderSearchButton({ variant = "default" }: MobileHeaderSe
         type="button"
         onClick={handleOpen}
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-full outline-none transition-shadow",
           onGradient
-            ? "bg-white/20 shadow-md ring-2 ring-white/45 backdrop-blur-sm hover:bg-white/30 focus-visible:ring-white/70"
-            : "bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            ? gradientHeaderControlClassName()
+            : "flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-label="Search"
       >
-        <img
-          src={WORKBENCH_SEARCH_ICON}
-          alt=""
-          className={cn("h-5 w-5 object-contain", onGradient && "brightness-0 invert")}
-          width={20}
-          height={20}
-        />
+        {onGradient ? (
+          <GradientHeaderMaskedIcon src={WORKBENCH_SEARCH_ICON} color={accentColor} />
+        ) : (
+          <img
+            src={WORKBENCH_SEARCH_ICON}
+            alt=""
+            className="h-5 w-5 object-contain"
+            width={20}
+            height={20}
+          />
+        )}
       </button>
 
       <Drawer open={open} onOpenChange={setOpen}>

@@ -212,6 +212,7 @@ function CalendarPageContent() {
         header={
           <WorkbenchGradientHeader
             headerStyle={headerStyle}
+            accentColor={headerAccentColor}
             properties={properties}
             tasks={displayTasks}
             selectedPropertyIds={selectedPropertyIds}

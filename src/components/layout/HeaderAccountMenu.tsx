@@ -13,13 +13,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { userAvatarUrl, userDisplayName, userInitials } from "@/lib/userDisplayHelpers";
+import { gradientHeaderControlClassName } from "@/lib/gradientHeaderControls";
 
 type HeaderAccountMenuProps = {
   /** Sits on property / workbench gradient: light ring, readable on color. */
   variant?: "default" | "onGradient";
+  accentColor?: string;
 };
 
-export function HeaderAccountMenu({ variant = "default" }: HeaderAccountMenuProps) {
+export function HeaderAccountMenu({
+  variant = "default",
+  accentColor = "#8EC9CE",
+}: HeaderAccountMenuProps) {
   const navigate = useNavigate();
   const { user, organisation } = useDataContext();
 
@@ -36,18 +41,21 @@ export function HeaderAccountMenu({ variant = "default" }: HeaderAccountMenuProp
         <button
           type="button"
           className={cn(
-            "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full outline-none transition-shadow",
+            "relative flex h-9 w-9 shrink-0 items-center justify-center outline-none transition-shadow",
             onGradient
-              ? "bg-white/20 shadow-md ring-2 ring-white/45 backdrop-blur-sm hover:bg-white/30 hover:shadow-md focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-              : "bg-card shadow-e1 ring-2 ring-background hover:shadow-e2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              ? gradientHeaderControlClassName("overflow-hidden p-0.5")
+              : "rounded-[12px] bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           aria-label="Open account menu"
         >
-          <Avatar className="h-8 w-8 rounded-full">
+          <Avatar className="h-full w-full rounded-[10px]">
             <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover" />
             <AvatarFallback
-              className="rounded-full text-xs font-semibold"
-              style={{ backgroundColor: "hsl(var(--primary) / 0.35)", color: "hsl(var(--foreground))" }}
+              className="rounded-[10px] text-xs font-semibold"
+              style={{
+                backgroundColor: onGradient ? `${accentColor}40` : "hsl(var(--primary) / 0.35)",
+                color: onGradient ? accentColor : "hsl(var(--foreground))",
+              }}
             >
               {userInitials(user)}
             </AvatarFallback>

@@ -830,6 +830,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}
+              accentColor={headerAccentColor}
               properties={properties}
               tasks={tasks}
               selectedPropertyIds={selectedPropertyIds}

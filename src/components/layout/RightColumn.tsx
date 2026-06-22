@@ -32,7 +32,7 @@ interface RightColumnProps {
 }
 
 const panelShellClass =
-  cn(columnShellClass, "rounded-[23px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]");
+  cn(columnShellClass, "rounded-[12px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]");
 
 const panelShellStyle = {
   background:

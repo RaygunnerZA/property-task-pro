@@ -37,6 +37,8 @@ const MINI_CALENDAR_DAY_SHADOW =
 const CALENDAR_WEEK_ROWS = 6;
 const WEEK_STARTS_ON = 1 as const;
 const WEEK_SLIDE_MS = 200;
+const WEEK_WHEEL_THRESHOLD = 48;
+const WEEK_SWIPE_THRESHOLD = 36;
 
 /** Row height = cell height + row top margin (mt-0.5) */
 function miniCalendarRowMetrics(variant: "sidebar" | "embedded") {
@@ -155,7 +157,10 @@ const MiniCalendarWeekStrip = forwardRef<
   const [incomingWeekStart, setIncomingWeekStart] = useState<Date | null>(null);
   const [slideDirection, setSlideDirection] = useState<"next" | "prev" | null>(null);
   const [translatePercent, setTranslatePercent] = useState(0);
+  const [dragOffsetPx, setDragOffsetPx] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const stripRef = useRef<HTMLDivElement>(null);
   const isAnimating = incomingWeekStart != null;
 
   useEffect(() => {
@@ -187,18 +192,56 @@ const MiniCalendarWeekStrip = forwardRef<
   useImperativeHandle(ref, () => ({ goWeek }), [goWeek]);
 
   const handleTouchStart = (event: React.TouchEvent) => {
+    if (isAnimating) return;
     const touch = event.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    isDraggingRef.current = false;
+    setDragOffsetPx(0);
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    if (!start || isAnimating) return;
+
+    const touch = event.touches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+
+    if (!isDraggingRef.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dx) <= Math.abs(dy) * 1.1) {
+        touchStartRef.current = null;
+        return;
+      }
+      isDraggingRef.current = true;
+    }
+
+    event.preventDefault();
+    const maxDrag = (stripRef.current?.clientWidth ?? 280) * 0.42;
+    const clamped =
+      Math.abs(dx) <= maxDrag ? dx : Math.sign(dx) * (maxDrag + (Math.abs(dx) - maxDrag) * 0.15);
+    setDragOffsetPx(clamped);
   };
 
   const handleTouchEnd = (event: React.TouchEvent) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start) return;
+
     const touch = event.changedTouches[0];
     const dx = start.x - touch.clientX;
+
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setDragOffsetPx(0);
+      if (Math.abs(dx) >= WEEK_SWIPE_THRESHOLD) {
+        goWeek(dx > 0 ? 1 : -1);
+      }
+      return;
+    }
+
     const dy = start.y - touch.clientY;
-    if (Math.abs(dx) < 36 || Math.abs(dx) <= Math.abs(dy) * 1.1) return;
+    if (Math.abs(dx) < WEEK_SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy) * 1.1) return;
     goWeek(dx > 0 ? 1 : -1);
   };
 
@@ -207,20 +250,31 @@ const MiniCalendarWeekStrip = forwardRef<
   const rightWeekStart =
     slideDirection === "next" && incomingWeekStart ? incomingWeekStart : displayWeekStart;
 
+  const slideTransform =
+    dragOffsetPx !== 0
+      ? `translateX(${dragOffsetPx}px)`
+      : incomingWeekStart
+        ? `translateX(${translatePercent}%)`
+        : undefined;
+
   return (
     <div
+      ref={stripRef}
       className="w-full min-w-0 touch-pan-x overscroll-x-contain"
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       <div className="w-full overflow-hidden">
         <div
           className={cn(
-            "flex transition-transform duration-200 ease-out",
+            "flex ease-out",
+            dragOffsetPx !== 0 ? "transition-none" : "transition-transform duration-200",
             incomingWeekStart ? "w-[200%]" : "w-full"
           )}
           style={{
-            transform: incomingWeekStart ? `translateX(${translatePercent}%)` : undefined,
+            transform: slideTransform,
           }}
         >
           <div className={incomingWeekStart ? "w-1/2 shrink-0" : "w-full shrink-0"}>
@@ -319,6 +373,8 @@ export function FillaMiniCalendar({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const weekStripRef = useRef<MiniCalendarWeekStripHandle>(null);
+  const collapsedWeekRef = useRef<HTMLDivElement>(null);
+  const collapsedWheelAccumRef = useRef(0);
 
   const displayMonth = month ?? internalMonth;
 
@@ -366,6 +422,39 @@ export function FillaMiniCalendar({
   };
 
   const showWeekStrip = isCollapsible && !isExpanded;
+
+  useEffect(() => {
+    if (!showWeekStrip) return;
+    const el = collapsedWeekRef.current;
+    if (!el) return;
+
+    const normalizeWheelDelta = (delta: number, mode: number, pageSize: number) => {
+      if (mode === WheelEvent.DOM_DELTA_LINE) return delta * 16;
+      if (mode === WheelEvent.DOM_DELTA_PAGE) return delta * pageSize;
+      return delta;
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      const deltaX = normalizeWheelDelta(event.deltaX, event.deltaMode, el.clientWidth);
+      const deltaY = normalizeWheelDelta(event.deltaY, event.deltaMode, el.clientHeight);
+      if (Math.abs(deltaX) <= Math.abs(deltaY) * 0.85) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      collapsedWheelAccumRef.current += deltaX;
+      if (Math.abs(collapsedWheelAccumRef.current) < WEEK_WHEEL_THRESHOLD) return;
+
+      navigateWeek(collapsedWheelAccumRef.current > 0 ? 1 : -1);
+      collapsedWheelAccumRef.current = 0;
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      collapsedWheelAccumRef.current = 0;
+    };
+  }, [navigateWeek, showWeekStrip]);
 
   const renderDayButton = (props: {
     date: Date;
@@ -528,7 +617,7 @@ export function FillaMiniCalendar({
             )}
           >
             <div className="min-h-0 overflow-hidden">
-              <div className="w-full">
+              <div ref={collapsedWeekRef} className="w-full">
                 <div className="mb-2 flex items-center justify-between px-0.5">
                   <CalendarMonthYearLabel
                     date={displayMonth}

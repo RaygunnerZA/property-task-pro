@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import { WorkbenchFiltersPopover } from "@/components/dashboard/WorkbenchFiltersPopover";
 import {
   MobileWorkbenchHeaderRow,
   MobileWorkbenchHeaderSearchTrigger,
@@ -12,18 +13,17 @@ import {
 import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { cn } from "@/lib/utils";
 
-/** Gradient strip: colour solid until ~28%, then fades to transparent. */
+/** Gradient strip: colour solid until ~33%, then fades to transparent, with paper grain. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
-  return {
-    backgroundColor: color,
-    backgroundImage: `linear-gradient(90deg, ${color} 0%, ${color} 28%, transparent 97%, transparent 100%)`,
-  };
+  return paperTexturedGradientHeaderStyle(color);
 }
 
 export type WorkbenchGradientHeaderProps = {
   headerStyle: CSSProperties;
+  accentColor: string;
   properties: PropertySelectorRowProperty[];
   tasks?: PropertySelectorStackProps["tasks"];
   selectedPropertyIds: Set<string>;
@@ -36,6 +36,7 @@ export type WorkbenchGradientHeaderProps = {
 
 export function WorkbenchGradientHeader({
   headerStyle,
+  accentColor,
   properties,
   tasks = [],
   selectedPropertyIds,
@@ -72,10 +73,12 @@ export function WorkbenchGradientHeader({
 
   return (
     <>
-      {/* Mobile / tablet: compact header row (< lg) */}
       <PageHeader
         showAccountMenu
         showSearch
+        showFilter
+        style={headerStyle}
+        accentColor={accentColor}
         className="page-header--workbench-mobile lg:hidden"
         toolbarClassName="!top-[calc(env(safe-area-inset-top,0px)+35px)]"
         mobileSearchSlot={
@@ -83,23 +86,31 @@ export function WorkbenchGradientHeader({
             searchOpen={mobileSearchOpen}
             onSearchOpenChange={setMobileSearchOpen}
             variant="onGradient"
+            accentColor={accentColor}
+          />
+        }
+        mobileFilterSlot={
+          <WorkbenchFiltersPopover
+            properties={properties}
+            mode="icon"
+            variant="gradient"
+            accentColor={accentColor}
           />
         }
       >
-        <div style={headerStyle}>
-          <MobileWorkbenchHeaderRow
-            searchOpen={mobileSearchOpen}
-            onSearchOpenChange={setMobileSearchOpen}
-            showPropertySelector={showPropertySelector}
-            leftContent={mobileLeftContent}
-          />
-        </div>
+        <MobileWorkbenchHeaderRow
+          searchOpen={mobileSearchOpen}
+          onSearchOpenChange={setMobileSearchOpen}
+          showPropertySelector={showPropertySelector}
+          leftContent={mobileLeftContent}
+          accentColor={accentColor}
+        />
       </PageHeader>
 
-      {/* Desktop: aligned 2/3-column workbench header grid (lg+) */}
       <PageHeader
         showAccountMenu={false}
         showSearch={false}
+        accentColor={accentColor}
         className="page-header--workbench-desktop hidden lg:block"
       >
         <div
@@ -141,6 +152,7 @@ export function WorkbenchGradientHeader({
               className="w-full min-w-0"
               properties={properties}
               onAskFilla={onAskFilla}
+              accentColor={accentColor}
             />
           </div>
 

@@ -26,7 +26,7 @@ export function PropertySelectorAllThumbnail({
       <div
         className={cn(
           "grid shrink-0",
-          useSingleRowThreeCols && "grid-cols-3 grid-rows-1 gap-0.5",
+          useSingleRowThreeCols && "grid-cols-3 grid-rows-1 gap-1 h-5 w-[61px]",
           useDenseThreeColumnGrid && "grid-cols-3 gap-px",
           !useSingleRowThreeCols &&
             !useDenseThreeColumnGrid &&
@@ -42,7 +42,11 @@ export function PropertySelectorAllThumbnail({
               key={property.id}
               className={cn(
                 "shrink-0 text-white",
-                useDenseThreeColumnGrid ? "h-2.5 w-2.5" : "h-3.5 w-3.5"
+                useDenseThreeColumnGrid
+                  ? "h-2.5 w-2.5"
+                  : useSingleRowThreeCols
+                    ? "size-[18px]"
+                    : "h-3.5 w-3.5"
               )}
             />
           );

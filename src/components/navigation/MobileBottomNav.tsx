@@ -4,6 +4,7 @@ import { Plus, FileText } from "lucide-react";
 import { MOBILE_NAV_ITEMS, isMobileNavActive } from "@/lib/mainNavigation";
 import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
+import { paperTexturedColorStyle } from "@/lib/paperTexture";
 import {
   intakeAddRecordDrawerCardClassName,
   intakeDrawerIconWrapAddClassName,
@@ -110,13 +111,14 @@ export function MobileBottomNav() {
               type="button"
               onClick={handleCreateClick}
               className={cn(
-                "absolute left-1/2 top-0 flex h-[65px] w-[65px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
-                "rounded-full bg-primary text-primary-foreground shadow-fab-neo",
+                "absolute left-1/2 top-[-7px] flex h-[65px] w-[65px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+                "overflow-hidden rounded-xl paper-textured-color text-primary-foreground shadow-fab-neo",
                 "transition-transform hover:scale-105 active:scale-95"
               )}
+              style={paperTexturedColorStyle("hsl(var(--primary))")}
               aria-label="Create"
             >
-              <Plus className="h-8 w-8" strokeWidth={2.5} />
+              <Plus className="h-8 w-8 icon-shadow-neu-pressed" strokeWidth={2.5} />
             </button>
           </div>
         </div>

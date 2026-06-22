@@ -226,7 +226,7 @@ export function PropertyHubNavCards({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn("grid grid-cols-1 gap-2", className)}>
+      <div className={cn("grid grid-cols-1 gap-[11px]", className)}>
         {NAV_CARDS.map(({ id, title, description, iconSrc, fill }) => {
           const recentItems = recentByCard[id];
           const hasRecent =

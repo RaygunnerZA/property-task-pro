@@ -14,14 +14,20 @@ function PageHeaderToolbar({
   surface = "gradient",
   showAccountMenu = true,
   showSearch = false,
+  showFilter = false,
   mobileSearchSlot,
+  mobileFilterSlot,
+  accentColor,
 }: {
   className?: string;
   surface?: "gradient" | "plain";
   /** When false, account avatar is not shown in the header (e.g. hub uses workbench row + sidebar). */
   showAccountMenu?: boolean;
   showSearch?: boolean;
+  showFilter?: boolean;
   mobileSearchSlot?: ReactNode;
+  mobileFilterSlot?: ReactNode;
+  accentColor?: string;
 }) {
   const onGradient = surface === "gradient";
   return (
@@ -39,13 +45,22 @@ function PageHeaderToolbar({
       {showSearch && (
         <div className="lg:hidden">
           {mobileSearchSlot ?? (
-            <MobileHeaderSearchButton variant={onGradient ? "onGradient" : "default"} />
+            <MobileHeaderSearchButton
+              variant={onGradient ? "onGradient" : "default"}
+              accentColor={accentColor}
+            />
           )}
         </div>
       )}
+      {showFilter && (
+        <div className="lg:hidden">{mobileFilterSlot}</div>
+      )}
       {showAccountMenu && (
         <div className="lg:hidden">
-          <HeaderAccountMenu variant={onGradient ? "onGradient" : "default"} />
+          <HeaderAccountMenu
+            variant={onGradient ? "onGradient" : "default"}
+            accentColor={accentColor}
+          />
         </div>
       )}
     </div>
@@ -64,8 +79,14 @@ interface PageHeaderProps {
   showAccountMenu?: boolean;
   /** Mobile search icon in the header toolbar. */
   showSearch?: boolean;
+  /** Mobile filter icon in the header toolbar (after search). */
+  showFilter?: boolean;
   /** Replaces the default mobile search button (e.g. inline workbench search). */
   mobileSearchSlot?: ReactNode;
+  /** Replaces the default mobile filter button. */
+  mobileFilterSlot?: ReactNode;
+  /** Active property colour for gradient-header control icons. */
+  accentColor?: string;
 }
 
 export function PageHeader({
@@ -76,7 +97,10 @@ export function PageHeader({
   toolbarSurface = "gradient",
   showAccountMenu = true,
   showSearch = false,
+  showFilter = false,
   mobileSearchSlot,
+  mobileFilterSlot,
+  accentColor,
 }: PageHeaderProps) {
   return (
     <header className={cn("page-header relative pl-space-sm", className)} style={style}>
@@ -85,7 +109,10 @@ export function PageHeader({
         surface={toolbarSurface}
         showAccountMenu={showAccountMenu}
         showSearch={showSearch}
+        showFilter={showFilter}
         mobileSearchSlot={mobileSearchSlot}
+        mobileFilterSlot={mobileFilterSlot}
+        accentColor={accentColor}
       />
       {children}
     </header>

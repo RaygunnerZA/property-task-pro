@@ -51,10 +51,10 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
         <div
           className={cn(
             "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
-            "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-4 sm:pb-4",
+            "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pt-1 sm:pb-4",
             hasThirdColumn
-              ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
-              : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pt-4 layout:pb-5"
+              ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pt-1 layout:pb-5"
+              : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pt-1 layout:pb-5"
           )}
         >
           {rightColumn}

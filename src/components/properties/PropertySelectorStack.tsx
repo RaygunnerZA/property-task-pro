@@ -168,8 +168,8 @@ export function PropertySelectorStack({
     expanded && !isCompactPopover ? (
       <span
         className={cn(
-          "truncate text-sm font-semibold",
-          isGradientHeader ? "text-white" : "text-foreground"
+          "truncate font-semibold",
+          isGradientHeader ? "text-lg text-white" : "text-sm text-foreground"
         )}
       >
         Select Property
@@ -179,8 +179,8 @@ export function PropertySelectorStack({
         <PropertySelectorAllThumbnail properties={properties} size="header" />
         <span
           className={cn(
-            "min-w-0 flex-1 truncate text-sm font-semibold",
-            isGradientHeader ? "text-white" : "text-foreground"
+            "min-w-0 flex-1 truncate font-semibold",
+            isGradientHeader ? "text-lg text-white" : "text-sm text-foreground"
           )}
         >
           All Properties
@@ -197,8 +197,8 @@ export function PropertySelectorStack({
         ) : null}
         <span
           className={cn(
-            "min-w-0 flex-1 truncate text-sm font-semibold",
-            isGradientHeader ? "text-white" : "text-foreground"
+            "min-w-0 flex-1 truncate font-semibold",
+            isGradientHeader ? "text-lg text-white" : "text-sm text-foreground"
           )}
         >
           {collapsedHeaderLabel}
@@ -270,8 +270,8 @@ export function PropertySelectorStack({
               <span className="flex min-w-0 flex-1 items-center gap-2">{triggerLabelContent}</span>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 shrink-0 transition-transform duration-200",
-                  isGradientHeader ? "text-white/90" : "text-muted-foreground",
+                  "shrink-0 transition-transform duration-200",
+                  isGradientHeader ? "size-[18px] text-white/90" : "h-4 w-4 text-muted-foreground",
                   popoverOpen && "rotate-180"
                 )}
               />

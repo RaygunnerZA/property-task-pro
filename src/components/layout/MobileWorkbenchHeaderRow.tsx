@@ -3,26 +3,36 @@ import { X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { cn } from "@/lib/utils";
+import {
+  GradientHeaderMaskedIcon,
+  gradientHeaderControlClassName,
+  gradientHeaderSearchFieldClassName,
+} from "@/lib/gradientHeaderControls";
 
 const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
 
 const HEADER_ANIM_MS = 320;
+/** Right inset for property row when search + filter + avatar are in the toolbar. */
+const MOBILE_TOOLBAR_INSET = "8.75rem";
 
 type MobileWorkbenchHeaderRowProps = {
   searchOpen: boolean;
   onSearchOpenChange: (open: boolean) => void;
   leftContent: ReactNode;
   showPropertySelector: boolean;
+  accentColor?: string;
 };
 
 export function MobileWorkbenchHeaderSearchTrigger({
   searchOpen,
   onSearchOpenChange,
   variant = "onGradient",
+  accentColor = "#8EC9CE",
 }: {
   searchOpen: boolean;
   onSearchOpenChange: (open: boolean) => void;
   variant?: "default" | "onGradient";
+  accentColor?: string;
 }) {
   const onGradient = variant === "onGradient";
 
@@ -31,21 +41,26 @@ export function MobileWorkbenchHeaderSearchTrigger({
       type="button"
       onClick={() => onSearchOpenChange(!searchOpen)}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full outline-none transition-shadow",
         onGradient
-          ? "shadow-md ring-2 ring-white/45 backdrop-blur-sm focus-visible:ring-white/70"
-          : "bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          ? gradientHeaderControlClassName()
+          : "flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       )}
       aria-label={searchOpen ? "Close search" : "Search"}
       aria-expanded={searchOpen}
     >
       {searchOpen ? (
-        <X className={cn("h-5 w-5", onGradient ? "text-white" : "text-foreground")} strokeWidth={2.2} />
+        <X
+          className="h-5 w-5"
+          style={{ color: onGradient ? accentColor : undefined }}
+          strokeWidth={2.2}
+        />
+      ) : onGradient ? (
+        <GradientHeaderMaskedIcon src={WORKBENCH_SEARCH_ICON} color={accentColor} />
       ) : (
         <img
           src={WORKBENCH_SEARCH_ICON}
           alt=""
-          className={cn("h-5 w-5 object-contain", onGradient && "brightness-0 invert")}
+          className="h-5 w-5 object-contain"
           width={20}
           height={20}
         />
@@ -59,6 +74,7 @@ export function MobileWorkbenchHeaderRow({
   onSearchOpenChange,
   leftContent,
   showPropertySelector,
+  accentColor = "#8EC9CE",
 }: MobileWorkbenchHeaderRowProps) {
   const navigate = useNavigate();
   const workbenchControls = useOptionalWorkbenchControls();
@@ -92,38 +108,37 @@ export function MobileWorkbenchHeaderRow({
   return (
     <div
       className={cn(
-        "relative flex h-[var(--workbench-header-band,70px)] w-full items-center overflow-hidden pl-[13px] pr-[5.5rem] lg:hidden",
+        "relative flex h-[var(--workbench-header-band,70px)] w-full items-center overflow-hidden pl-[13px] lg:hidden",
         !showPropertySelector && "h-[48px]"
       )}
+      style={{ paddingRight: MOBILE_TOOLBAR_INSET }}
     >
-      {/* Property selector / logo — fades and shifts left as search enters */}
       <div
         className={cn(
-          "absolute inset-y-0 left-[13px] right-[5.5rem] flex min-w-0 items-center transition-[transform,opacity] ease-out",
+          "absolute inset-y-0 left-[13px] flex min-w-0 items-center transition-[transform,opacity] ease-out",
           searchOpen
             ? "pointer-events-none -translate-x-4 opacity-0"
             : "translate-x-0 opacity-100"
         )}
-        style={{ transitionDuration: `${HEADER_ANIM_MS}ms` }}
+        style={{ right: MOBILE_TOOLBAR_INSET, transitionDuration: `${HEADER_ANIM_MS}ms` }}
         aria-hidden={searchOpen}
       >
         {leftContent}
       </div>
 
-      {/* Search field — slides in from the right */}
       <div
         className={cn(
-          "absolute inset-y-0 left-[13px] right-[5.5rem] flex min-w-0 items-center transition-[transform,opacity] ease-out",
+          "absolute inset-y-0 left-[13px] flex min-w-0 items-center transition-[transform,opacity] ease-out",
           searchOpen
             ? "translate-x-0 opacity-100"
             : "pointer-events-none translate-x-8 opacity-0"
         )}
-        style={{ transitionDuration: `${HEADER_ANIM_MS}ms` }}
+        style={{ right: MOBILE_TOOLBAR_INSET, transitionDuration: `${HEADER_ANIM_MS}ms` }}
         aria-hidden={!searchOpen}
       >
         <div
           className={cn(
-            "flex w-full min-w-0 items-stretch overflow-hidden rounded-full border border-white/35 bg-white/20 shadow-md ring-2 ring-white/40 backdrop-blur-sm",
+            gradientHeaderSearchFieldClassName("w-full"),
             !searchOpen && "invisible"
           )}
         >
@@ -149,7 +164,7 @@ export function MobileWorkbenchHeaderRow({
               }
             }}
             placeholder="Search anything..."
-            className="min-w-0 flex-1 bg-transparent px-3.5 py-2 text-sm text-white outline-none placeholder:text-white/65"
+            className="min-w-0 flex-1 bg-transparent px-3.5 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
             aria-label="Search"
             tabIndex={searchOpen ? 0 : -1}
           />
