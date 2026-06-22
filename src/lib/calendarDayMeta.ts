@@ -190,6 +190,17 @@ export function applyCalendarDisplayFilters(
 
   const filters = selectedWorkbenchFilters;
 
+  if (filters.has("filter-due")) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    list = list.filter((task) => {
+      if (!task.due_date) return false;
+      const dueDate = new Date(task.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate >= today;
+    });
+  }
+
   if (filters.has("filter-urgent")) {
     list = list.filter((t) => t.priority === "urgent" || t.priority === "high");
   }

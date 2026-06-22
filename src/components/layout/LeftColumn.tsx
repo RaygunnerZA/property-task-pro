@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
-import { buildTasksByDate } from "@/lib/calendarDayMeta";
+import { applyCalendarDisplayFilters, buildTasksByDate } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { PropertyIdentityStrip, type PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
@@ -14,6 +14,11 @@ import { useEnsureOnboardingDemo } from "@/hooks/useEnsureOnboardingDemo";
 import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
 import { Button } from "@/components/ui/button";
 import { PropertyDashboardCarousel } from "@/components/properties/PropertyDashboardCarousel";
+import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
+import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
+import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
+import { useDataContext } from "@/contexts/DataContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -38,6 +43,7 @@ interface LeftColumnProps {
   onOpenIntake?: (mode: IntakeMode) => void;
   /** @deprecated Replaced by PropertySelectorStack in WorkbenchGradientHeader */
   scopeFilterBar?: ReactNode;
+  workbenchPanel?: DashboardWorkbenchPanel;
 }
 
 /**
@@ -62,10 +68,16 @@ export function LeftColumn({
   onPropertySelectionChange,
   onOpenIntake,
   scopeFilterBar,
+  workbenchPanel = "home",
 }: LeftColumnProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const isHubHome = pathname === "/" || pathname === "";
+  const isScheduleWorkbench = workbenchPanel === "schedule";
+  const isMobile = useIsMobile();
+  const isScheduleMobile = isScheduleWorkbench && isMobile;
+  const workbenchControls = useOptionalWorkbenchControls();
+  const { userId } = useDataContext();
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [workbenchTipDismissed, setWorkbenchTipDismissed] = useState(() => {
     try {
@@ -84,6 +96,12 @@ export function LeftColumn({
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const propertiesRef = useRef<HTMLDivElement>(null);
+  const scheduleMobileInteractionRef = useRef<HTMLDivElement>(null);
+
+  const propertyMap = useMemo(
+    () => new Map(properties.map((p: { id: string }) => [p.id, p])),
+    [properties]
+  );
 
   // Use external selectedPropertyIds if provided, otherwise use internal state
   const selectedPropertyIds = externalSelectedPropertyIds !== undefined 
@@ -136,13 +154,31 @@ export function LeftColumn({
   }, [tasks, focusedProperty?.id]);
 
   const calendarTasks = useMemo(() => {
-    if (properties.length === 0 || isAllPropertiesActive(selectedPropertyIds, ALL_PROPERTY_IDS)) {
-      return tasks;
+    let scoped = tasks;
+    if (properties.length > 0 && !isAllPropertiesActive(selectedPropertyIds, ALL_PROPERTY_IDS)) {
+      scoped = tasks.filter(
+        (task) => task.property_id && selectedPropertyIds.has(task.property_id)
+      );
     }
-    return tasks.filter(
-      (task) => task.property_id && selectedPropertyIds.has(task.property_id)
-    );
-  }, [ALL_PROPERTY_IDS, properties.length, selectedPropertyIds, tasks]);
+    if (isScheduleWorkbench && workbenchControls) {
+      scoped = applyCalendarDisplayFilters(scoped, {
+        searchQuery: workbenchControls.searchQuery,
+        propertyMap,
+        selectedWorkbenchFilters: workbenchControls.selectedFilters,
+        userId,
+      });
+    }
+    return scoped;
+  }, [
+    ALL_PROPERTY_IDS,
+    isScheduleWorkbench,
+    properties.length,
+    propertyMap,
+    selectedPropertyIds,
+    tasks,
+    userId,
+    workbenchControls,
+  ]);
 
   const scopedTasksByDate = useMemo(
     () => tasksByDate ?? buildTasksByDate(calendarTasks),
@@ -160,7 +196,12 @@ export function LeftColumn({
         <div className="sticky top-0 z-10 bg-background py-0 pl-0 pr-0">
         {scopeFilterBar}
         {!hideProperties && (
-        <div className="px-0 w-full max-w-full overflow-x-visible">
+        <div
+          className={cn(
+            "px-0 w-full max-w-full overflow-x-visible",
+            isScheduleWorkbench && "max-sm:hidden"
+          )}
+        >
           {propertiesLoading ? (
             <div className="space-y-3 px-[3px]">
               <Skeleton className="h-24 w-full rounded-lg" />
@@ -216,26 +257,44 @@ export function LeftColumn({
 
       {/* Calendar + hub summary — dashboard sits directly above the calendar */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
-        <div
-          ref={calendarRef}
-          className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
-        >
-          <div className="px-0 w-full min-w-0 max-w-full overflow-x-visible">
-            {tasksLoading ? (
-              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-                <Skeleton className="h-64 w-full" />
-              </div>
-            ) : (
-              <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-                <FillaMiniCalendar
-                  tasks={calendarTasks}
-                  selectedDate={selectedDate}
-                  onDateSelect={onDateSelect}
-                  tasksByDate={scopedTasksByDate}
-                />
-              </div>
-            )}
+      <div
+        ref={calendarRef}
+        className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
+      >
+        {isScheduleWorkbench ? (
+          <div className="mb-2 hidden max-sm:block">
+            <WorkbenchTaskFilterBar
+              tasks={tasks}
+              properties={properties}
+              collapseInteractionRootRef={scheduleMobileInteractionRef}
+            />
           </div>
+        ) : null}
+        <div
+          ref={scheduleMobileInteractionRef}
+          className="px-0 w-full min-w-0 max-w-full overflow-x-visible"
+        >
+          {tasksLoading ? (
+            <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
+              <Skeleton className="h-64 w-full" />
+            </div>
+          ) : (
+            <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
+              <FillaMiniCalendar
+                tasks={calendarTasks}
+                selectedDate={selectedDate}
+                onDateSelect={onDateSelect}
+                tasksByDate={scopedTasksByDate}
+                defaultExpanded={
+                  isScheduleMobile
+                    ? !selectedDate
+                    : !isHubHome
+                }
+                collapseOnDateSelect={isScheduleMobile}
+              />
+            </div>
+          )}
+        </div>
           {isHubHome && !workbenchTipDismissed && (
             <div className="mt-5 shrink-0 px-gutter-rail pb-4 sm:pr-2">
               <InstructionPanel

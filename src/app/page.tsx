@@ -574,6 +574,39 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     setTimeout(() => setFilterToApply(null), 100);
   };
 
+  useEffect(() => {
+    const onOpenAttention = (event: Event) => {
+      const payload = (event as CustomEvent<WorkbenchAttentionSelectPayload>).detail;
+      if (!payload) return;
+      handleWorkbenchTabChange("issues");
+      handleAttentionItemSelect(payload);
+    };
+
+    const onApplyFilter = (event: Event) => {
+      const filterId = (event as CustomEvent<{ filterId?: string }>).detail?.filterId;
+      if (!filterId) return;
+      handleFilterClick(filterId);
+    };
+
+    const onOpenRecords = (event: Event) => {
+      const pid = resolveScopedPropertyId();
+      if (pid) {
+        navigate(propertyHubRecordsPath(pid, "compliance"));
+        return;
+      }
+      handleFilterClick("show-records");
+    };
+
+    window.addEventListener("filla:workbench-open-attention", onOpenAttention);
+    window.addEventListener("filla:workbench-apply-filter", onApplyFilter);
+    window.addEventListener("filla:workbench-open-records", onOpenRecords);
+    return () => {
+      window.removeEventListener("filla:workbench-open-attention", onOpenAttention);
+      window.removeEventListener("filla:workbench-apply-filter", onApplyFilter);
+      window.removeEventListener("filla:workbench-open-records", onOpenRecords);
+    };
+  }, [handleAttentionItemSelect, handleWorkbenchTabChange, navigate, resolveScopedPropertyId]);
+
   const showWorkbenchDetailSection =
     selectedItem?.type === "task" ||
     selectedItem?.type === "message" ||
@@ -835,6 +868,7 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
             selectedPropertyIds={selectedPropertyIds}
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
+            workbenchPanel={workbenchPanel}
           />
           </ErrorBoundary>
         }

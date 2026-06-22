@@ -326,6 +326,13 @@
     box-shadow: 0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3);
   }
 
+  .shadow-fab-neo {
+    box-shadow:
+      inset -1px -2px 1px 0px rgba(0, 0, 0, 0.09),
+      1.4px 8.6px 8px -0.7px rgba(26, 25, 25, 0.24),
+      inset 1px 2px 2px 0px rgba(255, 255, 255, 0.43);
+  }
+
   /* Radial Progress - Jetbrains-style debossed data display */
   .radial-progress {
     --value: 0;

@@ -1,12 +1,31 @@
-import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { attentionItemToSignalSnapshot } from "@/components/dashboard/issues/issuesAttentionItem";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
+import { mapSignalRowToAttentionItem } from "@/lib/signals/mapSignalRowToAttentionItem";
+import type { SignalRow } from "@/lib/signals/signalTypes";
+import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 
 type TaskLike = {
+  id?: string;
   status?: string | null;
   priority?: string | null;
   title?: string | null;
   due_date?: string | null;
   due_at?: string | null;
+};
+
+export type PropertyAiSummaryTarget =
+  | { type: "task"; taskId: string }
+  | { type: "document"; documentId: string }
+  | { type: "filter"; filterId: string }
+  | {
+      type: "signal";
+      signalId: string;
+      snapshot: ReturnType<typeof attentionItemToSignalSnapshot>;
+    };
+
+export type PropertyAiSummaryLine = {
+  text: string;
+  target?: PropertyAiSummaryTarget;
 };
 
 const TERMINAL_STATUSES = new Set(["completed", "archived", "done"]);
@@ -24,12 +43,27 @@ function daysUntil(iso: string): number {
   return Math.round((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function signalSummaryLine(signal: SignalRow, propertyName?: string): PropertyAiSummaryLine {
+  const item = mapSignalRowToAttentionItem(signal, propertyName);
+  const snapshot = attentionItemToSignalSnapshot(item);
+  return {
+    text: `${item.title.trim()} needs review.`,
+    target: { type: "signal", signalId: signal.id, snapshot },
+  };
+}
+
+function taskIdOrUndefined(task: TaskLike): string | undefined {
+  return typeof task.id === "string" && task.id.length > 0 ? task.id : undefined;
+}
+
 /** Short property-scoped briefing lines for the identity card (max 3). */
 export function getPropertyAiSummaryLines(
   tasks: TaskLike[],
-  documents: PropertyDocument[]
-): string[] {
-  const lines: string[] = [];
+  documents: PropertyDocument[],
+  signals: SignalRow[] = [],
+  propertyName?: string
+): PropertyAiSummaryLine[] {
+  const lines: PropertyAiSummaryLine[] = [];
   const today = new Date().toISOString().split("T")[0];
 
   const expiringDoc = documents
@@ -43,7 +77,10 @@ export function getPropertyAiSummaryLines(
       expiringDoc.document_type?.trim() ||
       expiringDoc.category?.trim() ||
       "A compliance document";
-    lines.push(`${label} expires in ${days} day${days === 1 ? "" : "s"}.`);
+    lines.push({
+      text: `${label} expires in ${days} day${days === 1 ? "" : "s"}.`,
+      target: { type: "document", documentId: expiringDoc.id },
+    });
   }
 
   const ingressReports = tasks.filter((t) => {
@@ -52,9 +89,13 @@ export function getPropertyAiSummaryLines(
     return title.includes("water ingress") || title.includes("ingress");
   });
   if (ingressReports.length > 0) {
-    lines.push(
-      `${ingressReports.length} water ingress report${ingressReports.length === 1 ? "" : "s"} require review.`
-    );
+    const firstTaskId = taskIdOrUndefined(ingressReports[0]);
+    lines.push({
+      text: `${ingressReports.length} water ingress report${ingressReports.length === 1 ? "" : "s"} require review.`,
+      target: firstTaskId
+        ? { type: "task", taskId: firstTaskId }
+        : { type: "filter", filterId: "show-tasks" },
+    });
   }
 
   const overdueMaintenance = tasks.filter((t) => {
@@ -65,7 +106,13 @@ export function getPropertyAiSummaryLines(
     return isGarden && getTaskDueUrgency(t) === "overdue";
   });
   if (overdueMaintenance.length > 0) {
-    lines.push("Garden maintenance is overdue.");
+    const firstTaskId = taskIdOrUndefined(overdueMaintenance[0]);
+    lines.push({
+      text: "Garden maintenance is overdue.",
+      target: firstTaskId
+        ? { type: "task", taskId: firstTaskId }
+        : { type: "filter", filterId: "filter-date-overdue" },
+    });
   }
 
   const urgent = tasks.filter((t) => {
@@ -74,15 +121,25 @@ export function getPropertyAiSummaryLines(
     return pr === "urgent" || pr === "high";
   });
   if (lines.length < 3 && urgent[0]?.title) {
-    lines.push(`${urgent[0].title.trim()} needs attention.`);
+    const taskId = taskIdOrUndefined(urgent[0]);
+    lines.push({
+      text: `${urgent[0].title.trim()} needs attention.`,
+      target: taskId
+        ? { type: "task", taskId }
+        : { type: "filter", filterId: "show-tasks-urgent" },
+    });
+  }
+
+  if (lines.length < 3 && signals[0]) {
+    lines.push(signalSummaryLine(signals[0], propertyName));
   }
 
   if (lines.length === 0) {
     const open = tasks.filter(isOpenTask);
     if (open.length === 0) {
-      return ["No open work on this property right now."];
+      return [{ text: "No open work on this property right now." }];
     }
-    return ["You're up to date — nothing urgent needs action today."];
+    return [{ text: "You're up to date — nothing urgent needs action today." }];
   }
 
   return lines.slice(0, 3);
@@ -91,9 +148,10 @@ export function getPropertyAiSummaryLines(
 /** Portfolio-wide briefing lines for the home "All properties" carousel card. */
 export function getAllPropertiesSummaryLines(
   tasks: TaskLike[],
-  propertyCount: number
-): string[] {
-  const lines: string[] = [];
+  _propertyCount: number,
+  signals: SignalRow[] = []
+): PropertyAiSummaryLine[] {
+  const lines: PropertyAiSummaryLine[] = [];
   const openTasks = tasks.filter(isOpenTask);
 
   const urgent = openTasks.filter((t) => {
@@ -101,26 +159,33 @@ export function getAllPropertiesSummaryLines(
     return pr === "urgent" || pr === "high";
   });
 
-  if (propertyCount > 1) {
-    lines.push(`Overview across ${propertyCount} properties.`);
-  }
-
   if (urgent.length > 0 && urgent[0]?.title) {
-    lines.push(`${urgent[0].title.trim()} needs attention.`);
+    const taskId = taskIdOrUndefined(urgent[0]);
+    lines.push({
+      text: `${urgent[0].title.trim()} needs attention.`,
+      target: taskId
+        ? { type: "task", taskId }
+        : { type: "filter", filterId: "show-tasks-urgent" },
+    });
   }
 
   const overdue = openTasks.filter((t) => getTaskDueUrgency(t) === "overdue");
   if (lines.length < 3 && overdue.length > 0) {
-    lines.push(
-      `${overdue.length} overdue task${overdue.length === 1 ? "" : "s"} across your portfolio.`
-    );
+    lines.push({
+      text: `${overdue.length} overdue task${overdue.length === 1 ? "" : "s"} across your portfolio.`,
+      target: { type: "filter", filterId: "filter-date-overdue" },
+    });
+  }
+
+  if (lines.length < 3 && signals[0]) {
+    lines.push(signalSummaryLine(signals[0]));
   }
 
   if (lines.length === 0) {
     if (openTasks.length === 0) {
-      return ["No open work across your properties right now."];
+      return [{ text: "No open work across your properties right now." }];
     }
-    return ["You're up to date — nothing urgent needs action today."];
+    return [{ text: "You're up to date — nothing urgent needs action today." }];
   }
 
   return lines.slice(0, 3);

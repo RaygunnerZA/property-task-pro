@@ -37,7 +37,6 @@ import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { computeAllPropertiesSummaryMetrics } from "@/lib/propertySummaryMetrics";
-import { getAllPropertiesSummaryLines } from "@/lib/propertyAiSummary";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { useTrackpadCarouselWheel } from "@/hooks/useTrackpadHorizontalScroll";
 import { cn } from "@/lib/utils";
@@ -119,15 +118,6 @@ function AllPropertiesCarouselSlide({
     [properties, tasks, totalUrgent]
   );
 
-  const summaryLines = useMemo(
-    () =>
-      getAllPropertiesSummaryLines(
-        tasks as Parameters<typeof getAllPropertiesSummaryLines>[0],
-        properties.length
-      ),
-    [tasks, properties.length]
-  );
-
   const placeholderProperty = properties[0];
 
   if (!placeholderProperty) return null;
@@ -153,7 +143,7 @@ function AllPropertiesCarouselSlide({
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "linear-gradient(0deg, rgba(26, 44, 55, 0.65) 22%, rgba(0, 0, 0, 0) 48%)",
+                "linear-gradient(10.2deg, rgba(26, 44, 55, 0.74) 2%, rgba(0, 0, 0, 0) 41%)",
             }}
           />
 
@@ -212,7 +202,7 @@ function AllPropertiesCarouselSlide({
           tasks={tasks}
           documents={[]}
           metricsOverride={metrics}
-          summaryLinesOverride={summaryLines}
+          portfolioSignals
           urgentOpenTaskCount={totalUrgent}
           onOpenUrgent={() => onFilterClick?.("show-tasks-urgent")}
           onOpenTasks={() => onFilterClick?.("show-tasks")}
@@ -472,7 +462,7 @@ export function PropertyDashboardCarousel({
 
   return (
     <div className={cn("w-full min-w-0 rounded-[12px]", className)} aria-label="Property dashboards">
-      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full overflow-hidden rounded-[12px]">
+      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full overflow-hidden rounded-[12px] shadow-[1px_0px_1px_0px_rgba(255,255,255,0.62)]">
         <CarouselContent
           className="ml-0"
           viewportClassName={cn(VIEWPORT_DRAG_CLASS, "rounded-[12px]")}
@@ -507,6 +497,12 @@ export function PropertyDashboardCarousel({
             );
           })}
         </CarouselContent>
+        {slides.length > 1 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[15px] rounded-r-[12px] bg-gradient-to-r from-transparent to-black/20"
+            aria-hidden
+          />
+        ) : null}
       </Carousel>
 
       {slides.length > 1 ? (

@@ -62,34 +62,30 @@ export function MobileBottomNav() {
       <Link
         key={to}
         to={to}
+        aria-label={label}
         className={cn(
-          "flex min-w-[4.5rem] flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all duration-200",
+          "flex min-w-[4.5rem] items-center justify-center py-1.5 rounded-lg transition-all duration-200",
           "hover:scale-105 active:scale-95",
+          to === "/tasks" && "pl-2 pr-5",
+          to === "/agenda" && "pl-5 pr-2",
+          to !== "/tasks" && to !== "/agenda" && "px-2",
           isActive && "scale-105"
         )}
       >
         <Icon
           className={cn(
-            "h-5 w-5 transition-colors",
-            isActive ? "text-primary" : "text-muted-foreground"
+            "h-8 w-8 transition-colors",
+            isActive ? "text-foreground" : "text-muted-foreground/66"
           )}
         />
-        <span
-          className={cn(
-            "text-[10px] font-semibold tracking-tight transition-colors",
-            isActive ? "text-primary" : "text-muted-foreground"
-          )}
-        >
-          {label}
-        </span>
       </Link>
     );
   };
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden" aria-label="Main navigation">
-        <div className="absolute inset-0 border-t border-border/50 bg-background/90 backdrop-blur-md" />
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] h-[72px] lg:hidden" aria-label="Main navigation">
+        <div className="absolute inset-0 border-t-2 border-white/[0.61] bg-background/90 backdrop-blur-md" />
 
         <div className="relative mx-auto max-w-md px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
           <div className="relative flex items-end justify-between">
@@ -97,7 +93,7 @@ export function MobileBottomNav() {
               {leftItems.map(({ url, icon, title }) => renderNavLink(url, icon, title))}
             </div>
 
-            <div className="w-14 shrink-0" aria-hidden />
+            <div className="w-[65px] shrink-0" aria-hidden />
 
             <div className="flex flex-1 justify-around">
               {rightItems.map(({ url, icon, title }) => renderNavLink(url, icon, title))}
@@ -107,13 +103,13 @@ export function MobileBottomNav() {
               type="button"
               onClick={handleCreateClick}
               className={cn(
-                "absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center",
-                "rounded-full bg-primary text-primary-foreground shadow-fab",
+                "absolute left-1/2 top-0 flex h-[65px] w-[65px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+                "rounded-full bg-primary text-primary-foreground shadow-fab-neo",
                 "transition-transform hover:scale-105 active:scale-95"
               )}
               aria-label="Create"
             >
-              <Plus className="h-6 w-6" strokeWidth={2.5} />
+              <Plus className="h-8 w-8" strokeWidth={2.5} />
             </button>
           </div>
         </div>

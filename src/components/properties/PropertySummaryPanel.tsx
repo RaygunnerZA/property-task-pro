@@ -1,19 +1,26 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
 import { computePropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import type { PropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
-import { getPropertyAiSummaryLines } from "@/lib/propertyAiSummary";
+import {
+  getAllPropertiesSummaryLines,
+  getPropertyAiSummaryLines,
+  type PropertyAiSummaryLine,
+  type PropertyAiSummaryTarget,
+} from "@/lib/propertyAiSummary";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
+import { useSignalsQuery } from "@/hooks/useSignalsQuery";
+import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 
 const statNumberClass =
-  "self-start pl-1.5 pb-1 text-[38px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
+  "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
 
 const statWordClass =
-  "font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-muted-foreground transition-colors group-hover:font-bold group-hover:text-white";
+  "font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
   "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-[#3A4A6A] hover:shadow-none sm:px-1.5 sm:pb-3";
@@ -58,7 +65,10 @@ type PropertySummaryPanelProps = {
   variant?: "full" | "compact";
   /** Precomputed metrics for portfolio / aggregate cards */
   metricsOverride?: PropertySummaryMetrics;
-  summaryLinesOverride?: string[];
+  summaryLinesOverride?: PropertyAiSummaryLine[];
+  /** Portfolio card: load org-wide signals for summary lines */
+  portfolioSignals?: boolean;
+  onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
 };
 
 function StatColumn({
@@ -82,7 +92,7 @@ function StatColumn({
     <>
       <span className={statNumberClass}>{value}</span>
       <div className="flex w-full min-w-0 items-stretch gap-0.5">
-        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left">
+        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left text-foreground">
           <span className={statWordClass}>{line1}</span>
           <span className={statWordClass}>{line2}</span>
         </div>
@@ -149,6 +159,67 @@ function CountRow({
   );
 }
 
+function activateSummaryTarget(
+  target: PropertyAiSummaryTarget,
+  onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void
+) {
+  if (onSummaryLineActivate) {
+    onSummaryLineActivate(target);
+    return;
+  }
+
+  if (target.type === "task") {
+    window.dispatchEvent(
+      new CustomEvent("filla:assistant-open-task", { detail: { taskId: target.taskId } })
+    );
+    return;
+  }
+
+  if (target.type === "signal") {
+    const payload: WorkbenchAttentionSelectPayload = {
+      kind: "signal",
+      snapshot: target.snapshot,
+    };
+    window.dispatchEvent(
+      new CustomEvent("filla:workbench-open-attention", { detail: payload })
+    );
+    return;
+  }
+
+  if (target.type === "filter") {
+    window.dispatchEvent(
+      new CustomEvent("filla:workbench-apply-filter", { detail: { filterId: target.filterId } })
+    );
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("filla:workbench-open-records", { detail: { documentId: target.documentId } })
+  );
+}
+
+function SummarySuggestionLine({
+  line,
+  onActivate,
+}: {
+  line: PropertyAiSummaryLine;
+  onActivate?: (target: PropertyAiSummaryTarget) => void;
+}) {
+  if (!line.target) {
+    return <p>{line.text}</p>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => activateSummaryTarget(line.target!, onActivate)}
+      className="block w-full text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 rounded-sm"
+    >
+      {line.text}
+    </button>
+  );
+}
+
 export function PropertySummaryPanel({
   property,
   tasks = [],
@@ -168,7 +239,14 @@ export function PropertySummaryPanel({
   variant = "full",
   metricsOverride,
   summaryLinesOverride,
+  portfolioSignals = false,
+  onSummaryLineActivate,
 }: PropertySummaryPanelProps) {
+  const propertyName = property.nickname || property.address;
+  const { data: scopedSignals = [] } = useSignalsQuery({
+    propertyIds: portfolioSignals ? undefined : [property.id],
+  });
+
   const metrics = useMemo(
     () =>
       metricsOverride ??
@@ -182,11 +260,36 @@ export function PropertySummaryPanel({
     [property, tasks, documents, urgentOpenTaskCount, metricsOverride]
   );
 
-  const summaryLines = useMemo(
-    () =>
-      summaryLinesOverride ??
-      getPropertyAiSummaryLines(tasks as Parameters<typeof getPropertyAiSummaryLines>[0], documents),
-    [tasks, documents, summaryLinesOverride]
+  const summaryLines = useMemo(() => {
+    if (summaryLinesOverride) return summaryLinesOverride;
+    if (portfolioSignals && metricsOverride) {
+      return getAllPropertiesSummaryLines(
+        tasks as Parameters<typeof getAllPropertiesSummaryLines>[0],
+        0,
+        scopedSignals
+      );
+    }
+    return getPropertyAiSummaryLines(
+      tasks as Parameters<typeof getPropertyAiSummaryLines>[0],
+      documents,
+      scopedSignals,
+      propertyName
+    );
+  }, [
+    tasks,
+    documents,
+    summaryLinesOverride,
+    scopedSignals,
+    propertyName,
+    portfolioSignals,
+    metricsOverride,
+  ]);
+
+  const handleSummaryLineActivate = useCallback(
+    (target: PropertyAiSummaryTarget) => {
+      activateSummaryTarget(target, onSummaryLineActivate);
+    },
+    [onSummaryLineActivate]
   );
 
   const tasksSecondary = useMemo(() => {
@@ -292,11 +395,14 @@ export function PropertySummaryPanel({
           className={cn(
             "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
             variant === "compact" &&
-              "gap-x-2.5 gap-y-[3px] border-t border-t-border/30 pl-0 pr-3 pt-[2px] pb-3"
+              "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3"
           )}
         >
           <div
-            className="flex h-9 w-[21px] shrink-0 items-start justify-center rounded-2xl rounded-bl-sm"
+            className={cn(
+              "flex shrink-0 items-start justify-center rounded-2xl rounded-bl-sm",
+              variant === "compact" ? "h-[29px] w-[15px]" : "h-9 w-[21px]"
+            )}
             aria-hidden
           >
             <FillaIcon size={24} className="opacity-90" />
@@ -307,8 +413,12 @@ export function PropertySummaryPanel({
               variant === "compact" && "w-[208px] text-[12px] tracking-[-0.4px]"
             )}
           >
-            {summaryLines.map((line) => (
-              <p key={line}>{line}</p>
+            {summaryLines.map((line, index) => (
+              <SummarySuggestionLine
+                key={`${line.text}-${index}`}
+                line={line}
+                onActivate={handleSummaryLineActivate}
+              />
             ))}
           </div>
         </div>

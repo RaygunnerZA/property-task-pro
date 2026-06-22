@@ -57,35 +57,37 @@ export function IssuesRecentSignalRow({
       title={title}
       subtitle={subtitle}
       trailing={
-        <SignalRowTrailingRail>
+        <div className="flex shrink-0 items-center gap-2 self-center">
           {categoryTag ? (
             <SignalCategoryTag label={categoryTag} variant={categoryTagVariant ?? "default"} />
           ) : null}
-          {viewAction ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                viewAction.onClick();
-              }}
-              className={issuesSignalSecondaryButtonClassName}
-            >
-              {viewAction.label === "Open" ? "View" : viewAction.label}
-            </button>
-          ) : null}
-          {dismissAction ? (
-            <button
-              type="button"
-              className={issuesSignalSecondaryButtonClassName}
-              onClick={(e) => {
-                e.stopPropagation();
-                dismissAction.onClick();
-              }}
-            >
-              {dismissAction.label}
-            </button>
-          ) : null}
-        </SignalRowTrailingRail>
+          <div className="flex flex-col gap-1 sm:h-7 sm:flex-row sm:items-center sm:gap-2">
+            {viewAction ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  viewAction.onClick();
+                }}
+                className={issuesSignalReviewButtonClassName}
+              >
+                {viewAction.label === "Open" ? "View" : viewAction.label}
+              </button>
+            ) : null}
+            {dismissAction ? (
+              <button
+                type="button"
+                className={issuesSignalSecondaryButtonClassName}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismissAction.onClick();
+                }}
+              >
+                {dismissAction.label}
+              </button>
+            ) : null}
+          </div>
+        </div>
       }
     />
   );
