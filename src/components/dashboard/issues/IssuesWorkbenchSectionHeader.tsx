@@ -31,7 +31,7 @@ export function IssuesWorkbenchSectionHeader({
   const badgeClass =
     countVariant === "review"
       ? "bg-[#D9D9D9] text-white"
-      : "border-0 bg-muted/70 text-[#878787]";
+      : "border-0 bg-white/70 text-[#878787]";
 
   if (hasArt) {
     return (

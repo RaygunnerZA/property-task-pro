@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
@@ -66,6 +66,8 @@ interface PropertyIdentityStripProps {
   onOpenTasksClick?: () => void;
   onFilterClick?: (filterId: string) => void;
   externalDashboard?: boolean;
+  /** Rendered between the summary panel and hub nav cards (e.g. mini calendar). */
+  betweenSummaryAndNav?: ReactNode;
 }
 
 /**
@@ -79,6 +81,7 @@ export function PropertyIdentityStrip({
   onOpenTasksClick,
   onFilterClick,
   externalDashboard = false,
+  betweenSummaryAndNav,
 }: PropertyIdentityStripProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -245,6 +248,8 @@ export function PropertyIdentityStrip({
           />
         </div>
       </div>
+
+      {betweenSummaryAndNav}
 
       <PropertyHubNavCards
         propertyId={property.id}

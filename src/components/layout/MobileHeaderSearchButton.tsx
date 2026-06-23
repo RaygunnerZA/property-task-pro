@@ -8,10 +8,8 @@ import {
 } from "@/components/ui/drawer";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { cn } from "@/lib/utils";
-import {
-  GradientHeaderMaskedIcon,
-  gradientHeaderControlClassName,
-} from "@/lib/gradientHeaderControls";
+import { GradientHeaderMaskedIcon } from "@/components/layout/GradientHeaderMaskedIcon";
+import { gradientHeaderControlClassName } from "@/lib/gradientHeaderControls";
 
 const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
 

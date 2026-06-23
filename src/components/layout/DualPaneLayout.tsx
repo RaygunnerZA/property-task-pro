@@ -21,8 +21,8 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
   const hasHeader = !!header;
 
   const stickyColClass = hasHeader
-    ? "sm:sticky sm:top-[var(--header-height)] sm:h-[calc(100vh-var(--header-height))] sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]"
-    : "sm:sticky sm:top-0 sm:h-screen sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]";
+    ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+    : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:w-workbench-side-rail sm:px-0 sm:pl-[12px] sm:pr-[12px]";
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
@@ -41,7 +41,7 @@ export function DualPaneLayout({ leftColumn, rightColumn, thirdColumn, header }:
       >
         <div
           className={cn(
-            "w-full min-w-0 max-w-full shrink-0 px-gutter-rail",
+            "flex w-full min-w-0 max-w-full shrink-0 flex-col gap-3 px-gutter-rail",
             stickyColClass
           )}
         >

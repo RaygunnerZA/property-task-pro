@@ -786,7 +786,7 @@ export function TaskList({
                   </div>
                 ) : embeddedInIssuesWorkbench ? (
                   <div className="relative mt-[7px]">
-                    <div className="overflow-x-auto -mx-1 px-1 scrollbar-hz-teal">
+                    <div className="overflow-x-auto -mx-1 pl-1 pr-0 scrollbar-hz-teal">
                       <div className="flex gap-3 min-w-max pb-0.5">
                         {memoizedTaskCards.todo.map((props) => (
                           <div key={props.task.id} className="w-[200px] flex-shrink-0">

@@ -141,7 +141,7 @@ export function countPropertyPeople(
 }
 
 const recentLabelClass =
-  "w-[50px] shrink-0 text-center font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground";
+  "w-[50px] shrink-0 pl-[14px] text-center font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground";
 
 function RecentChip({ label }: { label: string }) {
   return (
@@ -226,7 +226,7 @@ export function PropertyHubNavCards({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className={cn("grid grid-cols-1 gap-[11px]", className)}>
+      <div className={cn("grid grid-cols-1 gap-3", className)}>
         {NAV_CARDS.map(({ id, title, description, iconSrc, fill }) => {
           const recentItems = recentByCard[id];
           const hasRecent =
@@ -247,12 +247,12 @@ export function PropertyHubNavCards({
                 }
               }}
               className={cn(
-                "group flex cursor-pointer flex-col gap-0 align-top rounded-[12px] border border-border/25 px-1.5 py-2.5 text-left shadow-e1",
-                "transition-[transform,box-shadow] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                "group flex cursor-pointer flex-col gap-0 align-top rounded-[12px] border border-border/25 px-1.5 py-[5px] text-left shadow-md",
+                "transition-[transform,box-shadow] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               )}
               style={paperTexturedColorStyle(fill)}
             >
-              <div className="flex flex-row items-center justify-center gap-2">
+              <div className="flex h-[62px] flex-row items-center justify-center gap-2 pt-2">
                 <img
                   src={iconSrc}
                   alt=""
@@ -260,7 +260,7 @@ export function PropertyHubNavCards({
                   width={60}
                   height={76}
                   decoding="async"
-                  className="pointer-events-none h-[76px] w-[60px] shrink-0 select-none object-contain px-[3px] pb-3 align-top"
+                  className="pointer-events-none h-[54px] w-[60px] shrink-0 select-none object-contain px-[3px] align-top"
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
@@ -286,7 +286,7 @@ export function PropertyHubNavCards({
               </div>
 
               {hasRecent ? (
-                <div className="flex h-9 items-center gap-2 border-t-2 border-t-white/47 pt-1.5">
+                <div className="flex h-[65px] items-center gap-[11px] pt-1.5">
                   <p className={recentLabelClass}>Recent</p>
                   {id === "people" ? (
                     <div className="flex min-h-[24px] min-w-0 flex-1 flex-wrap items-center gap-1.5">
@@ -295,7 +295,7 @@ export function PropertyHubNavCards({
                       ))}
                     </div>
                   ) : (
-                    <div className="flex min-h-[22px] min-w-0 flex-1 flex-wrap gap-1">
+                    <div className="flex min-h-[22px] min-w-0 flex-1 flex-nowrap gap-1">
                       {(recentItems as string[]).map((label, index) => (
                         <RecentChip key={`${id}-${index}`} label={label} />
                       ))}

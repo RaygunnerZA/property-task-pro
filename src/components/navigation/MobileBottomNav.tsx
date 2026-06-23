@@ -111,7 +111,7 @@ export function MobileBottomNav() {
               type="button"
               onClick={handleCreateClick}
               className={cn(
-                "absolute left-1/2 top-[-7px] flex h-[65px] w-[65px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+                "absolute left-1/2 top-[9px] flex h-[65px] w-[65px] -translate-x-1/2 -translate-y-1/2 items-center justify-center",
                 "overflow-hidden rounded-xl paper-textured-color text-primary-foreground shadow-fab-neo",
                 "transition-transform hover:scale-105 active:scale-95"
               )}

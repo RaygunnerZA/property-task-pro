@@ -43,8 +43,8 @@ export function IssuesScrollColumn<T extends { id: string }>({
   return (
     <section
       className={cn(
-        "min-w-0 rounded-2xl bg-transparent py-3 sm:py-4",
-        hideHeader && "py-0",
+        "min-w-0 rounded-2xl bg-transparent",
+        hideHeader ? "!mt-0 py-0 sm:py-0" : "py-3 sm:py-4",
         className
       )}
     >
@@ -78,7 +78,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
       ) : (
         <div className="mt-3 divide-y divide-input-bg">
           {items.map((item) => (
-            <div key={item.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
+            <div key={item.id} className="min-w-0 pt-2.5 pb-0 first:pt-0">
               {renderCard(item)}
             </div>
           ))}

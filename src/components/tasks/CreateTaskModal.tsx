@@ -450,7 +450,7 @@ export function CreateTaskModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[95vh] p-0 gap-0 overflow-hidden">
+        <DialogContent hideCloseButton className="max-h-[95vh] p-0 gap-0 overflow-hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>Create Task</DialogTitle>
             <DialogDescription>Create a new task with details, assignments, and metadata</DialogDescription>

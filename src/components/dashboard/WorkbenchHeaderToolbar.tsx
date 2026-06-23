@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { WorkbenchFiltersPopover } from "@/components/dashboard/WorkbenchFiltersPopover";
+import { GradientHeaderMaskedIcon } from "@/components/layout/GradientHeaderMaskedIcon";
 import {
-  GradientHeaderMaskedIcon,
   gradientHeaderSearchFieldClassName,
 } from "@/lib/gradientHeaderControls";
 

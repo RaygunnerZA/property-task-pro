@@ -5,6 +5,8 @@ import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContex
 import { cn } from "@/lib/utils";
 import {
   GradientHeaderMaskedIcon,
+} from "@/components/layout/GradientHeaderMaskedIcon";
+import {
   gradientHeaderControlClassName,
   gradientHeaderSearchFieldClassName,
 } from "@/lib/gradientHeaderControls";

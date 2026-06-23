@@ -185,10 +185,35 @@ export function LeftColumn({
     [calendarTasks, tasksByDate]
   );
 
+  const calendarAboveNavCards = Boolean(focusedProperty) && !isScheduleMobile;
+
+  const miniCalendar = tasksLoading ? (
+    <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
+      <Skeleton className="h-64 w-full" />
+    </div>
+  ) : (
+    <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
+      <FillaMiniCalendar
+        tasks={calendarTasks}
+        selectedDate={selectedDate}
+        onDateSelect={onDateSelect}
+        tasksByDate={scopedTasksByDate}
+        defaultExpanded={
+          calendarAboveNavCards
+            ? false
+            : isScheduleMobile
+              ? !selectedDate
+              : !isHubHome
+        }
+        collapseOnDateSelect={isScheduleMobile}
+      />
+    </div>
+  );
+
   return (
     <div 
       ref={leftColumnRef}
-      className="h-auto sm:h-[calc(100vh-var(--header-height))] flex flex-col overflow-y-auto w-full max-w-full px-0"
+      className="flex h-auto w-full max-w-full flex-col overflow-y-auto px-0 sm:overflow-visible"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties: selector stack + identity strip */}
@@ -236,6 +261,7 @@ export function LeftColumn({
                   key={focusedProperty.id}
                   property={focusedProperty}
                   externalDashboard
+                  betweenSummaryAndNav={calendarAboveNavCards ? miniCalendar : undefined}
                   onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
                   urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
                   onOpenTasksClick={
@@ -255,8 +281,9 @@ export function LeftColumn({
         </div>
       </div>
 
-      {/* Calendar + hub summary — dashboard sits directly above the calendar */}
+      {/* Calendar below property carousel / when no single property is focused */}
       <div className="flex-1 overflow-y-auto overflow-x-visible min-h-0 min-w-0 touch-pan-y overscroll-x-contain">
+      {calendarAboveNavCards ? null : (
       <div
         ref={calendarRef}
         className="flex-shrink-0 w-full min-w-0 max-w-full overflow-x-visible px-[3px]"
@@ -274,26 +301,7 @@ export function LeftColumn({
           ref={scheduleMobileInteractionRef}
           className="px-0 w-full min-w-0 max-w-full overflow-x-visible"
         >
-          {tasksLoading ? (
-            <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-              <Skeleton className="h-64 w-full" />
-            </div>
-          ) : (
-            <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-              <FillaMiniCalendar
-                tasks={calendarTasks}
-                selectedDate={selectedDate}
-                onDateSelect={onDateSelect}
-                tasksByDate={scopedTasksByDate}
-                defaultExpanded={
-                  isScheduleMobile
-                    ? !selectedDate
-                    : !isHubHome
-                }
-                collapseOnDateSelect={isScheduleMobile}
-              />
-            </div>
-          )}
+          {miniCalendar}
         </div>
           {isHubHome && !workbenchTipDismissed && (
             <div className="mt-5 shrink-0 px-gutter-rail pb-4 sm:pr-2">
@@ -322,6 +330,7 @@ export function LeftColumn({
             </div>
           )}
         </div>
+      )}
       </div>
 
       {/* Add Property Dialog */}
