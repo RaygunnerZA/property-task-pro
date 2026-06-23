@@ -33,7 +33,7 @@ export function TaskCardMediaZone({
   const baseZoneClass =
     variant === "horizontal"
       ? "w-24 sm:w-28 flex-shrink-0 relative overflow-hidden"
-      : "w-full h-[140px] relative flex-shrink-0 overflow-hidden";
+      : "w-full h-[140px] relative flex-shrink-0 overflow-hidden pt-0 rounded-t-[12px]";
 
   const verticalIllustrationZoneClass =
     variant === "vertical" &&

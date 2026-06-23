@@ -138,7 +138,7 @@ function CountRow({
   const content = (
     <>
       <span className="text-[14px] font-medium text-muted-foreground">{label}</span>
-      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-md bg-white px-1 text-[14px] font-semibold tabular-nums text-muted-foreground">
+      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-[8px] bg-white px-1 text-[14px] font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
         {count}
       </span>
     </>
@@ -152,7 +152,7 @@ function CountRow({
     <button
       type="button"
       onClick={onActivate}
-      className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left text-sm transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className="flex w-full items-center justify-between gap-2 rounded-[12px] py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
       {content}
     </button>
@@ -382,7 +382,7 @@ export function PropertySummaryPanel({
               </p>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-0 border-l border-dashed border-border/35 pl-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-[2px] border-l border-dashed border-border/35 pb-[11px] pl-2">
               <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
               <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
               <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />

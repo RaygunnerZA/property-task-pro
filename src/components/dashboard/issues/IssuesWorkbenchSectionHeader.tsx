@@ -71,7 +71,7 @@ export function IssuesWorkbenchSectionHeader({
           {typeof count === "number" ? (
             <span
               className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold",
+                "inline-flex h-5 min-w-5 items-center justify-center rounded-[8px] px-1.5 text-[11px] font-semibold",
                 badgeClass
               )}
             >

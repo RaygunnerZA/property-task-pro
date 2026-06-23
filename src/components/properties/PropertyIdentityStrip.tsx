@@ -139,7 +139,7 @@ export function PropertyIdentityStrip({
 
   return (
     <div className="flex w-full flex-col gap-2.5">
-      <div className="overflow-hidden rounded-[12px] border border-border/20 bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)]">
+      <div className="overflow-hidden rounded-[12px] bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)]">
         <div
           className="group relative w-full shrink-0 overflow-hidden"
           style={{
@@ -159,7 +159,9 @@ export function PropertyIdentityStrip({
             className="pointer-events-none absolute left-0 right-0 top-0 h-[180px]"
             style={{
               background:
-                "linear-gradient(0deg, rgba(0, 0, 0, 0.65) 22%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0) 100%)",
+                "linear-gradient(18.4deg, rgba(31, 49, 86, 0.56) 22%, rgba(33, 51, 80, 0) 48%, rgba(0, 0, 0, 0) 100%)",
+              border: "none",
+              borderImage: "none",
             }}
           />
 

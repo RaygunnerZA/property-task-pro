@@ -143,6 +143,12 @@ export function countPropertyPeople(
 const recentLabelClass =
   "w-[50px] shrink-0 pl-[14px] text-center font-mono text-[9px] font-medium uppercase tracking-wider text-muted-foreground";
 
+function formatRecentChipLabel(name: string): string {
+  const trimmed = name.trim();
+  const withoutSamplePrefix = trimmed.replace(/^sample:\s*/i, "");
+  return withoutSamplePrefix || trimmed;
+}
+
 function RecentChip({ label }: { label: string }) {
   return (
     <span
@@ -200,11 +206,11 @@ export function PropertyHubNavCards({
   const recentByCard = useMemo(() => {
     const recentSpaces = sortByRecent(spaces)
       .slice(0, MAX_RECENT)
-      .map((s) => s.name || "Unnamed space");
+      .map((s) => formatRecentChipLabel(s.name || "Unnamed space"));
 
     const recentAssets = sortByRecent(assets)
       .slice(0, MAX_RECENT)
-      .map((a) => a.name || a.serial_number || "Unnamed asset");
+      .map((a) => formatRecentChipLabel(a.name || a.serial_number || "Unnamed asset"));
 
     const recentRecords = sortByRecent(documents)
       .slice(0, MAX_RECENT)
@@ -286,7 +292,7 @@ export function PropertyHubNavCards({
               </div>
 
               {hasRecent ? (
-                <div className="flex h-[65px] items-center gap-[11px] pt-1.5">
+                <div className="flex h-[31px] items-center gap-[11px] pt-1.5">
                   <p className={recentLabelClass}>Recent</p>
                   {id === "people" ? (
                     <div className="flex min-h-[24px] min-w-0 flex-1 flex-wrap items-center gap-1.5">

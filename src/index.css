@@ -438,6 +438,12 @@
     margin-top: 0;
     margin-bottom: 0;
   }
+
+  .page-header.page-header--workbench-mobile {
+    box-shadow:
+      2px 4px 6.7px 0px rgba(0, 0, 0, 0.23),
+      inset -1px 2px 2.2px 0px rgba(0, 0, 0, 0.76);
+  }
   
   /* Icon with Primary Color (from compliance dashboard) */
   .icon-primary {
