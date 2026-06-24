@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect, Suspense } from 'react';
+import { ReactNode, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -7,13 +7,10 @@ import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { AssistantProvider } from '@/contexts/AssistantContext';
 import { isDevBuild } from '@/context/DevModeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { lazyWithRetry } from '@/lib/lazyWithRetry';
 import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
 import { MobileAppHeader } from '@/components/layout/MobileAppHeader';
 import { isMobileHeaderExcludedPath } from '@/lib/mainNavigation';
-
-const AIDebugPanel = lazyWithRetry(() => import('@/components/dev/AIDebugPanel'));
-const ViewportSimulator = lazyWithRetry(() => import('@/components/dev/ViewportSimulator'));
+import { DevToolsOverlays } from '@/components/dev/DevToolsOverlays';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -74,16 +71,10 @@ export function AppLayout({
           <MobileBottomNav />
         </div>
 
-        {import.meta.env.DEV && (
-          <Suspense fallback={null}>
-            <AIDebugPanel />
-          </Suspense>
-        )}
-
-        {isDevBuild && (
-          <Suspense fallback={null}>
-            <ViewportSimulator />
-          </Suspense>
+        {(import.meta.env.DEV || isDevBuild) && (
+          <ErrorBoundary regionTitle="Dev tools">
+            <DevToolsOverlays />
+          </ErrorBoundary>
         )}
       </div>
         </SidebarProvider>

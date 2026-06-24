@@ -241,8 +241,16 @@ export function PropertyIdentityStrip({
                 ? onOpenTasksClick()
                 : navigate(propertyHubIssuesPath(property.id, { issuesFilter: "open" }))
             }
-            onOpenCompliance={() => navigate(propertyHubRecordsPath(property.id, "compliance"))}
-            onOpenInspections={() => navigate(propertyHubRecordsPath(property.id, "expiring"))}
+            onOpenCompliance={() =>
+              onFilterClick
+                ? onFilterClick("show-to-review")
+                : navigate(propertyHubRecordsPath(property.id, "compliance"))
+            }
+            onOpenInspections={() =>
+              onFilterClick
+                ? onFilterClick("show-upcoming-events")
+                : navigate(propertyHubRecordsPath(property.id, "expiring"))
+            }
             onOpenSpaces={() => openHubNav("spaces")}
             onOpenAssets={() => openHubNav("assets")}
             onOpenPeople={() => openHubNav("people")}

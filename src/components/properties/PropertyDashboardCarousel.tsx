@@ -206,8 +206,8 @@ function AllPropertiesCarouselSlide({
           urgentOpenTaskCount={totalUrgent}
           onOpenUrgent={() => onFilterClick?.("show-tasks-urgent")}
           onOpenTasks={() => onFilterClick?.("show-tasks")}
-          onOpenCompliance={() => onFilterClick?.("filter-date-overdue")}
-          onOpenInspections={() => onFilterClick?.("filter-date-this-week")}
+          onOpenCompliance={() => onFilterClick?.("show-to-review")}
+          onOpenInspections={() => onFilterClick?.("show-upcoming-events")}
         />
       </div>
     </div>
@@ -257,6 +257,35 @@ function PropertyCarouselSlide({
       case "records":
         navigate(propertyHubRecordsPath(property.id));
         return;
+    }
+  };
+
+  const activateCarouselFilter = (filterId: string) => {
+    onSelectSlide?.();
+    if (onFilterClick) {
+      onFilterClick(filterId);
+      return;
+    }
+    switch (filterId) {
+      case "show-tasks":
+        navigate(propertyHubIssuesPath(property.id, { issuesFilter: "open" }));
+        return;
+      case "show-tasks-urgent":
+        navigate(
+          propertyHubPath(property.id, {
+            [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
+            [WORKBENCH_TASK_PRIORITY_QUERY]: "urgent",
+          })
+        );
+        return;
+      case "show-to-review":
+        navigate(propertyHubRecordsPath(property.id, "compliance"));
+        return;
+      case "show-upcoming-events":
+        navigate(propertyHubRecordsPath(property.id, "expiring"));
+        return;
+      default:
+        break;
     }
   };
 
@@ -335,23 +364,10 @@ function PropertyCarouselSlide({
           documents={propertyDocuments}
           peopleCount={peopleCount}
           urgentOpenTaskCount={urgentOpenTaskCount}
-          onOpenUrgent={() =>
-            onFilterClick
-              ? onFilterClick("show-tasks-urgent")
-              : navigate(
-                  propertyHubPath(property.id, {
-                    [WORKBENCH_ISSUES_FILTER_QUERY]: "open",
-                    [WORKBENCH_TASK_PRIORITY_QUERY]: "urgent",
-                  })
-                )
-          }
-          onOpenTasks={() =>
-            onFilterClick
-              ? onFilterClick("show-tasks")
-              : navigate(propertyHubIssuesPath(property.id, { issuesFilter: "open" }))
-          }
-          onOpenCompliance={() => navigate(propertyHubRecordsPath(property.id, "compliance"))}
-          onOpenInspections={() => navigate(propertyHubRecordsPath(property.id, "expiring"))}
+          onOpenUrgent={() => activateCarouselFilter("show-tasks-urgent")}
+          onOpenTasks={() => activateCarouselFilter("show-tasks")}
+          onOpenCompliance={() => activateCarouselFilter("show-to-review")}
+          onOpenInspections={() => activateCarouselFilter("show-upcoming-events")}
           onOpenSpaces={() => openHubNav("spaces")}
           onOpenAssets={() => openHubNav("assets")}
           onOpenPeople={() => openHubNav("people")}

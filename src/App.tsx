@@ -22,8 +22,8 @@ import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScree
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
 import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
 import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
-// Primary nav — eager import so sidebar/mobile "My Tasks" never hits a lazy chunk fetch failure.
-import Tasks from "./pages/Tasks";
+// Primary nav — work column opens via TasksWorkbenchPage (centre Inflow · Tasks · Calendar).
+import TasksWorkbenchPage from "./pages/workbench/TasksWorkbenchPage";
 
 initAnalytics();
 
@@ -319,7 +319,7 @@ const App = () => {
                                 
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
-                                <Route path="/tasks" element={<RouteBoundary title="My Tasks"><Tasks /></RouteBoundary>} />
+                                <Route path="/tasks" element={<RouteBoundary title="Work"><TasksWorkbenchPage /></RouteBoundary>} />
                                 <Route path="/calendar" element={<RouteBoundary title="Calendar"><CalendarPage /></RouteBoundary>} />
                                 <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
                                 <Route path="/knowledge" element={<RouteBoundary title="Knowledge"><Knowledge /></RouteBoundary>} />

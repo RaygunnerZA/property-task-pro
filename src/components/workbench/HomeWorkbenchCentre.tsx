@@ -1,26 +1,30 @@
-import { MyWorkPanel, type MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
+import { CentreWorkbench, type CentreWorkbenchProps } from "@/components/workbench/CentreWorkbench";
 import type { IntakeMode } from "@/types/intake";
 
-export interface HomeWorkbenchCentreProps extends MyWorkPanelProps {
+export interface HomeWorkbenchCentreProps extends Omit<CentreWorkbenchProps, "activeTab" | "onCentreTabChange"> {
+  activeTab?: CentreWorkbenchProps["activeTab"];
+  onCentreTabChange?: CentreWorkbenchProps["onCentreTabChange"];
+  /** @deprecated Use onCentreTabChange */
   onTabChange?: (tab: string) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
 }
 
 /**
- * Attention workbench centre — Needs review, Open work, Signals.
+ * Home centre column — Inflow · Tasks · Calendar work surface.
  */
 export function HomeWorkbenchCentre({
-  onOpenIntake,
+  activeTab = "inflow",
+  onCentreTabChange,
   onTabChange,
-  ...myWorkProps
+  ...props
 }: HomeWorkbenchCentreProps) {
+  const handleCentreTabChange = onCentreTabChange ?? ((tab) => onTabChange?.(tab));
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-transparent pt-2 pb-1">
-      <MyWorkPanel
-        {...myWorkProps}
-        onOpenIntake={onOpenIntake}
-        onTabChange={onTabChange}
-      />
-    </div>
+    <CentreWorkbench
+      {...props}
+      activeTab={activeTab}
+      onCentreTabChange={handleCentreTabChange}
+    />
   );
 }

@@ -111,7 +111,7 @@ export function getPropertyAiSummaryLines(
       text: "Garden maintenance is overdue.",
       target: firstTaskId
         ? { type: "task", taskId: firstTaskId }
-        : { type: "filter", filterId: "filter-date-overdue" },
+        : { type: "filter", filterId: "show-to-review" },
     });
   }
 
@@ -173,7 +173,7 @@ export function getAllPropertiesSummaryLines(
   if (lines.length < 3 && overdue.length > 0) {
     lines.push({
       text: `${overdue.length} overdue task${overdue.length === 1 ? "" : "s"} across your portfolio.`,
-      target: { type: "filter", filterId: "filter-date-overdue" },
+      target: { type: "filter", filterId: "show-to-review" },
     });
   }
 

@@ -57,12 +57,18 @@ import {
 } from "@/components/layout/WorkbenchGradientHeader";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
+import {
+  normalizeCentreWorkbenchTab,
+  type CentreWorkbenchTab,
+} from "@/lib/centreWorkbenchTabs";
 
 export type { DashboardWorkbenchPanel };
 
 export type DashboardProps = {
   /** `home` = Today hub with workspace links; otherwise a dedicated workbench page. */
   workbenchPanel?: DashboardWorkbenchPanel;
+  /** Initial centre tab when `panelTab` is absent (e.g. mobile `/tasks` route). */
+  defaultCentreTab?: CentreWorkbenchTab;
 };
 
 function workbenchRouteForTab(tab: WorkbenchPanelTab): string {
@@ -94,13 +100,16 @@ function WorkbenchFiltersSync({
 }) {
   const { setSelectedFilters } = useWorkbenchControls();
   useEffect(() => {
-    if (!enabled || !filterIds) return;
+    if (!enabled || filterIds == null) return;
     setSelectedFilters(new Set(filterIds));
   }, [enabled, filterIds, setSelectedFilters]);
   return null;
 }
 
-export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
+export default function Dashboard({
+  workbenchPanel = "home",
+  defaultCentreTab = "inflow",
+}: DashboardProps) {
   const navigate = useNavigate();
   const isDedicatedWorkbench = workbenchPanel !== "home";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -116,6 +125,9 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
+  const [centreWorkbenchFiltersToApply, setCentreWorkbenchFiltersToApply] = useState<
+    string[] | null | undefined
+  >(undefined);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const tabBeforeCreateTaskRef = useRef<string>("issues");
   const prevSearchStringRef = useRef<string | undefined>(undefined);
@@ -243,7 +255,16 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     [properties, searchParams, setSearchParams]
   );
 
-  /** Dedicated routes lock the panel; Home no longer hosts tab state (legacy `panelTab` redirects). */
+  /** Centre column tab on Home / Issues (Inflow · Tasks · Calendar). */
+  const centreWorkbenchTab = useMemo((): CentreWorkbenchTab => {
+    if (workbenchPanel !== "home" && workbenchPanel !== "issues") return "inflow";
+    const panel = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
+    const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
+    if (!panel && !alias) return defaultCentreTab;
+    return normalizeCentreWorkbenchTab(panel, alias);
+  }, [workbenchPanel, searchParams, defaultCentreTab]);
+
+  /** Dedicated routes lock the legacy panel; Home uses centre tabs. */
   const activeTab = useMemo((): WorkbenchPanelTab => {
     if (isDedicatedWorkbench) return workbenchPanel;
     return "issues";
@@ -271,6 +292,16 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
       navigate(`${workbenchRouteForTab(tab)}${qs ? `?${qs}` : ""}`);
     },
     [navigate, searchParams]
+  );
+
+  const handleCentreWorkbenchTabChange = useCallback(
+    (tab: CentreWorkbenchTab) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.set(WORKBENCH_PANEL_TAB_QUERY, tab);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
   );
 
   const handleWorkbenchTabChange = useCallback(
@@ -333,15 +364,36 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     return undefined;
   }, [workbenchPanel, assistantFiltersToApply, activeTab, issuesFilter, taskPriorityUrgent]);
 
-  /** Legacy hub URLs with `panelTab` / `tab` → dedicated workbench routes. */
+  /** Legacy hub URLs: dedicated routes redirect; centre tabs stay on Home. */
   useEffect(() => {
     if (workbenchPanel !== "home") return;
     const panel = searchParams.get(WORKBENCH_PANEL_TAB_QUERY);
     const alias = searchParams.get(WORKBENCH_TAB_ALIAS_QUERY);
     if (!panel && !alias) return;
-    const merged = normalizeWorkbenchPanelTab(panel, alias);
-    navigateToWorkbenchSection(merged);
-  }, [workbenchPanel, searchParams, navigateToWorkbenchSection]);
+    const raw = (panel || alias || "").toLowerCase();
+    if (raw === "issues" || raw === "attention") {
+      navigateToWorkbenchSection("issues");
+      return;
+    }
+    if (raw === "records" || raw === "compliance") {
+      navigateToWorkbenchSection("records");
+      return;
+    }
+    if (raw === "schedule" || raw === "agenda") {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.set(WORKBENCH_PANEL_TAB_QUERY, "calendar");
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      setSearchParams(params, { replace: true });
+      return;
+    }
+    const centre = normalizeCentreWorkbenchTab(panel, alias);
+    if (raw !== centre) {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.set(WORKBENCH_PANEL_TAB_QUERY, centre);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      setSearchParams(params, { replace: true });
+    }
+  }, [workbenchPanel, searchParams, navigateToWorkbenchSection, setSearchParams]);
 
   /** Property-scoped hub lives on `/issues` (Attention) — redirect legacy `/?property=`. */
   useEffect(() => {
@@ -508,8 +560,50 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     return searchParams.get("property");
   }, [selectedPropertyIds, searchParams]);
 
+  const usesCentreWorkbenchTabs =
+    workbenchPanel === "home" || workbenchPanel === "issues";
+
+  const applyCentreWorkbenchNavigation = useCallback(
+    (tab: CentreWorkbenchTab, filterIds: string[] | null) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.set(WORKBENCH_PANEL_TAB_QUERY, tab);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
+      params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
+      setSearchParams(params, { replace: true });
+      setCentreWorkbenchFiltersToApply(filterIds);
+      window.setTimeout(() => setCentreWorkbenchFiltersToApply(undefined), 50);
+    },
+    [searchParams, setSearchParams]
+  );
+
   const handleFilterClick = (filterId: string) => {
     const pid = resolveScopedPropertyId();
+
+    if (usesCentreWorkbenchTabs) {
+      if (filterId === "show-tasks") {
+        applyCentreWorkbenchNavigation("tasks", []);
+        return;
+      }
+      if (filterId === "show-tasks-urgent") {
+        applyCentreWorkbenchNavigation("tasks", ["filter-urgent"]);
+        return;
+      }
+      if (
+        filterId === "show-to-review" ||
+        filterId === "filter-date-overdue" ||
+        filterId === "show-records"
+      ) {
+        applyCentreWorkbenchNavigation("inflow", []);
+        return;
+      }
+      if (filterId === "show-upcoming-events" || filterId === "filter-date-this-week") {
+        applyCentreWorkbenchNavigation("calendar", []);
+        return;
+      }
+      applyCentreWorkbenchNavigation("tasks", [filterId]);
+      return;
+    }
 
     if (filterId === "show-spaces-urgent") {
       if (pid) navigate(`${propertyHubSpacesPath(pid)}?workTab=issues&urgent=1`);
@@ -567,7 +661,11 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     const onOpenAttention = (event: Event) => {
       const payload = (event as CustomEvent<WorkbenchAttentionSelectPayload>).detail;
       if (!payload) return;
-      handleWorkbenchTabChange("issues");
+      if (usesCentreWorkbenchTabs) {
+        applyCentreWorkbenchNavigation("inflow", []);
+      } else {
+        handleWorkbenchTabChange("issues");
+      }
       handleAttentionItemSelect(payload);
     };
 
@@ -594,7 +692,14 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
       window.removeEventListener("filla:workbench-apply-filter", onApplyFilter);
       window.removeEventListener("filla:workbench-open-records", onOpenRecords);
     };
-  }, [handleAttentionItemSelect, handleWorkbenchTabChange, navigate, resolveScopedPropertyId]);
+  }, [
+    applyCentreWorkbenchNavigation,
+    handleAttentionItemSelect,
+    handleWorkbenchTabChange,
+    navigate,
+    resolveScopedPropertyId,
+    usesCentreWorkbenchTabs,
+  ]);
 
   const showWorkbenchDetailSection =
     selectedItem?.type === "task" ||
@@ -823,7 +928,11 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
     >
       <WorkbenchFiltersSync
         filterIds={effectiveTaskListFiltersToApply}
-        enabled={workbenchPanel !== "home"}
+        enabled={!usesCentreWorkbenchTabs}
+      />
+      <WorkbenchFiltersSync
+        filterIds={centreWorkbenchFiltersToApply}
+        enabled={usesCentreWorkbenchTabs && centreWorkbenchFiltersToApply != null}
       />
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
@@ -890,6 +999,8 @@ export default function Dashboard({ workbenchPanel = "home" }: DashboardProps) {
             recordsView={recordsView}
             onRecordsViewChange={handleRecordsViewChange}
             workbenchPanel={workbenchPanel}
+            centreWorkbenchTab={centreWorkbenchTab}
+            onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
           />
           </ErrorBoundary>
         }

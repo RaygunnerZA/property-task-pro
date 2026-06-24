@@ -6,7 +6,8 @@ import {
   Building2,
   BookOpen,
   BarChart3,
-  FolderOpen,
+  Shield,
+  MoreHorizontal,
 } from "lucide-react";
 
 export type MainNavItem = {
@@ -45,11 +46,16 @@ export function isMainNavActive(pathname: string, url: string): boolean {
 export const MOBILE_NAV_ITEMS: MainNavItem[] = [
   { title: "Home", url: "/", icon: LayoutDashboard },
   { title: "Tasks", url: "/tasks", icon: CheckSquare },
-  { title: "Schedule", url: "/agenda", icon: Calendar },
-  { title: "Records", url: "/records", icon: FolderOpen },
+  { title: "Compliance", url: "/compliance", icon: Shield },
+  { title: "More", url: "__more__", icon: MoreHorizontal },
 ];
 
+export const MOBILE_MORE_NAV_URL = "__more__" as const;
+
 export function isMobileNavActive(pathname: string, url: string): boolean {
+  if (url === MOBILE_MORE_NAV_URL) {
+    return false;
+  }
   if (url === "/") {
     return (
       pathname === "/" ||
@@ -58,8 +64,17 @@ export function isMobileNavActive(pathname: string, url: string): boolean {
       pathname === "/attention"
     );
   }
-  if (url === "/agenda") {
-    return pathname === "/agenda" || pathname === "/calendar" || pathname.startsWith("/agenda/");
+  if (url === "/tasks") {
+    return (
+      pathname === "/tasks" ||
+      pathname.startsWith("/tasks/") ||
+      pathname === "/agenda" ||
+      pathname === "/calendar" ||
+      pathname.startsWith("/agenda/")
+    );
+  }
+  if (url === "/compliance") {
+    return pathname === "/compliance" || pathname.startsWith("/compliance/");
   }
   if (url === "/records") {
     return pathname === "/records" || pathname.startsWith("/records/");
@@ -76,6 +91,8 @@ export const MOBILE_HEADER_EXCLUDED_PATHS = new Set([
   "/records",
   "/agenda",
   "/calendar",
+  "/tasks",
+  "/compliance",
 ]);
 
 /** @deprecated Use MOBILE_HEADER_EXCLUDED_PATHS */

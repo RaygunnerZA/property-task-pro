@@ -101,7 +101,7 @@
   /* Dashboard + Calendar: gradient strip; property scope lives in the left column */
   .dashboard-workbench,
   .calendar-page {
-    --workbench-header-band: 70px;
+    --workbench-header-band: 79px;
     --header-height: 70px;
   }
 
@@ -116,15 +116,16 @@
       min-height: var(--header-height);
       height: auto;
       padding-top: env(safe-area-inset-top, 0px);
-      box-sizing: border-box;
+      padding-left: 8px;
+      box-sizing: content-box;
     }
   }
 
   @media (min-width: 1024px) {
     .dashboard-workbench .page-header--workbench-desktop,
     .calendar-page .page-header--workbench-desktop {
-      height: auto;
-      min-height: var(--workbench-header-band, 70px);
+      height: 73px;
+      min-height: 73px;
       padding-top: 0;
       box-sizing: border-box;
       overflow: visible;
@@ -440,9 +441,7 @@
   }
 
   .page-header.page-header--workbench-mobile {
-    box-shadow:
-      2px 4px 6.7px 0px rgba(0, 0, 0, 0.23),
-      inset -1px 2px 2.2px 0px rgba(0, 0, 0, 0.76);
+    box-shadow: none;
   }
   
   /* Icon with Primary Color (from compliance dashboard) */

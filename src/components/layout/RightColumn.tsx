@@ -2,8 +2,8 @@ import { ReactNode } from "react";
 import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { HomeWorkbenchCentre } from "@/components/workbench/HomeWorkbenchCentre";
 import type { IntakeMode } from "@/types/intake";
-import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
-import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
+import type { RecordsView, WorkbenchIssuesFilter, DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
+import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { cn } from "@/lib/utils";
 import { columnShellClass } from "@/lib/layoutClasses";
@@ -29,6 +29,8 @@ interface RightColumnProps {
   recordsView?: RecordsView;
   onRecordsViewChange?: (view: RecordsView) => void;
   workbenchPanel?: DashboardWorkbenchPanel;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
 }
 
 const panelShellClass = cn(columnShellClass, "rounded-[12px]");
@@ -58,6 +60,8 @@ export function RightColumn({
   recordsView,
   onRecordsViewChange,
   workbenchPanel = "home",
+  centreWorkbenchTab = "inflow",
+  onCentreWorkbenchTabChange,
 }: RightColumnProps) {
   const dedicatedTitle =
     workbenchPanel === "records"
@@ -82,11 +86,14 @@ export function RightColumn({
       return (
         <HomeWorkbenchCentre
           {...sharedTaskListProps}
+          activeTab={centreWorkbenchTab}
+          onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
+          selectedDate={selectedDate}
         />
       );
     }
@@ -95,11 +102,14 @@ export function RightColumn({
       return (
         <HomeWorkbenchCentre
           {...sharedTaskListProps}
+          activeTab={centreWorkbenchTab}
+          onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
+          selectedDate={selectedDate}
           hideViewAllLinks
         />
       );

@@ -1,7 +1,11 @@
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Plus, FileText } from "lucide-react";
-import { MOBILE_NAV_ITEMS, isMobileNavActive } from "@/lib/mainNavigation";
+import {
+  MOBILE_NAV_ITEMS,
+  MOBILE_MORE_NAV_URL,
+  isMobileNavActive,
+} from "@/lib/mainNavigation";
 import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
@@ -20,16 +24,19 @@ import {
 } from "@/components/ui/drawer";
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import { AudioRecorder } from "@/components/audio/AudioRecorder";
+import { MobileMoreMenuDrawer } from "@/components/navigation/MobileMoreMenuDrawer";
+import type { ComponentType } from "react";
 
 /**
  * Mobile Bottom Navigation
  *
- * Tabs: Home · Tasks · Schedule · Records + center FAB
+ * Tabs: Home · Tasks · Compliance · More + center FAB
  * Only visible below lg (1024px)
  */
 export function MobileBottomNav() {
   const location = useLocation();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
   const [mobileIntakeInitial, setMobileIntakeInitial] = useState<IntakeMode>("report_issue");
 
@@ -57,7 +64,28 @@ export function MobileBottomNav() {
 
   const renderNavLink = (to: string, icon: ComponentType<{ className?: string }>, label: string) => {
     const Icon = icon;
-    const isActive = isMobileNavActive(location.pathname, to);
+    const isMore = to === MOBILE_MORE_NAV_URL;
+    const isActive = !isMore && isMobileNavActive(location.pathname, to);
+
+    if (isMore) {
+      return (
+        <button
+          key={to}
+          type="button"
+          onClick={() => setShowMoreMenu(true)}
+          className={cn(
+            "flex min-w-[4.5rem] flex-col items-center gap-0.5 rounded-lg px-2 py-1 transition-all duration-200",
+            "hover:scale-105 active:scale-95"
+          )}
+          aria-label="More"
+        >
+          <Icon className="h-6 w-6 text-muted-foreground icon-shadow-neu-pressed" />
+          <span className="text-[10px] font-semibold leading-none tracking-tight text-muted-foreground">
+            {label}
+          </span>
+        </button>
+      );
+    }
 
     return (
       <Link
@@ -67,8 +95,8 @@ export function MobileBottomNav() {
           "flex min-w-[4.5rem] flex-col items-center gap-0.5 rounded-lg py-1 transition-all duration-200",
           "hover:scale-105 active:scale-95",
           to === "/tasks" && "pl-2 pr-5",
-          to === "/agenda" && "pl-5 pr-2",
-          to !== "/tasks" && to !== "/agenda" && "px-2",
+          to === "/compliance" && "pl-5 pr-2",
+          to !== "/tasks" && to !== "/compliance" && "px-2",
           isActive && "scale-105"
         )}
       >
@@ -123,6 +151,8 @@ export function MobileBottomNav() {
           </div>
         </div>
       </nav>
+
+      <MobileMoreMenuDrawer open={showMoreMenu} onOpenChange={setShowMoreMenu} />
 
       {createView === "menu" && (
         <Drawer open={showCreateDrawer} onOpenChange={handleCloseDrawer}>

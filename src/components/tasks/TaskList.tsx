@@ -21,6 +21,10 @@ import {
   type WorkbenchSortBy,
 } from "@/contexts/WorkbenchControlsContext";
 import { isTaskMissingInfo } from "@/lib/hubSummaryMetrics";
+import {
+  isPropertySubsetSelected,
+  scopedPropertyIdSet,
+} from "@/utils/propertyFilter";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -267,10 +271,11 @@ export function TaskList({
 
     // Secondary filters - Property (use prop when provided; else FilterBar selectedFilters)
     if (selectedPropertyIdsProp !== undefined && properties.length > 0) {
-      const isAllActive = selectedPropertyIdsProp.size === properties.length;
-      if (!isAllActive) {
-        filtered = filtered.filter((task) =>
-          task.property_id && selectedPropertyIdsProp.has(task.property_id)
+      const allPropertyIds = properties.map((p) => p.id);
+      if (isPropertySubsetSelected(selectedPropertyIdsProp, allPropertyIds)) {
+        const scopedIds = scopedPropertyIdSet(selectedPropertyIdsProp, allPropertyIds);
+        filtered = filtered.filter(
+          (task) => task.property_id != null && scopedIds.has(task.property_id)
         );
       }
     } else {

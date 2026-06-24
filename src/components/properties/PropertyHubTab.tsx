@@ -171,7 +171,7 @@ const TAB_TITLE_TEXT_SHADOW =
   "-1px -1px 1px rgba(0, 0, 0, 0.15), 1px 1px 1px rgba(255, 255, 255, 0.3)";
 
 type PropertyHubTabProps = {
-  id: PropertyHubNavCardId;
+  id: string;
   title: string;
   fill: string;
   isActive: boolean;
