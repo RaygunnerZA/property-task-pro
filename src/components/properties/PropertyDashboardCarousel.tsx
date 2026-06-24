@@ -40,6 +40,7 @@ import { computeAllPropertiesSummaryMetrics } from "@/lib/propertySummaryMetrics
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { useTrackpadCarouselWheel } from "@/hooks/useTrackpadHorizontalScroll";
 import { cn } from "@/lib/utils";
+import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 
 const EMBLA_OPTS = {
   align: "start" as const,
@@ -66,6 +67,8 @@ type PropertyDashboardCarouselProps = {
   urgentTaskCounts?: Record<string, number>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   className?: string;
 };
 
@@ -74,6 +77,8 @@ function AllPropertiesCarouselSlide({
   tasks = [],
   urgentTaskCounts = {},
   onFilterClick,
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
   isSelected = false,
   onSelectSlide,
 }: {
@@ -81,6 +86,8 @@ function AllPropertiesCarouselSlide({
   tasks?: unknown[];
   urgentTaskCounts?: Record<string, number>;
   onFilterClick?: (filterId: string) => void;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   isSelected?: boolean;
   onSelectSlide?: () => void;
 }) {
@@ -208,6 +215,10 @@ function AllPropertiesCarouselSlide({
           onOpenTasks={() => onFilterClick?.("show-tasks")}
           onOpenCompliance={() => onFilterClick?.("show-to-review")}
           onOpenInspections={() => onFilterClick?.("show-upcoming-events")}
+          centreWorkbenchTab={centreWorkbenchTab}
+          onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+          centreNavHideFrom="md"
+          centreNavLinkToTasksRoute
         />
       </div>
     </div>
@@ -218,12 +229,16 @@ function PropertyCarouselSlide({
   property,
   urgentOpenTaskCount = 0,
   onFilterClick,
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
   isSelected = false,
   onSelectSlide,
 }: {
   property: PropertyForStrip;
   urgentOpenTaskCount?: number;
   onFilterClick?: (filterId: string) => void;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   isSelected?: boolean;
   onSelectSlide?: () => void;
 }) {
@@ -372,6 +387,10 @@ function PropertyCarouselSlide({
           onOpenAssets={() => openHubNav("assets")}
           onOpenPeople={() => openHubNav("people")}
           onOpenRecords={() => openHubNav("records")}
+          centreWorkbenchTab={centreWorkbenchTab}
+          onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+          centreNavHideFrom="md"
+          centreNavLinkToTasksRoute
         />
       </div>
     </div>
@@ -386,6 +405,8 @@ export function PropertyDashboardCarousel({
   urgentTaskCounts = {},
   onPropertySelectionChange,
   onFilterClick,
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
   className,
 }: PropertyDashboardCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
@@ -490,6 +511,8 @@ export function PropertyDashboardCarousel({
                 tasks={tasks}
                 urgentTaskCounts={urgentTaskCounts}
                 onFilterClick={onFilterClick}
+                centreWorkbenchTab={centreWorkbenchTab}
+                onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
                 isSelected={selectedCarouselIndex === 0}
                 onSelectSlide={() => handleExplicitSelect(0)}
               />
@@ -506,6 +529,8 @@ export function PropertyDashboardCarousel({
                 property={property}
                 urgentOpenTaskCount={urgentTaskCounts[property.id] ?? 0}
                 onFilterClick={onFilterClick}
+                centreWorkbenchTab={centreWorkbenchTab}
+                onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
                 isSelected={selectedCarouselIndex === slideIndex}
                 onSelectSlide={() => handleExplicitSelect(slideIndex)}
               />

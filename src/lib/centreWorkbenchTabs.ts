@@ -3,6 +3,8 @@ export type CentreWorkbenchTab = "inflow" | "tasks" | "calendar";
 
 export const CENTRE_WORKBENCH_TAB_QUERY = "panelTab";
 
+export const CENTRE_WORKBENCH_TASKS_PATH = "/tasks";
+
 export const CENTRE_WORKBENCH_TABS: readonly CentreWorkbenchTab[] = [
   "inflow",
   "tasks",
@@ -69,4 +71,20 @@ export function normalizeCentreWorkbenchTab(
 
 export function isCentreWorkbenchTab(value: string): value is CentreWorkbenchTab {
   return CENTRE_WORKBENCH_TABS.includes(value as CentreWorkbenchTab);
+}
+
+/** Deep link from property cards → `/tasks` work column. */
+export function centreWorkbenchTasksPath(
+  tab: CentreWorkbenchTab,
+  searchParams?: URLSearchParams | string
+): string {
+  const params = new URLSearchParams(searchParams);
+  params.delete("tab");
+  if (tab === "tasks") {
+    params.delete(CENTRE_WORKBENCH_TAB_QUERY);
+  } else {
+    params.set(CENTRE_WORKBENCH_TAB_QUERY, tab);
+  }
+  const qs = params.toString();
+  return qs ? `${CENTRE_WORKBENCH_TASKS_PATH}?${qs}` : CENTRE_WORKBENCH_TASKS_PATH;
 }

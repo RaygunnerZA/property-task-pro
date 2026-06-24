@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 
 export type PropertyForStrip = {
   id: string;
@@ -68,6 +69,8 @@ interface PropertyIdentityStripProps {
   externalDashboard?: boolean;
   /** Rendered between the summary panel and hub nav cards (e.g. mini calendar). */
   betweenSummaryAndNav?: ReactNode;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
 }
 
 /**
@@ -82,6 +85,8 @@ export function PropertyIdentityStrip({
   onFilterClick,
   externalDashboard = false,
   betweenSummaryAndNav,
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
 }: PropertyIdentityStripProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -255,6 +260,8 @@ export function PropertyIdentityStrip({
             onOpenAssets={() => openHubNav("assets")}
             onOpenPeople={() => openHubNav("people")}
             onOpenRecords={() => openHubNav("records")}
+            centreWorkbenchTab={centreWorkbenchTab}
+            onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
           />
         </div>
       </div>

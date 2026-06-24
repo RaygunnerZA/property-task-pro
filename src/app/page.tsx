@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
 import { LeftColumn } from "@/components/layout/LeftColumn";
@@ -57,6 +57,7 @@ import {
 } from "@/components/layout/WorkbenchGradientHeader";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   normalizeCentreWorkbenchTab,
   type CentreWorkbenchTab,
@@ -111,6 +112,9 @@ export default function Dashboard({
   defaultCentreTab = "inflow",
 }: DashboardProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const isHubHome = pathname === "/" || pathname === "";
+  const isMobile = useIsMobile();
   const isDedicatedWorkbench = workbenchPanel !== "home";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
@@ -144,6 +148,26 @@ export default function Dashboard({
   // Fetch data once at the Dashboard level
   const { data: tasks = [], isLoading: tasksLoading } = useTasksQuery();
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
+
+  /** Property hub / ?property= scope — no assignee or due-date defaults (Anyone, any date). */
+  const workbenchPropertyScopeId = useMemo(() => {
+    const pid = searchParams.get("property");
+    if (pid) return pid;
+    if (properties.length === 1) return properties[0].id;
+    if (
+      selectedPropertyIds.size === 1 &&
+      properties.length > 0 &&
+      !isAllPropertiesActive(selectedPropertyIds, properties.map((p) => p.id))
+    ) {
+      return Array.from(selectedPropertyIds)[0];
+    }
+    return null;
+  }, [searchParams, properties, selectedPropertyIds]);
+
+  const usesCentreWorkbenchTabs =
+    workbenchPanel === "home" || workbenchPanel === "issues";
+
+  const hideHomepageCentreOnMobile = isHubHome && workbenchPanel === "home";
 
   // URL ↔ selection: ?property=id opens the single-property workbench; clearing the param (e.g. Hub) widens to all.
   useEffect(() => {
@@ -560,9 +584,6 @@ export default function Dashboard({
     return searchParams.get("property");
   }, [selectedPropertyIds, searchParams]);
 
-  const usesCentreWorkbenchTabs =
-    workbenchPanel === "home" || workbenchPanel === "issues";
-
   const showMobileBrandLogoOnCentreWorkbench = useMemo(() => {
     if (!usesCentreWorkbenchTabs || properties.length <= 1) return false;
     const ids = properties.map((p) => p.id);
@@ -891,21 +912,6 @@ export default function Dashboard({
     return "all";
   }, [selectedPropertyIds]);
 
-  /** Property hub / ?property= scope — no assignee or due-date defaults (Anyone, any date). */
-  const workbenchPropertyScopeId = useMemo(() => {
-    const pid = searchParams.get("property");
-    if (pid) return pid;
-    if (properties.length === 1) return properties[0].id;
-    if (
-      selectedPropertyIds.size === 1 &&
-      properties.length > 0 &&
-      !isAllPropertiesActive(selectedPropertyIds, properties.map((p) => p.id))
-    ) {
-      return Array.from(selectedPropertyIds)[0];
-    }
-    return null;
-  }, [searchParams, properties, selectedPropertyIds]);
-
   const useEmptyWorkbenchFilters =
     workbenchPanel === "home" || workbenchPropertyScopeId != null;
 
@@ -942,6 +948,7 @@ export default function Dashboard({
       />
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
+          collapseCentreBelowMd={hideHomepageCentreOnMobile}
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}
@@ -975,6 +982,8 @@ export default function Dashboard({
             onPropertySelectionChange={handlePropertySelectionChange}
             onOpenIntake={handleOpenIntake}
             workbenchPanel={workbenchPanel}
+            centreWorkbenchTab={centreWorkbenchTab}
+            onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
           />
           </ErrorBoundary>
         }
@@ -1008,6 +1017,7 @@ export default function Dashboard({
             centreWorkbenchTab={centreWorkbenchTab}
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
             onDateSelect={handleDateSelect}
+            hideCentreTabStrip={hideHomepageCentreOnMobile}
           />
           </ErrorBoundary>
         }

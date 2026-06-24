@@ -19,6 +19,7 @@ import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilt
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -44,6 +45,8 @@ interface LeftColumnProps {
   /** @deprecated Replaced by PropertySelectorStack in WorkbenchGradientHeader */
   scopeFilterBar?: ReactNode;
   workbenchPanel?: DashboardWorkbenchPanel;
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
 }
 
 /**
@@ -69,6 +72,8 @@ export function LeftColumn({
   onOpenIntake,
   scopeFilterBar,
   workbenchPanel = "home",
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
 }: LeftColumnProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -248,6 +253,8 @@ export function LeftColumn({
                 urgentTaskCounts={urgentTaskCounts}
                 onPropertySelectionChange={setSelectedPropertyIds}
                 onFilterClick={onFilterClick}
+                centreWorkbenchTab={centreWorkbenchTab}
+                onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
               />
             </div>
           ) : focusedProperty ? (
@@ -276,6 +283,8 @@ export function LeftColumn({
                     setSelectedPropertyIds(new Set(ALL_PROPERTY_IDS));
                     onFilterClick?.("show-tasks");
                   }}
+                  centreWorkbenchTab={centreWorkbenchTab}
+                  onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
                 />
               </div>
             </div>

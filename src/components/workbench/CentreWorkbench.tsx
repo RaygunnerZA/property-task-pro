@@ -21,6 +21,8 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
   hideViewAllLinks?: boolean;
+  /** Hide illustrated tab strip (e.g. mobile property profile uses card nav). */
+  hideTabStrip?: boolean;
 };
 
 /**
@@ -43,6 +45,7 @@ export function CentreWorkbench({
   selectedDate,
   onDateSelect,
   hideViewAllLinks = false,
+  hideTabStrip = false,
 }: CentreWorkbenchProps) {
   const sharedPanelProps = useMemo(
     () => ({
@@ -83,7 +86,7 @@ export function CentreWorkbench({
         <CentreWorkbenchTabStrip
           activeTab={activeTab}
           onTabChange={onCentreTabChange}
-          className="mb-3 shrink-0"
+          className={cn("mb-3 shrink-0", hideTabStrip && "hidden md:flex")}
         />
 
         <div className="mb-4 flex shrink-0 flex-col">

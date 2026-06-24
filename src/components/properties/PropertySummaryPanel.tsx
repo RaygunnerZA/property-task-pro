@@ -15,6 +15,8 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
+import { PropertySummaryCentreNav } from "@/components/properties/PropertySummaryCentreNav";
+import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 
 const statNumberClass =
   "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
@@ -69,6 +71,11 @@ type PropertySummaryPanelProps = {
   /** Portfolio card: load org-wide signals for summary lines */
   portfolioSignals?: boolean;
   onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
+  /** Inflow · Tasks · Calendar row below the stats grid (narrow layouts). */
+  centreWorkbenchTab?: CentreWorkbenchTab;
+  onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  centreNavHideFrom?: "sm" | "md";
+  centreNavLinkToTasksRoute?: boolean;
 };
 
 function StatColumn({
@@ -241,6 +248,10 @@ export function PropertySummaryPanel({
   summaryLinesOverride,
   portfolioSignals = false,
   onSummaryLineActivate,
+  centreWorkbenchTab,
+  onCentreWorkbenchTabChange,
+  centreNavHideFrom = "sm",
+  centreNavLinkToTasksRoute = false,
 }: PropertySummaryPanelProps) {
   const propertyName = property.nickname || property.address;
   const { data: scopedSignals = [] } = useSignalsQuery({
@@ -336,15 +347,6 @@ export function PropertySummaryPanel({
       <div className="w-full rounded-xl">
         <div className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]">
           <StatColumn
-            value={metrics.openTasks}
-            line1="open"
-            line2="tasks"
-            secondaryCount={tasksSecondary.count}
-            secondaryLabel={tasksSecondary.label}
-            secondaryTone={tasksSecondary.tone}
-            onActivate={onOpenTasks}
-          />
-          <StatColumn
             value={metrics.complianceReviews}
             line1="to"
             line2="review"
@@ -352,6 +354,15 @@ export function PropertySummaryPanel({
             secondaryLabel={complianceSecondary.label}
             secondaryTone={complianceSecondary.tone}
             onActivate={onOpenCompliance}
+          />
+          <StatColumn
+            value={metrics.openTasks}
+            line1="open"
+            line2="tasks"
+            secondaryCount={tasksSecondary.count}
+            secondaryLabel={tasksSecondary.label}
+            secondaryTone={tasksSecondary.tone}
+            onActivate={onOpenTasks}
           />
           <StatColumn
             value={metrics.upcomingInspections}
@@ -364,8 +375,17 @@ export function PropertySummaryPanel({
           />
         </div>
 
+        {centreWorkbenchTab ? (
+          <PropertySummaryCentreNav
+            activeTab={centreWorkbenchTab}
+            onTabChange={onCentreWorkbenchTabChange}
+            hideFrom={centreNavHideFrom}
+            linkToTasksRoute={centreNavLinkToTasksRoute}
+          />
+        ) : null}
+
         {variant === "full" ? (
-          <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-1">
+          <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-4">
             <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
               <RadialProgress
                 value={metrics.completionPct}

@@ -32,6 +32,7 @@ interface RightColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  hideCentreTabStrip?: boolean;
 }
 
 const panelShellClass = cn(columnShellClass, "rounded-[12px]");
@@ -64,6 +65,7 @@ export function RightColumn({
   workbenchPanel = "home",
   centreWorkbenchTab = "inflow",
   onCentreWorkbenchTabChange,
+  hideCentreTabStrip = false,
 }: RightColumnProps) {
   const dedicatedTitle =
     workbenchPanel === "records"
@@ -97,6 +99,7 @@ export function RightColumn({
           onRecordsViewChange={onRecordsViewChange}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          hideTabStrip={hideCentreTabStrip}
         />
       );
     }
@@ -115,6 +118,7 @@ export function RightColumn({
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
           hideViewAllLinks
+          hideTabStrip={hideCentreTabStrip}
         />
       );
     }
