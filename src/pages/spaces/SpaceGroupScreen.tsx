@@ -98,7 +98,7 @@ export default function SpaceGroupScreen() {
 
   const header = (
     <>
-      <PageHeader>
+      <PageHeader className="hidden lg:block">
         <div
           className="relative flex h-[60px] items-center rounded-bl-[12px] px-4 pr-24 py-2"
           style={gradientStyle}

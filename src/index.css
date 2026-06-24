@@ -116,7 +116,7 @@
       min-height: var(--header-height);
       height: auto;
       padding-top: env(safe-area-inset-top, 0px);
-      padding-left: 8px;
+      padding-left: 0;
       box-sizing: content-box;
     }
   }

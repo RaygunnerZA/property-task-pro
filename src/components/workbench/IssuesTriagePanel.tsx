@@ -10,6 +10,7 @@ import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/Issu
 import { useWorkbenchAttentionStream } from "@/hooks/useWorkbenchAttentionStream";
 import { FilterChip } from "@/components/chips/filter";
 import { cn } from "@/lib/utils";
+import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import type { IntakeMode } from "@/types/intake";
 import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
@@ -174,12 +175,12 @@ export function IssuesTriagePanel({
         className={cn(
           "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-full overflow-x-hidden",
           "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
-          "px-[10px] max-sm:px-0 max-pane:px-2 max-pane:gap-1"
+          "px-2 max-sm:px-2 max-pane:px-2 max-pane:gap-1"
         )}
       >
         <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
           {pageTitle ? (
-            <h2 className="px-1 text-base font-semibold tracking-tight text-foreground">{pageTitle}</h2>
+            <h2 className={cn("px-0", workbenchSectionTitleClassName)}>{pageTitle}</h2>
           ) : null}
         </div>
 

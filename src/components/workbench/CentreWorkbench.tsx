@@ -13,7 +13,7 @@ import {
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const centreScrollClass =
-  "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-[10px] max-sm:px-0 pb-4 max-pane:px-2";
+  "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-2 pb-4 max-pane:px-2";
 
 export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;
@@ -86,8 +86,8 @@ export function CentreWorkbench({
           className="mb-3 shrink-0"
         />
 
-        <div className="mb-4 flex shrink-0 flex-col px-0">
-          <p className="mt-2 flex w-full min-w-0 items-center justify-start px-[9px] pb-6 text-base font-normal text-muted-foreground">
+        <div className="mb-4 flex shrink-0 flex-col">
+          <p className="mt-2 flex w-full min-w-0 items-center justify-start px-0 pb-6 text-sm font-normal text-muted-foreground">
             {CENTRE_WORKBENCH_TAB_META[activeTab].description}
           </p>
           {showMobileCalendar ? (

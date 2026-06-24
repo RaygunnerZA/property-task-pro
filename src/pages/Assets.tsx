@@ -34,6 +34,7 @@ import { PropertyWorkspaceLayout, WorkspaceSurfaceCard } from "@/components/prop
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
+import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
@@ -44,7 +45,7 @@ function PropertyAssetsWorkColumnHeading({ subtitle }: { subtitle: string }) {
       <div className="flex items-start gap-3">
         <Package className="h-8 w-8 shrink-0 text-primary mt-0.5" />
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold leading-tight text-foreground heading-l">Property Assets</h1>
+          <h1 className={workbenchSectionTitleClassName}>Property Assets</h1>
           <p className="text-sm mt-1 text-muted-foreground">{subtitle}</p>
         </div>
       </div>

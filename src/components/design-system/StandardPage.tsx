@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { PageHeader } from "./PageHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { MobilePageTitleBar } from "@/components/design-system/MobilePageTitleBar";
 import { cn } from "@/lib/utils";
 
 interface StandardPageProps {
@@ -84,6 +85,8 @@ export function StandardPage({
           {action && <div className="shrink-0">{action}</div>}
         </div>
       </PageHeader>
+
+      <MobilePageTitleBar title={title} subtitle={subtitle} icon={icon} action={action} />
 
       <div className={cn("mx-auto px-gutter-page py-8", maxWidthClasses[maxWidth], contentClassName)}>
         {children}

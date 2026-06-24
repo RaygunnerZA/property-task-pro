@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "./PageHeader";
 import { BottomNav } from "@/components/BottomNav";
+import { MobilePageTitleBar } from "@/components/design-system/MobilePageTitleBar";
 import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -176,6 +177,10 @@ export function StandardPageWithBack({
           )}
         </div>
       </PageHeader>
+
+      {!hideTitleInHeader && belowGradientRow == null ? (
+        <MobilePageTitleBar title={title} subtitle={subtitle} icon={icon} action={action} />
+      ) : null}
 
       {belowGradientRow != null && (
         <WorkspaceScopeStrip containerMaxWidthClass={maxWidthClasses[maxWidth]}>

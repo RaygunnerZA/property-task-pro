@@ -115,7 +115,7 @@ export function ScheduleView({
   return (
     <div className="flex h-full w-full relative">
       {/* Task Stack */}
-      <div className="flex-1 overflow-y-auto px-[5px] pt-0.5 pb-4">
+      <div className="flex-1 overflow-y-auto px-2 pt-0.5 pb-4">
         <div className="space-y-6">
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {

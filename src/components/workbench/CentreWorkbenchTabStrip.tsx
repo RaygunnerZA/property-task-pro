@@ -15,7 +15,7 @@ const TAB_ILLUSTRATION_CLASS =
   "h-[80px] w-[100px] shrink-0 object-contain pt-0 pl-3 drop-shadow-sm transition-opacity";
 
 const TAB_LABEL_CLASS =
-  "grid w-[100px] grid-flow-col auto-cols-auto items-start pr-0 text-center text-2xl font-semibold leading-none tracking-tight";
+  "grid w-[100px] grid-flow-col auto-cols-auto items-start pr-0 text-center text-xl font-semibold leading-none tracking-tight";
 
 const ACTIVE_TAB_SHADOW = "inset 0 4px 12px rgba(255, 255, 255, 0.27)";
 
@@ -30,7 +30,7 @@ export function CentreWorkbenchTabStrip({
   return (
     <div
       className={cn(
-        "flex h-[160px] w-[382px] min-w-0 items-start justify-start gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-1 pb-0 pt-0",
+        "flex h-[160px] w-full min-w-0 max-w-full items-start justify-start gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-2 pb-0 pt-0",
         className
       )}
       role="tablist"

@@ -563,6 +563,12 @@ export default function Dashboard({
   const usesCentreWorkbenchTabs =
     workbenchPanel === "home" || workbenchPanel === "issues";
 
+  const showMobileBrandLogoOnCentreWorkbench = useMemo(() => {
+    if (!usesCentreWorkbenchTabs || properties.length <= 1) return false;
+    const ids = properties.map((p) => p.id);
+    return isAllPropertiesActive(selectedPropertyIds, ids);
+  }, [usesCentreWorkbenchTabs, properties, selectedPropertyIds]);
+
   const applyCentreWorkbenchNavigation = useCallback(
     (tab: CentreWorkbenchTab, filterIds: string[] | null) => {
       const params = workbenchSearchParamsFromBrowser(searchParams);
@@ -946,9 +952,7 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
-              mobileBrandLogoWhenAllProperties={
-                usesCentreWorkbenchTabs && centreWorkbenchTab === "inflow"
-              }
+              mobileBrandLogoWhenAllProperties={showMobileBrandLogoOnCentreWorkbench}
             />
           }
         leftColumn={

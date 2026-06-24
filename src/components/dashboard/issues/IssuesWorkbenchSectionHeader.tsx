@@ -1,5 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  workbenchSectionSubtitleClassName,
+  workbenchSectionTitleClassName,
+} from "@/lib/workbenchSectionTitle";
 
 export type IssuesWorkbenchSectionHeaderProps = {
   title: string;
@@ -37,17 +41,19 @@ export function IssuesWorkbenchSectionHeader({
     return (
       <div
         className={cn(
-          "grid h-[43px] w-full min-w-0 items-start gap-x-3 gap-y-1 px-1",
+          "grid w-full min-w-0 items-end gap-x-3 gap-y-1 px-2",
           "grid-cols-[minmax(4.5rem,auto)_minmax(0,1fr)_minmax(3.5rem,min(6.25rem,26%))]",
           spacious ? "my-5" : "my-0",
           className
         )}
       >
-        <h2 className="min-w-0 w-[90px] text-[20px] font-semibold leading-tight tracking-wide text-[rgb(42,41,62)]">
+        <h2 className={cn("min-w-0 w-[90px] tracking-wide", workbenchSectionTitleClassName)}>
           {title}
         </h2>
         {subtitle ? (
-          <p className="min-w-0 pt-[5px] text-[11px] leading-snug text-muted-foreground sm:text-xs">{subtitle}</p>
+          <p className="min-w-0 pt-[5px] text-[11px] leading-snug text-muted-foreground sm:text-xs">
+            {subtitle}
+          </p>
         ) : (
           <span className="min-w-0" aria-hidden />
         )}
@@ -55,7 +61,7 @@ export function IssuesWorkbenchSectionHeader({
           <img
             src={illustrationSrc}
             alt=""
-            className="mb-[37px] mt-[15px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
+            className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
             decoding="async"
           />
         </div>
@@ -64,10 +70,10 @@ export function IssuesWorkbenchSectionHeader({
   }
 
   return (
-    <div className={cn("min-w-0 px-0.5", className)}>
+    <div className={cn("min-w-0 px-2", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="text-[20px] font-semibold leading-tight text-foreground">{title}</h2>
+          <h2 className={workbenchSectionTitleClassName}>{title}</h2>
           {typeof count === "number" ? (
             <span
               className={cn(
@@ -106,7 +112,7 @@ export function IssuesWorkbenchSectionHeader({
         )}
       </div>
       {subtitle ? (
-        <p className="mt-1 text-xs leading-snug text-muted-foreground">{subtitle}</p>
+        <p className={cn("mt-1", workbenchSectionSubtitleClassName)}>{subtitle}</p>
       ) : null}
     </div>
   );
