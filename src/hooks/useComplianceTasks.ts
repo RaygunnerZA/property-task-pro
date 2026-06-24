@@ -6,12 +6,14 @@ import {
   mapTasksViewToComplianceTask,
   type ComplianceTaskCardModel,
 } from "@/utils/mapTasksViewToCards";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
+import { isMissingRelationError } from "@/lib/supabaseErrors";
 
 export type ComplianceTask = ComplianceTaskCardModel;
 
 type OccurrenceRow = {
   task_id: string;
-  compliance_rules: { name: string } | null;
+  compliance_schedule_rules: { name: string } | null;
 };
 
 export function useComplianceTasks() {
@@ -26,18 +28,21 @@ export function useComplianceTasks() {
 
       const { data: occs, error: occErr } = await supabase
         .from("compliance_occurrences")
-        .select("task_id, compliance_rules(name)")
+        .select(`task_id, ${COMPLIANCE_SCHEDULE_RULES_TABLE}(name)`)
         .eq("org_id", orgId)
         .not("task_id", "is", null);
 
-      if (occErr) throw occErr;
+      if (occErr) {
+        if (isMissingRelationError(occErr)) return [];
+        throw occErr;
+      }
 
       const rows = (occs ?? []) as unknown as OccurrenceRow[];
       const ruleByTask = new Map<string, string>();
 
       for (const row of rows) {
         const tid = row.task_id;
-        const name = row.compliance_rules?.name?.trim() || "";
+        const name = row.compliance_schedule_rules?.name?.trim() || "";
         const prev = ruleByTask.get(tid);
         if (!name) {
           if (!prev) ruleByTask.set(tid, "");

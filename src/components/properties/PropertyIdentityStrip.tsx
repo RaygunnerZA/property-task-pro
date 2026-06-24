@@ -138,7 +138,7 @@ export function PropertyIdentityStrip({
   };
 
   return (
-    <div className="flex w-full flex-col gap-2.5">
+    <div className="flex w-full flex-col gap-[9px]">
       <div className="overflow-hidden rounded-[12px] bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)]">
         <div
           className="group relative w-full shrink-0 overflow-hidden"

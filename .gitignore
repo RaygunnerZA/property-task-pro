@@ -15,6 +15,7 @@ node_modules 2
 dist
 dist-ssr
 *.local
+.dev-keepalive.pid
 
 # Editor directories and files
 .vscode/*

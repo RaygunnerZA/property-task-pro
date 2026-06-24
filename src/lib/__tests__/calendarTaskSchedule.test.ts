@@ -4,6 +4,7 @@ import {
   buildScheduleUpdate,
   formatScheduleDateTime,
   getPeriodFromScheduleValue,
+  hasAssigneeDefinedScheduleTime,
   parseDropTargetId,
   parsePlacementDragId,
 } from "../calendarTaskSchedule";
@@ -40,6 +41,21 @@ describe("calendarTaskSchedule", () => {
       dateKey: "2026-05-26",
       period: "afternoon",
     });
+  });
+
+  it("requires assignee + explicit time for schedule time labels", () => {
+    expect(
+      hasAssigneeDefinedScheduleTime(
+        { assigned_user_id: "user-1" },
+        "2026-05-28T14:30"
+      )
+    ).toBe(true);
+    expect(
+      hasAssigneeDefinedScheduleTime({ assigned_user_id: null }, "2026-05-28T14:30")
+    ).toBe(false);
+    expect(
+      hasAssigneeDefinedScheduleTime({ assigned_user_id: "user-1" }, "2026-05-28")
+    ).toBe(false);
   });
 
   it("builds schedule updates for due and milestone sources", () => {

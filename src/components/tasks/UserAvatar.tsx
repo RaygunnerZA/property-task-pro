@@ -37,18 +37,23 @@ export function UserAvatar({
   };
 
   const initials = getInitials(name);
-  const radiusClass = shape === "circle" ? "rounded-full" : "rounded-[5px]";
+  const rootRadiusClass = shape === "circle" ? "rounded-[8px]" : "rounded-[5px]";
+  const fallbackRadiusClass = "rounded-[5px]";
 
   return (
     <Avatar 
-      className={cn(radiusClass, "border-2 border-background", className)}
+      className={cn(
+        rootRadiusClass,
+        shape !== "circle" && "border-2 border-background",
+        className
+      )}
       style={{ width: size, height: size }}
     >
       {imageUrl && (
         <AvatarImage src={imageUrl} alt={name} className="object-cover" />
       )}
       <AvatarFallback
-        className={cn(radiusClass, "text-white font-medium text-xs")}
+        className={cn(fallbackRadiusClass, "text-white font-medium text-xs")}
         style={{ 
           backgroundColor: propertyColor,
           fontSize: `${size * 0.4}px`
@@ -90,7 +95,7 @@ export function OverlappingAvatars({
   const visibleUsers = users.slice(0, maxVisible);
   const remainingCount = users.length - maxVisible;
   const overlapPx = (size * overlap) / 100;
-  const radiusClass = shape === "circle" ? "rounded-full" : "rounded-[5px]";
+  const radiusClass = shape === "circle" ? "rounded-[8px]" : "rounded-[5px]";
 
   return (
     <div className={cn("flex items-center", className)} style={{ marginLeft: `-${overlapPx}px` }}>

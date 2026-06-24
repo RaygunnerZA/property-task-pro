@@ -894,7 +894,7 @@ export type Database = {
             foreignKeyName: "compliance_occurrences_rule_id_fkey"
             columns: ["rule_id"]
             isOneToOne: false
-            referencedRelation: "compliance_rules"
+            referencedRelation: "compliance_schedule_rules"
             referencedColumns: ["id"]
           },
           {
@@ -1004,6 +1004,88 @@ export type Database = {
           },
           {
             foreignKeyName: "compliance_recommendations_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      compliance_schedule_rules: {
+        Row: {
+          auto_create: boolean
+          created_at: string
+          description: string | null
+          frequency: string | null
+          id: string
+          is_archived: boolean
+          last_completed_at: string | null
+          name: string | null
+          next_due_date: string | null
+          notify_days_before: number
+          org_id: string
+          property_id: string | null
+          scope_asset_type: string | null
+          scope_ids: Json | null
+          scope_type: string
+          template_config: Json | null
+          updated_at: string
+        }
+        Insert: {
+          auto_create?: boolean
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_archived?: boolean
+          last_completed_at?: string | null
+          name?: string | null
+          next_due_date?: string | null
+          notify_days_before?: number
+          org_id: string
+          property_id?: string | null
+          scope_asset_type?: string | null
+          scope_ids?: Json | null
+          scope_type?: string
+          template_config?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          auto_create?: boolean
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_archived?: boolean
+          last_completed_at?: string | null
+          name?: string | null
+          next_due_date?: string | null
+          notify_days_before?: number
+          org_id?: string
+          property_id?: string | null
+          scope_asset_type?: string | null
+          scope_ids?: Json | null
+          scope_type?: string
+          template_config?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_schedule_rules_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_schedule_rules_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_schedule_rules_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties_view"

@@ -18,6 +18,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyUtils";
 import { createTask } from "@/services/tasks/taskMutations";
@@ -64,7 +65,7 @@ export function useUpsertComplianceRule() {
       if (ruleId) {
         // ── UPDATE ──────────────────────────────────────────────
         const { data: existing, error: fetchError } = await supabase
-          .from("compliance_rules")
+          .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
           .select("frequency")
           .eq("id", ruleId)
           .single();
@@ -74,7 +75,7 @@ export function useUpsertComplianceRule() {
         const frequencyChanged = existing?.frequency !== values.frequency;
 
         const { error: updateError } = await supabase
-          .from("compliance_rules")
+          .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
           .update({
             name: values.name,
             description: values.description ?? null,
@@ -115,7 +116,7 @@ export function useUpsertComplianceRule() {
       } else {
         // ── CREATE ──────────────────────────────────────────────
         const { data: rule, error: insertError } = await supabase
-          .from("compliance_rules")
+          .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
           .insert({
             org_id: orgId,
             property_id: propertyId,

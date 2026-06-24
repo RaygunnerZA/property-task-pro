@@ -24,6 +24,7 @@ import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyU
 import { createTask } from "@/services/tasks/taskMutations";
 import { captureGeoForAction } from "@/services/location/geoCapture";
 import { track } from "@/lib/analytics";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
 
 /** Returned for §24.5 `compliance_item_completed` analytics (`onSuccess`). */
 export interface MarkCompleteResult {
@@ -124,7 +125,7 @@ export function useMarkComplianceComplete() {
 
       // 2b. Fetch rule for frequency + auto_create + template_config
       const { data: rule, error: ruleFetchError } = await supabase
-        .from("compliance_rules")
+        .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
         .select("frequency, auto_create, template_config, notify_days_before, scope_type")
         .eq("id", ruleId)
         .single();
@@ -156,7 +157,7 @@ export function useMarkComplianceComplete() {
       // per-asset dates when the rule has multiple assets at different cycle points)
       if (!assetId) {
         const { error: ruleUpdateError } = await supabase
-          .from("compliance_rules")
+          .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
           .update({
             last_completed_at: nowIso,
             next_due_date: nextDueDateStr,

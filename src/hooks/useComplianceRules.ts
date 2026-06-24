@@ -1,17 +1,18 @@
 /**
  * useComplianceRules
  *
- * Fetches all active compliance_rules for a property, enriched with their
- * latest pending occurrence (next due date status).
+ * Fetches active property schedule rules (compliance_schedule_rules), enriched
+ * with derived due-date status. Distinct from legal-extraction compliance_rules.
  *
  * Query key: ["compliance_rules", orgId, propertyId]
- * Used by: ComplianceRulesSection, ComplianceAutomationPanel, usePropertyIntelligenceSeed
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { differenceInDays, parseISO, isValid } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
+import { isMissingColumnError, isMissingRelationError } from "@/lib/supabaseErrors";
 
 export type RuleStatus = "overdue" | "due_soon" | "scheduled" | "no_date";
 
@@ -33,9 +34,7 @@ export interface ComplianceRuleWithStatus {
   next_due_date: string | null;
   created_at: string;
   updated_at: string;
-  /** Derived status from next_due_date vs today */
   status: RuleStatus;
-  /** Days until next_due_date (negative = overdue) */
   daysUntilDue: number | null;
 }
 
@@ -61,14 +60,19 @@ export function useComplianceRules(propertyId: string | undefined) {
       if (!orgId || !propertyId) return [];
 
       const { data, error } = await supabase
-        .from("compliance_rules")
+        .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
         .select("*")
         .eq("org_id", orgId)
         .eq("property_id", propertyId)
         .eq("is_archived", false)
         .order("next_due_date", { ascending: true, nullsFirst: false });
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingRelationError(error) || isMissingColumnError(error)) {
+          return [];
+        }
+        throw error;
+      }
 
       return (data ?? []).map((rule) => ({
         ...rule,

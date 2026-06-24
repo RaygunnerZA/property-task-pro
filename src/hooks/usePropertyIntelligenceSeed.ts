@@ -37,6 +37,7 @@ import {
   normalizePropertyProfile,
 } from "@/services/propertyIntelligence/ruleEvaluator";
 import { calculateNextDueDate } from "@/services/propertyIntelligence/frequencyUtils";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
 import type { EvaluatedRule } from "@/services/propertyIntelligence/types";
 
 export interface SeedPreview {
@@ -155,7 +156,7 @@ export function usePropertyIntelligenceSeed(
 
         // 1. Insert compliance_rules — the schedule definition
         const { data: rule, error: ruleError } = await supabase
-          .from("compliance_rules")
+          .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
           .insert({
             org_id: orgId,
             property_id: propertyId,

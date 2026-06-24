@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
 import { useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDeleteComplianceRuleMutation } from "@/hooks/mutations/useDeleteComplianceRuleMutation";
@@ -94,7 +95,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
     setToggling(true);
     try {
       await supabase
-        .from("compliance_rules")
+        .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
         .update({ auto_create: checked })
         .eq("id", rule.id);
       queryClient.invalidateQueries({
@@ -108,7 +109,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
   const handleArchive = async () => {
     if (!orgId) return;
     await supabase
-      .from("compliance_rules")
+      .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
       .update({ is_archived: true })
       .eq("id", rule.id);
     queryClient.invalidateQueries({

@@ -4,6 +4,7 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { COMPLIANCE_SCHEDULE_RULES_TABLE } from "@/lib/complianceSchedule";
 
 export interface DeleteComplianceRuleVariables {
   ruleId: string;
@@ -17,7 +18,7 @@ export function useDeleteComplianceRuleMutation() {
   return useMutation({
     mutationFn: async ({ ruleId }: DeleteComplianceRuleVariables) => {
       const { error } = await supabase
-        .from("compliance_rules")
+        .from(COMPLIANCE_SCHEDULE_RULES_TABLE)
         .delete()
         .eq("id", ruleId);
       if (error) throw error;

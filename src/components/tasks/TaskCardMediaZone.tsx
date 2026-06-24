@@ -12,6 +12,9 @@ const UPLOADED_INSET_SHADOW_VERTICAL =
 export const VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS =
   "shadow-[inset_1px_2px_1px_0px_rgba(255,255,255,0.5)]";
 
+const HORIZONTAL_ILLUSTRATION_INSET_SHADOW_CLASS =
+  "shadow-[inset_0px_1px_1px_0px_rgba(255,255,255,0.7)]";
+
 interface TaskCardMediaZoneProps {
   imageUrl?: string | null;
   alt: string;
@@ -65,6 +68,9 @@ export function TaskCardMediaZone({
       className={cn(
         baseZoneClass,
         isIllustration && "flex items-center justify-center bg-background",
+        isIllustration &&
+          variant === "horizontal" &&
+          HORIZONTAL_ILLUSTRATION_INSET_SHADOW_CLASS,
         isIllustration && variant === "vertical" && VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS,
         className
       )}

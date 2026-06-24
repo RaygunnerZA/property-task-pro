@@ -31,13 +31,7 @@ interface RightColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
 }
 
-const panelShellClass =
-  cn(columnShellClass, "rounded-[12px] shadow-[0px_-2px_2px_0px_rgb(255,255,255)]");
-
-const panelShellStyle = {
-  background:
-    "linear-gradient(0deg, rgba(234, 233, 230, 0) 0%, rgba(239, 238, 235, 0) 77%, rgba(255, 255, 255, 0.5) 100%)",
-} as const;
+const panelShellClass = cn(columnShellClass, "rounded-[12px]");
 
 /**
  * Product centre column (DualPaneLayout `rightColumn`).
@@ -137,7 +131,7 @@ export function RightColumn({
 
   return (
     <div className={cn(columnShellClass, "h-full px-0 sm:w-auto")}>
-      <div className={panelShellClass} style={panelShellStyle}>
+      <div className={panelShellClass}>
         {children || renderCentre()}
       </div>
     </div>

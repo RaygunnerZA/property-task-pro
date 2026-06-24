@@ -42,6 +42,15 @@ export function hasExplicitTime(value: string | null | undefined): boolean {
   return dt.getHours() !== 0 || dt.getMinutes() !== 0;
 }
 
+/** Schedule list/column time labels: assignee must be set and due must carry a real time. */
+export function hasAssigneeDefinedScheduleTime(
+  task: { assigned_user_id?: string | null },
+  dueValue: string | null | undefined
+): boolean {
+  if (!task.assigned_user_id) return false;
+  return hasExplicitTime(dueValue);
+}
+
 export function getDayPeriodFromDateTime(dt: Date | null, raw?: string | null): DayPeriod {
   if (!dt) return "untimed";
   if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) return "untimed";

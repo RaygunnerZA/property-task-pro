@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:keepalive": "node scripts/dev-keepalive.mjs",
+    "dev:restart": "node scripts/dev-restart.mjs",
+    "dev:stop": "node scripts/dev-stop.mjs",
     "dev:fresh": "node scripts/dev-fresh.mjs",
     "dev:force": "vite --force",
     "build": "vite build",
