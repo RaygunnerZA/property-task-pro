@@ -8,7 +8,7 @@ import {
 } from "@/lib/calendarTaskSchedule";
 import { cn } from "@/lib/utils";
 
-const SCHEDULE_TIME_COLUMN_CLASS = "w-20 sm:w-[5.5rem] flex-shrink-0";
+const SCHEDULE_TIME_COLUMN_CLASS = "w-[81px] sm:w-[5.5rem] flex-shrink-0";
 
 const SCHEDULE_DAY_DIVIDER_CLASS = "pt-[14px] border-t-2 border-white/50";
 
@@ -115,7 +115,7 @@ export function ScheduleView({
   return (
     <div className="flex h-full w-full relative">
       {/* Task Stack */}
-      <div className="flex-1 overflow-y-auto px-4 pt-0.5 pb-4">
+      <div className="flex-1 overflow-y-auto px-[5px] pt-0.5 pb-4">
         <div className="space-y-6">
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {

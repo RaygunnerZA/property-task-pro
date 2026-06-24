@@ -30,7 +30,7 @@ export function CentreWorkbenchTabStrip({
   return (
     <div
       className={cn(
-        "flex h-[160px] w-full min-w-0 items-start justify-start gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-1 pb-0 pt-0",
+        "flex h-[160px] w-[382px] min-w-0 items-start justify-start gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-1 pb-0 pt-0",
         className
       )}
       role="tablist"

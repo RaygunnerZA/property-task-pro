@@ -37,13 +37,13 @@ export function IssuesWorkbenchSectionHeader({
     return (
       <div
         className={cn(
-          "grid w-full min-w-0 items-start gap-x-3 gap-y-1 px-1",
+          "grid h-[43px] w-full min-w-0 items-start gap-x-3 gap-y-1 px-1",
           "grid-cols-[minmax(4.5rem,auto)_minmax(0,1fr)_minmax(3.5rem,min(6.25rem,26%))]",
           spacious ? "my-5" : "my-0",
           className
         )}
       >
-        <h2 className="min-w-0 w-[90px] text-lg font-semibold leading-tight tracking-wide text-[rgb(42,41,62)]">
+        <h2 className="min-w-0 w-[90px] text-[20px] font-semibold leading-tight tracking-wide text-[rgb(42,41,62)]">
           {title}
         </h2>
         {subtitle ? (
@@ -55,7 +55,7 @@ export function IssuesWorkbenchSectionHeader({
           <img
             src={illustrationSrc}
             alt=""
-            className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
+            className="mb-[37px] mt-[15px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
             decoding="async"
           />
         </div>
@@ -67,7 +67,7 @@ export function IssuesWorkbenchSectionHeader({
     <div className={cn("min-w-0 px-0.5", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="text-lg font-semibold leading-tight text-foreground">{title}</h2>
+          <h2 className="text-[20px] font-semibold leading-tight text-foreground">{title}</h2>
           {typeof count === "number" ? (
             <span
               className={cn(

@@ -76,6 +76,7 @@ export function LeftColumn({
   const isScheduleWorkbench = workbenchPanel === "schedule";
   const isMobile = useIsMobile();
   const isScheduleMobile = isScheduleWorkbench && isMobile;
+  const showLeftColumnCalendar = !isMobile || isScheduleWorkbench;
   const workbenchControls = useOptionalWorkbenchControls();
   const { userId } = useDataContext();
   const [showAddProperty, setShowAddProperty] = useState(false);
@@ -187,28 +188,29 @@ export function LeftColumn({
 
   const calendarAboveNavCards = Boolean(focusedProperty) && !isScheduleMobile;
 
-  const miniCalendar = tasksLoading ? (
+  const miniCalendar = showLeftColumnCalendar ? (
     <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-      <Skeleton className="h-64 w-full" />
+      {tasksLoading ? (
+        <Skeleton className="h-64 w-full" />
+      ) : (
+        <FillaMiniCalendar
+          tasks={calendarTasks}
+          selectedDate={selectedDate}
+          onDateSelect={onDateSelect}
+          tasksByDate={scopedTasksByDate}
+          className="shadow-e1"
+          defaultExpanded={
+            calendarAboveNavCards
+              ? false
+              : isScheduleMobile
+                ? !selectedDate
+                : !isHubHome
+          }
+          collapseOnDateSelect={isScheduleMobile}
+        />
+      )}
     </div>
-  ) : (
-    <div className="w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 pr-0 shadow-none">
-      <FillaMiniCalendar
-        tasks={calendarTasks}
-        selectedDate={selectedDate}
-        onDateSelect={onDateSelect}
-        tasksByDate={scopedTasksByDate}
-        defaultExpanded={
-          calendarAboveNavCards
-            ? false
-            : isScheduleMobile
-              ? !selectedDate
-              : !isHubHome
-        }
-        collapseOnDateSelect={isScheduleMobile}
-      />
-    </div>
-  );
+  ) : null;
 
   return (
     <div 
@@ -261,7 +263,9 @@ export function LeftColumn({
                   key={focusedProperty.id}
                   property={focusedProperty}
                   externalDashboard
-                  betweenSummaryAndNav={calendarAboveNavCards ? miniCalendar : undefined}
+                  betweenSummaryAndNav={
+                    calendarAboveNavCards ? miniCalendar : undefined
+                  }
                   onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
                   urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
                   onOpenTasksClick={

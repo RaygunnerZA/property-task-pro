@@ -92,7 +92,6 @@ export const MOBILE_HEADER_EXCLUDED_PATHS = new Set([
   "/agenda",
   "/calendar",
   "/tasks",
-  "/compliance",
 ]);
 
 /** @deprecated Use MOBILE_HEADER_EXCLUDED_PATHS */

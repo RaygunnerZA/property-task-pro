@@ -20,6 +20,7 @@ interface RightColumnProps {
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   selectedDate?: Date | undefined;
+  onDateSelect?: (date: Date | undefined) => void;
   filterToApply?: string | null;
   filtersToApply?: string[] | null;
   issuesFilter?: WorkbenchIssuesFilter;
@@ -51,6 +52,7 @@ export function RightColumn({
   activeTab,
   onTabChange,
   selectedDate,
+  onDateSelect,
   filterToApply,
   filtersToApply,
   issuesFilter,
@@ -94,6 +96,7 @@ export function RightColumn({
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
           selectedDate={selectedDate}
+          onDateSelect={onDateSelect}
         />
       );
     }
@@ -110,6 +113,7 @@ export function RightColumn({
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
           selectedDate={selectedDate}
+          onDateSelect={onDateSelect}
           hideViewAllLinks
         />
       );

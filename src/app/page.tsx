@@ -547,8 +547,8 @@ export default function Dashboard({
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
-    // Auto-switch to schedule tab when a date is selected
-    if (date) {
+    const onCentreTabs = workbenchPanel === "home" || workbenchPanel === "issues";
+    if (date && !onCentreTabs) {
       handleWorkbenchTabChange("schedule");
     }
   };
@@ -946,7 +946,9 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
-              mobileBrandLogoWhenAllProperties
+              mobileBrandLogoWhenAllProperties={
+                usesCentreWorkbenchTabs && centreWorkbenchTab === "inflow"
+              }
             />
           }
         leftColumn={
@@ -1001,6 +1003,7 @@ export default function Dashboard({
             workbenchPanel={workbenchPanel}
             centreWorkbenchTab={centreWorkbenchTab}
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
+            onDateSelect={handleDateSelect}
           />
           </ErrorBoundary>
         }

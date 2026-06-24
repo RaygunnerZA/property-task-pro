@@ -513,7 +513,7 @@ export function FillaMiniCalendar({
       className={cn(
         "filla-mini-calendar w-full",
         variant === "sidebar" &&
-          "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 p-3 shadow-e1",
+          "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 p-3",
         className
       )}
       data-collapsed={showWeekStrip ? "true" : "false"}

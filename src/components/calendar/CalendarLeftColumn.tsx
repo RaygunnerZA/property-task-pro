@@ -74,6 +74,7 @@ export function CalendarLeftColumn({
           onDateSelect={onDateSelect}
           month={calendarMonth}
           onMonthChange={onCalendarMonthChange}
+          className="shadow-e1"
         />
       )}
 

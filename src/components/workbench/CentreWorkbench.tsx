@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { CentreWorkbenchTabStrip } from "@/components/workbench/CentreWorkbenchTabStrip";
+import { CentreWorkbenchMobileCalendar } from "@/components/workbench/CentreWorkbenchMobileCalendar";
 import { InflowPanel } from "@/components/workbench/InflowPanel";
 import { TasksWorkbenchPanel } from "@/components/workbench/TasksWorkbenchPanel";
 import { CalendarWorkbenchPanel } from "@/components/workbench/CalendarWorkbenchPanel";
@@ -18,6 +19,7 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;
   onCentreTabChange: (tab: CentreWorkbenchTab) => void;
   selectedDate?: Date;
+  onDateSelect?: (date: Date | undefined) => void;
   hideViewAllLinks?: boolean;
 };
 
@@ -39,6 +41,7 @@ export function CentreWorkbench({
   onTabChange,
   onRecordsViewChange,
   selectedDate,
+  onDateSelect,
   hideViewAllLinks = false,
 }: CentreWorkbenchProps) {
   const sharedPanelProps = useMemo(
@@ -72,6 +75,8 @@ export function CentreWorkbench({
     ]
   );
 
+  const showMobileCalendar = activeTab === "inflow" || activeTab === "tasks";
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent pb-1">
       <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
@@ -81,10 +86,20 @@ export function CentreWorkbench({
           className="mb-3 shrink-0"
         />
 
-        <div className="mb-4 shrink-0">
-          <p className="mt-2 flex w-[618px] items-center justify-start pb-6 text-lg font-normal text-muted-foreground">
+        <div className="mb-4 flex shrink-0 flex-col px-0">
+          <p className="mt-2 flex w-full min-w-0 items-center justify-start px-[9px] pb-6 text-base font-normal text-muted-foreground">
             {CENTRE_WORKBENCH_TAB_META[activeTab].description}
           </p>
+          {showMobileCalendar ? (
+            <CentreWorkbenchMobileCalendar
+              tasks={tasks}
+              properties={properties}
+              tasksLoading={tasksLoading}
+              selectedDate={selectedDate}
+              onDateSelect={onDateSelect}
+              selectedPropertyIds={selectedPropertyIds}
+            />
+          ) : null}
           <WorkbenchTaskFilterBar
             tasks={tasks}
             properties={properties}
