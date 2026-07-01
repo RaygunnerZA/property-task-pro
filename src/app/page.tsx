@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { format, isValid, parseISO, startOfDay } from "date-fns";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
 import { LeftColumn } from "@/components/layout/LeftColumn";
@@ -59,7 +60,11 @@ import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  centreWorkbenchTasksPath,
   normalizeCentreWorkbenchTab,
+  normalizeCentreCalendarView,
+  WORKBENCH_CALENDAR_VIEW_QUERY,
+  WORKBENCH_DATE_QUERY,
   type CentreWorkbenchTab,
 } from "@/lib/centreWorkbenchTabs";
 
@@ -287,6 +292,19 @@ export default function Dashboard({
     if (!panel && !alias) return defaultCentreTab;
     return normalizeCentreWorkbenchTab(panel, alias);
   }, [workbenchPanel, searchParams, defaultCentreTab]);
+
+  const calendarInitialView = useMemo(
+    () => normalizeCentreCalendarView(searchParams.get(WORKBENCH_CALENDAR_VIEW_QUERY)),
+    [searchParams]
+  );
+
+  useEffect(() => {
+    const raw = searchParams.get(WORKBENCH_DATE_QUERY);
+    if (!raw) return;
+    const parsed = parseISO(raw);
+    if (!isValid(parsed)) return;
+    setSelectedDate(startOfDay(parsed));
+  }, [searchParams]);
 
   /** Dedicated routes lock the legacy panel; Home uses centre tabs. */
   const activeTab = useMemo((): WorkbenchPanelTab => {
@@ -569,13 +587,40 @@ export default function Dashboard({
     setSelectedItem(null);
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setSelectedDate(date);
-    const onCentreTabs = workbenchPanel === "home" || workbenchPanel === "issues";
-    if (date && !onCentreTabs) {
+  const handleDateSelect = useCallback(
+    (date: Date | undefined) => {
+      setSelectedDate(date);
+      if (!date) return;
+
+      if (usesCentreWorkbenchTabs) {
+        const params = workbenchSearchParamsFromBrowser(searchParams);
+        const dateKey = format(startOfDay(date), "yyyy-MM-dd");
+        params.set(WORKBENCH_DATE_QUERY, dateKey);
+        params.set(WORKBENCH_CALENDAR_VIEW_QUERY, "schedule");
+
+        if (isHubHome && isMobile) {
+          navigate(centreWorkbenchTasksPath("calendar", params));
+          return;
+        }
+
+        params.set(WORKBENCH_PANEL_TAB_QUERY, "calendar");
+        params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+        setSearchParams(params, { replace: true });
+        return;
+      }
+
       handleWorkbenchTabChange("schedule");
-    }
-  };
+    },
+    [
+      usesCentreWorkbenchTabs,
+      isHubHome,
+      isMobile,
+      searchParams,
+      navigate,
+      setSearchParams,
+      handleWorkbenchTabChange,
+    ]
+  );
 
   const resolveScopedPropertyId = useCallback((): string | null => {
     if (selectedPropertyIds.size === 1) {
@@ -597,6 +642,8 @@ export default function Dashboard({
       params.delete(WORKBENCH_TAB_ALIAS_QUERY);
       params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
       params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
+      params.delete(WORKBENCH_DATE_QUERY);
+      params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
       setSearchParams(params, { replace: true });
       setCentreWorkbenchFiltersToApply(filterIds);
       window.setTimeout(() => setCentreWorkbenchFiltersToApply(undefined), 50);
@@ -604,16 +651,34 @@ export default function Dashboard({
     [searchParams, setSearchParams]
   );
 
+  const navigateCentreWorkbenchFromHome = useCallback(
+    (tab: CentreWorkbenchTab, filterIds: string[] | null) => {
+      if (isHubHome && isMobile) {
+        const params = workbenchSearchParamsFromBrowser(searchParams);
+        params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
+        params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
+        params.delete(WORKBENCH_DATE_QUERY);
+        params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
+        navigate(centreWorkbenchTasksPath(tab, params));
+        setCentreWorkbenchFiltersToApply(filterIds);
+        window.setTimeout(() => setCentreWorkbenchFiltersToApply(undefined), 50);
+        return;
+      }
+      applyCentreWorkbenchNavigation(tab, filterIds);
+    },
+    [isHubHome, isMobile, searchParams, navigate, applyCentreWorkbenchNavigation]
+  );
+
   const handleFilterClick = (filterId: string) => {
     const pid = resolveScopedPropertyId();
 
     if (usesCentreWorkbenchTabs) {
       if (filterId === "show-tasks") {
-        applyCentreWorkbenchNavigation("tasks", []);
+        navigateCentreWorkbenchFromHome("tasks", []);
         return;
       }
       if (filterId === "show-tasks-urgent") {
-        applyCentreWorkbenchNavigation("tasks", ["filter-urgent"]);
+        navigateCentreWorkbenchFromHome("tasks", ["filter-urgent"]);
         return;
       }
       if (
@@ -621,14 +686,14 @@ export default function Dashboard({
         filterId === "filter-date-overdue" ||
         filterId === "show-records"
       ) {
-        applyCentreWorkbenchNavigation("inflow", []);
+        navigateCentreWorkbenchFromHome("inflow", []);
         return;
       }
       if (filterId === "show-upcoming-events" || filterId === "filter-date-this-week") {
-        applyCentreWorkbenchNavigation("calendar", []);
+        navigateCentreWorkbenchFromHome("calendar", []);
         return;
       }
-      applyCentreWorkbenchNavigation("tasks", [filterId]);
+      navigateCentreWorkbenchFromHome("tasks", [filterId]);
       return;
     }
 
@@ -1017,6 +1082,7 @@ export default function Dashboard({
             centreWorkbenchTab={centreWorkbenchTab}
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
             onDateSelect={handleDateSelect}
+            calendarInitialView={calendarInitialView}
             hideCentreTabStrip={hideHomepageCentreOnMobile}
           />
           </ErrorBoundary>

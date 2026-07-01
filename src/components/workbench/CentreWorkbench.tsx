@@ -6,10 +6,7 @@ import { InflowPanel } from "@/components/workbench/InflowPanel";
 import { TasksWorkbenchPanel } from "@/components/workbench/TasksWorkbenchPanel";
 import { CalendarWorkbenchPanel } from "@/components/workbench/CalendarWorkbenchPanel";
 import { cn } from "@/lib/utils";
-import {
-  CENTRE_WORKBENCH_TAB_META,
-  type CentreWorkbenchTab,
-} from "@/lib/centreWorkbenchTabs";
+import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const centreScrollClass =
@@ -20,6 +17,7 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
   onCentreTabChange: (tab: CentreWorkbenchTab) => void;
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
+  initialCalendarView?: CentreCalendarView;
   hideViewAllLinks?: boolean;
   /** Hide illustrated tab strip (e.g. mobile property profile uses card nav). */
   hideTabStrip?: boolean;
@@ -44,6 +42,7 @@ export function CentreWorkbench({
   onRecordsViewChange,
   selectedDate,
   onDateSelect,
+  initialCalendarView,
   hideViewAllLinks = false,
   hideTabStrip = false,
 }: CentreWorkbenchProps) {
@@ -90,9 +89,6 @@ export function CentreWorkbench({
         />
 
         <div className="mb-4 flex shrink-0 flex-col">
-          <p className="mt-2 flex w-full min-w-0 items-center justify-start px-0 pb-6 text-sm font-normal text-muted-foreground">
-            {CENTRE_WORKBENCH_TAB_META[activeTab].description}
-          </p>
           {showMobileCalendar ? (
             <CentreWorkbenchMobileCalendar
               tasks={tasks}
@@ -117,6 +113,7 @@ export function CentreWorkbench({
             <CalendarWorkbenchPanel
               {...sharedPanelProps}
               selectedDate={selectedDate}
+              initialCalendarView={initialCalendarView}
             />
           )}
         </div>

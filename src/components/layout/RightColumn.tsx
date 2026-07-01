@@ -3,7 +3,7 @@ import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { HomeWorkbenchCentre } from "@/components/workbench/HomeWorkbenchCentre";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter, DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
-import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
+import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { cn } from "@/lib/utils";
 import { columnShellClass } from "@/lib/layoutClasses";
@@ -32,6 +32,7 @@ interface RightColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  calendarInitialView?: CentreCalendarView;
   hideCentreTabStrip?: boolean;
 }
 
@@ -65,6 +66,7 @@ export function RightColumn({
   workbenchPanel = "home",
   centreWorkbenchTab = "inflow",
   onCentreWorkbenchTabChange,
+  calendarInitialView,
   hideCentreTabStrip = false,
 }: RightColumnProps) {
   const dedicatedTitle =
@@ -99,6 +101,7 @@ export function RightColumn({
           onRecordsViewChange={onRecordsViewChange}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          initialCalendarView={calendarInitialView}
           hideTabStrip={hideCentreTabStrip}
         />
       );
@@ -117,6 +120,7 @@ export function RightColumn({
           onRecordsViewChange={onRecordsViewChange}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          initialCalendarView={calendarInitialView}
           hideViewAllLinks
           hideTabStrip={hideCentreTabStrip}
         />

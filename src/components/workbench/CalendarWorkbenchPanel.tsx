@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addMonths,
   format,
@@ -25,6 +25,7 @@ import {
 } from "@/lib/calendarDayMeta";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
 import { cn } from "@/lib/utils";
+import type { CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 type WorkspaceCalendarView = "calendar" | "schedule";
@@ -36,6 +37,7 @@ const VIEW_OPTIONS: SegmentOption[] = [
 
 export type CalendarWorkbenchPanelProps = MyWorkPanelProps & {
   selectedDate?: Date;
+  initialCalendarView?: CentreCalendarView;
 };
 
 /**
@@ -49,6 +51,7 @@ export function CalendarWorkbenchPanel({
   selectedTaskId,
   selectedPropertyIds,
   selectedDate: selectedDateProp,
+  initialCalendarView = "calendar",
 }: CalendarWorkbenchPanelProps) {
   const { userId } = useDataContext();
   const { orgId } = useActiveOrg();
@@ -56,7 +59,11 @@ export function CalendarWorkbenchPanel({
   const updateTaskMutation = useUpdateTaskMutation();
   const { toast } = useToast();
 
-  const [view, setView] = useState<WorkspaceCalendarView>("calendar");
+  const [view, setView] = useState<WorkspaceCalendarView>(initialCalendarView);
+
+  useEffect(() => {
+    setView(initialCalendarView);
+  }, [initialCalendarView]);
   const [internalSelectedDate, setInternalSelectedDate] = useState<Date>(() => new Date());
   const [currentMonth, setCurrentMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [selectedCalendarTypes] = useState<Set<CalendarTypeId>>(

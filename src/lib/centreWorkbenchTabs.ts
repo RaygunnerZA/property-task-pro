@@ -3,6 +3,14 @@ export type CentreWorkbenchTab = "inflow" | "tasks" | "calendar";
 
 export const CENTRE_WORKBENCH_TAB_QUERY = "panelTab";
 
+/** Selected day for calendar / schedule (`yyyy-MM-dd`). */
+export const WORKBENCH_DATE_QUERY = "date";
+
+/** Centre calendar sub-view: `calendar` (month grid) or `schedule` (agenda). */
+export const WORKBENCH_CALENDAR_VIEW_QUERY = "calendarView";
+
+export type CentreCalendarView = "calendar" | "schedule";
+
 export const CENTRE_WORKBENCH_TASKS_PATH = "/tasks";
 
 export const CENTRE_WORKBENCH_TABS: readonly CentreWorkbenchTab[] = [
@@ -71,6 +79,12 @@ export function normalizeCentreWorkbenchTab(
 
 export function isCentreWorkbenchTab(value: string): value is CentreWorkbenchTab {
   return CENTRE_WORKBENCH_TABS.includes(value as CentreWorkbenchTab);
+}
+
+export function normalizeCentreCalendarView(
+  raw: string | null | undefined
+): CentreCalendarView {
+  return raw === "schedule" ? "schedule" : "calendar";
 }
 
 /** Deep link from property cards → `/tasks` work column. */

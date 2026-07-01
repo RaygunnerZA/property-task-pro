@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
@@ -103,6 +104,12 @@ function StatColumn({
           <span className={statWordClass}>{line1}</span>
           <span className={statWordClass}>{line2}</span>
         </div>
+        {onActivate ? (
+          <ChevronRight
+            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-colors group-hover:text-white"
+            aria-hidden
+          />
+        ) : null}
       </div>
       <div className="mt-1.5 flex w-[77px] items-center gap-0.5 tracking-[0.3px]">
         <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { format } from "date-fns";
+import { useMemo, useEffect, useRef } from "react";
+import { format, startOfDay } from "date-fns";
 import TaskCard from "@/components/TaskCard";
 import {
   CALENDAR_AFTERNOON_TIME,
@@ -45,9 +45,11 @@ interface ScheduleViewProps {
 export function ScheduleView({
   tasks,
   properties = [],
+  selectedDate,
   onTaskClick,
   selectedTaskId,
 }: ScheduleViewProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
@@ -112,10 +114,19 @@ export function ScheduleView({
     return Array.from(tasksByDate.keys()).sort();
   }, [tasksByDate]);
 
+  useEffect(() => {
+    if (!selectedDate) return;
+    const dateKey = format(startOfDay(selectedDate), "yyyy-MM-dd");
+    const target = scrollContainerRef.current?.querySelector(`#schedule-day-${dateKey}`);
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ block: "start", behavior: "auto" });
+    }
+  }, [selectedDate, dates]);
+
   return (
     <div className="flex h-full w-full relative">
       {/* Task Stack */}
-      <div className="flex-1 overflow-y-auto px-2 pt-0.5 pb-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-2 pt-0.5 pb-4">
         <div className="space-y-6">
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {
@@ -130,6 +141,7 @@ export function ScheduleView({
             return (
               <div
                 key={dateKey}
+                id={`schedule-day-${dateKey}`}
                 className={cn(
                   "space-y-3",
                   dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS

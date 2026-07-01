@@ -58,7 +58,7 @@ export function PropertySummaryCentreNav({
   return (
     <div
       className={cn(
-        "flex h-[114px] w-full min-w-0 items-end justify-between gap-1 border-b-2 border-white/50 px-1 pb-[15px] pt-0",
+        "flex h-[75px] w-full min-w-0 items-end justify-between gap-1 border-b-2 border-white/50 px-1 pb-[15px] pt-0",
         hideFrom === "md" ? "md:hidden" : "sm:hidden",
         className
       )}
@@ -76,7 +76,7 @@ export function PropertySummaryCentreNav({
             aria-selected={isActive}
             onClick={() => handleTabClick(tabId)}
             className={cn(
-              "inline-flex min-w-0 flex-1 flex-col items-center justify-end gap-1.5 text-[15px] font-semibold tracking-tight transition-colors sm:text-[17px]",
+              "inline-flex min-w-0 flex-1 flex-row items-center justify-start gap-1.5 text-[18px] font-semibold tracking-tight transition-colors sm:text-[17px]",
               isActive ? "text-primary" : "text-primary hover:text-primary/80"
             )}
           >
@@ -86,7 +86,7 @@ export function PropertySummaryCentreNav({
               draggable={false}
               decoding="async"
               className={cn(
-                "h-[58px] w-[min(100%,4.5rem)] shrink-0 object-contain drop-shadow-sm transition-opacity sm:h-[70px] sm:w-[81px]",
+                "h-[58px] w-[50px] shrink-0 object-contain drop-shadow-sm transition-opacity sm:h-[70px] sm:w-[81px]",
                 isActive ? "opacity-100" : "opacity-75"
               )}
             />
