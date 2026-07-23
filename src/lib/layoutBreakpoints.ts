@@ -1,12 +1,14 @@
 /**
- * Canonical layout breakpoints (keep in sync with `tailwind.config.ts` `theme.extend.screens`).
- * Use for dev tools readouts and any JS that mirrors CSS breakpoints.
+ * Canonical layout breakpoints (keep in sync with `tailwind.config.ts` `theme.extend.screens`
+ * and `useIsMobile` / `useIsBelowMd` in `hooks/use-mobile.tsx`).
  *
- * See `Docs/04_UI_System.md` → “Breakpoints (canonical)” for when to use each name:
- * - `sm` (640px): hub dual-pane (calendar/properties | tasks) — see `workbenchTwoColumn`.
- * - `sidebarRail` / Tailwind `lg` (1024px): persistent app nav rail vs offcanvas drawer.
- * - `workspace`: property hub modules (three columns).
- * - `layout`: app shell three-column dashboard / property right rail (1480px; side rail + 700 work surface + side rail).
+ * See `Docs/04_UI_System.md` §4.2 and `lib/workbenchLayoutMode.ts` for presentation rules:
+ * - `sm` / `workbenchTwoColumn` (640px): default hub dual-pane (left | centre).
+ * - `phone` / Tailwind `md` (768px): nav-driven phone mode — home-hub collapses centre;
+ *   work-surface keeps a full-screen centre. Prefer this over ad-hoc sm/md mixes.
+ * - `sidebarRail` / Tailwind `lg` (1024px): persistent app nav rail vs offcanvas + bottom nav.
+ * - `workspace` (1100px): property hub modules (three columns).
+ * - `layout` (1480px): app shell three-column dashboard / property right rail.
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
  */
 export const LAYOUT_BREAKPOINTS = {
@@ -14,6 +16,12 @@ export const LAYOUT_BREAKPOINTS = {
   maxPane: 455,
   /** Hub: calendar/properties column beside tasks from this min-width (Tailwind `sm`, 640px). */
   workbenchTwoColumn: 640,
+  /**
+   * Phone / nav-driven workbench (Tailwind `md`, 768px).
+   * Below: home-hub is scope-only; work surfaces are full-screen routes.
+   * At/above: DualPane dual-column grid applies even on home-hub.
+   */
+  phone: 768,
   /**
    * App nav rail: below this width the sidebar is an offcanvas sheet + top bar (Tailwind `lg`, 1024px).
    * Wider than this, the persistent left rail shows — independent of hub column stacking.

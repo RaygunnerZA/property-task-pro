@@ -11,6 +11,7 @@ export const WORKBENCH_CALENDAR_VIEW_QUERY = "calendarView";
 
 export type CentreCalendarView = "calendar" | "schedule";
 
+/** Dedicated work-surface route for phone (see `workbenchLayoutMode.ts`). */
 export const CENTRE_WORKBENCH_TASKS_PATH = "/tasks";
 
 export const CENTRE_WORKBENCH_TABS: readonly CentreWorkbenchTab[] = [
@@ -37,7 +38,7 @@ export const CENTRE_WORKBENCH_TAB_META: Record<CentreWorkbenchTab, CentreWorkben
     accentColor: "#EB6834",
     fill: "hsl(16 78% 84%)",
     description: "Signals, suggestions, and records waiting for a decision.",
-    illustrationSrc: "/issues-workbench/needs-review.png",
+    illustrationSrc: "/centre-workbench/inflow.png",
   },
   tasks: {
     id: "tasks",
@@ -45,7 +46,7 @@ export const CENTRE_WORKBENCH_TAB_META: Record<CentreWorkbenchTab, CentreWorkben
     accentColor: "#85BABC",
     fill: "hsl(185 38% 82%)",
     description: "Your work queue — urgent items, assignments, and due dates.",
-    illustrationSrc: "/issues-workbench/open-work.png",
+    illustrationSrc: "/centre-workbench/tasks.png",
   },
   calendar: {
     id: "calendar",
@@ -53,7 +54,7 @@ export const CENTRE_WORKBENCH_TAB_META: Record<CentreWorkbenchTab, CentreWorkben
     accentColor: "#7B8794",
     fill: "hsl(215 12% 84%)",
     description: "Month grid and day-by-day schedule for planned work.",
-    illustrationSrc: "/issues-workbench/recent-signals.png",
+    illustrationSrc: "/centre-workbench/calendar.png",
   },
 };
 

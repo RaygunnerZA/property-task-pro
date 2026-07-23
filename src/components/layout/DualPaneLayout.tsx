@@ -8,47 +8,53 @@ interface DualPaneLayoutProps {
   /** Spans the full main content width (all workbench columns), excluding the app sidebar. */
   header?: ReactNode;
   /**
-   * Home mobile: hide centre below md and defer dual-column grid until md
-   * so the left rail is full-width on phones without an empty grid track.
+   * Home-hub phone mode (`workbenchLayoutMode`): hide centre below `md` and defer the
+   * dual-column grid until `md` so the left rail is full-width without an empty track.
+   * Work-surface routes leave this false so centre stays the primary phone surface.
    */
-  collapseCentreBelowMd?: boolean;
+  collapseCentreOnPhone?: boolean;
 }
 
 /**
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
- * Narrow (< sm): stacked calendar + tasks
- * sm–layout: 330px side rail | tasks (max 700px)
- * layout+: 330px | tasks (700px) [| optional third column — max 330px]
+ * Default (work-surface / desktop hub):
+ * - Narrow (< sm): stacked left + centre
+ * - sm–layout: 330px side rail | centre (max 700px)
+ * - layout+: optional third column
+ *
+ * Home-hub phone (`collapseCentreOnPhone`):
+ * - < md: left (scope) only — centre hidden; work lives on `/tasks`
+ * - md+: same dual/triple grid as desktop
  */
 export function DualPaneLayout({
   leftColumn,
   rightColumn,
   thirdColumn,
   header,
-  collapseCentreBelowMd = false,
+  collapseCentreOnPhone = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
 
-  const dualGridFromMd = collapseCentreBelowMd;
+  const dualGridFromPhone = collapseCentreOnPhone;
 
   const stickyColClass = cn(
     hasHeader
       ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
       : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
-    dualGridFromMd ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail"
+    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail"
   );
 
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
-    dualGridFromMd
+    dualGridFromPhone
       ? "md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
       : "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pb-4",
     hasThirdColumn
       ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pb-5"
       : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pb-5",
-    collapseCentreBelowMd && "max-md:hidden"
+    collapseCentreOnPhone && "max-md:hidden"
   );
 
   return (
@@ -60,7 +66,7 @@ export function DualPaneLayout({
       <div
         className={cn(
           "flex min-h-0 w-full min-w-0 flex-1 flex-col pt-[14px]",
-          dualGridFromMd
+          dualGridFromPhone
             ? [
                 "md:grid md:min-h-0 md:grid-cols-workbench-dual",
                 hasThirdColumn

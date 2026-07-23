@@ -67,6 +67,10 @@ import {
   WORKBENCH_DATE_QUERY,
   type CentreWorkbenchTab,
 } from "@/lib/centreWorkbenchTabs";
+import {
+  resolveWorkbenchLayout,
+  shouldRouteCentreTabsToWorkSurface,
+} from "@/lib/workbenchLayoutMode";
 
 export type { DashboardWorkbenchPanel };
 
@@ -118,9 +122,12 @@ export default function Dashboard({
 }: DashboardProps) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isHubHome = pathname === "/" || pathname === "";
   const isMobile = useIsMobile();
   const isDedicatedWorkbench = workbenchPanel !== "home";
+  const workbenchLayout = useMemo(
+    () => resolveWorkbenchLayout({ pathname, workbenchPanel }),
+    [pathname, workbenchPanel]
+  );
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [intakeMinimized, setIntakeMinimized] = useState(false);
@@ -171,8 +178,6 @@ export default function Dashboard({
 
   const usesCentreWorkbenchTabs =
     workbenchPanel === "home" || workbenchPanel === "issues";
-
-  const hideHomepageCentreOnMobile = isHubHome && workbenchPanel === "home";
 
   // URL ↔ selection: ?property=id opens the single-property workbench; clearing the param (e.g. Hub) widens to all.
   useEffect(() => {
@@ -598,7 +603,7 @@ export default function Dashboard({
         params.set(WORKBENCH_DATE_QUERY, dateKey);
         params.set(WORKBENCH_CALENDAR_VIEW_QUERY, "schedule");
 
-        if (isHubHome && isMobile) {
+        if (shouldRouteCentreTabsToWorkSurface(workbenchLayout, isMobile)) {
           navigate(centreWorkbenchTasksPath("calendar", params));
           return;
         }
@@ -613,7 +618,7 @@ export default function Dashboard({
     },
     [
       usesCentreWorkbenchTabs,
-      isHubHome,
+      workbenchLayout,
       isMobile,
       searchParams,
       navigate,
@@ -653,7 +658,7 @@ export default function Dashboard({
 
   const navigateCentreWorkbenchFromHome = useCallback(
     (tab: CentreWorkbenchTab, filterIds: string[] | null) => {
-      if (isHubHome && isMobile) {
+      if (shouldRouteCentreTabsToWorkSurface(workbenchLayout, isMobile)) {
         const params = workbenchSearchParamsFromBrowser(searchParams);
         params.delete(WORKBENCH_ISSUES_FILTER_QUERY);
         params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
@@ -666,7 +671,7 @@ export default function Dashboard({
       }
       applyCentreWorkbenchNavigation(tab, filterIds);
     },
-    [isHubHome, isMobile, searchParams, navigate, applyCentreWorkbenchNavigation]
+    [workbenchLayout, isMobile, searchParams, navigate, applyCentreWorkbenchNavigation]
   );
 
   const handleFilterClick = (filterId: string) => {
@@ -1013,7 +1018,7 @@ export default function Dashboard({
       />
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
-          collapseCentreBelowMd={hideHomepageCentreOnMobile}
+          collapseCentreOnPhone={workbenchLayout.collapseCentreOnPhone}
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}
@@ -1049,6 +1054,8 @@ export default function Dashboard({
             workbenchPanel={workbenchPanel}
             centreWorkbenchTab={centreWorkbenchTab}
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
+            showCentreNavBelowPhone={workbenchLayout.propertyCentreNav.showBelowPhone}
+            routeCentreNavToWorkSurface={workbenchLayout.propertyCentreNav.routeToWorkSurface}
           />
           </ErrorBoundary>
         }
@@ -1083,7 +1090,7 @@ export default function Dashboard({
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
             onDateSelect={handleDateSelect}
             calendarInitialView={calendarInitialView}
-            hideCentreTabStrip={hideHomepageCentreOnMobile}
+            hideCentreTabStrip={workbenchLayout.hideCentreTabStripOnPhone}
           />
           </ErrorBoundary>
         }

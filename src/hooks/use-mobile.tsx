@@ -1,6 +1,8 @@
 import * as React from "react";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
-const MOBILE_BREAKPOINT = 768;
+/** @deprecated Prefer LAYOUT_BREAKPOINTS.phone — kept for call-site clarity. */
+const MOBILE_BREAKPOINT = LAYOUT_BREAKPOINTS.phone;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
@@ -18,7 +20,7 @@ export function useIsMobile() {
   return !!isMobile;
 }
 
-/** True below Tailwind `md` (768px) — mirrors `max-md:` utilities. */
+/** True below Tailwind `md` / {@link LAYOUT_BREAKPOINTS.phone} — mirrors `max-md:` utilities. */
 export function useIsBelowMd() {
   const query = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 

@@ -69,6 +69,9 @@ type PropertyDashboardCarouselProps = {
   onFilterClick?: (filterId: string) => void;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  /** From resolveWorkbenchLayout().propertyCentreNav */
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
   className?: string;
 };
 
@@ -79,6 +82,8 @@ function AllPropertiesCarouselSlide({
   onFilterClick,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
   isSelected = false,
   onSelectSlide,
 }: {
@@ -88,6 +93,8 @@ function AllPropertiesCarouselSlide({
   onFilterClick?: (filterId: string) => void;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
   isSelected?: boolean;
   onSelectSlide?: () => void;
 }) {
@@ -217,8 +224,8 @@ function AllPropertiesCarouselSlide({
           onOpenInspections={() => onFilterClick?.("show-upcoming-events")}
           centreWorkbenchTab={centreWorkbenchTab}
           onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
-          centreNavHideFrom="md"
-          centreNavLinkToTasksRoute
+          showCentreNavBelowPhone={showCentreNavBelowPhone}
+          routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
         />
       </div>
     </div>
@@ -231,6 +238,8 @@ function PropertyCarouselSlide({
   onFilterClick,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
   isSelected = false,
   onSelectSlide,
 }: {
@@ -239,6 +248,8 @@ function PropertyCarouselSlide({
   onFilterClick?: (filterId: string) => void;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
   isSelected?: boolean;
   onSelectSlide?: () => void;
 }) {
@@ -389,8 +400,8 @@ function PropertyCarouselSlide({
           onOpenRecords={() => openHubNav("records")}
           centreWorkbenchTab={centreWorkbenchTab}
           onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
-          centreNavHideFrom="md"
-          centreNavLinkToTasksRoute
+          showCentreNavBelowPhone={showCentreNavBelowPhone}
+          routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
         />
       </div>
     </div>
@@ -407,6 +418,8 @@ export function PropertyDashboardCarousel({
   onFilterClick,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
   className,
 }: PropertyDashboardCarouselProps) {
   const [api, setApi] = useState<CarouselApi>();
@@ -513,6 +526,8 @@ export function PropertyDashboardCarousel({
                 onFilterClick={onFilterClick}
                 centreWorkbenchTab={centreWorkbenchTab}
                 onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+                showCentreNavBelowPhone={showCentreNavBelowPhone}
+                routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
                 isSelected={selectedCarouselIndex === 0}
                 onSelectSlide={() => handleExplicitSelect(0)}
               />
@@ -531,6 +546,8 @@ export function PropertyDashboardCarousel({
                 onFilterClick={onFilterClick}
                 centreWorkbenchTab={centreWorkbenchTab}
                 onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+                showCentreNavBelowPhone={showCentreNavBelowPhone}
+                routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
                 isSelected={selectedCarouselIndex === slideIndex}
                 onSelectSlide={() => handleExplicitSelect(slideIndex)}
               />

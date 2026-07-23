@@ -71,6 +71,8 @@ interface PropertyIdentityStripProps {
   betweenSummaryAndNav?: ReactNode;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
 }
 
 /**
@@ -87,6 +89,8 @@ export function PropertyIdentityStrip({
   betweenSummaryAndNav,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
 }: PropertyIdentityStripProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -262,6 +266,8 @@ export function PropertyIdentityStrip({
             onOpenRecords={() => openHubNav("records")}
             centreWorkbenchTab={centreWorkbenchTab}
             onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+            showCentreNavBelowPhone={showCentreNavBelowPhone}
+            routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
           />
         </div>
       </div>

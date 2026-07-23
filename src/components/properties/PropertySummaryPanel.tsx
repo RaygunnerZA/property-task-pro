@@ -72,11 +72,12 @@ type PropertySummaryPanelProps = {
   /** Portfolio card: load org-wide signals for summary lines */
   portfolioSignals?: boolean;
   onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
-  /** Inflow · Tasks · Calendar row below the stats grid (narrow layouts). */
+  /** Inflow · Tasks · Calendar row below the stats grid (phone / home-hub). */
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
-  centreNavHideFrom?: "sm" | "md";
-  centreNavLinkToTasksRoute?: boolean;
+  /** From {@link resolveWorkbenchLayout} → propertyCentreNav. */
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
 };
 
 function StatColumn({
@@ -257,8 +258,8 @@ export function PropertySummaryPanel({
   onSummaryLineActivate,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
-  centreNavHideFrom = "sm",
-  centreNavLinkToTasksRoute = false,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
 }: PropertySummaryPanelProps) {
   const propertyName = property.nickname || property.address;
   const { data: scopedSignals = [] } = useSignalsQuery({
@@ -382,12 +383,11 @@ export function PropertySummaryPanel({
           />
         </div>
 
-        {centreWorkbenchTab ? (
+        {centreWorkbenchTab && showCentreNavBelowPhone ? (
           <PropertySummaryCentreNav
             activeTab={centreWorkbenchTab}
             onTabChange={onCentreWorkbenchTabChange}
-            hideFrom={centreNavHideFrom}
-            linkToTasksRoute={centreNavLinkToTasksRoute}
+            routeToWorkSurface={routeCentreNavToWorkSurface}
           />
         ) : null}
 

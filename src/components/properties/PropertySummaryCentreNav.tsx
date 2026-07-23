@@ -11,10 +11,11 @@ import {
 type PropertySummaryCentreNavProps = {
   activeTab: CentreWorkbenchTab;
   onTabChange?: (tab: CentreWorkbenchTab) => void;
-  /** Hide this row from this breakpoint up (centre column tab strip takes over). */
-  hideFrom?: "sm" | "md";
-  /** Hub home mobile: deep-link to `/tasks` instead of in-place tab change. */
-  linkToTasksRoute?: boolean;
+  /**
+   * When true, navigate to `/tasks?panelTab=…` (home-hub phone).
+   * When false, call `onTabChange` for in-place centre tab updates.
+   */
+  routeToWorkSurface?: boolean;
   className?: string;
 };
 
@@ -26,13 +27,13 @@ function workbenchSearchParamsFromBrowser(fallback: URLSearchParams): URLSearchP
 }
 
 /**
- * Illustrated Inflow · Tasks · Calendar row on property cards (narrow layouts).
+ * Illustrated Inflow · Tasks · Calendar row on property cards (phone only).
+ * Hidden from `md` up — desktop centre tab strip owns the same tabs.
  */
 export function PropertySummaryCentreNav({
   activeTab,
   onTabChange,
-  hideFrom = "sm",
-  linkToTasksRoute = false,
+  routeToWorkSurface = false,
   className,
 }: PropertySummaryCentreNavProps) {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export function PropertySummaryCentreNav({
 
   const handleTabClick = useCallback(
     (tab: CentreWorkbenchTab) => {
-      if (linkToTasksRoute) {
+      if (routeToWorkSurface) {
         const params = workbenchSearchParamsFromBrowser(searchParams);
         navigate(centreWorkbenchTasksPath(tab, params));
         return;
@@ -52,14 +53,13 @@ export function PropertySummaryCentreNav({
       const params = workbenchSearchParamsFromBrowser(searchParams);
       navigate(centreWorkbenchTasksPath(tab, params));
     },
-    [linkToTasksRoute, navigate, onTabChange, searchParams]
+    [routeToWorkSurface, navigate, onTabChange, searchParams]
   );
 
   return (
     <div
       className={cn(
-        "flex h-[75px] w-full min-w-0 items-end justify-between gap-1 border-b-2 border-white/50 px-1 pb-[15px] pt-0",
-        hideFrom === "md" ? "md:hidden" : "sm:hidden",
+        "flex h-[75px] w-full min-w-0 items-end justify-between gap-1 border-b-2 border-white/50 px-1 pb-[15px] pt-0 md:hidden",
         className
       )}
       role="tablist"

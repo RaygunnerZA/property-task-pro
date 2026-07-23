@@ -35,6 +35,8 @@ const PRESETS = [
 function describeViewport(width: number): string[] {
   const tags: string[] = [];
   if (width <= LAYOUT_BREAKPOINTS.maxPane) tags.push("max-pane");
+  if (width < LAYOUT_BREAKPOINTS.phone) tags.push("phone");
+  if (width >= LAYOUT_BREAKPOINTS.phone) tags.push("phone+");
   (Object.entries(TAILWIND_DEFAULT_MIN) as [keyof typeof TAILWIND_DEFAULT_MIN, number][]).forEach(
     ([name, px]) => {
       if (width >= px) tags.push(`${name}+`);

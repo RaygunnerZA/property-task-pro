@@ -20,6 +20,7 @@ import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContex
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
+import { isHomeHubPath } from "@/lib/workbenchLayoutMode";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -47,6 +48,8 @@ interface LeftColumnProps {
   workbenchPanel?: DashboardWorkbenchPanel;
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
+  showCentreNavBelowPhone?: boolean;
+  routeCentreNavToWorkSurface?: boolean;
 }
 
 /**
@@ -54,7 +57,7 @@ interface LeftColumnProps {
  * Calendar + Properties
  * 
  * Desktop: Fixed side rail (~330px), sticky on scroll
- * Mobile: Full width, stacked above RightColumn
+ * Mobile: Full width, stacked above RightColumn (home-hub) or beside work surface
  */
 export function LeftColumn({ 
   tasks = [], 
@@ -74,10 +77,12 @@ export function LeftColumn({
   workbenchPanel = "home",
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
 }: LeftColumnProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isHubHome = pathname === "/" || pathname === "";
+  const isHubHome = isHomeHubPath(pathname);
   const isScheduleWorkbench = workbenchPanel === "schedule";
   const isMobile = useIsMobile();
   const isScheduleMobile = isScheduleWorkbench && isMobile;
@@ -255,6 +260,8 @@ export function LeftColumn({
                 onFilterClick={onFilterClick}
                 centreWorkbenchTab={centreWorkbenchTab}
                 onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+                showCentreNavBelowPhone={showCentreNavBelowPhone}
+                routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
               />
             </div>
           ) : focusedProperty ? (
@@ -285,6 +292,8 @@ export function LeftColumn({
                   }}
                   centreWorkbenchTab={centreWorkbenchTab}
                   onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
+                  showCentreNavBelowPhone={showCentreNavBelowPhone}
+                  routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
                 />
               </div>
             </div>
