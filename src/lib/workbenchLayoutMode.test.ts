@@ -20,7 +20,7 @@ describe("resolveWorkbenchLayout", () => {
     const layout = resolveWorkbenchLayout({ pathname: "/tasks", workbenchPanel: "home" });
     expect(layout.surfaceRole).toBe("work-surface");
     expect(layout.collapseCentreOnPhone).toBe(false);
-    expect(layout.hideCentreTabStripOnPhone).toBe(false);
+    expect(layout.hideCentreTabStripOnPhone).toBe(true);
     expect(layout.propertyCentreNav.showBelowPhone).toBe(false);
   });
 

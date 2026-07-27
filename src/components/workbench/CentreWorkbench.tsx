@@ -44,8 +44,10 @@ export function CentreWorkbench({
   onDateSelect,
   initialCalendarView,
   hideViewAllLinks = false,
-  hideTabStrip = false,
+  hideTabStrip: _hideTabStrip = false,
 }: CentreWorkbenchProps) {
+  // Phone strip visibility is CSS-owned (`hidden md:flex`); prop kept for call-site compat.
+  void _hideTabStrip;
   const sharedPanelProps = useMemo(
     () => ({
       tasks,
@@ -85,7 +87,8 @@ export function CentreWorkbench({
         <CentreWorkbenchTabStrip
           activeTab={activeTab}
           onTabChange={onCentreTabChange}
-          className={cn("mb-3 shrink-0", hideTabStrip && "hidden md:flex")}
+          // Phone: property stat columns own Inflow · Tasks · Calendar entry.
+          className="mb-3 hidden shrink-0 md:flex"
         />
 
         <div className="mb-4 flex shrink-0 flex-col">

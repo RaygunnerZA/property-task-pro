@@ -17,7 +17,10 @@ import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 export type WorkbenchSurfaceRole = "home-hub" | "work-surface";
 
 export type PropertyCentreNavContract = {
-  /** Show Inflow · Tasks · Calendar on property cards below the phone breakpoint. */
+  /**
+   * Legacy: phone property cards used a separate centre-nav row.
+   * Inflow · Tasks · Calendar now live in the mobile stat columns.
+   */
   showBelowPhone: boolean;
   /** Deep-link to `/tasks` instead of mutating `panelTab` in place. */
   routeToWorkSurface: boolean;
@@ -62,8 +65,8 @@ export function resolveWorkbenchLayout(args: {
   return {
     surfaceRole: "work-surface",
     collapseCentreOnPhone: false,
-    hideCentreTabStripOnPhone: false,
-    /** Centre column tab strip owns Inflow · Tasks · Calendar on work surfaces. */
+    /** Phone stats embed Inflow · Tasks · Calendar; strip is desktop-only. */
+    hideCentreTabStripOnPhone: true,
     propertyCentreNav: {
       showBelowPhone: false,
       routeToWorkSurface: false,

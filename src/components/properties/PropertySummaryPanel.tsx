@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,17 +17,25 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
-import { PropertySummaryCentreNav } from "@/components/properties/PropertySummaryCentreNav";
-import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
+import {
+  CENTRE_WORKBENCH_TAB_META,
+  centreWorkbenchTasksPath,
+  type CentreWorkbenchTab,
+} from "@/lib/centreWorkbenchTabs";
 
 const statNumberClass =
   "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
+
+const statNumberInlineClass =
+  "shrink-0 text-[28px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white";
 
 const statWordClass =
   "font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
   "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-[#3A4A6A] hover:shadow-none sm:px-1.5 sm:pb-3";
+
+const STAT_CENTRE_TABS: readonly CentreWorkbenchTab[] = ["inflow", "tasks", "calendar"];
 
 type StatSecondaryTone = "urgent" | "warning" | "neutral";
 
@@ -72,12 +81,17 @@ type PropertySummaryPanelProps = {
   /** Portfolio card: load org-wide signals for summary lines */
   portfolioSignals?: boolean;
   onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
-  /** Inflow · Tasks · Calendar row below the stats grid (phone / home-hub). */
+  /** Active Inflow · Tasks · Calendar tab (phone stats + work surface). */
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
-  /** From {@link resolveWorkbenchLayout} → propertyCentreNav. */
+  /** @deprecated Phone stats embed centre nav; kept for call-site compatibility. */
   showCentreNavBelowPhone?: boolean;
   routeCentreNavToWorkSurface?: boolean;
+};
+
+type StatCentreNav = {
+  tab: CentreWorkbenchTab;
+  isActive?: boolean;
 };
 
 function StatColumn({
@@ -88,6 +102,7 @@ function StatColumn({
   secondaryLabel,
   secondaryTone = "neutral",
   onActivate,
+  centreNav,
 }: {
   value: number;
   line1: string;
@@ -96,8 +111,48 @@ function StatColumn({
   secondaryLabel: string;
   secondaryTone?: StatSecondaryTone;
   onActivate?: () => void;
+  /** Phone: illustrated Inflow · Tasks · Calendar entry (no chevron). */
+  centreNav?: StatCentreNav;
 }) {
-  const inner = (
+  const centreMeta = centreNav ? CENTRE_WORKBENCH_TAB_META[centreNav.tab] : null;
+
+  const inner = centreMeta ? (
+    <>
+      <div className="mb-1.5 flex w-full min-w-0 items-center gap-1">
+        <img
+          src={centreMeta.illustrationSrc}
+          alt=""
+          draggable={false}
+          decoding="async"
+          className={cn(
+            "h-9 w-9 shrink-0 object-contain drop-shadow-sm transition-opacity",
+            centreNav?.isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
+          )}
+        />
+        <span
+          className={cn(
+            "min-w-0 flex-1 text-left text-[11px] font-semibold leading-tight tracking-tight transition-colors",
+            centreNav?.isActive
+              ? "text-primary group-hover:text-white"
+              : "text-foreground/85 group-hover:text-white"
+          )}
+        >
+          View {centreMeta.label}
+        </span>
+      </div>
+      <div className="flex w-full min-w-0 items-start gap-1">
+        <span className={statNumberInlineClass}>{value}</span>
+        <div className="flex min-w-0 flex-1 flex-col items-start pt-0.5 text-left text-foreground">
+          <span className={statWordClass}>{line1}</span>
+          <span className={statWordClass}>{line2}</span>
+        </div>
+      </div>
+      <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 tracking-[0.3px]">
+        <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
+        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+      </div>
+    </>
+  ) : (
     <>
       <span className={statNumberClass}>{value}</span>
       <div className="flex w-full min-w-0 items-stretch gap-0.5">
@@ -120,19 +175,17 @@ function StatColumn({
   );
 
   if (!onActivate) {
-    return (
-      <div className={statCellClass}>
-        {inner}
-      </div>
-    );
+    return <div className={statCellClass}>{inner}</div>;
   }
 
   return (
     <button
       type="button"
       onClick={onActivate}
+      aria-current={centreNav?.isActive ? "true" : undefined}
       className={cn(
         statCellClass,
+        centreNav?.isActive && "bg-white/70 ring-1 ring-primary/20",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
       )}
     >
@@ -257,14 +310,33 @@ export function PropertySummaryPanel({
   portfolioSignals = false,
   onSummaryLineActivate,
   centreWorkbenchTab,
-  onCentreWorkbenchTabChange,
-  showCentreNavBelowPhone = false,
-  routeCentreNavToWorkSurface = false,
+  onCentreWorkbenchTabChange: _onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone: _showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface: _routeCentreNavToWorkSurface = false,
 }: PropertySummaryPanelProps) {
+  // Phone stats deep-link to `/tasks`; these remain for call-site compatibility.
+  void _onCentreWorkbenchTabChange;
+  void _showCentreNavBelowPhone;
+  void _routeCentreNavToWorkSurface;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const propertyName = property.nickname || property.address;
   const { data: scopedSignals = [] } = useSignalsQuery({
     propertyIds: portfolioSignals ? undefined : [property.id],
   });
+
+  const openCentreTab = useCallback(
+    (tab: CentreWorkbenchTab) => {
+      // Phone stats always open the Fresh Inflow · Tasks · Calendar work surface
+      // (preserves property scope / filters from the current URL).
+      const params =
+        typeof window === "undefined"
+          ? new URLSearchParams(searchParams)
+          : new URLSearchParams(window.location.search);
+      navigate(centreWorkbenchTasksPath(tab, params));
+    },
+    [navigate, searchParams]
+  );
 
   const metrics = useMemo(
     () =>
@@ -350,46 +422,75 @@ export function PropertySummaryPanel({
     return <Skeleton className={cn("h-[320px] w-full rounded-xl", className)} />;
   }
 
+  const desktopStats = [
+    {
+      value: metrics.complianceReviews,
+      line1: "to",
+      line2: "review",
+      secondary: complianceSecondary,
+      onActivate: onOpenCompliance,
+      centreTab: STAT_CENTRE_TABS[0],
+    },
+    {
+      value: metrics.openTasks,
+      line1: "open",
+      line2: "tasks",
+      secondary: tasksSecondary,
+      onActivate: onOpenTasks,
+      centreTab: STAT_CENTRE_TABS[1],
+    },
+    {
+      value: metrics.upcomingInspections,
+      line1: "upcoming",
+      line2: "events",
+      secondary: eventsSecondary,
+      onActivate: onOpenInspections,
+      centreTab: STAT_CENTRE_TABS[2],
+    },
+  ] as const;
+
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        <div className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]">
-          <StatColumn
-            value={metrics.complianceReviews}
-            line1="to"
-            line2="review"
-            secondaryCount={complianceSecondary.count}
-            secondaryLabel={complianceSecondary.label}
-            secondaryTone={complianceSecondary.tone}
-            onActivate={onOpenCompliance}
-          />
-          <StatColumn
-            value={metrics.openTasks}
-            line1="open"
-            line2="tasks"
-            secondaryCount={tasksSecondary.count}
-            secondaryLabel={tasksSecondary.label}
-            secondaryTone={tasksSecondary.tone}
-            onActivate={onOpenTasks}
-          />
-          <StatColumn
-            value={metrics.upcomingInspections}
-            line1="upcoming"
-            line2="events"
-            secondaryCount={eventsSecondary.count}
-            secondaryLabel={eventsSecondary.label}
-            secondaryTone={eventsSecondary.tone}
-            onActivate={onOpenInspections}
-          />
+        {/* Phone: Inflow · Tasks · Calendar live in the stat columns */}
+        <div
+          className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden"
+          role="navigation"
+          aria-label="Work sections"
+        >
+          {desktopStats.map((stat) => (
+            <StatColumn
+              key={stat.centreTab}
+              value={stat.value}
+              line1={stat.line1}
+              line2={stat.line2}
+              secondaryCount={stat.secondary.count}
+              secondaryLabel={stat.secondary.label}
+              secondaryTone={stat.secondary.tone}
+              centreNav={{
+                tab: stat.centreTab,
+                isActive: centreWorkbenchTab === stat.centreTab,
+              }}
+              onActivate={() => openCentreTab(stat.centreTab)}
+            />
+          ))}
         </div>
 
-        {centreWorkbenchTab && showCentreNavBelowPhone ? (
-          <PropertySummaryCentreNav
-            activeTab={centreWorkbenchTab}
-            onTabChange={onCentreWorkbenchTabChange}
-            routeToWorkSurface={routeCentreNavToWorkSurface}
-          />
-        ) : null}
+        {/* Desktop: metric filters with chevron affordance */}
+        <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid">
+          {desktopStats.map((stat) => (
+            <StatColumn
+              key={stat.centreTab}
+              value={stat.value}
+              line1={stat.line1}
+              line2={stat.line2}
+              secondaryCount={stat.secondary.count}
+              secondaryLabel={stat.secondary.label}
+              secondaryTone={stat.secondary.tone}
+              onActivate={stat.onActivate}
+            />
+          ))}
+        </div>
 
         {variant === "full" ? (
           <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-4">
