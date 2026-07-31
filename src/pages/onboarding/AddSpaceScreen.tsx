@@ -214,9 +214,10 @@ export default function AddSpaceScreen() {
     setGroupExtraSpaces((prev) => {
       const list = prev[groupId] ?? [];
       if (list.some((s) => s.name.toLowerCase().trim() === key)) return prev;
+      // Newest extras first so chips pin to the top of the group card.
       return {
         ...prev,
-        [groupId]: [...list, { name: trimmed, insertAfter: options?.insertAfter }],
+        [groupId]: [{ name: trimmed, insertAfter: options?.insertAfter }, ...list],
       };
     });
   };

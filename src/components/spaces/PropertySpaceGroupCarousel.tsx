@@ -132,12 +132,13 @@ export function PropertySpaceGroupCarousel({
       if (!groupId) continue;
       if (isCustomCollectionGroupId(groupId)) {
         if (!result[groupId]) result[groupId] = [];
-        result[groupId].push({ name });
+        // Newest first for chip pinning at the top of the card.
+        result[groupId].unshift({ name });
         continue;
       }
       if (isSuggestionForGroup(name, groupId)) continue;
       if (!result[groupId]) result[groupId] = [];
-      result[groupId].push({ name });
+      result[groupId].unshift({ name });
     }
     return result;
   }, [spaces, spaceToCollection]);

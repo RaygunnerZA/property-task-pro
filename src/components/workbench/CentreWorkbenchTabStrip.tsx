@@ -11,16 +11,14 @@ type CentreWorkbenchTabStripProps = {
   className?: string;
 };
 
-const TAB_ILLUSTRATION_CLASS =
-  "h-[80px] w-[100px] shrink-0 object-contain pt-0 pl-3 drop-shadow-sm transition-opacity";
-
-const TAB_LABEL_CLASS =
-  "grid w-[100px] grid-flow-col auto-cols-auto items-start pr-0 text-center text-xl font-semibold leading-none tracking-tight";
-
-const ACTIVE_TAB_SHADOW = "inset 0 4px 12px rgba(255, 255, 255, 0.27)";
+const ACTIVE_PHONE_SHADOW = "inset 0 2px 6px rgba(255, 255, 255, 0.35)";
+const ACTIVE_DESKTOP_SHADOW = "inset 0 4px 12px rgba(255, 255, 255, 0.27)";
 
 /**
  * Three-tab strip for the centre work column — Inflow · Tasks · Calendar.
+ *
+ * Phone (&lt; md): compact horizontal bar — icon left of title, equal-width tabs.
+ * Desktop (md+): tall illustrated tabs — icon above title.
  */
 export function CentreWorkbenchTabStrip({
   activeTab,
@@ -30,7 +28,8 @@ export function CentreWorkbenchTabStrip({
   return (
     <div
       className={cn(
-        "flex h-[160px] w-full min-w-0 max-w-full items-start justify-start gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-2 pb-0 pt-0",
+        "flex w-full min-w-0 max-w-full items-stretch justify-stretch gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-1.5 py-1.5",
+        "md:h-[160px] md:items-start md:justify-start md:px-2 md:pb-0 md:pt-0",
         className
       )}
       role="tablist"
@@ -47,19 +46,45 @@ export function CentreWorkbenchTabStrip({
             aria-selected={isActive}
             onClick={() => onTabChange(tabId)}
             className={cn(
-              "relative flex h-[160px] w-[120px] shrink-0 flex-col flex-nowrap items-center justify-start gap-0 rounded-t-[12px] rounded-b-none px-2 pb-2 pt-[25px] transition-all duration-200",
+              "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-[12px] px-2 py-2 transition-all duration-200",
               "hover:scale-[1.01] active:scale-[0.99]",
+              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-0 md:rounded-t-[12px] md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
               isActive && "bg-white/50"
             )}
-            style={isActive ? { boxShadow: ACTIVE_TAB_SHADOW } : undefined}
           >
+            {isActive ? (
+              <>
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-[inherit] md:hidden"
+                  style={{ boxShadow: ACTIVE_PHONE_SHADOW }}
+                  aria-hidden
+                />
+                <span
+                  className="pointer-events-none absolute inset-0 hidden rounded-[inherit] md:block"
+                  style={{ boxShadow: ACTIVE_DESKTOP_SHADOW }}
+                  aria-hidden
+                />
+              </>
+            ) : null}
             <img
               src={meta.illustrationSrc}
               alt=""
-              className={cn(TAB_ILLUSTRATION_CLASS, isActive ? "opacity-100" : "opacity-70")}
+              className={cn(
+                "shrink-0 object-contain drop-shadow-sm transition-opacity",
+                "h-8 w-8",
+                "md:h-[80px] md:w-[100px] md:pt-0 md:pl-3",
+                isActive ? "opacity-100" : "opacity-70"
+              )}
               decoding="async"
             />
-            <span className={cn(TAB_LABEL_CLASS, isActive ? "text-foreground" : "text-primary")}>
+            <span
+              className={cn(
+                "min-w-0 truncate font-semibold tracking-tight",
+                "text-[13px] leading-tight",
+                "md:w-[100px] md:overflow-visible md:whitespace-normal md:text-center md:text-xl md:leading-none",
+                isActive ? "text-foreground" : "text-primary"
+              )}
+            >
               {meta.label}
             </span>
           </button>

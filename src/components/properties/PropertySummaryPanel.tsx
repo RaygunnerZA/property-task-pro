@@ -81,10 +81,13 @@ type PropertySummaryPanelProps = {
   /** Portfolio card: load org-wide signals for summary lines */
   portfolioSignals?: boolean;
   onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
-  /** Active Inflow · Tasks · Calendar tab (phone stats + work surface). */
+  /** Active Inflow · Tasks · Calendar tab (highlights phone summary entry cells). */
   centreWorkbenchTab?: CentreWorkbenchTab;
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
-  /** @deprecated Phone stats embed centre nav; kept for call-site compatibility. */
+  /**
+   * Home-hub phone: show summary stats as entry to Inflow · Tasks · Calendar.
+   * Kept for call-site compatibility with {@link resolveWorkbenchLayout}.
+   */
   showCentreNavBelowPhone?: boolean;
   routeCentreNavToWorkSurface?: boolean;
 };
@@ -111,33 +114,36 @@ function StatColumn({
   secondaryLabel: string;
   secondaryTone?: StatSecondaryTone;
   onActivate?: () => void;
-  /** Phone: illustrated Inflow · Tasks · Calendar entry (no chevron). */
+  /**
+   * Phone home: metric cell doubles as entry to a work screen
+   * (to review → Inflow, open tasks → Tasks, upcoming events → Calendar).
+   */
   centreNav?: StatCentreNav;
 }) {
   const centreMeta = centreNav ? CENTRE_WORKBENCH_TAB_META[centreNav.tab] : null;
 
   const inner = centreMeta ? (
     <>
-      <div className="mb-1.5 flex w-full min-w-0 items-center gap-1">
+      <div className="mb-1 flex w-full min-w-0 items-center gap-1">
         <img
           src={centreMeta.illustrationSrc}
           alt=""
           draggable={false}
           decoding="async"
           className={cn(
-            "h-9 w-9 shrink-0 object-contain drop-shadow-sm transition-opacity",
+            "h-8 w-8 shrink-0 object-contain drop-shadow-sm transition-opacity",
             centreNav?.isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
           )}
         />
         <span
           className={cn(
-            "min-w-0 flex-1 text-left text-[11px] font-semibold leading-tight tracking-tight transition-colors",
+            "min-w-0 truncate text-left text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors",
             centreNav?.isActive
               ? "text-primary group-hover:text-white"
-              : "text-foreground/85 group-hover:text-white"
+              : "text-muted-foreground group-hover:text-white/90"
           )}
         >
-          View {centreMeta.label}
+          {centreMeta.label}
         </span>
       </div>
       <div className="flex w-full min-w-0 items-start gap-1">
@@ -314,10 +320,10 @@ export function PropertySummaryPanel({
   showCentreNavBelowPhone: _showCentreNavBelowPhone = false,
   routeCentreNavToWorkSurface: _routeCentreNavToWorkSurface = false,
 }: PropertySummaryPanelProps) {
-  // Phone stats deep-link to `/tasks`; these remain for call-site compatibility.
+  // In-place tab change unused on phone home — stats deep-link to `/tasks`.
   void _onCentreWorkbenchTabChange;
-  void _showCentreNavBelowPhone;
   void _routeCentreNavToWorkSurface;
+  const showPhoneWorkEntries = _showCentreNavBelowPhone;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const propertyName = property.nickname || property.address;
@@ -327,8 +333,7 @@ export function PropertySummaryPanel({
 
   const openCentreTab = useCallback(
     (tab: CentreWorkbenchTab) => {
-      // Phone stats always open the Fresh Inflow · Tasks · Calendar work surface
-      // (preserves property scope / filters from the current URL).
+      // Home phone: to review → Inflow, open tasks → Tasks, upcoming events → Calendar.
       const params =
         typeof window === "undefined"
           ? new URLSearchParams(searchParams)
@@ -452,32 +457,39 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        {/* Phone: Inflow · Tasks · Calendar live in the stat columns */}
-        <div
-          className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden"
-          role="navigation"
-          aria-label="Work sections"
-        >
-          {desktopStats.map((stat) => (
-            <StatColumn
-              key={stat.centreTab}
-              value={stat.value}
-              line1={stat.line1}
-              line2={stat.line2}
-              secondaryCount={stat.secondary.count}
-              secondaryLabel={stat.secondary.label}
-              secondaryTone={stat.secondary.tone}
-              centreNav={{
-                tab: stat.centreTab,
-                isActive: centreWorkbenchTab === stat.centreTab,
-              }}
-              onActivate={() => openCentreTab(stat.centreTab)}
-            />
-          ))}
-        </div>
+        {/* Phone home-hub: to review / open tasks / upcoming events → work screens */}
+        {showPhoneWorkEntries ? (
+          <div
+            className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden"
+            role="navigation"
+            aria-label="Open Inflow, Tasks, or Calendar"
+          >
+            {desktopStats.map((stat) => (
+              <StatColumn
+                key={stat.centreTab}
+                value={stat.value}
+                line1={stat.line1}
+                line2={stat.line2}
+                secondaryCount={stat.secondary.count}
+                secondaryLabel={stat.secondary.label}
+                secondaryTone={stat.secondary.tone}
+                centreNav={{
+                  tab: stat.centreTab,
+                  isActive: centreWorkbenchTab === stat.centreTab,
+                }}
+                onActivate={() => openCentreTab(stat.centreTab)}
+              />
+            ))}
+          </div>
+        ) : null}
 
-        {/* Desktop: metric filters with chevron affordance */}
-        <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid">
+        {/* Desktop (+ phone work-surface): metric filters with chevron affordance */}
+        <div
+          className={cn(
+            "grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]",
+            showPhoneWorkEntries ? "hidden md:grid" : "grid"
+          )}
+        >
           {desktopStats.map((stat) => (
             <StatColumn
               key={stat.centreTab}

@@ -707,6 +707,9 @@ export function InviteUserForm({
                 )}
               </div>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              eg. Maintenance Team, Housekeeping
+            </p>
           </section>
 
           {/* ── 7. TAG ALLOCATION ── */}

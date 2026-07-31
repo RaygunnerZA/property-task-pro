@@ -118,7 +118,9 @@ export function OnboardingCustomCollectionCard({
   const visibleSpaceNames = useMemo(() => {
     const names: string[] = [];
     const seen = new Set<string>();
+    const insertAfterQueue: { name: string; afterKey: string }[] = [];
 
+    // extraSpaces[0] is newest — keep that order so new chips appear at the top.
     for (const extra of extraSpaces) {
       const extraName =
         typeof extra === "string"
@@ -130,15 +132,20 @@ export function OnboardingCustomCollectionCard({
       const key = extraName.toLowerCase().trim();
       if (seen.has(key)) continue;
       seen.add(key);
-      if (extra.insertAfter) {
-        const afterKey = extra.insertAfter.toLowerCase().trim();
-        const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
-        if (afterIdx >= 0) {
-          names.splice(afterIdx + 1, 0, extraName);
-          continue;
-        }
+      if (typeof extra === "object" && extra.insertAfter) {
+        insertAfterQueue.push({
+          name: extraName,
+          afterKey: extra.insertAfter.toLowerCase().trim(),
+        });
+        continue;
       }
       names.push(extraName);
+    }
+
+    for (const { name, afterKey } of insertAfterQueue) {
+      const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
+      if (afterIdx >= 0) names.splice(afterIdx + 1, 0, name);
+      else names.unshift(name);
     }
 
     return names;
@@ -291,9 +298,9 @@ export function OnboardingCustomCollectionCard({
 
             <div
               className={cn(
-                "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-all ease-out",
+                "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-[opacity,transform,margin] ease-out",
                 isExpanded
-                  ? "mt-[6px] min-h-0 flex-1 overflow-auto opacity-100 translate-y-0"
+                  ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                   : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
               )}
               style={transitionStyle}

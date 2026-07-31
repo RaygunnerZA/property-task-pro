@@ -19,7 +19,10 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
   onDateSelect?: (date: Date | undefined) => void;
   initialCalendarView?: CentreCalendarView;
   hideViewAllLinks?: boolean;
-  /** Hide illustrated tab strip (e.g. mobile property profile uses card nav). */
+  /**
+   * Hide illustrated tab strip below `md` (home-hub phone).
+   * On work-surface phone this stays false so Inflow | Tasks | Calendar remain visible.
+   */
   hideTabStrip?: boolean;
 };
 
@@ -44,10 +47,8 @@ export function CentreWorkbench({
   onDateSelect,
   initialCalendarView,
   hideViewAllLinks = false,
-  hideTabStrip: _hideTabStrip = false,
+  hideTabStrip = false,
 }: CentreWorkbenchProps) {
-  // Phone strip visibility is CSS-owned (`hidden md:flex`); prop kept for call-site compat.
-  void _hideTabStrip;
   const sharedPanelProps = useMemo(
     () => ({
       tasks,
@@ -87,8 +88,9 @@ export function CentreWorkbench({
         <CentreWorkbenchTabStrip
           activeTab={activeTab}
           onTabChange={onCentreTabChange}
-          // Phone: property stat columns own Inflow · Tasks · Calendar entry.
-          className="mb-3 hidden shrink-0 md:flex"
+          // Home-hub phone: centre collapsed — strip hidden below md.
+          // Work-surface phone: strip is the primary Inflow | Tasks | Calendar bar.
+          className={cn("mb-3 shrink-0", hideTabStrip && "hidden md:flex")}
         />
 
         <div className="mb-4 flex shrink-0 flex-col">

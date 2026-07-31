@@ -6,10 +6,10 @@ import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
  * @see Docs/04_UI_System.md §4.2 — Desktop operational workbench vs Mobile work-execution-first
  * @see LAYOUT_BREAKPOINTS.phone in layoutBreakpoints.ts (768px / Tailwind `md`)
  *
- * | Surface        | Route example | Desktop                         | Phone (< phone bp)                             |
- * |----------------|---------------|---------------------------------|------------------------------------------------|
- * | `home-hub`     | `/`           | Left scope + centre work column | Scope / property grounding only                |
- * | `work-surface` | `/tasks`      | Same dual/triple columns        | Full-screen centre (Inflow · Tasks · Calendar) |
+ * | Surface        | Route example | Desktop                         | Phone (< phone bp)                                      |
+ * |----------------|---------------|---------------------------------|---------------------------------------------------------|
+ * | `home-hub`     | `/`           | Left scope + centre work column | Scope only; stats link to Inflow / Tasks / Calendar     |
+ * | `work-surface` | `/tasks`      | Same dual/triple columns        | Full-screen centre + top Inflow | Tasks | Calendar tabs |
  *
  * Phone does not stack desktop columns. Bottom nav + routes carry UX weight.
  * Property is scope (filters the current surface), not a parallel nav tree.
@@ -18,8 +18,8 @@ export type WorkbenchSurfaceRole = "home-hub" | "work-surface";
 
 export type PropertyCentreNavContract = {
   /**
-   * Legacy: phone property cards used a separate centre-nav row.
-   * Inflow · Tasks · Calendar now live in the mobile stat columns.
+   * Home-hub phone: property summary stats deep-link into Inflow · Tasks · Calendar.
+   * (to review → Inflow, open tasks → Tasks, upcoming events → Calendar)
    */
   showBelowPhone: boolean;
   /** Deep-link to `/tasks` instead of mutating `panelTab` in place. */
@@ -30,7 +30,11 @@ export type WorkbenchLayoutContract = {
   surfaceRole: WorkbenchSurfaceRole;
   /** DualPane: hide centre column and defer dual-column grid until phone+. */
   collapseCentreOnPhone: boolean;
-  /** Centre tab strip is irrelevant when the centre is collapsed on phone. */
+  /**
+   * Hide the centre Inflow · Tasks · Calendar tab strip below the phone breakpoint.
+   * Home-hub: true (centre collapsed; entry is via property summary stats).
+   * Work-surface: false — tab strip sits below the header on all three screens.
+   */
   hideCentreTabStripOnPhone: boolean;
   propertyCentreNav: PropertyCentreNavContract;
 };
@@ -65,8 +69,8 @@ export function resolveWorkbenchLayout(args: {
   return {
     surfaceRole: "work-surface",
     collapseCentreOnPhone: false,
-    /** Phone stats embed Inflow · Tasks · Calendar; strip is desktop-only. */
-    hideCentreTabStripOnPhone: true,
+    /** Full-screen Inflow · Tasks · Calendar — tab strip always below header. */
+    hideCentreTabStripOnPhone: false,
     propertyCentreNav: {
       showBelowPhone: false,
       routeToWorkSurface: false,

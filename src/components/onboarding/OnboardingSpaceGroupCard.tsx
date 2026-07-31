@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { SemanticChip, ExpandableSpaceChip } from "@/components/chips/semantic";
 import { Plus } from "lucide-react";
@@ -70,6 +70,8 @@ export function OnboardingSpaceGroupCard({
   const enterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** After collapsing via banner click, ignore hover until pointer leaves the card. */
   const suppressHoverExpandRef = useRef(false);
+  const chipsScrollRef = useRef<HTMLDivElement | null>(null);
+  const prevLeadingChipRef = useRef<string | null>(null);
 
   const handleMouseEnter = useCallback(() => {
     if (suppressHoverExpandRef.current) return;
@@ -129,8 +131,8 @@ export function OnboardingSpaceGroupCard({
   };
 
   const visibleSpaceNames = useMemo(() => {
-    const names: string[] = [];
     const seen = new Set<string>();
+    const suggestions: string[] = [];
 
     for (const name of group.suggestedSpaces) {
       if (typeof name !== "string" || !name.trim()) continue;
@@ -138,12 +140,14 @@ export function OnboardingSpaceGroupCard({
       if (dismissedSuggestions.has(sourceKey)) continue;
       const displayName = suggestionLabelOverrides[sourceKey] ?? name;
       const displayKey = displayName.toLowerCase().trim();
-      if (!seen.has(displayKey)) {
-        seen.add(displayKey);
-        names.push(displayName);
-      }
+      if (seen.has(displayKey)) continue;
+      seen.add(displayKey);
+      suggestions.push(displayName);
     }
 
+    // Contract: extraSpaces[0] is newest — pin those chips to the top.
+    const extrasNewestFirst: string[] = [];
+    const extrasInsertAfter: { name: string; afterKey: string }[] = [];
     for (const extra of extraSpaces) {
       const extraName =
         typeof extra === "string"
@@ -155,19 +159,54 @@ export function OnboardingSpaceGroupCard({
       const key = extraName.toLowerCase().trim();
       if (seen.has(key)) continue;
       seen.add(key);
-      if (extra.insertAfter) {
-        const afterKey = extra.insertAfter.toLowerCase().trim();
-        const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
-        if (afterIdx >= 0) {
-          names.splice(afterIdx + 1, 0, extraName);
-          continue;
-        }
+      const insertAfter =
+        typeof extra === "object" && typeof extra?.insertAfter === "string"
+          ? extra.insertAfter
+          : undefined;
+      if (insertAfter?.trim()) {
+        extrasInsertAfter.push({
+          name: extraName,
+          afterKey: insertAfter.toLowerCase().trim(),
+        });
+        continue;
       }
-      names.push(extraName);
+      extrasNewestFirst.push(extraName);
+    }
+
+    const selectedSuggestions: string[] = [];
+    const unselectedSuggestions: string[] = [];
+    for (const displayName of suggestions) {
+      const key = displayName.toLowerCase().trim();
+      if (selectedSpacesSet.has(key)) selectedSuggestions.push(displayName);
+      else unselectedSuggestions.push(displayName);
+    }
+
+    // New / selected spaces pin to the top; grey suggestions follow.
+    const names = [...extrasNewestFirst, ...selectedSuggestions, ...unselectedSuggestions];
+
+    // Duplicates (Bedroom 2 after Bedroom) keep sibling placement.
+    for (const { name, afterKey } of extrasInsertAfter) {
+      const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
+      if (afterIdx >= 0) names.splice(afterIdx + 1, 0, name);
+      else names.unshift(name);
     }
 
     return names;
-  }, [group.suggestedSpaces, extraSpaces, dismissedSuggestions, suggestionLabelOverrides]);
+  }, [
+    group.suggestedSpaces,
+    extraSpaces,
+    dismissedSuggestions,
+    suggestionLabelOverrides,
+    selectedSpacesSet,
+  ]);
+
+  useEffect(() => {
+    const leading = visibleSpaceNames[0] ?? null;
+    if (leading && leading !== prevLeadingChipRef.current && isExpanded) {
+      chipsScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    prevLeadingChipRef.current = leading;
+  }, [visibleSpaceNames, isExpanded]);
 
   const transitionStyle = { transitionDuration: `${transitionMs}ms` };
 
@@ -231,12 +270,13 @@ export function OnboardingSpaceGroupCard({
             {group.description}
           </p>
 
-          {/* Space chips — slide in below title + rule */}
+          {/* Space chips — scroll vertically when they overflow the card */}
           <div
+            ref={chipsScrollRef}
             className={cn(
-              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-2 pt-0 pb-0 transition-all ease-out",
+              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-2 pt-0 pb-0 transition-[opacity,transform,margin] ease-out",
               isExpanded
-                ? "mt-[6px] min-h-0 flex-1 overflow-auto opacity-100 translate-y-0"
+                ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                 : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
             )}
             style={transitionStyle}
