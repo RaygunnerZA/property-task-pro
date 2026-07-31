@@ -73,6 +73,10 @@ import {
   DEFAULT_TASK_DETAIL_CONTEXT,
   type TaskDetailContextId,
 } from "@/components/tasks/detail/taskDetailContexts";
+import {
+  clearTaskCompletionMotion,
+  playTaskCompletionMotion,
+} from "@/lib/taskCompletionMotion";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -1370,20 +1374,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
                   if (error) throw error;
                   setStatus("completed");
-                  await refreshTask();
-                  queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                  queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
-                  if (orgId && propId) {
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-timeline", orgId, propId],
-                    });
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-vendors", orgId, propId],
-                    });
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-drift", orgId, propId],
-                    });
-                  }
                   if (orgId) {
                     const updateBriefingCache = (key: (string | undefined)[]) => {
                       queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
@@ -1406,7 +1396,28 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     taskId,
                     propertyId: propId,
                   });
+                  // Close the panel so the list is visible, then play the card's
+                  // confirm/settle motion before invalidating — otherwise the
+                  // refetch would remove the card mid-animation (or behind the
+                  // modal, where the user never sees what happened).
+                  onClose();
+                  await playTaskCompletionMotion(taskId);
+                  await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+                  clearTaskCompletionMotion(taskId);
+                  queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
+                  if (orgId && propId) {
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-timeline", orgId, propId],
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-vendors", orgId, propId],
+                    });
+                    queryClient.invalidateQueries({
+                      queryKey: ["property-drift", orgId, propId],
+                    });
+                  }
                 } catch (err: any) {
+                  clearTaskCompletionMotion(taskId);
                   toast({ title: "Couldn't complete task", description: err.message, variant: "destructive" });
                 } finally {
                   setIsUpdating(false);

@@ -273,6 +273,20 @@ export default {
             transform: "translateX(0) scale(1)",
           },
         },
+        "complete-pop": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.6)",
+          },
+          "60%": {
+            opacity: "1",
+            transform: "scale(1.08)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -289,6 +303,7 @@ export default {
         "tooltip-slide-from-bottom": "tooltip-slide-from-bottom 300ms cubic-bezier(0.4, 0, 0.2, 1)",
         "tooltip-slide-from-left": "tooltip-slide-from-left 300ms cubic-bezier(0.4, 0, 0.2, 1)",
         "tooltip-slide-from-right": "tooltip-slide-from-right 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "complete-pop": "complete-pop 180ms ease-out both",
       },
     },
   },

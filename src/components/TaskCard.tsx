@@ -1,6 +1,12 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Calendar, Clock, MapPin, MoreHorizontal } from "lucide-react";
+import { Calendar, Check, Clock, MapPin, MoreHorizontal } from "lucide-react";
+import {
+  COMPLETE_COLLAPSE_MS,
+  clearTaskCompletionMotion,
+  playTaskCompletionMotion,
+  useTaskCompletionMotion,
+} from "@/lib/taskCompletionMotion";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,7 +19,7 @@ import { updateTaskFields } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useMemo, useCallback, memo, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
@@ -37,6 +43,7 @@ import {
 /** Issues workbench “Open work” — same meta treatment as Recent signals (JetBrains Mono 10 / 600, caps). */
 const WORKBENCH_TASK_META_CLASS =
   "text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
+
 
 // Property Icon Chip Component - shows property icon on property color background
 // 24x24px icon bounding box
@@ -141,6 +148,11 @@ function TaskCardComponent({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isCompleting, setIsCompleting] = useState(false);
+  // Shared confirm/settle phase — also driven by TaskDetailPanel's "Mark Complete"
+  // so the list card animates no matter where completion was triggered from.
+  const completionPhase = useTaskCompletionMotion(
+    (state) => (task?.id ? state.phases[task.id] : undefined) ?? "idle"
+  );
   
   // Memoize task mapping and image parsing to prevent re-renders
   // Only recalculate when task data actually changes, not when object reference changes
@@ -229,25 +241,39 @@ function TaskCardComponent({
     if (!task?.id || isCompleting) return;
 
     setIsCompleting(true);
-    try {
-      await updateTaskFields(task.id, { status: 'completed' });
+    // Run the mutation in parallel with the confirm/settle motion. Capture the
+    // outcome instead of awaiting immediately so an early rejection can't
+    // surface as an unhandled promise while the motion plays.
+    const mutation = updateTaskFields(task.id, { status: "completed" }).then(
+      () => ({ ok: true as const }),
+      (error: unknown) => ({ ok: false as const, error })
+    );
+
+    await playTaskCompletionMotion(task.id);
+
+    const result = await mutation;
+    if (result.ok) {
       toast({
         title: "Task completed",
         description: "The task has been marked as complete.",
       });
-      // Invalidate queries to refresh the task list and briefing radial
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
-      queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] });
-    } catch (error) {
+      // Invalidate only after the exit motion completed, so the refetch can't
+      // remove the card mid-animation. The card stays collapsed until the
+      // fresh data drops it from the list, then the phase is cleared.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] }),
+        queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] }),
+      ]);
+    } else {
       toast({
         title: "Error",
         description: "Failed to complete task. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsCompleting(false);
     }
+    clearTaskCompletionMotion(task.id);
+    setIsCompleting(false);
   }, [task?.id, isCompleting, toast, queryClient, orgId]);
   
   // Don't show Done button if task is already archived or completed
@@ -283,6 +309,35 @@ function TaskCardComponent({
     property?.nickname || property?.address || property?.name || null;
   const spaceLabel = spaces[0]?.name ?? null;
   const locationLine = [propertyLabel, spaceLabel].filter(Boolean).join(" • ");
+
+  const isConfirmingComplete = completionPhase !== "idle";
+  const isCollapsingComplete = completionPhase === "collapse";
+
+  /** Confirm phase: completed state shown in place before the card leaves.
+   *  !absolute/!z-20 beat the paper-texture rule `div[class*="bg-card"] > *`
+   *  (index.css) which forces direct card children to relative/z-1. */
+  const completionOverlay = isConfirmingComplete ? (
+    <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-[12px] bg-white/60">
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-md animate-complete-pop">
+        <Check className="h-5 w-5 text-white" strokeWidth={3} aria-hidden />
+      </span>
+    </div>
+  ) : null;
+
+  /** Settle phase: collapse the row/card so siblings move up smoothly rather than jumping. */
+  const withCompletionSettle = (card: ReactNode) => (
+    <div
+      className={cn(
+        "grid transition-[grid-template-rows,opacity] ease-out",
+        isCollapsingComplete ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]",
+        isConfirmingComplete && "pointer-events-none"
+      )}
+      style={{ transitionDuration: `${COMPLETE_COLLAPSE_MS}ms` }}
+      aria-hidden={isCollapsingComplete || undefined}
+    >
+      <div className={cn("min-h-0", isCollapsingComplete && "overflow-hidden")}>{card}</div>
+    </div>
+  );
 
   const dueUrgencyChip =
     dueUrgency != null ? (
@@ -322,7 +377,7 @@ function TaskCardComponent({
       </TaskCardMediaZone>
     );
 
-    return (
+    return withCompletionSettle(
       <div 
         className={cn(
           "task-card-horizontal",
@@ -334,6 +389,7 @@ function TaskCardComponent({
         )}
         onClick={onClick}
       >
+        {completionOverlay}
         {/* Priority Indicator Circle - Top Left Corner */}
         {showPriorityDot ? (
         <div 
@@ -429,7 +485,7 @@ function TaskCardComponent({
   }
 
   // Vertical layout (image on top)
-  return (
+  return withCompletionSettle(
     <div 
       className={cn(
         "task-card-vertical h-[290px] w-full min-w-0",
@@ -441,6 +497,7 @@ function TaskCardComponent({
       )}
       onClick={onClick}
     >
+      {completionOverlay}
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
         {dueUrgencyChip}
         {showPriorityDot ? (

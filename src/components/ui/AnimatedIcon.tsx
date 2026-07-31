@@ -1,4 +1,4 @@
-import { motion, HTMLMotionProps } from 'framer-motion';
+import { motion, type HTMLMotionProps } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type ReactNode, type ElementType } from 'react';

@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MotionConfig } from "motion/react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider, isDevBuild } from "@/context/DevModeContext";
@@ -164,6 +165,8 @@ function AnalyticsIdentifier() {
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
+      {/* reducedMotion="user": all Motion animations honour prefers-reduced-motion (transform/layout skipped, opacity kept). */}
+      <MotionConfig reducedMotion="user">
       <DevModeProvider>
       <TooltipProvider>
           <Toaster />
@@ -437,6 +440,7 @@ const App = () => {
           </BrowserRouter>
         </TooltipProvider>
       </DevModeProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 };

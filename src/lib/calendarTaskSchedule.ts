@@ -109,6 +109,56 @@ function parseMilestones(task: Record<string, unknown>): Array<{ id: string; dat
   return [];
 }
 
+const TERMINAL_SCHEDULE_STATUSES = new Set(["completed", "archived", "done", "cancelled"]);
+
+function scheduleDateKey(value: string | null | undefined): string | null {
+  const dt = parseScheduleDateTime(value);
+  return dt ? format(dt, "yyyy-MM-dd") : null;
+}
+
+/**
+ * Tasks (and milestone hits) that land on a specific calendar day.
+ * Used when the mini calendar pins a date into Schedule view.
+ */
+export function filterTasksForScheduleDate(
+  tasks: unknown[],
+  selectedDate: Date
+): Array<Record<string, unknown>> {
+  const selectedDateStr = format(selectedDate, "yyyy-MM-dd");
+  const results: Array<Record<string, unknown>> = [];
+
+  for (const raw of tasks) {
+    const task = raw as Record<string, unknown>;
+    if (!task.id) continue;
+    const status = String(task.status ?? "").toLowerCase();
+    if (TERMINAL_SCHEDULE_STATUSES.has(status)) continue;
+
+    const dueValue = (task.due_date || task.due_at) as string | undefined;
+    if (dueValue && scheduleDateKey(dueValue) === selectedDateStr) {
+      results.push(task);
+      continue;
+    }
+
+    const hit = parseMilestones(task).find((m) => scheduleDateKey(m?.dateTime) === selectedDateStr);
+    if (hit?.dateTime) {
+      results.push({
+        ...task,
+        _milestoneLabel: hit.label?.trim() || "Milestone",
+        due_date: hit.dateTime,
+        due_at: hit.dateTime,
+      });
+    }
+  }
+
+  results.sort((a, b) => {
+    const aTime = parseScheduleDateTime((a.due_date || a.due_at) as string | undefined)?.getTime() ?? 0;
+    const bTime = parseScheduleDateTime((b.due_date || b.due_at) as string | undefined)?.getTime() ?? 0;
+    return aTime - bTime;
+  });
+
+  return results;
+}
+
 export function buildCalendarPlacements(tasks: unknown[]): CalendarTaskPlacement[] {
   const placements: CalendarTaskPlacement[] = [];
   const seen = new Set<string>();

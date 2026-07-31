@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  addMonths,
-  format,
-  isAfter,
-  startOfDay,
-  startOfMonth,
-  subDays,
-  subMonths,
-} from "date-fns";
+import { addMonths, format, startOfMonth, subMonths } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid";
 import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
@@ -23,6 +15,7 @@ import {
   applyCalendarDisplayFilters,
   filterTasksForCalendar,
 } from "@/lib/calendarDayMeta";
+import { filterTasksForScheduleDate } from "@/lib/calendarTaskSchedule";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
 import { cn } from "@/lib/utils";
 import type { CentreCalendarView } from "@/lib/centreWorkbenchTabs";
@@ -71,6 +64,12 @@ export function CalendarWorkbenchPanel({
   );
 
   const selectedDate = selectedDateProp ?? internalSelectedDate;
+
+  useEffect(() => {
+    if (!selectedDateProp) return;
+    setInternalSelectedDate(selectedDateProp);
+    setCurrentMonth(startOfMonth(selectedDateProp));
+  }, [selectedDateProp]);
 
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
 
@@ -131,20 +130,11 @@ export function CalendarWorkbenchPanel({
     userId,
   ]);
 
-  const scheduleTasks = useMemo(() => {
-    const today = startOfDay(new Date());
-    return displayTasks
-      .filter((task: any) => {
-        const status = task.status?.toLowerCase();
-        if (status === "completed" || status === "done" || status === "cancelled") return false;
-        if (!task.due_date) return false;
-        const due = startOfDay(new Date(task.due_date));
-        return isAfter(due, subDays(today, 1));
-      })
-      .sort(
-        (a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-      );
-  }, [displayTasks]);
+  /** Day agenda for the pinned mini-calendar date (includes overdue + milestone-only). */
+  const scheduleTasks = useMemo(
+    () => filterTasksForScheduleDate(displayTasks, selectedDate),
+    [displayTasks, selectedDate]
+  );
 
   const handleDateSelect = useCallback((date: Date | undefined) => {
     if (!date) return;

@@ -5,6 +5,7 @@ import {
   CALENDAR_AFTERNOON_TIME,
   CALENDAR_MORNING_TIME,
   hasAssigneeDefinedScheduleTime,
+  parseScheduleDateTime,
 } from "@/lib/calendarTaskSchedule";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,7 @@ interface ScheduleViewProps {
 
 /**
  * Schedule View Component
- * 
+ *
  * Displays tasks in a vertical timeline format:
  * - Day, date, and time labels live in the left column beside each task card
  * - Only shows hours that have tasks (no empty hour slots)
@@ -66,18 +67,17 @@ export function ScheduleView({
         return;
       }
 
-      try {
-        const dueDate = new Date(dueValue);
-        const hasSpecificTime = hasAssigneeDefinedScheduleTime(task, dueValue);
-
-        withDate.push({
-          task,
-          time: dueDate,
-          hasSpecificTime,
-        });
-      } catch {
+      const dueDate = parseScheduleDateTime(dueValue);
+      if (!dueDate) {
         withoutTime.push(task);
+        return;
       }
+
+      withDate.push({
+        task,
+        time: dueDate,
+        hasSpecificTime: hasAssigneeDefinedScheduleTime(task, dueValue),
+      });
     });
 
     // Sort time tasks chronologically
@@ -92,7 +92,7 @@ export function ScheduleView({
   // Group dated tasks by day
   const tasksByDate = useMemo(() => {
     const grouped = new Map<string, Array<{ task: any; time: Date; hasSpecificTime: boolean }>>();
-    
+
     datedTasks.forEach(({ task, time, hasSpecificTime }) => {
       const dateKey = format(time, "yyyy-MM-dd");
       if (!grouped.has(dateKey)) {
@@ -100,12 +100,12 @@ export function ScheduleView({
       }
       grouped.get(dateKey)!.push({ task, time, hasSpecificTime });
     });
-    
+
     // Sort tasks within each date by time
-    grouped.forEach((tasks) => {
-      tasks.sort((a, b) => a.time.getTime() - b.time.getTime());
+    grouped.forEach((dayTasks) => {
+      dayTasks.sort((a, b) => a.time.getTime() - b.time.getTime());
     });
-    
+
     return grouped;
   }, [datedTasks]);
 
@@ -133,7 +133,7 @@ export function ScheduleView({
             const dateTasks = tasksByDate.get(dateKey) || [];
             if (dateTasks.length === 0) return null;
 
-            const date = new Date(dateKey);
+            const date = parseScheduleDateTime(dateKey) ?? new Date(dateKey);
             const isTodayDate = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
             const weekdayLabel = isTodayDate ? "Today" : format(date, "EEEE");
             const dateLabel = format(date, "MMMM d");
@@ -142,10 +142,7 @@ export function ScheduleView({
               <div
                 key={dateKey}
                 id={`schedule-day-${dateKey}`}
-                className={cn(
-                  "space-y-3",
-                  dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS
-                )}
+                className={cn("space-y-3", dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS)}
               >
                 {dateTasks.map(({ task, time, hasSpecificTime }, taskIndex) => {
                   const property = task.property_id
@@ -155,10 +152,7 @@ export function ScheduleView({
                   const isFirstOfDay = taskIndex === 0;
 
                   return (
-                    <div
-                      key={task.id}
-                      className="flex items-start gap-3"
-                    >
+                    <div key={task.id} className="flex items-start gap-3">
                       <div
                         className={cn(
                           SCHEDULE_TIME_COLUMN_CLASS,
@@ -170,17 +164,12 @@ export function ScheduleView({
                             <span className="text-base font-semibold text-foreground tracking-wide">
                               {weekdayLabel}
                             </span>
-                            <span className={SCHEDULE_DATE_LABEL_CLASS}>
-                              {dateLabel}
-                            </span>
+                            <span className={SCHEDULE_DATE_LABEL_CLASS}>{dateLabel}</span>
                           </>
                         ) : null}
                         {timeLabel ? (
                           <span
-                            className={cn(
-                              SCHEDULE_TIME_BADGE_CLASS,
-                              isFirstOfDay && "mt-0.5"
-                            )}
+                            className={cn(SCHEDULE_TIME_BADGE_CLASS, isFirstOfDay && "mt-0.5")}
                           >
                             {timeLabel}
                           </span>
@@ -215,10 +204,7 @@ export function ScheduleView({
                     : undefined;
 
                   return (
-                    <div
-                      key={task.id}
-                      className="flex items-start gap-3"
-                    >
+                    <div key={task.id} className="flex items-start gap-3">
                       <div className={SCHEDULE_TIME_COLUMN_CLASS} />
                       <div className="flex-1 min-w-0">
                         <TaskCard

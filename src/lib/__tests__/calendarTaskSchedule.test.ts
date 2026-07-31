@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarPlacements,
   buildScheduleUpdate,
+  filterTasksForScheduleDate,
   formatScheduleDateTime,
   getPeriodFromScheduleValue,
   hasAssigneeDefinedScheduleTime,
@@ -74,5 +75,30 @@ describe("calendarTaskSchedule", () => {
     ).toEqual({
       milestones: [{ id: "m1", dateTime: formatScheduleDateTime(date, "afternoon") }],
     });
+  });
+
+  it("filters schedule tasks to the selected day including overdue and milestones", () => {
+    const day = new Date(2026, 4, 20);
+    const result = filterTasksForScheduleDate(
+      [
+        { id: "due", status: "open", due_date: "2026-05-20" },
+        { id: "other-day", status: "open", due_date: "2026-05-21" },
+        {
+          id: "milestone-only",
+          status: "open",
+          milestones: [{ id: "m1", dateTime: "2026-05-20T09:00", label: "Inspect" }],
+        },
+        {
+          id: "json-milestone",
+          status: "open",
+          milestones: JSON.stringify([{ id: "m2", dateTime: "2026-05-20T14:00" }]),
+        },
+        { id: "done", status: "completed", due_date: "2026-05-20" },
+      ],
+      day
+    );
+
+    expect(result.map((t) => t.id)).toEqual(["due", "milestone-only", "json-milestone"]);
+    expect(result[1]._milestoneLabel).toBe("Inspect");
   });
 });

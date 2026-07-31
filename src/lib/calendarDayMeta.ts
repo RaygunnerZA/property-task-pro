@@ -87,8 +87,22 @@ export function buildTasksByDate(
     if (task.status === "completed" || task.status === "archived") return;
     const due = task.due_date || task.due_at;
     if (due) add(due, task.priority);
-    if (Array.isArray(task.milestones)) {
-      task.milestones.forEach((m) => {
+
+    let milestones = task.milestones as
+      | Array<{ dateTime?: string }>
+      | string
+      | null
+      | undefined;
+    if (typeof milestones === "string") {
+      try {
+        const parsed = JSON.parse(milestones);
+        milestones = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        milestones = [];
+      }
+    }
+    if (Array.isArray(milestones)) {
+      milestones.forEach((m) => {
         if (m?.dateTime) add(m.dateTime, task.priority);
       });
     }
