@@ -3,8 +3,8 @@ import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 /**
  * True when the app should use the offcanvas sidebar (sheet) instead of the persistent left rail.
- * Uses {@link LAYOUT_BREAKPOINTS.sidebarRail} (1024px) — wider than `useIsMobile` (768px) so tablets
- * can keep the hub two-column layout while the nav stays a drawer.
+ * Uses {@link LAYOUT_BREAKPOINTS.sidebarRail} (768px) — phones use offcanvas + bottom nav;
+ * tablet and desktop keep the condensed hover-expand icon rail.
  */
 export function useSidebarOffcanvas() {
   const bp = LAYOUT_BREAKPOINTS.sidebarRail;

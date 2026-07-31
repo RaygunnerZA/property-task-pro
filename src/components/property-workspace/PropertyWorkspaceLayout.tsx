@@ -33,9 +33,8 @@ export function PropertyWorkspaceLayout({
     >
       <aside
         className={cn(
-          "relative z-[1] min-w-0 w-full space-y-4 px-1 flex flex-col",
-          "workspace:h-[482px] workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
-          "workspace:overflow-y-auto"
+          "relative z-[1] flex w-full min-w-0 flex-col space-y-4 px-1",
+          "workspace:sticky workspace:top-[calc(var(--header-height)+12px)]"
         )}
       >
         {contextColumn}

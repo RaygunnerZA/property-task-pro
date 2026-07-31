@@ -41,7 +41,7 @@ export function MobileAppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-12 w-full shrink-0 items-center gap-2 border-b border-border/20 bg-background/90 px-3 shadow-sm backdrop-blur-sm lg:hidden">
+    <header className="sticky top-0 z-40 flex h-12 w-full shrink-0 items-center gap-2 border-b border-border/20 bg-background/90 px-3 shadow-sm backdrop-blur-sm md:hidden">
       <PropertySelectorStack
         variant="mobileHeader"
         properties={properties}

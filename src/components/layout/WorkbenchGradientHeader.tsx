@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
 import { WorkbenchFiltersPopover } from "@/components/dashboard/WorkbenchFiltersPopover";
@@ -12,7 +12,6 @@ import {
 } from "@/components/properties/PropertySelectorStack";
 import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
 import fillaDarkLogo from "@/assets/filla-dark.png";
-import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +29,6 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
-  /** Home hub: on mobile, show brand logo instead of the property dropdown while all properties are selected. */
-  mobileBrandLogoWhenAllProperties?: boolean;
 };
 
 export function WorkbenchGradientHeader({
@@ -43,33 +40,32 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
-  mobileBrandLogoWhenAllProperties = false,
 }: WorkbenchGradientHeaderProps) {
   const showPropertySelector = properties.length > 1;
-  const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
-  const isAllPropertiesSelected = useMemo(
-    () => isAllPropertiesActive(selectedPropertyIds, allPropertyIds),
-    [allPropertyIds, selectedPropertyIds]
-  );
-  const showMobileBrandLogo =
-    mobileBrandLogoWhenAllProperties && showPropertySelector && isAllPropertiesSelected;
 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
-  const mobileLeftContent = showMobileBrandLogo ? (
-    <img src={fillaDarkLogo} alt="Filla" className="h-[28px] w-auto shrink-0" />
-  ) : showPropertySelector ? (
-    <PropertySelectorStack
-      variant="gradientHeader"
-      properties={properties}
-      tasks={tasks}
-      selectedPropertyIds={selectedPropertyIds}
-      onSelectionChange={onPropertySelectionChange}
-      onFilterClick={onFilterClick}
-      className="min-w-0 flex-1"
-      suppressInteractions={mobileSearchOpen}
-    />
-  ) : null;
+  const mobileLeftContent = (
+    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+      <img
+        src={fillaDarkLogo}
+        alt="Filla"
+        className="h-[28px] w-auto shrink-0"
+      />
+      {showPropertySelector ? (
+        <PropertySelectorStack
+          variant="gradientHeader"
+          properties={properties}
+          tasks={tasks}
+          selectedPropertyIds={selectedPropertyIds}
+          onSelectionChange={onPropertySelectionChange}
+          onFilterClick={onFilterClick}
+          className="min-w-0 flex-1"
+          suppressInteractions={mobileSearchOpen}
+        />
+      ) : null}
+    </div>
+  );
 
   return (
     <>

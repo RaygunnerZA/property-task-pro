@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { propertyHubPath } from "@/lib/propertyRoutes";
 import { CheckSquare, AlertTriangle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 
 interface SpaceCardProps {
@@ -12,6 +12,7 @@ interface SpaceCardProps {
     type?: string | null;
     property_id?: string | null;
     icon_name?: string | null;
+    thumbnail_url?: string | null;
     /** Resolved space type label for illustration lookup (e.g. space_types.name). */
     spaceTypeName?: string | null;
     taskCount?: number;
@@ -37,7 +38,11 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
     space.spaceTypeName ??
     space.name ??
     space.type;
-  const illustrationSrc = resolveSpaceMiniCardIllustration(illustrationLabel);
+  const illustrationSrc = getSpaceDisplayIllustration({
+    name: illustrationLabel,
+    thumbnail_url: space.thumbnail_url,
+    spaceTypeName: space.spaceTypeName,
+  });
 
   const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();

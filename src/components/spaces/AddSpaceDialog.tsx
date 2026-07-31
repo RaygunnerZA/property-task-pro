@@ -26,6 +26,7 @@ import {
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { toast } from "sonner";
+import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 
 interface AddSpaceDialogProps {
   open: boolean;
@@ -125,6 +126,9 @@ export function AddSpaceDialog({
           name: name.trim(),
           icon_name: effectiveIcon,
           space_type_id: spaceTypeMatch?.id ?? null,
+          thumbnail_url: resolveSpaceMiniCardIllustration(
+            spaceTypeMatch?.name ?? (canonicalName || name.trim())
+          ),
         })
         .select()
         .single();

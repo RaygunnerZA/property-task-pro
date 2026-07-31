@@ -6,7 +6,7 @@
  * - `sm` / `workbenchTwoColumn` (640px): default hub dual-pane (left | centre).
  * - `phone` / Tailwind `md` (768px): nav-driven phone mode — home-hub collapses centre;
  *   work-surface keeps a full-screen centre. Prefer this over ad-hoc sm/md mixes.
- * - `sidebarRail` / Tailwind `lg` (1024px): persistent app nav rail vs offcanvas + bottom nav.
+ * - `sidebarRail` / Tailwind `md` (768px): persistent condensed nav rail vs offcanvas + bottom nav.
  * - `workspace` (1100px): property hub modules (three columns).
  * - `layout` (1480px): app shell three-column dashboard / property right rail.
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
@@ -23,10 +23,10 @@ export const LAYOUT_BREAKPOINTS = {
    */
   phone: 768,
   /**
-   * App nav rail: below this width the sidebar is an offcanvas sheet + top bar (Tailwind `lg`, 1024px).
-   * Wider than this, the persistent left rail shows — independent of hub column stacking.
+   * App nav rail: below this width the sidebar is an offcanvas sheet + bottom nav (Tailwind `md`, 768px).
+   * At/above: condensed icon rail with hover-expand — tablets and desktop.
    */
-  sidebarRail: 1024,
+  sidebarRail: 768,
   /** Property workspace / compliance: stacked → three-column */
   workspace: 1100,
   /** App shell: two-column tablet → three-column desktop */

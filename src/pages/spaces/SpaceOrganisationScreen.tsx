@@ -150,18 +150,14 @@ export default function SpaceOrganisationScreen() {
           </li>
         </ul>
       </WorkspaceSurfaceCard>
-      <div className="rounded-[12px] bg-card/60 shadow-e1 overflow-hidden min-h-[200px] max-h-[420px] flex flex-col">
-        <div className="px-3 py-2 border-b border-border/40">
-          <p className="text-xs font-medium text-muted-foreground">Recent & navigation</p>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto p-1">
-          <PropertySpacesList
-            propertyId={propertyId}
-            tasks={tasks}
-            onSpaceClick={setSelectedSpaceId}
-            selectedSpaceId={selectedSpaceId}
-          />
-        </div>
+      <div className="flex flex-col overflow-hidden rounded-[12px] bg-card/60 shadow-e1">
+        <PropertySpacesList
+          propertyId={propertyId}
+          tasks={tasks}
+          onSpaceClick={setSelectedSpaceId}
+          selectedSpaceId={selectedSpaceId}
+          defaultView="list"
+        />
       </div>
       <WorkspaceSurfaceCard
         title="Floor plans & detection"

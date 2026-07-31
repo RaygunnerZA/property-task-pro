@@ -32,6 +32,7 @@ import {
   WORKBENCH_ISSUES_FILTER_QUERY,
   WORKBENCH_PANEL_TAB_QUERY,
   WORKBENCH_RECORDS_VIEW_QUERY,
+  WORKBENCH_SPACE_QUERY,
   WORKBENCH_TAB_ALIAS_QUERY,
   WORKBENCH_TASK_PRIORITY_QUERY,
   normalizeRecordsView,
@@ -326,6 +327,12 @@ export default function Dashboard({
   }, [searchParams]);
 
   const taskPriorityUrgent = searchParams.get(WORKBENCH_TASK_PRIORITY_QUERY) === "urgent";
+  const urlSpaceId = searchParams.get(WORKBENCH_SPACE_QUERY)?.trim() || null;
+
+  const urlSpaceTaskFilters = useMemo(() => {
+    if (!urlSpaceId) return undefined;
+    return [`filter-space-${urlSpaceId}`];
+  }, [urlSpaceId]);
 
   const navigateToWorkbenchSection = useCallback(
     (tab: WorkbenchPanelTab) => {
@@ -633,12 +640,6 @@ export default function Dashboard({
     }
     return searchParams.get("property");
   }, [selectedPropertyIds, searchParams]);
-
-  const showMobileBrandLogoOnCentreWorkbench = useMemo(() => {
-    if (!usesCentreWorkbenchTabs || properties.length <= 1) return false;
-    const ids = properties.map((p) => p.id);
-    return isAllPropertiesActive(selectedPropertyIds, ids);
-  }, [usesCentreWorkbenchTabs, properties, selectedPropertyIds]);
 
   const applyCentreWorkbenchNavigation = useCallback(
     (tab: CentreWorkbenchTab, filterIds: string[] | null) => {
@@ -1013,8 +1014,11 @@ export default function Dashboard({
         enabled={!usesCentreWorkbenchTabs}
       />
       <WorkbenchFiltersSync
-        filterIds={centreWorkbenchFiltersToApply}
-        enabled={usesCentreWorkbenchTabs && centreWorkbenchFiltersToApply != null}
+        filterIds={centreWorkbenchFiltersToApply ?? urlSpaceTaskFilters}
+        enabled={
+          usesCentreWorkbenchTabs &&
+          (centreWorkbenchFiltersToApply != null || urlSpaceTaskFilters != null)
+        }
       />
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
@@ -1030,7 +1034,6 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
-              mobileBrandLogoWhenAllProperties={showMobileBrandLogoOnCentreWorkbench}
             />
           }
         leftColumn={

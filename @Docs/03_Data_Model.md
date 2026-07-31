@@ -18,7 +18,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 
 **Properties & Assets:**
 *   `properties` (address, type, nickname, icon fields, thumbnail; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
-*   `spaces` (property_id, type)
+*   `spaces` (property_id, type, icon_name, thumbnail_url — mini-card / photo path for space identity)
 *   `assets` (property_id, space_id, serial, condition_score)
 
 **Signals (infrastructure — Issues triage):**

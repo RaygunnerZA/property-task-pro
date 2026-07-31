@@ -196,3 +196,38 @@ export function resolveSpaceMiniCardIllustration(
     `${MINI_CARD_BASE}/office.png`
   );
 }
+
+export type SpaceMiniCardOption = {
+  slug: string;
+  src: string;
+  label: string;
+};
+
+/** Catalog of pickable space mini-card thumbnails. */
+export function listSpaceMiniCardIllustrations(): SpaceMiniCardOption[] {
+  return Object.entries(SPACE_MINI_CARD_ILLUSTRATION)
+    .map(([slug, src]) => ({
+      slug,
+      src,
+      label: slug
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * Display art for a space: persisted thumbnail override, else auto-matched mini-card.
+ */
+export function getSpaceDisplayIllustration(space: {
+  name?: string | null;
+  type?: string | null;
+  thumbnail_url?: string | null;
+  spaceTypeName?: string | null;
+}): string {
+  const override = space.thumbnail_url?.trim();
+  if (override) return override;
+  return resolveSpaceMiniCardIllustration(
+    space.spaceTypeName ?? space.name ?? space.type
+  );
+}

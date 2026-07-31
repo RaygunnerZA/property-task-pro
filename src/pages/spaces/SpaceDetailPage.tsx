@@ -17,13 +17,25 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
-import { FolderOpen, Package, Shield, FileText, Sparkles, ArrowLeft, Plus, ListChecks } from "lucide-react";
+import { FolderOpen, Package, Shield, FileText, Sparkles, ArrowLeft, Plus, ListChecks, Pencil } from "lucide-react";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
+import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
+import { SpaceThumbnailPickerDialog } from "@/components/spaces/SpaceThumbnailPickerDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+type SpaceCentreTab =
+  | "overview"
+  | "tasks"
+  | "assets"
+  | "compliance"
+  | "documents"
+  | "insights";
 
 export default function SpaceDetailPage() {
   const { propertyId, spaceId } = useParams<{ propertyId: string; spaceId: string }>();
@@ -50,6 +62,9 @@ export default function SpaceDetailPage() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<"create" | "details" | "assistant" | null>(null);
+  const [thumbnailPickerOpen, setThumbnailPickerOpen] = useState(false);
+  const [thumbnailSaving, setThumbnailSaving] = useState(false);
+  const [centreTab, setCentreTab] = useState<SpaceCentreTab>("overview");
 
   const assetsInSpace = useMemo(() => {
     return allAssets.filter((a: any) => a.space_id === spaceId);
@@ -109,12 +124,40 @@ export default function SpaceDetailPage() {
   }
 
   const spaceName = space.name || "Unnamed Space";
-  const spaceWithProps = space as typeof space & { properties?: { nickname?: string; address?: string } };
+  const spaceWithProps = space as typeof space & {
+    properties?: { nickname?: string; address?: string };
+    thumbnail_url?: string | null;
+  };
   const propertyName = spaceWithProps.properties?.nickname || spaceWithProps.properties?.address || "Property";
   const spaceProperty = {
     id: propertyId || "",
     name: propertyName,
     address: spaceWithProps.properties?.address || propertyName,
+  };
+  const thumbnailSrc = getSpaceDisplayIllustration({
+    name: space.name,
+    thumbnail_url: spaceWithProps.thumbnail_url,
+  });
+
+  const handleSaveThumbnail = async (src: string) => {
+    if (!spaceId) return;
+    setThumbnailSaving(true);
+    try {
+      const { error } = await supabase
+        .from("spaces")
+        .update({ thumbnail_url: src })
+        .eq("id", spaceId);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["space"] });
+      await queryClient.invalidateQueries({ queryKey: ["spaces"] });
+      toast.success("Thumbnail updated");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update thumbnail";
+      toast.error(message);
+      throw err;
+    } finally {
+      setThumbnailSaving(false);
+    }
   };
 
   const headerElement = (
@@ -228,8 +271,25 @@ export default function SpaceDetailPage() {
           <div className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0">
             <div className="p-2">
               <div className="bg-card/60 rounded-[8px] shadow-e1 overflow-hidden">
-                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
-                  <FolderOpen className="h-12 w-12 text-muted-foreground/70" />
+                <div className="group/space-hero relative w-full aspect-[4/3] flex items-center justify-center bg-muted/40">
+                  <img
+                    src={thumbnailSrc}
+                    alt=""
+                    className="h-full w-full max-h-full object-contain p-3"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setThumbnailPickerOpen(true)}
+                    className={cn(
+                      "absolute top-2.5 right-2.5 z-10 flex h-8 w-8 items-center justify-center",
+                      "rounded-md bg-white/90 text-[#6D7480] shadow-sm",
+                      "transition-colors hover:bg-white hover:text-foreground",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
+                    aria-label="Replace space thumbnail"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
                 </div>
                 <div className="p-4 space-y-3">
                   <h2 className="font-semibold text-lg text-foreground leading-tight">{spaceName}</h2>
@@ -269,7 +329,7 @@ export default function SpaceDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => navigate(`/work/tasks?propertyId=${propertyId}`)}
+                      onClick={() => setCentreTab("tasks")}
                       className="w-full text-muted-foreground hover:text-foreground"
                     >
                       <ListChecks className="h-4 w-4 mr-1.5" />
@@ -282,27 +342,59 @@ export default function SpaceDetailPage() {
           </div>
         }
         rightColumn={
-          <div className="min-h-screen bg-background overflow-y-auto p-[15px] space-y-6">
-            <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="mb-4 w-full grid grid-cols-5">
+          <div className="min-h-screen space-y-6 overflow-y-auto bg-background p-[15px]">
+            <Tabs
+              value={centreTab}
+              onValueChange={(v) => setCentreTab(v as SpaceCentreTab)}
+              className="w-full"
+            >
+              <TabsList className="mb-4 grid w-full grid-cols-3 sm:grid-cols-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="tasks">
+                  Tasks{spaceTasks.length > 0 ? ` (${spaceTasks.length})` : ""}
+                </TabsTrigger>
                 <TabsTrigger value="assets">Assets</TabsTrigger>
                 <TabsTrigger value="compliance">Compliance</TabsTrigger>
                 <TabsTrigger value="documents">Documents</TabsTrigger>
                 <TabsTrigger value="insights">
-                  <Sparkles className="h-4 w-4 mr-2" />
+                  <Sparkles className="mr-2 h-4 w-4" />
                   Insights
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="mt-0 space-y-4">
                 <div className="rounded-lg bg-card p-4 shadow-e1">
-                  <h3 className="font-semibold text-foreground mb-2">Overview</h3>
+                  <h3 className="mb-2 font-semibold text-foreground">Overview</h3>
                   <p className="text-sm text-muted-foreground">
-                    {spaceName} currently has {assetsInSpace.length} asset{assetsInSpace.length !== 1 ? "s" : ""} and{" "}
-                    {complianceWithStatus.length} compliance item{complianceWithStatus.length !== 1 ? "s" : ""} linked.
+                    {spaceName} currently has {assetsInSpace.length} asset
+                    {assetsInSpace.length !== 1 ? "s" : ""} and {complianceWithStatus.length}{" "}
+                    compliance item{complianceWithStatus.length !== 1 ? "s" : ""} linked.
+                    {spaceTasks.length > 0
+                      ? ` ${spaceTasks.length} task${spaceTasks.length !== 1 ? "s" : ""} linked to this space.`
+                      : " No tasks linked yet."}
                   </p>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="tasks" className="mt-0 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold text-foreground">Space Tasks</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {spaceTasks.length} task{spaceTasks.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <TaskList
+                  tasks={spaceTasks}
+                  properties={[spaceProperty]}
+                  tasksLoading={tasksLoading}
+                  onTaskClick={(taskId) => {
+                    setSelectedTaskId(taskId);
+                    if (isLargeScreen) {
+                      setExpandedSection("details");
+                    }
+                  }}
+                  selectedTaskId={selectedTaskId || undefined}
+                />
               </TabsContent>
 
               <TabsContent value="assets" className="mt-0">
@@ -316,12 +408,14 @@ export default function SpaceDetailPage() {
                         type="button"
                         onClick={() => navigate(`/assets?assetId=${asset.id}`)}
                         className={cn(
-                          "w-full p-4 rounded-lg text-left",
-                          "bg-card shadow-e1 hover:shadow-e2 transition-all"
+                          "w-full rounded-lg p-4 text-left",
+                          "bg-card shadow-e1 transition-all hover:shadow-e2"
                         )}
                       >
                         <div className="font-medium">{asset.name || "Unnamed Asset"}</div>
-                        {asset.asset_type && <div className="text-xs text-muted-foreground">{asset.asset_type}</div>}
+                        {asset.asset_type && (
+                          <div className="text-xs text-muted-foreground">{asset.asset_type}</div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -364,12 +458,14 @@ export default function SpaceDetailPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                          "block p-4 rounded-lg",
-                          "bg-card shadow-e1 hover:shadow-e2 transition-all"
+                          "block rounded-lg p-4",
+                          "bg-card shadow-e1 transition-all hover:shadow-e2"
                         )}
                       >
                         <div className="font-medium">{doc.title || doc.file_name || "Document"}</div>
-                        {doc.document_type && <div className="text-xs text-muted-foreground">{doc.document_type}</div>}
+                        {doc.document_type && (
+                          <div className="text-xs text-muted-foreground">{doc.document_type}</div>
+                        )}
                       </a>
                     ))}
                   </div>
@@ -377,25 +473,11 @@ export default function SpaceDetailPage() {
               </TabsContent>
 
               <TabsContent value="insights" className="mt-0">
-                {spaceId && <GraphInsightPanel start={{ type: "space", id: spaceId }} depth={3} variant="full" />}
+                {spaceId && (
+                  <GraphInsightPanel start={{ type: "space", id: spaceId }} depth={3} variant="full" />
+                )}
               </TabsContent>
             </Tabs>
-
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Space Tasks</h2>
-              <TaskList
-                tasks={spaceTasks}
-                properties={[spaceProperty]}
-                tasksLoading={tasksLoading}
-                onTaskClick={(taskId) => {
-                  setSelectedTaskId(taskId);
-                  if (isLargeScreen) {
-                    setExpandedSection("details");
-                  }
-                }}
-                selectedTaskId={selectedTaskId || undefined}
-              />
-            </div>
           </div>
         }
         thirdColumn={thirdColumnContent}
@@ -418,6 +500,15 @@ export default function SpaceDetailPage() {
       {selectedTaskId && !isLargeScreen && (
         <TaskDetailPanel taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} variant="modal" />
       )}
+
+      <SpaceThumbnailPickerDialog
+        open={thumbnailPickerOpen}
+        onOpenChange={setThumbnailPickerOpen}
+        currentSrc={thumbnailSrc}
+        spaceName={spaceName}
+        busy={thumbnailSaving}
+        onSelect={handleSaveThumbnail}
+      />
     </div>
   );
 }

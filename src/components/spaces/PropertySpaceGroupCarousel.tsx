@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { isFuzzyMatchSimilarity } from "@/services/ai/fuzzyMatch";
+import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 
 type PropertySpaceGroupCarouselProps = {
   propertyId: string;
@@ -331,6 +332,7 @@ export function PropertySpaceGroupCarousel({
         name: trimmed,
         icon_name: iconName,
         space_type_id: spaceTypeId,
+        thumbnail_url: resolveSpaceMiniCardIllustration(canonical),
       });
       if (error) throw error;
       // Persist group membership for custom names (and suggestions) so chips

@@ -16,8 +16,11 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 const SIDEBAR_WIDTH = "10.3125rem"; // 165px
 const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
+/** Condensed icon rail ≈ 30% of expanded column (165px → ~50px). */
+const SIDEBAR_WIDTH_ICON = "3.09375rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+/** Hover/focus expand: product continuity motion (craft Level 2). */
+const SIDEBAR_EXPAND_MS = 220;
 
 type SidebarContext = {
   state: "expanded" | "collapsed";
@@ -135,8 +138,31 @@ const Sidebar = React.forwardRef<
     variant?: "sidebar" | "floating" | "inset";
     collapsible?: "offcanvas" | "icon" | "none";
   }
->(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+>(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, style, ...props }, ref) => {
+  const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar();
+  const isIconRail = collapsible === "icon";
+  const hoverCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHoverClose = React.useCallback(() => {
+    if (hoverCloseTimer.current) {
+      clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = null;
+    }
+  }, []);
+
+  const handleRailEnter = React.useCallback(() => {
+    if (!isIconRail || isMobile) return;
+    clearHoverClose();
+    setOpen(true);
+  }, [clearHoverClose, isIconRail, isMobile, setOpen]);
+
+  const handleRailLeave = React.useCallback(() => {
+    if (!isIconRail || isMobile) return;
+    clearHoverClose();
+    hoverCloseTimer.current = setTimeout(() => setOpen(false), 120);
+  }, [clearHoverClose, isIconRail, isMobile, setOpen]);
+
+  React.useEffect(() => () => clearHoverClose(), [clearHoverClose]);
 
   if (collapsible === "none") {
     return (
@@ -173,35 +199,54 @@ const Sidebar = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="group peer hidden text-sidebar-foreground lg:block"
+      className="group peer hidden text-sidebar-foreground md:block"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
       data-side={side}
+      data-hover-expand={isIconRail ? "true" : undefined}
+      onMouseEnter={handleRailEnter}
+      onMouseLeave={handleRailLeave}
+      onFocusCapture={handleRailEnter}
+      {...props}
     >
-      {/* This is what handles the sidebar gap on desktop */}
+      {/* Layout gap: icon rail always reserves condensed width so hover expand overlays */}
       <div
         className={cn(
-          "relative h-svh w-[--sidebar-width] bg-transparent transition-[width] duration-200 ease-linear",
-          "group-data-[collapsible=offcanvas]:w-0",
+          "relative h-svh bg-transparent transition-[width] ease-out",
+          isIconRail
+            ? "w-[--sidebar-width-icon]"
+            : "w-[--sidebar-width] group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
-          variant === "floating" || variant === "inset"
-            ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
-            : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
+          !isIconRail &&
+            (variant === "floating" || variant === "inset"
+              ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]"
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"),
         )}
+        style={{ transitionDuration: `${SIDEBAR_EXPAND_MS}ms` }}
       />
       <div
         className={cn(
           /* Above main content + sticky headers so sidebar links stay clickable */
-          "fixed top-0 bottom-0 z-50 hidden h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear lg:flex",
+          "fixed top-0 bottom-0 z-50 hidden h-svh transition-[left,right,width,box-shadow] ease-out md:flex",
+          isIconRail
+            ? "w-[--sidebar-width-icon] group-data-[state=expanded]:w-[--sidebar-width] group-data-[state=expanded]:shadow-md"
+            : "w-[--sidebar-width]",
           side === "left"
             ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
             : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
           // Adjust the padding for floating and inset variants.
-          variant === "floating" || variant === "inset"
-            ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
-            : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]",
+          !isIconRail &&
+            (variant === "floating" || variant === "inset"
+              ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4)_+2px)]"
+              : "group-data-[collapsible=icon]:w-[--sidebar-width-icon]"),
+          isIconRail &&
+            (variant === "floating" || variant === "inset") &&
+            "p-2",
         )}
+        style={{ transitionDuration: `${SIDEBAR_EXPAND_MS}ms` }}
+        onMouseEnter={handleRailEnter}
+        onMouseLeave={handleRailLeave}
       >
         <div
           data-sidebar="sidebar"
@@ -209,6 +254,7 @@ const Sidebar = React.forwardRef<
             "flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow",
             className
           )}
+          style={style}
         >
           {children}
         </div>
@@ -256,7 +302,7 @@ const SidebarRail = React.forwardRef<HTMLButtonElement, React.ComponentProps<"bu
         onClick={toggleSidebar}
         title="Toggle Sidebar"
         className={cn(
-          "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] group-data-[side=left]:-right-4 group-data-[side=right]:left-0 hover:after:bg-sidebar-border lg:flex",
+          "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] group-data-[side=left]:-right-4 group-data-[side=right]:left-0 hover:after:bg-sidebar-border md:flex",
           "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
           "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
           "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",

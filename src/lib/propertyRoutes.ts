@@ -13,6 +13,9 @@ export const WORKBENCH_ISSUES_FILTER_QUERY = "issuesFilter";
 /** When `issuesFilter=open`, narrows the task list to urgent/high priority (`/?taskPriority=urgent`). */
 export const WORKBENCH_TASK_PRIORITY_QUERY = "taskPriority";
 
+/** Narrow the Tasks workbench to a single space (`/?property=&space=`). */
+export const WORKBENCH_SPACE_QUERY = "space";
+
 export type WorkbenchPanelTab = "issues" | "records" | "schedule";
 
 /** Home hub vs dedicated workbench page (`/issues`, `/records`, `/agenda`). */
@@ -178,4 +181,16 @@ export function propertyHubAgendaPath(propertyId: string): string {
 /** @deprecated Prefer `propertyHubIssuesPath(id, { issuesFilter: "open" })`. */
 export function propertyHubTasksPath(propertyId: string): string {
   return propertyHubIssuesPath(propertyId, { issuesFilter: "open" });
+}
+
+/**
+ * Tasks work-surface scoped to a property + space
+ * (`/tasks?property=&panelTab=tasks&space=`).
+ */
+export function propertySpaceTasksPath(propertyId: string, spaceId: string): string {
+  const q = new URLSearchParams();
+  q.set("property", propertyId);
+  q.set(WORKBENCH_PANEL_TAB_QUERY, "tasks");
+  q.set(WORKBENCH_SPACE_QUERY, spaceId);
+  return `/tasks?${q.toString()}`;
 }

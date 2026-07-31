@@ -80,11 +80,11 @@ export function IssuesScrollColumn<T extends { id: string }>({
           ))}
         </WorkbenchHorizontalScroller>
       ) : layout === "flex-columns" ? (
-        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
+        <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
           {items.map((item) => (
             <div
               key={item.id}
-              className="min-w-[min(100%,16.5rem)] flex-1 basis-[calc(50%-0.625rem)]"
+              className="min-w-[min(100%,14.5rem)] flex-1 basis-[calc(50%-1rem)]"
             >
               {renderCard(item)}
             </div>

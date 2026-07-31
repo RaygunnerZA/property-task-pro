@@ -40,7 +40,7 @@ export function AppLayout({
   return (
     <ThirdColumnProvider>
       <AssistantProvider>
-        <SidebarProvider defaultOpen={true}>
+        <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative">
         <AppSidebar />
         
@@ -49,7 +49,7 @@ export function AppLayout({
 
           <main 
             ref={mainRef}
-            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-20 lg:pb-0"
+            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-20 md:pb-0"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,
               backgroundRepeat: 'repeat',

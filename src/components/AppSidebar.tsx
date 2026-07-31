@@ -23,10 +23,12 @@ import {
 import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
 import fillaLogo from '@/assets/filla-logo.svg';
 import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
+import fillaDarkLogo from '@/assets/filla-dark.png';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { APP_VERSION } from '@/config/version';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Property context — deep links (workbench home is global Home + scope chips)
 const propertyContextItems = [
@@ -158,7 +160,8 @@ export function AppSidebar() {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "flex items-center gap-2 px-3 py-2 rounded-[5px] bg-transparent no-underline",
+      "flex items-center rounded-[5px] bg-transparent no-underline transition-[gap,padding] duration-200 ease-out",
+      open ? "gap-2 px-3 py-2" : "justify-center gap-0 px-0 py-2.5",
       isMobile
         ? active
           ? "text-white font-semibold"
@@ -167,6 +170,11 @@ export function AppSidebar() {
           ? "text-foreground font-semibold"
           : "text-foreground/70"
     );
+
+  const iconClass = cn(
+    "flex-shrink-0 transition-[width,height] duration-200 ease-out",
+    open ? "h-4 w-4" : "h-5 w-5"
+  );
 
   const renderNavItem = (
     item: { title: string; url?: string; icon: typeof CheckSquare; getUrl?: (id: string) => string },
@@ -195,21 +203,46 @@ export function AppSidebar() {
       : isMainNavActive(currentPath, url);
 
     const IconComponent = item.icon;
+
+    const link = (
+      <Link to={url} className={navLinkClass(isActive)} aria-label={item.title}>
+        <IconComponent className={iconClass} />
+        <span
+          className={cn(
+            "whitespace-nowrap text-[13px] font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
+            open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+          )}
+        >
+          {item.title}
+        </span>
+      </Link>
+    );
     
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
-          <Link to={url} className={navLinkClass(isActive)}>
-            <IconComponent className="h-4 w-4 flex-shrink-0" />
-            {open && <span className="text-[13px] font-medium tracking-[-0.2px]">{item.title}</span>}
-          </Link>
-        </SidebarMenuButton>
+        {!open && !isMobile ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
+                {link}
+              </SidebarMenuButton>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {item.title}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
+            {link}
+          </SidebarMenuButton>
+        )}
       </SidebarMenuItem>
     );
   };
 
   return (
-    <Sidebar 
+    <Sidebar
+      collapsible={isMobile ? "offcanvas" : "icon"}
       className={cn("relative overflow-hidden", !isMobile && "bg-background")}
       style={
         isMobile
@@ -223,21 +256,38 @@ export function AppSidebar() {
     >
       <SidebarContent
         className={cn(
-          "relative z-[60] flex h-full flex-col px-3 py-4 pointer-events-auto",
+          "relative z-[60] flex h-full flex-col py-4 pointer-events-auto",
+          open ? "px-3" : "px-1.5",
           isMobile && "text-sidebar-foreground"
         )}
       >
-        <div className="pl-[11px] pr-0 pt-[9px] pb-0 mb-[15px]">
+        <div
+          className={cn(
+            "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out",
+            open ? "pl-[11px] pr-0" : "flex justify-center px-0"
+          )}
+        >
           <Link
             to="/"
-            className="flex w-[121px] items-center gap-3 rounded-md outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/40"
+            className={cn(
+              "flex items-center gap-3 rounded-md outline-none ring-offset-2 ring-offset-background focus-visible:ring-2 focus-visible:ring-primary/40",
+              open ? "w-[121px]" : "h-8 w-8 justify-center overflow-hidden"
+            )}
             aria-label="Go to home"
           >
-            <img
-              src={isMobile ? fillaLogoTeal2 : fillaLogo}
-              alt=""
-              className="pointer-events-none h-auto w-full"
-            />
+            {open || isMobile ? (
+              <img
+                src={isMobile ? fillaLogoTeal2 : fillaLogo}
+                alt=""
+                className="pointer-events-none h-auto w-full"
+              />
+            ) : (
+              <img
+                src={fillaDarkLogo}
+                alt=""
+                className="pointer-events-none h-7 w-auto max-w-full object-contain object-left"
+              />
+            )}
           </Link>
         </div>
 
@@ -251,14 +301,16 @@ export function AppSidebar() {
 
         {entityContext && contextItems.length > 0 && !hidePropertyContextSidebar && (
           <SidebarGroup className="mt-8">
-            <SidebarGroupLabel
-              className={cn(
-                "mb-2 px-3 font-mono text-[10px] uppercase tracking-[0.2em]",
-                isMobile ? "text-white/50" : "text-foreground/50"
-              )}
-            >
-              {entityContext.type === 'property' ? 'Property' : 'Asset'} Context
-            </SidebarGroupLabel>
+            {open && (
+              <SidebarGroupLabel
+                className={cn(
+                  "mb-2 px-3 font-mono text-[10px] uppercase tracking-[0.2em]",
+                  isMobile ? "text-white/50" : "text-foreground/50"
+                )}
+              >
+                {entityContext.type === 'property' ? 'Property' : 'Asset'} Context
+              </SidebarGroupLabel>
+            )}
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
                 {contextItems.map(item => renderNavItem(item, true, entityContext.id))}
@@ -278,12 +330,21 @@ export function AppSidebar() {
                     type="button"
                     onClick={() => openAssistant(entityContext ? { type: entityContext.type, id: entityContext.id } : undefined)}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-[5px] bg-transparent px-3 py-2",
+                      navLinkClass(false),
+                      "w-full",
                       isMobile ? "text-[#8EC9CE]" : "text-foreground/70"
                     )}
+                    aria-label="Assistant"
                   >
-                    <FillaIcon size={16} className="flex-shrink-0" />
-                    {open && <span className="text-sm tracking-tight">Assistant</span>}
+                    <FillaIcon size={open ? 16 : 20} className="flex-shrink-0" />
+                    <span
+                      className={cn(
+                        "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
+                        open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+                      )}
+                    >
+                      Assistant
+                    </span>
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -294,12 +355,21 @@ export function AppSidebar() {
                     type="button"
                     onClick={handleCreateNew}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-[5px] bg-transparent px-3 py-2",
+                      navLinkClass(false),
+                      "w-full",
                       isMobile ? "text-[#8EC9CE]" : "text-foreground/70"
                     )}
+                    aria-label="Create New"
                   >
-                    <Plus className="h-4 w-4 flex-shrink-0" />
-                    {open && <span className="text-sm tracking-tight">Create New</span>}
+                    <Plus className={iconClass} />
+                    <span
+                      className={cn(
+                        "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
+                        open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+                      )}
+                    >
+                      Create New
+                    </span>
                   </button>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -309,12 +379,20 @@ export function AppSidebar() {
                   <Link
                     to="/settings"
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-[5px] bg-transparent px-3 py-2 no-underline",
+                      "no-underline",
                       navLinkClass(currentPath.startsWith("/settings"))
                     )}
+                    aria-label="Settings"
                   >
-                    <Settings className="h-4 w-4 shrink-0" />
-                    {open && <span className="text-sm tracking-tight">Settings</span>}
+                    <Settings className={cn(iconClass, "shrink-0")} />
+                    <span
+                      className={cn(
+                        "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
+                        open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+                      )}
+                    >
+                      Settings
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

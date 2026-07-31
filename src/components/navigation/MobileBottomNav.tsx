@@ -31,7 +31,7 @@ import type { ComponentType } from "react";
  * Mobile Bottom Navigation
  *
  * Tabs: Home · Tasks · Compliance · More + center FAB
- * Only visible below lg (1024px)
+ * Only visible below md (768px) — tablet/desktop use the left icon rail.
  */
 export function MobileBottomNav() {
   const location = useLocation();
@@ -120,7 +120,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] h-[72px] lg:hidden" aria-label="Main navigation">
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] h-[72px] md:hidden" aria-label="Main navigation">
         <div className="absolute inset-0 border-t-2 border-white/[0.61] bg-background/90 backdrop-blur-md" />
 
         <div className="relative mx-auto max-w-md px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">

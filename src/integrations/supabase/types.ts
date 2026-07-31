@@ -2635,6 +2635,7 @@ export type Database = {
           org_id: string
           property_id: string
           space_type_id: string | null
+          thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
@@ -2651,6 +2652,7 @@ export type Database = {
           org_id: string
           property_id: string
           space_type_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -2667,6 +2669,7 @@ export type Database = {
           org_id?: string
           property_id?: string
           space_type_id?: string | null
+          thumbnail_url?: string | null
           updated_at?: string
         }
         Relationships: [
