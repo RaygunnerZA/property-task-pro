@@ -86,7 +86,7 @@ type PropertySummaryPanelProps = {
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   /**
    * Home-hub phone: show summary stats as entry to Inflow · Tasks · Calendar.
-   * Kept for call-site compatibility with {@link resolveWorkbenchLayout}.
+   * Compact carousel cards also show this entry UI on phone regardless.
    */
   showCentreNavBelowPhone?: boolean;
   routeCentreNavToWorkSurface?: boolean;
@@ -124,20 +124,20 @@ function StatColumn({
 
   const inner = centreMeta ? (
     <>
-      <div className="mb-1 flex w-full min-w-0 items-center gap-1">
+      <div className="mb-1.5 flex w-full min-w-0 flex-col items-start gap-0.5">
         <img
           src={centreMeta.illustrationSrc}
           alt=""
           draggable={false}
           decoding="async"
           className={cn(
-            "h-8 w-8 shrink-0 object-contain drop-shadow-sm transition-opacity",
-            centreNav?.isActive ? "opacity-100" : "opacity-80 group-hover:opacity-100"
+            "h-[42px] w-[42px] shrink-0 object-contain drop-shadow-sm transition-opacity",
+            centreNav?.isActive ? "opacity-100" : "opacity-85 group-hover:opacity-100"
           )}
         />
         <span
           className={cn(
-            "min-w-0 truncate text-left text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors",
+            "min-w-0 text-left text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors",
             centreNav?.isActive
               ? "text-primary group-hover:text-white"
               : "text-muted-foreground group-hover:text-white/90"
@@ -316,14 +316,15 @@ export function PropertySummaryPanel({
   portfolioSignals = false,
   onSummaryLineActivate,
   centreWorkbenchTab,
-  onCentreWorkbenchTabChange: _onCentreWorkbenchTabChange,
-  showCentreNavBelowPhone: _showCentreNavBelowPhone = false,
-  routeCentreNavToWorkSurface: _routeCentreNavToWorkSurface = false,
+  onCentreWorkbenchTabChange,
+  showCentreNavBelowPhone = false,
+  routeCentreNavToWorkSurface = false,
 }: PropertySummaryPanelProps) {
-  // In-place tab change unused on phone home — stats deep-link to `/tasks`.
-  void _onCentreWorkbenchTabChange;
-  void _routeCentreNavToWorkSurface;
-  const showPhoneWorkEntries = _showCentreNavBelowPhone;
+  /**
+   * Compact property cards on phone always expose Inflow · Tasks · Calendar entry
+   * (same as the all-properties card). Home-hub also opts in via showCentreNavBelowPhone.
+   */
+  const showPhoneWorkEntries = showCentreNavBelowPhone || variant === "compact";
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const propertyName = property.nickname || property.address;
@@ -333,14 +334,36 @@ export function PropertySummaryPanel({
 
   const openCentreTab = useCallback(
     (tab: CentreWorkbenchTab) => {
-      // Home phone: to review → Inflow, open tasks → Tasks, upcoming events → Calendar.
       const params =
         typeof window === "undefined"
           ? new URLSearchParams(searchParams)
           : new URLSearchParams(window.location.search);
+
+      if (portfolioSignals) {
+        params.delete("property");
+      } else if (property.id) {
+        params.set("property", property.id);
+      }
+
+      if (routeCentreNavToWorkSurface || showPhoneWorkEntries) {
+        navigate(centreWorkbenchTasksPath(tab, params));
+        return;
+      }
+      if (onCentreWorkbenchTabChange) {
+        onCentreWorkbenchTabChange(tab);
+        return;
+      }
       navigate(centreWorkbenchTasksPath(tab, params));
     },
-    [navigate, searchParams]
+    [
+      navigate,
+      searchParams,
+      portfolioSignals,
+      property.id,
+      routeCentreNavToWorkSurface,
+      showPhoneWorkEntries,
+      onCentreWorkbenchTabChange,
+    ]
   );
 
   const metrics = useMemo(
@@ -457,7 +480,7 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        {/* Phone home-hub: to review / open tasks / upcoming events → work screens */}
+        {/* Phone: Inflow · Tasks · Calendar entry (icons + metrics) */}
         {showPhoneWorkEntries ? (
           <div
             className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden"
@@ -483,7 +506,7 @@ export function PropertySummaryPanel({
           </div>
         ) : null}
 
-        {/* Desktop (+ phone work-surface): metric filters with chevron affordance */}
+        {/* Desktop: metric filters with chevron affordance */}
         <div
           className={cn(
             "grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]",

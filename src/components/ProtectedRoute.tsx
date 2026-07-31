@@ -28,6 +28,16 @@ function isInvitedStaffRole(role: string | null): boolean {
   return role !== "owner" && role !== "manager";
 }
 
+/** Joined via invite (any role) — must not be pushed into owner property setup. */
+function isInvitedUser(
+  session: { user?: { user_metadata?: Record<string, unknown> } } | null,
+  role: string | null,
+  orgId: string | null
+): boolean {
+  if (session?.user?.user_metadata?.invited === true) return true;
+  return !!orgId && isInvitedStaffRole(role);
+}
+
 export function ProtectedRoute({ children, requireOrg = true }: ProtectedRouteProps) {
   const { isAuthenticated, loading, session } = useDataContext();
   const { orgId, role: memberRole, isLoading: orgLoading } = useActiveOrg();
@@ -35,7 +45,7 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
   const [hasProperties, setHasProperties] = useState<boolean | null>(null);
 
   const onboardingCompleted = getOnboardingCompleted(session, orgId);
-  const isInvitedStaff = !!orgId && isInvitedStaffRole(memberRole);
+  const isInvitedStaff = isInvitedUser(session, memberRole, orgId);
 
   // Check if user has properties when they have an org
   useEffect(() => {

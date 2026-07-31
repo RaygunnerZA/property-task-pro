@@ -9,6 +9,7 @@ describe("resolveWorkbenchLayout", () => {
     const layout = resolveWorkbenchLayout({ pathname: "/", workbenchPanel: "home" });
     expect(layout.surfaceRole).toBe("home-hub");
     expect(layout.collapseCentreOnPhone).toBe(true);
+    expect(layout.collapseLeftOnPhone).toBe(false);
     expect(layout.hideCentreTabStripOnPhone).toBe(true);
     expect(layout.propertyCentreNav).toEqual({
       showBelowPhone: true,
@@ -16,10 +17,11 @@ describe("resolveWorkbenchLayout", () => {
     });
   });
 
-  it("treats /tasks + home panel as work-surface (centre stays primary on phone)", () => {
+  it("treats /tasks + home panel as work-surface (phone hides left; centre is primary)", () => {
     const layout = resolveWorkbenchLayout({ pathname: "/tasks", workbenchPanel: "home" });
     expect(layout.surfaceRole).toBe("work-surface");
     expect(layout.collapseCentreOnPhone).toBe(false);
+    expect(layout.collapseLeftOnPhone).toBe(true);
     expect(layout.hideCentreTabStripOnPhone).toBe(false);
     expect(layout.propertyCentreNav.showBelowPhone).toBe(false);
   });

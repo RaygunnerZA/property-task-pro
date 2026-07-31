@@ -14,8 +14,12 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   renderCard: (item: T) => React.ReactNode;
   className?: string;
   onViewAll?: () => void;
-  /** Horizontal scroll row vs stacked vertical list. */
-  layout?: "vertical" | "horizontal";
+  /**
+   * `vertical` — stacked list
+   * `horizontal` — scroll row
+   * `flex-columns` — smart wrap: 2 columns when wide enough, single column when narrow
+   */
+  layout?: "vertical" | "horizontal" | "flex-columns";
   /** Width of each card in horizontal layout. */
   horizontalItemClassName?: string;
   /** Suppress built-in section header (parent provides its own). */
@@ -75,6 +79,17 @@ export function IssuesScrollColumn<T extends { id: string }>({
             </div>
           ))}
         </WorkbenchHorizontalScroller>
+      ) : layout === "flex-columns" ? (
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="min-w-[min(100%,16.5rem)] flex-1 basis-[calc(50%-0.625rem)]"
+            >
+              {renderCard(item)}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="mt-3 divide-y divide-input-bg">
           {items.map((item) => (

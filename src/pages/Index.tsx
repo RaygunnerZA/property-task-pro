@@ -46,6 +46,26 @@ const Index = () => {
         return;
       }
 
+      // Invited users with membership must never enter owner onboarding
+      if (session.user.user_metadata?.invited === true) {
+        const metaToken = session.user.user_metadata?.invitation_token;
+        if (typeof metaToken === "string" && metaToken) {
+          // Membership may not exist yet — finish acceptance first
+          const { data: memberCheck } = await supabase
+            .from("organisation_members")
+            .select("org_id")
+            .eq("user_id", session.user.id)
+            .limit(1)
+            .maybeSingle();
+          if (!memberCheck?.org_id) {
+            navigate(`/accept-invitation?token=${encodeURIComponent(metaToken)}`, {
+              replace: true,
+            });
+            return;
+          }
+        }
+      }
+
       // ── Check org membership ────────────────────────────────────────────────
       const { data: memberData } = await supabase
         .from("organisation_members")
@@ -62,6 +82,15 @@ const Index = () => {
       // ── No org yet — check for a pending invitation before creating one ─────
       // Handles the case where the user was just created via inviteUserByEmail
       // but the acceptance hasn't run yet (e.g. redirectTo URL wasn't allowlisted).
+      const metaInvitationToken = session.user.user_metadata?.invitation_token;
+      if (typeof metaInvitationToken === "string" && metaInvitationToken) {
+        navigate(
+          `/accept-invitation?token=${encodeURIComponent(metaInvitationToken)}`,
+          { replace: true }
+        );
+        return;
+      }
+
       if (session.user.email) {
         const { data: invite } = await supabase
           .from("invitations")

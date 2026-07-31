@@ -20,11 +20,14 @@
  * atomically validates, inserts org membership with assigned_properties, and
  * marks the invitation accepted — bypassing all RLS edge cases.
  *
+ * Password step: invited users set a password before app access, then acceptance
+ * continues in-process (no full reload) so the token / session are not lost.
+ *
  * Cache fix: invalidates `["activeOrg"]` after acceptance so useActiveOrg
  * picks up the new membership immediately.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +40,21 @@ import { Loader2, CheckCircle2, XCircle, Lock } from "lucide-react";
 
 type Status = "loading" | "password" | "success" | "error";
 
+const PENDING_TOKEN_KEY = "pending_invitation_token";
+
+function resolveInvitationToken(
+  searchToken: string | null,
+  userMetadata?: Record<string, unknown> | null
+): string | null {
+  return (
+    searchToken ||
+    sessionStorage.getItem(PENDING_TOKEN_KEY) ||
+    (typeof userMetadata?.invitation_token === "string"
+      ? userMetadata.invitation_token
+      : null)
+  );
+}
+
 export default function AcceptInvitation() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,14 +66,91 @@ export default function AcceptInvitation() {
   const [passwordError, setPasswordError] = useState("");
   const [settingPassword, setSettingPassword] = useState(false);
 
-  // The invitation token is always in the ?token= query param.
-  // Supabase appends #access_token=...&type=invite to the hash.
-  const invitationToken =
-    searchParams.get("token") ||
-    sessionStorage.getItem("pending_invitation_token");
+  const searchToken = searchParams.get("token");
+  const runIdRef = useRef(0);
+
+  const finalizeAcceptance = async (invitationToken: string) => {
+    const { data: result, error: rpcError } = await supabase.rpc(
+      "accept_invitation",
+      { p_token: invitationToken }
+    );
+
+    if (rpcError) {
+      console.error("[AcceptInvitation] RPC error:", rpcError);
+      setStatus("error");
+      setMessage("Failed to accept the invitation. Please try again or contact support.");
+      return;
+    }
+
+    const rpcResult = result as Record<string, unknown>;
+
+    if (rpcResult?.error) {
+      const err = rpcResult.error as string;
+      switch (err) {
+        case "not_authenticated":
+          navigate("/login", { replace: true });
+          return;
+        case "invitation_not_found":
+          setStatus("error");
+          setMessage(
+            "This invitation has already been used or could not be found. Please ask to be re-invited."
+          );
+          return;
+        case "invitation_expired":
+          setStatus("error");
+          setMessage("This invitation has expired. Please ask for a new invitation.");
+          return;
+        case "email_mismatch":
+          setStatus("error");
+          setMessage(
+            "The invitation was sent to a different email address. Please sign in with the correct account."
+          );
+          return;
+        default:
+          setStatus("error");
+          setMessage(`Invitation error: ${err}`);
+          return;
+      }
+    }
+
+    sessionStorage.removeItem(PENDING_TOKEN_KEY);
+
+    await queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
+    await queryClient.invalidateQueries({ queryKey: ["auth"] });
+    await queryClient.refetchQueries({ queryKey: ["activeOrg"] });
+
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    if (currentUser) {
+      await supabase.auth.updateUser({
+        data: {
+          ...currentUser.user_metadata,
+          onboarding_completed: true,
+          invited: true,
+          invitation_password_confirmed: true,
+        },
+      });
+      await supabase.auth.refreshSession();
+    }
+
+    const alreadyMember = rpcResult?.already_member as boolean | undefined;
+
+    setStatus("success");
+    setMessage(
+      alreadyMember
+        ? "You're already a member of this organisation!"
+        : "You've successfully joined the organisation!"
+    );
+    toast.success("Welcome to the team!");
+
+    setTimeout(() => {
+      navigate("/", { replace: true });
+    }, 1500);
+  };
 
   useEffect(() => {
-    if (status === "password") return; // Don't re-run while waiting for password
+    const runId = ++runIdRef.current;
 
     const run = async () => {
       // ── Step 1: establish session from hash tokens (Supabase magic link / invite) ──
@@ -67,15 +162,18 @@ export default function AcceptInvitation() {
           const hashRefreshToken = params.get("refresh_token");
           const hashError = params.get("error");
           const hashErrorCode = params.get("error_code");
+          const tokenForRedirect = resolveInvitationToken(searchToken);
 
           if (hashError) {
-            // Link expired — check if invitation is still valid via token
-            if (hashErrorCode === "otp_expired" && invitationToken) {
-              // Clear hash, redirect to login carrying the token
-              window.history.replaceState({}, "", window.location.pathname + window.location.search);
-              sessionStorage.setItem("pending_invitation_token", invitationToken);
+            if (hashErrorCode === "otp_expired" && tokenForRedirect) {
+              window.history.replaceState(
+                {},
+                "",
+                window.location.pathname + window.location.search
+              );
+              sessionStorage.setItem(PENDING_TOKEN_KEY, tokenForRedirect);
               toast.info("The invitation link has expired — please sign in to continue.");
-              navigate(`/login?invite_token=${invitationToken}`, { replace: true });
+              navigate(`/login?invite_token=${tokenForRedirect}`, { replace: true });
               return;
             }
             setStatus("error");
@@ -94,7 +192,6 @@ export default function AcceptInvitation() {
             if (sessionError) {
               console.warn("[AcceptInvitation] setSession error:", sessionError.message);
             } else {
-              // Clear hash from URL for cleanliness
               window.history.replaceState(
                 {},
                 "",
@@ -107,8 +204,8 @@ export default function AcceptInvitation() {
         }
       }
 
-      // Brief pause to let Supabase propagate the session
       await new Promise((r) => setTimeout(r, 500));
+      if (runId !== runIdRef.current) return;
 
       // ── Step 2: get current user ──
       const {
@@ -116,11 +213,11 @@ export default function AcceptInvitation() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        // Not authenticated — redirect to login with token in URL
-        if (invitationToken) {
-          sessionStorage.setItem("pending_invitation_token", invitationToken);
+        const token = resolveInvitationToken(searchToken);
+        if (token) {
+          sessionStorage.setItem(PENDING_TOKEN_KEY, token);
           toast.info("Please sign in to accept your invitation.");
-          navigate(`/login?invite_token=${invitationToken}`, { replace: true });
+          navigate(`/login?invite_token=${token}`, { replace: true });
         } else {
           setStatus("error");
           setMessage("No invitation token found. Please use the link from your invitation email.");
@@ -128,14 +225,26 @@ export default function AcceptInvitation() {
         return;
       }
 
+      let invitationToken = resolveInvitationToken(
+        searchToken,
+        user.user_metadata as Record<string, unknown>
+      );
+
       // ── Step 3: require activation password before invitation acceptance ──
-      // Security guard: invited users should set a password before landing in the app.
-      // We mark completion in user metadata so the screen is not repeatedly shown.
       const passwordActivated = Boolean(
-        user.user_metadata && (user.user_metadata as Record<string, unknown>).invitation_password_confirmed
+        user.user_metadata &&
+          (user.user_metadata as Record<string, unknown>).invitation_password_confirmed
       );
 
       if (invitationToken && !passwordActivated) {
+        sessionStorage.setItem(PENDING_TOKEN_KEY, invitationToken);
+        if (!searchToken) {
+          window.history.replaceState(
+            {},
+            "",
+            `/accept-invitation?token=${encodeURIComponent(invitationToken)}`
+          );
+        }
         setStatus("password");
         setMessage(
           "Your details are already linked to your organisation. Create a secure password to activate your account."
@@ -144,7 +253,6 @@ export default function AcceptInvitation() {
       }
 
       if (!invitationToken) {
-        // Authenticated but no token — try lookup by email as fallback
         const { data: invByEmail } = await supabase
           .from("invitations")
           .select("token")
@@ -155,6 +263,27 @@ export default function AcceptInvitation() {
           .maybeSingle();
 
         if (!invByEmail?.token) {
+          // Already accepted on a prior attempt — land in the app if membership exists
+          const { data: membership } = await supabase
+            .from("organisation_members")
+            .select("org_id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .maybeSingle();
+
+          if (membership?.org_id) {
+            await supabase.auth.updateUser({
+              data: {
+                ...user.user_metadata,
+                onboarding_completed: true,
+                invited: true,
+              },
+            });
+            await supabase.auth.refreshSession();
+            navigate("/", { replace: true });
+            return;
+          }
+
           setStatus("error");
           setMessage(
             "No pending invitation found for your account. It may have already been used or expired."
@@ -162,95 +291,31 @@ export default function AcceptInvitation() {
           return;
         }
 
-        // Re-run with the found token
+        invitationToken = invByEmail.token;
+        sessionStorage.setItem(PENDING_TOKEN_KEY, invitationToken);
         window.history.replaceState(
           {},
           "",
-          `/accept-invitation?token=${invByEmail.token}`
+          `/accept-invitation?token=${encodeURIComponent(invitationToken)}`
         );
-        navigate(`/accept-invitation?token=${invByEmail.token}`, { replace: true });
-        return;
-      }
 
-      // ── Step 4: call the accept_invitation RPC (atomic, SECURITY DEFINER) ──
-      const { data: result, error: rpcError } = await supabase.rpc(
-        "accept_invitation",
-        { p_token: invitationToken }
-      );
-
-      if (rpcError) {
-        console.error("[AcceptInvitation] RPC error:", rpcError);
-        setStatus("error");
-        setMessage("Failed to accept the invitation. Please try again or contact support.");
-        return;
-      }
-
-      const rpcResult = result as Record<string, unknown>;
-
-      if (rpcResult?.error) {
-        const err = rpcResult.error as string;
-        switch (err) {
-          case "not_authenticated":
-            navigate("/login", { replace: true });
-            return;
-          case "invitation_not_found":
-            setStatus("error");
-            setMessage(
-              "This invitation has already been used or could not be found. Please ask to be re-invited."
-            );
-            return;
-          case "invitation_expired":
-            setStatus("error");
-            setMessage("This invitation has expired. Please ask for a new invitation.");
-            return;
-          case "email_mismatch":
-            setStatus("error");
-            setMessage(
-              "The invitation was sent to a different email address. Please sign in with the correct account."
-            );
-            return;
-          default:
-            setStatus("error");
-            setMessage(`Invitation error: ${err}`);
-            return;
+        if (!passwordActivated) {
+          setStatus("password");
+          setMessage(
+            "Your details are already linked to your organisation. Create a secure password to activate your account."
+          );
+          return;
         }
       }
 
-      // ── Step 5: success — clear storage, invalidate cache, set onboarding_completed, navigate ──
-      sessionStorage.removeItem("pending_invitation_token");
+      if (runId !== runIdRef.current) return;
 
-      // CRITICAL: invalidate useActiveOrg cache so the app sees the new membership immediately.
-      await queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
-      await queryClient.invalidateQueries({ queryKey: ["auth"] });
-      await queryClient.refetchQueries({ queryKey: ["activeOrg"] });
-
-      // Invited team members inherit the org — skip create-organisation and staff onboarding
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        await supabase.auth.updateUser({
-          data: { ...currentUser.user_metadata, onboarding_completed: true },
-        });
-        await supabase.auth.refreshSession();
-      }
-
-      const alreadyMember = rpcResult?.already_member as boolean | undefined;
-
-      setStatus("success");
-      setMessage(
-        alreadyMember
-          ? "You're already a member of this organisation!"
-          : "You've successfully joined the organisation!"
-      );
-      toast.success("Welcome to the team!");
-
-      // New team members arrive at the homehub dashboard
-      setTimeout(() => {
-        navigate("/", { replace: true });
-      }, 1500);
+      // ── Step 4: call the accept_invitation RPC (atomic, SECURITY DEFINER) ──
+      await finalizeAcceptance(invitationToken);
     };
 
-    run();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Password setup (newly invited users with no password) ──────────────────
@@ -265,30 +330,49 @@ export default function AcceptInvitation() {
 
     setSettingPassword(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setPasswordError("Session expired. Please open your invitation link again.");
+        setSettingPassword(false);
+        return;
+      }
+
+      const invitationToken = resolveInvitationToken(
+        searchToken,
+        user.user_metadata as Record<string, unknown>
+      );
+      if (!invitationToken) {
+        setPasswordError("Invitation token missing. Please open your invitation link again.");
+        setSettingPassword(false);
+        return;
+      }
+
+      sessionStorage.setItem(PENDING_TOKEN_KEY, invitationToken);
+
+      const { error } = await supabase.auth.updateUser({
+        password,
+        data: {
+          ...user.user_metadata,
+          invitation_password_confirmed: true,
+          invited: true,
+        },
+      });
       if (error) {
         setPasswordError(error.message || "Failed to set password.");
         setSettingPassword(false);
         return;
       }
+
       toast.success("Password set!");
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.auth.updateUser({
-          data: {
-            ...user.user_metadata,
-            invitation_password_confirmed: true,
-          },
-        });
-      }
       setSettingPassword(false);
       setStatus("loading");
-      // Reload to re-run the acceptance flow with the fresh session
-      window.location.reload();
-    } catch (err: any) {
-      setPasswordError(err.message || "Failed to set password.");
+      // Continue acceptance in-process — avoid reload which can drop routing context
+      await finalizeAcceptance(invitationToken);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to set password.";
+      setPasswordError(msg);
       setSettingPassword(false);
     }
   };
@@ -327,7 +411,7 @@ export default function AcceptInvitation() {
             {status === "success" && (
               <CheckCircle2 className="w-12 h-12 text-green-500" />
             )}
-            {(status === "error") && (
+            {status === "error" && (
               <XCircle className="w-12 h-12 text-[#EB6834]" />
             )}
             {status === "password" && (

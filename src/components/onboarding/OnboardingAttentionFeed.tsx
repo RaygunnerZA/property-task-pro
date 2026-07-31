@@ -80,7 +80,7 @@ export function OnboardingAttentionFeed({
           items={ONBOARDING_QUICK_WINS}
           totalCount={countAttentionSectionItems(ONBOARDING_QUICK_WINS)}
           renderCard={renderSignal}
-          layout="vertical"
+          layout="flex-columns"
           hideHeader
         />
       </section>

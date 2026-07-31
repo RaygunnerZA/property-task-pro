@@ -1019,6 +1019,7 @@ export default function Dashboard({
       <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
         <DualPaneLayout
           collapseCentreOnPhone={workbenchLayout.collapseCentreOnPhone}
+          collapseLeftOnPhone={workbenchLayout.collapseLeftOnPhone}
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}

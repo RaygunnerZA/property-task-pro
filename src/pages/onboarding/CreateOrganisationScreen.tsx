@@ -41,12 +41,14 @@ export default function CreateOrganisationScreen() {
     });
   }, [propertyProfile, navigate]);
 
-  // If user already has an org, skip this step to avoid "create org" then "you have an org" confusion
+  // If user already has an org, skip create-org. Invited users inherit the org and
+  // must not be forced through owner "Add Property" setup.
   const hasOrgAndRedirecting = !orgLoading && !!activeOrgId;
   useEffect(() => {
     if (!hasOrgAndRedirecting) return;
-    navigate("/onboarding/add-property", { replace: true });
-  }, [hasOrgAndRedirecting, navigate]);
+    const invited = session?.user?.user_metadata?.invited === true;
+    navigate(invited ? "/" : "/onboarding/add-property", { replace: true });
+  }, [hasOrgAndRedirecting, navigate, session?.user?.user_metadata?.invited]);
 
   // Don't show the form until profile + org checks finish
   if (!profileReady || orgLoading) {

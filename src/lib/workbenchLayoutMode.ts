@@ -6,10 +6,10 @@ import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
  * @see Docs/04_UI_System.md §4.2 — Desktop operational workbench vs Mobile work-execution-first
  * @see LAYOUT_BREAKPOINTS.phone in layoutBreakpoints.ts (768px / Tailwind `md`)
  *
- * | Surface        | Route example | Desktop                         | Phone (< phone bp)                                      |
- * |----------------|---------------|---------------------------------|---------------------------------------------------------|
- * | `home-hub`     | `/`           | Left scope + centre work column | Scope only; stats link to Inflow / Tasks / Calendar     |
- * | `work-surface` | `/tasks`      | Same dual/triple columns        | Full-screen centre + top Inflow | Tasks | Calendar tabs |
+ * | Surface        | Route example | Desktop                         | Phone (< phone bp)                                          |
+ * |----------------|---------------|---------------------------------|-------------------------------------------------------------|
+ * | `home-hub`     | `/`           | Left scope + centre work column | Left (property) only; stats → Inflow / Tasks / Calendar     |
+ * | `work-surface` | `/tasks`      | Same dual/triple columns        | Centre only (left rail hidden) — Inflow | Tasks | Calendar  |
  *
  * Phone does not stack desktop columns. Bottom nav + routes carry UX weight.
  * Property is scope (filters the current surface), not a parallel nav tree.
@@ -30,6 +30,11 @@ export type WorkbenchLayoutContract = {
   surfaceRole: WorkbenchSurfaceRole;
   /** DualPane: hide centre column and defer dual-column grid until phone+. */
   collapseCentreOnPhone: boolean;
+  /**
+   * DualPane: hide left (property) rail below the phone breakpoint.
+   * Work-surface phone = centre work only (property card / identity strip removed).
+   */
+  collapseLeftOnPhone: boolean;
   /**
    * Hide the centre Inflow · Tasks · Calendar tab strip below the phone breakpoint.
    * Home-hub: true (centre collapsed; entry is via property summary stats).
@@ -58,6 +63,7 @@ export function resolveWorkbenchLayout(args: {
     return {
       surfaceRole: "home-hub",
       collapseCentreOnPhone: true,
+      collapseLeftOnPhone: false,
       hideCentreTabStripOnPhone: true,
       propertyCentreNav: {
         showBelowPhone: true,
@@ -69,6 +75,8 @@ export function resolveWorkbenchLayout(args: {
   return {
     surfaceRole: "work-surface",
     collapseCentreOnPhone: false,
+    /** Phone: property rail hidden — Inflow / Tasks / Calendar fill below the header. */
+    collapseLeftOnPhone: true,
     /** Full-screen Inflow · Tasks · Calendar — tab strip always below header. */
     hideCentreTabStripOnPhone: false,
     propertyCentreNav: {

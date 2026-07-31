@@ -8,24 +8,31 @@ interface DualPaneLayoutProps {
   /** Spans the full main content width (all workbench columns), excluding the app sidebar. */
   header?: ReactNode;
   /**
-   * Home-hub phone mode (`workbenchLayoutMode`): hide centre below `md` and defer the
+   * Home-hub phone (`workbenchLayoutMode`): hide centre below `md` and defer the
    * dual-column grid until `md` so the left rail is full-width without an empty track.
-   * Work-surface routes leave this false so centre stays the primary phone surface.
    */
   collapseCentreOnPhone?: boolean;
+  /**
+   * Work-surface phone: hide left (property card / identity strip) below `md`.
+   * Centre (Inflow · Tasks · Calendar) sits full-width under the header.
+   */
+  collapseLeftOnPhone?: boolean;
 }
 
 /**
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
- * Default (work-surface / desktop hub):
- * - Narrow (< sm): stacked left + centre
+ * Default (desktop / tablet dual):
  * - sm–layout: 330px side rail | centre (max 700px)
  * - layout+: optional third column
  *
  * Home-hub phone (`collapseCentreOnPhone`):
  * - < md: left (scope) only — centre hidden; work lives on `/tasks`
- * - md+: same dual/triple grid as desktop
+ * - md+: dual/triple grid
+ *
+ * Work-surface phone (`collapseLeftOnPhone`):
+ * - < md: centre only (property rail hidden)
+ * - md+: dual/triple grid
  */
 export function DualPaneLayout({
   leftColumn,
@@ -33,17 +40,20 @@ export function DualPaneLayout({
   thirdColumn,
   header,
   collapseCentreOnPhone = false,
+  collapseLeftOnPhone = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
 
-  const dualGridFromPhone = collapseCentreOnPhone;
+  /** Phone uses exclusive surfaces; dual grid starts at md when either column is collapsed. */
+  const dualGridFromPhone = collapseCentreOnPhone || collapseLeftOnPhone;
 
   const stickyColClass = cn(
     hasHeader
       ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
       : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
-    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail"
+    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
+    collapseLeftOnPhone && "max-md:hidden"
   );
 
   const centreShellClass = cn(
@@ -54,7 +64,9 @@ export function DualPaneLayout({
     hasThirdColumn
       ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pb-5"
       : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pb-5",
-    collapseCentreOnPhone && "max-md:hidden"
+    collapseCentreOnPhone && "max-md:hidden",
+    /** Phone work-surface: centre is the only column — no leftover left-rail gutter. */
+    collapseLeftOnPhone && "max-md:px-gutter-rail max-md:pt-0"
   );
 
   return (
@@ -78,7 +90,8 @@ export function DualPaneLayout({
                 hasThirdColumn
                   ? "layout:grid layout:grid-cols-workbench-triple"
                   : "layout:grid layout:grid-cols-workbench-center-max",
-              ]
+              ],
+          collapseLeftOnPhone && "max-md:pt-2"
         )}
       >
         <div

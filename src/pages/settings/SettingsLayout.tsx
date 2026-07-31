@@ -1,5 +1,5 @@
-import { Outlet, useLocation, NavLink, Navigate } from "react-router-dom";
-import { Settings, Users, CreditCard, Zap, UserCircle, Plug } from "lucide-react";
+import { Outlet, useLocation, NavLink, Navigate, useNavigate } from "react-router-dom";
+import { Settings, Users, CreditCard, Zap, UserCircle, Plug, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { StandardPage } from "@/components/design-system/StandardPage";
@@ -7,6 +7,9 @@ import {
   SettingsWorkbenchProvider,
   useSettingsWorkbench,
 } from "@/contexts/SettingsWorkbenchContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface SettingsNavItem {
   label: string;
@@ -36,7 +39,21 @@ function SettingsRightColumnPlaceholder() {
 
 function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: SettingsNavItem[] }) {
   const { rightPanel } = useSettingsWorkbench();
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
   const hasContextualPanel = rightPanel != null;
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      navigate("/login", { replace: true });
+    } catch {
+      toast.error("Could not sign out. Try again.");
+      setSigningOut(false);
+    }
+  };
 
   return (
     <div
@@ -53,7 +70,7 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
           "sticky top-0 z-20 -mx-gutter-page border-b border-border/15 bg-background/90 px-gutter-page py-2 backdrop-blur-md",
           "flex min-w-0 snap-x snap-mandatory flex-row gap-1 overflow-x-auto overscroll-x-contain pb-2 pt-0.5",
           "scrollbar-hz-teal touch-pan-x",
-          "lg:static lg:z-0 lg:mx-0 lg:flex-col lg:gap-1 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+          "lg:static lg:z-0 lg:mx-0 lg:flex lg:h-full lg:min-h-[min(50vh,480px)] lg:flex-col lg:gap-1 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
         )}
       >
         {navItemsVisible.map((item) => {
@@ -77,6 +94,21 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
             </NavLink>
           );
         })}
+
+        <button
+          type="button"
+          onClick={() => void handleSignOut()}
+          disabled={signingOut}
+          className={cn(
+            "flex min-h-[44px] shrink-0 snap-start items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all",
+            "text-destructive hover:bg-destructive/10",
+            "lg:mt-auto lg:w-full lg:min-h-0 lg:border-t lg:border-border/20 lg:pt-3",
+            signingOut && "opacity-60"
+          )}
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          <span className="whitespace-nowrap">{signingOut ? "Signing out…" : "Log out"}</span>
+        </button>
       </nav>
 
       {/* Middle — selected section */}

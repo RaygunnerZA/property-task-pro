@@ -5,6 +5,7 @@ import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
+import { supabase } from "@/integrations/supabase/client";
 import { Users } from "lucide-react";
 
 /**
@@ -32,9 +33,23 @@ export default function StaffOnboardingScreen() {
   };
 
   useEffect(() => {
-    if (!orgLoading && !orgId) {
+    if (orgLoading) return;
+    if (orgId) return;
+
+    // No membership yet — resume invitation acceptance rather than owner org creation
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      const metaToken = user?.user_metadata?.invitation_token;
+      const stored = sessionStorage.getItem("pending_invitation_token");
+      const token =
+        (typeof metaToken === "string" && metaToken) || stored || null;
+      if (token) {
+        navigate(`/accept-invitation?token=${encodeURIComponent(token)}`, {
+          replace: true,
+        });
+        return;
+      }
       navigate("/onboarding/create-organisation", { replace: true });
-    }
+    });
   }, [orgId, orgLoading, navigate]);
 
   if (orgLoading || !orgId) {

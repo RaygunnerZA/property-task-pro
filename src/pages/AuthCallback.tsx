@@ -61,18 +61,24 @@ export default function AuthCallback() {
 
         if (membership?.org_id) {
           const isStaff = membership.role !== "owner" && membership.role !== "manager";
+          // Invited users inherit the org — never send them through owner "Add Property" setup
+          const isInvited = user.user_metadata?.invited === true;
 
-          if (isStaff) {
+          if (isStaff || isInvited) {
             const onboardingCompleted = user.user_metadata?.onboarding_completed;
             if (!onboardingCompleted) {
               await supabase.auth.updateUser({
-                data: { ...user.user_metadata, onboarding_completed: true }
+                data: {
+                  ...user.user_metadata,
+                  onboarding_completed: true,
+                  invited: true,
+                },
               });
             }
             return "/";
           }
 
-          // Owner/manager - check if they have properties
+          // Owner/manager who created their own org — check if they have properties
           const { count } = await supabase
             .from("properties")
             .select("id", { count: "exact", head: true })
