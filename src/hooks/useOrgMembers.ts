@@ -64,22 +64,27 @@ export function useOrgMembers() {
         return mapped;
       }
 
-      // Map members with user data
-      const mapped: OrgMember[] = memberships.map((m) => {
-        const user = userData?.find((u: any) => u.id === m.user_id);
-        return {
+      // Map members with user data. Dedupe by user_id in case legacy duplicate
+      // membership rows still exist before the unique index migration lands.
+      const seenUserIds = new Set<string>();
+      const mapped: OrgMember[] = [];
+      for (const m of memberships) {
+        if (seenUserIds.has(m.user_id)) continue;
+        seenUserIds.add(m.user_id);
+        const user = userData?.find((u) => u.id === m.user_id);
+        mapped.push({
           id: m.id,
           user_id: m.user_id,
           role: m.role,
-          assigned_properties: (m as any).assigned_properties ?? null,
+          assigned_properties: m.assigned_properties ?? null,
           display_name: user?.nickname || user?.email || `User ${m.user_id.slice(0, 8)}`,
           email: user?.email || null,
           nickname: user?.nickname || null,
           first_name: user?.first_name ?? null,
           last_name: user?.last_name ?? null,
           avatar_url: user?.avatar_url || null,
-        };
-      });
+        });
+      }
 
       return mapped;
     } catch (err: any) {
