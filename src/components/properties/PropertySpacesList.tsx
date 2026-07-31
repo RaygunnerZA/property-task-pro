@@ -210,7 +210,7 @@ export function PropertySpacesList({
                     className={cn(
                       "flex w-full items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-left transition-shadow",
                       "bg-card/70 shadow-e1 hover:shadow-md",
-                      isSelected && "ring-1 ring-[#8EC9CE]/
+                      isSelected && "ring-1 ring-[#8EC9CE]/60"
                     )}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[6px] bg-muted/40">
