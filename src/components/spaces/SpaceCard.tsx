@@ -1,8 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { propertyHubPath } from "@/lib/propertyRoutes";
-import { CheckSquare, AlertTriangle } from "lucide-react";
+import { CheckSquare, AlertTriangle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 
 interface SpaceCardProps {
@@ -37,7 +37,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
     space.spaceTypeName ??
     space.name ??
     space.type;
-  const illustrationSrc = getSpaceMiniCardIllustration(illustrationLabel);
+  const illustrationSrc = resolveSpaceMiniCardIllustration(illustrationLabel);
 
   const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,6 +45,13 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
       navigate(`/properties/${space.property_id}/spaces/${space.id}`);
     } else if (space.property_id) {
       navigate(propertyHubPath(space.property_id));
+    }
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (space.property_id && space.id) {
+      navigate(`/properties/${space.property_id}/spaces/${space.id}`);
     }
   };
 
@@ -58,11 +65,25 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[137px]",
+        "group/space-card relative bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[137px]",
         "flex flex-col text-center transition-all duration-200",
         className
       )}
     >
+      <button
+        type="button"
+        onClick={handleEdit}
+        className={cn(
+          "absolute top-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center",
+          "rounded-md bg-white/90 text-[#6D7480] shadow-sm",
+          "opacity-0 transition-opacity group-hover/space-card:opacity-100",
+          "hover:bg-white hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        )}
+        aria-label={`Edit ${displayName}`}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </button>
+
       {/* Illustration */}
       <div
         className={cn(

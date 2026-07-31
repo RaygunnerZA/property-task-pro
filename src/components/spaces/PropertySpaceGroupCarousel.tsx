@@ -29,10 +29,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
+import { isFuzzyMatchSimilarity } from "@/services/ai/fuzzyMatch";
 
 type PropertySpaceGroupCarouselProps = {
   propertyId: string;
   className?: string;
+  /** Filters space chips across group cards (case-insensitive). */
+  spaceFilter?: string;
 };
 
 function resolveSpaceGroupId(
@@ -65,6 +69,7 @@ function isSuggestionForGroup(name: string, groupId: string): boolean {
 export function PropertySpaceGroupCarousel({
   propertyId,
   className,
+  spaceFilter = "",
 }: PropertySpaceGroupCarouselProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
@@ -83,6 +88,8 @@ export function PropertySpaceGroupCarousel({
   const [busy, setBusy] = useState(false);
   const [customCollections, setCustomCollections] = useState<OnboardingCustomCollection[]>([]);
   const [spaceToCollection, setSpaceToCollection] = useState<Record<string, string>>({});
+  /** Optimistic newest-first pins so chips appear at the top before refetch settles. */
+  const [pendingPinsByGroup, setPendingPinsByGroup] = useState<Record<string, string[]>>({});
   const skipPersistCustomGroupsRef = useRef(true);
 
   useEffect(() => {
@@ -118,30 +125,122 @@ export function PropertySpaceGroupCarousel({
     });
   }, []);
 
-  const selectedSpacesSet = useMemo(
-    () => new Set(spaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)),
-    [spaces]
-  );
+  const selectedSpacesSet = useMemo(() => {
+    const set = new Set(
+      spaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+    );
+    for (const pins of Object.values(pendingPinsByGroup)) {
+      for (const name of pins) {
+        const key = name.toLowerCase().trim();
+        if (key) set.add(key);
+      }
+    }
+    return set;
+  }, [spaces, pendingPinsByGroup]);
+
+  useEffect(() => {
+    const existing = new Set(
+      spaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+    );
+    setPendingPinsByGroup((prev) => {
+      let changed = false;
+      const next: Record<string, string[]> = {};
+      for (const [groupId, pins] of Object.entries(prev)) {
+        const remaining = pins.filter((name) => !existing.has(name.toLowerCase().trim()));
+        if (remaining.length !== pins.length) changed = true;
+        if (remaining.length > 0) next[groupId] = remaining;
+        else if (pins.length > 0) changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [spaces]);
+
+  const pinSpaceOptimistic = useCallback((name: string, groupId: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    setPendingPinsByGroup((prev) => {
+      const existing = (prev[groupId] ?? []).filter((n) => n.toLowerCase().trim() !== key);
+      return { ...prev, [groupId]: [trimmed, ...existing] };
+    });
+  }, []);
+
+  const selectedSpacesNewestFirstByGroup = useMemo(() => {
+    const result: Record<string, string[]> = {};
+    const sorted = [...spaces].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    for (const space of sorted) {
+      const name = space.name?.trim();
+      if (!name) continue;
+      const groupId = resolveSpaceGroupId(space, spaceToCollection);
+      if (!groupId) continue;
+      if (!result[groupId]) result[groupId] = [];
+      result[groupId].push(name);
+    }
+    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
+      if (!pins.length) continue;
+      const existingKeys = new Set(
+        (result[groupId] ?? []).map((n) => n.toLowerCase().trim())
+      );
+      const pendingOnly = pins.filter((n) => !existingKeys.has(n.toLowerCase().trim()));
+      result[groupId] = [...pendingOnly, ...(result[groupId] ?? [])];
+    }
+    return result;
+  }, [spaces, spaceToCollection, pendingPinsByGroup]);
 
   const extraSpacesByGroup = useMemo(() => {
     const result: Record<string, GroupExtraSpace[]> = {};
-    for (const space of spaces) {
+    const sorted = [...spaces].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    for (const space of sorted) {
       const name = space.name?.trim();
       if (!name) continue;
       const groupId = resolveSpaceGroupId(space, spaceToCollection);
       if (!groupId) continue;
       if (isCustomCollectionGroupId(groupId)) {
         if (!result[groupId]) result[groupId] = [];
-        // Newest first for chip pinning at the top of the card.
-        result[groupId].unshift({ name });
+        result[groupId].push({ name });
         continue;
       }
       if (isSuggestionForGroup(name, groupId)) continue;
       if (!result[groupId]) result[groupId] = [];
-      result[groupId].unshift({ name });
+      result[groupId].push({ name });
+    }
+    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
+      if (!pins.length) continue;
+      const existingKeys = new Set(
+        (result[groupId] ?? []).map((e) => e.name.toLowerCase().trim())
+      );
+      const pendingExtras: GroupExtraSpace[] = [];
+      for (const name of pins) {
+        const key = name.toLowerCase().trim();
+        if (existingKeys.has(key)) continue;
+        if (!isCustomCollectionGroupId(groupId) && isSuggestionForGroup(name, groupId)) {
+          continue;
+        }
+        pendingExtras.push({ name });
+        existingKeys.add(key);
+      }
+      if (pendingExtras.length) {
+        result[groupId] = [...pendingExtras, ...(result[groupId] ?? [])];
+      }
     }
     return result;
-  }, [spaces, spaceToCollection]);
+  }, [spaces, spaceToCollection, pendingPinsByGroup]);
+
+  const filterKey = spaceFilter.trim().toLowerCase();
+
+  const groupMatchesFilter = useCallback(
+    (groupId: string, suggestedSpaces: string[] = []) => {
+      if (!filterKey) return true;
+      const selected = selectedSpacesNewestFirstByGroup[groupId] ?? [];
+      if (selected.some((n) => n.toLowerCase().includes(filterKey))) return true;
+      return suggestedSpaces.some((n) => n.toLowerCase().includes(filterKey));
+    },
+    [filterKey, selectedSpacesNewestFirstByGroup]
+  );
 
   const invalidateSpaces = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -187,21 +286,69 @@ export function PropertySpaceGroupCarousel({
       return;
     }
 
+    pinSpaceOptimistic(trimmed, groupId);
     setBusy(true);
     try {
+      const canonical = resolveToCanonicalSpaceType(trimmed) ?? trimmed;
+      let spaceTypeId: string | null = null;
+      let iconName = "box";
+
+      const { data: exactType } = await supabase
+        .from("space_types")
+        .select("id, name, default_icon")
+        .ilike("name", canonical)
+        .limit(1)
+        .maybeSingle();
+
+      if (exactType) {
+        spaceTypeId = exactType.id;
+        iconName = exactType.default_icon || "box";
+      } else {
+        // Soft match against catalog so new spaces get a sensible type + icon.
+        const { data: catalog } = await supabase
+          .from("space_types")
+          .select("id, name, default_icon")
+          .limit(300);
+        const needle = canonical.toLowerCase();
+        let best: { id: string; default_icon: string | null; score: number } | null = null;
+        for (const row of catalog ?? []) {
+          const hay = row.name ?? "";
+          if (!hay || !isFuzzyMatchSimilarity(needle, hay, 0.72)) continue;
+          const score = needle === hay.toLowerCase() ? 1 : 0.8;
+          if (!best || score > best.score) {
+            best = { id: row.id, default_icon: row.default_icon, score };
+          }
+        }
+        if (best) {
+          spaceTypeId = best.id;
+          iconName = best.default_icon || "box";
+        }
+      }
+
       const { error } = await supabase.from("spaces").insert({
         org_id: orgId,
         property_id: propertyId,
         name: trimmed,
-        icon_name: "box",
+        icon_name: iconName,
+        space_type_id: spaceTypeId,
       });
       if (error) throw error;
-      if (isCustomCollectionGroupId(groupId)) {
-        assignSpaceToCollection(trimmed, groupId);
-      }
+      // Persist group membership for custom names (and suggestions) so chips
+      // survive refresh — resolveSpaceGroupId needs this when there's no space_type.
+      assignSpaceToCollection(trimmed, groupId);
       toast.success(`Added ${trimmed}`);
       await invalidateSpaces();
     } catch (err: unknown) {
+      setPendingPinsByGroup((prev) => {
+        const pins = prev[groupId];
+        if (!pins?.length) return prev;
+        const remaining = pins.filter((n) => n.toLowerCase().trim() !== trimmed.toLowerCase());
+        if (remaining.length === pins.length) return prev;
+        const next = { ...prev };
+        if (remaining.length) next[groupId] = remaining;
+        else delete next[groupId];
+        return next;
+      });
       const message = err instanceof Error ? err.message : "Failed to add space";
       toast.error(message);
     } finally {
@@ -264,6 +411,16 @@ export function PropertySpaceGroupCarousel({
         .update({ name: trimmed })
         .eq("id", renameModal.spaceId);
       if (error) throw error;
+      if (newKey !== oldKey) {
+        setSpaceToCollection((prev) => {
+          const groupId = prev[oldKey];
+          if (!groupId) return prev;
+          const next = { ...prev };
+          delete next[oldKey];
+          next[newKey] = groupId;
+          return next;
+        });
+      }
       toast.success("Space renamed");
       setRenameModal(null);
       setRenameInput("");
@@ -292,12 +449,16 @@ export function PropertySpaceGroupCarousel({
   return (
     <>
       <SpaceGroupCarousel className={className}>
-        {ONBOARDING_SPACE_GROUPS.map((group) => (
+        {ONBOARDING_SPACE_GROUPS.filter((group) =>
+          groupMatchesFilter(group.id, group.suggestedSpaces)
+        ).map((group) => (
           <OnboardingSpaceGroupCard
             key={group.id}
             group={group}
             selectedSpacesSet={selectedSpacesSet}
             extraSpaces={extraSpacesByGroup[group.id] ?? []}
+            selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
+            spaceFilter={spaceFilter}
             onAddSpace={(name) => createSpace(name, group.id)}
             onRemoveSpace={removeSpace}
             onRenameSpace={(name) => {
@@ -313,29 +474,34 @@ export function PropertySpaceGroupCarousel({
             }}
           />
         ))}
-        {customCollections.map((collection) => (
-          <OnboardingCustomCollectionCard
-            key={collection.id}
-            collection={collection}
-            selectedSpacesSet={selectedSpacesSet}
-            extraSpaces={extraSpacesByGroup[collection.id] ?? []}
-            onAddSpace={(name) => createSpace(name, collection.id)}
-            onRemoveSpace={removeSpace}
-            onRenameSpace={(name) => {
-              const space = findSpaceByName(name);
-              if (!space) return;
-              setRenameModal({ spaceId: space.id, currentName: name });
-              setRenameInput(name);
-            }}
-            onCopySpace={(name, groupId) => {
-              const suggested = getSuggestedCopyName(name);
-              setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-              setCopyInput(suggested);
-            }}
-            onUpdateCollection={handleUpdateCustomCollection}
-          />
-        ))}
-        <OnboardingCustomCollectionDraftCard onCreateCollection={handleCreateCustomCollection} />
+        {customCollections
+          .filter((collection) => groupMatchesFilter(collection.id))
+          .map((collection) => (
+            <OnboardingCustomCollectionCard
+              key={collection.id}
+              collection={collection}
+              selectedSpacesSet={selectedSpacesSet}
+              extraSpaces={extraSpacesByGroup[collection.id] ?? []}
+              spaceFilter={spaceFilter}
+              onAddSpace={(name) => createSpace(name, collection.id)}
+              onRemoveSpace={removeSpace}
+              onRenameSpace={(name) => {
+                const space = findSpaceByName(name);
+                if (!space) return;
+                setRenameModal({ spaceId: space.id, currentName: name });
+                setRenameInput(name);
+              }}
+              onCopySpace={(name, groupId) => {
+                const suggested = getSuggestedCopyName(name);
+                setCopyModal({ baseName: name, suggestedName: suggested, groupId });
+                setCopyInput(suggested);
+              }}
+              onUpdateCollection={handleUpdateCustomCollection}
+            />
+          ))}
+        {!filterKey ? (
+          <OnboardingCustomCollectionDraftCard onCreateCollection={handleCreateCustomCollection} />
+        ) : null}
       </SpaceGroupCarousel>
 
       <Dialog open={!!renameModal} onOpenChange={(open) => !open && setRenameModal(null)}>

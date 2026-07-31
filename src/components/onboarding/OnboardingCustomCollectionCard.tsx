@@ -46,6 +46,8 @@ interface OnboardingCustomCollectionCardProps {
   collection: OnboardingCustomCollection;
   selectedSpacesSet: Set<string>;
   extraSpaces?: GroupExtraSpace[];
+  /** Case-insensitive filter applied to chip labels. */
+  spaceFilter?: string;
   subSpacesByParent?: Record<string, string[]>;
   onAddSpace: (name: string, extra?: boolean) => void;
   onRemoveSpace?: (name: string) => void;
@@ -60,6 +62,7 @@ export function OnboardingCustomCollectionCard({
   collection,
   selectedSpacesSet,
   extraSpaces = [],
+  spaceFilter = "",
   subSpacesByParent = {},
   onAddSpace,
   onRemoveSpace,
@@ -116,6 +119,10 @@ export function OnboardingCustomCollectionCard({
   }, [isExpanded]);
 
   const visibleSpaceNames = useMemo(() => {
+    const filter = spaceFilter.trim().toLowerCase();
+    const matchesFilter = (name: string) =>
+      !filter || name.toLowerCase().includes(filter);
+
     const names: string[] = [];
     const seen = new Set<string>();
     const insertAfterQueue: { name: string; afterKey: string }[] = [];
@@ -148,8 +155,8 @@ export function OnboardingCustomCollectionCard({
       else names.unshift(name);
     }
 
-    return names;
-  }, [extraSpaces]);
+    return names.filter(matchesFilter);
+  }, [extraSpaces, spaceFilter]);
 
   const handleAddSpace = () => {
     const trimmed = spaceName.trim();

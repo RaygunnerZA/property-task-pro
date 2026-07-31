@@ -1,4 +1,11 @@
 /** Auto-generated from public/spaces/_manifest.json — space mini-card banner art. */
+import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
+import {
+  isFuzzyMatchSimilarity,
+  levenshteinDistance,
+  normalizeString,
+} from "@/services/ai/fuzzyMatch";
+
 const MINI_CARD_BASE = "/spaces/mini-cards";
 
 export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
@@ -125,13 +132,67 @@ export function spaceTypeIllustrationSlug(name: string | null | undefined): stri
     .replace(/^-+|-+$/g, "");
 }
 
-export function getSpaceMiniCardIllustration(
-  spaceTypeName: string | null | undefined
-): string | undefined {
-  const slug = spaceTypeIllustrationSlug(spaceTypeName);
+function illustrationForSlug(slug: string): string | undefined {
   if (!slug) return undefined;
   const targetSlug = SPACE_MINI_CARD_SLUG_ALIAS[slug] ?? slug;
   if (SPACE_MINI_CARD_ILLUSTRATION[targetSlug]) return SPACE_MINI_CARD_ILLUSTRATION[targetSlug];
   const base = targetSlug.replace(/-\d+$/, "");
   return SPACE_MINI_CARD_ILLUSTRATION[base];
+}
+
+function labelSimilarity(a: string, b: string): number {
+  const na = normalizeString(a);
+  const nb = normalizeString(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 1;
+  const longer = Math.max(na.length, nb.length);
+  return 1 - levenshteinDistance(na, nb) / longer;
+}
+
+/**
+ * Pick the best mini-card thumbnail for a space label.
+ * Exact / alias first, then fuzzy match against the spaces image catalog.
+ */
+export function getSpaceMiniCardIllustration(
+  spaceTypeName: string | null | undefined
+): string | undefined {
+  const raw = spaceTypeName?.trim();
+  if (!raw) return undefined;
+
+  const canonical = resolveToCanonicalSpaceType(raw) ?? raw;
+  const exact =
+    illustrationForSlug(spaceTypeIllustrationSlug(raw)) ??
+    illustrationForSlug(spaceTypeIllustrationSlug(canonical));
+  if (exact) return exact;
+
+  const query = normalizeString(canonical);
+  const queryWords = query.split(/\s+/).filter((w) => w.length > 2);
+  let bestSlug: string | null = null;
+  let bestScore = 0.68;
+
+  for (const slug of Object.keys(SPACE_MINI_CARD_ILLUSTRATION)) {
+    // Prefer primary art (kitchen.png) over alternates (kitchen-2.png).
+    if (/-\d+$/.test(slug)) continue;
+    const label = slug.replace(/-/g, " ");
+    if (!isFuzzyMatchSimilarity(query, label, 0.62)) continue;
+
+    const overlap = queryWords.filter((w) => label.includes(w)).length;
+    const score = labelSimilarity(query, label) + overlap * 0.06;
+    if (score > bestScore) {
+      bestScore = score;
+      bestSlug = slug;
+    }
+  }
+
+  return bestSlug ? SPACE_MINI_CARD_ILLUSTRATION[bestSlug] : undefined;
+}
+
+/** Resolved mini-card path, or a neutral fallback when nothing matches. */
+export function resolveSpaceMiniCardIllustration(
+  spaceTypeName: string | null | undefined
+): string {
+  return (
+    getSpaceMiniCardIllustration(spaceTypeName) ??
+    `${MINI_CARD_BASE}/office.png`
+  );
 }

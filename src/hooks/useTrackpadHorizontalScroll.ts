@@ -20,6 +20,37 @@ function isPrimarilyVerticalWheel(deltaX: number, deltaY: number): boolean {
   return Math.abs(deltaY) > Math.abs(deltaX) * WHEEL_AXIS_RATIO;
 }
 
+function findNestedVerticalScrollTarget(
+  eventTarget: EventTarget | null,
+  boundary: HTMLElement
+): HTMLElement | null {
+  let el: HTMLElement | null =
+    eventTarget instanceof HTMLElement
+      ? eventTarget
+      : eventTarget instanceof Node
+        ? eventTarget.parentElement
+        : null;
+
+  while (el && el !== boundary) {
+    const style = getComputedStyle(el);
+    const overflowY = style.overflowY;
+    const overflow = style.overflow;
+    const scrollableY =
+      overflowY === "auto" ||
+      overflowY === "scroll" ||
+      overflow === "auto" ||
+      overflow === "scroll";
+
+    if (scrollableY && el.scrollHeight > el.clientHeight + 1) {
+      return el;
+    }
+
+    el = el.parentElement;
+  }
+
+  return null;
+}
+
 function findVerticalScrollTarget(from: HTMLElement): HTMLElement | null {
   let el: HTMLElement | null = from.parentElement;
 
@@ -55,7 +86,7 @@ function forwardVerticalWheelScroll(event: WheelEvent, from: HTMLElement, deltaY
   target.scrollTop += deltaY;
 }
 
-/** Map horizontal wheel / trackpad swipe to scrollLeft; vertical wheel scrolls the column/page. */
+/** Map horizontal wheel / trackpad swipe to scrollLeft; vertical wheel scrolls nested chips or the column/page. */
 export function useTrackpadHorizontalElementScroll(
   ref: RefObject<HTMLElement | null>,
   enabled = true
@@ -78,6 +109,19 @@ export function useTrackpadHorizontalElementScroll(
       }
 
       if (isPrimarilyVerticalWheel(deltaX, deltaY)) {
+        const nested = findNestedVerticalScrollTarget(event.target, el);
+        if (nested) {
+          const atTop = nested.scrollTop <= 0;
+          const atBottom = nested.scrollTop + nested.clientHeight >= nested.scrollHeight - 1;
+          if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) {
+            // At edge — let the page/column continue scrolling.
+            forwardVerticalWheelScroll(event, el, deltaY);
+            return;
+          }
+          event.preventDefault();
+          nested.scrollTop += deltaY;
+          return;
+        }
         forwardVerticalWheelScroll(event, el, deltaY);
       }
     };

@@ -153,6 +153,9 @@ export function PropertySpacesList({
                         space={{
                           ...space,
                           icon_name: effectiveIcon,
+                          spaceTypeName:
+                            (space as { space_types?: { name?: string | null } | null }).space_types
+                              ?.name ?? null,
                           taskCount: spaceTaskCounts.counts[space.id] || 0,
                           urgentTaskCount: spaceTaskCounts.urgentCounts[space.id] || 0,
                         }}

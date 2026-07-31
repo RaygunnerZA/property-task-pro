@@ -16,7 +16,7 @@ export function SpaceGroupCarousel({ children, className }: SpaceGroupCarouselPr
       <div className="relative">
         <div
           ref={scrollRef}
-          className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] touch-pan-x overscroll-x-contain"
+          className="flex h-[310px] gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] overscroll-x-contain"
         >
           {children}
         </div>

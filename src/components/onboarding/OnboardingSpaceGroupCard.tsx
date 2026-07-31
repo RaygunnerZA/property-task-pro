@@ -35,6 +35,13 @@ interface OnboardingSpaceGroupCardProps {
   selectedSpacesSet: Set<string>;
   /** Custom and duplicated spaces shown on this card (not in suggestedSpaces). */
   extraSpaces?: GroupExtraSpace[];
+  /**
+   * Selected space names for this group, newest first.
+   * When set, selected chips (suggestions + custom) pin to the top in this order.
+   */
+  selectedSpacesNewestFirst?: string[];
+  /** Case-insensitive filter applied to chip labels. */
+  spaceFilter?: string;
   /** Display names for renamed suggestion chips (key = original suggestion, lowercased). */
   suggestionLabelOverrides?: SuggestionLabelOverrides;
   subSpacesByParent?: Record<string, string[]>;
@@ -54,6 +61,8 @@ export function OnboardingSpaceGroupCard({
   group,
   selectedSpacesSet,
   extraSpaces = [],
+  selectedSpacesNewestFirst,
+  spaceFilter = "",
   suggestionLabelOverrides = {},
   subSpacesByParent = {},
   onAddSpace,
@@ -131,7 +140,11 @@ export function OnboardingSpaceGroupCard({
   };
 
   const visibleSpaceNames = useMemo(() => {
-    const seen = new Set<string>();
+    const filter = spaceFilter.trim().toLowerCase();
+    const matchesFilter = (name: string) =>
+      !filter || name.toLowerCase().includes(filter);
+
+    const suggestionSeen = new Set<string>();
     const suggestions: string[] = [];
 
     for (const name of group.suggestedSpaces) {
@@ -140,12 +153,12 @@ export function OnboardingSpaceGroupCard({
       if (dismissedSuggestions.has(sourceKey)) continue;
       const displayName = suggestionLabelOverrides[sourceKey] ?? name;
       const displayKey = displayName.toLowerCase().trim();
-      if (seen.has(displayKey)) continue;
-      seen.add(displayKey);
+      if (suggestionSeen.has(displayKey)) continue;
+      suggestionSeen.add(displayKey);
       suggestions.push(displayName);
     }
 
-    // Contract: extraSpaces[0] is newest — pin those chips to the top.
+    // Contract: extraSpaces[0] is newest — pin those chips to the top (fallback path).
     const extrasNewestFirst: string[] = [];
     const extrasInsertAfter: { name: string; afterKey: string }[] = [];
     for (const extra of extraSpaces) {
@@ -157,8 +170,6 @@ export function OnboardingSpaceGroupCard({
             : null;
       if (!extraName?.trim()) continue;
       const key = extraName.toLowerCase().trim();
-      if (seen.has(key)) continue;
-      seen.add(key);
       const insertAfter =
         typeof extra === "object" && typeof extra?.insertAfter === "string"
           ? extra.insertAfter
@@ -170,7 +181,9 @@ export function OnboardingSpaceGroupCard({
         });
         continue;
       }
-      extrasNewestFirst.push(extraName);
+      if (!suggestionSeen.has(key)) {
+        extrasNewestFirst.push(extraName);
+      }
     }
 
     const selectedSuggestions: string[] = [];
@@ -181,11 +194,48 @@ export function OnboardingSpaceGroupCard({
       else unselectedSuggestions.push(displayName);
     }
 
-    // New / selected spaces pin to the top; grey suggestions follow.
-    const names = [...extrasNewestFirst, ...selectedSuggestions, ...unselectedSuggestions];
+    // Prefer explicit newest-first order so newly added / selected chips pin to the top.
+    let selectedOrdered: string[];
+    if (selectedSpacesNewestFirst && selectedSpacesNewestFirst.length > 0) {
+      const seenSelected = new Set<string>();
+      selectedOrdered = [];
+      for (const name of selectedSpacesNewestFirst) {
+        if (!name?.trim()) continue;
+        const key = name.toLowerCase().trim();
+        if (seenSelected.has(key)) continue;
+        if (!selectedSpacesSet.has(key)) continue;
+        seenSelected.add(key);
+        selectedOrdered.push(name);
+      }
+      for (const name of extrasNewestFirst) {
+        const key = name.toLowerCase().trim();
+        if (seenSelected.has(key)) continue;
+        seenSelected.add(key);
+        selectedOrdered.push(name);
+      }
+      for (const name of selectedSuggestions) {
+        const key = name.toLowerCase().trim();
+        if (seenSelected.has(key)) continue;
+        seenSelected.add(key);
+        selectedOrdered.push(name);
+      }
+    } else {
+      selectedOrdered = [...extrasNewestFirst, ...selectedSuggestions];
+    }
 
-    // Duplicates (Bedroom 2 after Bedroom) keep sibling placement.
+    const selectedKeys = new Set(selectedOrdered.map((n) => n.toLowerCase().trim()));
+    const names = [
+      ...selectedOrdered.filter(matchesFilter),
+      ...unselectedSuggestions.filter(
+        (name) => !selectedKeys.has(name.toLowerCase().trim()) && matchesFilter(name)
+      ),
+    ];
+
+    // Duplicates (Bedroom 2 after Bedroom) keep sibling placement when not already ordered.
     for (const { name, afterKey } of extrasInsertAfter) {
+      if (!matchesFilter(name)) continue;
+      const key = name.toLowerCase().trim();
+      if (names.some((n) => n.toLowerCase().trim() === key)) continue;
       const afterIdx = names.findIndex((n) => n.toLowerCase().trim() === afterKey);
       if (afterIdx >= 0) names.splice(afterIdx + 1, 0, name);
       else names.unshift(name);
@@ -195,6 +245,8 @@ export function OnboardingSpaceGroupCard({
   }, [
     group.suggestedSpaces,
     extraSpaces,
+    selectedSpacesNewestFirst,
+    spaceFilter,
     dismissedSuggestions,
     suggestionLabelOverrides,
     selectedSpacesSet,

@@ -69,7 +69,7 @@ export function AddSpaceDialog({
       if (!canonicalName) return null;
       const { data, error } = await supabase
         .from("space_types")
-        .select("default_icon")
+        .select("id, name, default_icon")
         .ilike("name", canonicalName)
         .limit(1)
         .maybeSingle();
@@ -124,6 +124,7 @@ export function AddSpaceDialog({
           property_id: propertyId,
           name: name.trim(),
           icon_name: effectiveIcon,
+          space_type_id: spaceTypeMatch?.id ?? null,
         })
         .select()
         .single();

@@ -10,7 +10,7 @@ import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGro
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Layers, FileUp, Plus } from "lucide-react";
+import { Layers, FileUp, Plus, Search } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
@@ -39,6 +39,7 @@ export default function SpaceOrganisationScreen() {
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
   const [showAddSpace, setShowAddSpace] = useState(false);
+  const [spaceSearchQuery, setSpaceSearchQuery] = useState("");
 
   useEffect(() => {
     if (searchParams.get("workTab") === "issues" || searchParams.get("urgent") === "1") {
@@ -86,12 +87,14 @@ export default function SpaceOrganisationScreen() {
   const urgentOnly = searchParams.get("urgent") === "1";
 
   const spacesForIssuesList = useMemo(() => {
+    const q = spaceSearchQuery.trim().toLowerCase();
     return spaces.filter((s) => {
       if (!openTaskSpaceIds.has(s.id)) return false;
       if (urgentOnly && !urgentPrioritySpaceIds.has(s.id)) return false;
+      if (q && !(s.name ?? "").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [spaces, openTaskSpaceIds, urgentPrioritySpaceIds, urgentOnly]);
+  }, [spaces, openTaskSpaceIds, urgentPrioritySpaceIds, urgentOnly, spaceSearchQuery]);
 
   const spacesWithIssuesCount = useMemo(
     () => spaces.filter((s) => openTaskSpaceIds.has(s.id)).length,
@@ -176,6 +179,18 @@ export default function SpaceOrganisationScreen() {
 
   const workColumn = (
     <div className="space-y-5">
+      <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <input
+          type="search"
+          value={spaceSearchQuery}
+          onChange={(e) => setSpaceSearchQuery(e.target.value)}
+          placeholder="Search spaces"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+          aria-label="Search spaces"
+        />
+      </div>
+
       <div>
         <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
         <WorkspaceTabList>
@@ -205,7 +220,7 @@ export default function SpaceOrganisationScreen() {
           <p className="text-sm text-muted-foreground">
             Hover a group to browse suggestions, add spaces, or manage what you already have.
           </p>
-          <PropertySpaceGroupCarousel propertyId={propertyId} />
+          <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
         </div>
       ) : (
         <div className="space-y-3">
@@ -228,7 +243,11 @@ export default function SpaceOrganisationScreen() {
             ))}
             {spacesForIssuesList.length === 0 && (
               <p className="text-sm text-muted-foreground py-6">
-                {urgentOnly ? "No spaces with urgent-priority open tasks." : "No spaces with open tasks."}
+                {spaceSearchQuery.trim()
+                  ? "No spaces match your search."
+                  : urgentOnly
+                    ? "No spaces with urgent-priority open tasks."
+                    : "No spaces with open tasks."}
               </p>
             )}
           </ul>

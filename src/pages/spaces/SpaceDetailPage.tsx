@@ -49,7 +49,7 @@ export default function SpaceDetailPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<"create" | "details" | "assistant" | null>("create");
+  const [expandedSection, setExpandedSection] = useState<"create" | "details" | "assistant" | null>(null);
 
   const assetsInSpace = useMemo(() => {
     return allAssets.filter((a: any) => a.space_id === spaceId);
