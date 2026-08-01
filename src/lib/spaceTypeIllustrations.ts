@@ -32,6 +32,7 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "creative-studio": `${MINI_CARD_BASE}/creative-studio.png`,
   "cupboard": `${MINI_CARD_BASE}/cupboard.png`,
   "dining-room": `${MINI_CARD_BASE}/dining-room.png`,
+  "dog-wash": `${MINI_CARD_BASE}/dog-wash.png`,
   "electrical-room": `${MINI_CARD_BASE}/electrical-room.png`,
   "elevator": `${MINI_CARD_BASE}/elevator.png`,
   "entrance": `${MINI_CARD_BASE}/entrance.png`,
@@ -58,6 +59,7 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "lounge": `${MINI_CARD_BASE}/lounge.png`,
   "mailroom": `${MINI_CARD_BASE}/mailroom.png`,
   "main-terrace": `${MINI_CARD_BASE}/main-terrace.png`,
+  "mazot": `${MINI_CARD_BASE}/mazot.png`,
   "meeting-room": `${MINI_CARD_BASE}/meeting-room.png`,
   "meeting-room-2": `${MINI_CARD_BASE}/meeting-room-2.png`,
   "mezzanine": `${MINI_CARD_BASE}/mezzanine.png`,
@@ -87,7 +89,6 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "wc": `${MINI_CARD_BASE}/wc.png`,
   "workshop": `${MINI_CARD_BASE}/workshop.png`,
   "yoga-room": `${MINI_CARD_BASE}/yoga-room.png`,
-  "yoga-studio": `${MINI_CARD_BASE}/yoga-studio.png`,
 };
 
 /** Space type slugs without dedicated art → nearest mini-card slug. */
@@ -145,6 +146,7 @@ const SPACE_MINI_CARD_SLUG_ALIAS: Record<string, string> = {
   "utility-room": "laundry-room",
   vestibule: "entrance-hall",
   yard: "garden",
+  "yoga-studio": "yoga-room",
 };
 
 export function spaceTypeIllustrationSlug(name: string | null | undefined): string {
