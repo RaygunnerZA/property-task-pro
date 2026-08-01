@@ -1,9 +1,12 @@
-import { useMemo } from "react";
-import { addDays, startOfDay } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
 import { TaskList } from "@/components/tasks/TaskList";
-import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
+import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
+import {
+  workbenchSectionTitleClassName,
+} from "@/lib/workbenchSectionTitle";
 import { useDataContext } from "@/contexts/DataContext";
+import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import {
@@ -11,22 +14,36 @@ import {
   shouldHideOwnerDemoTaskForRole,
 } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
+import { cn } from "@/lib/utils";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
-const URGENT_SECTION = {
-  title: "Urgent",
-  subtitle: "High-priority work that needs action soon.",
-} as const;
+type TasksListTab = "all" | "urgent" | "my";
 
-const MY_TASKS_SECTION = {
-  title: "My tasks",
-  subtitle: "Work assigned to you.",
-} as const;
-
-const DUE_SOON_SECTION = {
-  title: "Due soon",
-  subtitle: "Tasks due in the next seven days.",
-} as const;
+const TASKS_LIST_TABS: {
+  id: TasksListTab;
+  label: string;
+  subtitle: string;
+  illustrationSrc: string;
+}[] = [
+  {
+    id: "all",
+    label: "All",
+    subtitle: "Every open task in scope — including work assigned to others, newest first.",
+    illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
+  },
+  {
+    id: "urgent",
+    label: "Urgent",
+    subtitle: "High-priority work that needs action soon.",
+    illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent,
+  },
+  {
+    id: "my",
+    label: "My tasks",
+    subtitle: "Work assigned to you.",
+    illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork,
+  },
+];
 
 const TERMINAL_TASK_STATUSES = new Set(["completed", "archived", "done"]);
 
@@ -52,8 +69,16 @@ function filterOpenTasksForTasksTab(
   });
 }
 
+function sortRecentlyAdded(tasks: any[]) {
+  return [...tasks].sort(
+    (a, b) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+  );
+}
+
 /**
- * Tasks tab — Urgent carousel, My tasks horizontal strip, Due soon.
+ * Tasks tab — single list with All / Urgent / My tasks tabs.
+ * All (default) is sorted by recently added; includes work assigned to others.
  */
 export function TasksWorkbenchPanel({
   tasks = [],
@@ -64,9 +89,29 @@ export function TasksWorkbenchPanel({
   selectedPropertyIds,
 }: MyWorkPanelProps) {
   const { userId } = useDataContext();
+  const { setSelectedFilters } = useWorkbenchControls();
   const { mode: identityMode } = useIdentityMode();
   const memberRole =
     identityMode === "manager" ? "manager" : identityMode === "staff" ? "staff" : "owner";
+  const [listTab, setListTab] = useState<TasksListTab>("all");
+
+  // List tabs replace Due / Urgent / My Tasks chips — clear them so they don't double-filter.
+  useEffect(() => {
+    setSelectedFilters((prev) => {
+      if (
+        !prev.has("filter-due") &&
+        !prev.has("filter-urgent") &&
+        !prev.has("filter-assigned-me")
+      ) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete("filter-due");
+      next.delete("filter-urgent");
+      next.delete("filter-assigned-me");
+      return next;
+    });
+  }, [setSelectedFilters]);
 
   const scopedOpenTasks = useMemo(
     () => filterOpenTasksForTasksTab(tasks, selectedPropertyIds, properties, memberRole),
@@ -86,54 +131,105 @@ export function TasksWorkbenchPanel({
     [scopedOpenTasks, userId]
   );
 
-  const dueSoonTasks = useMemo(() => {
-    const today = startOfDay(new Date());
-    const horizon = addDays(today, 7);
-    return scopedOpenTasks.filter((task) => {
-      if (!task.due_date) return false;
-      const due = startOfDay(new Date(task.due_date));
-      return due >= today && due <= horizon;
-    });
-  }, [scopedOpenTasks]);
+  const allTasks = useMemo(
+    () => sortRecentlyAdded(scopedOpenTasks),
+    [scopedOpenTasks]
+  );
+
+  const tabCounts: Record<TasksListTab, number> = {
+    all: allTasks.length,
+    urgent: urgentTasks.length,
+    my: myTasks.length,
+  };
+
+  const visibleTasks = useMemo(() => {
+    if (listTab === "urgent") return sortRecentlyAdded(urgentTasks);
+    if (listTab === "my") return sortRecentlyAdded(myTasks);
+    return allTasks;
+  }, [listTab, allTasks, urgentTasks, myTasks]);
+
+  const activeTabMeta =
+    TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
 
   return (
-    <div className="min-w-0 space-y-6">
-      <section className="min-w-0 rounded-2xl bg-transparent py-1">
-        <IssuesWorkbenchSectionHeader
-          title={URGENT_SECTION.title}
-          subtitle={URGENT_SECTION.subtitle}
-          count={urgentTasks.length}
-          countVariant="review"
-          illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent}
-        />
-        <div className="mt-3">
-          <TaskList
-            tasks={urgentTasks}
+    <div className="min-w-0 -mt-[30px]">
+      <section className="min-w-0 rounded-2xl bg-transparent pb-1 pt-0">
+        <div className="flex w-full min-w-0 items-end gap-3 px-2">
+          <div
+            role="tablist"
+            aria-label="Task lists"
+            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"
+          >
+            {TASKS_LIST_TABS.map((tab, index) => {
+              const selected = listTab === tab.id;
+              const count = tabCounts[tab.id];
+              return (
+                <div key={tab.id} className="flex items-center gap-x-2">
+                  {index > 0 ? (
+                    <span
+                      className="text-xl font-normal leading-tight text-muted-foreground/35"
+                      aria-hidden
+                    >
+                      |
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    onClick={() => setListTab(tab.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-xl leading-tight tracking-tight transition-colors",
+                      selected
+                        ? cn(workbenchSectionTitleClassName, "text-foreground")
+                        : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    {tab.label}
+                    <span
+                      className={cn(
+                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
+                        selected ? "text-muted-foreground" : "text-muted-foreground/60"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            className="flex aspect-square w-[min(6.5rem,28%)] max-h-[6.5rem] shrink-0 translate-y-[30px] items-end justify-end"
+            aria-hidden
+          >
+            <img
+              key={activeTabMeta.illustrationSrc}
+              src={activeTabMeta.illustrationSrc}
+              alt=""
+              className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
+              decoding="async"
+            />
+          </div>
+        </div>
+
+        <p className="mt-2 px-2 text-sm leading-snug text-muted-foreground">
+          {activeTabMeta.subtitle}
+        </p>
+
+        <div className="mt-5 mb-5 px-2">
+          <WorkbenchTaskFilterBar
+            tasks={tasks}
             properties={properties}
-            tasksLoading={tasksLoading}
-            onTaskClick={onTaskClick}
-            selectedTaskId={selectedTaskId}
-            selectedPropertyIds={selectedPropertyIds}
-            hidePrimaryUrgentChip
-            embeddedInIssuesWorkbench
-            embeddedSliderOnly
-            compactTaskMeta
-            hideDoneSection
+            hidePrimaryQuickChips
+            showSortBar
           />
         </div>
-      </section>
 
-      <section className="min-w-0 rounded-2xl bg-transparent py-1">
-        <IssuesWorkbenchSectionHeader
-          title={MY_TASKS_SECTION.title}
-          subtitle={MY_TASKS_SECTION.subtitle}
-          count={myTasks.length}
-          countVariant="recent"
-          illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
-        />
-        <div className="mt-3">
+        <div className="px-2">
           <TaskList
-            tasks={myTasks}
+            tasks={visibleTasks}
             properties={properties}
             tasksLoading={tasksLoading}
             onTaskClick={onTaskClick}
@@ -142,30 +238,7 @@ export function TasksWorkbenchPanel({
             hidePrimaryUrgentChip
             embeddedInIssuesWorkbench
             embeddedVerticalList
-            compactTaskMeta
-            hideDoneSection
-          />
-        </div>
-      </section>
-
-      <section className="min-w-0 rounded-2xl bg-transparent py-1">
-        <IssuesWorkbenchSectionHeader
-          title={DUE_SOON_SECTION.title}
-          subtitle={DUE_SOON_SECTION.subtitle}
-          count={dueSoonTasks.length}
-          countVariant="recent"
-        />
-        <div className="mt-3">
-          <TaskList
-            tasks={dueSoonTasks}
-            properties={properties}
-            tasksLoading={tasksLoading}
-            onTaskClick={onTaskClick}
-            selectedTaskId={selectedTaskId}
-            selectedPropertyIds={selectedPropertyIds}
-            hidePrimaryUrgentChip
-            embeddedInIssuesWorkbench
-            embeddedVerticalList
+            embeddedColumns={2}
             compactTaskMeta
             hideDoneSection
           />

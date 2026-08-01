@@ -206,6 +206,10 @@ export function useCreateTaskSubmit({
       const analyticsSource = taskCreatedSource ?? (prefill ? "ai" : "manual");
       const dueDateValue = dueDate ? new Date(dueDate).toISOString() : null;
 
+      const {
+        data: { user: creatingUser },
+      } = await supabase.auth.getUser();
+
       const newTask = await createTaskMutation.mutateAsync({
         source: analyticsSource,
         insert: {
@@ -219,6 +223,7 @@ export function useCreateTaskSubmit({
           assigned_user_id: finalAssignedUserId,
           status: "open",
           icon_name: chipSuggestedIcon || null,
+          ...(creatingUser?.id ? { owner_user_id: creatingUser.id } : {}),
         },
       });
 

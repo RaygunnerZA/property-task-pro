@@ -68,6 +68,8 @@ interface FilterBarProps {
   rightElement?: React.ReactNode; // Optional element to render on the right side of the row (desktop only)
   /** Extra controls after primary chips (e.g. Search chip). */
   primaryTrailing?: React.ReactNode;
+  /** Control placed immediately after the FILTER trigger (e.g. SORT). */
+  afterFilterTrigger?: React.ReactNode;
   /** Max primary chips after FILTER (default 3). Use 0 for all primaryOptions. */
   primaryOptionLimit?: number;
   /** Prefixes: filters starting with these are not removed by the clear (FunnelX) action. */
@@ -88,6 +90,10 @@ interface FilterBarProps {
   defaultNavigationLevel?: "primary" | "categories";
   /** When `hideFilterByButton` and user backs out of the category row, invoke instead of returning to primary. */
   onExitCategoriesLevel?: () => void;
+  /** Fires when the bar leaves/returns to the primary (collapsed) level. */
+  onExpandedChange?: (expanded: boolean) => void;
+  /** When true, force the bar back to the primary level (e.g. peer Sort expands). */
+  forceCollapsed?: boolean;
 }
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
@@ -123,6 +129,7 @@ export function FilterBar({
   className,
   rightElement,
   primaryTrailing,
+  afterFilterTrigger,
   primaryOptionLimit = 3,
   clearPreservePrefixes = ['filter-property-'],
   onClearAll,
@@ -132,6 +139,8 @@ export function FilterBar({
   hideFilterByButton = false,
   defaultNavigationLevel = "primary",
   onExitCategoriesLevel,
+  onExpandedChange,
+  forceCollapsed = false,
 }: FilterBarProps) {
   const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>(() =>
     defaultNavigationLevel === "categories" ? "categories" : "primary"
@@ -140,6 +149,20 @@ export function FilterBar({
   const [animationDirection, setAnimationDirection] = useState<'right-to-left' | 'left-to-right' | null>(null);
   const [filterChipCollapsed, setFilterChipCollapsed] = useState(false);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onExpandedChangeRef = useRef(onExpandedChange);
+  onExpandedChangeRef.current = onExpandedChange;
+
+  useEffect(() => {
+    if (!forceCollapsed) return;
+    if (navigationLevel === "primary") return;
+    setAnimationDirection("right-to-left");
+    setNavigationLevel("primary");
+    setSelectedCategory(null);
+  }, [forceCollapsed, navigationLevel]);
+
+  useEffect(() => {
+    onExpandedChangeRef.current?.(navigationLevel !== "primary");
+  }, [navigationLevel]);
 
   const mostUsedOptions =
     primaryOptionLimit <= 0
@@ -370,6 +393,7 @@ export function FilterBar({
                   </span>
                 </button>
               ) : null}
+              {afterFilterTrigger}
               {hasClearableFilters && (
                 renderIconButton(
                   <FunnelX className="h-[14px] w-[14px] text-foreground" />,

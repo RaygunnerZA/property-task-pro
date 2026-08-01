@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type RefObject } from "react";
+import { useCallback, useMemo, useState, type RefObject } from "react";
 import {
   AlertTriangle,
   ArrowDown,
@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
+import { SortBar } from "@/components/ui/filters/SortBar";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
@@ -21,6 +22,10 @@ type WorkbenchTaskFilterBarProps = {
   tasks?: any[];
   properties?: any[];
   hidePrimaryUrgentChip?: boolean;
+  /** Hide Due / Urgent / My Tasks quick chips (e.g. Tasks tab uses its own list tabs). */
+  hidePrimaryQuickChips?: boolean;
+  /** Show SORT immediately to the right of FILTER (expands options inline). */
+  showSortBar?: boolean;
   className?: string;
   collapseInteractionRootRef?: RefObject<HTMLElement | null>;
 };
@@ -29,12 +34,15 @@ export function WorkbenchTaskFilterBar({
   tasks = [],
   properties = [],
   hidePrimaryUrgentChip = false,
+  hidePrimaryQuickChips = false,
+  showSortBar = false,
   className,
   collapseInteractionRootRef,
 }: WorkbenchTaskFilterBarProps) {
-  const { selectedFilters, setSelectedFilters } = useWorkbenchControls();
+  const { selectedFilters, setSelectedFilters, sortBy, setSortBy } = useWorkbenchControls();
   const { members } = useOrgMembers();
   const { teams } = useTeams();
+  const [filterExpanded, setFilterExpanded] = useState(false);
 
   const allSpaces = useMemo(() => {
     const spaceMap = new Map<string, { id: string; name: string; property_id: string }>();
@@ -57,6 +65,7 @@ export function WorkbenchTaskFilterBar({
   }, [tasks]);
 
   const primaryOptions: FilterOption[] = useMemo(() => {
+    if (hidePrimaryQuickChips) return [];
     const opts: FilterOption[] = [
       {
         id: "filter-due",
@@ -71,7 +80,7 @@ export function WorkbenchTaskFilterBar({
       },
       {
         id: "filter-assigned-me",
-        label: "My Tasks",
+        label: "My tasks",
         icon: <User className="h-4 w-4" />,
       },
     ];
@@ -79,7 +88,7 @@ export function WorkbenchTaskFilterBar({
       return opts.filter((o) => o.id !== "filter-urgent");
     }
     return opts;
-  }, [hidePrimaryUrgentChip]);
+  }, [hidePrimaryUrgentChip, hidePrimaryQuickChips]);
 
   const secondaryGroups: FilterGroup[] = useMemo(
     () => [
@@ -230,6 +239,16 @@ export function WorkbenchTaskFilterBar({
       className={cn(className)}
       collapseFilterChipAfterMs={2000}
       collapseInteractionRootRef={collapseInteractionRootRef}
+      onExpandedChange={showSortBar ? setFilterExpanded : undefined}
+      afterFilterTrigger={
+        showSortBar ? (
+          <SortBar
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            forceCollapsed={filterExpanded}
+          />
+        ) : undefined
+      }
     />
   );
 }

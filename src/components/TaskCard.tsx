@@ -23,9 +23,13 @@ import { useState, useMemo, useCallback, memo, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
-import { OverlappingAvatars, APP_USER_AVATAR_SIZE } from "@/components/tasks/UserAvatar";
+import { UserAvatar, TASK_CARD_META_CHIP_SIZE } from "@/components/tasks/UserAvatar";
 import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
-import { resolveTaskAssigneeUsers } from "@/lib/userDisplayHelpers";
+import {
+  resolveTaskAssigneeUsers,
+  resolveTaskAssignerUser,
+  type TaskPersonAvatar,
+} from "@/lib/userDisplayHelpers";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -46,23 +50,24 @@ const WORKBENCH_TASK_META_CLASS =
 
 
 // Property Icon Chip Component - shows property icon on property color background
-// 24x24px icon bounding box
+// Matches task meta avatars: 24×24, rounded-card
 function PropertyIconChip({ property }: { property: any }) {
   if (!property) return null;
   
   const iconName = property.icon_name || "home";
   const IconComponent = getPropertyChipIcon(iconName);
   const iconColor = property.icon_color_hex || "#8EC9CE";
+  const size = TASK_CARD_META_CHIP_SIZE;
   
   return (
     <div
       className="inline-flex items-center justify-center rounded-card border-0 flex-shrink-0"
       style={{
         backgroundColor: iconColor,
-        width: '24px',
-        height: '24px',
-        minWidth: '24px',
-        minHeight: '24px',
+        width: size,
+        height: size,
+        minWidth: size,
+        minHeight: size,
       }}
     >
       <IconComponent className="h-4 w-4 text-white" />
@@ -79,24 +84,26 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
     return <PropertyIconChip property={properties[0]} />;
   }
   
+  const size = TASK_CARD_META_CHIP_SIZE;
+  const overlapPx = size * 0.3;
   // For multiple properties, show overlapping chips (30% overlap)
   return (
-    <div className="inline-flex items-center" style={{ gap: '-6px' }}>
+    <div className="inline-flex items-center">
       {properties.map((property, index) => {
         const iconName = property?.icon_name || "home";
         const IconComponent = getPropertyChipIcon(iconName);
         const iconColor = property?.icon_color_hex || "#8EC9CE";
-        const zIndex = properties.length - index; // Later properties have higher z-index
+        const zIndex = properties.length - index;
         
         return (
           <div
             key={property?.id || index}
-            className="inline-flex items-center justify-center rounded-[146px] border-0 relative"
+            className="inline-flex items-center justify-center rounded-card border-0 relative"
             style={{
               backgroundColor: iconColor,
-              width: '24px',
-              height: '24px',
-              marginLeft: index > 0 ? '-7.2px' : '0', // 30% overlap (7.2px out of 24px)
+              width: size,
+              height: size,
+              marginLeft: index > 0 ? `-${overlapPx}px` : "0",
               zIndex,
             }}
           >
@@ -104,6 +111,58 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+const TASK_META_PERSON_LABEL_CLASS =
+  "text-2xs font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-none";
+
+/** From (assigner) then For (assignee) — avatars match property icon chip size/radius. */
+function TaskCardPeopleMeta({
+  assigner,
+  assignee,
+  className,
+}: {
+  assigner?: TaskPersonAvatar | null;
+  assignee?: TaskPersonAvatar | null;
+  className?: string;
+}) {
+  if (!assigner && !assignee) return null;
+  const size = TASK_CARD_META_CHIP_SIZE;
+
+  return (
+    <div className={cn("flex items-center gap-1.5 shrink-0", className)}>
+      {assigner ? (
+        <div
+          className="flex items-center gap-1"
+          title={assigner.name ? `From ${assigner.name}` : "From"}
+        >
+          <span className={TASK_META_PERSON_LABEL_CLASS}>From</span>
+          <UserAvatar
+            imageUrl={assigner.imageUrl}
+            name={assigner.name}
+            propertyColor={assigner.accentColor}
+            size={size}
+            shape="card"
+          />
+        </div>
+      ) : null}
+      {assignee ? (
+        <div
+          className="flex items-center gap-1"
+          title={assignee.name ? `For ${assignee.name}` : "For"}
+        >
+          <span className={TASK_META_PERSON_LABEL_CLASS}>For</span>
+          <UserAvatar
+            imageUrl={assignee.imageUrl}
+            name={assignee.name}
+            propertyColor={assignee.accentColor}
+            size={size}
+            shape="card"
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -235,6 +294,13 @@ function TaskCardComponent({
       task?.assignee_name,
     ]
   );
+
+  const assignerUser = useMemo(
+    () => resolveTaskAssignerUser(task, members, currentUser),
+    [task, members, currentUser, task?.owner_user_id, task?.created_by, task?.assigned_user_id]
+  );
+
+  const assigneeUser = assignedUsers[0] ?? null;
   
   // Memoize handleDone to prevent recreation on every render
   const handleDone = useCallback(async () => {
@@ -427,7 +493,7 @@ function TaskCardComponent({
             ) : null}
           </div>
 
-          {/* Property Icon + Space + Date/Time + Teams + Avatars */}
+          {/* Property Icon + Space + Date/Time + Teams + From / For */}
           <div className="mt-[7px] flex gap-2 flex-wrap items-center">
             {property && (
               <PropertyIconChips properties={[property]} />
@@ -441,14 +507,11 @@ function TaskCardComponent({
                     {t.due_at ? formatTaskDate(t.due_at) : ""}
                   </span>
                 )}
-                {assignedUsers.length > 0 && (
-                  <OverlappingAvatars
-                    users={assignedUsers}
-                    size={24}
-                    overlap={20}
-                    className="ml-auto shrink-0"
-                  />
-                )}
+                <TaskCardPeopleMeta
+                  assigner={assignerUser}
+                  assignee={assigneeUser}
+                  className="ml-auto"
+                />
               </>
             ) : (
               <>
@@ -468,14 +531,11 @@ function TaskCardComponent({
                     {team.name}
                   </Badge>
                 ))}
-                {assignedUsers.length > 0 && (
-                  <OverlappingAvatars 
-                    users={assignedUsers}
-                    size={24}
-                    overlap={20}
-                    className="ml-auto"
-                  />
-                )}
+                <TaskCardPeopleMeta
+                  assigner={assignerUser}
+                  assignee={assigneeUser}
+                  className="ml-auto"
+                />
               </>
             )}
           </div>
@@ -562,14 +622,8 @@ function TaskCardComponent({
             ) : (
               <span className="min-w-0 flex-1" />
             )}
-            {assignedUsers.length > 0 ? (
-              <OverlappingAvatars
-                users={assignedUsers}
-                size={APP_USER_AVATAR_SIZE}
-                shape="circle"
-                overlap={20}
-                className="shrink-0"
-              />
+            {assignerUser || assigneeUser ? (
+              <TaskCardPeopleMeta assigner={assignerUser} assignee={assigneeUser} />
             ) : null}
           </div>
 
@@ -680,6 +734,8 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
     prevTask?.due_date !== nextTask?.due_date ||
     prevTask?.priority !== nextTask?.priority ||
     prevTask?.assigned_user_id !== nextTask?.assigned_user_id ||
+    prevTask?.owner_user_id !== nextTask?.owner_user_id ||
+    prevTask?.created_by !== nextTask?.created_by ||
     JSON.stringify(prevTask?.teams) !== JSON.stringify(nextTask?.teams) ||
     JSON.stringify(prevTask?.themes) !== JSON.stringify(nextTask?.themes);
 

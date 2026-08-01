@@ -41,6 +41,13 @@ function sortTasksBy(tasks: any[], sortBy: WorkbenchSortBy) {
       (a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9)
     );
   }
+  if (sortBy === "title") {
+    return sorted.sort((a, b) =>
+      String(a.title ?? "").localeCompare(String(b.title ?? ""), undefined, {
+        sensitivity: "base",
+      })
+    );
+  }
   if (sortBy === "due_date") {
     return sorted.sort((a, b) => {
       if (!a.due_date && !b.due_date) return 0;
@@ -49,10 +56,18 @@ function sortTasksBy(tasks: any[], sortBy: WorkbenchSortBy) {
       return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
     });
   }
+  if (sortBy === "updated") {
+    return sorted.sort(
+      (a, b) =>
+        new Date(b.updated_at || b.created_at || 0).getTime() -
+        new Date(a.updated_at || a.created_at || 0).getTime()
+    );
+  }
+  // recent (default) — newest created first
   return sorted.sort(
     (a, b) =>
-      new Date(b.updated_at || b.created_at || 0).getTime() -
-      new Date(a.updated_at || a.created_at || 0).getTime()
+      new Date(b.created_at || b.updated_at || 0).getTime() -
+      new Date(a.created_at || a.updated_at || 0).getTime()
   );
 }
 
@@ -81,6 +96,8 @@ interface TaskListProps {
   embeddedSliderOnly?: boolean;
   /** Attention centre: stacked horizontal task rows (no filter chrome). */
   embeddedVerticalList?: boolean;
+  /** When `embeddedVerticalList`, lay out cards in this many columns (default 1). */
+  embeddedColumns?: 1 | 2;
 }
 
 export function TaskList({ 
@@ -100,6 +117,7 @@ export function TaskList({
   hideDoneSection = false,
   embeddedSliderOnly = false,
   embeddedVerticalList = false,
+  embeddedColumns = 1,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -407,7 +425,7 @@ export function TaskList({
 
   // Group filtered tasks by status
   const groupedTasks = useMemo(() => {
-    const sortBy = workbenchControls?.sortBy ?? "priority";
+    const sortBy = workbenchControls?.sortBy ?? "recent";
     const todo = sortTasksBy(
       filteredTasks.filter(
         (task) =>
@@ -777,6 +795,20 @@ export function TaskList({
             <div>
               {view === 'vertical' ? (
                 embeddedVerticalList ? (
+                  embeddedColumns === 2 ? (
+                    <div className="list-stagger grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {memoizedTaskCards.todo.map((props) => (
+                        <div key={props.task.id} className="min-w-0">
+                          <TaskCard
+                            {...props}
+                            layout="horizontal"
+                            imagePosition="left"
+                            metaDensity={compactTaskMeta ? "compact" : "default"}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
                   <div className="list-stagger divide-y divide-input-bg">
                     {memoizedTaskCards.todo.map((props) => (
                       <div key={props.task.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
@@ -789,6 +821,7 @@ export function TaskList({
                       </div>
                     ))}
                   </div>
+                  )
                 ) : embeddedInIssuesWorkbench ? (
                   <div className="relative mt-[7px]">
                     <div className="overflow-x-auto -mx-1 pl-1 pr-0 scrollbar-hz-teal">

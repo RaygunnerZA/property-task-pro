@@ -5,16 +5,13 @@ import { CentreWorkbenchMobileCalendar } from "@/components/workbench/CentreWork
 import { InflowPanel } from "@/components/workbench/InflowPanel";
 import { TasksWorkbenchPanel } from "@/components/workbench/TasksWorkbenchPanel";
 import { CalendarWorkbenchPanel } from "@/components/workbench/CalendarWorkbenchPanel";
-import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
+import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { cn } from "@/lib/utils";
 import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const centreScrollClass =
   "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-2 pb-4 max-pane:px-2";
-
-const taskToolbarRecessedClass =
-  "w-full min-h-12 h-12 rounded-[15px] bg-background overflow-visible shadow-[inset_2px_1px_2px_0px_rgba(0,0,0,0.1),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.61)]";
 
 export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;
@@ -89,16 +86,40 @@ export function CentreWorkbench({
   return (
     <div className="flex h-full min-h-0 flex-col bg-transparent pb-1">
       <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
-        <CentreWorkbenchTabStrip
-          activeTab={activeTab}
-          onTabChange={onCentreTabChange}
-          // Home-hub phone: centre collapsed — strip hidden below md.
-          // Work-surface phone: strip is the primary Inflow | Tasks | Calendar bar.
-          className={cn("mb-3 shrink-0", hideTabStrip && "hidden md:flex")}
-        />
+        <div
+          className={cn(
+            "flex shrink-0 items-stretch gap-2",
+            activeTab === "tasks" ? "mb-0" : "mb-3",
+            hideTabStrip && "hidden md:flex"
+          )}
+        >
+          <CentreWorkbenchTabStrip
+            activeTab={activeTab}
+            onTabChange={onCentreTabChange}
+            className="min-w-0 flex-1"
+          />
 
-        <div className="mb-4 flex shrink-0 flex-col gap-3">
-          {showMobileCalendar ? (
+          {/* Below layout (1480px): no right-rail intake — stack CTAs beside the tab strip. */}
+          {onOpenIntake ? (
+            <div className="layout:hidden flex w-[148px] shrink-0 flex-col justify-center gap-1.5 self-stretch py-1.5 md:w-[160px] md:py-3">
+              <IntakeActionButton
+                mode="add_record"
+                variant="compact"
+                className="h-auto min-h-0 w-full flex-1 justify-center gap-2 px-2.5 text-base font-medium leading-none [&>svg]:h-4 [&>svg]:w-4"
+                onClick={() => onOpenIntake("add_record")}
+              />
+              <IntakeActionButton
+                mode="report_issue"
+                variant="compact"
+                className="h-auto min-h-0 w-full flex-1 justify-center gap-2 px-2.5 text-base font-medium leading-none [&>svg]:h-4 [&>svg]:w-4"
+                onClick={() => onOpenIntake("report_issue")}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {activeTab === "tasks" ? (
+          showMobileCalendar ? (
             <CentreWorkbenchMobileCalendar
               tasks={tasks}
               properties={properties}
@@ -106,31 +127,28 @@ export function CentreWorkbench({
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
               selectedPropertyIds={selectedPropertyIds}
+              className="mb-1"
             />
-          ) : null}
-
-          {/* Below layout (1480px): no right-rail intake — keep Report Issue in the centre. */}
-          {onOpenIntake ? (
-            <div className="layout:hidden w-full min-w-0">
-              <div className={taskToolbarRecessedClass}>
-                <div className="grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-x-1.5 px-2 pt-[6px] pb-1.5">
-                  <IntakeActionButtonPair
-                    variant="toolbar"
-                    layout="grid"
-                    onAddRecord={() => onOpenIntake("add_record")}
-                    onReportIssue={() => onOpenIntake("report_issue")}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <WorkbenchTaskFilterBar
-            tasks={tasks}
-            properties={properties}
-            hidePrimaryUrgentChip={activeTab === "inflow"}
-          />
-        </div>
+          ) : null
+        ) : (
+          <div className="mb-4 flex shrink-0 flex-col gap-3">
+            {showMobileCalendar ? (
+              <CentreWorkbenchMobileCalendar
+                tasks={tasks}
+                properties={properties}
+                tasksLoading={tasksLoading}
+                selectedDate={selectedDate}
+                onDateSelect={onDateSelect}
+                selectedPropertyIds={selectedPropertyIds}
+              />
+            ) : null}
+            <WorkbenchTaskFilterBar
+              tasks={tasks}
+              properties={properties}
+              hidePrimaryUrgentChip={activeTab === "inflow"}
+            />
+          </div>
+        )}
 
         <div key={activeTab} className="panel-enter min-h-0 flex-1">
           {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}

@@ -152,7 +152,7 @@ export function PropertyIdentityStrip({
         <div
           className="group relative w-full shrink-0 overflow-hidden"
           style={{
-            height: "180px",
+            height: "210px",
             backgroundColor: property.thumbnail_url ? undefined : iconColor,
           }}
         >
@@ -165,7 +165,7 @@ export function PropertyIdentityStrip({
           ) : null}
 
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[180px]"
+            className="pointer-events-none absolute left-0 right-0 top-0 h-[210px]"
             style={{
               background:
                 "linear-gradient(18.4deg, rgba(31, 49, 86, 0.56) 22%, rgba(33, 51, 80, 0) 48%, rgba(0, 0, 0, 0) 100%)",
@@ -174,7 +174,7 @@ export function PropertyIdentityStrip({
             }}
           />
 
-          <div className="absolute bottom-2 left-2.5 right-10 z-10 min-w-0">
+          <div className="absolute bottom-2 left-2.5 right-2.5 z-10 min-w-0">
             <div className="flex min-w-0 items-center gap-2">
               <IconComponent
                 className="h-[30px] w-[30px] shrink-0 drop-shadow-sm stroke-[1.75]"
@@ -206,7 +206,7 @@ export function PropertyIdentityStrip({
           </button>
 
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[180px]"
+            className="pointer-events-none absolute left-0 right-0 top-0 h-[210px]"
             style={{
               boxShadow:
                 "inset 2px 2px 2px 0px rgba(255,255,255,0.4), inset -1px -1px 2px 0px rgba(0,0,0,0.1)",

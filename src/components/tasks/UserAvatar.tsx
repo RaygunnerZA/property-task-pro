@@ -4,59 +4,59 @@ import { cn } from "@/lib/utils";
 /** Standard assignee / profile avatar — matches header account menu (h-8 w-8). */
 export const APP_USER_AVATAR_SIZE = 32;
 
+/** Task card meta chips — match PropertyIconChip (24×24, rounded-card). */
+export const TASK_CARD_META_CHIP_SIZE = 24;
+
 interface UserAvatarProps {
   imageUrl?: string | null;
   name?: string;
+  /** Fallback fill when no photo. */
   propertyColor?: string;
   size?: number;
-  /** Square chips (default) or circular profile frame. */
-  shape?: "square" | "circle";
+  /**
+   * `card` — same radius as property icon chips (`rounded-card`).
+   * `circle` / `square` — legacy shapes.
+   */
+  shape?: "square" | "circle" | "card";
   className?: string;
 }
 
 /**
  * UserAvatar - Shows user avatar with initials fallback
- * When no image, shows initials on property color background
+ * When no image, shows initials on accent color background
  */
-export function UserAvatar({ 
-  imageUrl, 
-  name = "", 
+export function UserAvatar({
+  imageUrl,
+  name = "",
   propertyColor = "#8EC9CE",
   size = 24,
-  shape = "square",
-  className 
+  shape = "card",
+  className,
 }: UserAvatarProps) {
-  // Extract initials from name
-  const getInitials = (name: string): string => {
-    if (!name) return "?";
-    const parts = name.trim().split(/\s+/);
+  const getInitials = (value: string): string => {
+    if (!value) return "?";
+    const parts = value.trim().split(/\s+/);
     if (parts.length >= 2) {
       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
-    return name.substring(0, 2).toUpperCase();
+    return value.substring(0, 2).toUpperCase();
   };
 
   const initials = getInitials(name);
-  const rootRadiusClass = shape === "circle" ? "rounded-card" : "rounded-sharp";
-  const fallbackRadiusClass = "rounded-sharp";
+  const radiusClass =
+    shape === "square" ? "rounded-sharp" : shape === "circle" ? "rounded-full" : "rounded-card";
 
   return (
-    <Avatar 
-      className={cn(
-        rootRadiusClass,
-        shape !== "circle" && "border-2 border-background",
-        className
-      )}
-      style={{ width: size, height: size }}
+    <Avatar
+      className={cn(radiusClass, shape === "square" && "border-2 border-background", className)}
+      style={{ width: size, height: size, minWidth: size, minHeight: size }}
     >
-      {imageUrl && (
-        <AvatarImage src={imageUrl} alt={name} className="object-cover" />
-      )}
+      {imageUrl && <AvatarImage src={imageUrl} alt={name} className={cn("object-cover", radiusClass)} />}
       <AvatarFallback
-        className={cn(fallbackRadiusClass, "text-white font-medium text-xs")}
-        style={{ 
+        className={cn(radiusClass, "text-white font-medium text-xs")}
+        style={{
           backgroundColor: propertyColor,
-          fontSize: `${size * 0.4}px`
+          fontSize: `${size * 0.4}px`,
         }}
       >
         {initials}
@@ -67,14 +67,16 @@ export function UserAvatar({
 
 interface OverlappingAvatarsProps {
   users: Array<{
+    id?: string;
     imageUrl?: string | null;
     name?: string;
     propertyColor?: string;
+    accentColor?: string;
   }>;
   size?: number;
-  overlap?: number; // Percentage overlap (0-100)
+  overlap?: number;
   maxVisible?: number;
-  shape?: "square" | "circle";
+  shape?: "square" | "circle" | "card";
   className?: string;
 }
 
@@ -82,26 +84,27 @@ interface OverlappingAvatarsProps {
  * OverlappingAvatars - Shows multiple user avatars with overlap
  * Default 20% overlap between avatars
  */
-export function OverlappingAvatars({ 
-  users, 
-  size = 24, 
+export function OverlappingAvatars({
+  users,
+  size = 24,
   overlap = 20,
   maxVisible = 3,
-  shape = "square",
-  className 
+  shape = "card",
+  className,
 }: OverlappingAvatarsProps) {
   if (users.length === 0) return null;
-  
+
   const visibleUsers = users.slice(0, maxVisible);
   const remainingCount = users.length - maxVisible;
   const overlapPx = (size * overlap) / 100;
-  const radiusClass = shape === "circle" ? "rounded-card" : "rounded-sharp";
+  const radiusClass =
+    shape === "square" ? "rounded-sharp" : shape === "circle" ? "rounded-full" : "rounded-card";
 
   return (
-    <div className={cn("flex items-center", className)} style={{ marginLeft: `-${overlapPx}px` }}>
+    <div className={cn("flex items-center", className)}>
       {visibleUsers.map((user, index) => (
         <div
-          key={index}
+          key={user.id ?? `${user.name ?? "user"}-${index}`}
           style={{
             marginLeft: index > 0 ? `-${overlapPx}px` : 0,
             zIndex: visibleUsers.length - index,
@@ -110,7 +113,7 @@ export function OverlappingAvatars({
           <UserAvatar
             imageUrl={user.imageUrl}
             name={user.name}
-            propertyColor={user.propertyColor}
+            propertyColor={user.accentColor || user.propertyColor}
             size={size}
             shape={shape}
           />
@@ -122,12 +125,12 @@ export function OverlappingAvatars({
             "flex items-center justify-center border-2 border-background bg-muted text-muted-foreground text-xs font-medium",
             radiusClass
           )}
-          style={{ 
+          style={{
             marginLeft: `-${overlapPx}px`,
             zIndex: 0,
-            width: size, 
-            height: size, 
-            fontSize: `${size * 0.4}px` 
+            width: size,
+            height: size,
+            fontSize: `${size * 0.4}px`,
           }}
         >
           +{remainingCount}
@@ -136,4 +139,3 @@ export function OverlappingAvatars({
     </div>
   );
 }
-

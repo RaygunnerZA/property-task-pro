@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type WorkbenchSortBy = "priority" | "due_date" | "updated";
+export type WorkbenchSortBy = "recent" | "title" | "priority" | "due_date" | "updated";
 
 export type WorkbenchFilterDraft = {
   propertyId: string;
@@ -137,7 +137,7 @@ export function WorkbenchControlsProvider({
     }
     return { ...DEFAULT_FILTER_DRAFT, propertyId: defaultPropertyId };
   });
-  const [sortBy, setSortBy] = useState<WorkbenchSortBy>("priority");
+  const [sortBy, setSortBy] = useState<WorkbenchSortBy>("recent");
 
   const applyFilterDraft = useCallback(() => {
     setSelectedFilters(draftToFilterIds(filterDraft));
