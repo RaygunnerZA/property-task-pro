@@ -11,7 +11,7 @@ import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Layers, FileUp, Plus } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
@@ -246,20 +246,6 @@ export default function SpaceOrganisationScreen() {
 
       {workTab === "groups" ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div
-              className="p-2.5 rounded-xl bg-primary"
-              style={{
-                boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-              }}
-            >
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground">Space groups</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Hover a group to browse suggestions, add spaces, or manage what you already have.
-          </p>
           <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
           <div className="border-t border-border/30 pt-5">
             <AllSpacesDirectory

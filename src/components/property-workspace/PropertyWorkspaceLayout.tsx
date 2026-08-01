@@ -46,7 +46,8 @@ export function PropertyWorkspaceLayout({
         className={cn(
           "min-w-0 space-y-4",
           "workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
-          "workspace:overflow-y-auto"
+          /* Padding so card drop-shadows aren’t clipped by the scrollport */
+          "workspace:overflow-y-auto workspace:overflow-x-visible workspace:px-1.5 workspace:pb-3 workspace:pt-0.5"
         )}
       >
         {actionColumn}

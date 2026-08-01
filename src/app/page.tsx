@@ -58,6 +58,7 @@ import {
   WorkbenchGradientHeader,
   createGradientHeaderStyle,
 } from "@/components/layout/WorkbenchGradientHeader";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -972,8 +973,8 @@ export default function Dashboard({
     </div>
   ) : undefined;
 
-  // Primary color for dashboard header (from design system: #8EC9CE); single-property filter uses that property's colour
-  const primaryColor = "#8EC9CE";
+  // Filla turquoise for org/multi-property; single-property filter uses that property's colour
+  const primaryColor = FILLA_TURQUOISE;
   const headerAccentColor = useMemo(() => {
     const ids = properties.map((p) => p.id);
     if (

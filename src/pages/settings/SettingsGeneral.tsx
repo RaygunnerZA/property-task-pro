@@ -13,6 +13,11 @@ import { useOrgSettings } from "@/hooks/useOrgSettings";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarCropDialog } from "@/components/profile/AvatarCropDialog";
+import {
+  clearUserAvatarFolder,
+  uploadAvatarVariants,
+} from "@/lib/avatarImage";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +42,7 @@ export default function SettingsGeneral() {
   const [userEmail, setUserEmail] = useState("");
   const [userNickname, setUserNickname] = useState("");
   const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [userAvatarMediumUrl, setUserAvatarMediumUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Edit profile modal state
@@ -44,8 +50,13 @@ export default function SettingsGeneral() {
   const [editingNickname, setEditingNickname] = useState("");
   const [editingEmail, setEditingEmail] = useState("");
   const [editingAvatarUrl, setEditingAvatarUrl] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [editingAvatarMediumUrl, setEditingAvatarMediumUrl] = useState<string | null>(null);
+  const [pendingSmallBlob, setPendingSmallBlob] = useState<Blob | null>(null);
+  const [pendingMediumBlob, setPendingMediumBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,6 +75,7 @@ export default function SettingsGeneral() {
         setUserEmail(user.email || "");
         setUserNickname(user.user_metadata?.nickname || "");
         setUserAvatarUrl(user.user_metadata?.avatar_url || null);
+        setUserAvatarMediumUrl(user.user_metadata?.avatar_medium_url || null);
         setUserId(user.id);
       }
     }
@@ -76,6 +88,7 @@ export default function SettingsGeneral() {
         setUserEmail(session.user.email || "");
         setUserNickname(session.user.user_metadata?.nickname || "");
         setUserAvatarUrl(session.user.user_metadata?.avatar_url || null);
+        setUserAvatarMediumUrl(session.user.user_metadata?.avatar_medium_url || null);
         setUserId(session.user.id);
       }
     });
@@ -85,41 +98,67 @@ export default function SettingsGeneral() {
     };
   }, []);
 
+  const revokePreview = () => {
+    if (avatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+  };
+
   const handleEditProfile = () => {
     setEditingNickname(userNickname);
     setEditingEmail(userEmail);
     setEditingAvatarUrl(userAvatarUrl);
-    setAvatarFile(null);
+    setEditingAvatarMediumUrl(userAvatarMediumUrl);
+    setPendingSmallBlob(null);
+    setPendingMediumBlob(null);
+    revokePreview();
     setAvatarPreview(null);
+    setAvatarRemoved(false);
     setEditModalOpen(true);
   };
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        toast.error("Please select an image file");
-        return;
-      }
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image size must be less than 5MB");
-        return;
-      }
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
     }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image size must be less than 5MB");
+      return;
+    }
+    if (cropSource?.startsWith("blob:")) URL.revokeObjectURL(cropSource);
+    const objectUrl = URL.createObjectURL(file);
+    setCropSource(objectUrl);
+    setCropOpen(true);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
+
+  const handleCropConfirm = ({
+    small,
+    medium,
+    previewUrl,
+  }: {
+    small: Blob;
+    medium: Blob;
+    previewUrl: string;
+  }) => {
+    revokePreview();
+    setPendingSmallBlob(small);
+    setPendingMediumBlob(medium);
+    setAvatarPreview(previewUrl);
+    setAvatarRemoved(false);
   };
 
   const handleRemoveAvatar = () => {
-    setAvatarFile(null);
+    revokePreview();
+    setPendingSmallBlob(null);
+    setPendingMediumBlob(null);
     setAvatarPreview(null);
     setEditingAvatarUrl(null);
+    setEditingAvatarMediumUrl(null);
+    setAvatarRemoved(true);
     if (avatarInputRef.current) {
       avatarInputRef.current.value = "";
     }
@@ -133,51 +172,35 @@ export default function SettingsGeneral() {
 
     setSavingProfile(true);
     try {
-      let newAvatarUrl = editingAvatarUrl;
+      let newAvatarUrl = avatarRemoved ? null : editingAvatarUrl;
+      let newAvatarMediumUrl = avatarRemoved ? null : editingAvatarMediumUrl;
 
-      // Upload new avatar if selected
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split(".").pop();
-        const fileName = `avatars/${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        
-        // Delete old avatar if exists
-        if (editingAvatarUrl) {
-          try {
-            const oldFileName = editingAvatarUrl.split('/').pop();
-            if (oldFileName) {
-              await supabase.storage
-                .from("user-avatars")
-                .remove([`avatars/${userId}/${oldFileName}`]);
-            }
-          } catch (err) {
-            console.warn("Failed to delete old avatar:", err);
-          }
-        }
-
-        const { error: uploadError } = await supabase.storage
-          .from("user-avatars")
-          .upload(fileName, avatarFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("user-avatars")
-          .getPublicUrl(fileName);
-        
-        newAvatarUrl = publicUrl;
+      if (pendingSmallBlob && pendingMediumBlob) {
+        const uploaded = await uploadAvatarVariants(
+          userId,
+          pendingSmallBlob,
+          pendingMediumBlob,
+          [editingAvatarUrl, editingAvatarMediumUrl, userAvatarUrl, userAvatarMediumUrl],
+        );
+        newAvatarUrl = uploaded.avatarUrl;
+        newAvatarMediumUrl = uploaded.avatarMediumUrl;
+      } else if (avatarRemoved) {
+        await clearUserAvatarFolder(userId, [
+          editingAvatarUrl,
+          editingAvatarMediumUrl,
+          userAvatarUrl,
+          userAvatarMediumUrl,
+        ]);
+        newAvatarUrl = null;
+        newAvatarMediumUrl = null;
       }
 
-      // Update user metadata
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
           nickname: editingNickname.trim() || null,
           avatar_url: newAvatarUrl,
-        }
+          avatar_medium_url: newAvatarMediumUrl,
+        },
       });
 
       if (updateError) {
@@ -192,13 +215,19 @@ export default function SettingsGeneral() {
 
       toast.success("Profile updated successfully");
       setEditModalOpen(false);
-      
-      // Refresh user data
+
       await supabase.auth.refreshSession();
-      
-      // Update local state
+
       setUserNickname(editingNickname.trim() || "");
       setUserAvatarUrl(newAvatarUrl);
+      setUserAvatarMediumUrl(newAvatarMediumUrl);
+      setEditingAvatarUrl(newAvatarUrl);
+      setEditingAvatarMediumUrl(newAvatarMediumUrl);
+      revokePreview();
+      setPendingSmallBlob(null);
+      setPendingMediumBlob(null);
+      setAvatarPreview(null);
+      setAvatarRemoved(false);
     } catch (err: any) {
       console.error("Error updating profile:", err);
       toast.error(err.message || "Failed to update profile");
@@ -302,6 +331,18 @@ export default function SettingsGeneral() {
   if (!orgId || !organization) {
     return (
       <>
+        <AvatarCropDialog
+          open={cropOpen}
+          imageSrc={cropSource}
+          onOpenChange={(open) => {
+            setCropOpen(open);
+            if (!open && cropSource?.startsWith("blob:")) {
+              URL.revokeObjectURL(cropSource);
+              setCropSource(null);
+            }
+          }}
+          onConfirm={handleCropConfirm}
+        />
         <div className="space-y-6">
           {/* User Profile Card - With Edit Button */}
           <Card className="shadow-e1">
@@ -309,7 +350,7 @@ export default function SettingsGeneral() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
                   <Avatar className="h-16 w-16 shrink-0">
-                    <AvatarImage src={userAvatarUrl || undefined} />
+                    <AvatarImage src={userAvatarMediumUrl || userAvatarUrl || undefined} />
                     <AvatarFallback>
                       <UserIcon className="h-8 w-8" />
                     </AvatarFallback>
@@ -398,7 +439,7 @@ export default function SettingsGeneral() {
               {/* Avatar Section */}
               <div className="flex flex-col items-center gap-4">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={avatarPreview || editingAvatarUrl || undefined} />
+                  <AvatarImage src={avatarPreview || editingAvatarMediumUrl || editingAvatarUrl || undefined} />
                   <AvatarFallback>
                     <UserIcon className="h-12 w-12" />
                   </AvatarFallback>
@@ -411,9 +452,9 @@ export default function SettingsGeneral() {
                     onClick={() => avatarInputRef.current?.click()}
                   >
                     <Upload className="mr-2 h-4 w-4" />
-                    {avatarPreview || editingAvatarUrl ? "Replace" : "Upload"}
+                    {avatarPreview || editingAvatarUrl || editingAvatarMediumUrl ? "Replace" : "Upload"}
                   </Button>
-                  {(avatarPreview || editingAvatarUrl) && (
+                  {(avatarPreview || editingAvatarUrl || editingAvatarMediumUrl) && (
                     <Button
                       type="button"
                       variant="outline"
@@ -428,7 +469,7 @@ export default function SettingsGeneral() {
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleAvatarSelect}
                   className="hidden"
                 />
@@ -502,6 +543,18 @@ export default function SettingsGeneral() {
 
   return (
     <>
+      <AvatarCropDialog
+        open={cropOpen}
+        imageSrc={cropSource}
+        onOpenChange={(open) => {
+          setCropOpen(open);
+          if (!open && cropSource?.startsWith("blob:")) {
+            URL.revokeObjectURL(cropSource);
+            setCropSource(null);
+          }
+        }}
+        onConfirm={handleCropConfirm}
+      />
       <div className="space-y-6">
         {/* User Profile Card - With Edit Button */}
         <Card className="shadow-e1">
@@ -509,7 +562,7 @@ export default function SettingsGeneral() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-4">
                 <Avatar className="h-16 w-16 shrink-0">
-                  <AvatarImage src={userAvatarUrl || undefined} />
+                  <AvatarImage src={userAvatarMediumUrl || userAvatarUrl || undefined} />
                   <AvatarFallback>
                     <UserIcon className="h-8 w-8" />
                   </AvatarFallback>
@@ -633,7 +686,7 @@ export default function SettingsGeneral() {
             {/* Avatar Section */}
             <div className="flex flex-col items-center gap-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={avatarPreview || editingAvatarUrl || undefined} />
+                <AvatarImage src={avatarPreview || editingAvatarMediumUrl || editingAvatarUrl || undefined} />
                 <AvatarFallback>
                   <UserIcon className="h-12 w-12" />
                 </AvatarFallback>
@@ -646,9 +699,9 @@ export default function SettingsGeneral() {
                   onClick={() => avatarInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {avatarPreview || editingAvatarUrl ? "Replace" : "Upload"}
+                  {avatarPreview || editingAvatarUrl || editingAvatarMediumUrl ? "Replace" : "Upload"}
                 </Button>
-                {(avatarPreview || editingAvatarUrl) && (
+                {(avatarPreview || editingAvatarUrl || editingAvatarMediumUrl) && (
                   <Button
                     type="button"
                     variant="outline"
@@ -663,7 +716,7 @@ export default function SettingsGeneral() {
               <input
                 ref={avatarInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleAvatarSelect}
                 className="hidden"
               />

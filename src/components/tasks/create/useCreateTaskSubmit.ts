@@ -213,7 +213,7 @@ export function useCreateTaskSubmit({
           title: finalTitle,
           property_id: propertyId || null,
           priority,
-          due_date: dueDateValue,
+          due_at: dueDateValue,
           milestones: milestones.length > 0 ? milestones : [],
           description: description.trim() || null,
           assigned_user_id: finalAssignedUserId,

@@ -84,9 +84,22 @@ interface EditMemberPanelProps {
   onClose: () => void;
 }
 
+function splitDisplayName(displayName: string | null | undefined): {
+  first: string;
+  last: string;
+} {
+  const parts = (displayName ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
 function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMemberPanelProps) {
-  const [firstName, setFirstName] = useState(member.first_name ?? "");
-  const [lastName, setLastName] = useState(member.last_name ?? "");
+  const seeded = splitDisplayName(
+    !member.first_name && !member.last_name ? member.display_name : null
+  );
+  const [firstName, setFirstName] = useState(member.first_name ?? seeded.first);
+  const [lastName, setLastName] = useState(member.last_name ?? seeded.last);
   const [email, setEmail] = useState(member.email ?? "");
   const [role, setRole] = useState(member.role);
   const [selectedProps, setSelectedProps] = useState<string[]>(member.assigned_properties ?? []);
@@ -110,6 +123,8 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
         email: email.trim(),
       });
       onClose();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Could not save member");
     } finally {
       setSaving(false);
     }
@@ -387,8 +402,9 @@ function RoleBadge({ role }: { role: string }) {
   return (
     <Badge
       variant={isOwner ? "default" : isManager ? "secondary" : "outline"}
+      size="sm"
       className={cn(
-        "w-fit shrink-0 text-caption font-mono uppercase",
+        "w-fit shrink-0",
         isOwner && "bg-primary text-primary-foreground",
         isManager && "bg-secondary text-secondary-foreground",
         isExternal && "border-accent/40 text-accent"
@@ -506,25 +522,26 @@ export default function SettingsTeam() {
         profile.first_name || profile.last_name || profile.email;
       if (hasProfileChange) {
         const { data: sessionData } = await supabase.auth.getSession();
-        if (sessionData.session) {
-          const { data, error: fnError } = await supabase.functions.invoke(
-            "manage-invited-users",
-            {
-              body: {
-                action: "update_member_profile",
-                org_member_id: memberId,
-                first_name: profile.first_name || null,
-                last_name: profile.last_name || null,
-                email: profile.email || undefined,
-              },
-              headers: {
-                Authorization: `Bearer ${sessionData.session.access_token}`,
-              },
-            }
-          );
-          if (fnError) throw fnError;
-          if (data?.error) throw new Error(data.error);
+        if (!sessionData.session) {
+          throw new Error("Session expired — sign in again to update member profile");
         }
+        const { data, error: fnError } = await supabase.functions.invoke(
+          "manage-invited-users",
+          {
+            body: {
+              action: "update_member_profile",
+              org_member_id: memberId,
+              first_name: profile.first_name || null,
+              last_name: profile.last_name || null,
+              email: profile.email || undefined,
+            },
+            headers: {
+              Authorization: `Bearer ${sessionData.session.access_token}`,
+            },
+          }
+        );
+        if (fnError) throw fnError;
+        if (data?.error) throw new Error(data.error);
       }
 
       toast.success("Member updated");
@@ -607,9 +624,33 @@ export default function SettingsTeam() {
   );
 
   const formatName = (invite: InvitationRecord) => {
-    const full = `${invite.first_name ?? ""} ${invite.last_name ?? ""}`.trim();
+    const full = [invite.first_name, invite.last_name]
+      .map((p) => p?.trim())
+      .filter(Boolean)
+      .join(" ");
     return full || invite.email;
   };
+
+  const memberEmails = useMemo(
+    () =>
+      new Set(
+        members
+          .map((m) => m.email?.trim().toLowerCase())
+          .filter((e): e is string => Boolean(e))
+      ),
+    [members]
+  );
+
+  /** Hide invites that already have an active membership (avoids looking like duplicates). */
+  const visibleInvitations = useMemo(
+    () =>
+      invitations.filter((invite) => {
+        const email = invite.email?.trim().toLowerCase();
+        if (email && memberEmails.has(email)) return false;
+        return true;
+      }),
+    [invitations, memberEmails]
+  );
 
   if (loading) {
     return (
@@ -651,7 +692,7 @@ export default function SettingsTeam() {
       {teamTab === "members" && (
         <Card className="shadow-e1">
           <CardHeader>
-            <CardTitle className="text-base">Team members</CardTitle>
+            <CardTitle>Team members</CardTitle>
           </CardHeader>
           <CardContent>
             {members.length === 0 ? (
@@ -668,7 +709,7 @@ export default function SettingsTeam() {
 
                   return (
                     <div
-                      key={member.id}
+                      key={member.user_id}
                       className={cn(
                         "rounded-[10px] border bg-card transition-all duration-200",
                         isEditing
@@ -754,7 +795,7 @@ export default function SettingsTeam() {
       {teamTab === "invited" && (
         <Card className="shadow-e1">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle className="text-base">Invited users</CardTitle>
+            <CardTitle>Invited users</CardTitle>
             <Button
               onClick={() => void fetchInvitations()}
               size="sm"
@@ -770,7 +811,7 @@ export default function SettingsTeam() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : invitations.length === 0 ? (
+            ) : visibleInvitations.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
                 No invitations yet. Send one from the <strong>Invite member</strong> panel{" "}
                 <span className="lg:hidden">below</span>
@@ -778,7 +819,7 @@ export default function SettingsTeam() {
               </p>
             ) : (
               <div className="space-y-2">
-                {invitations.map((invite) => {
+                {visibleInvitations.map((invite) => {
                   const isBusy = actionBusyId === invite.id;
                   const isEditing = editInviteId === invite.id;
                   const isSettingPw = passwordInviteId === invite.id;
@@ -821,8 +862,9 @@ export default function SettingsTeam() {
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <Badge
                             variant={statusBadgeVariant[invite.status]}
+                            size="sm"
                             className={cn(
-                              "w-fit text-caption font-mono uppercase",
+                              "w-fit",
                               invite.status === "accepted" && "bg-primary text-primary-foreground"
                             )}
                           >

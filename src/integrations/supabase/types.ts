@@ -3044,7 +3044,8 @@ export type Database = {
           assigned_user_id: string | null
           created_at: string
           description: string | null
-          due_date: string | null
+          /** Remote column is `due_at` (views may still expose `due_date`). */
+          due_at: string | null
           icon_name: string | null
           id: string
           milestones: Json | null
@@ -3059,7 +3060,7 @@ export type Database = {
           assigned_user_id?: string | null
           created_at?: string
           description?: string | null
-          due_date?: string | null
+          due_at?: string | null
           icon_name?: string | null
           id?: string
           milestones?: Json | null
@@ -3074,7 +3075,7 @@ export type Database = {
           assigned_user_id?: string | null
           created_at?: string
           description?: string | null
-          due_date?: string | null
+          due_at?: string | null
           icon_name?: string | null
           id?: string
           milestones?: Json | null

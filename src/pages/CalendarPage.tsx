@@ -28,10 +28,11 @@ import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { CALENDAR_TYPES } from "@/lib/calendarTypes";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { startOfMonth } from "date-fns";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 const LG_BREAKPOINT = LAYOUT_BREAKPOINTS.layout;
-const PRIMARY_COLOR = "#8EC9CE";
+const PRIMARY_COLOR = FILLA_TURQUOISE;
 
 function CalendarPageContent() {
   const { data: tasksData = [], isLoading: tasksLoading } = useTasksQuery();

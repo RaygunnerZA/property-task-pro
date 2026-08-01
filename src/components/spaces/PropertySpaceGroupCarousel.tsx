@@ -31,9 +31,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Layers } from "lucide-react";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { isFuzzyMatchSimilarity } from "@/services/ai/fuzzyMatch";
 import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { cn } from "@/lib/utils";
 
 type PropertySpaceGroupCarouselProps = {
   propertyId: string;
@@ -261,15 +263,27 @@ export function PropertySpaceGroupCarousel({
 
   const filterKey = spaceFilter.trim().toLowerCase();
 
+  /** While searching, only keep groups that already contain a matching space (not bare suggestions). */
   const groupMatchesFilter = useCallback(
-    (groupId: string, suggestedSpaces: string[] = []) => {
+    (groupId: string) => {
       if (!filterKey) return true;
       const selected = selectedSpacesNewestFirstByGroup[groupId] ?? [];
-      if (selected.some((n) => n.toLowerCase().includes(filterKey))) return true;
-      return suggestedSpaces.some((n) => n.toLowerCase().includes(filterKey));
+      return selected.some((n) => n.toLowerCase().includes(filterKey));
     },
     [filterKey, selectedSpacesNewestFirstByGroup]
   );
+
+  const visibleGroups = useMemo(
+    () => ONBOARDING_SPACE_GROUPS.filter((group) => groupMatchesFilter(group.id)),
+    [groupMatchesFilter]
+  );
+
+  const visibleCustomCollections = useMemo(
+    () => customCollections.filter((collection) => groupMatchesFilter(collection.id)),
+    [customCollections, groupMatchesFilter]
+  );
+
+  const hasVisibleGroups = visibleGroups.length > 0 || visibleCustomCollections.length > 0;
 
   const invalidateSpaces = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -554,35 +568,52 @@ export function PropertySpaceGroupCarousel({
     setCopyInput("");
   };
 
+  if (filterKey && !hasVisibleGroups) {
+    return null;
+  }
+
   return (
     <>
-      <SpaceGroupCarousel className={className}>
-        {ONBOARDING_SPACE_GROUPS.filter((group) =>
-          groupMatchesFilter(group.id, group.suggestedSpaces)
-        ).map((group) => (
-          <OnboardingSpaceGroupCard
-            key={group.id}
-            group={group}
-            selectedSpacesSet={selectedSpacesSet}
-            extraSpaces={extraSpacesByGroup[group.id] ?? []}
-            selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
-            spaceFilter={spaceFilter}
-            suggestionLabelOverrides={suggestionLabelOverrides}
-            onAddSpace={(name) => createSpace(name, group.id)}
-            onRemoveSpace={removeSpace}
-            onRenameSpace={openRenameModal}
-            onViewSpace={(name) => openViewSpace(name)}
-            viewSpaceByNameKey={viewSpaceByNameKey}
-            onCopySpace={(name, groupId) => {
-              const suggested = getSuggestedCopyName(name);
-              setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-              setCopyInput(suggested);
+      <div className={cn("space-y-4", className)}>
+        <div className="flex items-center gap-2">
+          <div
+            className="rounded-xl bg-primary p-2.5"
+            style={{
+              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
             }}
-          />
-        ))}
-        {customCollections
-          .filter((collection) => groupMatchesFilter(collection.id))
-          .map((collection) => (
+          >
+            <Layers className="h-5 w-5 text-white" />
+          </div>
+          <h2 className="text-lg font-semibold text-foreground">Space groups</h2>
+        </div>
+        {!filterKey ? (
+          <p className="text-sm text-muted-foreground">
+            Hover a group to browse suggestions, add spaces, or manage what you already have.
+          </p>
+        ) : null}
+        <SpaceGroupCarousel>
+          {visibleGroups.map((group) => (
+            <OnboardingSpaceGroupCard
+              key={group.id}
+              group={group}
+              selectedSpacesSet={selectedSpacesSet}
+              extraSpaces={extraSpacesByGroup[group.id] ?? []}
+              selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
+              spaceFilter={spaceFilter}
+              suggestionLabelOverrides={suggestionLabelOverrides}
+              onAddSpace={(name) => createSpace(name, group.id)}
+              onRemoveSpace={removeSpace}
+              onRenameSpace={openRenameModal}
+              onViewSpace={(name) => openViewSpace(name)}
+              viewSpaceByNameKey={viewSpaceByNameKey}
+              onCopySpace={(name, groupId) => {
+                const suggested = getSuggestedCopyName(name);
+                setCopyModal({ baseName: name, suggestedName: suggested, groupId });
+                setCopyInput(suggested);
+              }}
+            />
+          ))}
+          {visibleCustomCollections.map((collection) => (
             <OnboardingCustomCollectionCard
               key={collection.id}
               collection={collection}
@@ -602,10 +633,11 @@ export function PropertySpaceGroupCarousel({
               onUpdateCollection={handleUpdateCustomCollection}
             />
           ))}
-        {!filterKey ? (
-          <OnboardingCustomCollectionDraftCard onCreateCollection={handleCreateCustomCollection} />
-        ) : null}
-      </SpaceGroupCarousel>
+          {!filterKey ? (
+            <OnboardingCustomCollectionDraftCard onCreateCollection={handleCreateCustomCollection} />
+          ) : null}
+        </SpaceGroupCarousel>
+      </div>
 
       <Dialog open={!!renameModal} onOpenChange={(open) => !open && setRenameModal(null)}>
         <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>

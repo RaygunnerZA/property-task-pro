@@ -171,12 +171,31 @@ Deno.serve(async (req) => {
       const lastName = body?.last_name as string | null | undefined;
       const email = body?.email as string | undefined;
 
-      const metaUpdate: Record<string, unknown> = {};
+      const { data: authUserData, error: authUserError } =
+        await supabaseAdmin.auth.admin.getUserById(member.user_id);
+      if (authUserError) return err(`Failed to load user: ${authUserError.message}`, 500);
+
+      const existingMeta = (authUserData.user?.user_metadata ?? {}) as Record<string, unknown>;
+      const metaUpdate: Record<string, unknown> = { ...existingMeta };
+
       if (firstName !== undefined) metaUpdate.first_name = firstName;
       if (lastName !== undefined) metaUpdate.last_name = lastName;
+      // Keep nickname in sync so list titles work even when only first name is set.
+      if (firstName !== undefined || lastName !== undefined) {
+        const composed = [firstName, lastName]
+          .map((p) => (typeof p === "string" ? p.trim() : ""))
+          .filter(Boolean)
+          .join(" ");
+        metaUpdate.nickname = composed || null;
+      }
 
-      const authUpdate: Record<string, unknown> = {};
-      if (Object.keys(metaUpdate).length > 0) authUpdate.data = metaUpdate;
+      const authUpdate: {
+        email?: string;
+        user_metadata?: Record<string, unknown>;
+      } = {};
+      if (firstName !== undefined || lastName !== undefined) {
+        authUpdate.user_metadata = metaUpdate;
+      }
       if (email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) return err("Invalid email format", 400);
@@ -186,7 +205,7 @@ Deno.serve(async (req) => {
       if (Object.keys(authUpdate).length > 0) {
         const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(
           member.user_id,
-          authUpdate as Parameters<typeof supabaseAdmin.auth.admin.updateUserById>[1]
+          authUpdate
         );
         if (authErr) return err(`Failed to update profile: ${authErr.message}`, 500);
       }

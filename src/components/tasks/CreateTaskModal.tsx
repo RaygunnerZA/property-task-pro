@@ -440,7 +440,7 @@ export function CreateTaskModal({
     return (
       <>
         <Drawer open={open} onOpenChange={onOpenChange}>
-          <DrawerContent className="max-h-[95vh]">{content}</DrawerContent>
+          <DrawerContent hideCloseButton className="max-h-[95vh]">{content}</DrawerContent>
         </Drawer>
         {dialogs}
       </>

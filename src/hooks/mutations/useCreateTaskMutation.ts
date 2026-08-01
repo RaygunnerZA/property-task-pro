@@ -31,7 +31,7 @@ function patchBriefingCache(
     status: data.status ?? "open",
     property_id: propId,
     priority: data.priority ?? "normal",
-    due_date: data.due_date ?? null,
+    due_date: data.due_at ?? null,
   };
   queryClient.setQueryData(["tasks-briefing", orgId, null], (old: BriefingEntry[] | undefined) =>
     [...(Array.isArray(old) ? old : []), entry]

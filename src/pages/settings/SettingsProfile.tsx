@@ -32,6 +32,11 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarCropDialog } from "@/components/profile/AvatarCropDialog";
+import {
+  clearUserAvatarFolder,
+  uploadAvatarVariants,
+} from "@/lib/avatarImage";
 import { toast } from "sonner";
 
 const AVATAR_COLORS = [
@@ -99,12 +104,17 @@ export default function SettingsProfile() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [nickname, setNickname] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarMediumUrl, setAvatarMediumUrl] = useState<string | null>(null);
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
 
   const [editNickname, setEditNickname] = useState("");
   const [editEmail, setEditEmail] = useState("");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [pendingSmallBlob, setPendingSmallBlob] = useState<Blob | null>(null);
+  const [pendingMediumBlob, setPendingMediumBlob] = useState<Blob | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+  const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasProfileChanges, setHasProfileChanges] = useState(false);
@@ -139,7 +149,9 @@ export default function SettingsProfile() {
     setNickname(user.user_metadata?.nickname || "");
     setEditNickname(user.user_metadata?.nickname || "");
     setAvatarUrl(user.user_metadata?.avatar_url || null);
+    setAvatarMediumUrl(user.user_metadata?.avatar_medium_url || null);
     setAvatarColor(user.user_metadata?.avatar_color || AVATAR_COLORS[0]);
+    setAvatarRemoved(false);
   };
 
   useEffect(() => {
@@ -152,9 +164,16 @@ export default function SettingsProfile() {
 
   useEffect(() => {
     const nicknameChanged = editNickname !== nickname;
-    const avatarChanged = !!avatarFile || avatarPreview !== null;
+    const avatarChanged =
+      !!pendingSmallBlob || !!pendingMediumBlob || avatarRemoved;
     setHasProfileChanges(nicknameChanged || avatarChanged);
-  }, [editNickname, nickname, avatarFile, avatarPreview]);
+  }, [editNickname, nickname, pendingSmallBlob, pendingMediumBlob, avatarRemoved]);
+
+  const revokePreview = () => {
+    if (avatarPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(avatarPreview);
+    }
+  };
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,16 +186,37 @@ export default function SettingsProfile() {
       toast.error("Image must be less than 5 MB");
       return;
     }
-    setAvatarFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setAvatarPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    if (cropSource?.startsWith("blob:")) URL.revokeObjectURL(cropSource);
+    const objectUrl = URL.createObjectURL(file);
+    setCropSource(objectUrl);
+    setCropOpen(true);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
+
+  const handleCropConfirm = ({
+    small,
+    medium,
+    previewUrl,
+  }: {
+    small: Blob;
+    medium: Blob;
+    previewUrl: string;
+  }) => {
+    revokePreview();
+    setPendingSmallBlob(small);
+    setPendingMediumBlob(medium);
+    setAvatarPreview(previewUrl);
+    setAvatarRemoved(false);
   };
 
   const handleRemoveAvatar = () => {
-    setAvatarFile(null);
+    revokePreview();
+    setPendingSmallBlob(null);
+    setPendingMediumBlob(null);
     setAvatarPreview(null);
     setAvatarUrl(null);
+    setAvatarMediumUrl(null);
+    setAvatarRemoved(true);
     if (avatarInputRef.current) avatarInputRef.current.value = "";
   };
 
@@ -185,38 +225,30 @@ export default function SettingsProfile() {
     setSaving(true);
 
     try {
-      let newAvatarUrl = avatarUrl;
+      let newAvatarUrl = avatarRemoved ? null : avatarUrl;
+      let newAvatarMediumUrl = avatarRemoved ? null : avatarMediumUrl;
 
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split(".").pop();
-        const fileName = `avatars/${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-        if (avatarUrl) {
-          try {
-            const oldFileName = avatarUrl.split("/").pop();
-            if (oldFileName) {
-              await supabase.storage.from("user-avatars").remove([`avatars/${userId}/${oldFileName}`]);
-            }
-          } catch {
-            // non-critical
-          }
-        }
-
-        const { error: uploadError } = await supabase.storage
-          .from("user-avatars")
-          .upload(fileName, avatarFile, { cacheControl: "3600", upsert: false });
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("user-avatars").getPublicUrl(fileName);
-        newAvatarUrl = publicUrl;
+      if (pendingSmallBlob && pendingMediumBlob) {
+        const uploaded = await uploadAvatarVariants(
+          userId,
+          pendingSmallBlob,
+          pendingMediumBlob,
+          [avatarUrl, avatarMediumUrl],
+        );
+        newAvatarUrl = uploaded.avatarUrl;
+        newAvatarMediumUrl = uploaded.avatarMediumUrl;
+      } else if (avatarRemoved) {
+        await clearUserAvatarFolder(userId, [avatarUrl, avatarMediumUrl]);
+        newAvatarUrl = null;
+        newAvatarMediumUrl = null;
       }
 
       const { error: updateError } = await supabase.auth.updateUser({
         data: {
           nickname: editNickname.trim() || null,
           avatar_url: newAvatarUrl,
+          avatar_medium_url: newAvatarMediumUrl,
+          avatar_color: avatarColor,
         },
       });
       if (updateError) throw updateError;
@@ -225,8 +257,12 @@ export default function SettingsProfile() {
       await supabase.auth.refreshSession();
       setNickname(editNickname.trim());
       setAvatarUrl(newAvatarUrl);
-      setAvatarFile(null);
+      setAvatarMediumUrl(newAvatarMediumUrl);
+      revokePreview();
+      setPendingSmallBlob(null);
+      setPendingMediumBlob(null);
       setAvatarPreview(null);
+      setAvatarRemoved(false);
       setHasProfileChanges(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to update profile";
@@ -396,9 +432,23 @@ export default function SettingsProfile() {
   }
 
   const initials = (editNickname || userEmail || "U").slice(0, 2).toUpperCase();
+  const displayAvatarSrc =
+    avatarPreview || avatarMediumUrl || avatarUrl || undefined;
 
   return (
     <div className="space-y-6">
+      <AvatarCropDialog
+        open={cropOpen}
+        imageSrc={cropSource}
+        onOpenChange={(open) => {
+          setCropOpen(open);
+          if (!open && cropSource?.startsWith("blob:")) {
+            URL.revokeObjectURL(cropSource);
+            setCropSource(null);
+          }
+        }}
+        onConfirm={handleCropConfirm}
+      />
       <Card className="shadow-e1">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -410,8 +460,8 @@ export default function SettingsProfile() {
           <div className="flex w-full min-w-0 flex-col items-stretch gap-5 sm:flex-row sm:items-center">
             <div className="relative group shrink-0">
               <Avatar className="h-20 w-20 shadow-e1">
-                {avatarPreview || avatarUrl ? (
-                  <AvatarImage src={avatarPreview || avatarUrl || undefined} />
+                {displayAvatarSrc ? (
+                  <AvatarImage src={displayAvatarSrc} />
                 ) : (
                   <AvatarFallback
                     className="text-lg font-semibold text-white"
@@ -421,7 +471,7 @@ export default function SettingsProfile() {
                   </AvatarFallback>
                 )}
               </Avatar>
-              {(avatarPreview || avatarUrl) && (
+              {displayAvatarSrc && (
                 <button
                   type="button"
                   onClick={handleRemoveAvatar}
@@ -439,13 +489,11 @@ export default function SettingsProfile() {
                     type="button"
                     onClick={() => {
                       setAvatarColor(color);
-                      setAvatarUrl(null);
-                      setAvatarFile(null);
-                      setAvatarPreview(null);
+                      handleRemoveAvatar();
                     }}
                     className={cn(
                       "h-6 w-6 rounded-full transition-all",
-                      avatarColor === color && !avatarUrl && !avatarPreview
+                      avatarColor === color && !displayAvatarSrc
                         ? "ring-2 ring-offset-2 ring-primary scale-110"
                         : "hover:scale-105",
                     )}
@@ -457,7 +505,7 @@ export default function SettingsProfile() {
                 <input
                   ref={avatarInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handleAvatarSelect}
                   className="hidden"
                 />

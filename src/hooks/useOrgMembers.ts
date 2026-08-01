@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
+import { formatPersonDisplayName } from "@/lib/formatPersonDisplayName";
 
 export interface OrgMember {
   id: string;
@@ -15,6 +16,15 @@ export interface OrgMember {
   assigned_properties: string[] | null;
 }
 
+type UserInfoRow = {
+  id: string;
+  email: string;
+  nickname: string | null;
+  avatar_url: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+};
+
 export function useOrgMembers() {
   const supabase = useSupabase();
   const { orgId, isLoading: orgLoading } = useActiveOrg();
@@ -25,7 +35,6 @@ export function useOrgMembers() {
     }
 
     try {
-      // Fetch memberships
       const { data: memberships, error: err } = await supabase
         .from("organisation_members")
         .select("id, user_id, role, assigned_properties")
@@ -39,21 +48,18 @@ export function useOrgMembers() {
         return [];
       }
 
-      // Fetch user data via RPC function
-      const userIds = memberships.map(m => m.user_id);
-      const { data: userData, error: userError } = await supabase.rpc(
-        'get_users_info',
-        { user_ids: userIds }
-      ) as { data: Array<{ id: string; email: string; nickname: string; avatar_url: string; first_name?: string | null; last_name?: string | null }> | null; error: unknown };
+      const userIds = memberships.map((m) => m.user_id);
+      const { data: userData, error: userError } = (await supabase.rpc("get_users_info", {
+        user_ids: userIds,
+      })) as { data: UserInfoRow[] | null; error: unknown };
 
       if (userError as unknown) {
         console.error("Error fetching user info:", userError);
-        // Fallback to basic info if RPC fails
         const mapped: OrgMember[] = memberships.map((m) => ({
           id: m.id,
           user_id: m.user_id,
           role: m.role,
-          assigned_properties: (m as any).assigned_properties ?? null,
+          assigned_properties: m.assigned_properties ?? null,
           display_name: `User ${m.user_id.slice(0, 8)}`,
           email: null,
           nickname: null,
@@ -64,25 +70,34 @@ export function useOrgMembers() {
         return mapped;
       }
 
-      // Map members with user data. Dedupe by user_id in case legacy duplicate
-      // membership rows still exist before the unique index migration lands.
+      // Dedupe by user_id — unique index should prevent this, but legacy rows can exist.
       const seenUserIds = new Set<string>();
       const mapped: OrgMember[] = [];
       for (const m of memberships) {
         if (seenUserIds.has(m.user_id)) continue;
         seenUserIds.add(m.user_id);
         const user = userData?.find((u) => u.id === m.user_id);
+        const first_name = user?.first_name ?? null;
+        const last_name = user?.last_name ?? null;
+        const nickname = user?.nickname ?? null;
+        const email = user?.email ?? null;
         mapped.push({
           id: m.id,
           user_id: m.user_id,
           role: m.role,
           assigned_properties: m.assigned_properties ?? null,
-          display_name: user?.nickname || user?.email || `User ${m.user_id.slice(0, 8)}`,
-          email: user?.email || null,
-          nickname: user?.nickname || null,
-          first_name: user?.first_name ?? null,
-          last_name: user?.last_name ?? null,
-          avatar_url: user?.avatar_url || null,
+          display_name: formatPersonDisplayName({
+            first_name,
+            last_name,
+            nickname,
+            email,
+            fallback: `User ${m.user_id.slice(0, 8)}`,
+          }),
+          email,
+          nickname,
+          first_name,
+          last_name,
+          avatar_url: user?.avatar_url ?? null,
         });
       }
 

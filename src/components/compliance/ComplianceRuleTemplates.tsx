@@ -2,9 +2,10 @@
  * Context + starter templates for property compliance rules setup.
  */
 
-import { Flame, Info, Plus, Shield, Zap, Droplets } from "lucide-react";
+import { Flame, Plus, Shield, Zap, Droplets } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { StarterTemplateCallout, RegulatedAreaBadge } from "@/components/templates/StarterTemplateCallout";
 import { STARTER_TEMPLATE_SUMMARY } from "@/lib/starterTemplateDisclaimer";
 import { formatFrequency } from "@/services/propertyIntelligence/frequencyUtils";
@@ -13,6 +14,8 @@ import {
   type ComplianceRuleTemplate,
 } from "@/data/complianceRuleTemplates";
 import { cn } from "@/lib/utils";
+
+const COMPLIANCE_RULES_ILLUSTRATION = "/compliance/compliance-rules.png";
 
 const TEMPLATE_ICONS: Record<string, LucideIcon> = {
   "rule-gas-safety": Flame,
@@ -28,33 +31,47 @@ interface ComplianceRulesContextProps {
 /** Explains what a rule is and shows concrete examples. */
 export function ComplianceRulesContext({ className }: ComplianceRulesContextProps) {
   return (
-    <div className={cn("rounded-xl bg-card shadow-e1 px-4 py-3.5 space-y-3", className)}>
-      <div className="flex gap-2.5">
-        <Info className="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden />
-        <div className="min-w-0 space-y-1.5">
-          <p className="text-sm font-medium text-foreground">What is a compliance rule?</p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            A rule is a recurring obligation for this property — how often it is due, when to
-            remind you, and whether Filla should create a task automatically. Certificates and
-            uploads stay in Records; rules define the schedule behind them.
-          </p>
-        </div>
-      </div>
+    <div className={cn("rounded-xl bg-card shadow-e1 px-4 py-3.5", className)}>
+      <div className="grid gap-4 sm:grid-cols-[7fr_3fr] sm:items-start sm:gap-5">
+        <div className="min-w-0 space-y-3">
+          <div className="space-y-1.5">
+            <PanelSectionTitle as="h2" className="mb-0">
+              What is a compliance rule?
+            </PanelSectionTitle>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              A rule is a recurring obligation for this property — how often it is due, when to
+              remind you, and whether Filla should create a task automatically. Certificates and
+              uploads stay in Records; rules define the schedule behind them.
+            </p>
+          </div>
 
-      <div className="pl-6 space-y-1.5">
-        <p className="text-caption font-mono uppercase tracking-wider text-muted-foreground">
-          Examples
-        </p>
-        <ul className="space-y-1">
-          {COMPLIANCE_RULE_TEMPLATES.map((t) => (
-            <li key={t.id} className="text-sm text-muted-foreground flex gap-2">
-              <span className="text-primary shrink-0" aria-hidden>
-                ·
-              </span>
-              <span>{t.example}</span>
-            </li>
-          ))}
-        </ul>
+          <div className="space-y-1.5">
+            <p className="text-caption font-mono uppercase tracking-wider text-muted-foreground">
+              Examples
+            </p>
+            <ul className="space-y-1">
+              {COMPLIANCE_RULE_TEMPLATES.map((t) => (
+                <li key={t.id} className="text-sm text-muted-foreground flex gap-2">
+                  <span className="text-primary shrink-0" aria-hidden>
+                    ·
+                  </span>
+                  <span>{t.example}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mx-auto flex w-full max-w-[200px] items-center justify-center sm:mx-0 sm:max-w-none sm:pt-0.5">
+          <img
+            src={COMPLIANCE_RULES_ILLUSTRATION}
+            alt=""
+            width={280}
+            height={240}
+            className="h-auto w-full object-contain"
+            decoding="async"
+          />
+        </div>
       </div>
     </div>
   );
@@ -79,7 +96,9 @@ export function ComplianceRuleTemplatePicker({
   return (
     <div className={cn("space-y-3", className)}>
       <div className="space-y-1">
-        <h3 className="text-sm font-semibold text-foreground">Start from a template</h3>
+        <PanelSectionTitle as="h3" className="mb-0">
+          Start from a template
+        </PanelSectionTitle>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {STARTER_TEMPLATE_SUMMARY}
         </p>
@@ -154,7 +173,9 @@ export function ComplianceRulesEmptyWithTemplates({
     <div className="rounded-card bg-card shadow-e1 p-5 space-y-5">
       <div className="text-center space-y-1.5">
         <Shield className="h-9 w-9 text-muted-foreground mx-auto" aria-hidden />
-        <h3 className="font-semibold text-foreground">No compliance rules yet</h3>
+        <PanelSectionTitle as="h3" className="mb-0">
+          No compliance rules yet
+        </PanelSectionTitle>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Pick a common starting template, or add a custom rule for this property.
         </p>

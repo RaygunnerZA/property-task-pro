@@ -1,11 +1,10 @@
 /**
  * Space visual identity control: gallery thumbnail, Lucide “create icon”, or upload.
- * Grounded in existing SpaceThumbnailPickerDialog + AIIconColorPicker patterns;
- * three explicit actions instead of inlining the Lucide builder on the main form.
+ * Preview sits without a chrome box; Select thumbnail sits beside it.
  */
 
 import { useRef, useState } from "react";
-import { ImagePlus, Palette, Upload } from "lucide-react";
+import { Palette, Upload } from "lucide-react";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { SpaceThumbnailPickerDialog } from "@/components/spaces/SpaceThumbnailPickerDialog";
 import {
@@ -65,6 +64,11 @@ export function SpaceVisualPicker({
   const IconComponent = getAssetIcon(value.iconName || suggestedIcon || "box");
   const showThumbnail = value.mode === "thumbnail" && !!value.thumbnailUrl;
 
+  const openGallery = () => {
+    if (disabled) return;
+    setGalleryOpen(true);
+  };
+
   const openCreateIcon = () => {
     setDraftIcon({
       iconName: value.iconName || suggestedIcon || "box",
@@ -107,26 +111,27 @@ export function SpaceVisualPicker({
     }
   };
 
+  const actionBtnClass = cn(
+    "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-2 py-1.5",
+    "text-[11px] font-medium leading-tight whitespace-nowrap",
+    "bg-card/80 text-foreground shadow-e1 transition-shadow hover:shadow-md",
+    "disabled:pointer-events-none disabled:opacity-50"
+  );
+
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="flex justify-center">
-        <div
+      <div className="flex items-center justify-center gap-4">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={openGallery}
           className={cn(
-            "flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-2xl transition-all duration-300",
-            showThumbnail ? "bg-muted/40 p-2" : "p-4"
+            "group flex h-[120px] w-[120px] shrink-0 items-center justify-center rounded-xl",
+            "transition-transform duration-200 hover:scale-[1.03] active:scale-[0.98]",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+            "disabled:pointer-events-none disabled:opacity-50"
           )}
-          style={
-            showThumbnail
-              ? {
-                  boxShadow:
-                    "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-                }
-              : {
-                  backgroundColor: value.iconColor || "#8EC9CE",
-                  boxShadow:
-                    "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-                }
-          }
+          aria-label="Select thumbnail"
         >
           {showThumbnail ? (
             <img
@@ -135,49 +140,48 @@ export function SpaceVisualPicker({
               className="h-full w-full object-contain"
             />
           ) : (
-            <IconComponent className="h-10 w-10 text-white" />
+            <span
+              className="flex h-[88px] w-[88px] items-center justify-center rounded-2xl"
+              style={{ backgroundColor: value.iconColor || "#8EC9CE" }}
+            >
+              <IconComponent className="h-12 w-12 text-white" />
+            </span>
           )}
-        </div>
-      </div>
+        </button>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setGalleryOpen(true)}
+          onClick={openGallery}
           className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium",
-            "bg-card/80 text-foreground shadow-e1 transition-shadow hover:shadow-md",
+            "shrink-0 text-left text-xs font-medium leading-snug text-foreground/80",
+            "transition-colors hover:text-foreground",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
             "disabled:pointer-events-none disabled:opacity-50"
           )}
         >
-          <ImagePlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Select icon
+          <span className="block">Select</span>
+          <span className="block">thumbnail</span>
         </button>
+      </div>
+
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           disabled={disabled}
           onClick={openCreateIcon}
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium",
-            "bg-card/80 text-foreground shadow-e1 transition-shadow hover:shadow-md",
-            "disabled:pointer-events-none disabled:opacity-50"
-          )}
+          className={actionBtnClass}
         >
-          <Palette className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <Palette className="h-3 w-3 shrink-0" aria-hidden />
           Create icon
         </button>
         <button
           type="button"
           disabled={disabled || uploading}
           onClick={handleUploadClick}
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium",
-            "bg-card/80 text-foreground shadow-e1 transition-shadow hover:shadow-md",
-            "disabled:pointer-events-none disabled:opacity-50"
-          )}
+          className={actionBtnClass}
         >
-          <Upload className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <Upload className="h-3 w-3 shrink-0" aria-hidden />
           {uploading ? "Uploading…" : "Upload image"}
         </button>
       </div>
@@ -195,7 +199,7 @@ export function SpaceVisualPicker({
         onOpenChange={setGalleryOpen}
         currentSrc={value.mode === "thumbnail" ? value.thumbnailUrl : null}
         spaceName={searchText || undefined}
-        title="Select icon"
+        title="Select thumbnail"
         onSelect={(src) => {
           onChange({
             mode: "thumbnail",

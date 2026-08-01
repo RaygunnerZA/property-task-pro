@@ -3200,14 +3200,12 @@ export function IntakeModal({
         dueDateValue = dateObj.toISOString();
       }
 
-      const newTask = await createTaskMutation.mutateAsync({
-        source: taskCreatedSource ?? "manual",
-        insert: {
+      const insertPayload = {
           org_id: orgId,
           title: finalTitle,
           description: description.trim() || null,
           property_id: propertyId || null,
-          due_date: dueDateValue,
+          due_at: dueDateValue,
           milestones:
             milestones.length > 0
               ? milestones.map((milestone) => ({
@@ -3216,10 +3214,13 @@ export function IntakeModal({
                   label: milestone.name,
                 }))
               : null,
-          priority: priority === "medium" ? "normal" : priority,
+          priority,
           assigned_user_id: assignedUserId || null,
-          status: "open",
-        },
+          status: "open" as const,
+        };
+      const newTask = await createTaskMutation.mutateAsync({
+        source: taskCreatedSource ?? "manual",
+        insert: insertPayload,
       });
 
       if (!newTask?.id) throw new Error("No task id returned");
@@ -4072,6 +4073,7 @@ export function IntakeModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        hideCloseButton
         className={cn(
           "max-h-[90vh] flex flex-col p-0 gap-0",
           "rounded-xl border-0 shadow-[3px_5px_8px_rgba(174,174,178,0.25),-3px_-3px_6px_rgba(255,255,255,0.7)]"

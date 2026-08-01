@@ -8,6 +8,7 @@
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/design-system/LoadingState";
+import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { ComplianceRuleRow } from "./ComplianceRuleRow";
 import {
   ComplianceRulesEmptyWithTemplates,
@@ -41,16 +42,16 @@ export function ComplianceRulesSection({
   return (
     <div className="space-y-4">
       {/* Section header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-foreground flex items-center gap-2 text-sm">
-          <Shield className="h-4 w-4 text-primary" />
+      <div className="flex items-center justify-between gap-2">
+        <PanelSectionTitle as="h2" className="mb-0 flex items-center gap-2">
+          <Shield className="h-4 w-4 text-primary" aria-hidden />
           Compliance Rules
           {rules.length > 0 && (
             <span className="text-xs text-muted-foreground font-normal">
               ({rules.length})
             </span>
           )}
-        </h2>
+        </PanelSectionTitle>
         <Button
           size="sm"
           variant="outline"

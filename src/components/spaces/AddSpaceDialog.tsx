@@ -33,6 +33,7 @@ import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 import { getSuggestedCopyName } from "@/lib/spaceNameUtils";
 import { uploadSpaceImage, validateSpaceImageFile } from "@/services/spaces/spaceImageUpload";
 import { Copy, ExternalLink } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type CreatedSpace = { id: string; name: string; icon_name: string };
 
@@ -331,7 +332,7 @@ export function AddSpaceDialog({
   const ExistingIcon = getAssetIcon(existingMatch?.icon_name || "box");
 
   const formContent = (
-    <div className="space-y-6 p-4">
+    <div className={cn("space-y-5", !(variant === "column" && headless) && "p-4")}>
       <SpaceVisualPicker
         value={{
           ...visual,

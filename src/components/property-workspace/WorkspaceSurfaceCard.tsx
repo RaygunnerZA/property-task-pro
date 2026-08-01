@@ -23,7 +23,7 @@ export function WorkspaceSurfaceCard({
   return (
     <div
       className={cn(
-        "rounded-xl bg-card/60 shadow-e1 overflow-hidden",
+        "rounded-xl bg-card/60 shadow-e1",
         "transition-shadow duration-200 hover:shadow-md",
         className
       )}
