@@ -552,7 +552,7 @@ export default function ManageTemplates() {
       <button
         type="button"
         onClick={openCreate}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-primary hover:brightness-105 transition-all shadow-md active:scale-[0.98]"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-105 transition-all shadow-md active:scale-[0.98]"
       >
         <Plus className="h-4 w-4" />
         New

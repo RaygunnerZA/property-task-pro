@@ -3483,7 +3483,7 @@ export function IntakeModal({
             intakeMode === m
               ? m === "report_issue"
                 ? "bg-destructive text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-                : "bg-primary text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                : "bg-primary text-primary-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >

@@ -154,7 +154,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-primary text-white rounded-sharp shadow-primary-btn">
+        <button className="px-4 py-2 font-medium text-sm bg-primary text-primary-foreground rounded-sharp shadow-primary-btn">
           Primary Button
         </button>
       ),
@@ -198,7 +198,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-primary text-white rounded-sharp shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-primary text-primary-foreground rounded-sharp shadow-e1">
           Active
         </span>
       ),

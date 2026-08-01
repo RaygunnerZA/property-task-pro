@@ -178,7 +178,7 @@ export function WorkbenchFiltersPopover({
           >
             <Funnel className="h-[18px] w-[18px]" style={{ color: iconColor }} />
             {activeFilterCount > 0 ? (
-              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-2xs font-semibold text-white">
+              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-2xs font-semibold text-primary-foreground">
                 {activeFilterCount}
               </span>
             ) : null}

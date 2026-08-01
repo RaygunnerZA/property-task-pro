@@ -401,7 +401,7 @@ export function NeumorphismSandbox() {
             className={cn(
               'w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all',
               selectedPreset 
-                ? 'bg-primary text-white hover:bg-primary-deep shadow-e1' 
+                ? 'bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1' 
                 : 'bg-concrete text-ink/40 cursor-not-allowed'
             )}
           >

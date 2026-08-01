@@ -141,7 +141,7 @@ export function DashboardCalendar({
           row: "flex w-full mt-1 mb-1 py-0 justify-around items-center font-mono",
           cell: "h-[28px] w-[28px] flex-1 max-w-[32px] text-center text-xs p-0 relative font-mono flex items-center justify-center",
           day: "h-[28px] w-[28px] p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
-          day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
+          day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
           day_today: "bg-accent/30 text-foreground font-semibold",
           day_outside: "text-muted-foreground opacity-50",
           day_disabled: "text-muted-foreground opacity-50",

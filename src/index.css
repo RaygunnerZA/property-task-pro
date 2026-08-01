@@ -637,6 +637,16 @@
     opacity: 1;
     transition: opacity 180ms ease-out;
   }
+
+  .neo-surface-light:focus-visible {
+    outline: none;
+    box-shadow:
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.12),
+      3px 3px 6px 0px rgba(255, 255, 255, 1),
+      inset -2px -2px 3px 0px rgba(0, 0, 0, 0.08),
+      inset 2px 2px 3px 0px rgba(255, 255, 255, 0.8),
+      0 0 0 2px hsl(var(--primary) / 0.6);
+  }
   
   /* Paper texture utility class - can be applied to any element */
   .bg-paper-texture {

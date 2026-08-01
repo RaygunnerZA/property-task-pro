@@ -152,7 +152,7 @@ export function TypographySandbox() {
                 onClick={() => setSelectedType('xl')}
                 className={cn(
                   'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
-                  selectedType === 'xl' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                  selectedType === 'xl' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading XL
@@ -161,7 +161,7 @@ export function TypographySandbox() {
                 onClick={() => setSelectedType('l')}
                 className={cn(
                   'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
-                  selectedType === 'l' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                  selectedType === 'l' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading L
@@ -208,7 +208,7 @@ export function TypographySandbox() {
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">

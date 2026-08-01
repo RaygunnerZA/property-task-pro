@@ -180,7 +180,7 @@ export function TemplateDialog({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || loading}
-            className="rounded-xl bg-primary hover:bg-primary text-white border-0 shadow-primary-btn"
+            className="rounded-xl bg-primary hover:bg-primary text-primary-foreground border-0 shadow-primary-btn"
           >
             {loading ? "Saving…" : mode === "create" ? "Create Template" : "Save Changes"}
           </Button>

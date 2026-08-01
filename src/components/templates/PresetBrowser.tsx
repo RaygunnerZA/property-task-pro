@@ -100,7 +100,7 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
               ? "bg-primary/20 text-primary-deep hover:bg-primary/30"
               : isAdding
                 ? "bg-muted text-muted-foreground cursor-wait"
-                : "bg-primary text-white shadow-sm hover:brightness-105 active:scale-[0.97]"
+                : "bg-primary text-primary-foreground shadow-sm hover:brightness-105 active:scale-[0.97]"
           )}
         >
           {isAdded ? "Open" : isAdding ? "Adding…" : "Add"}
@@ -201,7 +201,7 @@ export function PresetPreviewDialog({
           {isAdded ? (
             <Button
               type="button"
-              className="bg-primary text-white hover:brightness-105"
+              className="bg-primary text-primary-foreground hover:brightness-105"
               onClick={() => {
                 onOpenLibrary?.(preset);
                 onClose();
@@ -212,7 +212,7 @@ export function PresetPreviewDialog({
           ) : (
             <Button
               type="button"
-              className="bg-primary text-white hover:brightness-105"
+              className="bg-primary text-primary-foreground hover:brightness-105"
               disabled={isAdding}
               onClick={() => onAdd(preset)}
             >

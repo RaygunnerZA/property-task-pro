@@ -111,7 +111,7 @@ function BriefingCard() {
         Jane cannot find documents for boiler repair at Maple Court. Last uploaded 3 months ago but marked as missing in today's inspection.
       </p>
       <div className="flex gap-2">
-        <button className="px-3 py-1.5 rounded-full bg-primary text-white font-mono text-2xs uppercase tracking-wider">
+        <button className="px-3 py-1.5 rounded-full bg-primary text-primary-foreground font-mono text-2xs uppercase tracking-wider">
           Action
         </button>
         <button className="px-3 py-1.5 rounded-full bg-concrete/50 text-ink/70 font-mono text-2xs uppercase tracking-wider">

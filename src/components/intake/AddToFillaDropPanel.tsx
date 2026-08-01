@@ -201,7 +201,7 @@ export function AddToFillaDropPanel({
                   onReviewClick();
                 }}
                 className={cn(
-                  "inline-flex items-center rounded-card bg-primary px-2 py-0.5 font-semibold text-white",
+                  "inline-flex items-center rounded-card bg-primary px-2 py-0.5 font-semibold text-primary-foreground",
                   compact ? "text-2xs h-[20px]" : "text-2xs h-[24px]"
                 )}
               >

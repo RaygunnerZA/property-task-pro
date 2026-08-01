@@ -198,7 +198,7 @@ export function CardSandbox() {
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">

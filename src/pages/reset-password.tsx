@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
 
           {error && <div className="text-destructive text-sm">{error}</div>}
 
-          <button className="bg-primary text-white p-2 rounded">
+          <button className="bg-primary text-primary-foreground p-2 rounded">
             Update Password
           </button>
         </form>

@@ -379,7 +379,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
             onClick={() => setActiveTab(tab)}
             className={cn(
               'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
-              activeTab === tab ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+              activeTab === tab ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
             )}
           >
             {tab}
@@ -402,7 +402,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                       className={cn(
                         'px-3 py-1.5 rounded-full font-mono text-2xs uppercase tracking-wider transition-all',
                         selectedType === type 
-                          ? 'bg-primary text-white' 
+                          ? 'bg-primary text-primary-foreground' 
                           : 'bg-surface/80 shadow-e1 text-ink/60 hover:text-ink'
                       )}
                     >
@@ -469,7 +469,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                       className={cn(
                         'px-3 py-1.5 rounded-full font-mono text-2xs uppercase tracking-wider transition-all',
                         selectedChipType === type 
-                          ? 'bg-primary text-white' 
+                          ? 'bg-primary text-primary-foreground' 
                           : 'bg-surface/80 shadow-e1 text-ink/60 hover:text-ink'
                       )}
                     >
@@ -669,7 +669,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">
@@ -691,7 +691,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                   onClick={() => setEditingShadow('normal')}
                   className={cn(
                     'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
-                    editingShadow === 'normal' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                    editingShadow === 'normal' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                   )}
                 >
                   Normal State
@@ -700,7 +700,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                   onClick={() => setEditingShadow('pressed')}
                   className={cn(
                     'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
-                    editingShadow === 'pressed' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                    editingShadow === 'pressed' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                   )}
                 >
                   Pressed State
