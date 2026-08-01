@@ -86,6 +86,7 @@ export const SPACE_MINI_CARD_ILLUSTRATION: Record<string, string> = {
   "ups-room": `${MINI_CARD_BASE}/ups-room.png`,
   "wc": `${MINI_CARD_BASE}/wc.png`,
   "workshop": `${MINI_CARD_BASE}/workshop.png`,
+  "yoga-room": `${MINI_CARD_BASE}/yoga-room.png`,
   "yoga-studio": `${MINI_CARD_BASE}/yoga-studio.png`,
 };
 
@@ -144,7 +145,6 @@ const SPACE_MINI_CARD_SLUG_ALIAS: Record<string, string> = {
   "utility-room": "laundry-room",
   vestibule: "entrance-hall",
   yard: "garden",
-  "yoga-room": "yoga-studio",
 };
 
 export function spaceTypeIllustrationSlug(name: string | null | undefined): string {
