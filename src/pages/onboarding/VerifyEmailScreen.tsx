@@ -102,7 +102,7 @@ export default function VerifyEmailScreen() {
               boxShadow: "inset 2px 2px 6px rgba(0,0,0,0.08), inset -2px -2px 6px rgba(255,255,255,0.7)"
             }}
           >
-            <Mail className="w-12 h-12 text-[#FF6B6B]" />
+            <Mail className="w-12 h-12 text-destructive" />
           </div>
         </div>
 
@@ -132,7 +132,7 @@ export default function VerifyEmailScreen() {
           </NeomorphicButton>
         </div>
 
-        <p className="text-sm text-[#6D7480] text-center mt-6">
+        <p className="text-sm text-muted-foreground text-center mt-6">
           Can't find the email? Check your spam folder.<br />
           <strong>For testing:</strong> Disable email confirmation in Supabase → Authentication → Providers → Email
         </p>

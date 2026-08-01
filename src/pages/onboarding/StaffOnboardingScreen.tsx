@@ -55,7 +55,7 @@ export default function StaffOnboardingScreen() {
   if (orgLoading || !orgId) {
     return (
       <OnboardingContainer>
-        <div className="flex min-h-[200px] items-center justify-center text-[#6D7480]">
+        <div className="flex min-h-[200px] items-center justify-center text-muted-foreground">
           Loading…
         </div>
       </OnboardingContainer>
@@ -76,12 +76,12 @@ export default function StaffOnboardingScreen() {
           </div>
         </div>
 
-        <h1 className="text-4xl font-semibold text-[#1C1C1C] mb-4 heading-xl">
+        <h1 className="text-4xl font-semibold text-foreground mb-4 heading-xl">
           You&apos;ve been invited
         </h1>
 
-        <p className="text-lg text-[#6D7480] mb-8 px-4">
-          You&apos;ve been invited to <strong className="text-[#1C1C1C]">{orgName}</strong>.
+        <p className="text-lg text-muted-foreground mb-8 px-4">
+          You&apos;ve been invited to <strong className="text-foreground">{orgName}</strong>.
           <br />
           You can start working on tasks right away.
         </p>

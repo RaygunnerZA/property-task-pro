@@ -13,7 +13,7 @@ export const NeomorphicPasswordInput = forwardRef<HTMLInputElement, NeomorphicPa
     return (
       <div className="mb-6">
         {label && (
-          <label className="block text-sm font-medium text-[#6D7480] mb-2">
+          <label className="block text-sm font-medium text-muted-foreground mb-2">
             {label}
           </label>
         )}
@@ -22,24 +22,20 @@ export const NeomorphicPasswordInput = forwardRef<HTMLInputElement, NeomorphicPa
             ref={ref}
             type={showPassword ? "text" : "password"}
             className={`
-              w-full px-4 py-3 pr-12 rounded-xl bg-[#F6F4F2] text-[#1C1C1C]
-              placeholder:text-[#6D7480]/50
-              transition-all duration-150 ease-out
-              focus:outline-none focus:ring-2 focus:ring-[#0EA5E9]/30
-              ${error ? "ring-2 ring-[#FF6B6B]/50" : ""}
+              w-full px-4 py-3 pr-12 rounded-xl bg-input text-foreground shadow-engraved
+              placeholder:text-muted-foreground/50
+              transition-[box-shadow,background-color] duration-150 ease-out
+              focus:outline-none focus:ring-2 focus:ring-primary/30
+              ${error ? "ring-2 ring-destructive/50" : ""}
               ${className}
             `}
-            style={{
-              boxShadow: error
-                ? "inset 2px 2px 4px rgba(255,107,107,0.15), inset -2px -2px 4px rgba(255,255,255,0.7)"
-                : "inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.7)"
-            }}
             {...props}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6D7480] hover:text-[#1C1C1C] transition-colors duration-150"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md text-muted-foreground hover:text-foreground transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
             {showPassword ? (
               <EyeOff className="w-5 h-5" />
@@ -49,7 +45,7 @@ export const NeomorphicPasswordInput = forwardRef<HTMLInputElement, NeomorphicPa
           </button>
         </div>
         {error && (
-          <p className="mt-2 text-sm text-[#FF6B6B]">{error}</p>
+          <p className="mt-2 text-sm text-destructive">{error}</p>
         )}
       </div>
     );

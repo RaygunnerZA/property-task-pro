@@ -141,7 +141,6 @@ export function SpaceThumbnailPickerDialog({
             variant="primary"
             onClick={() => void handleSave()}
             disabled={busy || !pending}
-            style={{ backgroundColor: "#8EC9CE" }}
           >
             {busy ? "Saving…" : "Use image"}
           </NeomorphicButton>

@@ -406,16 +406,16 @@ export default function AcceptInvitation() {
             }}
           >
             {status === "loading" && (
-              <Loader2 className="w-12 h-12 text-[#8EC9CE] animate-spin" />
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
             )}
             {status === "success" && (
               <CheckCircle2 className="w-12 h-12 text-green-500" />
             )}
             {status === "error" && (
-              <XCircle className="w-12 h-12 text-[#EB6834]" />
+              <XCircle className="w-12 h-12 text-accent" />
             )}
             {status === "password" && (
-              <Lock className="w-12 h-12 text-[#8EC9CE]" />
+              <Lock className="w-12 h-12 text-primary" />
             )}
           </div>
         </div>
@@ -432,7 +432,7 @@ export default function AcceptInvitation() {
         )}
 
         {status === "loading" && (
-          <p className="text-sm text-[#6D7480] text-center">
+          <p className="text-sm text-muted-foreground text-center">
             This may take a moment…
           </p>
         )}
@@ -440,17 +440,17 @@ export default function AcceptInvitation() {
         {status === "password" && (
           <div className="space-y-6">
             <div className="space-y-3 text-left">
-              <p className="text-sm text-[#6D7480]">
+              <p className="text-sm text-muted-foreground">
                 Your details have already been added by the person who invited you to Filla.
               </p>
-              <p className="text-sm text-[#6D7480]">
+              <p className="text-sm text-muted-foreground">
                 Please confirm your information below and create a secure password to activate your account.
               </p>
-              <p className="text-sm text-[#6D7480]">
+              <p className="text-sm text-muted-foreground">
                 Once your password is set, you'll be able to sign in anytime and access your workspace.
               </p>
               <p className="text-sm font-medium text-foreground">What happens next:</p>
-              <ul className="list-disc pl-5 text-sm text-[#6D7480] space-y-1">
+              <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
                 <li>Your name and email are already linked to your organisation</li>
                 <li>Your password will be securely stored for future sign-ins</li>
                 <li>You'll immediately gain access to your assigned properties and tasks</li>

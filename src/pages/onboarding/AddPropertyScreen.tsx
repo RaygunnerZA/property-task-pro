@@ -336,10 +336,10 @@ export default function AddPropertyScreen() {
                   onClick={() => setIconPickerOpen((open) => !open)}
                   className={cn(
                     "absolute -top-1.5 -right-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full",
-                    "bg-white/95 text-[#6D7480] shadow-md transition-all duration-200",
-                    "opacity-80 group-hover:opacity-100 group-hover:scale-110 group-hover:text-[#FF6B6B]",
-                    "hover:bg-white hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B6B]/40",
-                    iconPickerOpen && "opacity-100 scale-110 text-[#FF6B6B] ring-2 ring-[#FF6B6B]/30"
+                    "bg-white/95 text-muted-foreground shadow-md transition-all duration-200",
+                    "opacity-80 group-hover:opacity-100 group-hover:scale-110 group-hover:text-destructive",
+                    "hover:bg-white hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40",
+                    iconPickerOpen && "opacity-100 scale-110 text-destructive ring-2 ring-destructive/30"
                   )}
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -390,7 +390,7 @@ export default function AddPropertyScreen() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#6D7480] mb-2 text-center">
+            <label className="block text-sm font-medium text-muted-foreground mb-2 text-center">
               Property photo (optional)
             </label>
             <input
@@ -419,13 +419,13 @@ export default function AddPropertyScreen() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full h-[48px] rounded-xl border-2 border-dashed border-[#D1CCC4] hover:border-[#FF6B6B] transition-colors flex items-center justify-center gap-2"
+                className="w-full h-[48px] rounded-xl border-2 border-dashed border-border hover:border-destructive transition-colors flex items-center justify-center gap-2"
                 style={{
                   background: "rgba(255,255,255,0.5)"
                 }}
               >
-                <Upload className="w-5 h-5 text-[#6D7480]" />
-                <span className="text-sm text-[#6D7480]">Upload photo</span>
+                <Upload className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Upload photo</span>
               </button>
             )}
           </div>
@@ -443,7 +443,7 @@ export default function AddPropertyScreen() {
 
           {propertyProfile === "portfolio" && (
             <div className="text-center pt-4">
-              <p className="text-sm text-[#6D7480]">
+              <p className="text-sm text-muted-foreground">
                 If you have multiple properties, <PropertyCsvImport />
               </p>
             </div>

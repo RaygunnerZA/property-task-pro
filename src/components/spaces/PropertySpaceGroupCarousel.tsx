@@ -534,7 +534,6 @@ export function PropertySpaceGroupCarousel({
               variant="primary"
               onClick={() => void confirmRename()}
               disabled={!renameInput.trim() || busy}
-              style={{ backgroundColor: "#8EC9CE" }}
             >
               Save
             </NeomorphicButton>
@@ -570,7 +569,6 @@ export function PropertySpaceGroupCarousel({
               variant="primary"
               onClick={() => void confirmCopy()}
               disabled={!copyInput.trim() || busy}
-              style={{ backgroundColor: "#8EC9CE" }}
             >
               Add
             </NeomorphicButton>

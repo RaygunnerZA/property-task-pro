@@ -203,9 +203,8 @@ export default function SpaceOrganisationScreen() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div
-              className="p-2.5 rounded-xl"
+              className="p-2.5 rounded-xl bg-primary"
               style={{
-                backgroundColor: "#8EC9CE",
                 boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
               }}
             >

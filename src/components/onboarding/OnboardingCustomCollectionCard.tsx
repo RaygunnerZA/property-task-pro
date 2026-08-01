@@ -27,12 +27,12 @@ const COLLAPSE_DURATION_MS = 450;
 const BANNER_HEIGHT_PX = 130;
 const BANNER_COLLAPSED_HEIGHT_PX = 70;
 
-const SELECTED_CHIP_TEAL = "#85BABC";
+const SELECTED_CHIP_TEAL = "hsl(var(--primary-deep))";
 
 const DASHED_LINE_STYLE = {
   height: "1px",
   backgroundImage:
-    "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+    "repeating-linear-gradient(to right, hsl(var(--border)) 0px, hsl(var(--border)) 4px, transparent 4px, transparent 7px)",
   backgroundSize: "7px 1px",
   backgroundRepeat: "repeat-x" as const,
 };
@@ -274,7 +274,7 @@ export function OnboardingCustomCollectionCard({
               onClick={openEditDialog}
               className={cn(
                 "absolute top-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center",
-                "rounded-md bg-white/90 text-[#6D7480] shadow-sm",
+                "rounded-md bg-white/90 text-muted-foreground shadow-sm",
                 "transition-colors hover:bg-white hover:text-foreground"
               )}
               aria-label={`Edit ${collection.name}`}
@@ -371,7 +371,7 @@ export function OnboardingCustomCollectionCard({
                   "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-all",
                   "disabled:opacity-50"
                 )}
-                style={{ backgroundColor: "#14B8A6" }}
+                style={{ backgroundColor: "hsl(var(--primary-deep))" }}
                 aria-label="Add space"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -431,7 +431,7 @@ export function OnboardingCustomCollectionCard({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isResizingImage}
-                className="mt-2 text-xs font-mono uppercase tracking-wide text-[#8EC9CE] hover:underline disabled:opacity-50"
+                className="mt-2 text-xs font-mono uppercase tracking-wide text-primary hover:underline disabled:opacity-50"
               >
                 Upload new image
               </button>
@@ -446,7 +446,6 @@ export function OnboardingCustomCollectionCard({
               variant="primary"
               onClick={confirmEdit}
               disabled={!editName.trim() || isResizingImage}
-              style={{ backgroundColor: "#8EC9CE" }}
             >
               Save
             </NeomorphicButton>

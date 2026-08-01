@@ -20,11 +20,11 @@ export default function WelcomeScreen() {
           />
         </div>
 
-        <h1 className="heading-xl mb-4 text-4xl font-semibold text-[#1C1C1C]">
+        <h1 className="heading-xl mb-4 text-4xl font-semibold text-foreground">
           Welcome to Filla
         </h1>
 
-        <p className="mb-10 px-2 text-lg leading-relaxed text-[#6D7480]">
+        <p className="mb-10 px-2 text-lg leading-relaxed text-muted-foreground">
           AI-powered property management for homes, buildings and portfolios.
         </p>
 

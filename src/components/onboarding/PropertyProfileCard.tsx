@@ -23,7 +23,7 @@ export function PropertyProfileCard({
       tabIndex={isActive ? 0 : -1}
       className={cn(
         "flex w-full flex-col items-center gap-4 px-2 py-2 text-center transition-colors duration-200",
-        "rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EC9CE]/50",
+        "rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
         isActive ? "cursor-pointer" : "pointer-events-none cursor-default"
       )}
       aria-pressed={isConfirmed}
@@ -46,15 +46,15 @@ export function PropertyProfileCard({
           className={cn(
             "text-lg font-medium leading-tight transition-colors duration-200",
             isConfirmed
-              ? "font-semibold text-[#1C1C1C]"
+              ? "font-semibold text-foreground"
               : isActive
-                ? "text-[#6D7480]"
-                : "text-[#6D7480]/80"
+                ? "text-muted-foreground"
+                : "text-muted-foreground/80"
           )}
         >
           {option.label}
         </p>
-        <p className="text-sm leading-snug text-[#6D7480]">{option.description}</p>
+        <p className="text-sm leading-snug text-muted-foreground">{option.description}</p>
       </div>
     </button>
   );
