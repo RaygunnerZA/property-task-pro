@@ -227,7 +227,7 @@ export function PropertyImageDialog({
                   className="flex-1"
                 >
                   <Archive className="h-4 w-4 mr-2" />
-                  {isArchiving ? "Archiving..." : "Archive"}
+                  {isArchiving ? "Archiving…" : "Archive"}
                 </Button>
               </div>
             </TabsContent>
@@ -255,7 +255,7 @@ export function PropertyImageDialog({
               disabled={isArchiving}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isArchiving ? "Archiving..." : "Archive"}
+              {isArchiving ? "Archiving…" : "Archive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

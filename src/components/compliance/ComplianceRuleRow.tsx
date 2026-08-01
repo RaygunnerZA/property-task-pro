@@ -46,25 +46,25 @@ function StatusBadge({ status }: { status: ComplianceRuleWithStatus["status"] })
   switch (status) {
     case "overdue":
       return (
-        <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
+        <Badge variant="outline" className="text-2xs text-destructive border-destructive/40 bg-destructive/10">
           Overdue
         </Badge>
       );
     case "due_soon":
       return (
-        <Badge variant="outline" className="text-[10px] text-warning-foreground border-amber-300 bg-warning/30 dark:bg-amber-950/30">
+        <Badge variant="outline" className="text-2xs text-warning-foreground border-amber-300 bg-warning/30 dark:bg-amber-950/30">
           Due soon
         </Badge>
       );
     case "scheduled":
       return (
-        <Badge variant="outline" className="text-[10px] text-success border-success/40 bg-success/10">
+        <Badge variant="outline" className="text-2xs text-success border-success/40 bg-success/10">
           Scheduled
         </Badge>
       );
     default:
       return (
-        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+        <Badge variant="outline" className="text-2xs text-muted-foreground">
           No date
         </Badge>
       );
@@ -140,7 +140,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
           <span className="font-semibold text-sm text-foreground truncate">
             {rule.name ?? "Unnamed rule"}
           </span>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-2xs">
             {formatFrequency(rule.frequency ?? "annual")}
           </Badge>
           <StatusBadge status={rule.status} />

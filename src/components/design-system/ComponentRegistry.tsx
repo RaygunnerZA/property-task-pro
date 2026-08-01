@@ -45,10 +45,10 @@ function ComponentCard({ component }: { component: ComponentDef }) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-concrete/50">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-1.5 py-0.5 rounded-sharp">
+          <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground bg-concrete/50 px-1.5 py-0.5 rounded-sharp">
             {component.category}
           </span>
-          <span className="font-mono text-[11px] font-medium text-ink">{component.name}</span>
+          <span className="font-mono text-caption font-medium text-ink">{component.name}</span>
         </div>
         <CopyButton css={cssOutput} />
       </div>
@@ -60,7 +60,7 @@ function ComponentCard({ component }: { component: ComponentDef }) {
       
       {/* CSS */}
       <div className="bg-ink/95 px-3 py-2">
-        <pre className="text-[10px] text-primary font-mono overflow-x-auto whitespace-pre-wrap">
+        <pre className="text-2xs text-primary font-mono overflow-x-auto whitespace-pre-wrap">
           <span className="text-white/50">.{component.cssClass}</span> {'{'}
           {'\n'}<span className="text-white/70 ml-2">{component.cssValue}</span>
           {'\n'}{'}'}
@@ -138,7 +138,7 @@ export function ComponentRegistry() {
   letter-spacing: 0.05em;
   font-weight: 500;`,
       preview: (
-        <span className="font-mono text-[11px] uppercase tracking-wider font-medium text-muted-foreground">
+        <span className="font-mono text-caption uppercase tracking-wider font-medium text-muted-foreground">
           MON TUE WED THU FRI
         </span>
       ),
@@ -198,7 +198,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-primary text-white rounded-sharp shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-primary text-white rounded-sharp shadow-e1">
           Active
         </span>
       ),
@@ -212,7 +212,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-sharp shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-sharp shadow-e1">
           Inactive
         </span>
       ),
@@ -225,7 +225,7 @@ export function ComponentRegistry() {
   color: #166534;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-success-foreground">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-success/30 text-success-foreground">
           Compliant
         </span>
       ),
@@ -238,7 +238,7 @@ export function ComponentRegistry() {
   color: #92400e;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-warning-foreground">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-warning/50 text-warning-foreground">
           Pending
         </span>
       ),
@@ -251,7 +251,7 @@ export function ComponentRegistry() {
   color: #991b1b;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-destructive">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-destructive/20 text-destructive">
           Overdue
         </span>
       ),
@@ -264,7 +264,7 @@ export function ComponentRegistry() {
   color: hsl(var(--ink) / 0.6);
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-2xs uppercase tracking-wider font-medium bg-concrete text-ink/60">
           Low
         </span>
       ),
@@ -277,7 +277,7 @@ export function ComponentRegistry() {
   color: hsl(var(--primary-deep));
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-2xs uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
           Normal
         </span>
       ),
@@ -290,7 +290,7 @@ export function ComponentRegistry() {
   color: hsl(var(--accent));
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-2xs uppercase tracking-wider font-medium bg-accent/20 text-accent">
           High
         </span>
       ),
@@ -352,10 +352,10 @@ export function ComponentRegistry() {
   }`,
       preview: (
         <div className="inline-flex p-1 bg-concrete rounded-sharp shadow-engraved">
-          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider bg-surface text-ink rounded-sharp shadow-e1">
+          <span className="px-3 py-1.5 font-mono text-2xs uppercase tracking-wider bg-surface text-ink rounded-sharp shadow-e1">
             Tab 1
           </span>
-          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="px-3 py-1.5 font-mono text-2xs uppercase tracking-wider text-muted-foreground">
             Tab 2
           </span>
         </div>
@@ -413,7 +413,7 @@ export function ComponentRegistry() {
       
       {Object.entries(grouped).map(([category, items]) => (
         <div key={category} className="space-y-4">
-          <h3 className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+          <h3 className="font-mono text-caption uppercase tracking-wider text-muted-foreground font-medium">
             {category}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

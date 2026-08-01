@@ -41,7 +41,7 @@ export function PropertyAssigneesSection({ propertyId }: PropertyAssigneesSectio
               className="flex flex-col gap-0.5 rounded-[10px] border border-border/20 bg-background/40 px-3 py-2 shadow-sm"
             >
               <p className="text-sm font-medium text-foreground">{v.vendorName}</p>
-              <div className="flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap gap-x-3 text-caption text-muted-foreground">
                 <span>{v.tasksCompleted} completed</span>
                 {v.lastVisit ? (
                   <span>

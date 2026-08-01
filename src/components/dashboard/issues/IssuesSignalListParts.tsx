@@ -21,7 +21,7 @@ export function SignalConfidenceIndicator({ level }: { level: SignalConfidenceLe
       title={config.label}
       aria-label={config.label}
     >
-      <span className="text-[10px] leading-none text-muted-foreground whitespace-nowrap">{config.label}</span>
+      <span className="text-2xs leading-none text-muted-foreground whitespace-nowrap">{config.label}</span>
       <div className="flex h-3 items-center gap-0.5">
         {Array.from({ length: 4 }).map((_, i) => (
           <span
@@ -54,7 +54,7 @@ export function SignalCategoryTag({
   return (
     <span
       className={cn(
-        "inline-flex h-6 shrink-0 items-center justify-center rounded-sharp px-2.5 font-mono text-[11px] font-medium",
+        "inline-flex h-6 shrink-0 items-center justify-center rounded-sharp px-2.5 font-mono text-caption font-medium",
         categoryVariantClass[variant]
       )}
     >
@@ -70,7 +70,7 @@ const issuesSignalControlRadius = "rounded-card";
 export const issuesSignalSecondaryButtonClassName = cn(
   "inline-flex h-7 shrink-0 items-center justify-center border border-border/60 bg-[rgb(237,235,232)]",
   issuesSignalControlRadius,
-  "px-3 text-[11px] font-medium text-foreground",
+  "px-3 text-caption font-medium text-foreground",
   "shadow-[1px_2px_3px_0px_rgba(0,0,0,0.15),-1px_-2px_3px_0px_rgba(255,255,255,0.7),0px_1px_2px_0px_rgba(0,0,0,0.05)]",
   "transition-colors hover:bg-muted/40"
 );
@@ -79,7 +79,7 @@ export const issuesSignalSecondaryButtonClassName = cn(
 export const issuesSignalReviewButtonClassName = cn(
   "inline-flex h-7 shrink-0 items-center justify-center border-0 bg-primary",
   issuesSignalControlRadius,
-  "px-3 text-[11px] font-semibold text-white",
+  "px-3 text-caption font-semibold text-white",
   "shadow-primary-btn transition-all hover:bg-primary active:shadow-btn-pressed"
 );
 

@@ -162,10 +162,10 @@ function AllPropertiesCarouselSlide({
           />
 
           <div className="absolute bottom-2 left-2.5 right-10 z-10 min-w-0">
-            <p className="min-w-0 truncate text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
+            <p className="min-w-0 truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
               {cardTitle}
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-white/90 drop-shadow-sm">
+            <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
               {cardSubtitle}
             </p>
           </div>
@@ -356,12 +356,12 @@ function PropertyCarouselSlide({
               style={{ color: iconColor }}
               aria-hidden
             />
-            <p className="min-w-0 truncate text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
+            <p className="min-w-0 truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
               {displayName}
             </p>
           </div>
           {property.address ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-white/90 drop-shadow-sm">
+            <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
               {property.address}
             </p>
           ) : null}

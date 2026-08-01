@@ -170,7 +170,7 @@ export function AssetPanel({
               setShowCreateAsset(true);
             }}
           >
-            <span className="text-[12px] uppercase leading-[16px]">ASSETS</span>
+            <span className="text-xs uppercase leading-[16px]">ASSETS</span>
             <Plus className="h-3.5 w-3.5" />
           </button>
           

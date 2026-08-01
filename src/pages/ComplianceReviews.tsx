@@ -36,7 +36,7 @@ export default function ComplianceReviews() {
             <Card key={review.id} className="p-6 shadow-e1">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <p className="font-mono text-caption uppercase tracking-wider text-muted-foreground">
                     Review
                   </p>
                   <p className="font-medium text-foreground">{review.id}</p>

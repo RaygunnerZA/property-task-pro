@@ -366,7 +366,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
             onClick={handleSave}
             disabled={loading || (!address.trim() && !nickname.trim())}
           >
-            {loading ? "Creating..." : "Create Property"}
+            {loading ? "Creating…" : "Create Property"}
           </Button>
         </DialogFooter>
       </DialogContent>

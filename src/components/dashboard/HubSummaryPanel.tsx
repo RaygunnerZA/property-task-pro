@@ -9,7 +9,7 @@ const statNumberClass =
   "text-[32px] font-normal tabular-nums leading-none text-primary-deep";
 
 const statLabelClass =
-  "mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.2px] text-muted-foreground";
+  "mt-1 font-mono text-2xs font-medium uppercase tracking-[0.2px] text-muted-foreground";
 
 const statTileInteractiveClass =
   "cursor-pointer transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25";
@@ -52,7 +52,7 @@ function StatusRow({
     <>
       <span
         className={cn(
-          "text-[13px] font-medium",
+          "text-sm font-medium",
           tone === "danger" ? "text-destructive" : "text-muted-foreground"
         )}
       >
@@ -146,7 +146,7 @@ export function HubSummaryPanel({
             {metrics.urgentCount > 0 ? (
               <button
                 type="button"
-                className="mt-1.5 inline-flex items-center gap-0.5 text-[11px] font-semibold text-destructive transition-opacity hover:opacity-80"
+                className="mt-1.5 inline-flex items-center gap-0.5 text-caption font-semibold text-destructive transition-opacity hover:opacity-80"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenUrgentTasks?.();
@@ -156,7 +156,7 @@ export function HubSummaryPanel({
                 {metrics.urgentCount} Urgent
               </button>
             ) : (
-              <span className="mt-1.5 text-[11px] text-muted-foreground/60">No urgent</span>
+              <span className="mt-1.5 text-caption text-muted-foreground/60">No urgent</span>
             )}
           </div>
 
@@ -192,7 +192,7 @@ export function HubSummaryPanel({
               visualWeight="soft"
               aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
             />
-            <p className="mt-1 max-w-[120px] text-center text-[11px] font-medium leading-tight text-muted-foreground">
+            <p className="mt-1 max-w-[120px] text-center text-caption font-medium leading-tight text-muted-foreground">
               {metrics.completedLabel}
             </p>
           </div>

@@ -106,7 +106,7 @@ const Account = () => {
         {/* Menu Sections */}
         {menuSections.map((section) => (
           <div key={section.title} className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wide px-1 text-muted-foreground">
+            <h3 className="text-xs font-bold uppercase tracking-wider px-1 text-muted-foreground">
               {section.title}
             </h3>
             <div className="rounded-lg overflow-hidden bg-card shadow-e1">

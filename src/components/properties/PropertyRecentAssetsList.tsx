@@ -164,7 +164,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
           <Badge
             variant={getConditionVariant(conditionScore)}
             size="sm"
-            className="text-[10px] px-[5px] h-[20px]"
+            className="text-2xs px-[5px] h-[20px]"
           >
             {getConditionLabel(conditionScore)}
           </Badge>

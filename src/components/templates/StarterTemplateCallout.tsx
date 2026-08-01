@@ -29,7 +29,7 @@ export function RegulatedAreaBadge({
         <TooltipTrigger asChild>
           <span
             className={cn(
-              "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-accent/10 text-accent cursor-help",
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-accent/10 text-accent cursor-help",
               className
             )}
           >
@@ -72,7 +72,7 @@ export function StarterTemplateCallout({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-primary-deep">Starting template</span>
           {isRegulatedArea && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-accent/10 text-accent">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-accent/10 text-accent">
               <ShieldAlert className="h-3 w-3" aria-hidden />
               Regulated Area
             </span>

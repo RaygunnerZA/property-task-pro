@@ -568,7 +568,7 @@ export default function SettingsProfile() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                Saving…
               </>
             ) : (
               <>
@@ -678,7 +678,7 @@ export default function SettingsProfile() {
                 {changingPassword ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    Updating…
                   </>
                 ) : (
                   <>
@@ -749,7 +749,7 @@ export default function SettingsProfile() {
                 {updatingEmail ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    Sending…
                   </>
                 ) : (
                   "Send verification"

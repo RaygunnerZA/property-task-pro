@@ -364,7 +364,7 @@ export function InviteUserForm({
         {isSubmitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Sending...
+            Sending…
           </>
         ) : pendingInvitation ? (
           "Resend Invitation"
@@ -707,7 +707,7 @@ export function InviteUserForm({
                 )}
               </div>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               eg. Maintenance Team, Housekeeping
             </p>
           </section>
@@ -743,7 +743,7 @@ export function InviteUserForm({
                 disabled={isSubmitting}
               />
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               e.g. Night Shift, Certified Electrician, Emergency Contact
             </p>
           </section>

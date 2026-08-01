@@ -56,7 +56,7 @@ function MobileNav() {
             />
             <span 
               className={cn(
-                'font-mono text-[9px] uppercase tracking-wider',
+                'font-mono text-2xs uppercase tracking-wider',
                 isActive ? 'text-primary font-medium' : 'text-muted-foreground'
               )}
             >
@@ -136,13 +136,13 @@ export function NavigationSection() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Mobile Nav */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Mobile Bottom Nav</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Mobile Bottom Nav</h3>
           <MobileNav />
         </div>
 
         {/* FAB */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
           <div className="bg-concrete/30 rounded-sharp">
             <FABDemo />
           </div>

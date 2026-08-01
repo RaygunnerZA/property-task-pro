@@ -143,7 +143,7 @@ export default function AddPropertyScreen() {
         <div className="animate-fade-in">
           <ProgressDots />
           <OnboardingHeader
-            title="Loading..."
+            title="Loading…"
             subtitle="Setting up your workspace"
           />
         </div>
@@ -455,7 +455,7 @@ export default function AddPropertyScreen() {
               onClick={handleSave}
               disabled={loading}
             >
-              {loading ? "Saving..." : "Save Property"}
+              {loading ? "Saving…" : "Save Property"}
             </NeomorphicButton>
             
             {hasExistingProperties && (

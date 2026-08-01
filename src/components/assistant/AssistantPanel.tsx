@@ -168,7 +168,7 @@ export function AssistantPanelBody({
             return (
               <p
                 key={idx}
-                className="text-[12px] leading-[1.35] text-muted-foreground"
+                className="text-xs leading-[1.35] text-muted-foreground"
                 style={{ fontFamily: '"Inter Tight", system-ui, sans-serif' }}
               >
                 {item.raw}
@@ -218,7 +218,7 @@ export function AssistantPanelBody({
         ))}
         {loading && (
           <div className="rounded-lg p-3 shadow-e1 mr-8 bg-card/75 opacity-100 animate-pulse">
-            <p className="text-sm text-muted-foreground">Thinking...</p>
+            <p className="text-sm text-muted-foreground">Thinking…</p>
           </div>
         )}
         <div ref={messagesEndRef} />

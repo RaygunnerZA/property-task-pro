@@ -467,7 +467,7 @@ export function SubtaskCard({
                 onBlur={() => setIsFocused(false)}
                 className={cn(
                   "w-full min-h-[32px] max-h-[64px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none overflow-y-auto",
-                  currentType === "title" ? "text-[18px] md:text-[18px] font-semibold" : "text-[14px] md:text-[14px]",
+                  currentType === "title" ? "text-lg md:text-lg font-semibold" : "text-sm md:text-sm",
                   currentType === "note" && "italic"
                 )}
                 style={{
@@ -531,25 +531,25 @@ export function SubtaskCard({
             <>
               {currentType === "yes_no" && (
                 <div className="shrink-0 flex items-center rounded-lg bg-primary shadow-[inset_1px_6.5px_7.2px_0px_rgba(0,0,0,0.25),inset_-1px_-3.9px_3.5px_0px_rgba(255,255,255,0.53),inset_0px_-1.1px_0.6px_0px_rgba(255,255,255,1)] px-0.5 pt-0.5 pb-[3px] w-[68px] border-none">
-                  <span className="h-6 px-[9px] rounded-md flex items-center text-[10px] font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)]">
+                  <span className="h-6 px-[9px] rounded-md flex items-center text-2xs font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)]">
                     No
                   </span>
-                  <span className="h-6 px-[6px] rounded-md flex items-center text-[10px] font-medium text-white/75">
+                  <span className="h-6 px-[6px] rounded-md flex items-center text-2xs font-medium text-white/75">
                     Yes
                   </span>
                 </div>
               )}
 
               {currentType === "number" && (
-                <div className="shrink-0 w-10 h-6 rounded-lg bg-card flex items-center justify-center shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-[11px] text-muted-foreground font-medium">
+                <div className="shrink-0 w-10 h-6 rounded-lg bg-card flex items-center justify-center shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-caption text-muted-foreground font-medium">
                   0
                 </div>
               )}
 
               {currentType === "pass_fail" && (
                 <div className="shrink-0 flex items-center gap-1">
-                  <div className="h-6 px-2 rounded-lg bg-card flex items-center text-[10px] font-medium uppercase tracking-wide text-emerald-500 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Pass</div>
-                  <div className="h-6 px-2 rounded-lg bg-card flex items-center text-[10px] font-medium uppercase tracking-wide text-destructive/50 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Fail</div>
+                  <div className="h-6 px-2 rounded-lg bg-card flex items-center text-2xs font-medium uppercase tracking-wider text-emerald-500 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Pass</div>
+                  <div className="h-6 px-2 rounded-lg bg-card flex items-center text-2xs font-medium uppercase tracking-wider text-destructive/50 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Fail</div>
                 </div>
               )}
 
@@ -578,7 +578,7 @@ export function SubtaskCard({
                     title={uploadedPhotoName ?? "Upload photo"}
                   >
                     <Camera className={cn("h-3.5 w-3.5", uploadedPhotoName ? "text-accent" : "text-muted-foreground/60")} />
-                    <span className={cn("text-[10px] font-mono font-medium uppercase tracking-wide max-w-[60px] truncate", uploadedPhotoName ? "text-accent" : "text-muted-foreground/50")}>
+                    <span className={cn("text-2xs font-mono font-medium uppercase tracking-wider max-w-[60px] truncate", uploadedPhotoName ? "text-accent" : "text-muted-foreground/50")}>
                       {uploadedPhotoName ? uploadedPhotoName.split(".")[0] : "Upload"}
                     </span>
                   </button>
@@ -609,7 +609,7 @@ export function SubtaskCard({
                     title={uploadedFileName ?? "Upload file"}
                   >
                     <Upload className={cn("h-3.5 w-3.5", uploadedFileName ? "text-accent" : "text-muted-foreground/60")} />
-                    <span className={cn("text-[10px] font-mono font-medium uppercase tracking-wide max-w-[60px] truncate", uploadedFileName ? "text-accent" : "text-muted-foreground/50")}>
+                    <span className={cn("text-2xs font-mono font-medium uppercase tracking-wider max-w-[60px] truncate", uploadedFileName ? "text-accent" : "text-muted-foreground/50")}>
                       {uploadedFileName ? uploadedFileName.split(".")[0] : "Upload"}
                     </span>
                   </button>
@@ -619,14 +619,14 @@ export function SubtaskCard({
               {currentType === "signature" && (
                 <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-1 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <PenLine className="h-3.5 w-3.5 text-muted-foreground/60" />
-                  <span className="text-[10px] font-mono font-medium text-muted-foreground/50 uppercase tracking-wide">Sign</span>
+                  <span className="text-2xs font-mono font-medium text-muted-foreground/50 uppercase tracking-wider">Sign</span>
                 </div>
               )}
 
               {currentType === "scan" && (
                 <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[6px] shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <ScanLine className="h-3.5 w-3.5 text-muted-foreground/60" />
-                  <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wide">Scan</span>
+                  <span className="text-2xs font-medium text-muted-foreground/50 uppercase tracking-wider">Scan</span>
                 </div>
               )}
             </>
@@ -746,7 +746,7 @@ export function SubtaskCard({
             <div className="flex items-center gap-1 mb-0.5 pl-[2px]">
               <div className="w-[1px] h-2.5 bg-amber-300/40 shrink-0" />
               <GitBranch className="h-2.5 w-2.5 text-amber-400/60 shrink-0" />
-              <span className="text-[9px] font-mono uppercase tracking-widest text-warning-vivid/50">
+              <span className="text-2xs font-mono uppercase tracking-widest text-warning-vivid/50">
                 If Failed
               </span>
             </div>
@@ -766,7 +766,7 @@ export function SubtaskCard({
                     },
                   })
                 }
-                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] placeholder:text-muted-foreground/30"
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground/30"
                 style={{ color: "rgba(42, 41, 62, 0.70)" }}
               />
             </div>
@@ -788,7 +788,7 @@ export function SubtaskCard({
                   className="h-6 w-6 rounded-full object-cover"
                 />
               ) : (
-                <span className="text-[10px] font-semibold text-white leading-none select-none">
+                <span className="text-2xs font-semibold text-white leading-none select-none">
                   {getInitials(subtask.note.created_by_name)}
                 </span>
               )}
@@ -813,7 +813,7 @@ export function SubtaskCard({
                 }}
                 rows={1}
               />
-              <p className="text-[10px] opacity-90 leading-tight" style={{ color: "rgba(133, 186, 188, 1)" }}>
+              <p className="text-2xs opacity-90 leading-tight" style={{ color: "rgba(133, 186, 188, 1)" }}>
                 {formatNoteDate(subtask.note.created_at)}
                 {subtask.note.created_by_name && ` · ${subtask.note.created_by_name}`}
               </p>
@@ -874,7 +874,7 @@ export function SubtaskCard({
                       : "text-foreground hover:bg-muted/40"
                   )}
                 >
-                  <div className="h-6 w-6 shrink-0 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold uppercase">
+                  <div className="h-6 w-6 shrink-0 rounded-full bg-muted flex items-center justify-center text-2xs font-semibold uppercase">
                     {member.avatar_url ? (
                       <img src={member.avatar_url} className="h-6 w-6 rounded-full object-cover" alt="" />
                     ) : (

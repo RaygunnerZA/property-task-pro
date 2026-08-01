@@ -218,6 +218,14 @@ All design tokens are defined in:
 - **Surface Gradient:** `hsl(40, 15%, 95%)` → `hsl(40, 12%, 93%)` → `hsl(40, 10%, 91%)`
 - **Input Background:** `hsl(40, 10%, 96%)`
 
+### Typography Tokens
+- **Families:** `font-sans` / `font-display` — Inter Tight; `font-mono` — JetBrains Mono (metadata, badges, stats).
+- **Scale (max 8 sizes):** `text-2xs` (10px, tracking baked in — signature mono metadata size) · `text-caption` (11px) · `text-xs` (12) · `text-sm` (14) · `text-base` (16) · `text-lg` (18) · `text-xl` (20) · `text-2xl` (24). Do not use arbitrary `text-[Npx]` values.
+- **Caps rule:** uppercase text always pairs with `tracking-wider` (mono badges/labels).
+- **Numerals:** stats and tables use `tabular-nums` (or `data-stat` attribute).
+- **Headings:** `h1`–`h3` get `text-wrap: balance` globally.
+- **Progress copy:** always ends with a proper ellipsis character ("Loading…", never "Loading...").
+
 ### Shadow Tokens
 - **`shadow-e1`** - Flat card with texture overlay
 - **`shadow-e2`** - Flat section style

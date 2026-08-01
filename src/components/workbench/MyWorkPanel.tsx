@@ -374,7 +374,7 @@ export function MyWorkPanel({
               {openWorkTasks.length === 0 ? (
                 <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
                   <p className="text-xs font-medium text-foreground/90">{OPEN_WORK_SECTION.emptyTitle}</p>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-caption leading-relaxed text-muted-foreground">
                     {OPEN_WORK_SECTION.emptyDescription}
                   </p>
                 </div>

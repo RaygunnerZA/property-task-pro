@@ -179,7 +179,7 @@ const App = () => {
                 <DataProvider>
                   <AnalyticsIdentifier />
                   <AppInitializer>
-                  <Suspense fallback={<LoadingState message="Loading..." />}>
+                  <Suspense fallback={<LoadingState message="Loading…" />}>
                     <Routes>
                       {/* Onboarding routes (no layout) — each wrapped for isolated failure */}
                       <Route
@@ -293,7 +293,7 @@ const App = () => {
                       {/* Admin panel — own layout, own guard, no AppLayout */}
                       <Route path="/admin" element={
                         <ProtectedRoute>
-                          <Suspense fallback={<LoadingState message="Loading..." />}>
+                          <Suspense fallback={<LoadingState message="Loading…" />}>
                             <AdminLayout />
                           </Suspense>
                         </ProtectedRoute>

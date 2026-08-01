@@ -145,7 +145,7 @@ export default function SpaceOrganisationScreen() {
             <span className="font-semibold text-foreground">{spacesWithIssuesCount}</span> with open
             tasks
           </li>
-          <li className="text-[10px] pt-1">
+          <li className="text-2xs pt-1">
             Groups: Circulation, Habitable / Working, Service — use the work column to open each.
           </li>
         </ul>

@@ -185,13 +185,13 @@ export function DailyBriefingCard({
       />
       <p
         className={cn(
-          "text-[10px] font-medium text-muted-foreground mt-2 uppercase tracking-wider",
+          "text-2xs font-medium text-muted-foreground mt-2 uppercase tracking-wider",
           "text-shadow-neu-pressed"
         )}
       >
         {slide.label}
       </p>
-      <p className="text-[10px] text-muted-foreground/80 mt-0.5 text-center leading-tight px-0.5">
+      <p className="text-2xs text-muted-foreground/80 mt-0.5 text-center leading-tight px-0.5">
         {slide.sublabel}
       </p>
     </div>
@@ -233,10 +233,10 @@ export function DailyBriefingCard({
                   aria-label={`${slide.label}: ${slide.value}%`}
                 />
               </div>
-              <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider text-center mt-0.5 text-shadow-neu-pressed">
+              <p className="text-2xs font-medium text-muted-foreground uppercase tracking-wider text-center mt-0.5 text-shadow-neu-pressed">
                 {slide.label}
               </p>
-              <p className="text-[9px] text-muted-foreground/80 text-center leading-tight px-0.5 mt-0.5">
+              <p className="text-2xs text-muted-foreground/80 text-center leading-tight px-0.5 mt-0.5">
                 {slide.sublabel}
               </p>
             </div>

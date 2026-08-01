@@ -865,11 +865,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 factChips={[]}
               >
                 <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
-                  <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                  <label className="text-caption font-mono uppercase text-muted-foreground">Compliance</label>
                   <Switch id="task-detail-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
                   {isCompliance && (
                     <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                      <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                      <SelectTrigger className="h-8 w-auto min-w-[100px] text-caption font-mono">
                         <SelectValue placeholder="Level" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1186,7 +1186,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 <span className="block truncate font-medium text-foreground">
                   {attachment.file_name || "Document"}
                 </span>
-                <span className="block text-[11px] text-muted-foreground">
+                <span className="block text-caption text-muted-foreground">
                   {attachment.file_type || "file"}
                 </span>
               </button>
@@ -1204,19 +1204,19 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const overviewSection = (
     <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground shrink-0">
               Status:
             </span>
             <span
               className={cn(
-                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide shadow-none",
+                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-caption font-medium uppercase tracking-wider shadow-none",
                 statusChipTextClass
               )}
             >
               {statusChipLabel}
             </span>
             {priority === "urgent" && (
-              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-[11px] uppercase tracking-wide text-destructive shadow-none">
+              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-caption uppercase tracking-wider text-destructive shadow-none">
                 URGENT
               </span>
             )}
@@ -1235,11 +1235,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 />
               </div>
             ) : metaLine ? (
-              <p className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide text-foreground leading-snug">
+              <p className="min-w-0 flex-1 font-mono text-caption uppercase tracking-wider text-foreground leading-snug">
                 {metaLine}
               </p>
             ) : (
-              <p className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide text-muted-foreground leading-snug">
+              <p className="min-w-0 flex-1 font-mono text-caption uppercase tracking-wider text-muted-foreground leading-snug">
                 No date, assignee, or location
               </p>
             )}
@@ -1258,7 +1258,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </button>
           </div>
 
-          <p className="text-[18px] text-foreground leading-relaxed">
+          <p className="text-lg text-foreground leading-relaxed">
             {(task as any)?.description || "No description provided"}
           </p>
     </div>
@@ -1507,7 +1507,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           )}
         </div>
         {canManageTask && status !== "completed" ? (
-          <p className="text-[11px] leading-snug text-muted-foreground px-0.5">
+          <p className="text-caption leading-snug text-muted-foreground px-0.5">
             {GEO_EVIDENCE_CONSENT_LINE}
           </p>
         ) : null}

@@ -739,7 +739,7 @@ export default function AddSpaceScreen() {
         <Dialog open={!!renameModal} onOpenChange={(open) => !open && closeRenameModal()}>
           <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
             <DialogHeader>
-              <DialogTitle className="text-base font-mono uppercase tracking-wide">
+              <DialogTitle className="text-base font-mono uppercase tracking-wider">
                 Rename space
               </DialogTitle>
             </DialogHeader>
@@ -755,7 +755,7 @@ export default function AddSpaceScreen() {
                 if (e.key === "Escape") closeRenameModal();
               }}
               placeholder="Space name"
-              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wide rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
             <DialogFooter className="gap-2 sm:gap-0">
@@ -777,7 +777,7 @@ export default function AddSpaceScreen() {
         <Dialog open={!!copyModal} onOpenChange={(open) => !open && closeCopyModal()}>
           <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
             <DialogHeader>
-              <DialogTitle className="text-base font-mono uppercase tracking-wide">
+              <DialogTitle className="text-base font-mono uppercase tracking-wider">
                 New space name
               </DialogTitle>
             </DialogHeader>
@@ -793,7 +793,7 @@ export default function AddSpaceScreen() {
                 if (e.key === "Escape") closeCopyModal();
               }}
               placeholder="e.g. Bedroom 2"
-              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wide rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
               autoFocus
             />
             <DialogFooter className="gap-2 sm:gap-0">
@@ -814,7 +814,7 @@ export default function AddSpaceScreen() {
         {/* Your Spaces – expandable fact chips with chevron dropdown (sub-spaces, + Sub-space, X | More) */}
         {spaces.length > 0 && (
           <div className="mb-6">
-            <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-wide">Your Spaces</p>
+            <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-wider">Your Spaces</p>
             <div className="flex flex-wrap gap-2">
               {spaces.map((space, index) => (
                 <ExpandableSpaceChip
@@ -838,7 +838,7 @@ export default function AddSpaceScreen() {
             onClick={handleSave}
             disabled={loading || spaces.length === 0 || !propertyId}
           >
-            {loading ? "Saving..." : "Continue"}
+            {loading ? "Saving…" : "Continue"}
           </NeomorphicButton>
 
           <NeomorphicButton

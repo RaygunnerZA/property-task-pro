@@ -259,7 +259,7 @@ export function TimeSelector({
                         zIndex: 1,
                       }}
                     >
-                      <span className="text-[10px] font-medium uppercase tracking-wide pb-[2px]">
+                      <span className="text-2xs font-medium uppercase tracking-wider pb-[2px]">
                         H
                       </span>
                       <span className="relative flex items-center justify-center w-[30px] h-[30px] rounded-full">
@@ -354,7 +354,7 @@ export function TimeSelector({
                         zIndex: 1,
                       }}
                     >
-                      <span className="text-[10px] font-medium uppercase tracking-wide pb-[2px]">
+                      <span className="text-2xs font-medium uppercase tracking-wider pb-[2px]">
                         M
                       </span>
                       <span className="relative flex items-center justify-center w-[30px] h-[30px] rounded-full">

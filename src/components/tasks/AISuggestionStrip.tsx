@@ -133,7 +133,7 @@ export function AISuggestionStrip({
   return (
     <div className="space-y-2">
       {/* Header - one Filla glyph at row level only */}
-      <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/70">
+      <div className="flex items-center gap-1.5 text-2xs font-mono uppercase tracking-wider text-muted-foreground/70">
         <img src={fillaAI} alt="Filla AI" className="h-3 w-3 opacity-70" />
         <span>Filla picked up:</span>
       </div>

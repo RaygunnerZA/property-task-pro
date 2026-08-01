@@ -31,7 +31,7 @@ export function MobilePageTitleBar({
         <div className="flex min-w-0 items-start gap-2.5">
           {icon ? <span className="icon-primary mt-0.5 shrink-0">{icon}</span> : null}
           <div className="min-w-0">
-            <h1 className="text-[20px] font-semibold leading-tight tracking-tight text-foreground">
+            <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground">
               {title}
             </h1>
             {subtitle ? (

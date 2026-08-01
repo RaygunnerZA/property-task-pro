@@ -76,7 +76,7 @@ export function PropertySummaryCentreNav({
             aria-selected={isActive}
             onClick={() => handleTabClick(tabId)}
             className={cn(
-              "inline-flex min-w-0 flex-1 flex-row items-center justify-start gap-1.5 text-[18px] font-semibold tracking-tight transition-colors sm:text-[17px]",
+              "inline-flex min-w-0 flex-1 flex-row items-center justify-start gap-1.5 text-lg font-semibold tracking-tight transition-colors sm:text-[17px]",
               isActive ? "text-primary" : "text-primary hover:text-primary/80"
             )}
           >

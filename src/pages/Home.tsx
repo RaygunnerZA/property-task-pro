@@ -128,7 +128,7 @@ const Home = () => {
               <div className="text-3xl font-bold tracking-tight mb-1 text-foreground">
                 {stat.value}
               </div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {stat.label}
               </div>
             </button>
@@ -148,7 +148,7 @@ const Home = () => {
                         {item.text}
                       </p>
                     </div>
-                    <Badge variant="neutral" size="sm" className="text-[10px] px-2 py-0.5 shrink-0">
+                    <Badge variant="neutral" size="sm" className="text-2xs px-2 py-0.5 shrink-0">
                       {item.time}
                     </Badge>
                   </div>
@@ -176,7 +176,7 @@ const Home = () => {
                         {reminder.property}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="warning" size="sm" className="text-[10px] px-2 py-0.5">
+                        <Badge variant="warning" size="sm" className="text-2xs px-2 py-0.5">
                           {reminder.time}
                         </Badge>
                       </div>

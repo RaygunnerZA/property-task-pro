@@ -64,7 +64,7 @@ export function SignalFeedDetailPanel({
     <>
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/40 px-4 py-3 shadow-paper-edge">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">
+          <p className="text-2xs font-semibold uppercase tracking-wider text-primary">
             {GROUP_LABEL[snapshot.group]}
           </p>
           <h2 className="mt-1 text-base font-semibold leading-snug text-ink">{snapshot.title}</h2>
@@ -134,7 +134,7 @@ export function SignalFeedDetailPanel({
         ) : null}
         {snapshot.recommendation ? (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Recommended action
             </p>
             <p className="mt-1 font-medium text-foreground">

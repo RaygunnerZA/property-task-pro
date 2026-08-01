@@ -13,7 +13,7 @@ export function ButtonsSection() {
       <div className="space-y-6">
         {/* Primary Buttons */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Primary</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Primary</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" size="lg">Large Primary</Button>
             <Button variant="primary" size="md">Medium Primary</Button>
@@ -25,7 +25,7 @@ export function ButtonsSection() {
 
         {/* Secondary Buttons - Clean, simple style */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Secondary</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Secondary</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="secondary" size="lg">Large Secondary</Button>
             <Button variant="secondary" size="md">Medium</Button>
@@ -36,7 +36,7 @@ export function ButtonsSection() {
 
         {/* Ghost Buttons */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Ghost</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Ghost</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="ghost" size="md">Ghost Button</Button>
             <Button variant="ghost" size="sm">Small Ghost</Button>
@@ -46,7 +46,7 @@ export function ButtonsSection() {
 
         {/* Danger Buttons */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Danger</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Danger</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="danger" size="md">Delete</Button>
             <Button variant="danger" icon={<Trash2 className="w-4 h-4" />}>Remove Item</Button>
@@ -55,7 +55,7 @@ export function ButtonsSection() {
 
         {/* Signal/FAB Buttons */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB / Signal</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">FAB / Signal</h3>
           <div className="flex flex-wrap gap-3 items-center">
             <Button variant="fab" className="w-14 h-14 rounded-full p-0 flex items-center justify-center">
               <Plus className="w-6 h-6" />
@@ -66,11 +66,11 @@ export function ButtonsSection() {
 
         {/* Loading State */}
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Loading States</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Loading States</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="primary" disabled>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
+              Saving…
             </Button>
             <Button variant="secondary" disabled>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

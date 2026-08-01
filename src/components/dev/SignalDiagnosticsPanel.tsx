@@ -138,19 +138,19 @@ export function SignalDiagnosticsPanel() {
                   {run.source_key}
                 </span>
                 <span className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                  "text-2xs px-1.5 py-0.5 rounded-full font-medium",
                   run.run_type === "manual" ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground"
                 )}>
                   {run.run_type}
                 </span>
               </div>
-              <span className="text-[11px] text-muted-foreground shrink-0">
+              <span className="text-caption text-muted-foreground shrink-0">
                 {fmt(run.started_at)}
               </span>
             </button>
 
             {expanded === run.id && (
-              <div className="border-t border-border/40 px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <div className="border-t border-border/40 px-3 py-2.5 grid grid-cols-2 gap-x-4 gap-y-1 text-caption">
                 <Stat label="Duration"          value={elapsed(run.started_at, run.finished_at)} />
                 <Stat label="Status"            value={run.status} />
                 <Stat label="Orgs"              value={run.orgs_scanned} />
@@ -176,7 +176,7 @@ export function SignalDiagnosticsPanel() {
         ))}
       </div>
 
-      <p className="text-[10px] text-muted-foreground text-center">
+      <p className="text-2xs text-muted-foreground text-center">
         Showing last 20 runs · Cron: every 6h · Per-property throttle: 12h
       </p>
     </div>

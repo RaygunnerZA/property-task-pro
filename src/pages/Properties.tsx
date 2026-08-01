@@ -121,7 +121,7 @@ const Properties = () => {
       {properties.length > 0 && (
         <div className="mb-6 pb-4 border-b border-border">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Filter by Property
             </h3>
             <div className="flex items-center gap-1.5">
@@ -141,7 +141,7 @@ const Properties = () => {
                 <button
                   type="button"
                   onClick={() => setFilteredPropertyId(null)}
-                  className="flex items-center justify-center rounded-card px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 hover:bg-muted/40"
+                  className="flex items-center justify-center rounded-card px-2 py-1 text-2xs font-semibold uppercase tracking-wider transition-all duration-200 hover:bg-muted/40"
                   style={{
                     minWidth: "35px",
                     height: "35px",

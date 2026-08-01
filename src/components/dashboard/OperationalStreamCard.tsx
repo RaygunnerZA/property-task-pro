@@ -101,7 +101,7 @@ const emphasisShellMap: Record<StreamCardEmphasis, string> = {
 };
 
 const inlineMinorLinkClass = cn(
-  "text-[11px] font-medium text-muted-foreground underline-offset-2",
+  "text-caption font-medium text-muted-foreground underline-offset-2",
   "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer shrink-0"
 );
 
@@ -110,7 +110,7 @@ const issuesDismissOrIgnoreLinkClassName = inlineMinorLinkClass;
 
 /** Issues signal cards — matches Recent “EMAIL FROM … • DATE” meta (JetBrains Mono 10 / 600, caps). */
 export const ISSUES_STREAM_META_CLASSNAME =
-  "text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
+  "text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground leading-snug line-clamp-1";
 
 function streamActionButtonClass(actionId: string, actionLabel?: string) {
   const id = actionId.toLowerCase();
@@ -134,7 +134,7 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
     return intakeAddRecordMicroClassName;
   }
   return cn(
-    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
+    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold text-foreground",
     "bg-background shadow-e1 transition-all hover:shadow-md"
   );
 }
@@ -428,7 +428,7 @@ export function OperationalStreamCard({
             </p>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground shadow-sm">
+              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
                 {footChip}
               </span>
               {actions.length > 0 && (
@@ -479,19 +479,19 @@ export function OperationalStreamCard({
 
         <div className="min-w-0 flex-1">
           {typeChip && (
-            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
+            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
               {typeChip}
             </span>
           )}
           {reviewBanner && (
-            <p className="mb-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-primary-deep">
+            <p className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-wider text-primary-deep">
               {reviewBanner}
             </p>
           )}
           <p className="text-sm font-semibold text-foreground truncate">{title}</p>
           <p className="text-xs text-muted-foreground truncate">{context}</p>
           {whyHere && (
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            <p className="mt-1 text-caption leading-snug text-muted-foreground">
               <span className="font-medium text-foreground/80">Why this is here:</span> {whyHere}
             </p>
           )}
@@ -500,19 +500,19 @@ export function OperationalStreamCard({
               {labels.map((label) => (
                 <span
                   key={label}
-                  className="rounded-full bg-muted/55 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground shadow-sm"
+                  className="rounded-full bg-muted/55 px-2 py-0.5 text-2xs font-medium leading-tight text-muted-foreground shadow-sm"
                 >
                   {label}
                 </span>
               ))}
             </div>
           )}
-          {hint && <p className="text-[11px] text-muted-foreground mt-1 truncate">{hint}</p>}
+          {hint && <p className="text-caption text-muted-foreground mt-1 truncate">{hint}</p>}
 
           {(description || statusText || actions.length > 0) && (
             <div className={cn(footerVisible, actionsVisibility !== "always" && "overflow-hidden")}>
               {description && <p className="text-xs text-foreground/90 mb-1.5">{description}</p>}
-              {statusText && <p className="text-[11px] text-muted-foreground mb-2">{statusText}</p>}
+              {statusText && <p className="text-caption text-muted-foreground mb-2">{statusText}</p>}
               {actions.length > 0 && <ActionRow actions={actions} />}
             </div>
           )}

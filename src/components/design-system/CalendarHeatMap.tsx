@@ -160,7 +160,7 @@ export function CalendarHeatMap() {
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {WEEKDAYS.map(day => (
-            <div key={day} className="text-center font-mono text-[10px] uppercase tracking-wider text-sidebar-muted py-1">
+            <div key={day} className="text-center font-mono text-2xs uppercase tracking-wider text-sidebar-muted py-1">
               {day}
             </div>
           ))}
@@ -203,7 +203,7 @@ export function CalendarHeatMap() {
             key={filter}
             onClick={() => setSelectedFilter(filter)}
             className={cn(
-              'px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider transition-all shadow-e1',
+              'px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider transition-all shadow-e1',
               selectedFilter === filter
                 ? 'bg-primary text-white'
                 : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
@@ -217,7 +217,7 @@ export function CalendarHeatMap() {
       {/* Heat level legend */}
       <div className="flex gap-6 text-sm justify-center">
         <div className="space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Heat Levels</p>
+          <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Heat Levels</p>
           <div className="flex gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-full bg-primary/30" />

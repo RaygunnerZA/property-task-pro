@@ -83,7 +83,7 @@ export function StripMetricValue({
             aria-label={attentionTitle ?? `${attention} ${attentionShortLabel ?? ""}`}
           >
             <span className="font-semibold font-mono tabular-nums text-accent">{attention}</span>
-            <span className="text-[11px] font-medium text-accent leading-tight whitespace-nowrap">
+            <span className="text-caption font-medium text-accent leading-tight whitespace-nowrap">
               {attentionShortLabel}
             </span>
           </div>

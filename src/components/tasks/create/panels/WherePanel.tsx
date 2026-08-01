@@ -333,7 +333,7 @@ export function WherePanel({
             }}
             className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
           >
-            <span className="text-[12px] uppercase leading-[16px]">PROPERTY</span>
+            <span className="text-xs uppercase leading-[16px]">PROPERTY</span>
             <Plus className="h-3.5 w-3.5" />
           </button>
           
@@ -414,7 +414,7 @@ export function WherePanel({
               }}
               className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
             >
-              <span className="text-[12px] uppercase leading-[16px]">SPACES</span>
+              <span className="text-xs uppercase leading-[16px]">SPACES</span>
               <Plus className="h-3.5 w-3.5" />
             </button>
             
@@ -508,7 +508,7 @@ export function WherePanel({
                   className="w-16 h-16 rounded-card border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
                   <ImagePlus className="h-4 w-4" />
-                  <span className="text-[10px]">Image</span>
+                  <span className="text-2xs">Image</span>
                 </button>
               )}
             </div>
@@ -538,7 +538,7 @@ export function WherePanel({
               onClick={handleCreateProperty}
               disabled={!newPropertyName.trim() || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -600,7 +600,7 @@ export function WherePanel({
               onClick={handleCreateSpace}
               disabled={!newSpaceName.trim() || !primaryPropertyId || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

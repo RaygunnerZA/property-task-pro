@@ -236,7 +236,7 @@ function SimulatorTab() {
           </CollapsibleSection>
 
           <CollapsibleSection title="Raw Extraction">
-            <pre className="overflow-x-auto whitespace-pre-wrap text-[10px] font-mono bg-muted/30 rounded p-2">
+            <pre className="overflow-x-auto whitespace-pre-wrap text-2xs font-mono bg-muted/30 rounded p-2">
               {JSON.stringify(result.ruleExtraction, null, 2)}
             </pre>
           </CollapsibleSection>
@@ -471,7 +471,7 @@ function LogsTab() {
     <div className="space-y-3">
       <div className="space-y-2">
         <h4 className="font-medium">Dev Mode State</h4>
-        <pre className="overflow-x-auto whitespace-pre-wrap text-[10px] font-mono bg-muted/30 rounded p-2">
+        <pre className="overflow-x-auto whitespace-pre-wrap text-2xs font-mono bg-muted/30 rounded p-2">
           {JSON.stringify(
             {
               enabled: devMode.enabled,
@@ -556,7 +556,7 @@ function MetricBadge({
       <span className={cn("text-base font-bold font-mono", color)}>
         {value}
       </span>
-      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-2xs text-muted-foreground">{label}</span>
     </div>
   );
 }

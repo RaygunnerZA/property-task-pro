@@ -239,7 +239,7 @@ export default function CreateOrganisationScreen() {
               onClick={handleCreate}
               disabled={loading || !orgName.trim()}
             >
-              {loading ? "Creating..." : "Continue"}
+              {loading ? "Creating…" : "Continue"}
             </NeomorphicButton>
           </div>
 

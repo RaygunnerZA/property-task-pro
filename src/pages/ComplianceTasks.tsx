@@ -40,7 +40,7 @@ export default function ComplianceTasks() {
           <Shield className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          <h2 className="font-mono text-caption uppercase tracking-wider text-muted-foreground">
             Compliance
           </h2>
           <p className="text-lg font-semibold text-foreground">

@@ -36,7 +36,7 @@ export default function RecordCompliance() {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sharp transition-all font-mono text-[11px] uppercase tracking-wider font-medium relative",
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sharp transition-all font-mono text-caption uppercase tracking-wider font-medium relative",
                 isActive
                   ? "bg-card shadow-e1 text-primary"
                   : "text-muted-foreground hover:text-foreground"
@@ -46,7 +46,7 @@ export default function RecordCompliance() {
               {item.label}
               {item.path === "/record/compliance/portfolio" && pendingRecommendations.length > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-medium"
+                  className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-primary text-primary-foreground text-2xs font-medium"
                   title={`${pendingRecommendations.length} pending recommendation${pendingRecommendations.length !== 1 ? "s" : ""}`}
                 >
                   {pendingRecommendations.length > 99 ? "99+" : pendingRecommendations.length}

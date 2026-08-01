@@ -75,7 +75,7 @@ function AssetMetricTile({
       </div>
       {onClick && (
         <div className="flex h-[26px] items-center justify-center border-t-2 border-t-white px-3 pb-2.5 pt-2.5">
-          <span className="text-[11px] font-mono uppercase tracking-wide text-foreground font-medium">
+          <span className="text-caption font-mono uppercase tracking-wider text-foreground font-medium">
             View
           </span>
         </div>

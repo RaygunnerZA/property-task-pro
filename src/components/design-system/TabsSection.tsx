@@ -39,7 +39,7 @@ function TasksTab() {
             key={filter}
             onClick={() => setSelectedFilter(filter)}
             className={cn(
-              'px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
+              'px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
               selectedFilter === filter
                 ? 'bg-primary text-white'
                 : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
@@ -65,7 +65,7 @@ function TasksTab() {
             <div className="flex items-center gap-2">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className={cn(
-                'font-mono text-[10px] uppercase tracking-wider',
+                'font-mono text-2xs uppercase tracking-wider',
                 task.due === 'Overdue' ? 'text-destructive' : 'text-muted-foreground'
               )}>
                 {task.due}
@@ -105,7 +105,7 @@ function InboxTab() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="font-semibold text-sm text-ink truncate">{item.from}</span>
-              <span className="font-mono text-[10px] text-muted-foreground whitespace-nowrap">{item.time}</span>
+              <span className="font-mono text-2xs text-muted-foreground whitespace-nowrap">{item.time}</span>
             </div>
             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.message}</p>
           </div>
@@ -135,7 +135,7 @@ function RemindersTab() {
             <h4 className="font-semibold text-ink text-sm">{reminder.title}</h4>
             <p className="text-xs text-muted-foreground">{reminder.property}</p>
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
             {reminder.due}
           </span>
         </div>
@@ -176,7 +176,7 @@ export function TabsSection() {
                   } : undefined}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="font-mono text-[11px] uppercase tracking-wider font-medium">
+                  <span className="font-mono text-caption uppercase tracking-wider font-medium">
                     {tab.label}
                   </span>
                 </button>

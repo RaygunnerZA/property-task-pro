@@ -30,7 +30,7 @@ export function AISuggestionChip({
       transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
         "inline-flex items-center px-3 py-1.5 h-[35px]",
-        "font-mono text-[13px] uppercase tracking-wide",
+        "font-mono text-sm uppercase tracking-wider",
         "relative transition-all duration-150 cursor-pointer select-none",
         "rounded-tr-sharp rounded-br-sharp rounded-tl-none rounded-bl-none",
         // Remove individual borders and hover - handled by parent group

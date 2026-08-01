@@ -313,7 +313,7 @@ export function OnboardingCustomCollectionCard({
               style={transitionStyle}
             >
               {visibleSpaceNames.length === 0 ? (
-                <p className="py-1 text-[10px] font-mono uppercase tracking-wide text-muted-foreground/50">
+                <p className="py-1 text-2xs font-mono uppercase tracking-wider text-muted-foreground/50">
                   No spaces yet
                 </p>
               ) : (
@@ -384,14 +384,14 @@ export function OnboardingCustomCollectionCard({
       <Dialog open={editOpen} onOpenChange={(open) => !open && closeEditDialog()}>
         <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="text-base font-mono uppercase tracking-wide">
+            <DialogTitle className="text-base font-mono uppercase tracking-wider">
               Edit collection
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3">
             <div>
-              <label className="mb-1.5 block text-xs font-mono uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Collection name
               </label>
               <input
@@ -405,7 +405,7 @@ export function OnboardingCustomCollectionCard({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-mono uppercase tracking-wide text-muted-foreground">
+              <label className="mb-1.5 block text-xs font-mono uppercase tracking-wider text-muted-foreground">
                 Card image
               </label>
               <div className="relative h-[80px] overflow-hidden rounded-lg bg-muted">
@@ -431,7 +431,7 @@ export function OnboardingCustomCollectionCard({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isResizingImage}
-                className="mt-2 text-xs font-mono uppercase tracking-wide text-primary hover:underline disabled:opacity-50"
+                className="mt-2 text-xs font-mono uppercase tracking-wider text-primary hover:underline disabled:opacity-50"
               >
                 Upload new image
               </button>

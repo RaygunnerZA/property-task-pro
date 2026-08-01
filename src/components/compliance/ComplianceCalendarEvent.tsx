@@ -56,7 +56,7 @@ export function ComplianceCalendarEvent({
             <HazardBadge key={h} hazard={h} size="sm" />
           ))}
           {hazards.length > 3 && (
-            <span className="text-[10px] text-muted-foreground">+{hazards.length - 3}</span>
+            <span className="text-2xs text-muted-foreground">+{hazards.length - 3}</span>
           )}
         </div>
       )}

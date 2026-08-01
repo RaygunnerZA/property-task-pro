@@ -199,7 +199,7 @@ export default function PortfolioCompliance() {
             <Zap className="h-4 w-4" />
             Recommended Actions
             {recommendations.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-[10px] rounded-full bg-primary/20 text-primary">
+              <span className="ml-1 px-1.5 py-0.5 text-2xs rounded-full bg-primary/20 text-primary">
                 {recommendations.length}
               </span>
             )}

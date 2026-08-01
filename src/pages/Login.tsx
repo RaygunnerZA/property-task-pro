@@ -249,7 +249,7 @@ export default function LoginPage() {
               variant="primary"
               disabled={loading}
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in…" : "Sign In"}
             </NeomorphicButton>
 
             <NeomorphicButton

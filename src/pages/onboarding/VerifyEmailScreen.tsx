@@ -112,7 +112,7 @@ export default function VerifyEmailScreen() {
             onClick={checkVerification}
             disabled={checking}
           >
-            {checking ? "Checking..." : "I've verified my email"}
+            {checking ? "Checking…" : "I've verified my email"}
           </NeomorphicButton>
 
           <NeomorphicButton

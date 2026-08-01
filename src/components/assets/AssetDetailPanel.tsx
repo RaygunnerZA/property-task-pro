@@ -657,7 +657,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                                   disabled={isSavingDetails}
                                   className="btn-accent-vibrant"
                                 >
-                                  {isSavingDetails ? "Saving..." : "Save"}
+                                  {isSavingDetails ? "Saving…" : "Save"}
                                 </Button>
                               </div>
                             </div>
@@ -944,7 +944,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -962,7 +962,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleArchive} disabled={isArchiving}>
-              {isArchiving ? "Archiving..." : "Archive"}
+              {isArchiving ? "Archiving…" : "Archive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1114,7 +1114,7 @@ function LogInspectionModal({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving} className="btn-accent-vibrant">
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </DialogContent>
@@ -1195,7 +1195,7 @@ function AddFileModal({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving || !fileUrl.trim()} className="btn-accent-vibrant">
-            {saving ? "Saving..." : "Add"}
+            {saving ? "Saving…" : "Add"}
           </Button>
         </div>
       </DialogContent>

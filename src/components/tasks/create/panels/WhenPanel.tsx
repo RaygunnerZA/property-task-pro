@@ -326,7 +326,7 @@ export function WhenPanel({
                 type="button"
                 onClick={() => setQuickDate(days)}
                 className={cn(
-                  "px-1.5 py-0.5 rounded-[4px] font-mono text-[9px] uppercase tracking-wide transition-all select-none cursor-pointer",
+                  "px-1.5 py-0.5 rounded-[4px] font-mono text-2xs uppercase tracking-wider transition-all select-none cursor-pointer",
                   active
                     ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                     : "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
@@ -345,8 +345,8 @@ export function WhenPanel({
         <div style={{ width: STRIP_W }} className="flex-shrink-0">
           {/* Month / Year header – centred */}
           <div className="flex items-center justify-center gap-1.5 mb-px" style={{ paddingTop: 1, paddingBottom: 7 }}>
-            <span className="text-[14px] font-semibold text-foreground">{displayMonth.slice(0, 3)}</span>
-            <span className="text-[9px] text-[rgba(133,186,188,1)] font-bold leading-[9px] text-center mb-[3px] tracking-[0.3px]">
+            <span className="text-sm font-semibold text-foreground">{displayMonth.slice(0, 3)}</span>
+            <span className="text-2xs text-[rgba(133,186,188,1)] font-bold leading-[9px] text-center mb-[3px] tracking-[0.3px]">
               {String(displayYear).slice(0, 2)}<br/>{String(displayYear).slice(2)}
             </span>
           </div>
@@ -396,7 +396,7 @@ export function WhenPanel({
                       ...itemStyle(dist),
                     }}
                   >
-                    <span className="text-[10px] font-mono font-medium leading-tight tracking-wide text-primary">{dayName}</span>
+                    <span className="text-2xs font-mono font-medium leading-tight tracking-wide text-primary">{dayName}</span>
                     <span className="text-xs font-medium font-mono leading-tight mt-[-2px]">{dayNum}</span>
                   </button>
                 );
@@ -412,7 +412,7 @@ export function WhenPanel({
         <div className="flex-shrink-0">
           {/* Time header – centred */}
           <div className="text-center mt-0 mb-[-7px] h-6 w-[75px]">
-            <span className="text-[14px] font-semibold text-foreground">Time</span>
+            <span className="text-sm font-semibold text-foreground">Time</span>
           </div>
 
           {/* All wheels + colon aligned at the capsule row */}

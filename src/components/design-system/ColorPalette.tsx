@@ -56,10 +56,10 @@ export function ColorPalette() {
             </div>
             <div className="p-3 space-y-1">
               <p className="font-semibold text-sm text-ink">{color.name}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
                 {color.token}
               </p>
-              <p className="font-mono text-[10px] text-muted-foreground">{color.hex}</p>
+              <p className="font-mono text-2xs text-muted-foreground">{color.hex}</p>
             </div>
           </div>
         ))}

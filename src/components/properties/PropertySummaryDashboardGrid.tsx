@@ -23,19 +23,19 @@ const subNumberPillClass =
 
 /** Urgent count chip — same dimensions in every tile. */
 const urgentChipClass =
-  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-sharp border border-destructive/25 bg-destructive/12 px-1 text-[11px] font-semibold tabular-nums leading-none text-destructive shadow-none";
+  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-sharp border border-destructive/25 bg-destructive/12 px-1 text-caption font-semibold tabular-nums leading-none text-destructive shadow-none";
 
 const urgentIssuesRowClass =
   "flex w-full shrink-0 items-center justify-center gap-1.5";
 
 /** Two-line label — tight leading so the chip centers cleanly beside it. */
 const urgentIssuesLabelClass =
-  "inline-block min-w-0 max-w-[3.25rem] text-center text-[9px] font-medium leading-tight text-muted-foreground";
+  "inline-block min-w-0 max-w-[3.25rem] text-center text-2xs font-medium leading-tight text-muted-foreground";
 
 function UrgentIssuesFooter({ count, onActivate }: { count: number; onActivate?: () => void }) {
   if (count <= 0) {
     return (
-      <span className="w-full max-w-[4.5rem] text-center text-[9px] leading-tight text-muted-foreground/70">
+      <span className="w-full max-w-[4.5rem] text-center text-2xs leading-tight text-muted-foreground/70">
         No urgent issues
       </span>
     );
@@ -175,7 +175,7 @@ export function PropertySummaryDashboardGrid({
           />
         )}
         <span className={cn(openTasksCountClass, "mt-0.5")}>{openTasksCount}</span>
-        <span className="mb-1 mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.2px] text-muted-foreground">
+        <span className="mb-1 mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.2px] text-muted-foreground">
           OPEN TASKS
         </span>
         <DashedRule className="my-0 max-w-[72px] py-1" />
@@ -190,7 +190,7 @@ export function PropertySummaryDashboardGrid({
             visualWeight="soft"
             aria-label={`${completedLabel}, ${completionPct}%`}
           />
-          <span className="max-w-[88px] pb-1 text-center font-sans text-[10px] font-medium tabular-nums leading-tight tracking-[0.1px] text-muted-foreground">
+          <span className="max-w-[88px] pb-1 text-center font-sans text-2xs font-medium tabular-nums leading-tight tracking-[0.1px] text-muted-foreground">
             {completedLabel}
           </span>
         </div>
@@ -217,7 +217,7 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <span className={bigNumberClass}>{spacesCount}</span>
-        <span className="mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.5px] text-muted-foreground">
+        <span className="mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.5px] text-muted-foreground">
           SPACES
         </span>
         <div className="mt-auto flex w-full flex-col items-center px-0.5 pt-1">
@@ -243,7 +243,7 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <span className={bigNumberClass}>{assetsCount}</span>
-        <span className="mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.5px] text-muted-foreground">
+        <span className="mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.5px] text-muted-foreground">
           ASSETS
         </span>
         <div className="mt-auto flex w-full flex-col items-center px-0.5 pt-1">
@@ -269,10 +269,10 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <div className="flex h-[27px] min-h-[27px] items-baseline justify-center gap-1.5">
-          <span className="text-[11px] font-semibold tabular-nums text-foreground/75">
+          <span className="text-caption font-semibold tabular-nums text-foreground/75">
             [{documentsCountLabel}]
           </span>
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.3px] text-muted-foreground">
+          <span className="font-mono text-2xs font-medium uppercase tracking-[0.3px] text-muted-foreground">
             DOCUMENTS
           </span>
         </div>
@@ -282,7 +282,7 @@ export function PropertySummaryDashboardGrid({
             <span className="text-[26px] font-light tabular-nums text-warning-foreground/75">
               {docDueSoon}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               DUE SOON
             </span>
           </div>
@@ -290,7 +290,7 @@ export function PropertySummaryDashboardGrid({
             <span className="text-[26px] font-light tabular-nums text-orange-800/70">
               {docExpiring}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               EXPIRING
             </span>
           </div>
@@ -302,7 +302,7 @@ export function PropertySummaryDashboardGrid({
             <span className="text-[26px] font-light tabular-nums text-primary/80">
               {docMissing}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               MISSING
             </span>
           </div>

@@ -43,7 +43,7 @@ const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 /** Fixed size for every task chip in the month grid (title + property rows). */
 const CALENDAR_TASK_CHIP_CLASS =
-  "relative flex h-[42px] min-h-[42px] shrink-0 w-full min-w-0 flex-col overflow-hidden cursor-grab touch-none rounded pt-[3px] pb-0.5 pl-3 pr-0.5 text-left text-[10px] leading-tight active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
+  "relative flex h-[42px] min-h-[42px] shrink-0 w-full min-w-0 flex-col overflow-hidden cursor-grab touch-none rounded pt-[3px] pb-0.5 pl-3 pr-0.5 text-left text-2xs leading-tight active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
 
 type CalendarMonthGridProps = {
   month: Date;
@@ -156,7 +156,7 @@ function CalendarTaskChip({
         {task.title || "Task"}
       </span>
       {propertyLabel ? (
-        <span className="shrink-0 truncate text-[9px] leading-none text-ink opacity-90">
+        <span className="shrink-0 truncate text-2xs leading-none text-ink opacity-90">
           {propertyLabel}
         </span>
       ) : null}
@@ -234,7 +234,7 @@ function CalendarDayCell({
       <button
         type="button"
         onClick={() => onDateSelect?.(date)}
-        className="relative z-[2] -mx-px inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sharp font-mono text-[11px] font-medium"
+        className="relative z-[2] -mx-px inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium"
       >
         <span
           className={cn(
@@ -262,7 +262,7 @@ function CalendarDayCell({
           ))}
         </div>
         {overflow > 0 ? (
-          <span className="absolute bottom-0 right-0 z-[2] text-[9px] text-muted-foreground">
+          <span className="absolute bottom-0 right-0 z-[2] text-2xs text-muted-foreground">
             +{overflow} more
           </span>
         ) : null}
@@ -363,7 +363,7 @@ export function CalendarMonthGrid({
             <div
               key={label}
               className={cn(
-                "text-center font-mono text-[10px] font-semibold uppercase tracking-wide",
+                "text-center font-mono text-2xs font-semibold uppercase tracking-wider",
                 index < 5 ? "text-foreground" : "opacity-50"
               )}
             >

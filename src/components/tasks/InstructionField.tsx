@@ -82,7 +82,7 @@ export function InstructionField({
           placeholder="Add instruction…"
           className={cn(
             "h-[28px] min-w-[100px] max-w-[180px] rounded-card px-2 py-1",
-            "font-mono text-[11px] uppercase tracking-wide",
+            "font-mono text-caption uppercase tracking-wider",
             "bg-background text-muted-foreground/80 placeholder:text-muted-foreground/50",
             "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]",
             "outline-none cursor-text border-0"
@@ -102,7 +102,7 @@ export function InstructionField({
           }}
           className={cn(
             "h-[28px] px-2 py-1 rounded-card text-left truncate max-w-[180px]",
-            "font-mono text-[11px] uppercase tracking-wide",
+            "font-mono text-caption uppercase tracking-wider",
             "text-muted-foreground/80 hover:text-muted-foreground",
             "bg-background/60 hover:bg-background/80 shadow-e1",
             "transition-all duration-150 cursor-pointer",

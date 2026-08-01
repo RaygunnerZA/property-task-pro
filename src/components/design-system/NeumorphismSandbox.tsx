@@ -106,8 +106,8 @@ function Slider({
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="font-mono text-[10px] text-ink">{value}</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="font-mono text-2xs text-ink">{value}</span>
       </div>
       <input
         type="range"
@@ -140,7 +140,7 @@ function ShadowLayerControls({
       layer.enabled ? 'bg-surface/50 border-primary/20' : 'bg-concrete/30 border-transparent'
     )}>
       <div className="flex items-center justify-between mb-3">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-ink font-medium">
+        <span className="font-mono text-2xs uppercase tracking-wider text-ink font-medium">
           {layerName}
         </span>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -150,7 +150,7 @@ function ShadowLayerControls({
             onChange={(e) => onChange({ ...layer, enabled: e.target.checked })}
             className="w-4 h-4 rounded border-concrete accent-primary"
           />
-          <span className="font-mono text-[9px] uppercase text-muted-foreground">On</span>
+          <span className="font-mono text-2xs uppercase text-muted-foreground">On</span>
         </label>
       </div>
 
@@ -163,7 +163,7 @@ function ShadowLayerControls({
             <Slider label="Spread" value={layer.spread} min={-10} max={20} onChange={(v) => onChange({ ...layer, spread: v })} />
           )}
           <div className="space-y-1">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
             <input
               type="color"
               value={layer.color}
@@ -344,7 +344,7 @@ export function NeumorphismSandbox() {
                 backgroundSize: '50%',
               }}
             >
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Swatch</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Swatch</span>
               {globals.noiseIntensity > 0 && (
                 <div 
                   className="absolute inset-0 rounded-inherit pointer-events-none"
@@ -360,7 +360,7 @@ export function NeumorphismSandbox() {
           {/* CSS Output */}
           <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button
                   onClick={saveAsPreset}
@@ -416,7 +416,7 @@ export function NeumorphismSandbox() {
 
           {/* Global Controls */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Global Controls</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Global Controls</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider 
                 label="Border Radius" 
@@ -433,7 +433,7 @@ export function NeumorphismSandbox() {
                 onChange={(v) => setGlobals({ ...globals, noiseIntensity: v })} 
               />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Card Background</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Card Background</span>
                 <input
                   type="color"
                   value={globals.cardBackgroundColor}
@@ -448,7 +448,7 @@ export function NeumorphismSandbox() {
                   onChange={(e) => setGlobals({ ...globals, topLight: e.target.checked })}
                   className="w-4 h-4 rounded border-concrete accent-primary"
                 />
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Top Light</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Top Light</span>
               </label>
             </div>
           </div>
@@ -456,7 +456,7 @@ export function NeumorphismSandbox() {
 
         {/* Shadow Layer Controls */}
         <div className="space-y-4">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Shadow Layers</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Shadow Layers</h3>
           <div className="space-y-3 max-h-[500px] lg:max-h-[600px] overflow-y-auto pr-2">
             {layers.map((layer, i) => (
               <ShadowLayerControls

@@ -75,7 +75,7 @@ export function HeaderAccountMenu({
             </p>
           )}
           {organisation?.name && (
-            <p className="truncate text-[11px] text-muted-foreground/90 pt-0.5">{organisation.name}</p>
+            <p className="truncate text-caption text-muted-foreground/90 pt-0.5">{organisation.name}</p>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

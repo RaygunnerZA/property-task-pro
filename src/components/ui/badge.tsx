@@ -18,8 +18,8 @@ const badgeVariants = cva(
         neutral: "bg-card text-muted-foreground border-0",
       },
       size: {
-        default: "px-2.5 py-1 text-[11px]",
-        sm: "px-[7px] text-[10px] h-[24px]",
+        default: "px-2.5 py-1 text-caption",
+        sm: "px-[7px] text-2xs h-[24px]",
       },
     },
     defaultVariants: {

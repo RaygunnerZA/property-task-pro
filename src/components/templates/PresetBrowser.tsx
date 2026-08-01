@@ -78,7 +78,7 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
           <p className="font-semibold text-sm text-foreground leading-snug">
             {preset.name}
           </p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5 leading-relaxed">
+          <p className="text-caption text-muted-foreground/60 mt-0.5 leading-relaxed">
             {preset.description}
           </p>
         </div>
@@ -95,7 +95,7 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
           }}
           disabled={isAdding}
           className={cn(
-            "shrink-0 mt-0.5 h-7 rounded-lg px-2.5 text-[11px] font-semibold transition-all duration-150",
+            "shrink-0 mt-0.5 h-7 rounded-lg px-2.5 text-caption font-semibold transition-all duration-150",
             isAdded
               ? "bg-primary/20 text-primary-deep hover:bg-primary/30"
               : isAdding
@@ -109,26 +109,26 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-primary/10 text-primary-deep">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-primary/10 text-primary-deep">
           Starting template
         </span>
         {isRegulatedStarterPreset(preset) && <RegulatedAreaBadge />}
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide ${CATEGORY_BG[preset.category]}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider ${CATEGORY_BG[preset.category]}`}
         >
           {preset.category}
         </span>
-        <span className="text-[11px] text-muted-foreground/50">
+        <span className="text-caption text-muted-foreground/50">
           {preset.items.length} items
         </span>
         {yesNoCount > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40" title="Contains yes/no items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/40" title="Contains yes/no items">
             <CheckSquare className="h-3 w-3" />
             {yesNoCount}
           </span>
         )}
         {sigCount > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40" title="Contains signature items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/40" title="Contains signature items">
             <FileSignature className="h-3 w-3" />
             {sigCount}
           </span>

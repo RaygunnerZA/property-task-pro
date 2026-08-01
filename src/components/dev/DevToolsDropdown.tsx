@@ -251,13 +251,13 @@ function DevToolsDropdownInner() {
               {switchingPersona ? (
                 <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />
               ) : activePersona ? (
-                <span className="ml-auto text-[10px] font-mono text-primary-deep">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   {activePersona.testId}
                 </span>
               ) : null}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-72">
-              <DropdownMenuLabel className="text-[10px] font-normal text-muted-foreground">
+              <DropdownMenuLabel className="text-2xs font-normal text-muted-foreground">
                 Adds TEST users to your current org, then signs in. Password:
                 TestPassword123! (or VITE_DEV_TEST_PASSWORD)
               </DropdownMenuLabel>
@@ -279,7 +279,7 @@ function DevToolsDropdownInner() {
                   className="flex flex-col items-start gap-0.5"
                 >
                   <span className="flex w-full items-center gap-2">
-                    <span className="font-mono text-[10px] text-primary-deep">
+                    <span className="font-mono text-2xs text-primary-deep">
                       {persona.testId}
                     </span>
                     <span className="font-medium">{persona.label}</span>
@@ -287,7 +287,7 @@ function DevToolsDropdownInner() {
                       <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary-deep" />
                     )}
                   </span>
-                  <span className="text-[10px] text-muted-foreground pl-12">
+                  <span className="text-2xs text-muted-foreground pl-12">
                     {persona.membershipRole}
                     {persona.uiRoleOverride ? ` · UI ${persona.uiRoleOverride}` : ""}
                   </span>
@@ -301,7 +301,7 @@ function DevToolsDropdownInner() {
               <UserCircle className="mr-2 h-4 w-4" />
               UI role override
               {devMode.userRoleOverride && (
-                <span className="ml-auto text-[10px] font-mono text-primary-deep">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   {devMode.userRoleOverride}
                 </span>
               )}
@@ -350,7 +350,7 @@ function DevToolsDropdownInner() {
               <Clock className="mr-2 h-4 w-4" />
               Simulate Time
               {devMode.simulateTimeShiftDays > 0 && (
-                <span className="ml-auto text-[10px] font-mono text-primary-deep">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   +{devMode.simulateTimeShiftDays}d
                 </span>
               )}

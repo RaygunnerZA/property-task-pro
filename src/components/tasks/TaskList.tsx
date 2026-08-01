@@ -871,7 +871,7 @@ export function TaskList({
           {/* Done: one row per task, max 6 (most recently updated) */}
           {!hideDoneSection && groupedTasks.done.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider px-1">
                 <span>Done ({groupedTasks.done.length})</span>
                 {groupedTasks.done.length > 6 ? (
                   <span className="normal-case font-normal text-muted-foreground/80">

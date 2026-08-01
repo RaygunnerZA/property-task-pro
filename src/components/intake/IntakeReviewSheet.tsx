@@ -209,7 +209,7 @@ export function IntakeReviewSheet({
                     title={displayName}
                     className="h-[min(50vh,440px)] w-full border-0 bg-white"
                   />
-                  <p className="px-3 py-2 text-[11px] text-muted-foreground border-t border-border/30">
+                  <p className="px-3 py-2 text-caption text-muted-foreground border-t border-border/30">
                     Preview not showing? Use <strong className="font-medium">Open</strong> above — some mobile browsers need the full tab.
                   </p>
                 </div>
@@ -229,7 +229,7 @@ export function IntakeReviewSheet({
           {/* AI read */}
           <div className="rounded-xl bg-primary/10 px-4 py-3 shadow-e1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary-deep">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary-deep">
                 Filla read
               </span>
               <span className="rounded-full bg-background/80 px-2.5 py-0.5 text-xs font-medium text-foreground shadow-sm">

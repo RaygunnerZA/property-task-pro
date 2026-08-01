@@ -1430,13 +1430,13 @@ export function ImageAnnotationEditor({
                     className="mt-0.5"
                   />
                   {session.id === "original" ? (
-                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]" aria-hidden>
+                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-2xs" aria-hidden>
                       —
                     </div>
                   ) : session.userAvatarUrl ? (
                     <img src={session.userAvatarUrl} alt={session.userDisplayName} className="h-5 w-5 rounded-full object-cover" />
                   ) : (
-                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-[10px]">
+                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-2xs">
                       {session.userDisplayName.slice(0, 1).toUpperCase()}
                     </div>
                   )}
@@ -1650,7 +1650,7 @@ export function ImageAnnotationEditor({
             {autosaveStatus === "saving" && (
               <>
                 <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
-                <span>Saving...</span>
+                <span>Saving…</span>
               </>
             )}
             {autosaveStatus === "saved" && (
@@ -1704,7 +1704,7 @@ export function ImageAnnotationEditor({
           {isSaving ? (
             <>
               <span className="animate-spin mr-2">⏳</span>
-              Saving...
+              Saving…
             </>
           ) : (
             <>

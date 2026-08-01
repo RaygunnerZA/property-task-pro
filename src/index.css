@@ -310,6 +310,17 @@
   .font-mono {
     font-family: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
   }
+
+  /* Balanced headings — avoid orphaned last words on titles */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  /* Numerals in stats/tables align when Inter Tight renders digits */
+  [data-stat],
+  .stat-value {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer utilities {
@@ -397,6 +408,7 @@
     position: relative;
     z-index: 1;
     font-family: 'JetBrains Mono', Menlo, Monaco, monospace;
+    font-variant-numeric: tabular-nums;
     font-weight: 800;
     font-size: clamp(1.5rem, 4vw, 2.25rem);
     color: hsl(var(--foreground));

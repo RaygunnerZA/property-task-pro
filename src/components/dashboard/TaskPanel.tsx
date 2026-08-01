@@ -1113,7 +1113,7 @@ export function TaskPanel({
                             ? "Try selecting a different date or create a new task with a due date"
                             : "Create a task with a due date to see it here"}
                         </p>
-                        <div className="mt-3 text-[11px] text-muted-foreground/80">
+                        <div className="mt-3 text-caption text-muted-foreground/80">
                           {scheduleStats.withDueDate === 0 ? (
                             <span>
                               You currently have 0 active tasks with a due date/time. ({scheduleStats.withoutDueDate} unscheduled)
@@ -1131,7 +1131,7 @@ export function TaskPanel({
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
                       <div className="px-[10px] max-sm:px-0 mb-3 max-pane:px-2">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Unscheduled ({unscheduledTasks.length})
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">

@@ -379,12 +379,12 @@ export function ImageUploadSection({
         )}
       >
         <div className="text-left min-w-0 flex-1 pointer-events-none pr-[9px]">
-          <p className="text-[12px] font-normal text-muted-foreground pr-[5px] leading-[17px]">
+          <p className="text-xs font-normal text-muted-foreground pr-[5px] leading-[17px]">
             {intakeMode === "add_record"
               ? "Add certificate, inspection, or document — drag & drop or choose file"
               : "Add photos or files — capture the issue (drag & drop or choose)"}
           </p>
-          <p className="mt-1 text-[10px] text-primary">50 MB max file size</p>
+          <p className="mt-1 text-2xs text-primary">50 MB max file size</p>
         </div>
         <div className="absolute top-3 right-3 flex gap-2 shrink-0">
           <button
@@ -452,7 +452,7 @@ export function ImageUploadSection({
                     </div>
                   )}
                   {image.annotation_json && image.annotation_json.length > 0 && (
-                    <div className="absolute bottom-1 left-1 text-[10px] font-mono text-white bg-black/50 px-1 rounded">
+                    <div className="absolute bottom-1 left-1 text-2xs font-mono text-white bg-black/50 px-1 rounded">
                       {image.annotation_json.length}
                     </div>
                   )}
@@ -461,39 +461,39 @@ export function ImageUploadSection({
                 {panel.kind === "upload_failed" ? (
                   <div className="min-w-0 flex-1 rounded-card bg-background/55 px-3 py-2 shadow-engraved">
                     <p className="truncate text-xs font-medium text-foreground">{image.display_name}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-caption text-muted-foreground">
                       {image.upload_error || "Image processing failed."}
                     </p>
                   </div>
                 ) : (
                   <div className="min-w-0 flex-1 rounded-card px-3 py-2 shadow-e1 bg-background/40">
                     {panel.kind === "preparing" && (
-                      <p className="text-[12px] text-muted-foreground">Preparing image…</p>
+                      <p className="text-xs text-muted-foreground">Preparing image…</p>
                     )}
                     {panel.kind === "router_scanning" && (
-                      <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
                         <span>Scanning…</span>
                       </div>
                     )}
                     {panel.kind === "full_scanning" && (
-                      <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
                         <span>Running compliance scan…</span>
                       </div>
                     )}
                     {panel.kind === "router_ui" && panel.branch === "task" && (
                       <div className="space-y-2">
-                        <p className="text-[13px] font-medium text-foreground">This looks like a task</p>
+                        <p className="text-sm font-medium text-foreground">This looks like a task</p>
                         {confidenceCaption(panel.confidence) ? (
-                          <p className="text-[10px] text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
+                          <p className="text-2xs text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
                         ) : null}
                         {onRunFullIntakeAnalysis ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2 text-[11px] text-primary hover:text-primary shadow-none"
+                            className="h-8 px-2 text-caption text-primary hover:text-primary shadow-none"
                             onClick={() => void onRunFullIntakeAnalysis(image.local_id)}
                           >
                             Scan as compliance instead
@@ -503,16 +503,16 @@ export function ImageUploadSection({
                     )}
                     {panel.kind === "router_ui" && panel.branch === "compliance" && (
                       <div className="space-y-2">
-                        <p className="text-[13px] font-medium text-foreground">This may be a compliance document</p>
+                        <p className="text-sm font-medium text-foreground">This may be a compliance document</p>
                         {confidenceCaption(panel.confidence) ? (
-                          <p className="text-[10px] text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
+                          <p className="text-2xs text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
                         ) : null}
                         <div className="flex flex-wrap items-center gap-2">
                           {onRunFullIntakeAnalysis ? (
                             <Button
                               type="button"
                               size="sm"
-                              className="h-8 text-[11px] shadow-primary-btn"
+                              className="h-8 text-caption shadow-primary-btn"
                               onClick={() => void onRunFullIntakeAnalysis(image.local_id)}
                             >
                               Begin compliance scan
@@ -522,7 +522,7 @@ export function ImageUploadSection({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2 text-[11px] text-muted-foreground"
+                            className="h-8 px-2 text-caption text-muted-foreground"
                             onClick={() => onPatchImage?.(image.local_id, { intakeUserPrefersTask: true })}
                           >
                             Create task instead
@@ -532,17 +532,17 @@ export function ImageUploadSection({
                     )}
                     {panel.kind === "router_ui" && panel.branch === "uncertain" && (
                       <div className="space-y-2">
-                        <p className="text-[13px] font-medium text-foreground">What would you like to do with this?</p>
-                        <p className="text-[12px] text-muted-foreground">This looks like a task</p>
+                        <p className="text-sm font-medium text-foreground">What would you like to do with this?</p>
+                        <p className="text-xs text-muted-foreground">This looks like a task</p>
                         {confidenceCaption(panel.confidence) ? (
-                          <p className="text-[10px] text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
+                          <p className="text-2xs text-muted-foreground">{confidenceCaption(panel.confidence)}</p>
                         ) : null}
                         {onRunFullIntakeAnalysis ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2 text-[11px] text-primary hover:text-primary shadow-none"
+                            className="h-8 px-2 text-caption text-primary hover:text-primary shadow-none"
                             onClick={() => void onRunFullIntakeAnalysis(image.local_id)}
                           >
                             Scan for compliance
@@ -552,11 +552,11 @@ export function ImageUploadSection({
                     )}
                     {panel.kind === "image_analysed" && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[12px] text-foreground">
+                        <div className="flex items-center gap-2 text-xs text-foreground">
                           <BadgeCheck className="h-4 w-4 shrink-0 text-primary" />
                           <span className="font-medium">Image analysed</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-caption text-muted-foreground">
                           {intakeMode === "report_issue"
                             ? "No certificate details found — continue reporting the issue below."
                             : "No certificate type or expiry detected — add details manually if needed."}
@@ -565,18 +565,18 @@ export function ImageUploadSection({
                     )}
                     {panel.kind === "full_done" && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[12px] text-foreground">
+                        <div className="flex items-center gap-2 text-xs text-foreground">
                           <BadgeCheck className="h-4 w-4 shrink-0 text-primary" />
                           <span className="font-medium">Compliance scan complete</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {panel.specificType ? (
-                            <div className="inline-flex rounded-sharp bg-input px-[9px] py-1 text-[11px] font-medium text-foreground shadow-sm">
+                            <div className="inline-flex rounded-sharp bg-input px-[9px] py-1 text-caption font-medium text-foreground shadow-sm">
                               {panel.specificType}
                             </div>
                           ) : null}
                           {panel.formattedExpiryDate ? (
-                            <div className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-[11px] font-medium text-foreground shadow-e1">
+                            <div className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-caption font-medium text-foreground shadow-e1">
                               <CalendarDays className="h-3.5 w-3.5 text-primary" />
                               <span>Expiry {panel.formattedExpiryDate}</span>
                             </div>
@@ -602,7 +602,7 @@ export function ImageUploadSection({
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">{file.display_name}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-caption text-muted-foreground">
                   {(file.file_size / (1024 * 1024)).toFixed(2)} MB
                 </p>
               </div>

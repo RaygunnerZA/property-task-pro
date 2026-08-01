@@ -93,7 +93,7 @@ export function NeumorphicStylesDisplay({
                 backgroundColor: style.backgroundColor,
               }}
             >
-              <span className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground">
+              <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
                 Preview
               </span>
             </div>
@@ -101,7 +101,7 @@ export function NeumorphicStylesDisplay({
             {/* Name & Copy */}
             <div className="text-center space-y-2 w-full">
               <p className="font-semibold text-sm text-ink">{style.name}</p>
-              <p className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground break-all">
+              <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground break-all">
                 {style.key}
               </p>
               <button
@@ -109,7 +109,7 @@ export function NeumorphicStylesDisplay({
                   e.stopPropagation();
                   copyToClipboard(style);
                 }}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono uppercase tracking-wider bg-concrete/50 hover:bg-concrete text-ink/60 hover:text-ink transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded text-2xs font-mono uppercase tracking-wider bg-concrete/50 hover:bg-concrete text-ink/60 hover:text-ink transition-colors"
               >
                 {copied === style.key ? (
                   <>

@@ -149,7 +149,7 @@ const PAPER_TEXTURE_STYLE: React.CSSProperties = {
 /** Matches Create Task rows (CategorySection, WhereSection, WhoSection) — chip becomes this input. */
 const INTAKE_INLINE_INPUT_CLASS = cn(
   "h-[28px] min-w-[100px] max-w-[240px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
-  "font-mono text-[11px] uppercase tracking-wide",
+  "font-mono text-caption uppercase tracking-wider",
   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
   "shadow-inset outline-none cursor-text",
   "transition-[width] duration-150 ease-out"
@@ -2345,7 +2345,7 @@ export function IntakeModal({
                 truncate={false}
                 pressOnPointerDown
                 onPress={() => applyQuick(date)}
-                className="shrink-0 text-[11px]"
+                className="shrink-0 text-caption"
               />
             ))}
             <SemanticChip
@@ -2357,7 +2357,7 @@ export function IntakeModal({
                 setIntakeWhenCustom(true);
                 setWhenTab("due");
               }}
-              className="shrink-0 text-[11px]"
+              className="shrink-0 text-caption"
             />
           </>
         ) : (
@@ -2372,7 +2372,7 @@ export function IntakeModal({
                 setMilestoneEntryOpen(false);
                 setMilestoneNameDraft("");
               }}
-              className="shrink-0 text-[11px]"
+              className="shrink-0 text-caption"
             />
             {whenTab !== "repeat" &&
               (milestoneEntryOpen ? (
@@ -2388,7 +2388,7 @@ export function IntakeModal({
                     setMilestoneNameDraft("");
                   }}
                   truncate={false}
-                  className="shrink-0 text-[11px]"
+                  className="shrink-0 text-caption"
                 />
               ) : (
                 <SemanticChip
@@ -2398,7 +2398,7 @@ export function IntakeModal({
                   pressOnPointerDown
                   transferOnPress
                   onPress={startMilestoneEntry}
-                  className="shrink-0 text-[11px]"
+                  className="shrink-0 text-caption"
                 />
               ))}
             {!hideRepeat && (
@@ -2412,7 +2412,7 @@ export function IntakeModal({
                   setMilestoneEntryOpen(false);
                   setMilestoneNameDraft("");
                 }}
-                className="shrink-0 text-[11px]"
+                className="shrink-0 text-caption"
               />
             )}
           </>
@@ -2605,7 +2605,7 @@ export function IntakeModal({
           row3: (
             <>
               {!propertyId && (
-                <span className="shrink-0 text-[11px] text-muted-foreground whitespace-nowrap">
+                <span className="shrink-0 text-caption text-muted-foreground whitespace-nowrap">
                   Pick a property first
                 </span>
               )}
@@ -2865,7 +2865,7 @@ export function IntakeModal({
       if (slot === "compliance") {
         return {
           row2: (
-            <span className="shrink-0 text-[11px] text-muted-foreground whitespace-nowrap">
+            <span className="shrink-0 text-caption text-muted-foreground whitespace-nowrap">
               Use compliance fields above
             </span>
           ),
@@ -2875,7 +2875,7 @@ export function IntakeModal({
 
       return {
         row2: (
-          <span className="shrink-0 text-[11px] text-muted-foreground whitespace-nowrap">
+          <span className="shrink-0 text-caption text-muted-foreground whitespace-nowrap">
             {slot} — open full Create Task for more options
           </span>
         ),
@@ -3782,7 +3782,7 @@ export function IntakeModal({
                   className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
                 />
                 {aiExtractError && !aiLoading && description.trim().length >= 8 && (
-                  <p className="text-[11px] text-muted-foreground px-0.5">
+                  <p className="text-caption text-muted-foreground px-0.5">
                     AI title hint unavailable — you can still edit the title above.
                   </p>
                 )}
@@ -3851,7 +3851,7 @@ export function IntakeModal({
           {/* 3. Compliance inline fields when path is compliance */}
           {primaryIsCompliance && (
             <div className="rounded-lg bg-muted/40 p-3 space-y-2 border border-border/50 shadow-e1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Compliance</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Compliance</p>
               <div className="grid gap-2">
                 <div>
                   <Label className="text-xs text-muted-foreground">Document type</Label>

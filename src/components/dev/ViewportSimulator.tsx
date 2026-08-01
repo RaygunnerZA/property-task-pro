@@ -95,7 +95,7 @@ function ViewportSimulatorInner({ onClose }: { onClose: () => void }) {
           <MonitorSmartphone className="h-4 w-4 shrink-0 text-primary-deep" />
           <div className="min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">Viewport simulator</p>
-            <p className="text-[10px] text-muted-foreground font-mono truncate">
+            <p className="text-2xs text-muted-foreground font-mono truncate">
               {frameW}×{frameH}px · {tags.join(" · ")}
             </p>
           </div>
@@ -115,7 +115,7 @@ function ViewportSimulatorInner({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={() => setLandscape((v) => !v)}
           className={cn(
-            "text-[10px] px-2 py-1 rounded-md font-medium transition-colors",
+            "text-2xs px-2 py-1 rounded-md font-medium transition-colors",
             landscape ? "bg-primary/15 text-primary-deep shadow-sm" : "bg-muted/60 text-muted-foreground hover:bg-muted"
           )}
         >
@@ -125,7 +125,7 @@ function ViewportSimulatorInner({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={() => setMode("custom")}
           className={cn(
-            "text-[10px] px-2 py-1 rounded-md font-medium transition-colors",
+            "text-2xs px-2 py-1 rounded-md font-medium transition-colors",
             mode === "custom" ? "bg-primary/15 text-primary-deep shadow-sm" : "bg-muted/60 text-muted-foreground hover:bg-muted"
           )}
         >
@@ -140,7 +140,7 @@ function ViewportSimulatorInner({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={() => pickPreset(p.id)}
             className={cn(
-              "text-[10px] px-2 py-1 rounded-md font-medium transition-colors",
+              "text-2xs px-2 py-1 rounded-md font-medium transition-colors",
               mode === "preset" && presetId === p.id
                 ? "bg-primary/15 text-primary-deep shadow-sm"
                 : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
@@ -152,7 +152,7 @@ function ViewportSimulatorInner({ onClose }: { onClose: () => void }) {
       </div>
 
       {mode === "custom" && (
-        <div className="flex items-center gap-2 px-3 pb-2 text-[11px]">
+        <div className="flex items-center gap-2 px-3 pb-2 text-caption">
           <label className="flex items-center gap-1 text-muted-foreground">
             W
             <input

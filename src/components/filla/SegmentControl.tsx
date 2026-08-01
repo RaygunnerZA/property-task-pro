@@ -46,7 +46,7 @@ export const SegmentControl: React.FC<SegmentControlProps> = ({
             className={cn(
               'flex-1 font-semibold rounded-md transition-[transform,box-shadow,background-color,color] duration-200 active:scale-95',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-              compact ? 'px-1.5 py-1.5 text-[11px] leading-tight min-w-0' : 'px-4 py-2 text-sm',
+              compact ? 'px-1.5 py-1.5 text-caption leading-tight min-w-0' : 'px-4 py-2 text-sm',
               isActive
                 ? 'bg-card text-foreground shadow-e1 scale-[1.02]'
                 : 'bg-transparent text-muted-foreground shadow-none scale-100',

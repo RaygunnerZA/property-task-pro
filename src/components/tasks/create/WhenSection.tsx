@@ -396,7 +396,7 @@ export function WhenSection({
         <div ref={panelRef} className="pl-[22px] pt-2 pb-2 space-y-2">
           {editing.kind === "milestone" && (
             <div className="flex items-center gap-2">
-              <label className="text-[10px] font-mono uppercase text-muted-foreground shrink-0">Name</label>
+              <label className="text-2xs font-mono uppercase text-muted-foreground shrink-0">Name</label>
               <input
                 type="text"
                 placeholder="e.g. Alert, Launch"

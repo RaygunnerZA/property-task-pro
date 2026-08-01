@@ -90,7 +90,7 @@ export default function ExportProgressModal({
               onClick={onClose}
               disabled={isExporting}
             >
-              {isExporting ? 'Exporting...' : 'Close'}
+              {isExporting ? 'Exporting…' : 'Close'}
             </Button>
           )}
         </div>

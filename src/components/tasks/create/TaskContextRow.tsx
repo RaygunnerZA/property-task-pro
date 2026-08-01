@@ -93,7 +93,7 @@ export function TaskContextRow({
       {hasChips && (
         <div className="space-y-2">
           {/* FILLA SET Header */}
-          <label className="text-[12px] font-mono uppercase tracking-wider text-primary flex items-center gap-1.5 py-1">
+          <label className="text-xs font-mono uppercase tracking-wider text-primary flex items-center gap-1.5 py-1">
             <img 
               src={fillaAISrc} 
               alt="Filla AI" 

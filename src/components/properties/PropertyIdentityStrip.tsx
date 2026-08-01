@@ -186,7 +186,7 @@ export function PropertyIdentityStrip({
               </p>
             </div>
             {property.address ? (
-              <p className="mt-0.5 pt-[3px] text-[12px] font-medium leading-snug text-white/90 drop-shadow-sm">
+              <p className="mt-0.5 pt-[3px] text-xs font-medium leading-snug text-white/90 drop-shadow-sm">
                 {property.address}
               </p>
             ) : null}

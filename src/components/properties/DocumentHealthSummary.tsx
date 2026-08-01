@@ -251,10 +251,10 @@ export function DocumentHealthSummary({
       )}
     >
       <div className="px-3 pt-3 pb-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground font-mono">
+        <p className="text-caption font-semibold uppercase tracking-wider text-muted-foreground font-mono">
           Health snapshot
         </p>
-        <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">What exists on this property</p>
+        <p className="text-2xs text-muted-foreground mt-0.5 leading-snug">What exists on this property</p>
       </div>
 
       <div className="relative z-10 flex shrink-0 justify-center items-center gap-0 pt-1 pb-[6px] px-[6px] bg-muted/20">
@@ -264,7 +264,7 @@ export function DocumentHealthSummary({
             type="button"
             onClick={() => setActiveTab(idx as DocTabIndex)}
             className={cn(
-              "flex-1 rounded-card h-6 flex items-center justify-center px-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide leading-none",
+              "flex-1 rounded-card h-6 flex items-center justify-center px-0.5 font-mono text-2xs font-semibold uppercase tracking-wider leading-none",
               "transition-[color,background-color,box-shadow] duration-200 ease-out",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:ring-offset-0",
               activeTab === idx
@@ -358,7 +358,7 @@ export function DocumentHealthSummary({
                 );
               })}
               {!hasAttention && (
-                <p className="text-[10px] text-muted-foreground px-1 py-1.5 leading-snug">
+                <p className="text-2xs text-muted-foreground px-1 py-1.5 leading-snug">
                   Nothing needs attention right now.
                 </p>
               )}

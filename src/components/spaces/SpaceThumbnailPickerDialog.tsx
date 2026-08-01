@@ -115,7 +115,7 @@ export function SpaceThumbnailPickerDialog({
                     className="h-16 w-16 object-contain"
                     loading="lazy"
                   />
-                  <span className="line-clamp-2 text-[10px] font-medium leading-tight text-muted-foreground">
+                  <span className="line-clamp-2 text-2xs font-medium leading-tight text-muted-foreground">
                     {opt.label}
                   </span>
                 </button>

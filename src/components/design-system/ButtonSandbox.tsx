@@ -162,8 +162,8 @@ function Slider({ label, value, min, max, onChange }: {
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="font-mono text-[10px] text-ink">{value}</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="font-mono text-2xs text-ink">{value}</span>
       </div>
       <input
         type="range"
@@ -378,7 +378,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
+              'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
               activeTab === tab ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
             )}
           >
@@ -400,7 +400,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                       key={type}
                       onClick={() => handleSelectType(type)}
                       className={cn(
-                        'px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all',
+                        'px-3 py-1.5 rounded-full font-mono text-2xs uppercase tracking-wider transition-all',
                         selectedType === type 
                           ? 'bg-primary text-white' 
                           : 'bg-surface/80 shadow-e1 text-ink/60 hover:text-ink'
@@ -467,7 +467,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                       key={type}
                       onClick={() => setSelectedChipType(type)}
                       className={cn(
-                        'px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all',
+                        'px-3 py-1.5 rounded-full font-mono text-2xs uppercase tracking-wider transition-all',
                         selectedChipType === type 
                           ? 'bg-primary text-white' 
                           : 'bg-surface/80 shadow-e1 text-ink/60 hover:text-ink'
@@ -481,7 +481,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                 {/* Live Chip Preview */}
                 <div className="flex flex-wrap gap-3 justify-center">
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -492,7 +492,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     Selected
                   </span>
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -502,7 +502,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     Normal
                   </span>
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium cursor-pointer hover:opacity-80"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium cursor-pointer hover:opacity-80"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -573,7 +573,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                         <button
                           key={seg}
                           className={cn(
-                            'relative z-10 flex-1 px-3 py-2.5 text-[11px] font-bold transition-all duration-200',
+                            'relative z-10 flex-1 px-3 py-2.5 text-caption font-bold transition-all duration-200',
                             'text-center uppercase tracking-wider'
                           )}
                           style={{
@@ -607,7 +607,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                         key={filter}
                         onClick={() => toggleFilter(filter)}
                         className={cn(
-                          'px-4 py-2 font-mono text-[11px] uppercase tracking-wider font-medium transition-all duration-150',
+                          'px-4 py-2 font-mono text-caption uppercase tracking-wider font-medium transition-all duration-150',
                           'hover:opacity-90 active:scale-[0.97]'
                         )}
                         style={{
@@ -631,7 +631,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     return (
                       <span
                         key={filter}
-                        className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider font-medium cursor-pointer"
+                        className="px-3 py-1 font-mono text-2xs uppercase tracking-wider font-medium cursor-pointer"
                         style={{
                           backgroundColor: isActive ? filterChipStyle.activeBackgroundColor : filterChipStyle.inactiveBackgroundColor,
                           color: isActive ? filterChipStyle.activeTextColor : filterChipStyle.inactiveTextColor,
@@ -651,7 +651,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
           {/* CSS Output */}
           <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button onClick={reset} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="Reset">
                   <RotateCcw className="w-4 h-4 text-white/60" />
@@ -690,7 +690,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                 <button
                   onClick={() => setEditingShadow('normal')}
                   className={cn(
-                    'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
+                    'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
                     editingShadow === 'normal' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
                   )}
                 >
@@ -699,7 +699,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                 <button
                   onClick={() => setEditingShadow('pressed')}
                   className={cn(
-                    'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
+                    'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
                     editingShadow === 'pressed' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
                   )}
                 >
@@ -709,7 +709,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
 
               {/* Global Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Button Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Button Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Slider 
                     label="Border Radius" 
@@ -719,7 +719,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     onChange={updateRadius} 
                   />
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Background</span>
                     <input
                       type="color"
                       value={currentStyle.backgroundColor === 'transparent' ? '#F1EEE8' : currentStyle.backgroundColor}
@@ -728,7 +728,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Text Color</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Text Color</span>
                     <input
                       type="color"
                       value={currentStyle.textColor}
@@ -741,7 +741,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
 
               {/* Shadow Layers */}
               <div className="space-y-3 max-h-[300px] lg:max-h-[400px] overflow-y-auto pr-2">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
                   Shadow Layers ({editingShadow})
                 </h3>
                 {currentLayers.map((layer, i) => (
@@ -750,7 +750,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     layer.enabled ? 'bg-surface/50 border-primary/20' : 'bg-concrete/30 border-transparent'
                   )}>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-ink font-medium">
+                      <span className="font-mono text-2xs uppercase tracking-wider text-ink font-medium">
                         {layer.inset ? 'Inner' : 'Outer'} {i + 1}
                       </span>
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -781,7 +781,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
             <>
               {/* Chip Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Chip Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Chip Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Slider 
                     label="Border Radius" 
@@ -791,7 +791,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     onChange={updateChipRadius} 
                   />
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Background</span>
                     <input
                       type="color"
                       value={currentChipStyle.backgroundColor.slice(0, 7)}
@@ -800,7 +800,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Text Color</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Text Color</span>
                     <input
                       type="color"
                       value={currentChipStyle.textColor}
@@ -817,7 +817,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
             <>
               {/* Track Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Track Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Track Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Slider 
                     label="Track Radius" 
@@ -827,7 +827,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     onChange={(v) => setSegmentStyle(prev => ({ ...prev, trackBorderRadius: v }))} 
                   />
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Track Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Track Background</span>
                     <input
                       type="color"
                       value={segmentStyle.trackBackgroundColor}
@@ -840,7 +840,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
 
               {/* Button Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Button Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Button Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Slider 
                     label="Button Radius" 
@@ -850,7 +850,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     onChange={(v) => setSegmentStyle(prev => ({ ...prev, buttonBorderRadius: v }))} 
                   />
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Text</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Inactive Text</span>
                     <input
                       type="color"
                       value={segmentStyle.buttonTextColor}
@@ -863,10 +863,10 @@ color: ${filterChipStyle.inactiveTextColor};`;
 
               {/* Active Button Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Button Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Button Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Background</span>
                     <input
                       type="color"
                       value={segmentStyle.activeButtonBackgroundColor}
@@ -875,7 +875,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Text</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Text</span>
                     <input
                       type="color"
                       value={segmentStyle.activeButtonTextColor}
@@ -892,7 +892,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
             <>
               {/* Active State Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Chip Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Chip Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <Slider 
                     label="Border Radius" 
@@ -902,7 +902,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     onChange={(v) => setFilterChipStyle(prev => ({ ...prev, borderRadius: v }))} 
                   />
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Background</span>
                     <input
                       type="color"
                       value={filterChipStyle.activeBackgroundColor}
@@ -911,7 +911,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Active Text</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Active Text</span>
                     <input
                       type="color"
                       value={filterChipStyle.activeTextColor}
@@ -924,10 +924,10 @@ color: ${filterChipStyle.inactiveTextColor};`;
 
               {/* Inactive State Controls */}
               <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Chip Style</h3>
+                <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Inactive Chip Style</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Background</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Inactive Background</span>
                     <input
                       type="color"
                       value={filterChipStyle.inactiveBackgroundColor}
@@ -936,7 +936,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inactive Text</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Inactive Text</span>
                     <input
                       type="color"
                       value={filterChipStyle.inactiveTextColor}

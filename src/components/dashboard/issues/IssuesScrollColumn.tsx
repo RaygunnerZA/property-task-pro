@@ -67,7 +67,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
         <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
           <p className="text-xs font-medium text-foreground/90">{emptyTitle}</p>
           {emptyDescription ? (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">{emptyDescription}</p>
+            <p className="text-caption leading-relaxed text-muted-foreground">{emptyDescription}</p>
           ) : null}
         </div>
         ) : null

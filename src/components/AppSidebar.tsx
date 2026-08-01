@@ -209,7 +209,7 @@ export function AppSidebar() {
         <IconComponent className={iconClass} />
         <span
           className={cn(
-            "whitespace-nowrap text-[13px] font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
+            "whitespace-nowrap text-sm font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
             open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
           )}
         >
@@ -304,7 +304,7 @@ export function AppSidebar() {
             {open && (
               <SidebarGroupLabel
                 className={cn(
-                  "mb-2 px-3 font-mono text-[10px] uppercase tracking-[0.2em]",
+                  "mb-2 px-3 font-mono text-2xs uppercase tracking-[0.2em]",
                   isMobile ? "text-white/50" : "text-foreground/50"
                 )}
               >
@@ -401,7 +401,7 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <div
                     className={cn(
-                      "px-3 py-2 font-mono text-[10px]",
+                      "px-3 py-2 font-mono text-2xs",
                       isMobile ? "text-white/35" : "text-foreground/40"
                     )}
                   >

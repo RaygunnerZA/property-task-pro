@@ -40,7 +40,7 @@ const typographyExamples = [
   {
     name: 'Mono / Metadata',
     font: 'JetBrains Mono',
-    className: 'font-mono text-[11px] uppercase tracking-wider font-medium',
+    className: 'font-mono text-caption uppercase tracking-wider font-medium',
     sample: 'MON TUE WED THU FRI SAT SUN',
   },
   {
@@ -66,7 +66,7 @@ export function TypographySection() {
             className="p-4 rounded-card bg-surface shadow-e1 space-y-2"
           >
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded-sharp">
+              <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded-sharp">
                 {item.name}
               </span>
               <span className="text-xs text-muted-foreground">{item.font}</span>

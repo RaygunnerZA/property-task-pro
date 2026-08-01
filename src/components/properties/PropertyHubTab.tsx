@@ -212,7 +212,7 @@ export function PropertyHubTab({
       aria-selected={isActive}
       onClick={onSelect}
       className={cn(
-        "absolute isolate min-w-0 overflow-visible border-0 pb-2 pt-2 text-center text-[14px] font-semibold leading-none",
+        "absolute isolate min-w-0 overflow-visible border-0 pb-2 pt-2 text-center text-sm font-semibold leading-none",
         "transition-[left,width,height,top,color,filter] duration-300 ease-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1",
         isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80"

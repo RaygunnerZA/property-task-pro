@@ -123,7 +123,7 @@ export function UniversalIconPicker({
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Search results</p>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Searching...</p>
+            <p className="text-sm text-muted-foreground">Searching…</p>
           ) : searchResults && searchResults.length > 0 ? (
             <div className="grid grid-cols-6 gap-2">
               {searchResults.map((row) => {

@@ -165,7 +165,7 @@ export function DocumentDetailDrawer({
         </SheetHeader>
 
         {isLoading ? (
-          <div className="flex-1 p-4 text-muted-foreground">Loading...</div>
+          <div className="flex-1 p-4 text-muted-foreground">Loading…</div>
         ) : !document ? (
           <div className="flex-1 p-4 text-muted-foreground">Document not found</div>
         ) : (

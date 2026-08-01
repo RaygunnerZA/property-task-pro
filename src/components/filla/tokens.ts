@@ -64,9 +64,9 @@ export const typography = {
   headingM: 'text-lg font-semibold tracking-tight leading-snug',
   
   body: 'text-base leading-relaxed tracking-tight',
-  label: 'text-[13px] font-semibold leading-normal',
+  label: 'text-sm font-semibold leading-normal',
   caption: 'text-xs leading-normal tracking-tight',
-  mono: 'text-[11px] font-mono uppercase tracking-wide font-medium',
+  mono: 'text-caption font-mono uppercase tracking-wider font-medium',
 } as const;
 
 // === SPACING & SIZING ===

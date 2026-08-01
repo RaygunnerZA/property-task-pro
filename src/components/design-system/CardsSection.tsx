@@ -5,7 +5,7 @@ function TaskCard() {
   return <div className="card-flat p-4 space-y-3 hover:shadow-e2 transition-shadow">
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
+          <span className="inline-flex items-center px-2 py-0.5 rounded font-mono text-2xs uppercase tracking-wider font-medium bg-accent/20 text-accent">
             High
           </span>
           <h4 className="font-semibold text-ink">Replace fire extinguisher</h4>
@@ -42,7 +42,7 @@ function ComplianceCard() {
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Status</span>
-          <span className="font-mono text-[11px] uppercase tracking-wider text-primary font-medium">Compliant</span>
+          <span className="font-mono text-caption uppercase tracking-wider text-primary font-medium">Compliant</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Expires</span>
@@ -61,7 +61,7 @@ function ComplianceCard() {
 function ScheduleCard() {
   return <div className="card-flat p-4 flex gap-4">
       <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-primary">Dec</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-primary">Dec</span>
         <span className="font-mono text-xl font-bold text-primary">08</span>
       </div>
       <div className="flex-1 space-y-1">
@@ -85,7 +85,7 @@ function PropertyCard() {
         <h4 className="font-semibold text-ink">Oak House</h4>
         <p className="text-sm text-muted-foreground">24 Oak Street, London E1 6AN</p>
         <div className="flex items-center justify-between">
-          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">8 Units</span>
+          <span className="font-mono text-caption uppercase tracking-wider text-muted-foreground">8 Units</span>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-success" />
             <span className="text-xs text-muted-foreground">Healthy</span>
@@ -101,7 +101,7 @@ function BriefingCard() {
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
             <FileText className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-mono text-[10px] uppercase tracking-wider text-primary font-medium">AI Insight</span>
+          <span className="font-mono text-2xs uppercase tracking-wider text-primary font-medium">AI Insight</span>
         </div>
         <button className="text-muted-foreground hover:text-ink">
           <span className="text-lg">⋯</span>
@@ -111,13 +111,13 @@ function BriefingCard() {
         Jane cannot find documents for boiler repair at Maple Court. Last uploaded 3 months ago but marked as missing in today's inspection.
       </p>
       <div className="flex gap-2">
-        <button className="px-3 py-1.5 rounded-full bg-primary text-white font-mono text-[10px] uppercase tracking-wider">
+        <button className="px-3 py-1.5 rounded-full bg-primary text-white font-mono text-2xs uppercase tracking-wider">
           Action
         </button>
-        <button className="px-3 py-1.5 rounded-full bg-concrete/50 text-ink/70 font-mono text-[10px] uppercase tracking-wider">
+        <button className="px-3 py-1.5 rounded-full bg-concrete/50 text-ink/70 font-mono text-2xs uppercase tracking-wider">
           Ignore
         </button>
-        <button className="px-3 py-1.5 rounded-full bg-concrete/50 text-ink/70 font-mono text-[10px] uppercase tracking-wider">
+        <button className="px-3 py-1.5 rounded-full bg-concrete/50 text-ink/70 font-mono text-2xs uppercase tracking-wider">
           Share
         </button>
       </div>
@@ -132,27 +132,27 @@ export function CardsSection() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task Card</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Task Card</h3>
           <TaskCard />
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Compliance Card</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Compliance Card</h3>
           <ComplianceCard />
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Schedule Card</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Schedule Card</h3>
           <ScheduleCard />
         </div>
 
         <div className="space-y-3">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Property Card</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Property Card</h3>
           <PropertyCard />
         </div>
 
         <div className="space-y-3 md:col-span-2">
-          <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Briefing / AI Insight Card</h3>
+          <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Briefing / AI Insight Card</h3>
           <div className="max-w-md">
             <BriefingCard />
           </div>

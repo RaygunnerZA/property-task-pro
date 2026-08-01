@@ -142,7 +142,7 @@ export function PropertySelectorRow({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-caption text-muted-foreground">
           <span className="inline-flex shrink-0 items-center gap-1">
             <CheckSquare className="h-3 w-3 opacity-70" aria-hidden />
             {taskCount} Open task{taskCount !== 1 ? "s" : ""}
@@ -157,7 +157,7 @@ export function PropertySelectorRow({
 
         {summaryLine ? (
           <p
-            className="truncate text-[11px] leading-snug text-muted-foreground/90"
+            className="truncate text-caption leading-snug text-muted-foreground/90"
             title={highlight ?? undefined}
           >
             {summaryLine}

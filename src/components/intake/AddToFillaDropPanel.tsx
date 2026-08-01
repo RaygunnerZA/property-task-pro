@@ -190,7 +190,7 @@ export function AddToFillaDropPanel({
             <p className={cn("font-semibold text-foreground", compact ? "text-xs" : "text-sm")}>
               Add to Filla
             </p>
-            <p className={cn("text-muted-foreground leading-snug", compact ? "text-[10px]" : "text-xs")}>
+            <p className={cn("text-muted-foreground leading-snug", compact ? "text-2xs" : "text-xs")}>
               {uploading ? "Uploading…" : "Drop anything here. Filla will understand it."}
             </p>
             {readyCount > 0 && onReviewClick && (
@@ -202,7 +202,7 @@ export function AddToFillaDropPanel({
                 }}
                 className={cn(
                   "inline-flex items-center rounded-card bg-primary px-2 py-0.5 font-semibold text-white",
-                  compact ? "text-[9px] h-[20px]" : "text-[10px] h-[24px]"
+                  compact ? "text-2xs h-[20px]" : "text-2xs h-[24px]"
                 )}
               >
                 {readyCount} ready to review
@@ -215,13 +215,13 @@ export function AddToFillaDropPanel({
       {(lastUploaded > 0 || lastFailures.length > 0) && (
         <div className="mt-2 space-y-1">
           {lastUploaded > 0 && (
-            <div className="text-[10px] text-success-foreground flex items-center gap-1">
+            <div className="text-2xs text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
               Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}.
             </div>
           )}
           {lastFailures.length > 0 && (
-            <div className="text-[10px] text-destructive flex items-start gap-1">
+            <div className="text-2xs text-destructive flex items-start gap-1">
               <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
               <p>{lastFailures[0]}</p>
             </div>

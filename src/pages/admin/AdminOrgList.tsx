@@ -18,7 +18,7 @@ function OrgTypeBadge({ type }: { type: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-mono uppercase tracking-wide",
+        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-caption font-mono uppercase tracking-wider",
         styles[type] ?? "bg-muted text-muted-foreground"
       )}
     >
@@ -71,7 +71,7 @@ export default function AdminOrgList() {
   }, [search]);
 
   const thClass =
-    "px-4 py-3 text-left text-xs font-mono text-muted-foreground uppercase tracking-wide cursor-pointer select-none hover:text-foreground transition-colors";
+    "px-4 py-3 text-left text-xs font-mono text-muted-foreground uppercase tracking-wider cursor-pointer select-none hover:text-foreground transition-colors";
   const tdClass = "px-4 py-3 text-sm";
 
   return (

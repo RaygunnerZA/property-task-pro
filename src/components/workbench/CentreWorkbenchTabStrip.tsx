@@ -80,7 +80,7 @@ export function CentreWorkbenchTabStrip({
             <span
               className={cn(
                 "min-w-0 truncate font-semibold tracking-tight",
-                "text-[13px] leading-tight",
+                "text-sm leading-tight",
                 "md:w-[100px] md:overflow-visible md:whitespace-normal md:text-center md:text-xl md:leading-none",
                 isActive ? "text-foreground" : "text-primary"
               )}

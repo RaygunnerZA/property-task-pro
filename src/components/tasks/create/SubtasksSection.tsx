@@ -158,7 +158,7 @@ export function SubtasksSection({
   const renderTemplateChips = (items: ChecklistTemplate[], emptyLabel: string) => {
     if (items.length === 0) {
       return (
-        <div className="text-[11px] text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
+        <div className="text-caption text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
           {emptyLabel}
         </div>
       );
@@ -258,7 +258,7 @@ export function SubtasksSection({
         )}
 
         {activeTemplateName && (
-          <div className="pt-2 text-center text-[11px] text-muted-foreground/70">
+          <div className="pt-2 text-center text-caption text-muted-foreground/70">
             Template: <span className="font-medium text-foreground/80">{activeTemplateName}</span>
           </div>
         )}

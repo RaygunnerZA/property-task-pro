@@ -46,7 +46,7 @@ export function PropertyDriftSummary({ propertyId }: PropertyDriftSummaryProps) 
               <p className="text-sm text-foreground leading-snug min-w-0">{item.ruleTitle}</p>
               <span
                 className={cn(
-                  "shrink-0 rounded-[6px] px-1.5 py-0.5 text-[10px] font-mono uppercase",
+                  "shrink-0 rounded-[6px] px-1.5 py-0.5 text-2xs font-mono uppercase",
                   severityStyles[item.severity] ?? severityStyles.low
                 )}
               >

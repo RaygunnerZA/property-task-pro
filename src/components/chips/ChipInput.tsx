@@ -508,7 +508,7 @@ export function ChipInput({
                   <div className="p-2 border-b border-border/30">
                     <div className="flex items-center gap-1.5 mb-2 px-1">
                       <Sparkles className="h-3 w-3 text-primary" />
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                      <span className="text-2xs font-mono uppercase tracking-wider text-muted-foreground">
                         AI Suggestions
                       </span>
                     </div>
@@ -540,7 +540,7 @@ export function ChipInput({
                 {/* Filtered Chips Section */}
                 {filteredChips.filter((chip) => !isChipInList(chip.label) && !aiChips.some(ac => ac.label.toLowerCase() === chip.label.toLowerCase())).length > 0 && (
                   <div className="p-2">
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                    <div className="text-2xs font-mono uppercase tracking-wider text-muted-foreground mb-2 px-1">
                       Available
                     </div>
                     {filteredChips

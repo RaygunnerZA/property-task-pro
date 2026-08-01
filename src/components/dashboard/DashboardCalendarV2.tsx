@@ -519,7 +519,7 @@ export function DashboardCalendarV2({
                 >
                   <span
                     className={cn(
-                      "text-[16px] font-semibold leading-none transition-opacity duration-200 text-center px-1",
+                      "text-base font-semibold leading-none transition-opacity duration-200 text-center px-1",
                       mi === currentMonthIdx
                         ? "text-foreground opacity-100"
                         : "text-muted-foreground opacity-35",
@@ -556,7 +556,7 @@ export function DashboardCalendarV2({
                 >
                   <div
                     className={cn(
-                      "text-[11px] font-mono font-semibold leading-none transition-opacity duration-200 flex flex-col items-center",
+                      "text-caption font-mono font-semibold leading-none transition-opacity duration-200 flex flex-col items-center",
                       yi === currentYearIdx
                         ? "text-foreground opacity-100"
                         : "text-muted-foreground opacity-35",
@@ -671,7 +671,7 @@ export function DashboardCalendarV2({
               {WEEK_DAYS.map(d => (
                 <div
                   key={d}
-                  className="flex-1 min-w-0 text-center text-[10px] font-mono text-muted-foreground"
+                  className="flex-1 min-w-0 text-center text-2xs font-mono text-muted-foreground"
                   style={{ maxWidth: dayCellMaxPx }}
                 >
                   {d}
@@ -763,7 +763,7 @@ export function DashboardCalendarV2({
                         <button
                           onClick={() => onDateSelect?.(date)}
                           className={cn(
-                            "relative font-mono font-normal grid place-items-center text-[11px] p-0 shrink-0",
+                            "relative font-mono font-normal grid place-items-center text-caption p-0 shrink-0",
                             selected  && "font-semibold",
                             outside   && !selected && "text-transparent",
                           )}

@@ -221,11 +221,11 @@ export function PropertySpacesList({
                         {space.name || "Unnamed"}
                       </span>
                       {taskCount > 0 ? (
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-caption text-muted-foreground">
                           {taskCount} open task{taskCount === 1 ? "" : "s"}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground/70">No open tasks</span>
+                        <span className="text-caption text-muted-foreground/70">No open tasks</span>
                       )}
                     </span>
                   </button>

@@ -204,7 +204,7 @@ export default function ContractorTask() {
           {/* Description */}
           {task.description && (
             <div className="bg-card rounded-lg p-6 shadow-e1">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Description
               </h3>
               <p className="text-foreground whitespace-pre-wrap">{task.description}</p>

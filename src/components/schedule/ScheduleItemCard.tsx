@@ -43,7 +43,7 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
           <span className="text-sm font-semibold truncate">{item.title}</span>
 
           <span
-            className={`text-[10px] px-2 py-[2px] rounded-full font-medium shrink-0 ${
+            className={`text-2xs px-2 py-[2px] rounded-full font-medium shrink-0 ${
               isTask
                 ? "bg-primary/10 text-primary"
                 : "bg-warning-vivid/10 text-warning-foreground"
@@ -61,7 +61,7 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
 
         {/* Property + Space */}
         {(item.propertyName || item.spaceName) && (
-          <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap gap-2">
+          <div className="mt-1 text-caption text-muted-foreground flex flex-wrap gap-2">
             {item.propertyName && <span>{item.propertyName}</span>}
             {item.spaceName && <span>• {item.spaceName}</span>}
           </div>

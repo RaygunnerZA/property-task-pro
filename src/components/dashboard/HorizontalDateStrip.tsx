@@ -258,7 +258,7 @@ export function HorizontalDateStrip({
               style={{ scrollSnapAlign: "center", width: ITEM_WIDTH }}
               data-task-count={total}
               className={cn(
-                "shrink-0 h-9 rounded-xl font-mono text-xs uppercase tracking-wide transition-all select-none cursor-pointer flex items-center justify-center",
+                "shrink-0 h-9 rounded-xl font-mono text-xs uppercase tracking-wider transition-all select-none cursor-pointer flex items-center justify-center",
                 isActive
                   ? "bg-card text-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   : "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"

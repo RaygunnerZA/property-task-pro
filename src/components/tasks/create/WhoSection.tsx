@@ -344,7 +344,7 @@ export function WhoSection({
             const m = members.find((x) => x.user_id === userId);
             return m ? (
               <div key={userId} className="flex items-center justify-between gap-2 group">
-                <span className="text-[11px] font-mono uppercase truncate flex-1">
+                <span className="text-caption font-mono uppercase truncate flex-1">
                   {m.display_name}
                 </span>
                 <button
@@ -361,7 +361,7 @@ export function WhoSection({
         <button
           type="button"
           onClick={() => handleAddPersonFromDropdown(teamId)}
-          className="mt-2 w-full py-1.5 px-2 rounded-[6px] text-[11px] font-mono uppercase bg-muted/50 hover:bg-muted transition-colors"
+          className="mt-2 w-full py-1.5 px-2 rounded-[6px] text-caption font-mono uppercase bg-muted/50 hover:bg-muted transition-colors"
         >
           {ADD_PERSON_LABEL.toUpperCase()}
         </button>
@@ -485,7 +485,7 @@ export function WhoSection({
               placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
               className={cn(
                 "h-[28px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
-                "font-mono text-[11px] uppercase tracking-wide",
+                "font-mono text-caption uppercase tracking-wider",
                 "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                 "shadow-inset outline-none cursor-text",
                 "transition-[width] duration-150 ease-out"
@@ -569,7 +569,7 @@ export function WhoSection({
                 placeholder={`Add person to ${secondaryRowTeamName}`}
                 className={cn(
                   "h-[28px] rounded-card px-2 py-1 shrink-0",
-                  "font-mono text-[11px] uppercase tracking-wide",
+                  "font-mono text-caption uppercase tracking-wider",
                   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                   "shadow-inset outline-none cursor-text",
                   "transition-[width] duration-150 ease-out"

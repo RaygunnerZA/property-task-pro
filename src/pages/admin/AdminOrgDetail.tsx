@@ -21,7 +21,7 @@ function RoleBadge({ role }: { role: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-mono uppercase tracking-wide",
+        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-caption font-mono uppercase tracking-wider",
         styles[role] ?? "bg-muted text-muted-foreground"
       )}
     >
@@ -141,7 +141,7 @@ export default function AdminOrgDetail() {
                 {["Email", "Role", "Joined", "Last sign in"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-xs font-mono text-muted-foreground uppercase tracking-wide"
+                    className="px-4 py-3 text-xs font-mono text-muted-foreground uppercase tracking-wider"
                   >
                     {h}
                   </th>

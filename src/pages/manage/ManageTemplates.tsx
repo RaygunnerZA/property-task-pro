@@ -148,7 +148,7 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
             {name}
           </p>
           {isVirtual && (
-            <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
+            <p className="text-caption text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
               {entry.preset.description}
             </p>
           )}
@@ -190,27 +190,27 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
 
       <div className="flex items-center gap-2 flex-wrap">
         {isStarter && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-primary/10 text-primary-deep">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-primary/10 text-primary-deep">
             <Sparkles className="h-3 w-3" aria-hidden />
             Starting template
           </span>
         )}
         {showRegulatedBadge && <RegulatedAreaBadge />}
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide ${CATEGORY_BG[category]}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider ${CATEGORY_BG[category]}`}
         >
           {category}
         </span>
-        <span className="text-[11px] text-muted-foreground/60">
+        <span className="text-caption text-muted-foreground/60">
           {itemCount} {itemCount === 1 ? "item" : "items"}
         </span>
         {hasYesNo && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50" title="Contains yes/no items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/50" title="Contains yes/no items">
             <CheckSquare className="h-3 w-3" />
           </span>
         )}
         {hasSig && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50" title="Contains signature items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/50" title="Contains signature items">
             <FileSignature className="h-3 w-3" />
           </span>
         )}

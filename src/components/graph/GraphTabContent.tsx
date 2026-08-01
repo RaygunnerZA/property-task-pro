@@ -70,7 +70,7 @@ export function GraphTabContent({ start, depth = 3, className }: GraphTabContent
           className="btn-neomorphic"
         >
           <RefreshCw className={cn("h-4 w-4 mr-2", syncing && "animate-spin")} />
-          {syncing ? "Syncing..." : "Sync graph"}
+          {syncing ? "Syncing…" : "Sync graph"}
         </Button>
       </div>
       <GraphVisualisation

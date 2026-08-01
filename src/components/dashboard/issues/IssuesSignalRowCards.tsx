@@ -239,7 +239,7 @@ function RowShell({
         <IssuesStreamThumbnail url={thumbnailUrl} alt={title} />
         <div className="min-w-0 flex-1">
           {metaFirst && subtitle?.trim() ? (
-            <p className="text-[11px] text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
+            <p className="text-caption text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
           ) : null}
           <p
             className={cn(
@@ -250,7 +250,7 @@ function RowShell({
             {title}
           </p>
           {!metaFirst && subtitle?.trim() ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
+            <p className="mt-0.5 text-caption text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
           ) : null}
         </div>
         <div className="shrink-0 self-start pt-0.5">{trailing}</div>

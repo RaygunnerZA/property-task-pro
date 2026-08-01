@@ -204,7 +204,7 @@ export function CreateTaskSections({
               }}
             />
             {scheduleConflictNote && (
-              <div className="pl-8 text-[11px] font-medium text-accent">
+              <div className="pl-8 text-caption font-medium text-accent">
                 {scheduleConflictNote}
               </div>
             )}
@@ -258,11 +258,11 @@ export function CreateTaskSections({
           >
             {activeSection === id && id === "compliance" && (
               <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0">
-                <label className="text-[11px] font-mono uppercase text-muted-foreground">Compliance</label>
+                <label className="text-caption font-mono uppercase text-muted-foreground">Compliance</label>
                 <Switch id="row-compliance" checked={isCompliance} onCheckedChange={setIsCompliance} />
                 {isCompliance && (
                   <Select value={complianceLevel} onValueChange={setComplianceLevel}>
-                    <SelectTrigger className="h-8 w-auto min-w-[100px] text-[11px] font-mono">
+                    <SelectTrigger className="h-8 w-auto min-w-[100px] text-caption font-mono">
                       <SelectValue placeholder="Level" />
                     </SelectTrigger>
                     <SelectContent>

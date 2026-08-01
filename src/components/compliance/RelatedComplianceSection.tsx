@@ -46,7 +46,7 @@ export function RelatedComplianceSection({
         </div>
       )}
       {isLoading ? (
-        <div className="text-xs text-muted-foreground">Loading...</div>
+        <div className="text-xs text-muted-foreground">Loading…</div>
       ) : items.length === 0 && imageHazards.length === 0 ? (
         <div className="text-xs text-muted-foreground py-2">
           No compliance items linked to this property. Add compliance documents to see them here.
@@ -88,7 +88,7 @@ export function RelatedComplianceSection({
                     item.hazards.slice(0, 3).map((h) => (
                       <HazardBadge key={h} hazard={h} size="sm" />
                     ))}
-                  <span className={cn("text-[10px] font-medium", getExpiryColor(item.expiry_state))}>
+                  <span className={cn("text-2xs font-medium", getExpiryColor(item.expiry_state))}>
                     {item.expiry_state === "expired"
                       ? "Expired"
                       : item.expiry_state === "expiring"

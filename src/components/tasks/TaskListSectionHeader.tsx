@@ -28,7 +28,7 @@ export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({
 
   return (
     <div className="flex items-center justify-between pb-2 border-b border-concrete/50">
-      <Text variant="label" className={cn('uppercase tracking-wide', getTextColor())}>
+      <Text variant="label" className={cn('uppercase tracking-wider', getTextColor())}>
         {title}
       </Text>
       <span className={cn(

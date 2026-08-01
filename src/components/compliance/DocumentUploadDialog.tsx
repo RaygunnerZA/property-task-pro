@@ -284,7 +284,7 @@ export function DocumentUploadDialog({
             disabled={isSaving || !title.trim() || !selectedFile}
             className="btn-accent-vibrant"
           >
-            {isSaving ? "Uploading..." : "Upload Document"}
+            {isSaving ? "Uploading…" : "Upload Document"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -104,7 +104,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
             <p className="text-xs font-medium text-muted-foreground">Centrality</p>
           </div>
           <p className="text-lg font-semibold">{(centrality * 100).toFixed(0)}%</p>
-          <p className="text-[10px] text-muted-foreground">Operational importance</p>
+          <p className="text-2xs text-muted-foreground">Operational importance</p>
         </div>
         <div className="rounded-lg p-3 shadow-e1 bg-card">
           <div className="flex items-center gap-2 mb-1">
@@ -112,7 +112,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
             <p className="text-xs font-medium text-muted-foreground">Hazard exposure</p>
           </div>
           <p className="text-lg font-semibold">{hazardExposure.toFixed(1)}</p>
-          <p className="text-[10px] text-muted-foreground">Weighted by distance</p>
+          <p className="text-2xs text-muted-foreground">Weighted by distance</p>
         </div>
         <div className="rounded-lg p-3 shadow-e1 bg-card">
           <div className="flex items-center gap-2 mb-1">
@@ -120,7 +120,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
             <p className="text-xs font-medium text-muted-foreground">Compliance influence</p>
           </div>
           <p className="text-lg font-semibold">{complianceInfluence}</p>
-          <p className="text-[10px] text-muted-foreground">Connected items</p>
+          <p className="text-2xs text-muted-foreground">Connected items</p>
         </div>
         <div className="rounded-lg p-3 shadow-e1 bg-card">
           <div className="flex items-center gap-2 mb-1">
@@ -128,7 +128,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
             <p className="text-xs font-medium text-muted-foreground">Task impact</p>
           </div>
           <p className="text-lg font-semibold">{taskImpact}</p>
-          <p className="text-[10px] text-muted-foreground">Assets + compliance</p>
+          <p className="text-2xs text-muted-foreground">Assets + compliance</p>
         </div>
       </div>
 

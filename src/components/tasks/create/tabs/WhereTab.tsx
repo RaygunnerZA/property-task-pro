@@ -263,7 +263,7 @@ export function WhereTab({
       {/* Property Selection */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <Building2 className="h-3.5 w-3.5" />
             Property
           </Label>
@@ -304,7 +304,7 @@ export function WhereTab({
       {/* Space Selection */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
             <MapPin className="h-3.5 w-3.5" />
             Spaces
           </Label>
@@ -412,7 +412,7 @@ export function WhereTab({
                   className="w-16 h-16 rounded-card border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
                   <ImagePlus className="h-4 w-4" />
-                  <span className="text-[10px]">Image</span>
+                  <span className="text-2xs">Image</span>
                 </button>
               )}
             </div>
@@ -442,7 +442,7 @@ export function WhereTab({
               onClick={handleCreateProperty}
               disabled={!newPropertyName.trim() || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -504,7 +504,7 @@ export function WhereTab({
               onClick={handleCreateSpace}
               disabled={!newSpaceName.trim() || !propertyId || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

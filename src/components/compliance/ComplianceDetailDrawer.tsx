@@ -76,19 +76,19 @@ export function ComplianceDetailDrawer({
           </div>
           {compliance.property_name && (
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Property</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Property</div>
               <div className="font-medium">{compliance.property_name}</div>
             </div>
           )}
           {compliance.document_type && (
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Type</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Type</div>
               <div>{compliance.document_type}</div>
             </div>
           )}
           {(compliance.next_due_date || compliance.expiry_date) && (
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Due / Expiry</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Due / Expiry</div>
               <div>
                 {format(
                   parseISO(compliance.next_due_date || compliance.expiry_date!),
@@ -99,7 +99,7 @@ export function ComplianceDetailDrawer({
           )}
           {Array.isArray(compliance.hazards) && compliance.hazards.length > 0 && (
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Hazards</div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Hazards</div>
               <div className="flex flex-wrap gap-1">
                 {compliance.hazards.map((h) => (
                   <HazardBadge key={h} hazard={h} />
@@ -109,7 +109,7 @@ export function ComplianceDetailDrawer({
           )}
           <ComplianceGraphMini complianceDocumentId={compliance.id} />
           <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Graph Impact</div>
+            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Graph Impact</div>
             <GraphInsightPanel
               start={{ type: "compliance", id: compliance.id }}
               depth={2}

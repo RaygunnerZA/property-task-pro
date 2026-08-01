@@ -81,7 +81,7 @@ export function ForwardEmailSection({ className }: ForwardEmailSectionProps) {
             </a>
           </Button>
         ) : null}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-caption leading-relaxed text-muted-foreground">
           Allow up to a minute after forwarding. Nothing here? Check <strong className="font-medium">Issues → Needs review</strong> if you forwarded from a different address.
         </p>
       </CollapsibleContent>

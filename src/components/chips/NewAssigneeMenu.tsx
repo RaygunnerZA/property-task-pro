@@ -288,7 +288,7 @@ export function NewAssigneeMenu({
           onClick={handleCreateTeam}
           disabled={isSubmitting}
         >
-          {isSubmitting ? "Creating..." : "Create Team"}
+          {isSubmitting ? "Creating…" : "Create Team"}
         </Button>
       </div>
     </div>

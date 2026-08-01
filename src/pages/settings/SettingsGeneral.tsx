@@ -370,7 +370,7 @@ export default function SettingsGeneral() {
                   {creating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      Creating…
                     </>
                   ) : (
                     <>
@@ -474,7 +474,7 @@ export default function SettingsGeneral() {
                 {savingProfile ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Saving…
                   </>
                 ) : (
                   <>
@@ -560,7 +560,7 @@ export default function SettingsGeneral() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                Saving…
               </>
             ) : (
               <>
@@ -709,7 +709,7 @@ export default function SettingsGeneral() {
               {savingProfile ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>

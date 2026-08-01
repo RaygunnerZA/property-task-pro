@@ -88,7 +88,7 @@ export function DocumentUploadZone({
         {uploading ? (
           <>
             <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
-            <p className="text-sm text-muted-foreground">Uploading...</p>
+            <p className="text-sm text-muted-foreground">Uploading…</p>
           </>
         ) : (
           <>

@@ -51,7 +51,7 @@ export function IssuesWorkbenchSectionHeader({
           {title}
         </h2>
         {subtitle ? (
-          <p className="min-w-0 pt-[5px] text-[11px] leading-snug text-muted-foreground sm:text-xs">
+          <p className="min-w-0 pt-[5px] text-caption leading-snug text-muted-foreground sm:text-xs">
             {subtitle}
           </p>
         ) : (
@@ -77,7 +77,7 @@ export function IssuesWorkbenchSectionHeader({
           {typeof count === "number" ? (
             <span
               className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded-card px-1.5 text-[11px] font-semibold",
+                "inline-flex h-5 min-w-5 items-center justify-center rounded-card px-1.5 text-caption font-semibold",
                 badgeClass
               )}
             >

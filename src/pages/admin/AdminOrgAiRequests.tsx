@@ -16,7 +16,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-[11px] font-mono uppercase tracking-wide",
+        "inline-flex items-center px-2 py-0.5 rounded-[6px] text-caption font-mono uppercase tracking-wider",
         STATUS_STYLES[status] ?? "bg-muted text-muted-foreground"
       )}
     >
@@ -75,7 +75,7 @@ export default function AdminOrgAiRequests() {
     });
   }, [requests, statusFilter, functionFilter]);
 
-  const thClass = "px-3 py-2.5 text-left text-xs font-mono text-muted-foreground uppercase tracking-wide";
+  const thClass = "px-3 py-2.5 text-left text-xs font-mono text-muted-foreground uppercase tracking-wider";
   const tdClass = "px-3 py-2.5 text-sm";
 
   const selectClass =

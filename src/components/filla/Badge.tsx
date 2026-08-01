@@ -28,8 +28,8 @@ export const Badge: React.FC<BadgeProps> = ({
   };
   
   const sizes = {
-    standard: 'px-3 py-1 text-[11px] font-mono uppercase tracking-wide font-medium',
-    bold: 'px-3 py-1 text-[11px] font-bold uppercase tracking-wide'
+    standard: 'px-3 py-1 text-caption font-mono uppercase tracking-wider font-medium',
+    bold: 'px-3 py-1 text-caption font-bold uppercase tracking-wider'
   };
   
   return (

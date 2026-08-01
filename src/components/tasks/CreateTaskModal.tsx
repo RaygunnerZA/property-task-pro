@@ -266,7 +266,7 @@ export function CreateTaskModal({
             />
           </div>
           {!aiLoading && aiError && !aiResult?.title && (
-            <p className="pt-2 text-[10px] text-muted-foreground">
+            <p className="pt-2 text-2xs text-muted-foreground">
               AI title is temporarily unavailable. You can still enter one manually.
             </p>
           )}

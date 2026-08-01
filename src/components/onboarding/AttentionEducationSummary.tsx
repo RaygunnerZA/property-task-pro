@@ -83,8 +83,8 @@ export function AttentionEducationSummary({
       <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-foreground">Example workspace</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{copy}</p>
-        <p className="mt-1 text-[10px] font-mono uppercase tracking-wide text-primary/90">
+        <p className="mt-0.5 text-caption leading-snug text-muted-foreground">{copy}</p>
+        <p className="mt-1 text-2xs font-mono uppercase tracking-wider text-primary/90">
           Every item below is an example
         </p>
       </div>

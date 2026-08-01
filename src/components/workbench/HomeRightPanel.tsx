@@ -56,7 +56,7 @@ export function HomeRightPanel() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">{title}</p>
-              <p className="text-[11px] text-muted-foreground leading-snug">{description}</p>
+              <p className="text-caption text-muted-foreground leading-snug">{description}</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>

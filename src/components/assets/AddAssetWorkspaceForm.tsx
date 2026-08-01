@@ -145,7 +145,7 @@ export function AddAssetWorkspaceForm({
               />
             ) : (
               <div className="w-14 h-14 flex items-center justify-center p-1">
-                <span className="text-[10px] text-muted-foreground truncate text-center">
+                <span className="text-2xs text-muted-foreground truncate text-center">
                   {f.displayName}
                 </span>
               </div>
@@ -317,7 +317,7 @@ export function AddAssetWorkspaceForm({
             disabled={isSaving || !propertyId || !name.trim()}
             className="btn-accent-vibrant"
           >
-            {isSaving ? "Saving..." : "Save Asset"}
+            {isSaving ? "Saving…" : "Save Asset"}
           </Button>
         </DialogFooter>
       ) : (
@@ -339,7 +339,7 @@ export function AddAssetWorkspaceForm({
             disabled={isSaving || !propertyId || !name.trim()}
             className="btn-accent-vibrant"
           >
-            {isSaving ? "Saving..." : "Save Asset"}
+            {isSaving ? "Saving…" : "Save Asset"}
           </Button>
         </div>
       )}

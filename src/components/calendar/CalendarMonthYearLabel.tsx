@@ -13,7 +13,7 @@ export function CalendarMonthYearLabel({
   date,
   className,
   monthClassName = "text-lg font-semibold text-ink",
-  yearClassName = "text-[10px] font-semibold leading-none text-accent",
+  yearClassName = "text-2xs font-semibold leading-none text-accent",
 }: CalendarMonthYearLabelProps) {
   const year = format(date, "yyyy");
 

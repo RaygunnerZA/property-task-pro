@@ -217,7 +217,7 @@ export function CreateTaskRow({
                 placeholder={instruction}
                 className={cn(
                   "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
-                  "font-mono text-[11px] uppercase tracking-wide",
+                  "font-mono text-caption uppercase tracking-wider",
                   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                   "shadow-inset outline-none cursor-text",
                   "transition-[width] duration-150 ease-out"
