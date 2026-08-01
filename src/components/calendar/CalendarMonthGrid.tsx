@@ -61,8 +61,8 @@ type CalendarMonthGridProps = {
 
 function taskPriorityDotClass(priority?: string | null): string | null {
   const normalized = priority?.toLowerCase();
-  if (normalized === "urgent") return "bg-red-500";
-  if (normalized === "high") return "bg-[#FFB84D]";
+  if (normalized === "urgent") return "bg-destructive";
+  if (normalized === "high") return "bg-warning-vivid";
   return null;
 }
 
@@ -150,13 +150,13 @@ function CalendarTaskChip({
         />
       ) : null}
       <span
-        className="min-h-0 flex-1 overflow-hidden font-medium leading-[11px] line-clamp-2 text-[#2A293E]"
+        className="min-h-0 flex-1 overflow-hidden font-medium leading-[11px] line-clamp-2 text-ink"
         title={task.title || "Task"}
       >
         {task.title || "Task"}
       </span>
       {propertyLabel ? (
-        <span className="shrink-0 truncate text-[9px] leading-none text-[#2A293E] opacity-90">
+        <span className="shrink-0 truncate text-[9px] leading-none text-ink opacity-90">
           {propertyLabel}
         </span>
       ) : null}
@@ -234,13 +234,13 @@ function CalendarDayCell({
       <button
         type="button"
         onClick={() => onDateSelect?.(date)}
-        className="relative z-[2] -mx-px inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] font-mono text-[11px] font-medium"
+        className="relative z-[2] -mx-px inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sharp font-mono text-[11px] font-medium"
       >
         <span
           className={cn(
-            "inline-flex h-6 w-6 items-center justify-center rounded-[5px]",
+            "inline-flex h-6 w-6 items-center justify-center rounded-sharp",
             isSelected && "bg-white text-foreground",
-            isTodayDate && !isSelected && "ring-1 ring-[#FF9B82]/60"
+            isTodayDate && !isSelected && "ring-1 ring-accent/60"
           )}
         >
           {date.getDate()}

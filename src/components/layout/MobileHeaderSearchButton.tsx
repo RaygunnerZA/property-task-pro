@@ -57,7 +57,7 @@ export function MobileHeaderSearchButton({
         className={cn(
           onGradient
             ? gradientHeaderControlClassName()
-            : "flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            : "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-label="Search"
       >

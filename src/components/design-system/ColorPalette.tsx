@@ -48,7 +48,7 @@ export function ColorPalette() {
                 className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 {copied === color.name ? (
-                  <Check className="w-3.5 h-3.5 text-green-600" />
+                  <Check className="w-3.5 h-3.5 text-success-foreground" />
                 ) : (
                   <Copy className="w-3.5 h-3.5 text-ink/60" />
                 )}

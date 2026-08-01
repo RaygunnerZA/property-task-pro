@@ -46,7 +46,7 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
 
   return (
     <div
-      className="rounded-[12px] bg-white/50 shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[126px]"
+      className="rounded-xl bg-white/50 shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[126px]"
       onClick={onClick}
     >
       {/* Top band: photo or solid property colour */}
@@ -133,7 +133,7 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
           <div className="relative w-full h-3 bg-muted rounded-full overflow-hidden">
             <div
               className={`absolute left-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full transition-all ${
-                conditionScore >= 80 ? "bg-green-500" : conditionScore >= 60 ? "bg-yellow-500" : "bg-red-500"
+                conditionScore >= 80 ? "bg-success-vivid" : conditionScore >= 60 ? "bg-warning-vivid" : "bg-destructive"
               }`}
               style={{ width: `${conditionScore}%` }}
             />

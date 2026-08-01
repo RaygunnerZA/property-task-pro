@@ -363,7 +363,7 @@ export function WorkbenchFiltersPopover({
           <Button
             type="button"
             size="sm"
-            className="rounded-lg bg-[#2A293E] px-4 text-white hover:bg-[#2A293E]/90"
+            className="rounded-lg bg-ink px-4 text-white hover:bg-ink/90"
             onClick={() => {
               applyFilterDraft();
               setFiltersOpen(false);

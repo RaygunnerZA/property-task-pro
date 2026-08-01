@@ -10,7 +10,7 @@ export default function WorkSegmentControl({ value, onChange }: Props) {
     <button
       onClick={() => onChange(id)}
       className={cn(
-        'flex-1 py-2.5 text-sm font-medium rounded-[5px] transition-all',
+        'flex-1 py-2.5 text-sm font-medium rounded-sharp transition-all',
         value === id
           ? 'bg-card text-primary shadow-e1'
           : 'text-muted-foreground hover:text-ink'
@@ -21,7 +21,7 @@ export default function WorkSegmentControl({ value, onChange }: Props) {
   );
 
   return (
-    <div className="flex gap-1 p-1 bg-concrete/30 rounded-[5px] border border-concrete">
+    <div className="flex gap-1 p-1 bg-concrete/30 rounded-sharp border border-concrete">
       {tab("tasks", "Tasks")}
       {tab("messages", "Messages")}
       {tab("reminders", "Reminders")}

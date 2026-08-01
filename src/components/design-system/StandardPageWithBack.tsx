@@ -116,7 +116,7 @@ export function StandardPageWithBack({
       >
         <div
           className={cn(
-            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-[12px] px-gutter-page pr-24 sm:pr-32",
+            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-xl px-gutter-page pr-24 sm:pr-32",
             maxWidthClasses[maxWidth]
           )}
           style={headerBarStyle}

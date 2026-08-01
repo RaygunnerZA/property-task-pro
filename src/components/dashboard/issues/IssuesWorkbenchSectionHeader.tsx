@@ -34,8 +34,8 @@ export function IssuesWorkbenchSectionHeader({
   const hasArt = Boolean(illustrationSrc);
   const badgeClass =
     countVariant === "review"
-      ? "bg-[#D9D9D9] text-white"
-      : "border-0 bg-white/70 text-[#878787]";
+      ? "bg-muted text-white"
+      : "border-0 bg-white/70 text-muted-foreground";
 
   if (hasArt) {
     return (
@@ -77,7 +77,7 @@ export function IssuesWorkbenchSectionHeader({
           {typeof count === "number" ? (
             <span
               className={cn(
-                "inline-flex h-5 min-w-5 items-center justify-center rounded-[8px] px-1.5 text-[11px] font-semibold",
+                "inline-flex h-5 min-w-5 items-center justify-center rounded-card px-1.5 text-[11px] font-semibold",
                 badgeClass
               )}
             >
@@ -92,7 +92,7 @@ export function IssuesWorkbenchSectionHeader({
             className={cn(
               "inline-flex shrink-0 items-center gap-0.5 text-xs font-medium transition-colors",
               countVariant === "review"
-                ? "text-[#FF6B6B] hover:text-[#FF6B6B]/80"
+                ? "text-destructive hover:text-destructive/80"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -103,7 +103,7 @@ export function IssuesWorkbenchSectionHeader({
           <span
             className={cn(
               "inline-flex shrink-0 items-center gap-0.5 text-xs font-medium",
-              countVariant === "review" ? "text-[#FF6B6B]" : "text-muted-foreground"
+              countVariant === "review" ? "text-destructive" : "text-muted-foreground"
             )}
           >
             View all

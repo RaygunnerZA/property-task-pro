@@ -83,6 +83,7 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          vivid: "hsl(var(--success-vivid))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",

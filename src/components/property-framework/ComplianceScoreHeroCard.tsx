@@ -28,7 +28,7 @@ export function ComplianceScoreHeroCard({
   return (
     <div
       className={cn(
-        "rounded-[8px] overflow-hidden shadow-e1 max-h-[180px] flex flex-col",
+        "rounded-card overflow-hidden shadow-e1 max-h-[180px] flex flex-col",
         "transition-all duration-150 ease-out",
         "hover:shadow-e2 hover:-translate-y-0.5",
         className
@@ -44,7 +44,7 @@ export function ComplianceScoreHeroCard({
           <span className={criticalCount > 0 ? "text-destructive font-medium" : "text-muted-foreground"}>
             {criticalCount} critical
           </span>
-          <span className={dueSoonCount > 0 ? "text-amber-600 font-medium" : "text-muted-foreground"}>
+          <span className={dueSoonCount > 0 ? "text-warning-foreground font-medium" : "text-muted-foreground"}>
             {dueSoonCount} due soon
           </span>
         </div>

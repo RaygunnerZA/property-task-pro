@@ -205,7 +205,7 @@ export function AssetsSection({
               />
               
               {imagePreview ? (
-                <div className="relative w-16 h-16 rounded-[8px] overflow-hidden shadow-e1">
+                <div className="relative w-16 h-16 rounded-card overflow-hidden shadow-e1">
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -219,7 +219,7 @@ export function AssetsSection({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-16 h-16 rounded-[8px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
+                  className="w-16 h-16 rounded-card border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
                   <ImagePlus className="h-4 w-4" />
                   <span className="text-[10px]">Image</span>

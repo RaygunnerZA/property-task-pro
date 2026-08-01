@@ -11,8 +11,8 @@ interface AuditMetadataBlockProps {
 
 export default function AuditMetadataBlock({ data }: AuditMetadataBlockProps) {
   return (
-    <div className="printable-section bg-white p-6 border-b border-gray-200">
-      <div className="space-y-1 text-sm text-gray-700">
+    <div className="printable-section bg-white p-6 border-b border-border">
+      <div className="space-y-1 text-sm text-muted-foreground">
         <p>
           <span className="font-semibold">Organisation:</span>{' '}
           {data?.org ?? '—'}

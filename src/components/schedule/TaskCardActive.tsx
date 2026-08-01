@@ -141,7 +141,7 @@ export function TaskCardActive({
 
   const priorityColors: Record<string, string> = {
     urgent: "bg-destructive/20 text-destructive border-destructive/30",
-    high: "bg-orange-500/20 text-orange-600 border-orange-500/30",
+    high: "bg-accent/20 text-accent border-accent/30",
     medium: "bg-primary/20 text-primary border-primary/30",
     low: "bg-muted text-muted-foreground border-border",
   };
@@ -150,7 +150,7 @@ export function TaskCardActive({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card shadow-e1 border border-border/50",
+        "rounded-card bg-card shadow-e1 border border-border/50",
         "cursor-pointer transition-all duration-300",
         "hover:shadow-lg hover:-translate-y-[1px]",
         "active:scale-[0.99]"
@@ -161,7 +161,7 @@ export function TaskCardActive({
           imageUrl={imageUrl}
           alt={t.title || "Task image"}
           variant="vertical"
-          className="h-32 rounded-t-[8px]"
+          className="h-32 rounded-t-card"
         />
       ) : null}
 
@@ -183,7 +183,7 @@ export function TaskCardActive({
           {/* Property Chip */}
           {property && (
             <div
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-xs font-medium"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sharp text-xs font-medium"
               style={{
                 backgroundColor: `${iconColor}20`,
                 color: iconColor,
@@ -198,7 +198,7 @@ export function TaskCardActive({
           {/* Milestone Chip */}
           {task._milestoneLabel && (
             <div
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-xs font-medium"
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-sharp text-xs font-medium"
               style={{
                 backgroundColor: "#8EC9CE20",
                 color: "#8EC9CE",

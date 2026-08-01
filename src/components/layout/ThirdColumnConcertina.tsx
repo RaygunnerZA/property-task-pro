@@ -38,7 +38,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
   return (
     <div
       className={cn(
-        "flex flex-col bg-background rounded-[12px] shadow-none border-0 overflow-visible mx-0 box-border min-w-0 w-full max-w-full px-0",
+        "flex flex-col bg-background rounded-xl shadow-none border-0 overflow-visible mx-0 box-border min-w-0 w-full max-w-full px-0",
         className
       )}
       style={PAPER_TEXTURE_STYLE}
@@ -73,21 +73,21 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
               onClick={section.onToggle}
               className={cn(
                 SECTION_HEADER_CLASS,
-                isFirst && "rounded-t-[12px]",
-                isLast && !isExpanded && "rounded-b-[12px]",
+                isFirst && "rounded-t-xl",
+                isLast && !isExpanded && "rounded-b-xl",
                 !isFirst && "border-t-0"
               )}
             >
               <div className="flex items-center gap-2">
                 {section.id === "assistant" && (
-                  <FillaIcon size={20} className="shrink-0 text-[#85BABC]" />
+                  <FillaIcon size={20} className="shrink-0 text-primary" />
                 )}
-                <h2 className="text-lg font-semibold text-[#85BABC]">{section.title}</h2>
+                <h2 className="text-lg font-semibold text-primary">{section.title}</h2>
               </div>
               {isExpanded ? (
-                <ChevronUp className="h-5 w-5 text-[#85BABC] shrink-0" />
+                <ChevronUp className="h-5 w-5 text-primary shrink-0" />
               ) : (
-                <ChevronDown className="h-5 w-5 text-[#85BABC] shrink-0" />
+                <ChevronDown className="h-5 w-5 text-primary shrink-0" />
               )}
             </button>
 
@@ -97,7 +97,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
               className={cn(
                 "overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out",
                 section.id === "details" && "shadow-[3px_4px_5.4px_0px_rgba(0,0,0,0.15),-3px_-7px_4.8px_0px_rgba(255,255,255,0.7)]",
-                section.id === "details" && "rounded-[12px]",
+                section.id === "details" && "rounded-xl",
                 isExpanded ? "max-h-[70vh] opacity-100 overflow-y-auto" : "max-h-0 opacity-0 pointer-events-none"
               )}
             >

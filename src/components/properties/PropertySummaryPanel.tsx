@@ -24,16 +24,16 @@ import {
 } from "@/lib/centreWorkbenchTabs";
 
 const statNumberClass =
-  "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
+  "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-primary-deep transition-colors group-hover:text-white sm:pb-[3px] sm:text-[24px]";
 
 const statNumberInlineClass =
-  "shrink-0 text-[28px] font-medium tabular-nums leading-none text-[#5aa3a9] transition-colors group-hover:text-white";
+  "shrink-0 text-[28px] font-medium tabular-nums leading-none text-primary-deep transition-colors group-hover:text-white";
 
 const statWordClass =
   "font-mono text-[11px] font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
-  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-[12px] bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-[#3A4A6A] hover:shadow-none sm:px-1.5 sm:pb-3";
+  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-ink hover:shadow-none sm:px-1.5 sm:pb-3";
 
 const STAT_CENTRE_TABS: readonly CentreWorkbenchTab[] = ["inflow", "tasks", "calendar"];
 
@@ -41,18 +41,18 @@ type StatSecondaryTone = "urgent" | "warning" | "neutral";
 
 const secondaryCountBoxClass: Record<StatSecondaryTone, string> = {
   urgent:
-    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-destructive",
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-destructive",
   warning:
-    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-amber-600",
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-warning-foreground",
   neutral:
-    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-[8px] bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-muted-foreground",
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-[10px] font-bold tabular-nums leading-none text-muted-foreground",
 };
 
 const secondaryLabelClass: Record<StatSecondaryTone, string> = {
   urgent:
-    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-destructive transition-colors group-hover:text-[#EB6834]",
+    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-destructive transition-colors group-hover:text-accent",
   warning:
-    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-amber-600 transition-colors group-hover:text-amber-300",
+    "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-warning-foreground transition-colors group-hover:text-amber-300",
   neutral:
     "font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-muted-foreground transition-colors group-hover:text-white/90",
 };
@@ -212,7 +212,7 @@ function CountRow({
   const content = (
     <>
       <span className="text-[14px] font-medium text-muted-foreground">{label}</span>
-      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-[8px] bg-white px-1 text-[14px] font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
+      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-card bg-white px-1 text-[14px] font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
         {count}
       </span>
     </>
@@ -226,7 +226,7 @@ function CountRow({
     <button
       type="button"
       onClick={onActivate}
-      className="flex w-full items-center justify-between gap-2 rounded-[12px] py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className="flex w-full items-center justify-between gap-2 rounded-xl py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
       {content}
     </button>

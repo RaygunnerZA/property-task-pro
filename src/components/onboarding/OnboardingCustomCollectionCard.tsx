@@ -238,7 +238,7 @@ export function OnboardingCustomCollectionCard({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="relative flex h-full flex-col overflow-hidden rounded-[8px] bg-card shadow-e1">
+        <div className="relative flex h-full flex-col overflow-hidden rounded-card bg-card shadow-e1">
           <div
             role={isExpanded ? "button" : undefined}
             tabIndex={isExpanded ? 0 : undefined}

@@ -163,7 +163,7 @@ export default function SpaceDetailPage() {
   const headerElement = (
     <PageHeader>
       <div
-        className="px-4 py-2 h-[60px] flex items-center justify-between rounded-bl-[12px]"
+        className="px-4 py-2 h-[60px] flex items-center justify-between rounded-bl-xl"
         style={{
           backgroundImage: "linear-gradient(to right, #8EC9CE 0%, #8EC9CE 20%, transparent 70%, transparent 100%)",
         }}
@@ -270,7 +270,7 @@ export default function SpaceDetailPage() {
         leftColumn={
           <div className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0">
             <div className="p-2">
-              <div className="bg-card/60 rounded-[8px] shadow-e1 overflow-hidden">
+              <div className="bg-card/60 rounded-card shadow-e1 overflow-hidden">
                 <div className="group/space-hero relative w-full aspect-[4/3] flex items-center justify-center bg-muted/40">
                   <img
                     src={thumbnailSrc}
@@ -282,7 +282,7 @@ export default function SpaceDetailPage() {
                     onClick={() => setThumbnailPickerOpen(true)}
                     className={cn(
                       "absolute top-2.5 right-2.5 z-10 flex h-8 w-8 items-center justify-center",
-                      "rounded-md bg-white/90 text-[#6D7480] shadow-sm",
+                      "rounded-md bg-white/90 text-muted-foreground shadow-sm",
                       "transition-colors hover:bg-white hover:text-foreground",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     )}

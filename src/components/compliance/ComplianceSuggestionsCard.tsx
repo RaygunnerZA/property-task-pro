@@ -71,7 +71,7 @@ export function ComplianceSuggestionsCard({
   return (
     <div
       className={cn(
-        "rounded-[8px] shadow-e1 p-4 bg-card border border-border/50",
+        "rounded-card shadow-e1 p-4 bg-card border border-border/50",
         "space-y-4"
       )}
     >
@@ -150,7 +150,7 @@ export function ComplianceSuggestionsCard({
             return (
               <p
                 key={w.ruleId}
-                className="text-xs text-amber-600 flex items-start gap-1.5"
+                className="text-xs text-warning-foreground flex items-start gap-1.5"
               >
                 <span className="shrink-0 mt-0.5">⚠</span>
                 <span>{w.output.message}</span>

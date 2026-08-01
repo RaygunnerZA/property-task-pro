@@ -61,7 +61,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   if (loading) {
     return (
       <div className={cn('flex items-center gap-1.5 py-0.5', className)}>
-        <FillaIcon size={11} className="text-[#EB6834] shrink-0 animate-pulse" />
+        <FillaIcon size={11} className="text-accent shrink-0 animate-pulse" />
         <span className="text-[10px] text-muted-foreground/60 font-mono uppercase tracking-wide animate-pulse">
           Analyzing…
         </span>
@@ -120,7 +120,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   return (
     <div className={cn('flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5', className)}>
       {/* Filla coral indicator */}
-      <FillaIcon size={11} className="text-[#EB6834] shrink-0 flex-none" />
+      <FillaIcon size={11} className="text-accent shrink-0 flex-none" />
 
       {relevant.map((chip) => {
         const isVerb = chip.blockingRequired && !chip.resolvedEntityId;

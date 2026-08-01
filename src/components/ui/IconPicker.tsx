@@ -39,7 +39,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
           type="button"
           onClick={() => onChange(name)}
           className={cn(
-            "w-10 h-10 rounded-[5px] flex items-center justify-center transition-all",
+            "w-10 h-10 rounded-sharp flex items-center justify-center transition-all",
             "border border-border hover:border-primary",
             value === name
               ? "bg-primary text-primary-foreground border-primary"

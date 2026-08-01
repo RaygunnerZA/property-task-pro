@@ -201,7 +201,7 @@ export default function MessageList({ onMessageClick, selectedMessageId }: Messa
             key={msg.id}
             onClick={() => onMessageClick?.(msg.id)}
             className={cn(
-              "w-full text-left p-4 rounded-[12px] backdrop-blur-md transition-all",
+              "w-full text-left p-4 rounded-xl backdrop-blur-md transition-all",
               "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.7)]",
               "hover:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
               "active:scale-[0.98]",

@@ -112,7 +112,7 @@ export default function SpaceOrganisationScreen() {
     <>
       <PageHeader>
         <div
-          className="flex h-[60px] items-center rounded-bl-[12px] px-4 pr-20 py-2"
+          className="flex h-[60px] items-center rounded-bl-xl px-4 pr-20 py-2"
           style={{
             backgroundImage: `linear-gradient(90deg, ${headerAccent} 0%, ${headerAccent} 28%, transparent 97%, transparent 100%)`,
           }}
@@ -150,7 +150,7 @@ export default function SpaceOrganisationScreen() {
           </li>
         </ul>
       </WorkspaceSurfaceCard>
-      <div className="flex flex-col overflow-hidden rounded-[12px] bg-card/60 shadow-e1">
+      <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
         <PropertySpacesList
           propertyId={propertyId}
           tasks={tasks}

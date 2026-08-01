@@ -13,7 +13,7 @@ function OrgTypeBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
     personal: "bg-muted text-muted-foreground",
     business: "bg-primary/15 text-primary",
-    contractor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    contractor: "bg-warning/50 text-warning-foreground dark:bg-amber-900/30 dark:text-amber-400",
   };
   return (
     <span
@@ -92,18 +92,18 @@ export default function AdminOrgList() {
             placeholder="Filter by name…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-3 h-9 rounded-[8px] border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-56"
+            className="pl-9 pr-3 h-9 rounded-card border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-56"
           />
         </div>
       </div>
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 rounded-[8px] px-4 py-3">
+        <div className="text-sm text-destructive bg-destructive/10 rounded-card px-4 py-3">
           Failed to load organisations.
         </div>
       )}
 
-      <div className="rounded-[12px] border border-border overflow-hidden shadow-sm">
+      <div className="rounded-xl border border-border overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead className="bg-muted/40">
             <tr>

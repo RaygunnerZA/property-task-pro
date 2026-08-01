@@ -150,7 +150,7 @@ export function countPropertyPeople(
 }
 
 const hubCardActionClass = cn(
-  "inline-flex h-6 shrink-0 items-center gap-0.5 rounded-[5px] px-1.5",
+  "inline-flex h-6 shrink-0 items-center gap-0.5 rounded-sharp px-1.5",
   "font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground",
   "transition-colors hover:bg-background/50 hover:text-foreground",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
@@ -179,7 +179,7 @@ function RecentChip({ label }: { label: string }) {
   return (
     <span
       className={cn(
-        "inline-flex h-[22px] max-w-[120px] shrink-0 items-center justify-center truncate rounded-[5px] bg-background/55 px-2",
+        "inline-flex h-[22px] max-w-[120px] shrink-0 items-center justify-center truncate rounded-sharp bg-background/55 px-2",
         "font-mono text-[10px] font-medium uppercase tracking-wider text-foreground/75 shadow-sm"
       )}
       title={label}
@@ -302,7 +302,7 @@ export function PropertyHubNavCards({
       >
         <div
           ref={tabRowRef}
-          className="relative h-[37px] w-full overflow-visible rounded-t-[12px] bg-muted/50 px-0 pt-0"
+          className="relative h-[37px] w-full overflow-visible rounded-t-xl bg-muted/50 px-0 pt-0"
         >
           {NAV_CARDS.map(({ id, title, fill }, index) => (
             <PropertyHubTab

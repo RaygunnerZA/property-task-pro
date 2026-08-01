@@ -708,7 +708,7 @@ export default function SettingsTeam() {
                             onClick={() => setEditMemberId(isEditing ? null : member.id)}
                             title={isEditing ? "Close" : "Edit member"}
                             className={cn(
-                              "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                              "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                               "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                               isEditing && "bg-primary/10 text-primary"
                             )}
@@ -722,7 +722,7 @@ export default function SettingsTeam() {
                               type="button"
                               onClick={() => setDeleteMemberId(member.id)}
                               title="Remove member"
-                              className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -841,7 +841,7 @@ export default function SettingsTeam() {
                                 }}
                                 title="Edit invitation"
                                 className={cn(
-                                  "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                                  "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                                   "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                                   isEditing && "bg-primary/10 text-primary"
                                 )}
@@ -868,7 +868,7 @@ export default function SettingsTeam() {
                                     setActionBusyId(null);
                                   }
                                 }}
-                                className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+                                className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
                               >
                                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                               </button>
@@ -890,7 +890,7 @@ export default function SettingsTeam() {
                                   setActionBusyId(null);
                                 }
                               }}
-                              className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+                              className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
                             >
                               <KeyRound className="h-4 w-4" />
                             </button>
@@ -905,7 +905,7 @@ export default function SettingsTeam() {
                                 setEditInviteId(null);
                               }}
                               className={cn(
-                                "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                                "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                                 "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                                 isSettingPw && "bg-primary/10 text-primary"
                               )}
@@ -933,7 +933,7 @@ export default function SettingsTeam() {
                                     setActionBusyId(null);
                                   }
                                 }}
-                                className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                                className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                               >
                                 <Ban className="h-4 w-4" />
                               </button>
@@ -988,7 +988,7 @@ export default function SettingsTeam() {
           <WorkspaceSurfaceCard title="Internal roles" className="bg-card/80">
             <div className="space-y-3 px-4 pb-4">
               {INTERNAL_ORG_ROLES.map((r) => (
-                <div key={r.value} className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
+                <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5 shrink-0 text-primary" />
                     <span className="text-sm font-medium">{r.label}</span>
@@ -1002,7 +1002,7 @@ export default function SettingsTeam() {
           <WorkspaceSurfaceCard title="External roles" className="bg-card/80">
             <div className="space-y-3 px-4 pb-4">
               {EXTERNAL_ORG_ROLES.map((r) => (
-                <div key={r.value} className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
+                <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5 shrink-0 text-accent" />
                     <span className="text-sm font-medium">{r.label}</span>

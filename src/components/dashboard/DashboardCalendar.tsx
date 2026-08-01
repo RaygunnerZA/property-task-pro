@@ -154,8 +154,8 @@ export function DashboardCalendar({
           hasTasks: "has-tasks",
         }}
         components={{
-          IconLeft: () => <ChevronLeft className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
-          IconRight: () => <ChevronRight className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
+          IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.5} />,
+          IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.5} />,
           CaptionLabel: CustomCaptionLabel,
           Day: (props: any) => {
             const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
@@ -241,7 +241,7 @@ export function DashboardCalendar({
                 </span>
                 {isTodayDate && (
                   <span 
-                    className="absolute w-8 h-8 rounded-[12px] border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    className="absolute w-8 h-8 rounded-xl border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                   />
                 )}
               </button>

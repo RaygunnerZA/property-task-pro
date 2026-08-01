@@ -26,7 +26,7 @@ export function TeamCard({ team, className }: TeamCardProps) {
     <div
       onClick={() => navigate(`/teams/${team.id}`)}
       className={cn(
-        "bg-card rounded-[8px] overflow-hidden shadow-e1",
+        "bg-card rounded-card overflow-hidden shadow-e1",
         "cursor-pointer transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-[1px]",
         "active:scale-[0.99] active:translate-y-0",

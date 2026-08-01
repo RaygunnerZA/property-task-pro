@@ -22,7 +22,7 @@ export function ComplianceCalendarEvent({
     expiryState === "expired"
       ? "border-l-destructive bg-destructive/5 dark:bg-destructive/10"
       : expiryState === "expiring"
-      ? "border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20"
+      ? "border-l-amber-500 bg-warning/30 dark:bg-amber-950/20"
       : "border-l-success bg-success/5 dark:bg-success/10";
 
   const aiShade =

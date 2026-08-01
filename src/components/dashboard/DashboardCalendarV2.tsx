@@ -585,7 +585,7 @@ export function DashboardCalendarV2({
               }}
               aria-label="Next month"
             >
-              <ChevronUp size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
+              <ChevronUp size={15} className="text-accent" style={{ height: 13, fontSize: 20 }} />
             </button>
             <button
               onClick={() => scrollToMonth(subMonths(shownMonth, 1))}
@@ -600,7 +600,7 @@ export function DashboardCalendarV2({
               }}
               aria-label="Previous month"
             >
-              <ChevronDown size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
+              <ChevronDown size={15} className="text-accent" style={{ height: 13, fontSize: 20 }} />
             </button>
           </div>
 
@@ -646,13 +646,13 @@ export function DashboardCalendarV2({
                 <Expand
                   size={14}
                   strokeWidth={2}
-                  className="text-[#8EC9CE]"
+                  className="text-primary"
                 />
               ) : (
                 <Shrink
                   size={14}
                   strokeWidth={2}
-                  className="text-[#8EC9CE]"
+                  className="text-primary"
                 />
               )}
             </button>
@@ -801,7 +801,7 @@ export function DashboardCalendarV2({
                           {showMarkers && todayDate && !selected && (
                             <span
                               aria-hidden
-                              className="absolute rounded-[12px] bg-white/90 border-[3px] border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                              className="absolute rounded-xl bg-white/90 border-[3px] border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                               style={{ width: dayBtnSizePx, height: dayBtnSizePx, pointerEvents: "none" }}
                             />
                           )}

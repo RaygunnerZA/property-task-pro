@@ -27,7 +27,7 @@ export function FrameworkEmptyState({
   return (
     <div
       className={cn(
-        "rounded-[8px] bg-card shadow-e1 p-6 max-h-[280px] flex flex-col items-center justify-center text-center",
+        "rounded-card bg-card shadow-e1 p-6 max-h-[280px] flex flex-col items-center justify-center text-center",
         className
       )}
     >

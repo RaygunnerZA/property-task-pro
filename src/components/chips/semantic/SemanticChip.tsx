@@ -161,7 +161,7 @@ export function SemanticChip({
         : "";
 
   const baseStyles = cn(
-    "relative inline-flex items-center gap-1.5 rounded-[8px] flex-shrink-0",
+    "relative inline-flex items-center gap-1.5 rounded-card flex-shrink-0",
     "font-mono uppercase tracking-wide whitespace-nowrap",
     "transition-[max-width,width] duration-200 ease-out",
     heightClass,
@@ -228,7 +228,7 @@ export function SemanticChip({
     <>
       {icon && <span className="flex-shrink-0">{icon}</span>}
       {pending && (
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-warning-vivid/70 flex-shrink-0" />
       )}
       <span
         className={cn(

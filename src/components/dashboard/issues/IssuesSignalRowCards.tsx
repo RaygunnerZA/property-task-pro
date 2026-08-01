@@ -177,7 +177,7 @@ function SignalRowOverflowMenu({
       {open && actions.length > 0 ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-[8px] border border-border/60 bg-card py-1 shadow-md"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-card border border-border/60 bg-card py-1 shadow-md"
         >
           {actions.map((action) => (
             <button

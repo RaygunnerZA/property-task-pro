@@ -13,7 +13,7 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
       <button
         onClick={() => onViewChange('horizontal')}
         className={cn(
-          "p-1.5 rounded-[5px] transition-all",
+          "p-1.5 rounded-sharp transition-all",
           "flex items-center justify-center",
           view === 'horizontal'
             ? "text-foreground shadow-none"
@@ -30,7 +30,7 @@ export function ViewToggle({ view, onViewChange, className }: ViewToggleProps) {
       <button
         onClick={() => onViewChange('vertical')}
         className={cn(
-          "p-1.5 rounded-[5px] transition-all",
+          "p-1.5 rounded-sharp transition-all",
           "flex items-center justify-center",
           view === 'vertical'
             ? "text-foreground shadow-none"

@@ -148,7 +148,7 @@ const PAPER_TEXTURE_STYLE: React.CSSProperties = {
 
 /** Matches Create Task rows (CategorySection, WhereSection, WhoSection) — chip becomes this input. */
 const INTAKE_INLINE_INPUT_CLASS = cn(
-  "h-[28px] min-w-[100px] max-w-[240px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
+  "h-[28px] min-w-[100px] max-w-[240px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
   "font-mono text-[11px] uppercase tracking-wide",
   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
   "shadow-inset outline-none cursor-text",
@@ -2096,7 +2096,7 @@ export function IntakeModal({
                           setSelectedSpaceIds([]);
                           setIntakeWherePropertyPickerOpen(false);
                         }}
-                        className="h-[28px] w-[28px] rounded-[8px] shrink-0 flex items-center justify-center shadow-e1"
+                        className="h-[28px] w-[28px] rounded-card shrink-0 flex items-center justify-center shadow-e1"
                         style={{ backgroundColor: color }}
                         aria-label={label}
                       >
@@ -2202,7 +2202,7 @@ export function IntakeModal({
                           setPropertyId(property.id);
                           setSelectedSpaceIds([]);
                         }}
-                        className="h-6 w-6 shrink-0 flex items-center justify-center rounded-[8px] bg-background/70 shadow-e1"
+                        className="h-6 w-6 shrink-0 flex items-center justify-center rounded-card bg-background/70 shadow-e1"
                       >
                         <Icon className="h-3.5 w-3.5" style={{ color }} />
                       </button>
@@ -3479,11 +3479,11 @@ export function IntakeModal({
           aria-selected={intakeMode === m}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-card px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
-                ? "bg-[#ff6b6b] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-                : "bg-[#8DC9CE] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                ? "bg-destructive text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
+                : "bg-primary text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >

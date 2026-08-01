@@ -160,12 +160,12 @@ export function AppSidebar() {
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "flex items-center rounded-[5px] bg-transparent no-underline transition-[gap,padding] duration-200 ease-out",
+      "flex items-center rounded-sharp bg-transparent no-underline transition-[gap,padding] duration-200 ease-out",
       open ? "gap-2 px-3 py-2" : "justify-center gap-0 px-0 py-2.5",
       isMobile
         ? active
           ? "text-white font-semibold"
-          : "text-[#8EC9CE]"
+          : "text-primary"
         : active
           ? "text-foreground font-semibold"
           : "text-foreground/70"
@@ -332,7 +332,7 @@ export function AppSidebar() {
                     className={cn(
                       navLinkClass(false),
                       "w-full",
-                      isMobile ? "text-[#8EC9CE]" : "text-foreground/70"
+                      isMobile ? "text-primary" : "text-foreground/70"
                     )}
                     aria-label="Assistant"
                   >
@@ -357,7 +357,7 @@ export function AppSidebar() {
                     className={cn(
                       navLinkClass(false),
                       "w-full",
-                      isMobile ? "text-[#8EC9CE]" : "text-foreground/70"
+                      isMobile ? "text-primary" : "text-foreground/70"
                     )}
                     aria-label="Create New"
                   >

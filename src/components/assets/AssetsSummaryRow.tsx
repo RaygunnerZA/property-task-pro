@@ -49,7 +49,7 @@ function AssetMetricTile({
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "w-full min-w-0 text-left rounded-[8px] overflow-hidden border-0 p-0 m-0",
+        "w-full min-w-0 text-left rounded-card overflow-hidden border-0 p-0 m-0",
         "font-sans antialiased transition-all duration-150 select-none",
         RAISED,
         "bg-background text-foreground",
@@ -65,7 +65,7 @@ function AssetMetricTile({
         <span
           className={cn(
             "inline-flex w-[78px] shrink-0 items-center justify-center",
-            "rounded-[8px] bg-muted/50 px-2 py-1",
+            "rounded-card bg-muted/50 px-2 py-1",
             "tabular-nums text-[34px] font-bold leading-none text-primary shadow-none"
           )}
         >

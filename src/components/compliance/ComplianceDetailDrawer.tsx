@@ -43,7 +43,7 @@ export function ComplianceDetailDrawer({
       return { color: "text-destructive", icon: AlertTriangle, label: "Expired" };
     }
     if (expiryStatus === "expiring") {
-      return { color: "text-amber-600", icon: Clock, label: "Expiring Soon" };
+      return { color: "text-warning-foreground", icon: Clock, label: "Expiring Soon" };
     }
     return { color: "text-success", icon: CheckCircle2, label: "Valid" };
   };

@@ -25,7 +25,7 @@ interface RelatedComplianceSectionProps {
 
 function getExpiryColor(expiryState?: string) {
   if (expiryState === "expired") return "text-destructive";
-  if (expiryState === "expiring") return "text-amber-600";
+  if (expiryState === "expiring") return "text-warning-foreground";
   return "text-muted-foreground";
 }
 
@@ -54,8 +54,8 @@ export function RelatedComplianceSection({
       ) : (
         <div className="space-y-2">
           {imageHazards.length > 0 && (
-            <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
-              <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-1">
+            <div className="p-2 rounded-lg bg-warning/30 dark:bg-amber-950/20 border border-warning dark:border-amber-800/30">
+              <div className="text-xs font-medium text-warning-foreground dark:text-amber-200 mb-1">
                 Hazards detected in images
               </div>
               <div className="flex flex-wrap gap-1">

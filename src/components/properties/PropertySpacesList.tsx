@@ -112,7 +112,7 @@ export function PropertySpacesList({
   }, [spaces, groupSlug]);
 
   const viewToggle = (
-    <div className="flex items-center gap-0.5 rounded-[8px] bg-background/70 p-0.5 shadow-[inset_1px_1px_2px_rgba(0,0,0,0.06)]">
+    <div className="flex items-center gap-0.5 rounded-card bg-background/70 p-0.5 shadow-[inset_1px_1px_2px_rgba(0,0,0,0.06)]">
       <button
         type="button"
         onClick={() => setView("cards")}
@@ -155,7 +155,7 @@ export function PropertySpacesList({
               <button
                 type="button"
                 onClick={() => setShowAddSpace(true)}
-                className="rounded-[5px] p-1.5 text-sidebar-muted transition-all duration-200 hover:bg-primary/20 hover:text-primary"
+                className="rounded-sharp p-1.5 text-sidebar-muted transition-all duration-200 hover:bg-primary/20 hover:text-primary"
                 aria-label="Add space"
               >
                 <Plus className="h-4 w-4" />
@@ -208,9 +208,9 @@ export function PropertySpacesList({
                     type="button"
                     onClick={() => handleSpaceOpen(space)}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-[8px] px-2 py-1.5 text-left transition-shadow",
+                      "flex w-full items-center gap-2.5 rounded-card px-2 py-1.5 text-left transition-shadow",
                       "bg-card/70 shadow-e1 hover:shadow-md",
-                      isSelected && "ring-1 ring-[#8EC9CE]/60"
+                      isSelected && "ring-1 ring-primary/60"
                     )}
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[6px] bg-muted/40">
@@ -252,7 +252,7 @@ export function PropertySpacesList({
                   return (
                     <div
                       key={space.id}
-                      className="h-[140px] w-[120px] flex-shrink-0 rounded-[5px] text-center"
+                      className="h-[140px] w-[120px] flex-shrink-0 rounded-sharp text-center"
                       onClick={() => handleSpaceSelect(space.id)}
                     >
                       <SpaceCard

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
  * Canonical FILLA intake CTA styling:
  * Report Issue = #ff6b6b, Add Record = #8DC9CE; label and icons use white on both.
  */
-const reportBg = "bg-[#ff6b6b]";
-const addRecordBg = "bg-[#8DC9CE]";
+const reportBg = "bg-destructive";
+const addRecordBg = "bg-primary";
 const onCta = "text-white";
 
 /** Raised control shadow — matches TaskPanel active tab pill (dual light + depth). */
@@ -20,22 +20,22 @@ const addNeuShadow =
   "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]";
 
 export const intakeReportIssueButtonClassName = cn(
-  "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
+  "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-card border-0 px-3 py-0 text-sm font-medium leading-none",
   "lg:h-9 lg:min-h-9 lg:max-h-9 lg:py-0 lg:flex-1",
   onCta,
   reportBg,
   toolbarRaisedShadow,
-  "transition-all hover:bg-[#ff6b6b]/90",
+  "transition-all hover:bg-destructive/90",
   "lg:justify-start lg:px-1.5 lg:gap-[5px]"
 );
 
 export const intakeAddRecordButtonClassName = cn(
-  "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-[8px] border-0 px-3 py-0 text-sm font-medium leading-none",
+  "flex h-full min-h-0 min-w-0 w-full items-center justify-center gap-2 whitespace-nowrap rounded-card border-0 px-3 py-0 text-sm font-medium leading-none",
   "lg:h-9 lg:min-h-9 lg:max-h-9 lg:py-0 lg:flex-1",
   onCta,
   addRecordBg,
   toolbarRaisedShadow,
-  "transition-all hover:bg-[#8DC9CE]/90",
+  "transition-all hover:bg-primary/90",
   "lg:justify-start lg:px-1.5 lg:gap-[5px]"
 );
 
@@ -44,17 +44,17 @@ export const intakeAddRecordIconClassName = "h-4 w-4 shrink-0 text-white";
 
 /** Narrow sidebar quick actions (workbench / Issues column) */
 export const intakeReportIssueCompactClassName = cn(
-  "flex h-auto w-[85px] items-center justify-start gap-2 rounded-[8px] border-0 px-2 py-1 text-left text-xs font-semibold text-white",
+  "flex h-auto w-[85px] items-center justify-start gap-2 rounded-card border-0 px-2 py-1 text-left text-xs font-semibold text-white",
   reportBg,
   reportNeuShadow,
-  "transition-all hover:bg-[#ff6b6b]/90"
+  "transition-all hover:bg-destructive/90"
 );
 
 export const intakeAddRecordCompactClassName = cn(
-  "flex h-auto w-[85px] items-center justify-start gap-1 rounded-[8px] border-0 px-2 py-1 text-left text-xs font-semibold text-white",
+  "flex h-auto w-[85px] items-center justify-start gap-1 rounded-card border-0 px-2 py-1 text-left text-xs font-semibold text-white",
   addRecordBg,
   addNeuShadow,
-  "transition-all hover:bg-[#8DC9CE]/90"
+  "transition-all hover:bg-primary/90"
 );
 
 /** Left sidebar concertina list rows */
@@ -62,14 +62,14 @@ export const intakeReportIssueListRowClassName = cn(
   "w-full flex items-center gap-2 rounded-md border-0 px-2.5 py-2 text-left text-sm font-semibold text-white",
   reportBg,
   reportNeuShadowSoft,
-  "transition-all hover:bg-[#ff6b6b]/90"
+  "transition-all hover:bg-destructive/90"
 );
 
 export const intakeAddRecordListRowClassName = cn(
   "w-full flex items-center gap-2 rounded-md border-0 px-2.5 py-2 text-left text-sm font-semibold text-white",
   addRecordBg,
   addNeuShadow,
-  "transition-all hover:bg-[#8DC9CE]/90"
+  "transition-all hover:bg-primary/90"
 );
 
 export const intakeListRowReportIconClassName = "h-4 w-4 shrink-0 text-white";
@@ -79,14 +79,14 @@ export const intakeListRowAddIconClassName = "h-4 w-4 shrink-0 text-white";
 export const intakeReportIssueDrawerCardClassName = cn(
   "w-full rounded-lg border-0 p-4 text-left transition-all text-white",
   reportBg,
-  "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)] hover:bg-[#ff6b6b]/90"
+  "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)] hover:bg-destructive/90"
 );
 
 export const intakeAddRecordDrawerCardClassName = cn(
   "w-full rounded-lg border-0 p-4 text-left transition-all text-white",
   addRecordBg,
   addNeuShadow,
-  "hover:bg-[#8DC9CE]/90"
+  "hover:bg-primary/90"
 );
 
 export const intakeDrawerIconWrapReportClassName = "p-2 rounded-lg bg-white/20";
@@ -107,15 +107,15 @@ export const intakeFabSatelliteAddClassName = cn(
 
 /** Inline / compliance card footers */
 export const intakeReportIssueMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-white",
+  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-[11px] font-semibold text-white",
   reportBg,
-  "shadow-e1 transition-all hover:shadow-md hover:bg-[#ff6b6b]/90"
+  "shadow-e1 transition-all hover:shadow-md hover:bg-destructive/90"
 );
 
 export const intakeAddRecordMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-white",
+  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-[11px] font-semibold text-white",
   addRecordBg,
-  "shadow-e1 transition-all hover:shadow-md hover:bg-[#8DC9CE]/90"
+  "shadow-e1 transition-all hover:shadow-md hover:bg-primary/90"
 );
 
 /** Intake modal/column footer primary — matches active tab pill (Report Issue = coral). */
@@ -123,7 +123,7 @@ export const intakeFooterSubmitReportIssueClassName = cn(
   reportBg,
   onCta,
   reportNeuShadow,
-  "hover:bg-[#ff6b6b]/90 hover:text-white"
+  "hover:bg-destructive/90 hover:text-white"
 );
 
 /** Intake modal/column footer primary when saving compliance / Add Record path — matches Add Record tab. */
@@ -131,7 +131,7 @@ export const intakeFooterSubmitAddRecordClassName = cn(
   addRecordBg,
   onCta,
   addNeuShadow,
-  "hover:bg-[#8DC9CE]/90 hover:text-white"
+  "hover:bg-primary/90 hover:text-white"
 );
 
 /** Full-width stacked actions (records rail, property workspace cards). */
@@ -140,7 +140,7 @@ export const intakeAddRecordStackedClassName = cn(
   onCta,
   addRecordBg,
   addNeuShadow,
-  "transition-all hover:bg-[#8DC9CE]/90"
+  "transition-all hover:bg-primary/90"
 );
 
 export const intakeReportIssueStackedClassName = cn(
@@ -148,7 +148,7 @@ export const intakeReportIssueStackedClassName = cn(
   onCta,
   reportBg,
   reportNeuShadow,
-  "transition-all hover:bg-[#ff6b6b]/90"
+  "transition-all hover:bg-destructive/90"
 );
 
 export const INTAKE_ADD_RECORD_LABEL = "Add Record";

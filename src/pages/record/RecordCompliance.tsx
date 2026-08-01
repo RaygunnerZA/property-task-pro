@@ -25,7 +25,7 @@ export default function RecordCompliance() {
       icon={<Shield className="h-6 w-6" />}
       maxWidth="xl"
     >
-      <div className="mb-6 flex gap-2 p-1 bg-surface-gradient rounded-[5px] shadow-e1">
+      <div className="mb-6 flex gap-2 p-1 bg-surface-gradient rounded-sharp shadow-e1">
         {complianceNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = item.path === "/record/compliance"
@@ -36,7 +36,7 @@ export default function RecordCompliance() {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[5px] transition-all font-mono text-[11px] uppercase tracking-wider font-medium relative",
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sharp transition-all font-mono text-[11px] uppercase tracking-wider font-medium relative",
                 isActive
                   ? "bg-card shadow-e1 text-primary"
                   : "text-muted-foreground hover:text-foreground"

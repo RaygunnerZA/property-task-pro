@@ -93,7 +93,7 @@ export function TaskCardMinimized({
 
   const priorityColors: Record<string, string> = {
     urgent: "bg-destructive/20 text-destructive border-destructive/30",
-    high: "bg-orange-500/20 text-orange-600 border-orange-500/30",
+    high: "bg-accent/20 text-accent border-accent/30",
     medium: "bg-primary/20 text-primary border-primary/30",
     low: "bg-muted text-muted-foreground border-border",
   };
@@ -102,7 +102,7 @@ export function TaskCardMinimized({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card/70 shadow-e1 border border-border/50",
+        "rounded-card bg-card/70 shadow-e1 border border-border/50",
         "cursor-pointer transition-all duration-300",
         "hover:shadow-md hover:-translate-y-[0.5px]",
         "active:scale-[0.99]"

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const STATUS_STYLES: Record<string, string> = {
   success: "bg-primary/15 text-primary",
   error: "bg-destructive/15 text-destructive",
-  timeout: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  timeout: "bg-warning/50 text-warning-foreground dark:bg-amber-900/30 dark:text-amber-400",
   fallback: "bg-muted text-muted-foreground",
 };
 
@@ -79,7 +79,7 @@ export default function AdminOrgAiRequests() {
   const tdClass = "px-3 py-2.5 text-sm";
 
   const selectClass =
-    "h-8 px-2.5 rounded-[8px] border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
+    "h-8 px-2.5 rounded-card border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40";
 
   return (
     <div className="space-y-5">
@@ -126,12 +126,12 @@ export default function AdminOrgAiRequests() {
       </div>
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 rounded-[8px] px-4 py-3">
+        <div className="text-sm text-destructive bg-destructive/10 rounded-card px-4 py-3">
           Failed to load AI requests.
         </div>
       )}
 
-      <div className="rounded-[12px] border border-border overflow-hidden shadow-sm">
+      <div className="rounded-xl border border-border overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse text-sm">
           <thead className="bg-muted/40">
             <tr>

@@ -1393,7 +1393,7 @@ export function ImageAnnotationEditor({
                   cancelInlineTextEditing();
                 }
               }}
-              className="absolute z-20 rounded-md border border-white/20 bg-black/75 px-2 py-1 text-white text-sm shadow-md outline-none focus:ring-2 focus:ring-[#8EC9CE]"
+              className="absolute z-20 rounded-md border border-white/20 bg-black/75 px-2 py-1 text-white text-sm shadow-md outline-none focus:ring-2 focus:ring-primary"
               style={{
                 left: `${pos.left}px`,
                 top: `${pos.top}px`,
@@ -1635,7 +1635,7 @@ export function ImageAnnotationEditor({
           {/* Delete Button */}
           <button
             onClick={handleDelete}
-            className="w-full px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm flex items-center justify-center gap-2 transition-colors"
+            className="w-full px-3 py-2 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-sm flex items-center justify-center gap-2 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
             Delete
@@ -1655,7 +1655,7 @@ export function ImageAnnotationEditor({
             )}
             {autosaveStatus === "saved" && (
               <>
-                <div className="h-3 w-3 bg-green-500 rounded-full" />
+                <div className="h-3 w-3 bg-success-vivid rounded-full" />
                 <span>Saved</span>
               </>
             )}

@@ -412,7 +412,7 @@ export default function AddPropertyScreen() {
                   onClick={removeImage}
                   className="absolute top-1 right-1 p-1 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
                 >
-                  <X className="w-3 h-3 text-gray-600" />
+                  <X className="w-3 h-3 text-muted-foreground" />
                 </button>
               </div>
             ) : (

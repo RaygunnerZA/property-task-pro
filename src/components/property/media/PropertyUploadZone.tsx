@@ -25,7 +25,7 @@ export default function PropertyUploadZone({
           <Text variant="body" className="font-medium">
             Click to upload files
           </Text>
-          <Text variant="caption" className="text-neutral-600 mt-1">
+          <Text variant="caption" className="text-muted-foreground mt-1">
             or drag and drop
           </Text>
         </div>

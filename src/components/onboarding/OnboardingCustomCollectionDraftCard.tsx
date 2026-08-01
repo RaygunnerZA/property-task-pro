@@ -45,7 +45,7 @@ export function OnboardingCustomCollectionDraftCard({
 
   return (
     <div className={cn("w-[200px] h-[272px] flex-shrink-0", className)}>
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[8px] bg-card shadow-e1">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-card bg-card shadow-e1">
         <div className="h-[130px] shrink-0 overflow-hidden">
           <SpaceGroupCardBanner
             imageSrc={getSpaceGroupCardIllustration("custom")}

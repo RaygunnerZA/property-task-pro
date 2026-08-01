@@ -97,7 +97,7 @@ const Home = () => {
                     <span className="text-destructive font-medium">{complianceSummary.expired} expired</span>
                   )}
                   {complianceSummary.expiring > 0 && (
-                    <span className="text-amber-600 font-medium">{complianceSummary.expiring} expiring</span>
+                    <span className="text-warning-foreground font-medium">{complianceSummary.expiring} expiring</span>
                   )}
                   {complianceSummary.valid > 0 && (
                     <span className="text-success">{complianceSummary.valid} valid</span>

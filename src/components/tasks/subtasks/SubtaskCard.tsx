@@ -485,7 +485,7 @@ export function SubtaskCard({
 
               {subtask.is_required && (
                 <span
-                  className="absolute top-[7px] text-[#EB6834] font-bold text-sm leading-none pointer-events-none select-none"
+                  className="absolute top-[7px] text-accent font-bold text-sm leading-none pointer-events-none select-none"
                   style={{ left: `${asteriskLeft}px` }}
                   aria-hidden="true"
                 >
@@ -530,7 +530,7 @@ export function SubtaskCard({
           {!isFormatType && (
             <>
               {currentType === "yes_no" && (
-                <div className="shrink-0 flex items-center rounded-lg bg-[#8EC9CE] shadow-[inset_1px_6.5px_7.2px_0px_rgba(0,0,0,0.25),inset_-1px_-3.9px_3.5px_0px_rgba(255,255,255,0.53),inset_0px_-1.1px_0.6px_0px_rgba(255,255,255,1)] px-0.5 pt-0.5 pb-[3px] w-[68px] border-none">
+                <div className="shrink-0 flex items-center rounded-lg bg-primary shadow-[inset_1px_6.5px_7.2px_0px_rgba(0,0,0,0.25),inset_-1px_-3.9px_3.5px_0px_rgba(255,255,255,0.53),inset_0px_-1.1px_0.6px_0px_rgba(255,255,255,1)] px-0.5 pt-0.5 pb-[3px] w-[68px] border-none">
                   <span className="h-6 px-[9px] rounded-md flex items-center text-[10px] font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)]">
                     No
                   </span>
@@ -570,7 +570,7 @@ export function SubtaskCard({
                     type="button"
                     onClick={() => photoInputRef.current?.click()}
                     className={cn(
-                      "shrink-0 h-6 px-2 rounded-[8px] bg-card flex items-center gap-[5px] transition-all cursor-pointer",
+                      "shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
                       uploadedPhotoName
                         ? "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
                         : "shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
@@ -601,7 +601,7 @@ export function SubtaskCard({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className={cn(
-                      "shrink-0 h-6 px-2 rounded-[8px] bg-card flex items-center gap-[5px] transition-all cursor-pointer",
+                      "shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
                       uploadedFileName
                         ? "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
                         : "shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
@@ -617,14 +617,14 @@ export function SubtaskCard({
               )}
 
               {currentType === "signature" && (
-                <div className="shrink-0 h-6 px-2 rounded-[8px] bg-card flex items-center gap-1 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
+                <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-1 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <PenLine className="h-3.5 w-3.5 text-muted-foreground/60" />
                   <span className="text-[10px] font-mono font-medium text-muted-foreground/50 uppercase tracking-wide">Sign</span>
                 </div>
               )}
 
               {currentType === "scan" && (
-                <div className="shrink-0 h-6 px-2 rounded-[8px] bg-card flex items-center gap-[6px] shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
+                <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[6px] shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <ScanLine className="h-3.5 w-3.5 text-muted-foreground/60" />
                   <span className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wide">Scan</span>
                 </div>
@@ -746,13 +746,13 @@ export function SubtaskCard({
             <div className="flex items-center gap-1 mb-0.5 pl-[2px]">
               <div className="w-[1px] h-2.5 bg-amber-300/40 shrink-0" />
               <GitBranch className="h-2.5 w-2.5 text-amber-400/60 shrink-0" />
-              <span className="text-[9px] font-mono uppercase tracking-widest text-amber-500/50">
+              <span className="text-[9px] font-mono uppercase tracking-widest text-warning-vivid/50">
                 If Failed
               </span>
             </div>
 
             {/* Follow-up step row */}
-            <div className="flex items-center gap-[3px] border-l-[2px] border-amber-200/40 pl-2 min-h-[30px]">
+            <div className="flex items-center gap-[3px] border-l-[2px] border-warning pl-2 min-h-[30px]">
               <Check className="h-3 w-3 shrink-0 text-amber-400/50" />
               <input
                 type="text"

@@ -16,7 +16,7 @@ function RoleBadge({ role }: { role: string }) {
   const styles: Record<string, string> = {
     admin: "bg-primary/15 text-primary",
     member: "bg-muted text-muted-foreground",
-    vendor: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    vendor: "bg-warning/50 text-warning-foreground dark:bg-amber-900/30 dark:text-amber-400",
   };
   return (
     <span
@@ -86,7 +86,7 @@ export default function AdminOrgDetail() {
 
   if (error) {
     return (
-      <div className="text-sm text-destructive bg-destructive/10 rounded-[8px] px-4 py-3">
+      <div className="text-sm text-destructive bg-destructive/10 rounded-card px-4 py-3">
         Failed to load organisation.
       </div>
     );
@@ -105,7 +105,7 @@ export default function AdminOrgDetail() {
 
       {/* Org header */}
       {isLoading ? (
-        <div className="h-16 animate-pulse rounded-[12px] bg-muted" />
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
       ) : org ? (
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -134,7 +134,7 @@ export default function AdminOrgDetail() {
           <Users className="w-4 h-4 text-muted-foreground" />
           Members
         </h2>
-        <div className="rounded-[12px] border border-border overflow-hidden shadow-sm">
+        <div className="rounded-xl border border-border overflow-hidden shadow-sm">
           <table className="w-full text-left border-collapse">
             <thead className="bg-muted/40">
               <tr>
@@ -190,7 +190,7 @@ export default function AdminOrgDetail() {
           <Activity className="w-4 h-4 text-muted-foreground" />
           Recent Activity
         </h2>
-        <div className="rounded-[12px] border border-border px-4 py-2 shadow-sm">
+        <div className="rounded-xl border border-border px-4 py-2 shadow-sm">
           {isLoading ? (
             <p className="text-sm text-muted-foreground py-4">Loading…</p>
           ) : activity.length === 0 ? (

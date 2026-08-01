@@ -230,7 +230,7 @@ export function PropertyHubTab({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-tl-[12px]"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-tl-xl"
         style={{
           height: shapeHeight,
           ...TAB_SHAPE_MASK_STYLE,
@@ -250,7 +250,7 @@ export function PropertyHubTab({
       {!isActive ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] rounded-tl-[12px]"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] rounded-tl-xl"
           style={{
             top: 0,
             height: shapeHeight,

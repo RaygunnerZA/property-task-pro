@@ -40,7 +40,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
           onClick={() => onChange(hex)}
           style={{ backgroundColor: hex }}
           className={cn(
-            "w-10 h-10 rounded-[5px] flex items-center justify-center transition-all",
+            "w-10 h-10 rounded-sharp flex items-center justify-center transition-all",
             "border-2 hover:scale-105",
             value === hex
               ? "border-foreground shadow-md"

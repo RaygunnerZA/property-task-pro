@@ -66,16 +66,16 @@ export function ChipsSection() {
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status Chips</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-3 py-1.5 rounded-[8px] font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-green-800 shadow-e1">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-card font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-success-foreground shadow-e1">
               Compliant
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-[8px] font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-amber-800 shadow-e1">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-card font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-warning-foreground shadow-e1">
               Pending
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-[8px] font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-red-800 shadow-e1">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-card font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-destructive shadow-e1">
               Overdue
             </span>
-            <span className="inline-flex items-center px-3 py-1.5 rounded-[8px] font-mono text-[11px] uppercase tracking-wider font-medium bg-primary/20 text-primary-deep shadow-e1">
+            <span className="inline-flex items-center px-3 py-1.5 rounded-card font-mono text-[11px] uppercase tracking-wider font-medium bg-primary/20 text-primary-deep shadow-e1">
               In Progress
             </span>
           </div>
@@ -85,13 +85,13 @@ export function ChipsSection() {
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Priority Chips</h3>
           <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center px-2.5 py-1 rounded-[8px] font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60 shadow-e1">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-card font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60 shadow-e1">
               Low
             </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-[8px] font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep shadow-e1">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-card font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep shadow-e1">
               Normal
             </span>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-[8px] font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent shadow-e1">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-card font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent shadow-e1">
               High
             </span>
           </div>

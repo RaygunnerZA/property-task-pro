@@ -18,7 +18,7 @@ export default function PropertyDocumentViewerModal({
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">
           <div className="flex-1 min-w-0 mr-4">
             <Heading variant="l" className="truncate">{document.file_name ?? document.title ?? "Document"}</Heading>
-            <Text variant="caption" className="text-neutral-600 mt-1">
+            <Text variant="caption" className="text-muted-foreground mt-1">
               PDF Document
             </Text>
           </div>
@@ -30,7 +30,7 @@ export default function PropertyDocumentViewerModal({
             </Button>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-neutral-100 transition-colors"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
             >
               <X size={20} />
             </button>
@@ -40,10 +40,10 @@ export default function PropertyDocumentViewerModal({
         {/* Content */}
         <div className="flex-1 overflow-auto p-6">
           <div className="bg-neutral-50 rounded-lg p-8 text-center">
-            <Text variant="body" className="text-neutral-600">
+            <Text variant="body" className="text-muted-foreground">
               Document preview placeholder
             </Text>
-            <Text variant="caption" className="text-neutral-500 mt-2">
+            <Text variant="caption" className="text-muted-foreground mt-2">
               In production, this would show a PDF viewer
             </Text>
           </div>

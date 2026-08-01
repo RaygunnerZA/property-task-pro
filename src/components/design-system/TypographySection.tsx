@@ -63,10 +63,10 @@ export function TypographySection() {
         {typographyExamples.map((item) => (
           <div
             key={item.name}
-            className="p-4 rounded-[8px] bg-surface shadow-e1 space-y-2"
+            className="p-4 rounded-card bg-surface shadow-e1 space-y-2"
           >
             <div className="flex items-center gap-3">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded-[5px]">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-2 py-0.5 rounded-sharp">
                 {item.name}
               </span>
               <span className="text-xs text-muted-foreground">{item.font}</span>

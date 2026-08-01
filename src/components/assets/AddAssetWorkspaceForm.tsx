@@ -112,7 +112,7 @@ export function AddAssetWorkspaceForm({
         disabled={isUploadingFile}
         title="Take photo"
         aria-label="Take photo"
-        className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
+        className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
       >
         <Camera className="h-5 w-5 text-muted-foreground" />
       </button>
@@ -122,7 +122,7 @@ export function AddAssetWorkspaceForm({
         disabled={isUploadingFile}
         title="Upload file"
         aria-label="Upload file"
-        className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
+        className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all disabled:pointer-events-none disabled:opacity-50"
       >
         <Upload className="h-5 w-5 text-muted-foreground" />
       </button>

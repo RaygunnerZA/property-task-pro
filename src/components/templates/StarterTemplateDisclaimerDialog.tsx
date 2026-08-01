@@ -75,7 +75,7 @@ export function StarterTemplateDisclaimerDialog({
           </Button>
           <Button
             type="button"
-            className="bg-[#8EC9CE] text-white hover:brightness-105"
+            className="bg-primary text-white hover:brightness-105"
             disabled={loading}
             onClick={() => void onConfirm(dontShowAgain)}
           >

@@ -346,7 +346,7 @@ export function FilterBar({
                   aria-label={filterChipCollapsed ? "Filter — open categories" : "Filter by category"}
                   title="Filter"
                   className={cn(
-                    "inline-flex items-center py-1 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
+                    "inline-flex items-center py-1 rounded-card flex-shrink-0 overflow-hidden h-6",
                     "font-mono text-[11px] uppercase tracking-wider",
                     "select-none cursor-pointer",
                     "bg-background",
@@ -393,7 +393,7 @@ export function FilterBar({
                   key={group.id}
                   onClick={() => handleCategoryClick(group.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] flex-shrink-0 h-[24px]",
+                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-card flex-shrink-0 h-[24px]",
                     "font-mono text-[11px] uppercase tracking-wide",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
@@ -406,10 +406,10 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-card flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                    "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    "hover:bg-input hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
                   <FunnelX className="h-[14px] w-[14px]" />
@@ -430,10 +430,10 @@ export function FilterBar({
                 <button
                   onClick={handleClearAllFilters}
                   className={cn(
-                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-[8px] flex-shrink-0",
+                    "inline-flex items-center justify-center h-[24px] w-[24px] rounded-card flex-shrink-0",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                    "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    "hover:bg-input hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}
                 >
                   <FunnelX className="h-[14px] w-[14px]" />

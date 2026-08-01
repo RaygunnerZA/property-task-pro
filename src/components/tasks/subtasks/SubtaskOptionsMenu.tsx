@@ -60,13 +60,13 @@ export function SubtaskOptionsMenu({
         <DropdownMenuContent align="end" className="bg-card border-0 shadow-e2 rounded-xl">
           <DropdownMenuItem
             onClick={onToggleRequired}
-            className={`gap-2 text-sm ${!isRequired ? "text-teal-700 focus:text-teal-700" : ""}`}
+            className={`gap-2 text-sm ${!isRequired ? "text-primary-deep focus:text-primary-deep" : ""}`}
           >
             <Star
-              className={`h-4 w-4 ${isRequired ? "text-[#EB6834] fill-[#EB6834]" : "text-teal-600"}`}
+              className={`h-4 w-4 ${isRequired ? "text-accent fill-accent" : "text-primary-deep"}`}
             />
             {isRequired ? "Remove Required" : "Mark Required"}
-            {isRequired && <Check className="h-3.5 w-3.5 text-[#EB6834] ml-auto" />}
+            {isRequired && <Check className="h-3.5 w-3.5 text-accent ml-auto" />}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenAssignPicker} className="gap-2 text-sm">
             <User className="h-4 w-4 text-current" />
@@ -78,10 +78,10 @@ export function SubtaskOptionsMenu({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onToggleFollowupIfFailed} className="gap-2 text-sm">
             <GitBranch
-              className={`h-4 w-4 ${hasFollowupIfFailed ? "text-amber-500" : "text-current"}`}
+              className={`h-4 w-4 ${hasFollowupIfFailed ? "text-warning-vivid" : "text-current"}`}
             />
             {hasFollowupIfFailed ? "Remove Follow-up" : "Add Follow-up if Failed"}
-            {hasFollowupIfFailed && <Check className="h-3.5 w-3.5 text-amber-500 ml-auto" />}
+            {hasFollowupIfFailed && <Check className="h-3.5 w-3.5 text-warning-vivid ml-auto" />}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onDuplicate} className="gap-2 text-sm">

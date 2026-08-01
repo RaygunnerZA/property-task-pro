@@ -134,7 +134,7 @@ export function UniversalIconPicker({
                     type="button"
                     onClick={() => handleSelect(row.name)}
                     className={cn(
-                      "w-10 h-10 rounded-[5px] flex items-center justify-center transition-all",
+                      "w-10 h-10 rounded-sharp flex items-center justify-center transition-all",
                       "border border-border hover:border-primary",
                       value === row.name ? "bg-primary text-primary-foreground border-primary" : "bg-white text-muted-foreground"
                     )}
@@ -162,7 +162,7 @@ export function UniversalIconPicker({
                   type="button"
                   onClick={() => handleSelect(name)}
                   className={cn(
-                    "w-10 h-10 rounded-[5px] flex items-center justify-center transition-all",
+                    "w-10 h-10 rounded-sharp flex items-center justify-center transition-all",
                     "border border-border hover:border-primary",
                     value === name ? "bg-primary text-primary-foreground border-primary" : "bg-white text-muted-foreground"
                   )}
@@ -191,7 +191,7 @@ export function UniversalIconPicker({
                         type="button"
                         onClick={() => handleSelect(name)}
                         className={cn(
-                          "w-10 h-10 rounded-[5px] flex items-center justify-center transition-all",
+                          "w-10 h-10 rounded-sharp flex items-center justify-center transition-all",
                           "border border-border hover:border-primary",
                           value === name ? "bg-primary text-primary-foreground border-primary" : "bg-white text-muted-foreground"
                         )}

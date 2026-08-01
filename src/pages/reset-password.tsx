@@ -42,14 +42,14 @@ export default function ResetPasswordPage() {
             required
           />
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+          {error && <div className="text-destructive text-sm">{error}</div>}
 
           <button className="bg-primary text-white p-2 rounded">
             Update Password
           </button>
         </form>
       ) : (
-        <div className="text-green-600">Password updated. Redirecting…</div>
+        <div className="text-success-foreground">Password updated. Redirecting…</div>
       )}
     </div>
   );

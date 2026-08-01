@@ -39,7 +39,7 @@ export function ContractorComplianceRow({
             <span className="text-destructive font-medium">{expiredCount} expired</span>
           )}
           {expiringCount > 0 && (
-            <span className="text-amber-600 font-medium">{expiringCount} expiring</span>
+            <span className="text-warning-foreground font-medium">{expiringCount} expiring</span>
           )}
           {validCount > 0 && <span>{validCount} valid</span>}
           {avgDaysOverdue != null && avgDaysOverdue > 0 && (

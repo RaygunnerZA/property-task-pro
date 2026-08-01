@@ -547,7 +547,7 @@ export function SuggestedSpacesStrip({
                     key={g.id}
                     onClick={() => handleMoveToGroup(g.label)}
                     className={cn(
-                      "flex items-center gap-2 rounded-[8px] px-3 py-2.5 text-left text-sm font-medium",
+                      "flex items-center gap-2 rounded-card px-3 py-2.5 text-left text-sm font-medium",
                       "transition-all shadow-e1 hover:shadow-md active:scale-[0.98]"
                     )}
                     style={{ borderLeft: `3px solid ${g.color}` }}
@@ -632,10 +632,10 @@ function SuggestedSpaceCard({
   const SpaceIcon = getAssetIcon(iconName);
 
   return (
-    <div className="w-[120px] flex-shrink-0 rounded-[5px]">
+    <div className="w-[120px] flex-shrink-0 rounded-sharp">
       <div
         className={cn(
-          "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[155px]",
+          "bg-card/60 rounded-card overflow-hidden shadow-e1 h-[155px]",
           "transition-all duration-300",
           isActivated
             ? "opacity-100"
@@ -661,7 +661,7 @@ function SuggestedSpaceCard({
               e.stopPropagation();
               onSwatchClick?.();
             }}
-            className="absolute top-2 left-2 rounded-[5px] flex items-center justify-center z-10 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+            className="absolute top-2 left-2 rounded-sharp flex items-center justify-center z-10 cursor-pointer hover:opacity-90 active:scale-95 transition-all"
             style={{
               backgroundColor: groupColor,
               width: "24px",

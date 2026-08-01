@@ -379,7 +379,7 @@ export function SubtasksSection({
               {pickerView !== "root" && (
                 <button
                   type="button"
-                  className="h-[24px] w-[24px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
+                  className="h-[24px] w-[24px] rounded-card grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
                   onClick={handleBack}
                   aria-label="Back"
                 >

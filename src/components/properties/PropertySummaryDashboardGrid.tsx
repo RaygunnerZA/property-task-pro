@@ -3,7 +3,7 @@ import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { RadialProgress } from "@/components/ui/radial-progress";
 
 const neuTileCoreClass =
-  "rounded-[12px] shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.04),inset_-2px_-2px_3px_0px_rgba(255,255,255,0.45)] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
+  "rounded-xl shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.04),inset_-2px_-2px_3px_0px_rgba(255,255,255,0.45)] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
 
 const neuTileMutedBgClass = "bg-background/55";
 
@@ -23,7 +23,7 @@ const subNumberPillClass =
 
 /** Urgent count chip — same dimensions in every tile. */
 const urgentChipClass =
-  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-[5px] border border-destructive/25 bg-destructive/12 px-1 text-[11px] font-semibold tabular-nums leading-none text-destructive shadow-none";
+  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-sharp border border-destructive/25 bg-destructive/12 px-1 text-[11px] font-semibold tabular-nums leading-none text-destructive shadow-none";
 
 const urgentIssuesRowClass =
   "flex w-full shrink-0 items-center justify-center gap-1.5";
@@ -279,14 +279,14 @@ export function PropertySummaryDashboardGrid({
         <DashedRule className="my-0" />
         <div className="grid min-h-0 flex-1 grid-cols-3 gap-0">
           <div className={subNumberPillClass}>
-            <span className="text-[26px] font-light tabular-nums text-amber-700/75">
+            <span className="text-[26px] font-light tabular-nums text-warning-foreground/75">
               {docDueSoon}
             </span>
             <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               DUE SOON
             </span>
           </div>
-          <div className="flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] px-1 py-1 shadow-none">
+          <div className="flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 shadow-none">
             <span className="text-[26px] font-light tabular-nums text-orange-800/70">
               {docExpiring}
             </span>
@@ -296,7 +296,7 @@ export function PropertySummaryDashboardGrid({
           </div>
           <div
             className={cn(
-              "flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-t-none rounded-b-[12px] px-1 py-1 shadow-none"
+              "flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-t-none rounded-b-xl px-1 py-1 shadow-none"
             )}
           >
             <span className="text-[26px] font-light tabular-nums text-primary/80">

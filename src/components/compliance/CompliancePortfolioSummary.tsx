@@ -17,7 +17,7 @@ export function CompliancePortfolioSummary({ items }: CompliancePortfolioSummary
 
   const cards = [
     { label: "Expired", value: counts.expired, icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
-    { label: "Expiring soon", value: counts.expiring, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Expiring soon", value: counts.expiring, icon: Clock, color: "text-warning-foreground", bg: "bg-warning/30" },
     { label: "Valid", value: counts.valid, icon: CheckCircle2, color: "text-success", bg: "bg-success/10" },
     { label: "Unassigned", value: counts.unassigned, icon: Building2, color: "text-muted-foreground", bg: "bg-muted/50" },
   ];

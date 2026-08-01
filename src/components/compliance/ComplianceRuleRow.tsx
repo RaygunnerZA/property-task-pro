@@ -52,7 +52,7 @@ function StatusBadge({ status }: { status: ComplianceRuleWithStatus["status"] })
       );
     case "due_soon":
       return (
-        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+        <Badge variant="outline" className="text-[10px] text-warning-foreground border-amber-300 bg-warning/30 dark:bg-amber-950/30">
           Due soon
         </Badge>
       );
@@ -129,7 +129,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
   return (
     <div
       className={cn(
-        "rounded-[8px] bg-card shadow-e1 border border-border/50",
+        "rounded-card bg-card shadow-e1 border border-border/50",
         "p-4 flex flex-col gap-3"
       )}
     >
@@ -198,7 +198,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
             className={cn(
               "flex items-center gap-1",
               rule.status === "overdue" && "text-destructive",
-              rule.status === "due_soon" && "text-amber-600"
+              rule.status === "due_soon" && "text-warning-foreground"
             )}
           >
             <Clock className="h-3 w-3" />

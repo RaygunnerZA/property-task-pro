@@ -33,15 +33,15 @@ export const ClarityState: React.FC<ClarityStateProps> = ({
   return (
     <div
       className={cn(
-        'w-full px-4 py-3 rounded-[8px]',
+        'w-full px-4 py-3 rounded-card',
         'flex items-start gap-2',
         isBlocking
-          ? 'bg-amber-50/50 border border-amber-200/50'
-          : 'bg-amber-50/30 border border-amber-200/30',
+          ? 'bg-warning/30 border border-warning'
+          : 'bg-warning/30 border border-warning',
         className
       )}
     >
-      <FillaIcon size={14} className="text-amber-700 mt-0.5 flex-shrink-0" />
+      <FillaIcon size={14} className="text-warning-foreground mt-0.5 flex-shrink-0" />
       <div className="flex-1">
         <p className="text-sm text-amber-900/80 leading-relaxed">
           {message}

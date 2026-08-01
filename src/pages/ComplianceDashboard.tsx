@@ -28,7 +28,7 @@ export default function ComplianceDashboard() {
         <DashboardSection title="Overview">
           {overview.loading ? (
             <div className="animate-pulse">
-              <div className="h-32 bg-neutral-200 rounded-lg" />
+              <div className="h-32 bg-muted rounded-lg" />
             </div>
           ) : overview.data ? (
             <ComplianceOverviewCard data={overview.data} />
@@ -41,7 +41,7 @@ export default function ComplianceDashboard() {
           <DashboardSection title="Rule Status">
             {statusDistribution.loading ? (
               <div className="animate-pulse">
-                <div className="h-48 bg-neutral-200 rounded-lg" />
+                <div className="h-48 bg-muted rounded-lg" />
               </div>
             ) : (
               <RuleStatusDistribution data={statusDistribution.data} />
@@ -52,9 +52,9 @@ export default function ComplianceDashboard() {
           <DashboardSection title="Recent Activity">
             {recentActivity.loading ? (
               <div className="animate-pulse space-y-2">
-                <div className="h-16 bg-neutral-200 rounded-lg" />
-                <div className="h-16 bg-neutral-200 rounded-lg" />
-                <div className="h-16 bg-neutral-200 rounded-lg" />
+                <div className="h-16 bg-muted rounded-lg" />
+                <div className="h-16 bg-muted rounded-lg" />
+                <div className="h-16 bg-muted rounded-lg" />
               </div>
             ) : (
               <RecentActivityFeed data={recentActivity.data} />
@@ -66,7 +66,7 @@ export default function ComplianceDashboard() {
         <DashboardSection title="Property Compliance">
           {propertyHeatmap.loading ? (
             <div className="animate-pulse">
-              <div className="h-64 bg-neutral-200 rounded-lg" />
+              <div className="h-64 bg-muted rounded-lg" />
             </div>
           ) : (
             <PropertyDriftHeatmap data={propertyHeatmap.data} />

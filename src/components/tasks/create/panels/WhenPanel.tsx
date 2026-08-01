@@ -134,7 +134,7 @@ function ScrollWheel({
     <div className="relative" style={{ width }}>
       {/* Capsule – sits behind content (z-0) */}
       <div
-        className={cn("absolute left-0 right-0 rounded-[8px] pointer-events-none shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.15),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_3px_2px_-1px_rgba(0,0,0,0.2)]", capsuleBg || "bg-[rgba(233,230,226,1)]")}
+        className={cn("absolute left-0 right-0 rounded-card pointer-events-none shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.15),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_3px_2px_-1px_rgba(0,0,0,0.2)]", capsuleBg || "bg-[rgba(233,230,226,1)]")}
         style={{ top: 21, height: 36, zIndex: 0, ...capsuleStyle }}
       />
 
@@ -355,7 +355,7 @@ export function WhenPanel({
           <div className="relative" style={{ width: STRIP_W, height: 46 }}>
             {/* Capsule background – sits behind content */}
             <div
-              className="absolute rounded-[8px] pointer-events-none bg-[rgba(233,230,226,1)] shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.18),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_4px_2px_-2px_rgba(0,0,0,0.2)]"
+              className="absolute rounded-card pointer-events-none bg-[rgba(233,230,226,1)] shadow-[inset_2px_6.4px_4px_0px_rgba(0,0,0,0.18),inset_0px_-1px_1px_0px_rgba(255,255,255,1),inset_0px_4px_2px_-2px_rgba(0,0,0,0.2)]"
               style={{ left: capsuleLeft, width: DATE_CAPSULE_W, zIndex: 0, top: 4, height: 36 }}
             />
 

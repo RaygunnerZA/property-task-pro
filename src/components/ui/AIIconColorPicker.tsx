@@ -373,7 +373,7 @@ export function AIIconColorPicker({
                 disabled={disabled || loading}
                 onClick={() => onChange(name, value.color)}
                 className={cn(
-                  "paper-textured-chip w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
+                  "paper-textured-chip w-10 h-10 rounded-card flex items-center justify-center transition-all",
                   "border-2 border-border",
                   isSelected
                     ? "border-primary shadow-md"
@@ -396,7 +396,7 @@ export function AIIconColorPicker({
             disabled={disabled || loading}
             onClick={handleRefresh}
             className={cn(
-              "paper-textured-chip w-10 h-10 rounded-[8px] flex items-center justify-center transition-all",
+              "paper-textured-chip w-10 h-10 rounded-card flex items-center justify-center transition-all",
               "border-2 border-border hover:opacity-90",
               loading && "animate-spin"
             )}

@@ -110,7 +110,7 @@ export default function SettingsAutomationPanel() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col gap-2 p-1 bg-surface-gradient rounded-[8px] shadow-e1 sm:flex-row">
+            <div className="flex flex-col gap-2 p-1 bg-surface-gradient rounded-card shadow-e1 sm:flex-row">
               {(["conservative", "recommended", "aggressive"] as const).map((m) => (
                 <button
                   key={m}

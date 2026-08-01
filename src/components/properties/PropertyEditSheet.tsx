@@ -260,7 +260,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
           {onArchive ? (
             <button
               type="button"
-              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-[#EB6834]"
+              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-accent"
               onClick={() => {
                 onOpenChange(false);
                 onArchive();

@@ -150,12 +150,12 @@ export function AddToFillaDropPanel({
         onDrop={handleDrop}
         onClick={() => !uploading && fileInputRef.current?.click()}
         className={cn(
-          "relative w-full rounded-[12px] text-left transition-all cursor-pointer",
+          "relative w-full rounded-xl text-left transition-all cursor-pointer",
           compact
             ? "bg-background/90 shadow-e1 px-3 py-2.5 shadow-[inset_1px_1px_2px_rgba(255,255,255,0.65),2px_3px_6px_rgba(174,174,178,0.18)]"
             : "border-2 border-white pl-1 pr-4 h-[220px] shadow-[2px_3px_2px_0px_rgba(255,255,255,0.5),-1px_-2px_2px_1px_rgba(0,0,0,0.05)]",
-          dragActive && "ring-2 ring-[#8EC9CE]/50",
-          !dragActive && "hover:ring-1 hover:ring-[#8EC9CE]/35",
+          dragActive && "ring-2 ring-primary/50",
+          !dragActive && "hover:ring-1 hover:ring-primary/35",
           uploading && "opacity-80 cursor-progress"
         )}
       >
@@ -168,11 +168,11 @@ export function AddToFillaDropPanel({
           <div
             className={cn(
               "shrink-0 flex items-center justify-center rounded-[10px]",
-              compact ? "h-12 w-12 bg-[#8EC9CE]/10" : "h-[180px] w-[160px]"
+              compact ? "h-12 w-12 bg-primary/10" : "h-[180px] w-[160px]"
             )}
           >
             {uploading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-[#5a9ea3]" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary-deep" />
             ) : (
               <img
                 src={addToFillaIllustration}
@@ -201,7 +201,7 @@ export function AddToFillaDropPanel({
                   onReviewClick();
                 }}
                 className={cn(
-                  "inline-flex items-center rounded-[8px] bg-[#8EC9CE] px-2 py-0.5 font-semibold text-white",
+                  "inline-flex items-center rounded-card bg-primary px-2 py-0.5 font-semibold text-white",
                   compact ? "text-[9px] h-[20px]" : "text-[10px] h-[24px]"
                 )}
               >
@@ -215,7 +215,7 @@ export function AddToFillaDropPanel({
       {(lastUploaded > 0 || lastFailures.length > 0) && (
         <div className="mt-2 space-y-1">
           {lastUploaded > 0 && (
-            <div className="text-[10px] text-emerald-700 flex items-center gap-1">
+            <div className="text-[10px] text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
               Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}.
             </div>

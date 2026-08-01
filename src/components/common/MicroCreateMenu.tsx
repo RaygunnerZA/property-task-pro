@@ -106,8 +106,8 @@ export const MicroCreateMenu: React.FC<MicroCreateMenuProps> = ({
               setOpen(false);
             }}
             className={cn(
-              'px-2 py-1 text-xs text-amber-700',
-              'hover:bg-amber-50 rounded-[3px]',
+              'px-2 py-1 text-xs text-warning-foreground',
+              'hover:bg-warning/30 rounded-[3px]',
               'transition-colors'
             )}
           >

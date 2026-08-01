@@ -275,7 +275,7 @@ function PropertyScopeFilterBarPrimary({
             <button
               type="button"
               onClick={() => setShowAddProperty(true)}
-              className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+              className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30"
               style={{ width: "20px", height: "35px" }}
               aria-label="Add property"
             >

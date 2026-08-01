@@ -153,7 +153,7 @@ export function TaskContextRow({
               type="button"
               onClick={() => onSectionClick(isActive ? null : section.id)}
               className={cn(
-                "relative h-[35px] w-[35px] rounded-[8px] flex items-center justify-center",
+                "relative h-[35px] w-[35px] rounded-card flex items-center justify-center",
                 "transition-all duration-150",
                 isActive
                   ? "shadow-inset bg-card"
@@ -168,7 +168,7 @@ export function TaskContextRow({
               {/* Warning marker for unresolved sections */}
               {hasUnresolved && !isActive && (
                 <div className="absolute -top-1 -right-1">
-                  <div className="h-2 w-2 rounded-full bg-amber-500 border border-white" />
+                  <div className="h-2 w-2 rounded-full bg-warning-vivid border border-white" />
                 </div>
               )}
             </button>

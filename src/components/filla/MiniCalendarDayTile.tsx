@@ -182,7 +182,7 @@ export const MiniCalendarDayTile: React.FC<MiniCalendarDayTileProps> = ({
       className={cn(
         // Base styles
         "relative aspect-square flex items-center justify-center",
-        "rounded-[12px] font-mono text-sm font-medium transition-all duration-200",
+        "rounded-xl font-mono text-sm font-medium transition-all duration-200",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         
         // Paper texture background (simulated with gradient)

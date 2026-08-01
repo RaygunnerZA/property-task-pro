@@ -28,7 +28,7 @@ export const Button: React.FC<ButtonProps> = ({
   className = '', 
   ...props 
 }) => {
-  const base = `inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-150 rounded-[5px] disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]`;
+  const base = `inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-150 rounded-sharp disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]`;
   
   const variants = {
     primary:

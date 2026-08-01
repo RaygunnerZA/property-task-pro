@@ -29,10 +29,10 @@ function CopyButton({ css }: { css: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="p-1.5 rounded-[5px] bg-surface/80 shadow-e1 hover:shadow-e2 transition-all"
+      className="p-1.5 rounded-sharp bg-surface/80 shadow-e1 hover:shadow-e2 transition-all"
       title="Copy CSS"
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-success-foreground" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </button>
   );
 }
@@ -41,11 +41,11 @@ function ComponentCard({ component }: { component: ComponentDef }) {
   const cssOutput = `.${component.cssClass} {\n${component.cssValue}\n}`;
   
   return (
-    <div className="bg-surface/50 rounded-[8px] shadow-e1 overflow-hidden">
+    <div className="bg-surface/50 rounded-card shadow-e1 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-concrete/50">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-1.5 py-0.5 rounded-[5px]">
+          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground bg-concrete/50 px-1.5 py-0.5 rounded-sharp">
             {component.category}
           </span>
           <span className="font-mono text-[11px] font-medium text-ink">{component.name}</span>
@@ -154,7 +154,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-primary text-white rounded-[5px] shadow-primary-btn">
+        <button className="px-4 py-2 font-medium text-sm bg-primary text-white rounded-sharp shadow-primary-btn">
           Primary Button
         </button>
       ),
@@ -168,7 +168,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.e1};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-surface text-ink rounded-[5px] shadow-e1">
+        <button className="px-4 py-2 font-medium text-sm bg-surface text-ink rounded-sharp shadow-e1">
           Secondary Button
         </button>
       ),
@@ -182,7 +182,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-destructive text-white rounded-[5px] shadow-primary-btn">
+        <button className="px-4 py-2 font-medium text-sm bg-destructive text-white rounded-sharp shadow-primary-btn">
           Danger Button
         </button>
       ),
@@ -198,7 +198,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-primary text-white rounded-[5px] shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-primary text-white rounded-sharp shadow-e1">
           Active
         </span>
       ),
@@ -212,7 +212,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-[5px] shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-sharp shadow-e1">
           Inactive
         </span>
       ),
@@ -225,7 +225,7 @@ export function ComponentRegistry() {
   color: #166534;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-green-800">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-success/30 text-success-foreground">
           Compliant
         </span>
       ),
@@ -238,7 +238,7 @@ export function ComponentRegistry() {
   color: #92400e;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-amber-800">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-warning/50 text-warning-foreground">
           Pending
         </span>
       ),
@@ -251,7 +251,7 @@ export function ComponentRegistry() {
   color: #991b1b;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-red-800">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-[11px] uppercase tracking-wider font-medium bg-destructive/20 text-destructive">
           Overdue
         </span>
       ),
@@ -264,7 +264,7 @@ export function ComponentRegistry() {
   color: hsl(var(--ink) / 0.6);
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-concrete text-ink/60">
           Low
         </span>
       ),
@@ -277,7 +277,7 @@ export function ComponentRegistry() {
   color: hsl(var(--primary-deep));
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-primary/30 text-primary-deep">
           Normal
         </span>
       ),
@@ -290,7 +290,7 @@ export function ComponentRegistry() {
   color: hsl(var(--accent));
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-2.5 py-1 rounded-[5px] font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
+        <span className="inline-flex items-center px-2.5 py-1 rounded-sharp font-mono text-[10px] uppercase tracking-wider font-medium bg-accent/20 text-accent">
           High
         </span>
       ),
@@ -303,7 +303,7 @@ export function ComponentRegistry() {
       cssClass: 'shadow-e1',
       cssValue: `  box-shadow: ${shadows.e1};`,
       preview: (
-        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e1" />
+        <div className="w-24 h-16 rounded-card bg-surface shadow-e1" />
       ),
     },
     {
@@ -312,7 +312,7 @@ export function ComponentRegistry() {
       cssClass: 'shadow-e2',
       cssValue: `  box-shadow: ${shadows.e2};`,
       preview: (
-        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e2" />
+        <div className="w-24 h-16 rounded-card bg-surface shadow-e2" />
       ),
     },
     {
@@ -321,7 +321,7 @@ export function ComponentRegistry() {
       cssClass: 'shadow-e3',
       cssValue: `  box-shadow: ${shadows.e3};`,
       preview: (
-        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-e3" />
+        <div className="w-24 h-16 rounded-card bg-surface shadow-e3" />
       ),
     },
     {
@@ -330,7 +330,7 @@ export function ComponentRegistry() {
       cssClass: 'shadow-engraved',
       cssValue: `  box-shadow: ${shadows.engraved};`,
       preview: (
-        <div className="w-24 h-16 rounded-[8px] bg-surface shadow-engraved" />
+        <div className="w-24 h-16 rounded-card bg-surface shadow-engraved" />
       ),
     },
     
@@ -351,8 +351,8 @@ export function ComponentRegistry() {
     box-shadow: ${shadows.e1};
   }`,
       preview: (
-        <div className="inline-flex p-1 bg-concrete rounded-[5px] shadow-engraved">
-          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider bg-surface text-ink rounded-[5px] shadow-e1">
+        <div className="inline-flex p-1 bg-concrete rounded-sharp shadow-engraved">
+          <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider bg-surface text-ink rounded-sharp shadow-e1">
             Tab 1
           </span>
           <span className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -374,7 +374,7 @@ export function ComponentRegistry() {
   border-radius: 8px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <div className="w-32 h-20 rounded-[8px] card-flat shadow-e1" />
+        <div className="w-32 h-20 rounded-card card-flat shadow-e1" />
       ),
     },
     {
@@ -388,7 +388,7 @@ export function ComponentRegistry() {
   border-radius: 8px;
   box-shadow: ${shadows.e2};`,
       preview: (
-        <div className="w-32 h-20 rounded-[8px] bg-section-flat shadow-e2" />
+        <div className="w-32 h-20 rounded-card bg-section-flat shadow-e2" />
       ),
     },
   ];

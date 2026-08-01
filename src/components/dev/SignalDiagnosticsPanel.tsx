@@ -32,9 +32,9 @@ interface RunRow {
 }
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
-  success: <CheckCircle className="h-3.5 w-3.5 text-teal-500" />,
-  partial: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />,
-  failed:  <XCircle className="h-3.5 w-3.5 text-red-500" />,
+  success: <CheckCircle className="h-3.5 w-3.5 text-primary" />,
+  partial: <AlertTriangle className="h-3.5 w-3.5 text-warning-vivid" />,
+  failed:  <XCircle className="h-3.5 w-3.5 text-destructive" />,
   running: <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-500" />,
   skipped: <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />,
 };
@@ -161,10 +161,10 @@ export function SignalDiagnosticsPanel() {
                 <Stat label="Duplicates ignored" value={run.duplicates_ignored} />
                 <Stat label="Expired cleared"    value={run.expired_cleared} />
                 {run.errors.length > 0 && (
-                  <div className="col-span-2 mt-1 rounded bg-red-50 px-2 py-1.5">
-                    <p className="font-semibold text-red-600 mb-0.5">Errors ({run.errors.length})</p>
+                  <div className="col-span-2 mt-1 rounded bg-destructive/10 px-2 py-1.5">
+                    <p className="font-semibold text-destructive mb-0.5">Errors ({run.errors.length})</p>
                     {run.errors.map((e, i) => (
-                      <p key={i} className="text-red-500 truncate">
+                      <p key={i} className="text-destructive truncate">
                         {e.property_id ? `${e.property_id.slice(0, 8)}… ` : ""}{e.message}
                       </p>
                     ))}

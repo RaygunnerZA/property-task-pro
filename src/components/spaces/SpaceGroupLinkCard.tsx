@@ -17,7 +17,7 @@ export function SpaceGroupLinkCard({ group, to }: SpaceGroupLinkCardProps) {
   return (
     <Link
       to={to}
-      className="w-[200px] flex-shrink-0 rounded-[8px] overflow-hidden bg-card shadow-e1 flex flex-col transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.99] group/card"
+      className="w-[200px] flex-shrink-0 rounded-card overflow-hidden bg-card shadow-e1 flex flex-col transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.99] group/card"
     >
       <SpaceGroupCardBanner
         imageSrc={getSpaceGroupCardIllustration(group.id)}

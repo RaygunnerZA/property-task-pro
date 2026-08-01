@@ -128,8 +128,8 @@ export function IssuesSignalCard({
 
   if (item.group === "urgent") {
     const icon = item.signalKind
-      ? signalKindIcon(item.signalKind, "text-amber-700")
-      : <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      ? signalKindIcon(item.signalKind, "text-warning-foreground")
+      : <AlertTriangle className="h-4 w-4 text-warning-foreground" />;
     const actionsList =
       item.fixtureActions != null
         ? [
@@ -185,8 +185,8 @@ export function IssuesSignalCard({
 
   if (item.group === "review") {
     const icon = item.signalKind
-      ? signalKindIcon(item.signalKind, "text-teal-800")
-      : <HelpCircle className="h-4 w-4 text-teal-800" />;
+      ? signalKindIcon(item.signalKind, "text-primary-deep")
+      : <HelpCircle className="h-4 w-4 text-primary-deep" />;
 
     const primaryId = item.fixtureActions?.primary.id ?? "signal-review";
     const secondaryRaw = item.fixtureActions?.secondary ?? [];

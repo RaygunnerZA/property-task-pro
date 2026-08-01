@@ -111,7 +111,7 @@ function WeekStripRow({
                 type="button"
                 onClick={() => onDateSelect?.(date)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center rounded-[8px] font-mono font-medium transition-colors",
+                  "relative flex flex-col items-center justify-center rounded-card font-mono font-medium transition-colors",
                   daySizeClass,
                   isWeekend && !isSelected && "text-muted-foreground/50"
                 )}
@@ -479,7 +479,7 @@ export function FillaMiniCalendar({
         }}
         className={cn(
           propClassName,
-          "relative font-mono rounded-[8px]",
+          "relative font-mono rounded-card",
           isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]"
         )}
         style={{
@@ -571,7 +571,7 @@ export function FillaMiniCalendar({
                     isEmbedded ? "h-[30px]" : "h-[28px]"
                   ),
                   day: cn(
-                    "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
+                    "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
                     isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
                   ),
                   day_selected: "",
@@ -699,7 +699,7 @@ export function FillaMiniCalendar({
               isEmbedded ? "h-[30px]" : "h-[28px]"
             ),
             day: cn(
-              "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
+              "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
               isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
             ),
             day_selected: "",

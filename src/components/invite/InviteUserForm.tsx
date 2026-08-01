@@ -392,7 +392,7 @@ export function InviteUserForm({
             >
               <label
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-[8px] cursor-pointer transition-all",
+                  "flex items-center gap-3 px-4 py-3 rounded-card cursor-pointer transition-all",
                   userType === "internal"
                     ? "shadow-inset bg-card"
                     : "shadow-e1 bg-background hover:bg-muted/30",
@@ -406,7 +406,7 @@ export function InviteUserForm({
               </label>
               <label
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-[8px] cursor-pointer transition-all",
+                  "flex items-center gap-3 px-4 py-3 rounded-card cursor-pointer transition-all",
                   userType === "external"
                     ? "shadow-inset bg-card"
                     : "shadow-e1 bg-background hover:bg-muted/30",
@@ -593,9 +593,9 @@ export function InviteUserForm({
               </SelectContent>
             </Select>
             {showOwnerWarning && role === "owner" && (
-              <div className="flex items-start gap-2 p-3 rounded-[8px] bg-amber-50 dark:bg-amber-950/30 shadow-e1">
-                <Shield className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-800 dark:text-amber-200">
+              <div className="flex items-start gap-2 p-3 rounded-card bg-warning/30 dark:bg-amber-950/30 shadow-e1">
+                <Shield className="h-4 w-4 text-warning-foreground mt-0.5 shrink-0" />
+                <p className="text-xs text-warning-foreground dark:text-amber-200">
                   They will be a <strong>co-owner</strong> with the same control as you (billing, member management, full access). You will both appear as Owner in the team.
                 </p>
               </div>
@@ -622,7 +622,7 @@ export function InviteUserForm({
               </div>
             )}
             {(propertyAccess === "selected" || userType === "external") && (
-              <div className="max-h-[160px] overflow-y-auto space-y-1 rounded-[8px] p-2 shadow-engraved bg-background">
+              <div className="max-h-[160px] overflow-y-auto space-y-1 rounded-card p-2 shadow-engraved bg-background">
                 {properties.length === 0 ? (
                   <p className="text-xs text-muted-foreground p-2">No properties found</p>
                 ) : (
@@ -686,7 +686,7 @@ export function InviteUserForm({
                   disabled={isSubmitting}
                 />
                 {teamSearch.trim() && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-background rounded-[8px] shadow-e3 z-50 max-h-[140px] overflow-y-auto">
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-background rounded-card shadow-e3 z-50 max-h-[140px] overflow-y-auto">
                     {filteredTeams.map((team) => (
                       <button
                         key={team.id}
@@ -760,7 +760,7 @@ export function InviteUserForm({
                 Advanced Access Restrictions
               </button>
               {advancedOpen && (
-                <div className="mt-3 p-4 rounded-[8px] shadow-engraved bg-background space-y-3">
+                <div className="mt-3 p-4 rounded-card shadow-engraved bg-background space-y-3">
                   <p className="text-xs text-muted-foreground">
                     Optionally restrict this user to specific spaces or asset types.
                     Leave blank for full access within assigned properties.
@@ -865,7 +865,7 @@ export function InviteUserForm({
 
   return (
     <Dialog open={!!open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-[12px] shadow-e3">
+      <DialogContent className="sm:max-w-[760px] max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-xl shadow-e3">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-semibold">Invite User</DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">

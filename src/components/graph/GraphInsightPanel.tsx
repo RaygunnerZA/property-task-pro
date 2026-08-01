@@ -50,7 +50,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
             Impact: {taskImpact}
           </Badge>
           {hazardExposure > 0 && (
-            <Badge variant="outline" className="text-xs border-amber-500/50 text-amber-700">
+            <Badge variant="outline" className="text-xs border-warning-vivid/50 text-warning-foreground">
               Exposure: {hazardExposure.toFixed(1)}
             </Badge>
           )}
@@ -66,12 +66,12 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
         <div className="flex flex-wrap gap-2">
           <Badge variant="secondary">Centrality: {(centrality * 100).toFixed(0)}%</Badge>
           {hazardExposure > 0 && (
-            <Badge variant="outline" className="border-amber-500/50 text-amber-700">
+            <Badge variant="outline" className="border-warning-vivid/50 text-warning-foreground">
               Hazard exposure: {hazardExposure.toFixed(1)}
             </Badge>
           )}
           {complianceInfluence > 0 && (
-            <Badge variant="outline" className="border-teal-500/50 text-teal-700">
+            <Badge variant="outline" className="border-teal-500/50 text-primary-deep">
               Compliance: {complianceInfluence}
             </Badge>
           )}
@@ -108,7 +108,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
         </div>
         <div className="rounded-lg p-3 shadow-e1 bg-card">
           <div className="flex items-center gap-2 mb-1">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertTriangle className="h-4 w-4 text-warning-foreground" />
             <p className="text-xs font-medium text-muted-foreground">Hazard exposure</p>
           </div>
           <p className="text-lg font-semibold">{hazardExposure.toFixed(1)}</p>
@@ -116,7 +116,7 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
         </div>
         <div className="rounded-lg p-3 shadow-e1 bg-card">
           <div className="flex items-center gap-2 mb-1">
-            <Shield className="h-4 w-4 text-teal-600" />
+            <Shield className="h-4 w-4 text-primary-deep" />
             <p className="text-xs font-medium text-muted-foreground">Compliance influence</p>
           </div>
           <p className="text-lg font-semibold">{complianceInfluence}</p>

@@ -69,7 +69,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[155px] w-[120px] flex-shrink-0",
+        "bg-card/60 rounded-card overflow-hidden shadow-e1 h-[155px] w-[120px] flex-shrink-0",
         "transition-all duration-200 cursor-pointer hover:shadow-md active:scale-[0.99]"
       )}
       onClick={handleClick}

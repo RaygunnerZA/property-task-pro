@@ -62,6 +62,7 @@
 
     --success: 145 62% 85%;          /* Light green */
     --success-foreground: 145 70% 25%;
+    --success-vivid: 142 71% 45%;    /* Solid green - status dots / confirmations */
 
     --warning: 43 100% 85%;          /* Light yellow */
     --warning-foreground: 43 100% 35%;
@@ -167,6 +168,7 @@
 
     --success: 145 62% 50%;
     --success-foreground: 0 0% 100%;
+    --success-vivid: 142 71% 45%;
 
     --warning: 43 100% 60%;
     --warning-foreground: 248 15% 12%;

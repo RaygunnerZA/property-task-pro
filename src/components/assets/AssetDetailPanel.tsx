@@ -515,7 +515,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="overview"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -528,7 +528,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="activity"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -541,7 +541,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="compliance"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -554,7 +554,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="graph"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -846,10 +846,10 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                               className={cn(
                                 "h-1.5 rounded-full mt-2",
                                 linkedCompliance.some((c) => c.expiry_state === "expired")
-                                  ? "bg-red-500"
+                                  ? "bg-destructive"
                                   : linkedCompliance.some((c) => c.expiry_state === "expiring")
-                                  ? "bg-amber-500"
-                                  : "bg-green-500"
+                                  ? "bg-warning-vivid"
+                                  : "bg-success-vivid"
                               )}
                             />
                             <p className="text-xs text-muted-foreground mt-2">

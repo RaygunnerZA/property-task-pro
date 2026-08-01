@@ -268,7 +268,7 @@ export function OnboardingSpaceGroupCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-[8px] bg-card pb-[3px] shadow-e1">
+      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-card bg-card pb-[3px] shadow-e1">
         {/* Banner — collapses to 70px on expand */}
         <div
           role={isExpanded ? "button" : undefined}

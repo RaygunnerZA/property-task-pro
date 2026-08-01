@@ -204,7 +204,7 @@ export function CreateTaskSections({
               }}
             />
             {scheduleConflictNote && (
-              <div className="pl-8 text-[11px] font-medium text-[#EB6834]">
+              <div className="pl-8 text-[11px] font-medium text-accent">
                 {scheduleConflictNote}
               </div>
             )}
@@ -281,7 +281,7 @@ export function CreateTaskSections({
 
       {/* Advanced Options */}
       {showAdvanced && (
-        <div className="space-y-4 p-4 rounded-[8px] bg-muted/50 shadow-engraved">
+        <div className="space-y-4 p-4 rounded-card bg-muted/50 shadow-engraved">
           <div className="flex items-center justify-between">
             <div>
               <Label htmlFor="compliance" className="text-sm">Compliance Task</Label>

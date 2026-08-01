@@ -24,9 +24,9 @@ export function signalKindIcon(kind: SignalKind, className?: string): ReactNode 
     case "upload":
       return <Upload className={c} />;
     case "ai_warning":
-      return <AlertTriangle className={cn(c, "text-[#EB6834]")} />;
+      return <AlertTriangle className={cn(c, "text-accent")} />;
     case "ai_suggestion":
-      return <Sparkles className={cn(c, "text-[#8EC9CE]")} />;
+      return <Sparkles className={cn(c, "text-primary")} />;
     case "admin":
       return <UserCog className={c} />;
     case "conflict":

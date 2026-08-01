@@ -89,7 +89,7 @@ export function DocumentCard({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card shadow-e1",
+        "rounded-card bg-card shadow-e1",
         "cursor-pointer hover:shadow-e2 active:shadow-e1 transition-all duration-150",
         "overflow-hidden flex flex-col min-h-[120px] relative group",
         "border border-border/50"
@@ -101,10 +101,10 @@ export function DocumentCard({
           <img
             src={document.thumbnail_url}
             alt=""
-            className="w-12 h-12 rounded-[5px] object-cover flex-shrink-0"
+            className="w-12 h-12 rounded-sharp object-cover flex-shrink-0"
           />
         ) : (
-          <div className="w-12 h-12 rounded-[5px] bg-muted/50 flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-sharp bg-muted/50 flex items-center justify-center flex-shrink-0">
             <FileIcon className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
@@ -182,7 +182,7 @@ export function DocumentCard({
               {hazards.length > 0 && (
                 <div>
                   <span className="text-muted-foreground">Hazards:</span>{" "}
-                  <span className="text-amber-600 font-medium">{hazards.join(", ")}</span>
+                  <span className="text-warning-foreground font-medium">{hazards.join(", ")}</span>
                 </div>
               )}
               {detectedSpaces.length > 0 && (
@@ -296,7 +296,7 @@ export function DocumentCard({
               e.stopPropagation();
               onOpen();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <ExternalLink className="h-3 w-3" />
             Open
@@ -309,7 +309,7 @@ export function DocumentCard({
               e.stopPropagation();
               onReplace();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <RefreshCw className="h-3 w-3" />
             Replace
@@ -322,7 +322,7 @@ export function DocumentCard({
               e.stopPropagation();
               onLinkItems();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <Link2 className="h-3 w-3" />
             Link items

@@ -27,7 +27,7 @@ export function SpaceGroupCardBanner({
         <img src={imageSrc} alt="" className="h-full w-full object-cover object-center" decoding="async" />
       ) : null}
       <div
-        className="pointer-events-none absolute inset-0 rounded-t-[8px]"
+        className="pointer-events-none absolute inset-0 rounded-t-card"
         style={{
           boxShadow: BANNER_INNER_SHADOW,
           color: "rgba(41, 39, 53, 0.87)",

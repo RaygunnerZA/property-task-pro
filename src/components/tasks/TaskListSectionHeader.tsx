@@ -16,9 +16,9 @@ export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({
   const getTextColor = () => {
     switch (variant) {
       case "danger":
-        return "text-red-600";
+        return "text-destructive";
       case "warning":
-        return "text-yellow-700";
+        return "text-warning-foreground";
       case "muted":
         return "text-muted-foreground";
       default:
@@ -34,9 +34,9 @@ export const TaskListSectionHeader: React.FC<TaskListSectionHeaderProps> = ({
       <span className={cn(
         'text-xs font-mono font-medium px-2 py-1 rounded-full',
         variant === "danger"
-          ? "bg-red-100 text-red-700"
+          ? "bg-red-100 text-destructive"
           : variant === "warning"
-            ? "bg-yellow-100 text-yellow-700"
+            ? "bg-yellow-100 text-warning-foreground"
             : variant === "muted"
               ? "bg-muted/50 text-muted-foreground"
               : "bg-card text-muted-foreground"

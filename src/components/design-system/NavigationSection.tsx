@@ -143,7 +143,7 @@ export function NavigationSection() {
         {/* FAB */}
         <div className="space-y-3">
           <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">FAB (click to expand - fanned out)</h3>
-          <div className="bg-concrete/30 rounded-[5px]">
+          <div className="bg-concrete/30 rounded-sharp">
             <FABDemo />
           </div>
         </div>

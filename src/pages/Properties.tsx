@@ -127,7 +127,7 @@ const Properties = () => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowAddProperty(true)}
-                className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+                className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30"
                 style={{
                   width: '35px',
                   height: '35px',
@@ -141,7 +141,7 @@ const Properties = () => {
                 <button
                   type="button"
                   onClick={() => setFilteredPropertyId(null)}
-                  className="flex items-center justify-center rounded-[8px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 hover:bg-muted/40"
+                  className="flex items-center justify-center rounded-card px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 hover:bg-muted/40"
                   style={{
                     minWidth: "35px",
                     height: "35px",

@@ -331,7 +331,7 @@ export function WherePanel({
               resetPropertyModal();
               setShowCreateProperty(true);
             }}
-            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
           >
             <span className="text-[12px] uppercase leading-[16px]">PROPERTY</span>
             <Plus className="h-3.5 w-3.5" />
@@ -412,7 +412,7 @@ export function WherePanel({
                 resetSpaceModal();
                 setShowCreateSpace(true);
               }}
-              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
             >
               <span className="text-[12px] uppercase leading-[16px]">SPACES</span>
               <Plus className="h-3.5 w-3.5" />
@@ -491,7 +491,7 @@ export function WherePanel({
               />
               
               {propertyImagePreview ? (
-                <div className="relative w-16 h-16 rounded-[8px] overflow-hidden shadow-e1">
+                <div className="relative w-16 h-16 rounded-card overflow-hidden shadow-e1">
                   <img src={propertyImagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -505,7 +505,7 @@ export function WherePanel({
                 <button
                   type="button"
                   onClick={() => propertyFileInputRef.current?.click()}
-                  className="w-16 h-16 rounded-[8px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
+                  className="w-16 h-16 rounded-card border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
                   <ImagePlus className="h-4 w-4" />
                   <span className="text-[10px]">Image</span>

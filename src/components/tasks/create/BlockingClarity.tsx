@@ -75,13 +75,13 @@ export function BlockingClarity({
   return (
     <div
       className={cn(
-        "p-3 rounded-md bg-amber-50/50 border border-amber-200/50",
+        "p-3 rounded-md bg-warning/30 border border-warning",
         "flex flex-col gap-2",
         className
       )}
     >
       {/* Message */}
-      <p className="text-sm text-amber-800">
+      <p className="text-sm text-warning-foreground">
         {message}
       </p>
       

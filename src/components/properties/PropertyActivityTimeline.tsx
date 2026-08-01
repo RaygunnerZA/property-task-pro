@@ -7,7 +7,7 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 const typeStyles: Record<string, string> = {
   task: "bg-primary/12 text-primary",
   compliance: "bg-emerald-500/12 text-emerald-800 dark:text-emerald-300",
-  drift: "bg-amber-500/12 text-amber-800 dark:text-amber-300",
+  drift: "bg-warning-vivid/12 text-warning-foreground dark:text-amber-300",
   inspection: "bg-sky-500/12 text-sky-800 dark:text-sky-300",
 };
 

@@ -32,17 +32,17 @@ export default function PropertyDocumentItem({ document, onClick }: PropertyDocu
             {document.file_name ?? document.title ?? "Untitled"}
           </Text>
           <div className="flex items-center gap-3 mt-1">
-            <Text variant="caption" className="text-neutral-600">
+            <Text variant="caption" className="text-muted-foreground">
               {document.file_size != null ? formatFileSize(document.file_size) : "—"}
             </Text>
-            <Text variant="caption" className="text-neutral-600">
+            <Text variant="caption" className="text-muted-foreground">
               {format(new Date(document.created_at), 'PP')}
             </Text>
           </div>
         </div>
 
-        <button className="p-2 rounded-lg hover:bg-neutral-100 transition-colors">
-          <Download className="w-5 h-5 text-neutral-700" />
+        <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+          <Download className="w-5 h-5 text-muted-foreground" />
         </button>
       </div>
     </Surface>

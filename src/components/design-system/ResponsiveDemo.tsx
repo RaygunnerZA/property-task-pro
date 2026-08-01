@@ -17,7 +17,7 @@ const breakpoints = [
     range: '641px – 1024px',
     columns: 2,
     features: ['Two column layout', 'Mobile nav + hamburger', 'Adaptive panels', 'Touch-optimized'],
-    color: 'bg-amber-500',
+    color: 'bg-warning-vivid',
   },
   {
     name: 'Desktop',
@@ -25,7 +25,7 @@ const breakpoints = [
     range: '≥ 1025px',
     columns: 3,
     features: ['Left nav drawer (permanent)', 'Three column content', 'Dedicated calendar column', 'Hover interactions'],
-    color: 'bg-green-500',
+    color: 'bg-success-vivid',
   },
 ];
 

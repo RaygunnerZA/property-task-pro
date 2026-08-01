@@ -474,10 +474,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   }, [status]);
 
   const statusChipTextClass = useMemo(() => {
-    if (status === "open") return "text-emerald-600";
+    if (status === "open") return "text-success-foreground";
     if (status === "completed" || status === "archived") return "text-muted-foreground";
-    if (status === "waiting_review") return "text-amber-700";
-    return "text-teal-600";
+    if (status === "waiting_review") return "text-warning-foreground";
+    return "text-primary-deep";
   }, [status]);
 
   const taskTeams = useMemo(() => {
@@ -981,7 +981,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const panelWrapper = (content: ReactNode, title?: string) => {
     if (variant === "column") {
       return (
-        <div className={cn(columnShellClass, "overflow-hidden rounded-[12px] shadow-none border-0 bg-background")}>
+        <div className={cn(columnShellClass, "overflow-hidden rounded-xl shadow-none border-0 bg-background")}>
           {content}
         </div>
       );
@@ -1091,7 +1091,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                       key={image.id}
                       type="button"
                       className={cn(
-                        "aspect-square w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-muted rounded-[8px] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative border-2 shadow-e1",
+                        "aspect-square w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-muted rounded-card overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative border-2 shadow-e1",
                         selectedImageIndex === index ? "border-primary" : "border-transparent"
                       )}
                       onClick={() => setSelectedImageIndex(index)}
@@ -1113,7 +1113,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                   <button
                     type="button"
                     onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                    className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                    className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
                     title="Ask FILLA"
                     aria-label="Open Assistant"
                   >
@@ -1123,7 +1123,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     type="button"
                     onClick={() => taskImageInputRef.current?.click()}
                     disabled={isUploadingImage}
-                    className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                    className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
                     title="Upload image"
                     aria-label="Upload image"
                   >
@@ -1137,7 +1137,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <button
                 type="button"
                 onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
+                className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
                 title="Ask FILLA"
                 aria-label="Open Assistant"
               >
@@ -1147,7 +1147,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 type="button"
                 onClick={() => taskImageInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
+                className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
                 title="Upload image"
                 aria-label="Upload image"
               >
@@ -1181,7 +1181,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 key={attachment.id}
                 type="button"
                 onClick={() => setSelectedDocument(attachment)}
-                className="w-full rounded-[8px] bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
+                className="w-full rounded-card bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
               >
                 <span className="block truncate font-medium text-foreground">
                   {attachment.file_name || "Document"}
@@ -1209,14 +1209,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </span>
             <span
               className={cn(
-                "inline-flex h-[28px] items-center rounded-[8px] bg-white px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide shadow-none",
+                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-wide shadow-none",
                 statusChipTextClass
               )}
             >
               {statusChipLabel}
             </span>
             {priority === "urgent" && (
-              <span className="inline-flex h-[28px] items-center rounded-[8px] bg-white px-2.5 font-mono text-[11px] uppercase tracking-wide text-destructive shadow-none">
+              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-[11px] uppercase tracking-wide text-destructive shadow-none">
                 URGENT
               </span>
             )}

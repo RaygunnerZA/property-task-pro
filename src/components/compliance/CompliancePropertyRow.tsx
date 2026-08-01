@@ -48,7 +48,7 @@ export function CompliancePropertyRow({
             <span className="text-destructive font-medium">{expiredCount} expired</span>
           )}
           {expiringCount > 0 && (
-            <span className="text-amber-600 font-medium">{expiringCount} expiring</span>
+            <span className="text-warning-foreground font-medium">{expiringCount} expiring</span>
           )}
           {validCount > 0 && (
             <span>{validCount} valid</span>
@@ -57,7 +57,7 @@ export function CompliancePropertyRow({
       </div>
       <div className="flex items-center gap-3 shrink-0 text-sm text-muted-foreground">
         {hazardCount != null && hazardCount > 0 && (
-          <span className="text-amber-600" title="With hazards">{hazardCount} hazards</span>
+          <span className="text-warning-foreground" title="With hazards">{hazardCount} hazards</span>
         )}
         {assetLinksCount != null && assetLinksCount > 0 && (
           <span>{assetLinksCount} assets</span>

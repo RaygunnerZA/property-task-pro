@@ -43,8 +43,8 @@ export function CreateTaskPanel({
         className={cn(
           "px-4 pt-4 pb-4 border-b border-border/30 w-full text-left",
           "flex items-center justify-between gap-3",
-          "bg-[#85BABC] transition-colors hover:bg-[#85BABC]",
-          "rounded-t-[12px] shadow-[inset_-2px_-2px_3px_-2px_rgba(0,0,0,0.3),inset_2px_3px_2.5px_0px_rgba(255,255,255,0.4)]"
+          "bg-primary transition-colors hover:bg-primary",
+          "rounded-t-xl shadow-[inset_-2px_-2px_3px_-2px_rgba(0,0,0,0.3),inset_2px_3px_2.5px_0px_rgba(255,255,255,0.4)]"
         )}
       >
         <h2 className="text-lg font-semibold text-white">Create Task</h2>

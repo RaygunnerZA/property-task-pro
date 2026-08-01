@@ -38,7 +38,7 @@ export function IconButton({
   
   const baseStyles = cn(
     sizeClass,
-    "rounded-[5px] flex items-center justify-center gap-0",
+    "rounded-sharp flex items-center justify-center gap-0",
     "transition-all duration-150",
     "bg-background",
     "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",

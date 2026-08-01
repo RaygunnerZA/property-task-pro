@@ -20,7 +20,7 @@ export default function PropertyDocumentList({ documents }: PropertyDocumentList
 
   if (documents.length === 0) {
     return (
-      <div className="text-center py-12 text-neutral-600">
+      <div className="text-center py-12 text-muted-foreground">
         <p>No documents available</p>
       </div>
     );

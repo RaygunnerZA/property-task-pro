@@ -34,7 +34,7 @@ export function StripMetricValue({
   primaryMuted,
   primaryClassName,
   attentionTitle,
-  warnClassName = "text-red-600/85",
+  warnClassName = "text-destructive/85",
   attentionBadgeVariant = "symbol",
   attentionShortLabel,
 }: {
@@ -82,14 +82,14 @@ export function StripMetricValue({
             title={attentionTitle ?? ""}
             aria-label={attentionTitle ?? `${attention} ${attentionShortLabel ?? ""}`}
           >
-            <span className="font-semibold font-mono tabular-nums text-[#EB6834]">{attention}</span>
-            <span className="text-[11px] font-medium text-[#EB6834] leading-tight whitespace-nowrap">
+            <span className="font-semibold font-mono tabular-nums text-accent">{attention}</span>
+            <span className="text-[11px] font-medium text-accent leading-tight whitespace-nowrap">
               {attentionShortLabel}
             </span>
           </div>
         ) : (
           <div className={metricSecondaryPillClass}>
-            <span className="font-semibold font-mono tabular-nums text-[#EB6834]">{attention}</span>
+            <span className="font-semibold font-mono tabular-nums text-accent">{attention}</span>
             <span
               className={cn("font-medium", warnClassName)}
               title={attentionTitle ?? ""}

@@ -10,7 +10,7 @@ const SECTION_LINKS = [
     title: "Issues",
     description: "Signals, open work, and triage",
     icon: ClipboardList,
-    iconClass: "text-[#FF6B6B]",
+    iconClass: "text-destructive",
     to: WORKBENCH_SECTION_ROUTES.issues,
   },
   {
@@ -47,11 +47,11 @@ export function HomeRightPanel() {
             key={key}
             to={`${to}${suffix}`}
             className={cn(
-              "group flex items-center gap-3 rounded-[12px] bg-card/60 px-3 py-3 shadow-e1",
+              "group flex items-center gap-3 rounded-xl bg-card/60 px-3 py-3 shadow-e1",
               "transition-all hover:bg-card/85 hover:shadow-e2"
             )}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] bg-background shadow-sm">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-background shadow-sm">
               <Icon className={cn("h-4 w-4", iconClass)} />
             </div>
             <div className="min-w-0 flex-1">

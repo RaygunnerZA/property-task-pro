@@ -6,7 +6,7 @@ import { computeHubSummaryMetrics } from "@/lib/hubSummaryMetrics";
 import { cn } from "@/lib/utils";
 
 const statNumberClass =
-  "text-[32px] font-normal tabular-nums leading-none text-teal-600";
+  "text-[32px] font-normal tabular-nums leading-none text-primary-deep";
 
 const statLabelClass =
   "mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.2px] text-muted-foreground";
@@ -15,7 +15,7 @@ const statTileInteractiveClass =
   "cursor-pointer transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25";
 
 const statTileClass =
-  "flex min-w-0 flex-col items-center rounded-[12px] bg-transparent px-2 pb-2.5 pt-5 text-center shadow-none";
+  "flex min-w-0 flex-col items-center rounded-xl bg-transparent px-2 pb-2.5 pt-5 text-center shadow-none";
 
 type HubSummaryPanelProps = {
   tasks?: unknown[];

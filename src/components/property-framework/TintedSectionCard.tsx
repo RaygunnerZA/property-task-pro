@@ -47,7 +47,7 @@ export function TintedSectionCard({
   return (
     <div
       className={cn(
-        "rounded-[8px] overflow-hidden shadow-e1",
+        "rounded-card overflow-hidden shadow-e1",
         "transition-all duration-150 ease-out",
         "hover:shadow-e2 hover:-translate-y-0.5",
         className

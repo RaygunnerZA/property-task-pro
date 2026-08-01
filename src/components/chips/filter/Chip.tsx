@@ -67,7 +67,7 @@ export function FilterChip({
         isIconOnly ? "justify-center gap-0" : "gap-1.5",
         "px-2 py-1",
         chipHeight,
-        "rounded-[8px]",
+        "rounded-card",
         "font-mono uppercase tracking-wide",
         textSize,
         "transition-all duration-150 cursor-pointer select-none",

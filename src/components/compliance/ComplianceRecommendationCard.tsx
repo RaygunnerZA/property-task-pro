@@ -23,7 +23,7 @@ function getRiskConfig(risk: string) {
     case "high":
       return { color: "bg-destructive/10 text-destructive border-destructive/30", icon: AlertCircle };
     case "medium":
-      return { color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400", icon: Zap };
+      return { color: "bg-warning/30 text-warning-foreground border-warning dark:bg-amber-950/30 dark:text-amber-400", icon: Zap };
     default:
       return { color: "bg-muted/50 text-muted-foreground border-border/50", icon: Shield };
   }

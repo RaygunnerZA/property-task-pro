@@ -57,7 +57,7 @@ export function RecordsContextSummary({
           {docUnlinked != null && docUnlinked > 0 ? (
             <>
               {" "}
-              · <span className="text-amber-700 font-medium">{docUnlinked}</span> unlinked
+              · <span className="text-warning-foreground font-medium">{docUnlinked}</span> unlinked
             </>
           ) : null}
         </p>

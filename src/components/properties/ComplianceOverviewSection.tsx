@@ -82,7 +82,7 @@ export function ComplianceOverviewSection({
             </span>
           )}
           {summary.expiring > 0 && (
-            <span className="flex items-center gap-1.5 text-amber-600">
+            <span className="flex items-center gap-1.5 text-warning-foreground">
               <Clock className="h-4 w-4" />
               {summary.expiring} expiring
             </span>

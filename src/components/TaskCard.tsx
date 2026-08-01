@@ -56,7 +56,7 @@ function PropertyIconChip({ property }: { property: any }) {
   
   return (
     <div
-      className="inline-flex items-center justify-center rounded-[8px] border-0 flex-shrink-0"
+      className="inline-flex items-center justify-center rounded-card border-0 flex-shrink-0"
       style={{
         backgroundColor: iconColor,
         width: '24px',
@@ -343,7 +343,7 @@ function TaskCardComponent({
     dueUrgency != null ? (
       <span
         className={cn(
-          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
+          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-sharp px-2",
           "font-mono text-[11px] font-medium uppercase tracking-wider leading-none shadow-sm",
           dueUrgency === "overdue"
             ? "bg-destructive/90 text-destructive-foreground"
@@ -505,7 +505,7 @@ function TaskCardComponent({
         {showPriorityDot ? (
           <div
             className={cn(
-              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-[8px] z-10 flex items-center justify-center",
+              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-card z-10 flex items-center justify-center",
               priorityColor
             )}
             style={{
@@ -615,7 +615,7 @@ function TaskCardComponent({
               align="end"
               side="top"
               sideOffset={4}
-              className="min-w-[8rem] rounded-[8px] border-border/60 bg-card p-1 shadow-md"
+              className="min-w-[8rem] rounded-card border-border/60 bg-card p-1 shadow-md"
               onClick={(e) => e.stopPropagation()}
             >
               {showDoneButton ? (

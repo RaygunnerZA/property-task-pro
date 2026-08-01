@@ -201,9 +201,9 @@ export function ImageUploadSection({
       case 'uploading':
         return <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />;
       case 'failed':
-        return <AlertCircle className="h-3 w-3 text-red-400" />;
+        return <AlertCircle className="h-3 w-3 text-destructive" />;
       case 'uploaded':
-        return <div className="h-3 w-3 bg-green-500 rounded-full" />;
+        return <div className="h-3 w-3 bg-success-vivid rounded-full" />;
       default:
         return null;
     }
@@ -372,7 +372,7 @@ export function ImageUploadSection({
         onDrop={handleDrop}
         onClick={() => !dragActive && fileInputRef.current?.click()}
         className={cn(
-          "relative min-h-[65px] rounded-[12px] border-2 border-solid border-white bg-muted/35 transition-colors",
+          "relative min-h-[65px] rounded-xl border-2 border-solid border-white bg-muted/35 transition-colors",
           "shadow-[-1px_-2px_2px_0px_rgba(0,0,0,0.05),2px_3px_2px_0px_rgba(255,255,255,0.5)]",
           "flex items-start justify-start px-4 pr-[88px] pt-[13px] pb-5 cursor-pointer",
           dragActive && "bg-primary/15 border-white"
@@ -393,7 +393,7 @@ export function ImageUploadSection({
               event.stopPropagation();
               cameraInputRef.current?.click();
             }}
-            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
+            className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
             title="Take photo"
           >
             <Camera className="h-5 w-5 text-muted-foreground" />
@@ -404,7 +404,7 @@ export function ImageUploadSection({
               event.stopPropagation();
               fileInputRef.current?.click();
             }}
-            className="h-[35px] w-[35px] rounded-[8px] flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
+            className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/60 shadow-e1 hover:shadow-e2 transition-all"
             title="Upload file"
           >
             <Upload className="h-5 w-5 text-muted-foreground" />
@@ -422,7 +422,7 @@ export function ImageUploadSection({
                 key={image.local_id}
                 className="flex items-stretch gap-2 rounded-[10px] bg-muted/25 p-1.5"
               >
-                <div className="relative group h-[88px] w-[88px] shrink-0 rounded-[8px] overflow-hidden shadow-e1">
+                <div className="relative group h-[88px] w-[88px] shrink-0 rounded-card overflow-hidden shadow-e1">
                   <img
                     src={image.thumbnail_url}
                     alt={image.display_name}
@@ -459,14 +459,14 @@ export function ImageUploadSection({
                 </div>
 
                 {panel.kind === "upload_failed" ? (
-                  <div className="min-w-0 flex-1 rounded-[8px] bg-background/55 px-3 py-2 shadow-engraved">
+                  <div className="min-w-0 flex-1 rounded-card bg-background/55 px-3 py-2 shadow-engraved">
                     <p className="truncate text-xs font-medium text-foreground">{image.display_name}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       {image.upload_error || "Image processing failed."}
                     </p>
                   </div>
                 ) : (
-                  <div className="min-w-0 flex-1 rounded-[8px] px-3 py-2 shadow-e1 bg-background/40">
+                  <div className="min-w-0 flex-1 rounded-card px-3 py-2 shadow-e1 bg-background/40">
                     {panel.kind === "preparing" && (
                       <p className="text-[12px] text-muted-foreground">Preparing image…</p>
                     )}
@@ -571,7 +571,7 @@ export function ImageUploadSection({
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {panel.specificType ? (
-                            <div className="inline-flex rounded-[5px] bg-[#f6f4f2] px-[9px] py-1 text-[11px] font-medium text-foreground shadow-sm">
+                            <div className="inline-flex rounded-sharp bg-input px-[9px] py-1 text-[11px] font-medium text-foreground shadow-sm">
                               {panel.specificType}
                             </div>
                           ) : null}
@@ -597,7 +597,7 @@ export function ImageUploadSection({
           {files.map((file) => (
             <div
               key={file.local_id}
-              className="flex items-center gap-2 rounded-[8px] bg-muted/40 px-3 py-2 shadow-e1"
+              className="flex items-center gap-2 rounded-card bg-muted/40 px-3 py-2 shadow-e1"
             >
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="min-w-0 flex-1">

@@ -101,9 +101,9 @@ export function SpaceThumbnailPickerDialog({
                   type="button"
                   onClick={() => setPending(opt)}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-[8px] bg-card p-2 text-center shadow-e1 transition-shadow",
+                    "flex flex-col items-center gap-1.5 rounded-card bg-card p-2 text-center shadow-e1 transition-shadow",
                     isSelected
-                      ? "ring-2 ring-[#8EC9CE] shadow-md"
+                      ? "ring-2 ring-primary shadow-md"
                       : "hover:shadow-md"
                   )}
                   aria-pressed={isSelected}

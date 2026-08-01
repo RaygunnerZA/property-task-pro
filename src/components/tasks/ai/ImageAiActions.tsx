@@ -258,9 +258,9 @@ export function ImageAiActions({
                       <span
                         className={cn(
                           "ml-2 rounded px-1.5 text-[10px] font-medium",
-                          status === "green" && "bg-green-500/20 text-green-700",
-                          status === "amber" && "bg-amber-500/20 text-amber-700",
-                          status === "red" && "bg-red-500/20 text-red-700"
+                          status === "green" && "bg-success-vivid/20 text-success-foreground",
+                          status === "amber" && "bg-warning-vivid/20 text-warning-foreground",
+                          status === "red" && "bg-destructive/20 text-destructive"
                         )}
                       >
                         {status}

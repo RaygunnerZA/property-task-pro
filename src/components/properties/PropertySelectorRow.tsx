@@ -56,8 +56,8 @@ function DefaultStarButton({
             className={cn(
               "flex h-6 w-6 items-center justify-center rounded-md transition-colors",
               isDefaultPinned
-                ? "text-[#EB6834]"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-[#EB6834]"
+                ? "text-accent"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-accent"
             )}
             aria-label={isDefaultPinned ? "Remove default property" : "Set as default"}
             aria-pressed={isDefaultPinned}
@@ -111,7 +111,7 @@ export function PropertySelectorRow({
       )}
     >
       <div
-        className="relative h-[72px] w-[56px] shrink-0 overflow-hidden rounded-[8px]"
+        className="relative h-[72px] w-[56px] shrink-0 overflow-hidden rounded-card"
         style={{ backgroundColor: property.thumbnail_url ? undefined : iconColor }}
       >
         {property.thumbnail_url ? (
