@@ -211,8 +211,10 @@ All design tokens are defined in:
 - **`src/index.css`** - Utility classes (`.bg-surface-gradient`, `.input-neomorphic`, etc.)
 
 ### Color Tokens (HSL)
-- **Primary:** `hsl(182, 29%, 63%)` - Teal (#8EC9CE)
+- **Primary:** `hsl(185, 40%, 68%)` - Teal (#8EC9CE)
+- **Primary Foreground:** `hsl(248, 15%, 18%)` - Ink. Text on teal fills is ink, never white: white on #8EC9CE is ~1.8:1 contrast (fails WCAG AA); ink is ~7.7:1.
 - **Accent:** `hsl(16, 83%, 56%)` - Coral (#EB6834)
+- **Card / Popover:** `hsl(40, 20%, 98%)` - Warm paper (#FBFAF8). Cards are never pure white (§4.1 "No Pure White").
 - **Surface Gradient:** `hsl(40, 15%, 95%)` → `hsl(40, 12%, 93%)` → `hsl(40, 10%, 91%)`
 - **Input Background:** `hsl(40, 10%, 96%)`
 

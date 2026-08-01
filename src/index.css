@@ -31,16 +31,16 @@
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
 
-    /* Surface Colors */
-    --card: 0 0% 100%;               /* Pure white #ffffff for cards */
+    /* Surface Colors — warm paper, never pure white (Docs 04 §4.1) */
+    --card: 40 20% 98%;              /* #FBFAF8 - Warm paper card */
     --card-foreground: 248 15% 18%; /* Ink text */
 
-    --popover: 0 0% 100%;
+    --popover: 40 20% 98%;
     --popover-foreground: 248 15% 18%;
 
-    /* Primary - Teal */
+    /* Primary - Teal. Ink foreground: white on #8EC9CE fails WCAG AA (~1.8:1), ink passes (~7.7:1) */
     --primary: 185 40% 68%;          /* #8EC9CE rgb(142,201,206) */
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 248 15% 18%;
     --primary-deep: 182 23% 56%;     /* #71AEB3 - Darker teal */
 
     /* Secondary - Light paper tone */
@@ -65,6 +65,7 @@
 
     --warning: 43 100% 85%;          /* Light yellow */
     --warning-foreground: 43 100% 35%;
+    --warning-vivid: 36 100% 65%;    /* #FFB84D - high priority / due-soon */
 
     --signal: 30 100% 91%;           /* Warm orange signal */
     --signal-foreground: 16 83% 56%;
@@ -169,6 +170,7 @@
 
     --warning: 43 100% 60%;
     --warning-foreground: 248 15% 12%;
+    --warning-vivid: 36 100% 60%;
 
     --signal: 30 100% 70%;
     --signal-foreground: 248 15% 12%;
