@@ -17,7 +17,7 @@ export default function ReviewSummary() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading summary..." />
+        <LoadingState message="Loading summary…" />
       ) : (
         <Card className="p-8 shadow-e1">
           <p className="text-muted-foreground">Review ID: {reviewId}</p>

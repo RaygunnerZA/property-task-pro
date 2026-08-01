@@ -17,7 +17,7 @@ export default function ComplianceReviews() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading reviews..." />
+        <LoadingState message="Loading reviews…" />
       ) : isError ? (
         <EmptyState
           icon={FileCheck}

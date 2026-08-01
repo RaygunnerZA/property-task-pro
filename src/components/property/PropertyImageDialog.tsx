@@ -218,7 +218,7 @@ export function PropertyImageDialog({
                   className="flex-1"
                 >
                   <Replace className="h-4 w-4 mr-2" />
-                  {isReplacing ? "Replacing..." : "Replace"}
+                  {isReplacing ? "Replacing…" : "Replace"}
                 </Button>
                 <Button
                   variant="danger"
@@ -316,7 +316,7 @@ function ImageHistory({ propertyId }: { propertyId: string }) {
   }, [propertyId]);
 
   if (loading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading history...</div>;
+    return <div className="text-center py-8 text-muted-foreground">Loading history…</div>;
   }
 
   if (actions.length === 0) {

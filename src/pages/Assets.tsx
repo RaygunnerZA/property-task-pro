@@ -507,14 +507,14 @@ const Assets = () => {
         >
           <div className="max-w-[700px] w-full min-w-0">
             <PropertyAssetsWorkColumnHeading subtitle={wideScopedLoadingSubtitle} />
-            <LoadingState message="Loading assets..." />
+            <LoadingState message="Loading assets…" />
           </div>
         </StandardPageWithBack>
       );
     }
     return (
       <StandardPage title="Assets" icon={<Package className="h-6 w-6" />} maxWidth="md">
-        <LoadingState message="Loading assets..." />
+        <LoadingState message="Loading assets…" />
       </StandardPage>
     );
   }

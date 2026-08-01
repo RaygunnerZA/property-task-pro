@@ -74,7 +74,7 @@ export default function ComplianceTasks() {
           }
         />
       ) : loading ? (
-        <LoadingState message="Loading tasks..." />
+        <LoadingState message="Loading tasks…" />
       ) : (
         <div className="space-y-8">
           {groupedTasks.overdue.length > 0 && (

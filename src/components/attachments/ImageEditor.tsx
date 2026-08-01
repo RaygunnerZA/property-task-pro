@@ -54,7 +54,7 @@ export function ImageEditor({ imageUrl, onSave, onClose }: ImageEditorProps) {
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
-        <div className="text-white p-8">Loading image editor...</div>
+        <div className="text-white p-8">Loading image editor…</div>
       </div>
     );
   }

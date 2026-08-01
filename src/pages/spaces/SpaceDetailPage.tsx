@@ -116,7 +116,7 @@ export default function SpaceDetailPage() {
   }, [expandedSection]);
 
   if (spaceLoading) {
-    return <LoadingState message="Loading space..." />;
+    return <LoadingState message="Loading space…" />;
   }
 
   if (!space) {
@@ -424,7 +424,7 @@ export default function SpaceDetailPage() {
 
               <TabsContent value="compliance" className="mt-0">
                 {complianceLoading ? (
-                  <LoadingState message="Loading compliance..." />
+                  <LoadingState message="Loading compliance…" />
                 ) : complianceWithStatus.length === 0 ? (
                   <EmptyState
                     icon={Shield}
@@ -442,7 +442,7 @@ export default function SpaceDetailPage() {
 
               <TabsContent value="documents" className="mt-0">
                 {documentsLoading ? (
-                  <LoadingState message="Loading documents..." />
+                  <LoadingState message="Loading documents…" />
                 ) : documents.length === 0 ? (
                   <EmptyState
                     icon={FileText}

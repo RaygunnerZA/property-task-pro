@@ -150,7 +150,7 @@ export default function WorkInbox() {
       </div>
 
       {loading ? (
-        <LoadingState message="Loading inbox..." />
+        <LoadingState message="Loading inbox…" />
       ) : filteredItems.length > 0 ? (
         <div className="space-y-3">
           {filteredItems.map((item) => {

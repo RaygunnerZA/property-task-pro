@@ -194,7 +194,7 @@ export default function ComplianceCalendar() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="rounded-lg bg-card p-4 shadow-e1">
             {isLoading ? (
-              <LoadingState message="Loading calendar..." />
+              <LoadingState message="Loading calendar…" />
             ) : (
               <Calendar
                 mode="single"

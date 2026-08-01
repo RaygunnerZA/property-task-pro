@@ -24,7 +24,7 @@ export default function RuleDetail() {
         icon={<FileText className="h-6 w-6" />}
         maxWidth="lg"
       >
-        <LoadingState message="Loading rule..." />
+        <LoadingState message="Loading rule…" />
       </StandardPageWithBack>
     );
   }

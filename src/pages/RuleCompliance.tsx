@@ -17,7 +17,7 @@ export default function RuleCompliance() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading compliance data..." />
+        <LoadingState message="Loading compliance data…" />
       ) : (
         <Card className="p-8 shadow-e1">
           <p className="text-muted-foreground">Rule ID: {ruleId}</p>

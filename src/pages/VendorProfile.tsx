@@ -15,7 +15,7 @@ export default function VendorProfile() {
       maxWidth="lg"
     >
       {isLoading ? (
-        <LoadingState message="Loading profile..." />
+        <LoadingState message="Loading profile…" />
       ) : (
         <VendorInfoPanel vendor={vendor} />
       )}

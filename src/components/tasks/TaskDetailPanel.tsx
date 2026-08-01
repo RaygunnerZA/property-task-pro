@@ -1883,7 +1883,7 @@ function ImageAnnotationEditorWrapper({
   if (loading) {
     return (
       <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center">
-        <div className="text-white/80 text-sm">Loading annotations...</div>
+        <div className="text-white/80 text-sm">Loading annotations…</div>
       </div>
     );
   }

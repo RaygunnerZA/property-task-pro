@@ -164,7 +164,7 @@ const Compliance = () => {
         {/* Documents Section */}
         <DashboardSection title="Compliance Documents">
           {loading ? (
-            <LoadingState message="Loading compliance documents..." />
+            <LoadingState message="Loading compliance documents…" />
           ) : error ? (
             <ErrorState message={error instanceof Error ? error.message : String(error)} onRetry={refresh} />
           ) : documents.length === 0 ? (

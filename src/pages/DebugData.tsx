@@ -173,7 +173,7 @@ export default function DebugData() {
               <p><strong>Active Org ID:</strong> {orgId || "None"}</p>
             </div>
           ) : (
-            <p>Loading user...</p>
+            <p>Loading user…</p>
           )}
         </CardContent>
       </Card>

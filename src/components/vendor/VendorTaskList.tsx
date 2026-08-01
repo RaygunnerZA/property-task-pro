@@ -9,7 +9,7 @@ export const VendorTaskList: React.FC = () => {
   const navigate = useNavigate();
 
   if (isLoading) {
-    return <div className="text-center py-8 text-muted-foreground">Loading tasks...</div>;
+    return <div className="text-center py-8 text-muted-foreground">Loading tasks…</div>;
   }
 
   if (!tasks || tasks.length === 0) {

@@ -57,7 +57,7 @@ export function WorkbenchHeaderToolbar({
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAskFilla();
             }}
-            placeholder="Search anything..."
+            placeholder="Search anything…"
             className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
             aria-label="Search workbench"
           />

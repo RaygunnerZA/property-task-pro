@@ -155,7 +155,7 @@ export default function PortfolioCompliance() {
   } | null>(null);
 
   if (isLoading) {
-    return <LoadingState message="Loading portfolio compliance..." />;
+    return <LoadingState message="Loading portfolio compliance…" />;
   }
 
   return (

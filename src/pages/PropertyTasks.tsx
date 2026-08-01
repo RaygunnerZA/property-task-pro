@@ -63,7 +63,7 @@ export default function PropertyTasks() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading tasks..." />
+        <LoadingState message="Loading tasks…" />
       ) : (
           <div className="space-y-8">
             {groupedTasks.pending.length > 0 && (

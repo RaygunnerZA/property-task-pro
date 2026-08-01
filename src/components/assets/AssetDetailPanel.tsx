@@ -1295,7 +1295,7 @@ function LinkComplianceModal({
             disabled={saving || !selectedId || available.length === 0}
             className="btn-accent-vibrant"
           >
-            {saving ? "Linking..." : "Link"}
+            {saving ? "Linking…" : "Link"}
           </Button>
         </div>
       </DialogContent>

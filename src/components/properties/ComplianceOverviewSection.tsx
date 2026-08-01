@@ -67,7 +67,7 @@ export function ComplianceOverviewSection({
   }, [compliance]);
 
   if (loading) {
-    return <LoadingState message="Loading compliance..." />;
+    return <LoadingState message="Loading compliance…" />;
   }
 
   return (

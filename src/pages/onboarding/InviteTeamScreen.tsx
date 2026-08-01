@@ -69,7 +69,7 @@ export default function InviteTeamScreen() {
     }
 
     if (orgLoading) {
-      toast.error("Loading organization information...");
+      toast.error("Loading organization information…");
       return;
     }
 
@@ -246,7 +246,7 @@ export default function InviteTeamScreen() {
               disabled={sending || orgLoading}
             >
               {sending 
-                ? "Sending invitations..." 
+                ? "Sending invitations…" 
                 : teamInvites.length > 0 
                   ? `Send ${teamInvites.length} invite(s)` 
                   : "Continue"}

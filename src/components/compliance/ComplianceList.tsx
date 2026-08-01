@@ -171,7 +171,7 @@ export function ComplianceList({ propertyId }: ComplianceListProps = {}) {
   };
 
   if (loading) {
-    return <LoadingState message="Loading compliance documents..." />;
+    return <LoadingState message="Loading compliance documents…" />;
   }
 
   if (error) {

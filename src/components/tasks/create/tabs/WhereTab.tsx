@@ -281,7 +281,7 @@ export function WhereTab({
         </div>
         
         {propertiesLoading ? (
-          <p className="text-xs text-muted-foreground">Loading properties...</p>
+          <p className="text-xs text-muted-foreground">Loading properties…</p>
         ) : filteredProperties.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {filteredProperties.map(property => (
@@ -327,7 +327,7 @@ export function WhereTab({
             Select a property first
           </p>
         ) : spacesLoading ? (
-          <p className="text-xs text-muted-foreground">Loading spaces...</p>
+          <p className="text-xs text-muted-foreground">Loading spaces…</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {/* Existing spaces */}

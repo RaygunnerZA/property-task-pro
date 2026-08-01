@@ -12,7 +12,7 @@ export default function VendorReporting() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-paper p-4 flex items-center justify-center">
-        <div className="text-muted-foreground">Loading performance data...</div>
+        <div className="text-muted-foreground">Loading performance data…</div>
       </div>
     );
   }

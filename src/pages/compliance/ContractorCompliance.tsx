@@ -104,7 +104,7 @@ export default function ContractorCompliance() {
   }, [items]);
 
   if (isLoading) {
-    return <LoadingState message="Loading contractor compliance..." />;
+    return <LoadingState message="Loading contractor compliance…" />;
   }
 
   return (

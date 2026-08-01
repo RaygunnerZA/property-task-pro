@@ -70,7 +70,7 @@ export function PropertyIntelligencePanel({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Loading predictions...</p>
+          <p className="text-sm text-muted-foreground">Loading predictions…</p>
         </CardContent>
       </Card>
     );

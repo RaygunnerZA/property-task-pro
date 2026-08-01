@@ -358,7 +358,7 @@ export function WherePanel({
               
               {/* Other properties (inactive when space selected, visible but muted) */}
               {propertiesLoading ? (
-                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading properties...</p>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading properties…</p>
               ) : filteredProperties.length > 0 ? (
                 filteredProperties.map(property => {
                   const isInactive = selectedSpace && !selectedPropertyIds.includes(property.id);
@@ -422,7 +422,7 @@ export function WherePanel({
             <div className="flex-1 overflow-x-auto overflow-y-hidden min-w-0 no-scrollbar">
               <div className="flex items-center gap-2 h-[40px]">
                 {spacesLoading ? (
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces...</p>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces…</p>
                 ) : filteredSpaces.length > 0 || ghostSpaces.length > 0 ? (
                   <>
                     {filteredSpaces.map(space => {

@@ -178,7 +178,7 @@ export function AssetPanel({
           <div className="flex-1 overflow-x-auto overflow-y-hidden min-w-0 no-scrollbar">
             <div className="flex items-center gap-2 h-[40px]">
               {loading ? (
-                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading assets...</p>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading assets…</p>
               ) : filteredAssets.length > 0 ? (
                 filteredAssets.map(asset => (
                   <SemanticChip

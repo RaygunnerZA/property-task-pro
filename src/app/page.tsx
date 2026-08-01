@@ -892,27 +892,33 @@ export default function Dashboard({
                   title: detailsSectionTitle,
                   isExpanded: expandedSection === "details",
                   onToggle: () => setExpandedSection((s) => (s === "details" ? null : "details")),
-                  children:
-                    selectedItem.type === "task" ? (
-                      <TaskDetailPanel
-                        taskId={selectedItem.id}
-                        onClose={handleClosePanel}
-                        variant="column"
-                      />
-                    ) : selectedItem.type === "message" ? (
-                      <MessageDetailPanel
-                        messageId={selectedItem.id}
-                        onClose={handleClosePanel}
-                        variant="column"
-                      />
-                    ) : (
-                      <SignalFeedDetailPanel
-                        snapshot={selectedItem.snapshot}
-                        onClose={handleClosePanel}
-                        variant="column"
-                        onOpenIntake={handleOpenIntake}
-                      />
-                    ),
+                  children: (
+                    <div
+                      key={`${selectedItem.type}-${selectedItem.id}`}
+                      className="panel-enter"
+                    >
+                      {selectedItem.type === "task" ? (
+                        <TaskDetailPanel
+                          taskId={selectedItem.id}
+                          onClose={handleClosePanel}
+                          variant="column"
+                        />
+                      ) : selectedItem.type === "message" ? (
+                        <MessageDetailPanel
+                          messageId={selectedItem.id}
+                          onClose={handleClosePanel}
+                          variant="column"
+                        />
+                      ) : (
+                        <SignalFeedDetailPanel
+                          snapshot={selectedItem.snapshot}
+                          onClose={handleClosePanel}
+                          variant="column"
+                          onOpenIntake={handleOpenIntake}
+                        />
+                      )}
+                    </div>
+                  ),
                 },
               ]
             : []),

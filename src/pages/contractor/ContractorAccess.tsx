@@ -62,7 +62,7 @@ export default function ContractorAccess() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingState message="Validating access token..." />
+        <LoadingState message="Validating access token…" />
       </div>
     );
   }

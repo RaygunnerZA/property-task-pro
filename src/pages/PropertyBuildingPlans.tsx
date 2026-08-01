@@ -171,7 +171,7 @@ export default function PropertyBuildingPlans() {
         hideHeaderBack
         belowGradientRow={plansScopeBelowRow}
       >
-        <LoadingState message="Loading building plans..." />
+        <LoadingState message="Loading building plans…" />
       </StandardPageWithBack>
     );
   }
@@ -238,7 +238,7 @@ export default function PropertyBuildingPlans() {
               description="Upload a plan file to start processing and review."
             />
           ) : extraction.isLoading ? (
-            <LoadingState message="Loading extraction..." />
+            <LoadingState message="Loading extraction…" />
           ) : (
             <>
               <div className="flex items-center gap-2">

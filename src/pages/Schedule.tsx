@@ -171,7 +171,7 @@ const Schedule = () => {
 
       {/* CONTENT */}
       {loading ? (
-        <LoadingState message="Loading schedule..." />
+        <LoadingState message="Loading schedule…" />
       ) : error ? (
         <ErrorState message={error} />
       ) : (

@@ -160,7 +160,7 @@ export default function ContractorTask() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingState message="Loading task..." />
+        <LoadingState message="Loading task…" />
       </div>
     );
   }
@@ -248,7 +248,7 @@ export default function ContractorTask() {
               <TabsContent value="attachments" className="mt-0 flex-1 overflow-y-auto p-6">
                 {loadingAttachments ? (
                   <div className="flex items-center justify-center py-8">
-                    <LoadingState message="Loading attachments..." />
+                    <LoadingState message="Loading attachments…" />
                   </div>
                 ) : attachments.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">

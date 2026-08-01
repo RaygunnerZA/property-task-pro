@@ -111,7 +111,7 @@ export function CentreWorkbench({
           />
         </div>
 
-        <div className="min-h-0 flex-1">
+        <div key={activeTab} className="panel-enter min-h-0 flex-1">
           {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}
           {activeTab === "tasks" && <TasksWorkbenchPanel {...sharedPanelProps} />}
           {activeTab === "calendar" && (

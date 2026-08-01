@@ -75,7 +75,7 @@ export function StatusBanner() {
             "hover:bg-black/10 dark:hover:bg-white/10"
           )}
         >
-          {isReconnecting ? "Retrying..." : "Retry"}
+          {isReconnecting ? "Retrying…" : "Retry"}
         </Button>
       )}
     </div>

@@ -8,7 +8,6 @@ import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 import { EmptyState } from '@/components/design-system/EmptyState';
-import { LoadingState } from '@/components/design-system/LoadingState';
 import { PropertyPortfolioMap } from '@/components/properties/PropertyPortfolioMap';
 
 const Properties = () => {
@@ -99,7 +98,16 @@ const Properties = () => {
         icon={<Building2 className="h-6 w-6" />}
         maxWidth="md"
       >
-        <LoadingState message="Loading properties..." />
+        <div className="list-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="animate-pulse rounded-card bg-card/40 p-4 shadow-e1">
+              <div className="mb-4 h-24 rounded-xl bg-foreground/5" />
+              <div className="mb-2 h-4 w-2/3 rounded bg-foreground/10" />
+              <div className="h-3 w-1/3 rounded bg-foreground/10" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only" role="status">Loading properties…</span>
       </StandardPage>
     );
   }

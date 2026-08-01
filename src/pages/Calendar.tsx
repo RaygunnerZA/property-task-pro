@@ -83,7 +83,7 @@ const Calendar = () => {
       maxWidth="md"
     >
       {loading ? (
-        <LoadingState message="Loading calendar..." />
+        <LoadingState message="Loading calendar…" />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Calendar Grid - Left Side */}

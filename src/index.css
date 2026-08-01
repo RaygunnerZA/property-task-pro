@@ -27,6 +27,15 @@
     --gutter-pane: 1.25rem;
     --gutter-rail: 0.75rem;
 
+    /* Motion tokens — feedback 120ms, state change 200ms, panels/modals 320ms.
+       Enter = ease-out, exit = ease-in, in-place change = ease-in-out. */
+    --duration-fast: 120ms;
+    --duration-default: 200ms;
+    --duration-slow: 320ms;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
     /* Core Background & Foreground */
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
@@ -765,6 +774,43 @@
     }
   }
   
+  /* ── List enter / stagger ─────────────────────────────────────────────────
+     Apply `.list-stagger` to a list container: direct children fade-slide in
+     with a small cascading delay (capped at 12 items so long lists don't lag).
+     Continuity, not spectacle — 6px travel, 200ms, ease-out. */
+  @keyframes list-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .list-stagger > * {
+    animation: list-enter var(--duration-default) var(--ease-out) both;
+  }
+
+  .list-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .list-stagger > *:nth-child(2) { animation-delay: 30ms; }
+  .list-stagger > *:nth-child(3) { animation-delay: 60ms; }
+  .list-stagger > *:nth-child(4) { animation-delay: 90ms; }
+  .list-stagger > *:nth-child(5) { animation-delay: 120ms; }
+  .list-stagger > *:nth-child(6) { animation-delay: 150ms; }
+  .list-stagger > *:nth-child(7) { animation-delay: 180ms; }
+  .list-stagger > *:nth-child(8) { animation-delay: 210ms; }
+  .list-stagger > *:nth-child(9) { animation-delay: 240ms; }
+  .list-stagger > *:nth-child(10) { animation-delay: 270ms; }
+  .list-stagger > *:nth-child(11) { animation-delay: 300ms; }
+  .list-stagger > *:nth-child(n+12) { animation-delay: 330ms; }
+
+  /* Panel/tab continuity — content fades in with a soft rise */
+  .panel-enter {
+    animation: list-enter var(--duration-slow) var(--ease-out) both;
+  }
+
   /* Gradient mask for scroll indicators */
   .mask-gradient-right {
     mask-image: linear-gradient(to right, black 90%, transparent 100%);

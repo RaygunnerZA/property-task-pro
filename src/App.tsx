@@ -308,7 +308,7 @@ const App = () => {
                       <Route path="/*" element={
                         <ProtectedRoute>
                           <AppLayout>
-                            <Suspense fallback={<LoadingState message="Loading page..." />}>
+                            <Suspense fallback={<LoadingState message="Loading page…" />}>
                               <Routes>
                                 {/* Dashboard */}
                                 <Route path="/" element={<Dashboard />} />

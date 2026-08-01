@@ -495,7 +495,7 @@ export function ChipInput({
               <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-e3 p-3">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>AI analyzing...</span>
+                  <span>AI analyzing…</span>
                 </div>
               </div>
             )}

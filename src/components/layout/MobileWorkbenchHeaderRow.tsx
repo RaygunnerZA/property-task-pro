@@ -165,7 +165,7 @@ export function MobileWorkbenchHeaderRow({
                 handleClose();
               }
             }}
-            placeholder="Search anything..."
+            placeholder="Search anything…"
             className="min-w-0 flex-1 bg-transparent px-3.5 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
             aria-label="Search"
             tabIndex={searchOpen ? 0 : -1}
