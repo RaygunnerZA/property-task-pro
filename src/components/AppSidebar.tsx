@@ -155,7 +155,18 @@ export function AppSidebar() {
   }, [currentPath, searchParams, entityContext]);
 
   const handleCreateNew = () => {
-    navigate('/tasks?add=true');
+    const params = new URLSearchParams(searchParams);
+    params.set('add', 'true');
+    const path = currentPath === '' ? '/' : currentPath;
+    const workbenchPaths = new Set(['/', '/issues', '/tasks', '/records', '/agenda']);
+    if (workbenchPaths.has(path)) {
+      navigate(`${path}?${params.toString()}`);
+      return;
+    }
+    const property = searchParams.get('property');
+    const q = new URLSearchParams({ add: 'true' });
+    if (property) q.set('property', property);
+    navigate(`/tasks?${q.toString()}`);
   };
 
   const navLinkClass = (active: boolean) =>

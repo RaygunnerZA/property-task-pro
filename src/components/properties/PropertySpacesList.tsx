@@ -7,6 +7,7 @@ import { useSpacesWithTypes } from "@/hooks/useSpacesWithTypes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
 import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
+import { toSentenceCaseSpaceName } from "@/lib/spaceNameUtils";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -218,7 +219,7 @@ export function PropertySpacesList({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-foreground">
-                        {space.name || "Unnamed"}
+                        {toSentenceCaseSpaceName(space.name)}
                       </span>
                       {taskCount > 0 ? (
                         <span className="text-caption text-muted-foreground">
@@ -258,6 +259,7 @@ export function PropertySpacesList({
                       <SpaceCard
                         space={{
                           ...space,
+                          name: toSentenceCaseSpaceName(space.name),
                           icon_name: effectiveIcon,
                           spaceTypeName: spaceWithTypes?.space_types?.name ?? null,
                           taskCount: spaceTaskCounts.counts[space.id] || 0,

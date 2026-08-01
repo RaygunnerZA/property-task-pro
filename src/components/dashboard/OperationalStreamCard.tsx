@@ -110,7 +110,7 @@ const issuesDismissOrIgnoreLinkClassName = inlineMinorLinkClass;
 
 /** Issues signal cards — matches Recent “EMAIL FROM … • DATE” meta (JetBrains Mono 10 / 600, caps). */
 export const ISSUES_STREAM_META_CLASSNAME =
-  "text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground leading-snug line-clamp-1";
+  "text-2xs font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
 
 function streamActionButtonClass(actionId: string, actionLabel?: string) {
   const id = actionId.toLowerCase();
@@ -134,14 +134,14 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
     return intakeAddRecordMicroClassName;
   }
   return cn(
-    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold text-foreground",
+    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-foreground",
     "bg-background shadow-e1 transition-all hover:shadow-md"
   );
 }
 
 function ActionRow({ actions }: { actions: CardAction[] }) {
   return (
-    <>
+    <div className="flex flex-wrap items-center gap-1.5">
       {actions.map((action) => (
         <button
           key={action.id}
@@ -155,7 +155,7 @@ function ActionRow({ actions }: { actions: CardAction[] }) {
           {action.label}
         </button>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -214,11 +214,11 @@ function IssuesUrgentCard({
       className={cn("group relative overflow-hidden", shell, className, onCardActivate && "cursor-pointer")}
     >
       <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent ?? "red"])} />
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {thumbnailUrl ? (
-          <IssuesStreamThumbnail url={thumbnailUrl} alt={title} className="mt-0.5" />
+          <IssuesStreamThumbnail url={thumbnailUrl} alt={title} />
         ) : (
-          <div className="mt-0.5 h-7 w-7 rounded-card bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+          <div className="h-7 w-7 rounded-card bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
             {icon}
           </div>
         )}
@@ -231,7 +231,7 @@ function IssuesUrgentCard({
             <p className="mt-1 hidden text-xs leading-snug text-foreground/90 group-hover:block">{description}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5 self-start pt-0.5 min-w-0 max-w-[13rem]">
+        <div className="flex shrink-0 flex-col items-end gap-1.5 min-w-0 max-w-[13rem]">
           {primary ? (
             <button
               type="button"
@@ -428,7 +428,7 @@ export function OperationalStreamCard({
             </p>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
+              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-2xs font-bold uppercase tracking-wide leading-none text-muted-foreground shadow-sm">
                 {footChip}
               </span>
               {actions.length > 0 && (
@@ -479,12 +479,12 @@ export function OperationalStreamCard({
 
         <div className="min-w-0 flex-1">
           {typeChip && (
-            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
+            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-2xs font-bold uppercase tracking-wide leading-none text-muted-foreground shadow-sm">
               {typeChip}
             </span>
           )}
           {reviewBanner && (
-            <p className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-wider text-primary-deep">
+            <p className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-wide leading-none text-primary-deep">
               {reviewBanner}
             </p>
           )}

@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -13,6 +14,7 @@ import {
   isCustomCollectionGroupId,
   type GroupExtraSpace,
   type OnboardingCustomCollection,
+  type SuggestionLabelOverrides,
 } from "@/components/onboarding/onboardingSpaceGroups";
 import {
   createPropertyCustomCollection,
@@ -72,13 +74,16 @@ export function PropertySpaceGroupCarousel({
   className,
   spaceFilter = "",
 }: PropertySpaceGroupCarouselProps) {
+  const navigate = useNavigate();
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
   const { spaces, refresh } = useSpacesWithTypes(propertyId);
 
-  const [renameModal, setRenameModal] = useState<{ spaceId: string; currentName: string } | null>(
-    null
-  );
+  const [renameModal, setRenameModal] = useState<{
+    spaceId: string;
+    currentName: string;
+    groupId: string;
+  } | null>(null);
   const [renameInput, setRenameInput] = useState("");
   const [copyModal, setCopyModal] = useState<{
     baseName: string;
@@ -89,6 +94,8 @@ export function PropertySpaceGroupCarousel({
   const [busy, setBusy] = useState(false);
   const [customCollections, setCustomCollections] = useState<OnboardingCustomCollection[]>([]);
   const [spaceToCollection, setSpaceToCollection] = useState<Record<string, string>>({});
+  const [suggestionLabelOverrides, setSuggestionLabelOverrides] =
+    useState<SuggestionLabelOverrides>({});
   /** Optimistic newest-first pins so chips appear at the top before refetch settles. */
   const [pendingPinsByGroup, setPendingPinsByGroup] = useState<Record<string, string[]>>({});
   const skipPersistCustomGroupsRef = useRef(true);
@@ -98,6 +105,7 @@ export function PropertySpaceGroupCarousel({
     const stored = loadPropertyCustomSpaceGroups(propertyId);
     setCustomCollections(stored.collections);
     setSpaceToCollection(stored.spaceToCollection);
+    setSuggestionLabelOverrides(stored.suggestionLabelOverrides);
     queueMicrotask(() => {
       skipPersistCustomGroupsRef.current = false;
     });
@@ -108,8 +116,9 @@ export function PropertySpaceGroupCarousel({
     savePropertyCustomSpaceGroups(propertyId, {
       collections: customCollections,
       spaceToCollection,
+      suggestionLabelOverrides,
     });
-  }, [propertyId, customCollections, spaceToCollection]);
+  }, [propertyId, customCollections, spaceToCollection, suggestionLabelOverrides]);
 
   const assignSpaceToCollection = useCallback((name: string, collectionId: string) => {
     const key = name.toLowerCase().trim();
@@ -123,6 +132,25 @@ export function PropertySpaceGroupCarousel({
       const next = { ...prev };
       delete next[key];
       return next;
+    });
+  }, []);
+
+  const clearSuggestionOverridesForName = useCallback((name: string) => {
+    const key = name.toLowerCase().trim();
+    setSuggestionLabelOverrides((prev) => {
+      let changed = false;
+      const next: SuggestionLabelOverrides = { ...prev };
+      if (next[key]) {
+        delete next[key];
+        changed = true;
+      }
+      for (const [source, label] of Object.entries(next)) {
+        if (label.toLowerCase().trim() === key) {
+          delete next[source];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
     });
   }, []);
 
@@ -256,6 +284,48 @@ export function PropertySpaceGroupCarousel({
     [spaces]
   );
 
+  const openRenameModal = useCallback(
+    (name: string, groupId: string) => {
+      const space = findSpaceByName(name);
+      if (!space) return;
+      setRenameModal({ spaceId: space.id, currentName: name, groupId });
+      setRenameInput(name);
+    },
+    [findSpaceByName]
+  );
+
+  /** Stable name-key → open space detail. Enables View whenever the space exists in DB. */
+  const viewSpaceByNameKey = useMemo(() => {
+    const handlers: Record<string, () => void> = {};
+    for (const space of spaces) {
+      const key = (space.name ?? "").toLowerCase().trim();
+      if (!key || handlers[key]) continue;
+      const spaceId = space.id;
+      handlers[key] = () => {
+        navigate(`/properties/${propertyId}/spaces/${spaceId}`);
+      };
+    }
+    return handlers;
+  }, [spaces, navigate, propertyId]);
+
+  const openViewSpace = useCallback(
+    (name: string) => {
+      const key = name.toLowerCase().trim();
+      const direct = viewSpaceByNameKey[key];
+      if (direct) {
+        direct();
+        return;
+      }
+      const space = findSpaceByName(name);
+      if (!space) {
+        toast.error("Space not found");
+        return;
+      }
+      navigate(`/properties/${propertyId}/spaces/${space.id}`);
+    },
+    [viewSpaceByNameKey, findSpaceByName, navigate, propertyId]
+  );
+
   const getSuggestedCopyName = useCallback(
     (baseName: string): string => {
       const base = baseName.trim();
@@ -366,6 +436,7 @@ export function PropertySpaceGroupCarousel({
       const { error } = await supabase.from("spaces").delete().eq("id", space.id);
       if (error) throw error;
       unassignSpace(name);
+      clearSuggestionOverridesForName(name);
       toast.success(`Removed ${name}`);
       await invalidateSpaces();
     } catch (err: unknown) {
@@ -400,12 +471,21 @@ export function PropertySpaceGroupCarousel({
     if (!renameModal) return;
     const trimmed = renameInput.trim();
     if (!trimmed) return;
-    const newKey = trimmed.toLowerCase();
+    const newKey = trimmed.toLowerCase().trim();
     const oldKey = renameModal.currentName.toLowerCase().trim();
     if (newKey !== oldKey && selectedSpacesSet.has(newKey)) {
       toast.error("Space already exists");
       return;
     }
+
+    const space =
+      spaces.find((s) => s.id === renameModal.spaceId) ??
+      findSpaceByName(renameModal.currentName);
+    const groupId =
+      renameModal.groupId ||
+      (space ? resolveSpaceGroupId(space, spaceToCollection) : undefined) ||
+      spaceToCollection[oldKey];
+
     setBusy(true);
     try {
       const { error } = await supabase
@@ -413,16 +493,42 @@ export function PropertySpaceGroupCarousel({
         .update({ name: trimmed })
         .eq("id", renameModal.spaceId);
       if (error) throw error;
+
       if (newKey !== oldKey) {
-        setSpaceToCollection((prev) => {
-          const groupId = prev[oldKey];
-          if (!groupId) return prev;
-          const next = { ...prev };
-          delete next[oldKey];
-          next[newKey] = groupId;
-          return next;
+        // Always pin the renamed space to the group it was renamed from.
+        // Without this, suggestion/type-inferred membership is lost and the
+        // space falls out of the card into the property "recent" list.
+        if (groupId) {
+          setSpaceToCollection((prev) => {
+            const next = { ...prev };
+            delete next[oldKey];
+            next[newKey] = groupId;
+            return next;
+          });
+        }
+
+        setSuggestionLabelOverrides((prev) => {
+          const next: SuggestionLabelOverrides = { ...prev };
+          let changed = false;
+
+          // Renaming a catalog suggestion: keep the chip in-place with the new label.
+          if (groupId && isSuggestionForGroup(renameModal.currentName, groupId)) {
+            next[oldKey] = trimmed;
+            changed = true;
+          }
+
+          // Renaming an already-overridden label: update the override value.
+          for (const [source, label] of Object.entries(next)) {
+            if (label.toLowerCase().trim() === oldKey) {
+              next[source] = trimmed;
+              changed = true;
+            }
+          }
+
+          return changed ? next : prev;
         });
       }
+
       toast.success("Space renamed");
       setRenameModal(null);
       setRenameInput("");
@@ -461,14 +567,12 @@ export function PropertySpaceGroupCarousel({
             extraSpaces={extraSpacesByGroup[group.id] ?? []}
             selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
             spaceFilter={spaceFilter}
+            suggestionLabelOverrides={suggestionLabelOverrides}
             onAddSpace={(name) => createSpace(name, group.id)}
             onRemoveSpace={removeSpace}
-            onRenameSpace={(name) => {
-              const space = findSpaceByName(name);
-              if (!space) return;
-              setRenameModal({ spaceId: space.id, currentName: name });
-              setRenameInput(name);
-            }}
+            onRenameSpace={openRenameModal}
+            onViewSpace={(name) => openViewSpace(name)}
+            viewSpaceByNameKey={viewSpaceByNameKey}
             onCopySpace={(name, groupId) => {
               const suggested = getSuggestedCopyName(name);
               setCopyModal({ baseName: name, suggestedName: suggested, groupId });
@@ -487,12 +591,9 @@ export function PropertySpaceGroupCarousel({
               spaceFilter={spaceFilter}
               onAddSpace={(name) => createSpace(name, collection.id)}
               onRemoveSpace={removeSpace}
-              onRenameSpace={(name) => {
-                const space = findSpaceByName(name);
-                if (!space) return;
-                setRenameModal({ spaceId: space.id, currentName: name });
-                setRenameInput(name);
-              }}
+              onRenameSpace={openRenameModal}
+              onViewSpace={(name) => openViewSpace(name)}
+              viewSpaceByNameKey={viewSpaceByNameKey}
               onCopySpace={(name, groupId) => {
                 const suggested = getSuggestedCopyName(name);
                 setCopyModal({ baseName: name, suggestedName: suggested, groupId });

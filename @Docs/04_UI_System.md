@@ -221,7 +221,7 @@ All design tokens are defined in:
 ### Typography Tokens
 - **Families:** `font-sans` / `font-display` — Inter Tight; `font-mono` — JetBrains Mono (metadata, badges, stats).
 - **Scale (max 8 sizes):** `text-2xs` (10px, tracking baked in — signature mono metadata size) · `text-caption` (11px) · `text-xs` (12) · `text-sm` (14) · `text-base` (16) · `text-lg` (18) · `text-xl` (20) · `text-2xl` (24). Do not use arbitrary `text-[Npx]` values.
-- **Caps rule:** uppercase text always pairs with `tracking-wider` (mono badges/labels).
+- **Caps rule:** uppercase mono labels need positive tracking. Prefer `text-2xs` / `text-caption` (tracking baked in). For filter chips and other multi-word caps labels, use `tracking-wide` — do not stack `tracking-wider` on those sizes (it over-spaces word gaps, e.g. "MY TASKS"). Single-word badges may use `tracking-wider`.
 - **Numerals:** stats and tables use `tabular-nums` (or `data-stat` attribute).
 - **Headings:** `h1`–`h3` get `text-wrap: balance` globally.
 - **Progress copy:** always ends with a proper ellipsis character ("Loading…", never "Loading...").

@@ -392,6 +392,7 @@ export function WhereSection({
         propertyId={propertyId}
         initialName={newSpaceName}
         onCreated={handleSpaceCreated}
+        onSelectExisting={handleSpaceCreated}
       />
     </div>
   );

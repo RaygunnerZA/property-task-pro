@@ -162,7 +162,7 @@ export function SemanticChip({
 
   const baseStyles = cn(
     "relative inline-flex items-center gap-1.5 rounded-card flex-shrink-0",
-    "font-mono uppercase tracking-wider whitespace-nowrap",
+    "font-mono uppercase tracking-wide whitespace-nowrap",
     "transition-[max-width,width] duration-200 ease-out",
     heightClass,
     textClass,
@@ -219,7 +219,7 @@ export function SemanticChip({
         className={cn(
           "w-full min-w-0 bg-transparent border-0 outline-none caret-foreground",
           textClass,
-          "font-mono uppercase tracking-wider",
+          "font-mono uppercase tracking-wide",
           "placeholder:font-mono placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground/55"
         )}
         aria-label={entryPlaceholder || "Enter value"}
@@ -299,7 +299,7 @@ export function SemanticChip({
           align="start"
           side="bottom"
           sideOffset={4}
-          className="min-w-[209px] px-0 py-[3px] text-2xs"
+          className="min-w-[9.5rem] px-1 py-1 text-2xs"
         >
           {dropdownContent}
         </DropdownMenuContent>

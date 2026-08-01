@@ -25,9 +25,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
-import { SpaceThumbnailPickerDialog } from "@/components/spaces/SpaceThumbnailPickerDialog";
+import {
+  SpaceVisualPicker,
+  type SpaceVisualValue,
+} from "@/components/spaces/SpaceVisualPicker";
+import { uploadSpaceImage } from "@/services/spaces/spaceImageUpload";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type SpaceCentreTab =
   | "overview"
@@ -64,6 +70,8 @@ export default function SpaceDetailPage() {
   const [expandedSection, setExpandedSection] = useState<"create" | "details" | "assistant" | null>(null);
   const [thumbnailPickerOpen, setThumbnailPickerOpen] = useState(false);
   const [thumbnailSaving, setThumbnailSaving] = useState(false);
+  const [visualDraft, setVisualDraft] = useState<SpaceVisualValue | null>(null);
+  const { orgId } = useActiveOrg();
   const [centreTab, setCentreTab] = useState<SpaceCentreTab>("overview");
 
   const assetsInSpace = useMemo(() => {
@@ -139,25 +147,55 @@ export default function SpaceDetailPage() {
     thumbnail_url: spaceWithProps.thumbnail_url,
   });
 
-  const handleSaveThumbnail = async (src: string) => {
+  const openVisualEditor = () => {
+    setVisualDraft({
+      mode: spaceWithProps.thumbnail_url ? "thumbnail" : "icon",
+      thumbnailUrl: spaceWithProps.thumbnail_url ?? thumbnailSrc,
+      iconName: (space as { icon_name?: string | null }).icon_name || "box",
+      iconColor: "#8EC9CE",
+    });
+    setThumbnailPickerOpen(true);
+  };
+
+  const handleSaveVisual = async (next: SpaceVisualValue) => {
     if (!spaceId) return;
     setThumbnailSaving(true);
     try {
       const { error } = await supabase
         .from("spaces")
-        .update({ thumbnail_url: src })
+        .update({
+          icon_name: next.iconName || "box",
+          thumbnail_url: next.mode === "thumbnail" ? next.thumbnailUrl : null,
+        })
         .eq("id", spaceId);
       if (error) throw error;
       await queryClient.invalidateQueries({ queryKey: ["space"] });
       await queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      toast.success("Thumbnail updated");
+      toast.success("Space image updated");
+      setThumbnailPickerOpen(false);
+      setVisualDraft(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to update thumbnail";
+      const message = err instanceof Error ? err.message : "Failed to update image";
       toast.error(message);
       throw err;
     } finally {
       setThumbnailSaving(false);
     }
+  };
+
+  const handleUploadSpaceImage = async (file: File) => {
+    if (!orgId || !propertyId || !spaceId) {
+      throw new Error("Missing space context for upload");
+    }
+    const result = await uploadSpaceImage(supabase, {
+      orgId,
+      propertyId,
+      file,
+      spaceId,
+    });
+    await queryClient.invalidateQueries({ queryKey: ["space"] });
+    await queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    return result.displayUrl;
   };
 
   const headerElement = (
@@ -279,14 +317,14 @@ export default function SpaceDetailPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setThumbnailPickerOpen(true)}
+                    onClick={openVisualEditor}
                     className={cn(
                       "absolute top-2.5 right-2.5 z-10 flex h-8 w-8 items-center justify-center",
                       "rounded-md bg-white/90 text-muted-foreground shadow-sm",
                       "transition-colors hover:bg-white hover:text-foreground",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     )}
-                    aria-label="Replace space thumbnail"
+                    aria-label="Edit space image"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
@@ -501,14 +539,64 @@ export default function SpaceDetailPage() {
         <TaskDetailPanel taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} variant="modal" />
       )}
 
-      <SpaceThumbnailPickerDialog
+      <Dialog
         open={thumbnailPickerOpen}
-        onOpenChange={setThumbnailPickerOpen}
-        currentSrc={thumbnailSrc}
-        spaceName={spaceName}
-        busy={thumbnailSaving}
-        onSelect={handleSaveThumbnail}
-      />
+        onOpenChange={(open) => {
+          setThumbnailPickerOpen(open);
+          if (!open) setVisualDraft(null);
+        }}
+      >
+        <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold tracking-tight">
+              Edit space image
+              <span className="font-normal text-muted-foreground"> — {spaceName}</span>
+            </DialogTitle>
+          </DialogHeader>
+          {visualDraft ? (
+            <SpaceVisualPicker
+              value={visualDraft}
+              onChange={setVisualDraft}
+              searchText={spaceName}
+              suggestedIcon={(space as { icon_name?: string | null }).icon_name}
+              disabled={thumbnailSaving}
+              onUploadFile={async (file) => {
+                const url = await handleUploadSpaceImage(file);
+                const next: SpaceVisualValue = {
+                  mode: "thumbnail",
+                  thumbnailUrl: url,
+                  iconName: visualDraft.iconName,
+                  iconColor: visualDraft.iconColor,
+                };
+                setVisualDraft(next);
+                return url;
+              }}
+            />
+          ) : null}
+          {visualDraft ? (
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setThumbnailPickerOpen(false);
+                  setVisualDraft(null);
+                }}
+                disabled={thumbnailSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void handleSaveVisual(visualDraft)}
+                disabled={thumbnailSaving}
+              >
+                {thumbnailSaving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

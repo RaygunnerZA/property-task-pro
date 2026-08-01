@@ -42,7 +42,7 @@ import {
 
 /** Issues workbench “Open work” — same meta treatment as Recent signals (JetBrains Mono 10 / 600, caps). */
 const WORKBENCH_TASK_META_CLASS =
-  "text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground leading-snug line-clamp-1";
+  "text-2xs font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
 
 
 // Property Icon Chip Component - shows property icon on property color background
@@ -343,11 +343,11 @@ function TaskCardComponent({
     dueUrgency != null ? (
       <span
         className={cn(
-          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-sharp px-2",
-          "font-mono text-caption font-medium uppercase tracking-wider leading-none shadow-sm",
+          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
+          "font-mono text-[11px] font-medium uppercase tracking-normal leading-none shadow-sm",
           dueUrgency === "overdue"
-            ? "bg-destructive/90 text-destructive-foreground"
-            : "bg-warning-vivid/90 text-foreground"
+            ? "bg-destructive/90 text-white"
+            : "bg-amber-500/90 text-white"
         )}
       >
         {taskDueUrgencyLabel(dueUrgency)}
@@ -406,7 +406,7 @@ function TaskCardComponent({
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
           {/* Theme/Category */}
           {!metaCompact && themes.length > 0 && (
-            <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">
+            <div className="text-2xs text-muted-foreground uppercase tracking-wide mb-1">
               {themes[0].name}
             </div>
           )}
@@ -420,7 +420,7 @@ function TaskCardComponent({
               <Badge
                 variant="neutral"
                 size="sm"
-                className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wider text-primary-deep"
+                className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
               >
                 {educationChipLabel}
               </Badge>
@@ -534,16 +534,16 @@ function TaskCardComponent({
         </h3>
 
         {locationLine ? (
-          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
+          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate">{locationLine}</span>
+            <span className="truncate leading-none">{locationLine}</span>
           </p>
         ) : null}
 
         {dueFormattedLabel ? (
-          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
+          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
             <Calendar className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
+            <span className="truncate leading-none">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
           </p>
         ) : null}
 

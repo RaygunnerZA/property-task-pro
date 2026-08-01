@@ -57,11 +57,11 @@ export function IssuesRecentSignalRow({
       title={title}
       subtitle={subtitle}
       trailing={
-        <div className="flex shrink-0 items-center gap-2 self-center">
+        <div className="flex shrink-0 items-center gap-3 self-center">
           {categoryTag ? (
             <SignalCategoryTag label={categoryTag} variant={categoryTagVariant ?? "default"} />
           ) : null}
-          <div className="flex flex-col gap-1 sm:h-7 sm:flex-row sm:items-center sm:gap-2">
+          <div className="flex min-w-[4.75rem] flex-col items-stretch gap-1">
             {viewAction ? (
               <button
                 type="button"
@@ -69,7 +69,7 @@ export function IssuesRecentSignalRow({
                   e.stopPropagation();
                   viewAction.onClick();
                 }}
-                className={issuesSignalReviewButtonClassName}
+                className={cn(issuesSignalReviewButtonClassName, "w-full")}
               >
                 {viewAction.label === "Open" ? "View" : viewAction.label}
               </button>
@@ -77,7 +77,7 @@ export function IssuesRecentSignalRow({
             {dismissAction ? (
               <button
                 type="button"
-                className={issuesSignalSecondaryButtonClassName}
+                className={cn(issuesSignalSecondaryButtonClassName, "w-full")}
                 onClick={(e) => {
                   e.stopPropagation();
                   dismissAction.onClick();
@@ -202,7 +202,7 @@ function SignalRowOverflowMenu({
 
 /** Right rail: confidence / tags + actions on one centered row. */
 function SignalRowTrailingRail({ children }: { children: ReactNode }) {
-  return <div className="flex h-7 shrink-0 items-center gap-2 self-center">{children}</div>;
+  return <div className="flex h-7 shrink-0 items-center gap-3 self-center">{children}</div>;
 }
 
 function RowShell({
@@ -235,7 +235,7 @@ function RowShell({
       }}
       className={cn("min-w-0", className, onCardActivate && "cursor-pointer")}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <IssuesStreamThumbnail url={thumbnailUrl} alt={title} />
         <div className="min-w-0 flex-1">
           {metaFirst && subtitle?.trim() ? (
@@ -253,7 +253,7 @@ function RowShell({
             <p className="mt-0.5 text-caption text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
           ) : null}
         </div>
-        <div className="shrink-0 self-start pt-0.5">{trailing}</div>
+        <div className="shrink-0">{trailing}</div>
       </div>
     </div>
   );

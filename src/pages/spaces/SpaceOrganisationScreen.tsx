@@ -7,10 +7,11 @@ import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
+import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Layers, FileUp, Plus, Search } from "lucide-react";
+import { Layers, FileUp, Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
@@ -21,6 +22,13 @@ import {
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
+import { createGradientHeaderStyle } from "@/components/layout/WorkbenchGradientHeader";
+import { GradientHeaderMaskedIcon } from "@/components/layout/GradientHeaderMaskedIcon";
+import { gradientHeaderSearchFieldClassName } from "@/lib/gradientHeaderControls";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { cn } from "@/lib/utils";
+
+const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
 
 type SpacesWorkTab = "groups" | "issues";
 
@@ -70,6 +78,18 @@ export default function SpaceOrganisationScreen() {
     return ids;
   }, [tasks]);
 
+  const openTaskCountsBySpaceId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of tasks) {
+      if (t.status === "completed" || t.status === "archived") continue;
+      for (const s of t.spaces || []) {
+        if (!s?.id) continue;
+        counts[s.id] = (counts[s.id] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [tasks]);
+
   /** Spaces linked to at least one non-done task with urgent/high priority (matches property hub tile). */
   const urgentPrioritySpaceIds = useMemo(() => {
     const ids = new Set<string>();
@@ -101,28 +121,65 @@ export default function SpaceOrganisationScreen() {
     [spaces, openTaskSpaceIds]
   );
 
+  const headerAccent =
+    (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() || "#8EC9CE";
+  const headerStyle = createGradientHeaderStyle(headerAccent);
+  useThemeColor(headerAccent);
+
   if (propertyLoading || !propertyId) {
     return <LoadingState />;
   }
 
-  const headerAccent =
-    (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() || "#8EC9CE";
-
   const header = (
     <>
-      <PageHeader>
+      <PageHeader
+        className="page-header--spaces-organise !bg-transparent shadow-none border-0"
+        toolbarSurface="gradient"
+        accentColor={headerAccent}
+      >
         <div
-          className="flex h-[60px] items-center rounded-bl-xl px-4 pr-20 py-2"
-          style={{
-            backgroundImage: `linear-gradient(90deg, ${headerAccent} 0%, ${headerAccent} 28%, transparent 97%, transparent 100%)`,
-          }}
+          className={cn(
+            "mx-auto grid w-full max-w-[1480px] min-w-0 items-center gap-3 rounded-bl-xl",
+            "min-h-[var(--workbench-header-band,79px)] px-gutter-page pr-24 sm:pr-40",
+            "grid-cols-1",
+            "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(0,280px)] workspace:gap-[24px]"
+          )}
+          style={headerStyle}
         >
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold leading-tight text-white">Spaces</h1>
-            <p className="mt-1 text-sm text-white/85">
-              {property ? `${property.nickname || property.address}` : "Organise your spaces"}
-            </p>
+          <div className="flex min-w-0 items-center py-3 workspace:py-0 workspace:pt-[18px] workspace:pb-3">
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-semibold leading-tight text-white">Spaces</h1>
+              <p className="mt-0.5 truncate text-sm leading-snug text-white/85">
+                {property ? `${property.nickname || property.address}` : "Organise your spaces"}
+              </p>
+            </div>
           </div>
+
+          <div className="flex min-w-0 max-w-[700px] items-center pb-3 workspace:pb-0 workspace:pt-5">
+            <div className={gradientHeaderSearchFieldClassName("w-full")}>
+              <div className="flex min-w-0 flex-1 items-center px-3">
+                <input
+                  type="search"
+                  value={spaceSearchQuery}
+                  onChange={(e) => setSpaceSearchQuery(e.target.value)}
+                  placeholder="Search spaces"
+                  className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
+                  aria-label="Search spaces"
+                />
+              </div>
+              <span
+                className="inline-flex shrink-0 items-center justify-center px-3"
+                aria-hidden
+              >
+                <GradientHeaderMaskedIcon
+                  src={WORKBENCH_SEARCH_ICON}
+                  color={headerAccent}
+                />
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden min-w-0 workspace:block" aria-hidden />
         </div>
       </PageHeader>
       <WorkspaceScopeStrip>
@@ -175,18 +232,6 @@ export default function SpaceOrganisationScreen() {
 
   const workColumn = (
     <div className="space-y-5">
-      <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
-        <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-        <input
-          type="search"
-          value={spaceSearchQuery}
-          onChange={(e) => setSpaceSearchQuery(e.target.value)}
-          placeholder="Search spaces"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-          aria-label="Search spaces"
-        />
-      </div>
-
       <div>
         <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
         <WorkspaceTabList>
@@ -216,6 +261,14 @@ export default function SpaceOrganisationScreen() {
             Hover a group to browse suggestions, add spaces, or manage what you already have.
           </p>
           <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
+          <div className="border-t border-border/30 pt-5">
+            <AllSpacesDirectory
+              propertyId={propertyId}
+              spaceFilter={spaceSearchQuery}
+              openTaskSpaceIds={openTaskSpaceIds}
+              openTaskCountsBySpaceId={openTaskCountsBySpaceId}
+            />
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

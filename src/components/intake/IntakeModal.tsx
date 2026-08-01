@@ -3982,6 +3982,11 @@ export function IntakeModal({
           setShowAddSpaceDialog(false);
           refreshSpaces();
         }}
+        onSelectExisting={(space) => {
+          setSelectedSpaceIds((prev) => (prev.includes(space.id) ? prev : [...prev, space.id]));
+          setSpaceDraftName("");
+          setShowAddSpaceDialog(false);
+        }}
       />
       <CreateAssetDialog
         open={showCreateAssetDialog}

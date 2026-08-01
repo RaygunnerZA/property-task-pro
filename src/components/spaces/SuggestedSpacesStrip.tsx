@@ -10,7 +10,12 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useInsertSpaceMutation } from "@/hooks/mutations/useInsertSpaceMutation";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { getAssetIcon } from "@/lib/icon-resolver";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import {
+  SpaceVisualPicker,
+  type SpaceVisualValue,
+} from "@/components/spaces/SpaceVisualPicker";
+import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { uploadSpaceImage, validateSpaceImageFile } from "@/services/spaces/spaceImageUpload";
 import { ONBOARDING_SPACE_GROUPS } from "@/components/onboarding/onboardingSpaceGroups";
 import {
   DropdownMenu,
@@ -96,9 +101,21 @@ export function SuggestedSpacesStrip({
     space: ActivatedSpace;
   } | null>(null);
   const [dialogInput, setDialogInput] = useState("");
-  const [iconValue, setIconValue] = useState({ iconName: "box", color: "#8EC9CE" });
+  const [iconValue, setIconValue] = useState<SpaceVisualValue>({
+    mode: "icon",
+    thumbnailUrl: null,
+    iconName: "box",
+    iconColor: "#8EC9CE",
+  });
   const [iconPreviewSpace, setIconPreviewSpace] = useState<string | null>(null);
-  const [iconPreviewValue, setIconPreviewValue] = useState({ iconName: "box", color: "#8EC9CE" });
+  const [iconPreviewValue, setIconPreviewValue] = useState<SpaceVisualValue>({
+    mode: "icon",
+    thumbnailUrl: null,
+    iconName: "box",
+    iconColor: "#8EC9CE",
+  });
+  const [pendingEditFile, setPendingEditFile] = useState<File | null>(null);
+  const [pendingPreviewFile, setPendingPreviewFile] = useState<File | null>(null);
   const [preferredIcons, setPreferredIcons] = useState<Map<string, string>>(new Map());
 
   // ---- Queries ----
@@ -229,34 +246,54 @@ export function SuggestedSpacesStrip({
     setEditAction({ type, space });
     if (type === "rename") setDialogInput(space.name);
     if (type === "sub-space") setDialogInput("");
-    if (type === "icon")
-      setIconValue({ iconName: space.icon_name || "box", color: groupColor });
+    if (type === "icon") {
+      const thumb = resolveSpaceMiniCardIllustration(space.name);
+      setPendingEditFile(null);
+      setIconValue({
+        mode: "thumbnail",
+        thumbnailUrl: thumb,
+        iconName: space.icon_name || "box",
+        iconColor: groupColor,
+      });
+    }
   };
 
   const openIconPreview = (spaceName: string) => {
     const { iconName } = resolveIconAndType(spaceName);
     const preferred = preferredIcons.get(spaceName.toLowerCase().trim());
+    const thumb = resolveSpaceMiniCardIllustration(spaceName);
+    setPendingPreviewFile(null);
     setIconPreviewSpace(spaceName);
     setIconPreviewValue({
+      mode: preferred ? "icon" : "thumbnail",
+      thumbnailUrl: preferred ? null : thumb,
       iconName: preferred ?? iconName,
-      color: groupColor,
+      iconColor: groupColor,
     });
   };
 
-  const closeIconPreview = () => setIconPreviewSpace(null);
+  const closeIconPreview = () => {
+    setIconPreviewSpace(null);
+    setPendingPreviewFile(null);
+  };
 
   const handleIconPreviewSave = () => {
     if (!iconPreviewSpace) return;
-    setPreferredIcons((prev) => {
-      const next = new Map(prev);
-      next.set(iconPreviewSpace.toLowerCase().trim(), iconPreviewValue.iconName);
-      return next;
-    });
+    if (iconPreviewValue.mode === "icon") {
+      setPreferredIcons((prev) => {
+        const next = new Map(prev);
+        next.set(iconPreviewSpace.toLowerCase().trim(), iconPreviewValue.iconName);
+        return next;
+      });
+    }
     toast.success("Icon updated");
     closeIconPreview();
   };
 
-  const closeDialog = () => setEditAction(null);
+  const closeDialog = () => {
+    setEditAction(null);
+    setPendingEditFile(null);
+  };
 
   const handleRename = async () => {
     if (!editAction) return;
@@ -322,11 +359,27 @@ export function SuggestedSpacesStrip({
   const handleIconSave = async () => {
     if (!editAction) return;
     try {
+      const updates: Record<string, unknown> = {
+        icon_name: iconValue.iconName || "box",
+        thumbnail_url:
+          iconValue.mode === "thumbnail" ? iconValue.thumbnailUrl : null,
+      };
       const { error } = await supabase
         .from("spaces")
-        .update({ icon_name: iconValue.iconName })
+        .update(updates)
         .eq("id", editAction.space.id);
       if (error) throw error;
+
+      if (pendingEditFile && orgId) {
+        await uploadSpaceImage(supabase, {
+          orgId,
+          propertyId,
+          file: pendingEditFile,
+          spaceId: editAction.space.id,
+        });
+        setPendingEditFile(null);
+      }
+
       toast.success("Icon updated");
       invalidateAll();
       closeDialog();
@@ -488,21 +541,25 @@ export function SuggestedSpacesStrip({
               <DialogHeader>
                 <DialogTitle>Change Icon</DialogTitle>
                 <DialogDescription id="icon-edit-desc">
-                  Pick a new icon for <strong>{editAction.space.name}</strong>
+                  Pick a new image or icon for <strong>{editAction.space.name}</strong>
                 </DialogDescription>
               </DialogHeader>
-              <AIIconColorPicker
-                searchText={editAction.space.name}
+              <SpaceVisualPicker
                 value={iconValue}
-                onChange={(icon, color) => setIconValue({ iconName: icon, color })}
+                onChange={setIconValue}
+                searchText={editAction.space.name}
                 suggestedIcon={editAction.space.icon_name}
-                showSearchInput
+                onUploadFile={async (file) => {
+                  validateSpaceImageFile(file);
+                  setPendingEditFile(file);
+                  return URL.createObjectURL(file);
+                }}
               />
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="ghost" onClick={closeDialog}>
                   Cancel
                 </Button>
-                <Button onClick={handleIconSave}>Save</Button>
+                <Button onClick={() => void handleIconSave()}>Save</Button>
               </DialogFooter>
             </>
           )}
@@ -572,21 +629,21 @@ export function SuggestedSpacesStrip({
           <DialogHeader>
             <DialogTitle>Change Icon</DialogTitle>
             <DialogDescription id="icon-preview-desc">
-              Pick an icon for <strong>{iconPreviewSpace}</strong>. Use the search field or refresh to get new suggestions.
+              Choose a gallery image or create an icon for <strong>{iconPreviewSpace}</strong>.
             </DialogDescription>
           </DialogHeader>
           {iconPreviewSpace && (
-            <div className="space-y-4">
-              <AIIconColorPicker
-                searchText={iconPreviewSpace}
-                value={iconPreviewValue}
-                onChange={(icon, color) =>
-                  setIconPreviewValue({ iconName: icon, color })
-                }
-                suggestedIcon={resolveIconAndType(iconPreviewSpace).iconName}
-                showSearchInput
-              />
-            </div>
+            <SpaceVisualPicker
+              value={iconPreviewValue}
+              onChange={setIconPreviewValue}
+              searchText={iconPreviewSpace}
+              suggestedIcon={resolveIconAndType(iconPreviewSpace).iconName}
+              onUploadFile={async (file) => {
+                validateSpaceImageFile(file);
+                setPendingPreviewFile(file);
+                return URL.createObjectURL(file);
+              }}
+            />
           )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={closeIconPreview}>

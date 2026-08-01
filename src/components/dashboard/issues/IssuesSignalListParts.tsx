@@ -54,7 +54,8 @@ export function SignalCategoryTag({
   return (
     <span
       className={cn(
-        "inline-flex h-6 shrink-0 items-center justify-center rounded-sharp px-2.5 font-mono text-caption font-medium",
+        "inline-flex h-5 shrink-0 items-center justify-center rounded-md px-1.5",
+        "font-mono text-2xs font-semibold uppercase tracking-wide leading-none",
         categoryVariantClass[variant]
       )}
     >
@@ -63,14 +64,14 @@ export function SignalCategoryTag({
   );
 }
 
-/** Shared 8px corner radius + height for Issues signal row controls. */
+/** Shared 8px corner radius for Issues signal row controls. */
 const issuesSignalControlRadius = "rounded-card";
 
 /** Secondary actions (View / Dismiss) on signal rows. */
 export const issuesSignalSecondaryButtonClassName = cn(
   "inline-flex h-7 shrink-0 items-center justify-center border border-border/60 bg-[rgb(237,235,232)]",
   issuesSignalControlRadius,
-  "px-3 text-caption font-medium text-foreground",
+  "px-3 text-[12px] font-medium leading-none text-foreground",
   "shadow-[1px_2px_3px_0px_rgba(0,0,0,0.15),-1px_-2px_3px_0px_rgba(255,255,255,0.7),0px_1px_2px_0px_rgba(0,0,0,0.05)]",
   "transition-colors hover:bg-muted/40"
 );
@@ -79,7 +80,7 @@ export const issuesSignalSecondaryButtonClassName = cn(
 export const issuesSignalReviewButtonClassName = cn(
   "inline-flex h-7 shrink-0 items-center justify-center border-0 bg-primary",
   issuesSignalControlRadius,
-  "px-3 text-caption font-semibold text-white",
+  "px-3 text-[12px] font-semibold leading-none text-white",
   "shadow-primary-btn transition-all hover:bg-primary active:shadow-btn-pressed"
 );
 

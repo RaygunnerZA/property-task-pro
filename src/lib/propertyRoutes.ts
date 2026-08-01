@@ -147,6 +147,21 @@ export function propertyHubSpacesPath(propertyId: string): string {
   return propertySubPath(propertyId, "spaces-organise");
 }
 
+/**
+ * Property compliance setup (rules). Portfolio / certificates stay on Records
+ * via `propertyHubRecordsPath(id, "compliance")` / `propertySubPath(id, "compliance")`.
+ */
+export function propertyComplianceSetupPath(
+  propertyId: string,
+  options?: { addRule?: boolean }
+): string {
+  const base = `/properties/${propertyId}/compliance`;
+  if (options?.addRule) {
+    return `${base}?addRule=1`;
+  }
+  return base;
+}
+
 /** Property-scoped assets list. */
 export function propertyHubAssetsPath(propertyId: string): string {
   return `/assets?property=${encodeURIComponent(propertyId)}`;

@@ -51,7 +51,7 @@ export function FilterChip({
     className?.includes("w-[35px]");
 
   const chipHeight = "h-[28px]";
-  const textSize = "text-caption";
+  const textSize = "text-[11px]";
   const iconSize = isFilterBarChip ? "h-[14px] w-[14px]" : undefined;
 
   const activeBgColor =
@@ -67,8 +67,8 @@ export function FilterChip({
         isIconOnly ? "justify-center gap-0" : "gap-1.5",
         "px-2 py-1",
         chipHeight,
-        "rounded-card",
-        "font-mono uppercase tracking-wider",
+        "rounded-[8px]",
+        "font-mono uppercase tracking-wide",
         textSize,
         "transition-all duration-150 cursor-pointer select-none",
         "bg-background text-muted-foreground",

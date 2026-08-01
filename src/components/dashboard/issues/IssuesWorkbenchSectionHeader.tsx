@@ -41,23 +41,18 @@ export function IssuesWorkbenchSectionHeader({
     return (
       <div
         className={cn(
-          "grid w-full min-w-0 items-end gap-x-3 gap-y-1 px-2",
-          "grid-cols-[minmax(4.5rem,auto)_minmax(0,1fr)_minmax(3.5rem,min(6.25rem,26%))]",
+          "flex w-full min-w-0 items-end gap-3 px-2",
           spacious ? "my-5" : "my-0",
           className
         )}
       >
-        <h2 className={cn("min-w-0 w-[90px] tracking-wide", workbenchSectionTitleClassName)}>
-          {title}
-        </h2>
-        {subtitle ? (
-          <p className="min-w-0 pt-[5px] text-caption leading-snug text-muted-foreground sm:text-xs">
-            {subtitle}
-          </p>
-        ) : (
-          <span className="min-w-0" aria-hidden />
-        )}
-        <div className="flex aspect-square w-full max-h-[6.25rem] max-w-[6.25rem] items-end justify-end justify-self-end">
+        <div className="min-w-0 flex-1">
+          <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+          {subtitle ? (
+            <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
+          ) : null}
+        </div>
+        <div className="flex aspect-square w-[min(6.25rem,26%)] max-h-[6.25rem] shrink-0 items-end justify-end">
           <img
             src={illustrationSrc}
             alt=""

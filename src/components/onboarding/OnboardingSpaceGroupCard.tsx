@@ -47,7 +47,11 @@ interface OnboardingSpaceGroupCardProps {
   subSpacesByParent?: Record<string, string[]>;
   onAddSpace: (name: string, extra?: boolean) => void;
   onRemoveSpace?: (name: string) => void;
-  onRenameSpace?: (name: string) => void;
+  onRenameSpace?: (name: string, groupId: string) => void;
+  /** Open the space detail surface. */
+  onViewSpace?: (name: string, groupId: string) => void;
+  /** Prefers id-based navigation when the space already exists (name key → open). */
+  viewSpaceByNameKey?: Record<string, () => void>;
   /** When user chooses Duplicate, suggests a new name (e.g. "Bedroom 2") and adds it. */
   onCopySpace?: (name: string, groupId: string) => void;
   onAddSubSpace?: (parentSpace: string, subSpaceName: string) => void;
@@ -68,6 +72,8 @@ export function OnboardingSpaceGroupCard({
   onAddSpace,
   onRemoveSpace,
   onRenameSpace,
+  onViewSpace,
+  viewSpaceByNameKey = {},
   onCopySpace,
   onAddSubSpace,
   className,
@@ -337,6 +343,9 @@ export function OnboardingSpaceGroupCard({
               const key = name.toLowerCase().trim();
               const isSelected = selectedSpacesSet.has(key);
               if (isSelected) {
+                const viewHandler =
+                  viewSpaceByNameKey[key] ??
+                  (onViewSpace ? () => onViewSpace(name, group.id) : undefined);
                 return (
                   <ExpandableSpaceChip
                     key={name}
@@ -345,7 +354,10 @@ export function OnboardingSpaceGroupCard({
                     subSpaces={subSpacesByParent[key] ?? []}
                     onRemove={() => onRemoveSpace?.(name)}
                     onAddSubSpace={(subName) => onAddSubSpace?.(name, subName)}
-                    onRename={onRenameSpace ? () => onRenameSpace(name) : undefined}
+                    onRename={
+                      onRenameSpace ? () => onRenameSpace(name, group.id) : undefined
+                    }
+                    onView={viewHandler}
                     onDuplicate={onCopySpace ? () => onCopySpace(name, group.id) : undefined}
                     className="!shadow-none"
                   />

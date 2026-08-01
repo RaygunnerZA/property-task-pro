@@ -107,13 +107,13 @@ export const intakeFabSatelliteAddClassName = cn(
 
 /** Inline / compliance card footers */
 export const intakeReportIssueMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold text-white",
+  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-white",
   reportBg,
   "shadow-e1 transition-all hover:shadow-md hover:bg-destructive/90"
 );
 
 export const intakeAddRecordMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold text-white",
+  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-white",
   addRecordBg,
   "shadow-e1 transition-all hover:shadow-md hover:bg-primary/90"
 );

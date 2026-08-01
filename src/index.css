@@ -143,9 +143,21 @@
     }
   }
 
-  /* StandardPageWithBack + Spaces: gradient + property scope row under it */
+  /* StandardPageWithBack + Spaces: gradient + property scope row under it.
+     Band matches homepage workbench header (79px); scope strip ~48px. */
   .property-workbench-scope-header {
-    --header-height: 112px;
+    --workbench-header-band: 79px;
+    --header-height: 127px;
+  }
+
+  @media (min-width: 1024px) {
+    .property-workbench-scope-header .page-header--spaces-organise {
+      height: auto;
+      min-height: 73px;
+      padding-top: 0;
+      box-sizing: border-box;
+      overflow: visible;
+    }
   }
 
   .dark {

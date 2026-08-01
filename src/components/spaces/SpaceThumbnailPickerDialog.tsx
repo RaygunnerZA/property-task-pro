@@ -21,6 +21,8 @@ type SpaceThumbnailPickerDialogProps = {
   spaceName?: string | null;
   onSelect: (src: string) => void | Promise<void>;
   busy?: boolean;
+  /** Dialog heading (default: Replace thumbnail). */
+  title?: string;
 };
 
 export function SpaceThumbnailPickerDialog({
@@ -30,6 +32,7 @@ export function SpaceThumbnailPickerDialog({
   spaceName,
   onSelect,
   busy = false,
+  title = "Replace thumbnail",
 }: SpaceThumbnailPickerDialogProps) {
   const options = useMemo(() => listSpaceMiniCardIllustrations(), []);
   const [query, setQuery] = useState("");
@@ -72,7 +75,7 @@ export function SpaceThumbnailPickerDialog({
       <DialogContent className="max-w-lg gap-3 p-4" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-base font-semibold tracking-tight">
-            Replace thumbnail
+            {title}
             {spaceName ? (
               <span className="font-normal text-muted-foreground"> — {spaceName}</span>
             ) : null}

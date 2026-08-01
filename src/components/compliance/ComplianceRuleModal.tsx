@@ -34,6 +34,7 @@ import {
 } from "@/hooks/useUpsertComplianceRule";
 import { FREQUENCY_OPTIONS } from "@/services/propertyIntelligence/frequencyUtils";
 import type { ComplianceRuleWithStatus } from "@/hooks/useComplianceRules";
+import { StarterTemplateCallout } from "@/components/templates/StarterTemplateCallout";
 
 type ScopeType = "property" | "asset_type" | "specific_assets";
 
@@ -43,6 +44,8 @@ interface ComplianceRuleModalProps {
   propertyId: string;
   /** When provided, modal is in edit mode */
   editRule?: ComplianceRuleWithStatus | null;
+  /** Prefill for create mode (e.g. starter templates). Ignored when editing. */
+  initialValues?: ComplianceRuleFormValues | null;
 }
 
 const DEFAULT_FORM: ComplianceRuleFormValues = {
@@ -86,20 +89,24 @@ export function ComplianceRuleModal({
   onOpenChange,
   propertyId,
   editRule,
+  initialValues = null,
 }: ComplianceRuleModalProps) {
   const isEdit = !!editRule;
   const upsert = useUpsertComplianceRule();
 
   const [form, setForm] = useState<ComplianceRuleFormValues>(DEFAULT_FORM);
 
-  // Sync form when rule changes (edit mode)
+  // Sync form when opening: edit rule, starter template, or blank create
   useEffect(() => {
+    if (!open) return;
     if (editRule) {
       setForm(formFromRule(editRule));
+    } else if (initialValues) {
+      setForm({ ...DEFAULT_FORM, ...initialValues });
     } else {
       setForm(DEFAULT_FORM);
     }
-  }, [editRule, open]);
+  }, [editRule, initialValues, open]);
 
   const set = <K extends keyof ComplianceRuleFormValues>(
     key: K,
@@ -136,6 +143,10 @@ export function ComplianceRuleModal({
         </DialogHeader>
 
         <div className="space-y-6 py-2">
+          {!isEdit && initialValues && (
+            <StarterTemplateCallout isRegulatedArea />
+          )}
+
           {/* ── Basic ───────────────────────────────────────────── */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

@@ -1,13 +1,15 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Building2,
   Calendar,
+  ChevronRight,
   ClipboardCheck,
   FileText,
   Filter,
   Search,
+  Shield,
   ShieldCheck,
   Waves,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { usePropertyDocuments, type PropertyDocument } from "@/hooks/property/us
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
+import { useComplianceRules } from "@/hooks/useComplianceRules";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,12 +34,10 @@ import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
-import { ComplianceRulesSection } from "@/components/compliance/ComplianceRulesSection";
-import { ComplianceRuleModal } from "@/components/compliance/ComplianceRuleModal";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
-import { ComplianceAutomationPanel } from "@/components/compliance/ComplianceAutomationPanel";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { RecordsView } from "@/lib/propertyRoutes";
+import { propertyComplianceSetupPath, type RecordsView } from "@/lib/propertyRoutes";
 import type { IntakeMode } from "@/types/intake";
 import {
   buildComplianceRecordsFromPortfolio,
@@ -100,6 +101,7 @@ export function PropertyRecordsTab({
   onOpenIntake,
   extraComplianceRecords = [],
 }: PropertyRecordsTabProps) {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
@@ -122,8 +124,6 @@ export function PropertyRecordsTab({
   const [hazards, setHazards] = useState(false);
   const [unlinked, setUnlinked] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [ruleModalOpen, setRuleModalOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<unknown | null>(null);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -134,6 +134,8 @@ export function PropertyRecordsTab({
     selectedPropertyIds && selectedPropertyIds.size === 1
       ? Array.from(selectedPropertyIds)[0]
       : null;
+
+  const { data: complianceRules = [] } = useComplianceRules(scopedPropertyId ?? undefined);
 
   const { upload: uploadPropertyDocuments, uploading: recordsUploading } = useDocumentUpload(
     scopedPropertyId ?? ""
@@ -179,24 +181,14 @@ export function PropertyRecordsTab({
     return () => window.clearTimeout(t);
   }, [searchParams, setSearchParams, scopedPropertyId, toast]);
 
+  // Legacy deep link: ?addRule=1 used to open the modal in Records — send to setup.
   useEffect(() => {
     if (searchParams.get("addRule") !== "1" || !scopedPropertyId) return;
-    setEditingRule(null);
-    setRuleModalOpen(true);
     const next = new URLSearchParams(searchParams);
     next.delete("addRule");
     setSearchParams(next, { replace: true });
-  }, [searchParams, scopedPropertyId, setSearchParams]);
-
-  useEffect(() => {
-    const onOpenRule = () => {
-      if (!scopedPropertyId) return;
-      setEditingRule(null);
-      setRuleModalOpen(true);
-    };
-    window.addEventListener("filla:records-open-rule-modal", onOpenRule);
-    return () => window.removeEventListener("filla:records-open-rule-modal", onOpenRule);
-  }, [scopedPropertyId]);
+    navigate(propertyComplianceSetupPath(scopedPropertyId, { addRule: true }));
+  }, [searchParams, scopedPropertyId, setSearchParams, navigate]);
 
   const openRecordsFilePicker = useCallback(() => {
     if (!scopedPropertyId) {
@@ -565,9 +557,37 @@ export function PropertyRecordsTab({
       <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
         {!scopedPropertyId && (
           <p className="text-xs text-muted-foreground rounded-xl bg-card/70 shadow-e1 p-3">
-            Select a single property to upload documents, run asset-aware views, and edit rules. Portfolio slices above
+            Select a single property to upload documents, run asset-aware views, and manage rules. Portfolio slices above
             still follow your scope chips.
           </p>
+        )}
+
+        {recordsView === "compliance" && scopedPropertyId && (
+          <div className="rounded-xl bg-card/70 shadow-e1 px-3 py-2.5 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex items-start gap-2">
+              <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {complianceRules.length === 0
+                    ? "No compliance rules yet"
+                    : `${complianceRules.length} compliance rule${complianceRules.length === 1 ? "" : "s"}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Set up recurring obligations and organisation automation.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-primary hover:text-primary/90 gap-1"
+              onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
+            >
+              Manage
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         )}
 
         {showComplianceList && (
@@ -640,24 +660,6 @@ export function PropertyRecordsTab({
           </section>
         )}
 
-        {recordsView === "compliance" && scopedPropertyId && (
-          <section className="space-y-3">
-            <WorkspaceSectionHeading>Rules & automation</WorkspaceSectionHeading>
-            <ComplianceRulesSection
-              propertyId={scopedPropertyId}
-              onAddRule={() => {
-                setEditingRule(null);
-                setRuleModalOpen(true);
-              }}
-              onEditRule={(rule) => {
-                setEditingRule(rule);
-                setRuleModalOpen(true);
-              }}
-            />
-            <ComplianceAutomationPanel propertyId={scopedPropertyId} />
-          </section>
-        )}
-
         {showDocumentsPanel && (
           <section className="space-y-3">
             <WorkspaceSectionHeading>Stored documents</WorkspaceSectionHeading>
@@ -727,15 +729,6 @@ export function PropertyRecordsTab({
           </div>
         )}
       </div>
-
-      {scopedPropertyId && (
-        <ComplianceRuleModal
-          open={ruleModalOpen}
-          onOpenChange={setRuleModalOpen}
-          propertyId={scopedPropertyId}
-          editRule={editingRule as never}
-        />
-      )}
 
       <DocumentDetailDrawer
         documentId={selectedDocId}

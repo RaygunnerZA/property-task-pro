@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +23,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import {
+  SpaceVisualPicker,
+  type SpaceVisualValue,
+} from "@/components/spaces/SpaceVisualPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { toast } from "sonner";
 import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { getSuggestedCopyName } from "@/lib/spaceNameUtils";
+import { uploadSpaceImage, validateSpaceImageFile } from "@/services/spaces/spaceImageUpload";
+import { Copy, ExternalLink } from "lucide-react";
+
+type CreatedSpace = { id: string; name: string; icon_name: string };
+
+const DEFAULT_VISUAL: SpaceVisualValue = {
+  mode: "thumbnail",
+  thumbnailUrl: null,
+  iconName: "",
+  iconColor: "#8EC9CE",
+};
 
 interface AddSpaceDialogProps {
   open: boolean;
@@ -37,32 +52,42 @@ interface AddSpaceDialogProps {
   variant?: "modal" | "column";
   /** When true with variant="column", render only content (concertina provides header) */
   headless?: boolean;
-  /** Called after a space is successfully created, with the new space record */
-  onCreated?: (space: { id: string; name: string; icon_name: string }) => void;
+  /** Called after a space is successfully created */
+  onCreated?: (space: CreatedSpace) => void;
+  /**
+   * When the typed name matches an existing space, prefer selecting it in-place
+   * (intake / task create) instead of navigating to the space detail page.
+   */
+  onSelectExisting?: (space: CreatedSpace) => void;
   /** Pre-fill the space name input */
   initialName?: string;
 }
 
-export function AddSpaceDialog({ 
-  open, 
+export function AddSpaceDialog({
+  open,
   onOpenChange,
   properties = [],
   propertyId: initialPropertyId,
   variant = "modal",
   headless = false,
   onCreated,
+  onSelectExisting,
   initialName = "",
 }: AddSpaceDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [name, setName] = useState(initialName);
   const [propertyId, setPropertyId] = useState<string>(initialPropertyId || "");
-  const [iconName, setIconName] = useState("");
-  const [iconColor, setIconColor] = useState("#8EC9CE");
+  const [visual, setVisual] = useState<SpaceVisualValue>(DEFAULT_VISUAL);
+  const [visualTouched, setVisualTouched] = useState(false);
+  const [pendingUploadFile, setPendingUploadFile] = useState<File | null>(null);
+  const pendingObjectUrlRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const debouncedName = useDebounce(name.trim(), 400);
   const canonicalName = resolveToCanonicalSpaceType(name) ?? debouncedName;
+  const dialogActive = open || variant === "column";
 
   const { data: spaceTypeMatch } = useQuery({
     queryKey: ["space-types", "icon-lookup", canonicalName],
@@ -77,10 +102,135 @@ export function AddSpaceDialog({
       if (error) return null;
       return data;
     },
-    enabled: !!canonicalName && (open || variant === "column"),
+    enabled: !!canonicalName && dialogActive,
   });
 
+  const { data: propertySpaces = [] } = useQuery({
+    queryKey: ["spaces", "name-index", orgId, propertyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("spaces")
+        .select("id, name, icon_name")
+        .eq("org_id", orgId!)
+        .eq("property_id", propertyId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!orgId && !!propertyId && dialogActive,
+  });
+
+  const existingMatch = debouncedName
+    ? propertySpaces.find(
+        (space) => (space.name ?? "").trim().toLowerCase() === debouncedName.toLowerCase()
+      ) ?? null
+    : null;
+
+  const suggestedCopyName = existingMatch
+    ? getSuggestedCopyName(
+        existingMatch.name,
+        propertySpaces.map((space) => space.name ?? "")
+      )
+    : null;
+
   const suggestedIcon = spaceTypeMatch?.default_icon ?? null;
+  const selectExistingInPlace = typeof onSelectExisting === "function";
+
+  const resetForm = useCallback(() => {
+    setName("");
+    if (!initialPropertyId) {
+      setPropertyId("");
+    }
+    if (pendingObjectUrlRef.current) {
+      URL.revokeObjectURL(pendingObjectUrlRef.current);
+      pendingObjectUrlRef.current = null;
+    }
+    setPendingUploadFile(null);
+    setVisual(DEFAULT_VISUAL);
+    setVisualTouched(false);
+  }, [initialPropertyId]);
+
+  const handleUploadForCreate = useCallback(async (file: File) => {
+    validateSpaceImageFile(file);
+    if (pendingObjectUrlRef.current) {
+      URL.revokeObjectURL(pendingObjectUrlRef.current);
+    }
+    const objectUrl = URL.createObjectURL(file);
+    pendingObjectUrlRef.current = objectUrl;
+    setPendingUploadFile(file);
+    return objectUrl;
+  }, []);
+
+  const createSpaceWithName = async (spaceName: string) => {
+    if (!orgId || !propertyId) return;
+
+    const trimmed = spaceName.trim();
+    if (!trimmed) {
+      toast.error("Space name is required");
+      return;
+    }
+
+    const collision = propertySpaces.find(
+      (space) => (space.name ?? "").trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    if (collision) {
+      toast.error(`“${collision.name}” already exists in this property`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const effectiveIcon =
+        visual.iconName || suggestedIcon || "box";
+      let thumbnailUrl: string | null =
+        visual.mode === "thumbnail" && visual.thumbnailUrl && !pendingUploadFile
+          ? visual.thumbnailUrl
+          : visual.mode === "icon"
+            ? null
+            : resolveSpaceMiniCardIllustration(
+                spaceTypeMatch?.name ?? (canonicalName || trimmed)
+              );
+
+      const { data: newSpace, error: createError } = await supabase
+        .from("spaces")
+        .insert({
+          org_id: orgId,
+          property_id: propertyId,
+          name: trimmed,
+          icon_name: effectiveIcon,
+          space_type_id: spaceTypeMatch?.id ?? null,
+          thumbnail_url: thumbnailUrl,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Space creation error:", createError);
+        throw createError;
+      }
+
+      if (pendingUploadFile) {
+        const uploaded = await uploadSpaceImage(supabase, {
+          orgId,
+          propertyId,
+          file: pendingUploadFile,
+          spaceId: newSpace.id,
+        });
+        thumbnailUrl = uploaded.displayUrl;
+      }
+
+      toast.success("Space created!");
+      onCreated?.({ id: newSpace.id, name: newSpace.name, icon_name: newSpace.icon_name });
+      resetForm();
+      onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    } catch (err: unknown) {
+      console.error("Create space failed:", err);
+      const message = err instanceof Error ? err.message : "Failed to create space";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -98,72 +248,43 @@ export function AddSpaceDialog({
       return;
     }
 
-    setLoading(true);
-    try {
-      // Check for duplicate space name within the same property
-      const { data: existingSpaces, error: checkError } = await supabase
-        .from("spaces")
-        .select("id, name")
-        .eq("org_id", orgId)
-        .eq("property_id", propertyId)
-        .ilike("name", name.trim());
-
-      if (checkError) {
-        console.error("Error checking duplicates:", checkError);
-      } else if (existingSpaces && existingSpaces.length > 0) {
-        toast.error("A space with this name already exists in this property");
-        setLoading(false);
-        return;
-      }
-
-      // Create space - use icon from space_types match if no icon selected
-      const effectiveIcon = iconName || suggestedIcon || "box";
-      const { data: newSpace, error: createError } = await supabase
-        .from("spaces")
-        .insert({
-          org_id: orgId,
-          property_id: propertyId,
-          name: name.trim(),
-          icon_name: effectiveIcon,
-          space_type_id: spaceTypeMatch?.id ?? null,
-          thumbnail_url: resolveSpaceMiniCardIllustration(
-            spaceTypeMatch?.name ?? (canonicalName || name.trim())
-          ),
-        })
-        .select()
-        .single();
-
-      if (createError) {
-        console.error("Space creation error:", createError);
-        throw createError;
-      }
-
-      toast.success("Space created!");
-      onCreated?.({ id: newSpace.id, name: newSpace.name, icon_name: newSpace.icon_name });
-      setName("");
-      if (!initialPropertyId) {
-        setPropertyId("");
-      }
-      setIconName("");
-      setIconColor("#8EC9CE");
-      onOpenChange(false);
-      queryClient.invalidateQueries({ queryKey: ["spaces"] });
-    } catch (err: any) {
-      console.error("Create space failed:", err);
-      toast.error(err.message || "Failed to create space");
-    } finally {
-      setLoading(false);
+    if (existingMatch) {
+      toast.message(`“${existingMatch.name}” already exists — open it or create a copy.`);
+      return;
     }
+
+    await createSpaceWithName(name);
+  };
+
+  const handleUseExisting = () => {
+    if (!existingMatch || !propertyId) return;
+
+    const space: CreatedSpace = {
+      id: existingMatch.id,
+      name: existingMatch.name,
+      icon_name: existingMatch.icon_name || "box",
+    };
+
+    if (selectExistingInPlace) {
+      onSelectExisting?.(space);
+      resetForm();
+      onOpenChange(false);
+      return;
+    }
+
+    onOpenChange(false);
+    navigate(`/properties/${propertyId}/spaces/${space.id}`);
+  };
+
+  const handleCreateCopy = async () => {
+    if (!suggestedCopyName) return;
+    setName(suggestedCopyName);
+    await createSpaceWithName(suggestedCopyName);
   };
 
   const handleClose = () => {
     if (!loading) {
-      setName("");
-      if (!initialPropertyId) {
-        setPropertyId("");
-      }
-      setIconName("");
-      setIconColor("#8EC9CE");
+      resetForm();
       onOpenChange(false);
     }
   };
@@ -180,23 +301,58 @@ export function AddSpaceDialog({
     }
   }, [open, initialName]);
 
-  const IconComponent = getAssetIcon(iconName || "box");
+  // Auto-suggest gallery art when the name resolves and the user hasn't chosen a visual yet.
+  useEffect(() => {
+    if (visualTouched) return;
+    if (visual.mode === "icon") return;
+    if (pendingUploadFile) return;
+    const auto = resolveSpaceMiniCardIllustration(
+      spaceTypeMatch?.name ?? (canonicalName || name.trim())
+    );
+    if (!auto) return;
+    if (visual.thumbnailUrl === auto) return;
+    setVisual((prev) => ({
+      ...prev,
+      mode: "thumbnail",
+      thumbnailUrl: auto,
+      iconName: prev.iconName || suggestedIcon || "",
+    }));
+  }, [
+    canonicalName,
+    name,
+    pendingUploadFile,
+    spaceTypeMatch?.name,
+    suggestedIcon,
+    visual.mode,
+    visual.thumbnailUrl,
+    visualTouched,
+  ]);
+
+  const ExistingIcon = getAssetIcon(existingMatch?.icon_name || "box");
 
   const formContent = (
     <div className="space-y-6 p-4">
-      {/* Icon Preview */}
-      <div className="flex justify-center">
-        <div
-          className="p-4 rounded-2xl transition-all duration-300"
-          style={{
-            backgroundColor: iconColor,
-            boxShadow:
-              "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-          }}
-        >
-          <IconComponent className="w-10 h-10 text-white" />
-        </div>
-      </div>
+      <SpaceVisualPicker
+        value={{
+          ...visual,
+          iconName: visual.iconName || suggestedIcon || "box",
+        }}
+        onChange={(next) => {
+          setVisualTouched(true);
+          if (next.mode === "icon" || (next.thumbnailUrl && !next.thumbnailUrl.startsWith("blob:"))) {
+            setPendingUploadFile(null);
+            if (pendingObjectUrlRef.current) {
+              URL.revokeObjectURL(pendingObjectUrlRef.current);
+              pendingObjectUrlRef.current = null;
+            }
+          }
+          setVisual(next);
+        }}
+        searchText={name}
+        suggestedIcon={suggestedIcon}
+        disabled={loading}
+        onUploadFile={handleUploadForCreate}
+      />
 
       {/* Property Selection - Hide if propertyId is pre-selected */}
       {!initialPropertyId && (
@@ -231,22 +387,56 @@ export function AddSpaceDialog({
           value={name}
           onChange={(e) => setName(e.target.value)}
           disabled={loading}
+          aria-invalid={!!existingMatch}
         />
-      </div>
 
-      {/* AI Icon + Color */}
-      <AIIconColorPicker
-        searchText={name}
-        value={{ iconName, color: iconColor }}
-        onChange={(icon, color) => {
-          setIconName(icon);
-          setIconColor(color);
-        }}
-        suggestedIcon={suggestedIcon}
-        defaultIcons={["door-open", "bed", "bath", "cooking-pot", "sofa"]}
-        fallbackSearch="room"
-        disabled={loading}
-      />
+        {existingMatch && suggestedCopyName ? (
+          <div
+            className="rounded-xl bg-card/80 p-3 shadow-e1"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 shadow-sm">
+                <ExistingIcon className="h-4 w-4 text-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  “{existingMatch.name}” already exists
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Open the existing space, or create “{suggestedCopyName}”.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUseExisting}
+                    disabled={loading}
+                    className="gap-1.5"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    {selectExistingInPlace
+                      ? `Use ${existingMatch.name}`
+                      : `Open ${existingMatch.name}`}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void handleCreateCopy()}
+                    disabled={loading}
+                    className="gap-1.5"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    {loading ? "Creating…" : `Create ${suggestedCopyName}`}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       <div className="flex gap-2 pt-2">
         <Button
@@ -258,8 +448,14 @@ export function AddSpaceDialog({
           Cancel
         </Button>
         <Button
-          onClick={handleSave}
-          disabled={loading || !name.trim() || !propertyId || (!initialPropertyId && properties.length === 0)}
+          onClick={() => void handleSave()}
+          disabled={
+            loading ||
+            !!existingMatch ||
+            !name.trim() ||
+            !propertyId ||
+            (!initialPropertyId && properties.length === 0)
+          }
           className="flex-1"
         >
           {loading ? "Creating…" : "Create Space"}
@@ -286,4 +482,3 @@ export function AddSpaceDialog({
     </Dialog>
   );
 }
-

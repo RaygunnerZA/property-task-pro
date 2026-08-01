@@ -51,7 +51,10 @@ interface OnboardingCustomCollectionCardProps {
   subSpacesByParent?: Record<string, string[]>;
   onAddSpace: (name: string, extra?: boolean) => void;
   onRemoveSpace?: (name: string) => void;
-  onRenameSpace?: (name: string) => void;
+  onRenameSpace?: (name: string, groupId: string) => void;
+  onViewSpace?: (name: string, groupId: string) => void;
+  /** Prefers id-based navigation when the space already exists (name key → open). */
+  viewSpaceByNameKey?: Record<string, () => void>;
   onCopySpace?: (name: string, groupId: string) => void;
   onAddSubSpace?: (parentSpace: string, subSpaceName: string) => void;
   onUpdateCollection: (id: string, updates: { name?: string; imageSrc?: string }) => void;
@@ -67,6 +70,8 @@ export function OnboardingCustomCollectionCard({
   onAddSpace,
   onRemoveSpace,
   onRenameSpace,
+  onViewSpace,
+  viewSpaceByNameKey = {},
   onCopySpace,
   onAddSubSpace,
   onUpdateCollection,
@@ -319,6 +324,11 @@ export function OnboardingCustomCollectionCard({
               ) : (
                 visibleSpaceNames.map((name) => {
                   const key = name.toLowerCase().trim();
+                  const viewHandler =
+                    viewSpaceByNameKey[key] ??
+                    (onViewSpace
+                      ? () => onViewSpace(name, collection.id)
+                      : undefined);
                   return (
                     <ExpandableSpaceChip
                       key={name}
@@ -327,7 +337,12 @@ export function OnboardingCustomCollectionCard({
                       subSpaces={subSpacesByParent[key] ?? []}
                       onRemove={() => onRemoveSpace?.(name)}
                       onAddSubSpace={(subName) => onAddSubSpace?.(name, subName)}
-                      onRename={onRenameSpace ? () => onRenameSpace(name) : undefined}
+                      onRename={
+                        onRenameSpace
+                          ? () => onRenameSpace(name, collection.id)
+                          : undefined
+                      }
+                      onView={viewHandler}
                       onDuplicate={
                         onCopySpace
                           ? () => onCopySpace(name, collection.id)

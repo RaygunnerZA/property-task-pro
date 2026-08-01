@@ -24,6 +24,7 @@ import { getEffectiveDefaultPropertyId, getPinnedDefaultPropertyId } from "@/lib
 import type { IntakeMode } from "@/types/intake";
 import {
   ISSUES_OPEN_TASK_FILTER_IDS,
+  propertyComplianceSetupPath,
   propertyHubAssetsPath,
   propertyHubIssuesPath,
   propertyHubPeoplePath,
@@ -556,7 +557,7 @@ export default function Dashboard({
     [isLargeScreen]
   );
 
-  const handleOpenIntake = (mode: IntakeMode = "report_issue") => {
+  const handleOpenIntake = useCallback((mode: IntakeMode = "report_issue") => {
     tabBeforeCreateTaskRef.current = activeTab;
     if (isLargeScreen) {
       setWorkbenchIntakeMode(mode);
@@ -567,7 +568,16 @@ export default function Dashboard({
     }
     setModalInitialIntakeMode(mode);
     setShowCreateTask(true);
-  };
+  }, [activeTab, isLargeScreen]);
+
+  /** Sidebar Create New and legacy `?add=true` deep links open Report Issue. */
+  useEffect(() => {
+    if (searchParams.get("add") !== "true") return;
+    handleOpenIntake("report_issue");
+    const params = workbenchSearchParamsFromBrowser(searchParams);
+    params.delete("add");
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams, handleOpenIntake]);
 
   const handleCreateTaskOpenChange = (open: boolean) => {
     setShowCreateTask(open);
@@ -841,7 +851,7 @@ export default function Dashboard({
             propertyId={intakeScopedPropertyId}
             onOpenIntake={handleOpenIntake}
             onAddComplianceRule={() =>
-              window.dispatchEvent(new CustomEvent("filla:records-open-rule-modal"))
+              navigate(propertyComplianceSetupPath(intakeScopedPropertyId, { addRule: true }))
             }
             onUploadClick={() =>
               window.dispatchEvent(new CustomEvent("filla:records-open-upload"))
