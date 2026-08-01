@@ -3,13 +3,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 
-type PlanFile = {
+export type PlanFile = {
   id: string;
   file_name: string;
   status: string;
   page_count: number | null;
   created_at: string;
   error_message?: string | null;
+  building_label?: string | null;
+  floor_label?: string | null;
+  setup_notes?: string | null;
+  scale_known?: boolean | null;
+  units?: string | null;
 };
 
 type ExtractionRun = {
@@ -18,6 +23,14 @@ type ExtractionRun = {
   status: string;
   created_at: string;
   completed_at?: string | null;
+};
+
+export type PlanSetupInput = {
+  building_label: string;
+  floor_label: string;
+  setup_notes?: string;
+  scale_known?: boolean;
+  units?: string;
 };
 
 export type ExtractedRow = {
@@ -36,6 +49,18 @@ export type ExtractedRow = {
   edited_element_type?: string | null;
   source_page_id?: string | null;
   rationale?: string | null;
+  floor_label?: string | null;
+  review_band?: string | null;
+  raw_reference?: Record<string, unknown> | null;
+};
+
+export type PlanPagePreview = {
+  id: string;
+  page_number: number;
+  processing_status: string;
+  image_storage_path: string | null;
+  thumbnail_storage_path: string | null;
+  signedUrl: string | null;
 };
 
 const db = supabase as any;
@@ -50,7 +75,9 @@ export function useBuildingPlans(propertyId?: string) {
     queryFn: async (): Promise<PlanFile[]> => {
       const { data, error } = await db
         .from("property_plan_files")
-        .select("id, file_name, status, page_count, created_at, error_message")
+        .select(
+          "id, file_name, status, page_count, created_at, error_message, building_label, floor_label, setup_notes, scale_known, units"
+        )
         .eq("org_id", orgId)
         .eq("property_id", propertyId)
         .order("created_at", { ascending: false });
@@ -111,15 +138,78 @@ export function useBuildingPlans(propertyId?: string) {
         if (insertError) throw insertError;
 
         createdFileIds.push(row.id);
-        db.functions
-          .invoke("building-plan-process", { body: { plan_file_id: row.id } })
-          .catch(() => undefined);
       }
       return createdFileIds;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["building-plans", "files"] });
       queryClient.invalidateQueries({ queryKey: ["building-plans", "latest-run-by-file"] });
+    },
+  });
+
+  const saveSetupMutation = useMutation({
+    mutationFn: async ({
+      planFileId,
+      setup,
+    }: {
+      planFileId: string;
+      setup: PlanSetupInput;
+    }) => {
+      const { error } = await db
+        .from("property_plan_files")
+        .update({
+          building_label: setup.building_label.trim() || null,
+          floor_label: setup.floor_label.trim() || null,
+          setup_notes: setup.setup_notes?.trim() || null,
+          scale_known: setup.scale_known ?? null,
+          units: setup.units?.trim() || null,
+        })
+        .eq("id", planFileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["building-plans", "files"] });
+    },
+  });
+
+  const processMutation = useMutation({
+    mutationFn: async ({
+      planFileId,
+      setup,
+    }: {
+      planFileId: string;
+      setup?: PlanSetupInput;
+    }) => {
+      if (setup) {
+        const { error: setupError } = await db
+          .from("property_plan_files")
+          .update({
+            building_label: setup.building_label.trim() || null,
+            floor_label: setup.floor_label.trim() || null,
+            setup_notes: setup.setup_notes?.trim() || null,
+            scale_known: setup.scale_known ?? null,
+            units: setup.units?.trim() || null,
+          })
+          .eq("id", planFileId);
+        if (setupError) throw setupError;
+      }
+      const { data, error } = await db.functions.invoke("building-plan-process", {
+        body: {
+          plan_file_id: planFileId,
+          extract_mode: "spaces_only",
+          building_label: setup?.building_label,
+          floor_label: setup?.floor_label,
+          setup_notes: setup?.setup_notes,
+          scale_known: setup?.scale_known,
+          units: setup?.units,
+        },
+      });
+      if (error) throw error;
+      if (data && data.ok === false) throw new Error(data.error || "Processing failed");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["building-plans"] });
     },
   });
 
@@ -133,7 +223,11 @@ export function useBuildingPlans(propertyId?: string) {
     latestRunByFile: latestRunByFileQuery.data || {},
     isLoading: filesQuery.isLoading || latestRunByFileQuery.isLoading,
     isUploading: uploadMutation.isPending,
+    isProcessing: processMutation.isPending,
+    isSavingSetup: saveSetupMutation.isPending,
     uploadPlans: uploadMutation.mutateAsync,
+    saveSetup: saveSetupMutation.mutateAsync,
+    proposeSpaces: processMutation.mutateAsync,
     refresh,
   };
 }
@@ -160,7 +254,7 @@ export function usePlanExtraction(runId?: string) {
   const pagesQuery = useQuery({
     queryKey: ["building-plans", "pages", runId, orgId],
     enabled: Boolean(runId && orgId),
-    queryFn: async () => {
+    queryFn: async (): Promise<PlanPagePreview[]> => {
       const { data: runRow, error: runError } = await db
         .from("plan_extraction_runs")
         .select("plan_file_id")
@@ -175,7 +269,19 @@ export function usePlanExtraction(runId?: string) {
         .eq("org_id", orgId)
         .order("page_number", { ascending: true });
       if (error) throw error;
-      return data || [];
+
+      const pages = data || [];
+      return Promise.all(
+        pages.map(async (page: Omit<PlanPagePreview, "signedUrl">) => {
+          if (!page.image_storage_path) {
+            return { ...page, signedUrl: null };
+          }
+          const { data: signed } = await db.storage
+            .from("property-plan-pages")
+            .createSignedUrl(page.image_storage_path, 60 * 60);
+          return { ...page, signedUrl: signed?.signedUrl ?? null };
+        })
+      );
     },
   });
 
@@ -185,57 +291,20 @@ export function usePlanExtraction(runId?: string) {
     queryFn: async (): Promise<ExtractedRow[]> => {
       const { data, error } = await db
         .from("extracted_spaces")
-        .select("id, name, space_type, confidence, is_accepted, edited_name, edited_space_type, source_page_id")
+        .select(
+          "id, name, space_type, confidence, is_accepted, edited_name, edited_space_type, source_page_id, floor_label, review_band, raw_reference"
+        )
         .eq("extraction_run_id", runId)
         .eq("org_id", orgId)
         .order("confidence", { ascending: false });
       if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const assetsQuery = useQuery({
-    queryKey: ["building-plans", "items", "assets", runId, orgId],
-    enabled: Boolean(runId && orgId),
-    queryFn: async (): Promise<ExtractedRow[]> => {
-      const { data, error } = await db
-        .from("extracted_assets")
-        .select("id, name, asset_type, confidence, is_accepted, edited_name, edited_asset_type, source_page_id")
-        .eq("extraction_run_id", runId)
-        .eq("org_id", orgId)
-        .order("confidence", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const complianceQuery = useQuery({
-    queryKey: ["building-plans", "items", "compliance", runId, orgId],
-    enabled: Boolean(runId && orgId),
-    queryFn: async (): Promise<ExtractedRow[]> => {
-      const { data, error } = await db
-        .from("extracted_compliance_elements")
-        .select("id, name, element_type, confidence, is_accepted, edited_name, edited_element_type, source_page_id")
-        .eq("extraction_run_id", runId)
-        .eq("org_id", orgId)
-        .order("confidence", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
-  const tasksQuery = useQuery({
-    queryKey: ["building-plans", "items", "tasks", runId, orgId],
-    enabled: Boolean(runId && orgId),
-    queryFn: async (): Promise<ExtractedRow[]> => {
-      const { data, error } = await db
-        .from("extracted_task_suggestions")
-        .select("id, title, suggestion_type, rationale, confidence, is_accepted, source_page_id")
-        .eq("extraction_run_id", runId)
-        .eq("org_id", orgId)
-        .order("confidence", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return (data || []).map((row: ExtractedRow) => ({
+        ...row,
+        rationale:
+          typeof row.raw_reference?.rationale === "string"
+            ? (row.raw_reference.rationale as string)
+            : null,
+      }));
     },
   });
 
@@ -245,11 +314,7 @@ export function usePlanExtraction(runId?: string) {
       id,
       values,
     }: {
-      table:
-        | "extracted_spaces"
-        | "extracted_assets"
-        | "extracted_compliance_elements"
-        | "extracted_task_suggestions";
+      table: "extracted_spaces";
       id: string;
       values: Record<string, unknown>;
     }) => {
@@ -272,6 +337,7 @@ export function usePlanExtraction(runId?: string) {
 
   const importMutation = useMutation({
     mutationFn: async () => {
+      // Single-arg RPC defaults to spaces-only after building-setup-assistant migration.
       const { data, error } = await db.rpc("import_plan_extraction_run", {
         p_extraction_run_id: runId,
       });
@@ -281,30 +347,19 @@ export function usePlanExtraction(runId?: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["building-plans"] });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });
 
   const state = useMemo(() => {
     const spaces = spacesQuery.data || [];
-    const assets = assetsQuery.data || [];
-    const compliance = complianceQuery.data || [];
-    const tasks = tasksQuery.data || [];
-    return { spaces, assets, compliance, tasks };
-  }, [spacesQuery.data, assetsQuery.data, complianceQuery.data, tasksQuery.data]);
+    return { spaces };
+  }, [spacesQuery.data]);
 
   return {
     run: runQuery.data,
     pages: pagesQuery.data || [],
     items: state,
-    isLoading:
-      runQuery.isLoading ||
-      pagesQuery.isLoading ||
-      spacesQuery.isLoading ||
-      assetsQuery.isLoading ||
-      complianceQuery.isLoading ||
-      tasksQuery.isLoading,
+    isLoading: runQuery.isLoading || pagesQuery.isLoading || spacesQuery.isLoading,
     updateItem: updateItemMutation.mutateAsync,
     isUpdating: updateItemMutation.isPending,
     importAccepted: importMutation.mutateAsync,

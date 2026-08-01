@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   addDays,
   endOfMonth,
@@ -22,7 +23,6 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import {
   calendarTypeColorWithAlpha,
@@ -112,7 +112,9 @@ function CalendarTaskChip({
   const calType = inferCalendarType(placement.task) as CalendarTypeId;
   const color = getCalendarTypeColor(calType);
 
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  // When a DragOverlay is active, leave the source chip in place (dimmed) —
+  // applying `transform` here AND rendering an overlay causes a cursor offset.
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: placement.id,
     data: { placement },
     disabled: isDragOverlay,
@@ -120,15 +122,11 @@ function CalendarTaskChip({
 
   const chipBackground = calendarTypeColorWithAlpha(color, 0.35);
 
-  const style = transform
-    ? { transform: CSS.Translate.toString(transform), backgroundColor: chipBackground }
-    : { backgroundColor: chipBackground };
-
   return (
     <button
       ref={isDragOverlay ? undefined : setNodeRef}
       type="button"
-      style={style}
+      style={{ backgroundColor: chipBackground }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       onClick={(e) => {
         e.stopPropagation();
@@ -137,7 +135,7 @@ function CalendarTaskChip({
       className={cn(
         CALENDAR_TASK_CHIP_CLASS,
         isDragging && !isDragOverlay && "opacity-40",
-        isDragOverlay && "cursor-grabbing shadow-md ring-1 ring-white/30"
+        isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
     >
       {priorityDotClass ? (
@@ -282,6 +280,8 @@ export function CalendarMonthGrid({
   propertyMap,
 }: CalendarMonthGridProps) {
   const [activePlacement, setActivePlacement] = useState<CalendarTaskPlacement | null>(null);
+  /** Lock overlay width to the source chip so it doesn't jump size under the cursor. */
+  const [activeChipWidth, setActiveChipWidth] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -314,11 +314,13 @@ export function CalendarMonthGrid({
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const placement = event.active.data.current?.placement as CalendarTaskPlacement | undefined;
     setActivePlacement(placement ?? null);
+    setActiveChipWidth(event.active.rect.current.initial?.width ?? null);
   }, []);
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       setActivePlacement(null);
+      setActiveChipWidth(null);
       const { active, over } = event;
       if (!over || !onTaskReschedule) return;
 
@@ -348,6 +350,7 @@ export function CalendarMonthGrid({
 
   const handleDragCancel = useCallback(() => {
     setActivePlacement(null);
+    setActiveChipWidth(null);
   }, []);
 
   return (
@@ -394,16 +397,24 @@ export function CalendarMonthGrid({
         </div>
       </div>
 
-      <DragOverlay dropAnimation={null}>
-        {activePlacement ? (
-          <CalendarTaskChip
-            placement={activePlacement}
-            propertyMap={propertyMap}
-            selectedTaskId={selectedTaskId}
-            isDragOverlay
-          />
-        ) : null}
-      </DragOverlay>
+      {/* Portal to body so fixed positioning isn't skewed by layout ancestors. */}
+      {typeof document !== "undefined"
+        ? createPortal(
+            <DragOverlay dropAnimation={null} zIndex={80}>
+              {activePlacement ? (
+                <div style={activeChipWidth ? { width: activeChipWidth } : undefined}>
+                  <CalendarTaskChip
+                    placement={activePlacement}
+                    propertyMap={propertyMap}
+                    selectedTaskId={selectedTaskId}
+                    isDragOverlay
+                  />
+                </div>
+              ) : null}
+            </DragOverlay>,
+            document.body
+          )
+        : null}
     </DndContext>
   );
 }

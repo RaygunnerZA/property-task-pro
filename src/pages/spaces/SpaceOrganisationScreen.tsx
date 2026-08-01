@@ -217,13 +217,13 @@ export default function SpaceOrganisationScreen() {
         />
       </div>
       <WorkspaceSurfaceCard
-        title="Floor plans & detection"
-        description="Upload a plan — Filla suggests spaces without process theatre. Review and add in one pass."
+        title="Floor plans"
+        description="Upload a sheet, confirm building and floor, then review proposed Spaces before creating any."
       >
         <Button className="w-full btn-accent-vibrant gap-2" asChild>
           <Link to={`/properties/${propertyId}/plans`}>
             <FileUp className="h-4 w-4" />
-            Open building plans
+            Open building setup
           </Link>
         </Button>
       </WorkspaceSurfaceCard>

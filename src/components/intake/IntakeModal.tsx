@@ -149,7 +149,7 @@ const PAPER_TEXTURE_STYLE: React.CSSProperties = {
 /** Matches Create Task rows (CategorySection, WhereSection, WhoSection) — chip becomes this input. */
 const INTAKE_INLINE_INPUT_CLASS = cn(
   "h-[28px] min-w-[100px] max-w-[240px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
-  "font-mono text-caption uppercase tracking-wider",
+  "font-mono text-2xs uppercase tracking-wide",
   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
   "shadow-inset outline-none cursor-text",
   "transition-[width] duration-150 ease-out"

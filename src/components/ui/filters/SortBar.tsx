@@ -86,7 +86,7 @@ export function SortBar({
         title="Sort"
         className={cn(
           "inline-flex items-center justify-start gap-1.5 py-1 pl-2 pr-2.5 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
-          "font-mono text-[11px] uppercase tracking-wider",
+          "font-mono text-2xs uppercase tracking-wide",
           "select-none cursor-pointer",
           "bg-background",
           expanded

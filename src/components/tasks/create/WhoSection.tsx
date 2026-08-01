@@ -485,7 +485,7 @@ export function WhoSection({
               placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
               className={cn(
                 "h-[28px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
-                "font-mono text-caption uppercase tracking-wider",
+                "font-mono text-2xs uppercase tracking-wide",
                 "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                 "shadow-inset outline-none cursor-text",
                 "transition-[width] duration-150 ease-out"
@@ -569,7 +569,7 @@ export function WhoSection({
                 placeholder={`Add person to ${secondaryRowTeamName}`}
                 className={cn(
                   "h-[28px] rounded-card px-2 py-1 shrink-0",
-                  "font-mono text-caption uppercase tracking-wider",
+                  "font-mono text-2xs uppercase tracking-wide",
                   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                   "shadow-inset outline-none cursor-text",
                   "transition-[width] duration-150 ease-out"

@@ -52,7 +52,16 @@ export function useCreateTaskMutation() {
 
   return useMutation({
     mutationFn: async ({ insert }: CreateTaskMutationVariables) => {
-      const { data, error } = await supabase.from("tasks").insert(insert).select().single();
+      let payload = { ...insert };
+      if (!payload.owner_user_id) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.id) {
+          payload = { ...payload, owner_user_id: user.id };
+        }
+      }
+      const { data, error } = await supabase.from("tasks").insert(payload).select().single();
       if (error) throw error;
       if (!data) throw new Error("Couldn't create task: no data returned");
       return data as TaskRow;

@@ -410,7 +410,7 @@ function TaskCardComponent({
       <span
         className={cn(
           "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
-          "font-mono text-[11px] font-medium uppercase tracking-normal leading-none shadow-sm",
+          "font-mono text-2xs font-medium uppercase tracking-wide leading-none shadow-sm",
           dueUrgency === "overdue"
             ? "bg-destructive/90 text-white"
             : "bg-amber-500/90 text-white"

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useCountUp } from "@/hooks/useCountUp";
 
 interface RadialProgressProps {
   value: number;
@@ -29,9 +30,11 @@ export function RadialProgress({
 }: RadialProgressProps) {
   const clampedValue = Math.min(100, Math.max(0, value));
   const softVisual = visualWeight === "soft";
+  /** Ring draws in and the % label ticks up in sync (skipped under reduced motion). */
+  const displayValue = useCountUp(clampedValue, 900);
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - clampedValue / 100);
+  const offset = circumference * (1 - displayValue / 100);
   const innerDiscSize = innerDiscSizeProp ?? 80;
   /** Property dashboard grid uses a small embed gauge; keep larger embeds (e.g. briefing) on the default scale. */
   const compactEmbedLabel = embed && size < 90;
@@ -139,7 +142,6 @@ export function RadialProgress({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           style={{
-            transition: "stroke-dashoffset 500ms ease-out",
             opacity: clampedValue === 0 ? 0 : 1,
           }}
         />
@@ -244,7 +246,7 @@ export function RadialProgress({
             lineHeight: 1,
           }}
         >
-          {Math.round(clampedValue)}
+          {Math.round(displayValue)}
         </span>
         <span
           style={{

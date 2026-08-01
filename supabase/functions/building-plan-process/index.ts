@@ -8,37 +8,63 @@ const corsHeaders = {
 
 interface RequestBody {
   plan_file_id: string;
+  building_label?: string | null;
+  floor_label?: string | null;
+  scale_known?: boolean | null;
+  units?: string | null;
+  setup_notes?: string | null;
+  /** V1 default: spaces only. Assets/compliance/tasks are deferred. */
+  extract_mode?: "spaces_only" | "full";
 }
 
-interface ExtractedEntity {
+interface ExtractedSpace {
   name: string;
   type: string;
   confidence: number;
   rationale?: string;
+  label_text?: string;
+  review_band: "reliable" | "needs_confirmation" | "incomplete";
 }
 
 interface NormalizedExtraction {
-  spaces: ExtractedEntity[];
-  assets: ExtractedEntity[];
-  compliance_elements: ExtractedEntity[];
-  suggested_tasks: ExtractedEntity[];
+  spaces: ExtractedSpace[];
+  assets: never[];
+  compliance_elements: never[];
+  suggested_tasks: never[];
 }
 
-const EXTRACTION_PROMPT = `You are extracting operations-relevant data from a building plan.
+function buildSpacesPrompt(ctx: {
+  building_label?: string | null;
+  floor_label?: string | null;
+  setup_notes?: string | null;
+}): string {
+  const building = ctx.building_label?.trim() || "unspecified building";
+  const floor = ctx.floor_label?.trim() || "unspecified floor";
+  const notes = ctx.setup_notes?.trim();
+  return `You help a property operator set up Spaces from a floor plan sheet.
+This sheet is for building "${building}", floor/level "${floor}".
+${notes ? `Operator notes: ${notes}\n` : ""}
 Return JSON only with shape:
 {
-  "spaces":[{"name":"", "type":"", "confidence":0.0, "rationale":""}],
-  "assets":[{"name":"", "type":"", "confidence":0.0, "rationale":""}],
-  "compliance_elements":[{"name":"", "type":"", "confidence":0.0, "rationale":""}],
-  "suggested_tasks":[{"name":"", "type":"", "confidence":0.0, "rationale":""}]
+  "spaces":[{
+    "name":"",
+    "type":"",
+    "confidence":0.0,
+    "rationale":"",
+    "label_text":""
+  }]
 }
 
 Rules:
-- Identify only visible or reasonably inferable elements.
-- Prefer unknown or omit instead of hallucinating.
+- Extract room / space labels visible on the plan (or clearly labelled areas).
+- Prefer the printed label for "name" and "label_text".
+- Do NOT invent rooms that are not labelled or strongly implied by walls + labels.
+- Do NOT extract assets, fixtures, fire equipment, or suggest tasks.
+- Prefer omit over hallucinating.
 - Confidence must be between 0 and 1.
-- Keep types machine-friendly snake_case.
-- Focus on spaces, plant/electrical/service rooms, exits, fire safety, maintainable assets.`;
+- Types: snake_case (e.g. office, meeting_room, corridor, stairwell, plant_room, wc, kitchen, store, lobby, unknown).
+- If a label is unclear, still return it with low confidence and say why in rationale.`;
+}
 
 function clampConfidence(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
@@ -46,84 +72,40 @@ function clampConfidence(value: unknown): number {
   return Math.max(0, Math.min(1, n));
 }
 
-function normalizeList(input: unknown): ExtractedEntity[] {
+function reviewBandFor(confidence: number, name: string, type: string): ExtractedSpace["review_band"] {
+  if (!name.trim() || type === "unknown" || confidence < 0.5) return "incomplete";
+  if (confidence >= 0.75) return "reliable";
+  return "needs_confirmation";
+}
+
+function normalizeSpaces(input: unknown): ExtractedSpace[] {
   if (!Array.isArray(input)) return [];
   return input
     .map((item) => {
       const row = (item || {}) as Record<string, unknown>;
-      const name = String(row.name || "").trim();
+      const name = String(row.name || row.label_text || "").trim();
       const type = String(row.type || "unknown").trim() || "unknown";
       if (!name) return null;
+      const confidence = clampConfidence(row.confidence);
       return {
         name,
         type,
-        confidence: clampConfidence(row.confidence),
+        confidence,
         rationale: typeof row.rationale === "string" ? row.rationale : undefined,
+        label_text: typeof row.label_text === "string" ? row.label_text : name,
+        review_band: reviewBandFor(confidence, name, type),
       };
     })
-    .filter(Boolean) as ExtractedEntity[];
+    .filter(Boolean) as ExtractedSpace[];
 }
 
 function normaliseExtraction(rawResponse: Record<string, unknown>): NormalizedExtraction {
-  const base: NormalizedExtraction = {
-    spaces: normalizeList(rawResponse.spaces),
-    assets: normalizeList(rawResponse.assets),
-    compliance_elements: normalizeList(rawResponse.compliance_elements),
-    suggested_tasks: normalizeList(rawResponse.suggested_tasks),
-  };
   return {
-    ...base,
-    suggested_tasks: generateTaskSuggestions(base),
+    spaces: normalizeSpaces(rawResponse.spaces),
+    assets: [],
+    compliance_elements: [],
+    suggested_tasks: [],
   };
-}
-
-function generateTaskSuggestions(extractedModel: NormalizedExtraction): ExtractedEntity[] {
-  const suggestions = [...extractedModel.suggested_tasks];
-
-  const hasFire = extractedModel.compliance_elements.some((e) =>
-    ["exit", "fire_door", "fire_point", "extinguisher", "emergency_signage"].includes(e.type)
-  );
-  const hasElectrical = extractedModel.assets.some((a) =>
-    ["electrical_panel", "distribution_board", "fire_alarm_panel"].includes(a.type)
-  ) || extractedModel.spaces.some((s) => s.type === "electrical_room");
-  const hasPlant = extractedModel.spaces.some((s) =>
-    ["plant_room", "boiler_room", "service_room"].includes(s.type)
-  );
-
-  if (hasFire) {
-    suggestions.push({
-      name: "Fire safety inspection",
-      type: "fire_safety_inspection",
-      confidence: 0.78,
-      rationale: "Fire safety elements were detected on plan pages.",
-    });
-  }
-  if (hasElectrical) {
-    suggestions.push({
-      name: "Electrical inspection",
-      type: "electrical_inspection",
-      confidence: 0.75,
-      rationale: "Electrical rooms or panel assets were detected.",
-    });
-  }
-  if (hasPlant) {
-    suggestions.push({
-      name: "Plant room inspection",
-      type: "plant_room_inspection",
-      confidence: 0.72,
-      rationale: "Plant/service spaces were detected.",
-    });
-  }
-
-  const dedupe = new Map<string, ExtractedEntity>();
-  for (const suggestion of suggestions) {
-    const key = `${suggestion.type}:${suggestion.name.toLowerCase()}`;
-    const existing = dedupe.get(key);
-    if (!existing || suggestion.confidence > existing.confidence) {
-      dedupe.set(key, suggestion);
-    }
-  }
-  return Array.from(dedupe.values());
 }
 
 async function fetchAsBase64(fileUrl: string): Promise<{ base64: string; mimeType: string }> {
@@ -137,7 +119,11 @@ async function fetchAsBase64(fileUrl: string): Promise<{ base64: string; mimeTyp
   return { base64: btoa(binary), mimeType };
 }
 
-async function callGemini(base64: string, mimeType: string): Promise<Record<string, unknown>> {
+async function callGemini(
+  prompt: string,
+  base64: string,
+  mimeType: string
+): Promise<Record<string, unknown>> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
   const res = await fetch(
@@ -149,7 +135,7 @@ async function callGemini(base64: string, mimeType: string): Promise<Record<stri
         contents: [
           {
             parts: [
-              { text: EXTRACTION_PROMPT },
+              { text: prompt },
               { inline_data: { mime_type: mimeType, data: base64 } },
             ],
           },
@@ -165,7 +151,11 @@ async function callGemini(base64: string, mimeType: string): Promise<Record<stri
   return JSON.parse(text);
 }
 
-async function callOpenAI(base64: string, mimeType: string): Promise<Record<string, unknown>> {
+async function callOpenAI(
+  prompt: string,
+  base64: string,
+  mimeType: string
+): Promise<Record<string, unknown>> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
   const dataUrl = `data:${mimeType};base64,${base64}`;
@@ -182,7 +172,7 @@ async function callOpenAI(base64: string, mimeType: string): Promise<Record<stri
         {
           role: "user",
           content: [
-            { type: "text", text: EXTRACTION_PROMPT },
+            { type: "text", text: prompt },
             { type: "image_url", image_url: { url: dataUrl } },
           ],
         },
@@ -196,38 +186,44 @@ async function callOpenAI(base64: string, mimeType: string): Promise<Record<stri
   return JSON.parse(text);
 }
 
-async function extractPlanPage(pageImageUrl: string): Promise<Record<string, unknown>> {
+async function extractPlanPage(
+  prompt: string,
+  pageImageUrl: string
+): Promise<Record<string, unknown>> {
   const { base64, mimeType } = await fetchAsBase64(pageImageUrl);
   const provider = (Deno.env.get("AI_PROVIDER") || "gemini").toLowerCase();
   if (provider === "openai") {
     try {
-      return await callOpenAI(base64, mimeType);
+      return await callOpenAI(prompt, base64, mimeType);
     } catch {
-      return await callGemini(base64, mimeType);
+      return await callGemini(prompt, base64, mimeType);
     }
   }
   if (provider === "gemini") {
     try {
-      return await callGemini(base64, mimeType);
+      return await callGemini(prompt, base64, mimeType);
     } catch {
-      return await callOpenAI(base64, mimeType);
+      return await callOpenAI(prompt, base64, mimeType);
     }
   }
   try {
-    return await callGemini(base64, mimeType);
+    return await callGemini(prompt, base64, mimeType);
   } catch {
-    return await callOpenAI(base64, mimeType);
+    return await callOpenAI(prompt, base64, mimeType);
   }
 }
 
 function stubExtraction(): Record<string, unknown> {
   return {
     spaces: [
-      { name: "Main Stair", type: "stairwell", confidence: 0.42, rationale: "Fallback stub output." },
+      {
+        name: "Unlabelled area",
+        type: "unknown",
+        confidence: 0.35,
+        rationale: "Fallback stub — review and rename before creating.",
+        label_text: "",
+      },
     ],
-    assets: [],
-    compliance_elements: [],
-    suggested_tasks: [],
   };
 }
 
@@ -287,6 +283,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let trackedPlanFileId: string | null = null;
+
   try {
     if (req.method !== "POST") {
       return new Response(JSON.stringify({ ok: false, error: "POST only" }), {
@@ -302,6 +300,18 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    trackedPlanFileId = body.plan_file_id;
+
+    const extractMode = body.extract_mode === "full" ? "full" : "spaces_only";
+    const buildingLabel =
+      typeof body.building_label === "string" ? body.building_label.trim() || null : null;
+    const floorLabel =
+      typeof body.floor_label === "string" ? body.floor_label.trim() || null : null;
+    const setupNotes =
+      typeof body.setup_notes === "string" ? body.setup_notes.trim() || null : null;
+    const units = typeof body.units === "string" ? body.units.trim() || null : null;
+    const scaleKnown =
+      typeof body.scale_known === "boolean" ? body.scale_known : null;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -320,16 +330,39 @@ Deno.serve(async (req) => {
 
     const { data: fileRow, error: fileError } = await userClient
       .from("property_plan_files")
-      .select("id, org_id, property_id, file_name, mime_type, storage_path")
+      .select(
+        "id, org_id, property_id, file_name, mime_type, storage_path, building_label, floor_label, setup_notes, units, scale_known"
+      )
       .eq("id", body.plan_file_id)
       .single();
     if (fileError || !fileRow) {
       throw new Error("Plan file not found or access denied");
     }
 
+    const resolvedBuilding = buildingLabel ?? fileRow.building_label ?? null;
+    const resolvedFloor = floorLabel ?? fileRow.floor_label ?? null;
+    const resolvedNotes = setupNotes ?? fileRow.setup_notes ?? null;
+    const resolvedUnits = units ?? fileRow.units ?? null;
+    const resolvedScale =
+      scaleKnown !== null ? scaleKnown : fileRow.scale_known ?? null;
+
+    const extractionPrompt = buildSpacesPrompt({
+      building_label: resolvedBuilding,
+      floor_label: resolvedFloor,
+      setup_notes: resolvedNotes,
+    });
+
     await admin
       .from("property_plan_files")
-      .update({ status: "converting", error_message: null })
+      .update({
+        status: "converting",
+        error_message: null,
+        building_label: resolvedBuilding,
+        floor_label: resolvedFloor,
+        setup_notes: resolvedNotes,
+        units: resolvedUnits,
+        scale_known: resolvedScale,
+      })
       .eq("id", fileRow.id);
 
     await admin.from("property_plan_pages").delete().eq("plan_file_id", fileRow.id);
@@ -432,10 +465,14 @@ Deno.serve(async (req) => {
 
       let rawResponse: Record<string, unknown>;
       try {
-        rawResponse = await extractPlanPage(signed.signedUrl);
+        rawResponse = await extractPlanPage(extractionPrompt, signed.signedUrl);
       } catch (err) {
         rawResponse = stubExtraction();
-        rawByPage[String(page.page_number)] = { fallback: true, error: String(err), raw: rawResponse };
+        rawByPage[String(page.page_number)] = {
+          fallback: true,
+          error: String(err),
+          raw: rawResponse,
+        };
       }
 
       rawByPage[String(page.page_number)] = rawResponse;
@@ -451,47 +488,23 @@ Deno.serve(async (req) => {
           name: item.name,
           space_type: item.type,
           confidence: item.confidence,
-          raw_reference: { rationale: item.rationale, page_number: page.page_number },
+          floor_label: resolvedFloor,
+          review_band: item.review_band,
+          is_accepted: false,
+          raw_reference: {
+            rationale: item.rationale,
+            label_text: item.label_text,
+            page_number: page.page_number,
+            building_label: resolvedBuilding,
+            floor_label: resolvedFloor,
+            extract_mode: extractMode,
+          },
         });
       }
-      for (const item of pageNormalized.assets) {
-        normalized.assets.push(item);
-        await admin.from("extracted_assets").insert({
-          org_id: fileRow.org_id,
-          extraction_run_id: runRow.id,
-          property_id: fileRow.property_id,
-          source_page_id: page.id,
-          name: item.name,
-          asset_type: item.type,
-          confidence: item.confidence,
-          raw_reference: { rationale: item.rationale, page_number: page.page_number },
-        });
-      }
-      for (const item of pageNormalized.compliance_elements) {
-        normalized.compliance_elements.push(item);
-        await admin.from("extracted_compliance_elements").insert({
-          org_id: fileRow.org_id,
-          extraction_run_id: runRow.id,
-          property_id: fileRow.property_id,
-          source_page_id: page.id,
-          name: item.name,
-          element_type: item.type,
-          confidence: item.confidence,
-          raw_reference: { rationale: item.rationale, page_number: page.page_number },
-        });
-      }
-      for (const item of pageNormalized.suggested_tasks) {
-        normalized.suggested_tasks.push(item);
-        await admin.from("extracted_task_suggestions").insert({
-          org_id: fileRow.org_id,
-          extraction_run_id: runRow.id,
-          property_id: fileRow.property_id,
-          source_page_id: page.id,
-          title: item.name,
-          suggestion_type: item.type,
-          rationale: item.rationale || null,
-          confidence: item.confidence,
-        });
+
+      // V1 spaces_only: skip assets / compliance / tasks even if the model returns them.
+      if (extractMode === "full") {
+        // Reserved for a later assistant step — intentionally not implemented in V1.
       }
 
       await admin
@@ -516,11 +529,33 @@ Deno.serve(async (req) => {
       .eq("id", fileRow.id);
 
     return new Response(
-      JSON.stringify({ ok: true, extraction_run_id: runRow.id }),
+      JSON.stringify({
+        ok: true,
+        extraction_run_id: runRow.id,
+        extract_mode: extractMode,
+        space_count: normalized.spaces.length,
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("building-plan-process error:", error);
+    if (trackedPlanFileId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (supabaseUrl && serviceRoleKey) {
+          const admin = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          await admin
+            .from("property_plan_files")
+            .update({ status: "failed", error_message: String(error) })
+            .eq("id", trackedPlanFileId);
+        }
+      } catch {
+        // ignore secondary failure
+      }
+    }
     return new Response(
       JSON.stringify({ ok: false, error: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

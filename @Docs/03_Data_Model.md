@@ -18,8 +18,15 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 
 **Properties & Assets:**
 *   `properties` (address, type, nickname, icon fields, thumbnail; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
-*   `spaces` (property_id, type, icon_name, thumbnail_url — mini-card / photo path for space identity)
+*   `spaces` (property_id, type, icon_name, thumbnail_url — mini-card / photo path for space identity; floor_level)
 *   `assets` (property_id, space_id, serial, condition_score)
+
+**Building setup (plan sheets → proposed Spaces):**
+*   `property_plan_files` — uploaded PDF/image sheets; setup context: `building_label`, `floor_label`, `scale_known`, `units`, `setup_notes`; status lifecycle through review/import.
+*   `property_plan_pages` — converted page images for preview/extraction.
+*   `plan_extraction_runs` — one run per process; stores raw/normalised model output.
+*   `extracted_spaces` — reviewable proposals (`is_accepted` default false; `floor_label`, `review_band`); import via `import_plan_extraction_run` creates Spaces only by default (assets/tasks deferred).
+*   Related review tables (`extracted_assets`, `extracted_compliance_elements`, `extracted_task_suggestions`) remain for later assistant steps; V1 process does not populate them.
 
 **Signals (infrastructure — Issues triage):**
 *   `signals` — org-scoped platform signals: `kind`, `category` (`environmental` | `location` | `property` | `compliance` | `operational`), `subtype`, `severity`, `title`, `body`, `review_state`, `disposition`, `source`, `payload`, `recommendation`, `dedupe_key`, lifecycle fields (`expires_at`, `resolved_at`, `converted_entity_type/id`). RLS: org members SELECT; managers UPDATE. Emitted via `emit_signal()` (service role, idempotent on `dedupe_key`).

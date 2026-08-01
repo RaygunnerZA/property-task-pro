@@ -42,7 +42,7 @@ function ComplianceCard() {
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Status</span>
-          <span className="font-mono text-caption uppercase tracking-wider text-primary font-medium">Compliant</span>
+          <span className="font-mono text-2xs uppercase tracking-wide text-primary font-medium">Compliant</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Expires</span>
@@ -85,7 +85,7 @@ function PropertyCard() {
         <h4 className="font-semibold text-ink">Oak House</h4>
         <p className="text-sm text-muted-foreground">24 Oak Street, London E1 6AN</p>
         <div className="flex items-center justify-between">
-          <span className="font-mono text-caption uppercase tracking-wider text-muted-foreground">8 Units</span>
+          <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">8 Units</span>
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-success" />
             <span className="text-xs text-muted-foreground">Healthy</span>

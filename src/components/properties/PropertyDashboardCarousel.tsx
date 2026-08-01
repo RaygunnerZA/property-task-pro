@@ -350,21 +350,23 @@ function PropertyCarouselSlide({
         />
 
         <div className="absolute bottom-2 left-2.5 right-2.5 z-10 min-w-0">
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-start gap-2">
             <IconComponent
-              className="h-5 w-5 shrink-0 drop-shadow-sm stroke-[1.75]"
+              className="mt-0.5 h-5 w-5 shrink-0 drop-shadow-sm stroke-[1.75]"
               style={{ color: iconColor }}
               aria-hidden
             />
-            <p className="min-w-0 truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
-              {displayName}
-            </p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
+                {displayName}
+              </p>
+              {property.address ? (
+                <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
+                  {property.address}
+                </p>
+              ) : null}
+            </div>
           </div>
-          {property.address ? (
-            <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
-              {property.address}
-            </p>
-          ) : null}
         </div>
       </button>
 

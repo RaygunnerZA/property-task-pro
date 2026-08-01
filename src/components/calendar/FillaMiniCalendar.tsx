@@ -111,9 +111,11 @@ function WeekStripRow({
                 type="button"
                 onClick={() => onDateSelect?.(date)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center rounded-card font-mono font-medium transition-colors",
+                  "relative flex flex-col items-center justify-center rounded-card font-mono font-medium",
+                  "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
                   daySizeClass,
-                  isWeekend && !isSelected && "text-muted-foreground/50"
+                  isWeekend && !isSelected && "text-muted-foreground/50",
+                  isTodayDate && !isSelected && "ring-1 ring-primary/40"
                 )}
                 style={{
                   backgroundColor: fill,
@@ -480,7 +482,9 @@ export function FillaMiniCalendar({
         className={cn(
           propClassName,
           "relative font-mono rounded-card",
-          isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]"
+          "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
+          isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]",
+          isTodayDate && !isSelected && "ring-1 ring-primary/40"
         )}
         style={{
           backgroundColor: fill,
@@ -548,7 +552,7 @@ export function FillaMiniCalendar({
                   ),
                   nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
                   nav_button: cn(
-                    "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+                    "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
                   ),
                   nav_button_previous: "",
                   nav_button_next: "",
@@ -630,7 +634,7 @@ export function FillaMiniCalendar({
                     <button
                       type="button"
                       onClick={() => navigateWeek(-1)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
                       aria-label="Previous week"
                     >
                       <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />
@@ -638,7 +642,7 @@ export function FillaMiniCalendar({
                     <button
                       type="button"
                       onClick={() => navigateWeek(1)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
                       aria-label="Next week"
                     >
                       <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />
@@ -676,7 +680,7 @@ export function FillaMiniCalendar({
             ),
             nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
             nav_button: cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
             ),
             nav_button_previous: "",
             nav_button_next: "",

@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { cn } from "@/lib/utils";
+import { useCountUp } from "@/hooks/useCountUp";
 import { computePropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import type { PropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import {
@@ -33,7 +34,14 @@ const statWordClass =
   "font-mono text-caption font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
-  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-all hover:bg-ink hover:shadow-none sm:px-1.5 sm:pb-3";
+  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-ink hover:shadow-none active:scale-[0.98] sm:px-1.5 sm:pb-3";
+
+/** Staggered section reveal on mount — fade + 2px rise, honours reduced motion. */
+const sectionRevealClass = "motion-safe:animate-fade-slide-in";
+const sectionRevealStyle = (index: number): CSSProperties => ({
+  animationDelay: `${index * 60}ms`,
+  animationFillMode: "both",
+});
 
 const STAT_CENTRE_TABS: readonly CentreWorkbenchTab[] = ["inflow", "tasks", "calendar"];
 
@@ -121,6 +129,7 @@ function StatColumn({
   centreNav?: StatCentreNav;
 }) {
   const centreMeta = centreNav ? CENTRE_WORKBENCH_TAB_META[centreNav.tab] : null;
+  const displayValue = Math.round(useCountUp(value));
 
   const inner = centreMeta ? (
     <>
@@ -147,7 +156,7 @@ function StatColumn({
         </span>
       </div>
       <div className="flex w-full min-w-0 items-start gap-1">
-        <span className={statNumberInlineClass}>{value}</span>
+        <span className={statNumberInlineClass}>{displayValue}</span>
         <div className="flex min-w-0 flex-1 flex-col items-start pt-0.5 text-left text-foreground">
           <span className={statWordClass}>{line1}</span>
           <span className={statWordClass}>{line2}</span>
@@ -160,7 +169,7 @@ function StatColumn({
     </>
   ) : (
     <>
-      <span className={statNumberClass}>{value}</span>
+      <span className={statNumberClass}>{displayValue}</span>
       <div className="flex w-full min-w-0 items-stretch gap-0.5">
         <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left text-foreground">
           <span className={statWordClass}>{line1}</span>
@@ -168,7 +177,7 @@ function StatColumn({
         </div>
         {onActivate ? (
           <ChevronRight
-            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-colors group-hover:text-white"
+            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-[color,transform] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-white"
             aria-hidden
           />
         ) : null}
@@ -209,26 +218,45 @@ function CountRow({
   count: number;
   onActivate?: () => void;
 }) {
-  const content = (
+  const displayCount = Math.round(useCountUp(count));
+
+  const content = (interactive: boolean) => (
     <>
-      <span className="text-sm font-medium text-muted-foreground">{label}</span>
-      <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-card bg-white px-1 text-sm font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
-        {count}
+      <span
+        className={cn(
+          "text-sm font-medium text-muted-foreground",
+          interactive && "transition-colors duration-150 group-hover/row:text-foreground"
+        )}
+      >
+        {label}
+      </span>
+      <span className="flex items-center gap-0.5">
+        {interactive ? (
+          <ChevronRight
+            className="h-3 w-3 -translate-x-1 text-muted-foreground/60 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/row:translate-x-0 group-hover/row:opacity-100"
+            aria-hidden
+          />
+        ) : null}
+        <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-card bg-white px-1 text-sm font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
+          {displayCount}
+        </span>
       </span>
     </>
   );
 
   if (!onActivate) {
-    return <div className="flex items-center justify-between gap-2 py-1">{content}</div>;
+    return (
+      <div className="flex items-center justify-between gap-2 py-1">{content(false)}</div>
+    );
   }
 
   return (
     <button
       type="button"
       onClick={onActivate}
-      className="flex w-full items-center justify-between gap-2 rounded-xl py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className="group/row flex w-full items-center justify-between gap-2 rounded-xl py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-[background-color,transform] duration-150 ease-out hover:bg-muted/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
-      {content}
+      {content(true)}
     </button>
   );
 }
@@ -287,7 +315,7 @@ function SummarySuggestionLine({
     <button
       type="button"
       onClick={() => activateSummaryTarget(line.target!, onActivate)}
-      className="block w-full text-left transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 rounded-sm"
+      className="block w-full rounded-sm text-left underline-offset-2 transition-colors duration-150 hover:text-primary hover:underline hover:decoration-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
     >
       {line.text}
     </button>
@@ -483,7 +511,11 @@ export function PropertySummaryPanel({
         {/* Phone: Inflow · Tasks · Calendar entry (icons + metrics) */}
         {showPhoneWorkEntries ? (
           <div
-            className="grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden"
+            className={cn(
+              "grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden",
+              sectionRevealClass
+            )}
+            style={sectionRevealStyle(0)}
             role="navigation"
             aria-label="Open Inflow, Tasks, or Calendar"
           >
@@ -510,8 +542,10 @@ export function PropertySummaryPanel({
         <div
           className={cn(
             "grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]",
-            showPhoneWorkEntries ? "hidden md:grid" : "grid"
+            showPhoneWorkEntries ? "hidden md:grid" : "grid",
+            sectionRevealClass
           )}
+          style={sectionRevealStyle(0)}
         >
           {desktopStats.map((stat) => (
             <StatColumn
@@ -528,7 +562,13 @@ export function PropertySummaryPanel({
         </div>
 
         {variant === "full" ? (
-          <div className="flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-4">
+          <div
+            className={cn(
+              "flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-4",
+              sectionRevealClass
+            )}
+            style={sectionRevealStyle(1)}
+          >
             <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
               <RadialProgress
                 value={metrics.completionPct}
@@ -558,8 +598,10 @@ export function PropertySummaryPanel({
           className={cn(
             "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
             variant === "compact" &&
-              "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3"
+              "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3",
+            sectionRevealClass
           )}
+          style={sectionRevealStyle(2)}
         >
           <div
             className={cn(

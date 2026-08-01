@@ -138,7 +138,7 @@ export function ComponentRegistry() {
   letter-spacing: 0.05em;
   font-weight: 500;`,
       preview: (
-        <span className="font-mono text-caption uppercase tracking-wider font-medium text-muted-foreground">
+        <span className="font-mono text-2xs uppercase tracking-wide font-medium text-muted-foreground">
           MON TUE WED THU FRI
         </span>
       ),
@@ -198,7 +198,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-primary text-primary-foreground rounded-sharp shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-2xs uppercase tracking-wide font-medium bg-primary text-primary-foreground rounded-sharp shadow-e1">
           Active
         </span>
       ),
@@ -212,7 +212,7 @@ export function ComponentRegistry() {
   border-radius: 5px;
   box-shadow: ${shadows.e1};`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium bg-surface text-muted-foreground rounded-sharp shadow-e1">
+        <span className="inline-flex items-center px-3 py-1.5 font-mono text-2xs uppercase tracking-wide font-medium bg-surface text-muted-foreground rounded-sharp shadow-e1">
           Inactive
         </span>
       ),
@@ -225,7 +225,7 @@ export function ComponentRegistry() {
   color: #166534;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-success/30 text-success-foreground">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-2xs uppercase tracking-wide font-medium bg-success/30 text-success-foreground">
           Compliant
         </span>
       ),
@@ -238,7 +238,7 @@ export function ComponentRegistry() {
   color: #92400e;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-warning/50 text-warning-foreground">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-2xs uppercase tracking-wide font-medium bg-warning/50 text-warning-foreground">
           Pending
         </span>
       ),
@@ -251,7 +251,7 @@ export function ComponentRegistry() {
   color: #991b1b;
   border-radius: 5px;`,
       preview: (
-        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider font-medium bg-destructive/20 text-destructive">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-sharp font-mono text-2xs uppercase tracking-wide font-medium bg-destructive/20 text-destructive">
           Overdue
         </span>
       ),
@@ -413,7 +413,7 @@ export function ComponentRegistry() {
       
       {Object.entries(grouped).map(([category, items]) => (
         <div key={category} className="space-y-4">
-          <h3 className="font-mono text-caption uppercase tracking-wider text-muted-foreground font-medium">
+          <h3 className="font-mono text-2xs uppercase tracking-wide text-muted-foreground font-medium">
             {category}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

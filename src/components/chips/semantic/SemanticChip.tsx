@@ -145,8 +145,9 @@ export function SemanticChip({
     onRemove?.();
   };
 
-  const heightClass = size === "compact" ? "h-[20px]" : "h-[32px]";
-  const textClass = size === "compact" ? "text-2xs" : "text-xs";
+  const heightClass = size === "compact" ? "h-[20px]" : "h-[28px]";
+  /** Signature mono chip size — never text-xs / arbitrary px (see @Docs/04_UI_System). */
+  const textClass = "text-2xs";
 
   const epistemicStyles =
     epistemic === "fact"

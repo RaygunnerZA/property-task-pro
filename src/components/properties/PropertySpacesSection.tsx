@@ -108,7 +108,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
               <div className="pt-[21px] pb-0 pl-[1px] pr-[1px]">
                 <div className="flex items-center justify-between gap-1 h-[92px] align-top">
                   <h3 className="font-semibold text-[31px] text-primary leading-[28px] flex-1 align-middle h-[81px] pt-0">
-                    Start with your building plans
+                    Set up Spaces from a plan
                   </h3>
                 </div>
                 <div
@@ -124,8 +124,8 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
                 />
                 <div className="space-y-1" style={{ marginTop: "3px" }}>
                   <p className="text-xs text-muted-foreground leading-[18px] pt-[6px] pb-0">
-                    Upload a floor plan to quickly generate spaces, service areas and maintenance
-                    zones.
+                    Confirm building and floor, review proposed room labels, then create Spaces you
+                    accept.
                   </p>
                 </div>
                 <button
@@ -140,7 +140,7 @@ export function PropertySpacesSection({ propertyId, variant = "grid" }: Property
                       "0px 0px 0px 0px rgba(0, 0, 0, 0), inset 1px 2px 2px 0px rgba(255, 255, 255, 0.75), inset -2.4px -1.5px 2px 0px rgba(0, 0, 0, 0.15)",
                   }}
                 >
-                  Upload floor plan
+                  Open building setup
                 </button>
               </div>
             </div>

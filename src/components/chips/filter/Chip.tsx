@@ -51,7 +51,7 @@ export function FilterChip({
     className?.includes("w-[35px]");
 
   const chipHeight = "h-[28px]";
-  const textSize = "text-[11px]";
+  const textSize = "text-2xs";
   const iconSize = isFilterBarChip ? "h-[14px] w-[14px]" : undefined;
 
   const activeBgColor =

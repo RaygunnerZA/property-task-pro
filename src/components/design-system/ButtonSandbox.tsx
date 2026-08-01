@@ -481,7 +481,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                 {/* Live Chip Preview */}
                 <div className="flex flex-wrap gap-3 justify-center">
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-2xs uppercase tracking-wide font-medium"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -492,7 +492,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     Selected
                   </span>
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-2xs uppercase tracking-wide font-medium"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -502,7 +502,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                     Normal
                   </span>
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-caption uppercase tracking-wider font-medium cursor-pointer hover:opacity-80"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-2xs uppercase tracking-wide font-medium cursor-pointer hover:opacity-80"
                     style={{
                       backgroundColor: currentChipStyle.backgroundColor,
                       color: currentChipStyle.textColor,
@@ -607,7 +607,7 @@ color: ${filterChipStyle.inactiveTextColor};`;
                         key={filter}
                         onClick={() => toggleFilter(filter)}
                         className={cn(
-                          'px-4 py-2 font-mono text-caption uppercase tracking-wider font-medium transition-all duration-150',
+                          'px-4 py-2 font-mono text-2xs uppercase tracking-wide font-medium transition-all duration-150',
                           'hover:opacity-90 active:scale-[0.97]'
                         )}
                         style={{

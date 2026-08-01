@@ -40,7 +40,7 @@ const typographyExamples = [
   {
     name: 'Mono / Metadata',
     font: 'JetBrains Mono',
-    className: 'font-mono text-caption uppercase tracking-wider font-medium',
+    className: 'font-mono text-2xs uppercase tracking-wide font-medium',
     sample: 'MON TUE WED THU FRI SAT SUN',
   },
   {

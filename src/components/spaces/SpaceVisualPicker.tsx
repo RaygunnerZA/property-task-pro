@@ -113,7 +113,7 @@ export function SpaceVisualPicker({
 
   const actionBtnClass = cn(
     "inline-flex min-w-0 flex-1 items-center justify-center gap-1 rounded-xl px-2 py-1.5",
-    "text-[11px] font-medium leading-tight whitespace-nowrap",
+    "text-caption font-medium leading-tight whitespace-nowrap",
     "bg-card/80 text-foreground shadow-e1 transition-shadow hover:shadow-md",
     "disabled:pointer-events-none disabled:opacity-50"
   );

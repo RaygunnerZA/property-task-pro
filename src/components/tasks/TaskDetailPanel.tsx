@@ -1209,14 +1209,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </span>
             <span
               className={cn(
-                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-caption font-medium uppercase tracking-wider shadow-none",
+                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-2xs font-medium uppercase tracking-wide shadow-none",
                 statusChipTextClass
               )}
             >
               {statusChipLabel}
             </span>
             {priority === "urgent" && (
-              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-caption uppercase tracking-wider text-destructive shadow-none">
+              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-2xs font-medium uppercase tracking-wide text-destructive shadow-none">
                 URGENT
               </span>
             )}
@@ -1235,11 +1235,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 />
               </div>
             ) : metaLine ? (
-              <p className="min-w-0 flex-1 font-mono text-caption uppercase tracking-wider text-foreground leading-snug">
+              <p className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-wide text-foreground leading-snug">
                 {metaLine}
               </p>
             ) : (
-              <p className="min-w-0 flex-1 font-mono text-caption uppercase tracking-wider text-muted-foreground leading-snug">
+              <p className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-wide text-muted-foreground leading-snug">
                 No date, assignee, or location
               </p>
             )}

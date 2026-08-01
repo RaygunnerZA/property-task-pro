@@ -36,7 +36,7 @@ export default function RecordCompliance() {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sharp transition-all font-mono text-caption uppercase tracking-wider font-medium relative",
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sharp transition-all font-mono text-2xs uppercase tracking-wide font-medium relative",
                 isActive
                   ? "bg-card shadow-e1 text-primary"
                   : "text-muted-foreground hover:text-foreground"

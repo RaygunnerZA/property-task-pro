@@ -39,7 +39,7 @@ function TasksTab() {
             key={filter}
             onClick={() => setSelectedFilter(filter)}
             className={cn(
-              'px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider whitespace-nowrap transition-all shadow-e1',
+              'px-3 py-1.5 rounded-sharp font-mono text-2xs uppercase tracking-wide whitespace-nowrap transition-all shadow-e1',
               selectedFilter === filter
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
@@ -176,7 +176,7 @@ export function TabsSection() {
                   } : undefined}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="font-mono text-caption uppercase tracking-wider font-medium">
+                  <span className="font-mono text-2xs uppercase tracking-wide font-medium">
                     {tab.label}
                   </span>
                 </button>
