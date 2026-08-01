@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import EmptyState from "@/components/EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 
 /**
  * Contractor Access Page

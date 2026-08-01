@@ -286,8 +286,8 @@ function TaskCardComponent({
     const normalizedPriority = priority?.toLowerCase();
     if (normalizedPriority === 'low') return 'bg-transparent'; // Don't show for low
     if (normalizedPriority === 'normal' || normalizedPriority === 'medium') return 'bg-transparent'; // Don't show for normal/medium
-    if (normalizedPriority === 'high') return 'bg-[#FFB84D]'; // Lighter yellow-orange
-    if (normalizedPriority === 'urgent') return 'bg-red-500'; // Red
+    if (normalizedPriority === 'high') return 'bg-warning-vivid';
+    if (normalizedPriority === 'urgent') return 'bg-destructive';
     return 'bg-transparent'; // Default: transparent
   };
 
@@ -317,9 +317,9 @@ function TaskCardComponent({
    *  !absolute/!z-20 beat the paper-texture rule `div[class*="bg-card"] > *`
    *  (index.css) which forces direct card children to relative/z-1. */
   const completionOverlay = isConfirmingComplete ? (
-    <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-[12px] bg-white/60">
+    <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-card bg-card/60">
       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-md animate-complete-pop">
-        <Check className="h-5 w-5 text-white" strokeWidth={3} aria-hidden />
+        <Check className="h-5 w-5 text-primary-foreground" strokeWidth={3} aria-hidden />
       </span>
     </div>
   ) : null;
@@ -344,10 +344,10 @@ function TaskCardComponent({
       <span
         className={cn(
           "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
-          "font-mono text-[11px] font-medium uppercase tracking-normal leading-none shadow-sm",
+          "font-mono text-[11px] font-medium uppercase tracking-wider leading-none shadow-sm",
           dueUrgency === "overdue"
-            ? "bg-destructive/90 text-white"
-            : "bg-amber-500/90 text-white"
+            ? "bg-destructive/90 text-destructive-foreground"
+            : "bg-warning-vivid/90 text-foreground"
         )}
       >
         {taskDueUrgencyLabel(dueUrgency)}
@@ -362,8 +362,10 @@ function TaskCardComponent({
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
         {dueUrgencyChip}
         {showDoneButton && !metaCompact ? (
-          <div
-            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
+          <button
+            type="button"
+            aria-label="Mark task done"
+            className="absolute bottom-2 right-2 z-10 cursor-pointer rounded-[6px] opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [@media(pointer:coarse)]:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               handleDone();
@@ -372,7 +374,7 @@ function TaskCardComponent({
             <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
               DONE
             </Badge>
-          </div>
+          </button>
         ) : null}
       </TaskCardMediaZone>
     );
@@ -381,11 +383,11 @@ function TaskCardComponent({
       <div 
         className={cn(
           "task-card-horizontal",
-          "rounded-[12px] bg-[rgba(255,255,255,0.6)]",
+          "rounded-card bg-card/60",
           "shadow-e1",
-          "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+          "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
           "overflow-hidden flex flex-row min-h-[80px] relative group",
-          isSelected && "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
+          isSelected && "bg-card shadow-e3"
         )}
         onClick={onClick}
       >
@@ -418,7 +420,7 @@ function TaskCardComponent({
               <Badge
                 variant="neutral"
                 size="sm"
-                className="h-[20px] shrink-0 border-0 bg-[#8EC9CE]/15 px-1.5 text-[9px] font-mono font-semibold uppercase tracking-wide text-[#5a9ea3]"
+                className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-[9px] font-mono font-semibold uppercase tracking-wider text-primary-deep"
               >
                 {educationChipLabel}
               </Badge>
@@ -489,11 +491,11 @@ function TaskCardComponent({
     <div 
       className={cn(
         "task-card-vertical h-[290px] w-full min-w-0",
-        "rounded-[12px] bg-card/60",
+        "rounded-card bg-card/60",
         "shadow-e1",
-        "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+        "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
         "overflow-hidden flex flex-col relative group",
-        isSelected && "bg-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
+        isSelected && "bg-card shadow-e3"
       )}
       onClick={onClick}
     >
@@ -547,7 +549,7 @@ function TaskCardComponent({
 
         <div className="relative mt-auto min-h-[32px] pt-3">
           {/* Default footer — relative due + assignee */}
-          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none">
+          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none">
             {dueRelativeLabel ? (
               <span
                 className={cn(
@@ -572,7 +574,7 @@ function TaskCardComponent({
           </div>
 
           {/* Hover — CTA buttons */}
-          <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto">
+          <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
             <button
               type="button"
               className={issuesSignalReviewButtonClassName}

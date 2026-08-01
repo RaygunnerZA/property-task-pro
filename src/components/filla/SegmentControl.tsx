@@ -1,5 +1,4 @@
 import React from 'react';
-import { colors, shadows } from './tokens';
 import { cn } from '@/lib/utils';
 
 export interface SegmentOption {
@@ -18,7 +17,7 @@ interface SegmentControlProps {
 
 /**
  * SegmentControl - Neomorphic tab-like filter control
- * Swiss design with inset background and raised active state
+ * Debossed track with a raised paper active segment.
  */
 export const SegmentControl: React.FC<SegmentControlProps> = ({ 
   options, 
@@ -29,28 +28,29 @@ export const SegmentControl: React.FC<SegmentControlProps> = ({
 }) => {
   return (
     <div 
-      className={cn('rounded-lg flex items-center gap-0.5', compact ? 'p-1' : 'p-1.5 gap-1', className)}
-      style={{ 
-        backgroundColor: colors.background,
-        boxShadow: shadows.inset 
-      }}
+      className={cn(
+        'rounded-lg flex items-center gap-0.5 bg-background shadow-inset',
+        compact ? 'p-1' : 'p-1.5 gap-1',
+        className,
+      )}
+      role="group"
     >
       {options.map(opt => {
         const isActive = selectedId === opt.id;
         return (
           <button
             key={opt.id}
+            type="button"
             onClick={() => onChange(opt.id)}
+            aria-pressed={isActive}
             className={cn(
-              'flex-1 font-semibold rounded-md transition-all duration-200 active:scale-95',
+              'flex-1 font-semibold rounded-md transition-[transform,box-shadow,background-color,color] duration-200 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
               compact ? 'px-1.5 py-1.5 text-[11px] leading-tight min-w-0' : 'px-4 py-2 text-sm',
+              isActive
+                ? 'bg-card text-foreground shadow-e1 scale-[1.02]'
+                : 'bg-transparent text-muted-foreground shadow-none scale-100',
             )}
-            style={{
-              color: isActive ? colors.ink : colors.textMuted,
-              backgroundColor: isActive ? colors.surface : 'transparent',
-              boxShadow: isActive ? shadows.outset : 'none',
-              transform: isActive ? 'scale(1.02)' : 'scale(1)'
-            }}
           >
             {opt.label}
           </button>

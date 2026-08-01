@@ -1,7 +1,9 @@
 /**
  * Filla Design System v4.0 - "Dimensional Paper Edition"
- * Token-based design system for tactile, neomorphic UI
- * SINGLE SOURCE OF TRUTH - use Tailwind classes instead where possible
+ * DOCUMENTATION MIRROR ONLY — the single source of truth is
+ * tailwind.config.ts + src/index.css. This file exists solely so the
+ * design-system sandbox (ComponentRegistry) can print CSS snippets.
+ * Do not import these values into product components; use Tailwind classes.
  */
 
 // === COLOR PALETTE (HSL) ===
@@ -17,7 +19,7 @@ export const colors = {
   
   // Neutrals - Warm Paper Tones
   background: 'hsl(40, 20%, 94%)',     // #F1EEE8 - Warm beige
-  surface: 'hsl(0, 0%, 100%)',         // #FFFFFF - Pure white
+  surface: 'hsl(40, 20%, 98%)',        // #FBFAF8 - Warm paper (never pure white)
   surfaceRaised: 'hsl(40, 15%, 96%)',  // Slightly raised surface
   concrete: 'hsl(40, 12%, 88%)',       // #E3DFD7 - Border gray
   

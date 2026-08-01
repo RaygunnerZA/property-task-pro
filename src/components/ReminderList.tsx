@@ -1,6 +1,6 @@
 import { useReminders } from "../hooks/useReminders";
 import SkeletonTaskCard from "./SkeletonTaskCard";
-import EmptyState from "./EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 
 export default function ReminderList() {
   const { reminders, loading, error } = useReminders();

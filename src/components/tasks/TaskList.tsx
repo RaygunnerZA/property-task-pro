@@ -10,7 +10,7 @@ import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import TaskCard from "@/components/TaskCard";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
-import EmptyState from "@/components/EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";

@@ -4,7 +4,6 @@ import { ArrowRight, Filter, AlertTriangle, CircleDot, CalendarClock } from "luc
 import TaskCard from "@/components/TaskCard";
 import { Button } from "@/components/ui/button";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
-import EmptyState from "@/components/EmptyState";
 import { FilterChip } from "@/components/chips/filter";
 
 interface PropertyTasksSectionProps {
