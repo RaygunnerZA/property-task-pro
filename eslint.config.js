@@ -39,6 +39,31 @@ export default tseslint.config(
       /** Allow console.error and console.warn; ban console.log/debug in production code.
        *  Use src/lib/logger.ts for structured logging, src/lib/debug.ts for dev tracing. */
       "no-console": ["warn", { "allow": ["error", "warn"] }],
+      /**
+       * Design token guardrails (Docs 04_UI_System §4.3/§4.5).
+       * 1. Arbitrary hex utility classes (text-[#8EC9CE], bg-[#F6F4F2]/90, …) are banned —
+       *    use semantic tokens (text-primary, bg-input, …). Hex as *data* (e.g. property
+       *    icon colors passed to style props) is still allowed; only class utilities match.
+       * 2. Raw Tailwind palette status classes that have a semantic equivalent are banned —
+       *    destructive / warning(-vivid|-foreground) / success(-vivid|-foreground) /
+       *    primary(-deep) / muted(-foreground) / border tokens. `dark:` variants are
+       *    temporarily exempt until dark-mode tokens are audited.
+       */
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/(?:^|[\\s:'\"`(])(?:[a-z-]+:)*[a-z-]+-\\[#[0-9a-fA-F]{3,8}\\]/]",
+          message: "Arbitrary hex utility classes are banned. Use semantic design tokens from tailwind.config.ts (e.g. text-primary, bg-input, text-muted-foreground). See @Docs/04_UI_System.md §4.5.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/(?:^|[\\s:'\"`(])(?:[a-z-]+:)*[a-z-]+-\\[#[0-9a-fA-F]{3,8}\\]/]",
+          message: "Arbitrary hex utility classes are banned. Use semantic design tokens from tailwind.config.ts (e.g. text-primary, bg-input, text-muted-foreground). See @Docs/04_UI_System.md §4.5.",
+        },
+        {
+          selector: "Literal[value=/(?<!dark:)\\b(?:(?:bg|text)-red-(?:400|500|600|700|800)|bg-red-50|border-red-200|text-amber-(?:500|600|700|800)|bg-amber-(?:50|100|400|500)|text-yellow-(?:600|700)|bg-yellow-500|border-amber-(?:200|500)|text-green-(?:600|700|800)|text-emerald-(?:600|700)|bg-green-(?:50|100|500)|border-green-200|text-teal-(?:500|600|700|800)|ring-teal-500|bg-teal-(?:50|100|600|700)|border-teal-(?:200|300)|text-gray-(?:500|600|700|800|900)|border-gray-200|bg-neutral-(?:100|200)|text-neutral-(?:500|600|700)|bg-gray-(?:50|100)|text-orange-600|bg-orange-500|border-orange-500)\\b/]",
+          message: "Raw Tailwind palette status classes are banned. Use semantic tokens: destructive, warning/warning-vivid/warning-foreground, success/success-vivid/success-foreground, primary/primary-deep, muted-foreground, border. See @Docs/04_UI_System.md §4.5.",
+        },
+      ],
       "no-restricted-imports": [
         "error",
         {
