@@ -80,7 +80,7 @@ export function DocumentUploadZone({
         onDrop={handleDrop}
         onClick={handleClick}
         className={cn(
-          "relative border-2 border-dashed rounded-[8px] p-8 text-center cursor-pointer transition-colors",
+          "relative border-2 border-dashed rounded-card p-8 text-center cursor-pointer transition-colors",
           dragActive ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/50",
           "flex flex-col items-center justify-center gap-2"
         )}
@@ -88,7 +88,7 @@ export function DocumentUploadZone({
         {uploading ? (
           <>
             <Loader2 className="h-10 w-10 text-muted-foreground animate-spin" />
-            <p className="text-sm text-muted-foreground">Uploading...</p>
+            <p className="text-sm text-muted-foreground">Uploading…</p>
           </>
         ) : (
           <>

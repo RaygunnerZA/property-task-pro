@@ -45,7 +45,7 @@ export const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
           )}
           {onDelete && (
             <Button variant="ghost" size="sm" onClick={onDelete}>
-              <Trash2 className="w-4 h-4 text-red-600" />
+              <Trash2 className="w-4 h-4 text-destructive" />
             </Button>
           )}
         </div>

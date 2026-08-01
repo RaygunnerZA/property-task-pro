@@ -139,17 +139,17 @@ function AllPropertiesCarouselSlide({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-[12px] border bg-card/60 pt-px pb-px shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
+        "w-full overflow-hidden rounded-xl border bg-card/60 pt-px pb-px shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
         isSelected ? "border-primary/50" : "border-border/20"
       )}
     >
-      <div className="group relative w-full shrink-0 overflow-hidden rounded-t-[12px]" style={{ height: "160px" }}>
+      <div className="group relative w-full shrink-0 overflow-hidden rounded-t-xl" style={{ height: "160px" }}>
         <button
           type="button"
           onClick={onSelectSlide}
           aria-pressed={isSelected}
           aria-label="Select all properties view"
-          className="relative block h-full w-full overflow-hidden rounded-t-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="relative block h-full w-full overflow-hidden rounded-t-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <img src={allPropertiesHero} alt="" className="h-full w-full object-cover" />
 
@@ -162,10 +162,10 @@ function AllPropertiesCarouselSlide({
           />
 
           <div className="absolute bottom-2 left-2.5 right-10 z-10 min-w-0">
-            <p className="min-w-0 truncate text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
+            <p className="min-w-0 truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
               {cardTitle}
             </p>
-            <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-white/90 drop-shadow-sm">
+            <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
               {cardSubtitle}
             </p>
           </div>
@@ -318,7 +318,7 @@ function PropertyCarouselSlide({
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-[12px] border bg-card/60 shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
+        "w-full overflow-hidden rounded-xl border bg-card/60 shadow-[1px_2px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.77)] transition-shadow",
         isSelected ? "border-primary/50 ring-2 ring-primary/40" : "border-border/20"
       )}
     >
@@ -327,7 +327,7 @@ function PropertyCarouselSlide({
         onClick={onSelectSlide}
         aria-pressed={isSelected}
         aria-label={`Select ${displayName}`}
-        className="relative block w-full shrink-0 overflow-hidden rounded-t-[12px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="relative block w-full shrink-0 overflow-hidden rounded-t-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         style={{
           height: "160px",
           backgroundColor: property.thumbnail_url ? undefined : iconColor,
@@ -356,12 +356,12 @@ function PropertyCarouselSlide({
               style={{ color: iconColor }}
               aria-hidden
             />
-            <p className="min-w-0 truncate text-[18px] font-semibold leading-tight text-white drop-shadow-sm">
+            <p className="min-w-0 truncate text-lg font-semibold leading-tight text-white drop-shadow-sm">
               {displayName}
             </p>
           </div>
           {property.address ? (
-            <p className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-snug text-white/90 drop-shadow-sm">
+            <p className="mt-0.5 line-clamp-2 text-caption font-medium leading-snug text-white/90 drop-shadow-sm">
               {property.address}
             </p>
           ) : null}
@@ -511,11 +511,11 @@ export function PropertyDashboardCarousel({
   if (properties.length === 0) return null;
 
   return (
-    <div className={cn("w-full min-w-0 rounded-[12px]", className)} aria-label="Property dashboards">
-      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full overflow-hidden rounded-[12px] shadow-[1px_0px_1px_0px_rgba(255,255,255,0.62)]">
+    <div className={cn("w-full min-w-0 rounded-xl", className)} aria-label="Property dashboards">
+      <Carousel setApi={setApi} opts={EMBLA_OPTS} className="w-full overflow-hidden rounded-xl shadow-[1px_0px_1px_0px_rgba(255,255,255,0.62)]">
         <CarouselContent
           className="ml-0"
-          viewportClassName={cn(VIEWPORT_DRAG_CLASS, "rounded-[12px]")}
+          viewportClassName={cn(VIEWPORT_DRAG_CLASS, "rounded-xl")}
         >
           {showAllSlide ? (
             <CarouselItem key={ALL_PROPERTIES_SLIDE_ID} className={cn(SLIDE_BASIS, "min-w-0 shrink-0 grow-0 pl-0 pr-3.5 pb-1.5")}>
@@ -557,7 +557,7 @@ export function PropertyDashboardCarousel({
         </CarouselContent>
         {slides.length > 1 ? (
           <div
-            className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[15px] rounded-r-[12px] bg-gradient-to-r from-transparent to-black/20"
+            className="pointer-events-none absolute inset-y-0 right-0 z-20 w-[15px] rounded-r-xl bg-gradient-to-r from-transparent to-black/20"
             aria-hidden
           />
         ) : null}

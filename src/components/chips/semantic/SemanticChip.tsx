@@ -146,7 +146,7 @@ export function SemanticChip({
   };
 
   const heightClass = size === "compact" ? "h-[20px]" : "h-[32px]";
-  const textClass = size === "compact" ? "text-[10px]" : "text-[12px]";
+  const textClass = size === "compact" ? "text-2xs" : "text-xs";
 
   const epistemicStyles =
     epistemic === "fact"
@@ -161,8 +161,8 @@ export function SemanticChip({
         : "";
 
   const baseStyles = cn(
-    "relative inline-flex items-center gap-1.5 rounded-[8px] flex-shrink-0",
-    "font-mono uppercase tracking-wide whitespace-nowrap",
+    "relative inline-flex items-center gap-1.5 rounded-card flex-shrink-0",
+    "font-mono uppercase tracking-wider whitespace-nowrap",
     "transition-[max-width,width] duration-200 ease-out",
     heightClass,
     textClass,
@@ -219,7 +219,7 @@ export function SemanticChip({
         className={cn(
           "w-full min-w-0 bg-transparent border-0 outline-none caret-foreground",
           textClass,
-          "font-mono uppercase tracking-wide",
+          "font-mono uppercase tracking-wider",
           "placeholder:font-mono placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground/55"
         )}
         aria-label={entryPlaceholder || "Enter value"}
@@ -228,7 +228,7 @@ export function SemanticChip({
     <>
       {icon && <span className="flex-shrink-0">{icon}</span>}
       {pending && (
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 flex-shrink-0" />
+        <span className="w-1.5 h-1.5 rounded-full bg-warning-vivid/70 flex-shrink-0" />
       )}
       <span
         className={cn(
@@ -299,7 +299,7 @@ export function SemanticChip({
           align="start"
           side="bottom"
           sideOffset={4}
-          className="min-w-[209px] px-0 py-[3px] text-[10px]"
+          className="min-w-[209px] px-0 py-[3px] text-2xs"
         >
           {dropdownContent}
         </DropdownMenuContent>

@@ -159,7 +159,7 @@ export default function SignUpScreen() {
               variant="primary"
               disabled={loading}
             >
-              {loading ? "Creating account..." : "Create Account"}
+              {loading ? "Creating account…" : "Create Account"}
             </NeomorphicButton>
           </div>
         </form>

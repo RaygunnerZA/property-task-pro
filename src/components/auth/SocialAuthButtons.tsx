@@ -26,12 +26,12 @@ export function AuthMethodDivider({ className }: { className?: string }) {
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <div
-        className="h-px flex-1 bg-[#D1CCC4]/80"
+        className="h-px flex-1 bg-border/80"
         aria-hidden
       />
-      <span className="text-sm text-[#6D7480]">or</span>
+      <span className="text-sm text-muted-foreground">or</span>
       <div
-        className="h-px flex-1 bg-[#D1CCC4]/80"
+        className="h-px flex-1 bg-border/80"
         aria-hidden
       />
     </div>
@@ -68,14 +68,14 @@ export function SocialAuthButtons({ className, disabled }: SocialAuthButtonsProp
             disabled={isDisabled}
             onClick={() => handleProvider(id)}
             className={cn(
-              "flex w-full items-center justify-center gap-3 rounded-[5px] px-6 py-3",
-              "text-sm font-medium text-[#1C1C1C] transition-all duration-150 ease-out",
-              "hover:text-[#1C1C1C] disabled:cursor-not-allowed disabled:opacity-50"
+              "flex w-full items-center justify-center gap-3 rounded-sharp px-6 py-3",
+              "text-sm font-medium text-foreground transition-all duration-150 ease-out",
+              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             )}
             style={{ boxShadow: SECONDARY_SHADOW }}
           >
             {isLoading ? (
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#6D7480]" />
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />
             ) : (
               <SocialProviderIcon provider={id} className="h-5 w-5 shrink-0" />
             )}

@@ -33,7 +33,7 @@ export function SpaceGroupCard({
   return (
     <div
       className={cn(
-        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1",
+        "bg-card/60 rounded-xl overflow-hidden shadow-e1",
         "transition-all duration-200 cursor-pointer hover:shadow-md",
         "active:scale-[0.99] h-[228px]",
         className
@@ -53,7 +53,7 @@ export function SpaceGroupCard({
               e.stopPropagation();
               handleClick();
             }}
-            className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30 flex-shrink-0"
+            className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30 flex-shrink-0"
             style={{
               width: '32px',
               height: '32px',

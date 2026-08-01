@@ -315,8 +315,8 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
                 className={cn(
                   "rounded-lg p-3 max-w-[85%]",
                   isOwnMessage
-                    ? "bg-[#8EC9CE] text-white ml-auto"
-                    : "bg-[#F6F4F2] text-foreground"
+                    ? "bg-primary text-primary-foreground ml-auto"
+                    : "bg-input text-foreground"
                 )}
               >
                 <div className="flex items-start justify-between gap-2 mb-1">
@@ -485,7 +485,7 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
             disabled={(!messageText.trim() && attachments.length === 0) || isSending}
             className={cn(
               "rounded-lg text-white self-end",
-              "bg-[#8EC9CE] hover:bg-[#7AB8BD]",
+              "bg-primary hover:bg-primary",
               "shadow-primary-btn"
             )}
             size="sm"

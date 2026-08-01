@@ -19,12 +19,12 @@ const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
 const COLLAPSE_DURATION_MS = 450;
 
-const SELECTED_CHIP_TEAL = "#85BABC";
+const SELECTED_CHIP_TEAL = "hsl(var(--primary-deep))";
 
 const DASHED_LINE_STYLE = {
   height: "1px",
   backgroundImage:
-    "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+    "repeating-linear-gradient(to right, hsl(var(--border)) 0px, hsl(var(--border)) 4px, transparent 4px, transparent 7px)",
   backgroundSize: "7px 1px",
   backgroundRepeat: "repeat-x" as const,
 };
@@ -268,7 +268,7 @@ export function OnboardingSpaceGroupCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-[8px] bg-card pb-[3px] shadow-e1">
+      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-card bg-card pb-[3px] shadow-e1">
         {/* Banner — collapses to 70px on expand */}
         <div
           role={isExpanded ? "button" : undefined}
@@ -396,7 +396,7 @@ export function OnboardingSpaceGroupCard({
                 "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg text-white transition-all",
                 "disabled:opacity-50"
               )}
-              style={{ backgroundColor: "#14B8A6" }}
+              style={{ backgroundColor: "hsl(var(--primary-deep))" }}
               aria-label="Add space"
             >
               <Plus className="h-3.5 w-3.5" />

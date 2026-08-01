@@ -7,7 +7,7 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 const typeStyles: Record<string, string> = {
   task: "bg-primary/12 text-primary",
   compliance: "bg-emerald-500/12 text-emerald-800 dark:text-emerald-300",
-  drift: "bg-amber-500/12 text-amber-800 dark:text-amber-300",
+  drift: "bg-warning-vivid/12 text-warning-foreground dark:text-amber-300",
   inspection: "bg-sky-500/12 text-sky-800 dark:text-sky-300",
 };
 
@@ -44,7 +44,7 @@ export function PropertyActivityTimeline({ propertyId }: PropertyActivityTimelin
               <div className="shrink-0 pt-0.5">
                 <span
                   className={cn(
-                    "inline-flex rounded-[6px] px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide",
+                    "inline-flex rounded-[6px] px-1.5 py-0.5 text-2xs font-mono uppercase tracking-wider",
                     typeStyles[ev.type] ?? "bg-muted text-muted-foreground"
                   )}
                 >
@@ -53,7 +53,7 @@ export function PropertyActivityTimeline({ propertyId }: PropertyActivityTimelin
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-foreground leading-snug">{ev.description}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
+                <p className="text-caption text-muted-foreground mt-0.5">
                   {formatDistanceToNow(new Date(ev.date), { addSuffix: true })}
                 </p>
               </div>

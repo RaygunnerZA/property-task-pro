@@ -45,19 +45,19 @@ export function RecordsContextSummary({
             >
               {metric.value}
             </p>
-            <p className="mt-0.5 text-[10px] sm:text-[11px] text-muted-foreground leading-tight">
+            <p className="mt-0.5 text-2xs sm:text-caption text-muted-foreground leading-tight">
               {metric.label}
             </p>
           </div>
         ))}
       </div>
       {documentTotal != null && (
-        <p className="text-[11px] text-muted-foreground px-0.5">
+        <p className="text-caption text-muted-foreground px-0.5">
           <span className="font-medium text-foreground">{documentTotal}</span> stored documents
           {docUnlinked != null && docUnlinked > 0 ? (
             <>
               {" "}
-              · <span className="text-amber-700 font-medium">{docUnlinked}</span> unlinked
+              · <span className="text-warning-foreground font-medium">{docUnlinked}</span> unlinked
             </>
           ) : null}
         </p>

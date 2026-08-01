@@ -50,9 +50,11 @@ export function EmptyState({
   const body = description ?? subtitle;
   return (
     <Card className={cn("p-8 text-center max-w-md mx-auto", className)}>
-      <Icon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-      <h3 className="font-semibold text-lg mb-2">{title}</h3>
-      {body && <p className="text-muted-foreground text-sm mb-4">{body}</p>}
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-input shadow-engraved">
+        <Icon className="h-7 w-7 text-muted-foreground icon-shadow-neu-pressed" aria-hidden="true" />
+      </div>
+      <h3 className="font-semibold text-lg mb-2 [text-wrap:balance]">{title}</h3>
+      {body && <p className="text-muted-foreground text-sm mb-4 [text-wrap:pretty]">{body}</p>}
       {action && (
         <Button onClick={action.onClick}>
           {action.icon && <action.icon className="h-4 w-4 mr-2" />}

@@ -600,7 +600,7 @@ export function TaskPanel({
     "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]";
 
   const taskTabShell =
-    "rounded-[8px] transition-all text-sm font-medium min-w-0 group/task-tab inline-flex items-center justify-center " +
+    "rounded-card transition-all text-sm font-medium min-w-0 group/task-tab inline-flex items-center justify-center " +
     "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)] " +
     "data-[state=active]:bg-card data-[state=inactive]:bg-transparent data-[state=active]:text-[rgb(20,184,166)]";
 
@@ -714,7 +714,7 @@ export function TaskPanel({
                 >
                   <div className={cn(taskTabShell, taskTabMeasurePad)}>
                     <span className="inline-flex min-w-0 items-center justify-center">
-                      <ClipboardList className="mr-1 h-4 w-4 shrink-0 text-[#FF6B6B] max-pane:mr-0.5" />
+                      <ClipboardList className="mr-1 h-4 w-4 shrink-0 text-destructive max-pane:mr-0.5" />
                       <span>Issues</span>
                     </span>
                   </div>
@@ -755,7 +755,7 @@ export function TaskPanel({
                       "inline-flex min-w-9 max-w-9 shrink-0 items-center justify-center px-0 text-sm font-medium"
                     )}
                   >
-                    <ClipboardList className="h-4 w-4 text-[#FF6B6B]" />
+                    <ClipboardList className="h-4 w-4 text-destructive" />
                   </div>
                   <div
                     className={cn(
@@ -800,7 +800,7 @@ export function TaskPanel({
                       animateOnHover
                       animation="shake"
                       className={cn(
-                        "shrink-0 h-4 w-4 text-[#FF6B6B]",
+                        "shrink-0 h-4 w-4 text-destructive",
                         iconOnly
                           ? "mr-0 transition-[margin] duration-200 group-hover/task-tab:mr-1.5 group-focus-visible/task-tab:mr-1.5 group-data-[state=active]/task-tab:mr-1.5"
                           : "mr-1 max-pane:mr-0.5"
@@ -1041,7 +1041,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "px-3 h-9 rounded-[12px] text-sm font-medium",
+                            "px-3 h-9 rounded-xl text-sm font-medium",
                             "bg-card border border-border/50",
                             "shadow-none hover:shadow-none"
                           )}
@@ -1059,7 +1059,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "h-9 w-9 rounded-[12px] grid place-items-center",
+                            "h-9 w-9 rounded-xl grid place-items-center",
                             "bg-card border border-border/50",
                             "shadow-none hover:shadow-none"
                           )}
@@ -1077,7 +1077,7 @@ export function TaskPanel({
                             setActiveTab("schedule");
                           }}
                           className={cn(
-                            "h-9 w-9 rounded-[12px] grid place-items-center",
+                            "h-9 w-9 rounded-xl grid place-items-center",
                             "bg-card border border-border/50",
                             "shadow-none hover:shadow-none"
                           )}
@@ -1113,7 +1113,7 @@ export function TaskPanel({
                             ? "Try selecting a different date or create a new task with a due date"
                             : "Create a task with a due date to see it here"}
                         </p>
-                        <div className="mt-3 text-[11px] text-muted-foreground/80">
+                        <div className="mt-3 text-caption text-muted-foreground/80">
                           {scheduleStats.withDueDate === 0 ? (
                             <span>
                               You currently have 0 active tasks with a due date/time. ({scheduleStats.withoutDueDate} unscheduled)
@@ -1131,7 +1131,7 @@ export function TaskPanel({
                   {unscheduledTasks.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-border/50">
                       <div className="px-[10px] max-sm:px-0 mb-3 max-pane:px-2">
-                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                           Unscheduled ({unscheduledTasks.length})
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">

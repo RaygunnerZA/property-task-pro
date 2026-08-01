@@ -233,14 +233,14 @@ export function WhenSection({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "flex flex-col rounded-[8px] transition-all duration-200",
+        "flex flex-col rounded-card transition-all duration-200",
         embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-2 h-[33px] min-w-0">
         {!embedded ? (
-        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-card bg-background">
           <Calendar className="h-4 w-4 text-muted-foreground" />
         </div>
         ) : null}
@@ -387,7 +387,7 @@ export function WhenSection({
         </div>
 
         {hasUnresolved && !isActive && (
-          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500 border border-background" />
+          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-warning-vivid border border-background" />
         )}
       </div>
 
@@ -396,7 +396,7 @@ export function WhenSection({
         <div ref={panelRef} className="pl-[22px] pt-2 pb-2 space-y-2">
           {editing.kind === "milestone" && (
             <div className="flex items-center gap-2">
-              <label className="text-[10px] font-mono uppercase text-muted-foreground shrink-0">Name</label>
+              <label className="text-2xs font-mono uppercase text-muted-foreground shrink-0">Name</label>
               <input
                 type="text"
                 placeholder="e.g. Alert, Launch"

@@ -181,7 +181,7 @@ function PropertyScopeFilterBarPrimary({
                 setScopeSecondaryOpen(false);
               }
         }
-        className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-[10px] font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
+        className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-2xs font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
         style={{
           width: "28px",
           height: "28px",
@@ -275,7 +275,7 @@ function PropertyScopeFilterBarPrimary({
             <button
               type="button"
               onClick={() => setShowAddProperty(true)}
-              className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+              className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30"
               style={{ width: "20px", height: "35px" }}
               aria-label="Add property"
             >
@@ -286,7 +286,7 @@ function PropertyScopeFilterBarPrimary({
 
         {isMultiSelectMode && (
           <div className="flex items-center justify-between px-1 animate-in fade-in slide-in-from-top-1 duration-150">
-            <span className="text-[10px] text-muted-foreground leading-none">Select multiple properties</span>
+            <span className="text-2xs text-muted-foreground leading-none">Select multiple properties</span>
             {selectedPropertyIds.size >= 2 && (
               <button
                 type="button"
@@ -294,7 +294,7 @@ function PropertyScopeFilterBarPrimary({
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/20 hover:bg-primary/30 transition-colors duration-150"
               >
                 <Check className="h-2.5 w-2.5 text-primary" />
-                <span className="text-[9px] text-primary font-semibold">Done</span>
+                <span className="text-2xs text-primary font-semibold">Done</span>
               </button>
             )}
           </div>
@@ -337,7 +337,7 @@ function PropertyScopeFilterBarPrimary({
                   setIsMultiSelectMode(false);
                   onFilterClick?.("show-tasks");
                 }}
-                className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-[10px] font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
+                className="flex shrink-0 items-center justify-center rounded-[10px] p-0 text-2xs font-mono font-semibold tracking-wide transition-all duration-300 hover:scale-110 active:scale-95"
                 style={{
                   width: "28px",
                   height: "28px",
@@ -538,7 +538,7 @@ function PropertyScopeFilterBarSecondary({
               setDraftSelection(new Set(ALL_IDS));
             }}
             className={cn(
-              "flex items-center justify-center rounded-[10px] shrink-0 text-[10px] font-mono font-semibold tracking-wide transition-opacity duration-200",
+              "flex items-center justify-center rounded-[10px] shrink-0 text-2xs font-mono font-semibold tracking-wide transition-opacity duration-200",
               expanded ? "opacity-100 w-[28px] h-[28px]" : "opacity-0 w-0 h-0 overflow-hidden pointer-events-none"
             )}
             style={{
@@ -642,7 +642,7 @@ function PropertyScopeFilterBarSecondary({
               type="button"
               size="sm"
               variant="secondary"
-              className="h-7 px-2.5 text-[11px] font-semibold ml-1 shrink-0 shadow-sm"
+              className="h-7 px-2.5 text-caption font-semibold ml-1 shrink-0 shadow-sm"
               onClick={handleApply}
             >
               Apply

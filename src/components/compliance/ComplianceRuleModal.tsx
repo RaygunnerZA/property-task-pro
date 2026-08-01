@@ -138,7 +138,7 @@ export function ComplianceRuleModal({
         <div className="space-y-6 py-2">
           {/* ── Basic ───────────────────────────────────────────── */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Basic
             </h3>
             <div className="space-y-1.5">
@@ -165,7 +165,7 @@ export function ComplianceRuleModal({
 
           {/* ── Frequency ───────────────────────────────────────── */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Frequency
             </h3>
             <div className="space-y-1.5">
@@ -204,7 +204,7 @@ export function ComplianceRuleModal({
 
           {/* ── Scope ───────────────────────────────────────────── */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Scope
             </h3>
             <div className="space-y-2">
@@ -244,7 +244,7 @@ export function ComplianceRuleModal({
 
           {/* ── Automation ──────────────────────────────────────── */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Automation
             </h3>
             <label className="flex items-start gap-3 cursor-pointer">

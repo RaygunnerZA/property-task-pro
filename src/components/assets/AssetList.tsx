@@ -185,7 +185,7 @@ export function AssetList({ propertyId }: AssetListProps = {}) {
   };
 
   if (loading) {
-    return <LoadingState message="Loading assets..." />;
+    return <LoadingState message="Loading assets…" />;
   }
 
   if (error) {

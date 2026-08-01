@@ -591,11 +591,11 @@ export function PropertyRecordsTab({
                     record.status === "overdue" ? (
                       <AlertTriangle className="h-4 w-4 text-destructive" />
                     ) : record.status === "expiring" ? (
-                      <Waves className="h-4 w-4 text-amber-600" />
+                      <Waves className="h-4 w-4 text-warning-foreground" />
                     ) : record.status === "missing" ? (
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      <ShieldCheck className="h-4 w-4 text-success-foreground" />
                     )
                   }
                   title={record.title}
@@ -628,7 +628,7 @@ export function PropertyRecordsTab({
                       onClick: () => setSelectedComplianceId(record.id),
                     },
                   ]}
-                  className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-[#8EC9CE]")}
+                  className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-primary")}
                 />
               ))}
               {filteredComplianceRecords.length === 0 && (

@@ -158,7 +158,7 @@ export function SubtasksSection({
   const renderTemplateChips = (items: ChecklistTemplate[], emptyLabel: string) => {
     if (items.length === 0) {
       return (
-        <div className="text-[11px] text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
+        <div className="text-caption text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
           {emptyLabel}
         </div>
       );
@@ -258,7 +258,7 @@ export function SubtasksSection({
         )}
 
         {activeTemplateName && (
-          <div className="pt-2 text-center text-[11px] text-muted-foreground/70">
+          <div className="pt-2 text-center text-caption text-muted-foreground/70">
             Template: <span className="font-medium text-foreground/80">{activeTemplateName}</span>
           </div>
         )}
@@ -379,7 +379,7 @@ export function SubtasksSection({
               {pickerView !== "root" && (
                 <button
                   type="button"
-                  className="h-[24px] w-[24px] rounded-[8px] grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
+                  className="h-[24px] w-[24px] rounded-card grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
                   onClick={handleBack}
                   aria-label="Back"
                 >

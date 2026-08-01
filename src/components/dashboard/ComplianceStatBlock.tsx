@@ -14,9 +14,9 @@ interface ComplianceStatBlockProps {
 
 const variantStyles = {
   default: 'text-primary',
-  success: 'text-green-600',
-  warning: 'text-amber-600',
-  danger: 'text-red-600',
+  success: 'text-success-foreground',
+  warning: 'text-warning-foreground',
+  danger: 'text-destructive',
 };
 
 export default function ComplianceStatBlock({ 
@@ -32,7 +32,7 @@ export default function ComplianceStatBlock({
       
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <Text variant="caption" className="text-neutral-600">
+          <Text variant="caption" className="text-muted-foreground">
             {label}
           </Text>
           <Heading variant="l" className={variantStyles[variant]}>
@@ -43,7 +43,7 @@ export default function ComplianceStatBlock({
             <div className="flex items-center gap-1">
               <Text 
                 variant="caption" 
-                className={trend.direction === 'up' ? 'text-green-600' : 'text-red-600'}
+                className={trend.direction === 'up' ? 'text-success-foreground' : 'text-destructive'}
               >
                 {trend.direction === 'up' ? '↑' : '↓'} {Math.abs(trend.value)}%
               </Text>

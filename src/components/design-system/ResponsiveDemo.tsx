@@ -17,7 +17,7 @@ const breakpoints = [
     range: '641px – 1024px',
     columns: 2,
     features: ['Two column layout', 'Mobile nav + hamburger', 'Adaptive panels', 'Touch-optimized'],
-    color: 'bg-amber-500',
+    color: 'bg-warning-vivid',
   },
   {
     name: 'Desktop',
@@ -25,7 +25,7 @@ const breakpoints = [
     range: '≥ 1025px',
     columns: 3,
     features: ['Left nav drawer (permanent)', 'Three column content', 'Dedicated calendar column', 'Hover interactions'],
-    color: 'bg-green-500',
+    color: 'bg-success-vivid',
   },
 ];
 
@@ -39,7 +39,7 @@ function ColumnDemo({ columns }: { columns: number }) {
           key={i}
           className="h-16 rounded-lg bg-primary/20 flex items-center justify-center"
         >
-          <span className="font-mono text-[10px] uppercase tracking-wider text-primary">
+          <span className="font-mono text-2xs uppercase tracking-wider text-primary">
             Col {i + 1}
           </span>
         </div>
@@ -75,7 +75,7 @@ export function ResponsiveDemo() {
 
               {/* Column Demo */}
               <div className="p-4 border-b border-concrete">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-3">
+                <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground mb-3">
                   {bp.columns} Column{bp.columns > 1 ? 's' : ''}
                 </p>
                 <ColumnDemo columns={bp.columns} />
@@ -83,7 +83,7 @@ export function ResponsiveDemo() {
 
               {/* Features */}
               <div className="p-4">
-                <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Features</p>
+                <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground mb-2">Features</p>
                 <ul className="space-y-1.5">
                   {bp.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-ink/80">
@@ -100,7 +100,7 @@ export function ResponsiveDemo() {
 
       {/* Live Demo */}
       <div className="bg-surface rounded-xl shadow-e2 p-6">
-        <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-4">
+        <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground mb-4">
           Live Responsive Grid (resize browser to see changes)
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

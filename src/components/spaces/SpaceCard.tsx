@@ -70,7 +70,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
   return (
     <div
       className={cn(
-        "group/space-card relative bg-card/60 rounded-[8px] overflow-hidden shadow-e1 h-[137px]",
+        "group/space-card relative bg-card/60 rounded-card overflow-hidden shadow-e1 h-[137px]",
         "flex flex-col text-center transition-all duration-200",
         className
       )}
@@ -80,7 +80,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
         onClick={handleEdit}
         className={cn(
           "absolute top-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center",
-          "rounded-md bg-white/90 text-[#6D7480] shadow-sm",
+          "rounded-md bg-white/90 text-muted-foreground shadow-sm",
           "opacity-0 transition-opacity group-hover/space-card:opacity-100",
           "hover:bg-white hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         )}

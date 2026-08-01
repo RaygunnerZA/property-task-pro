@@ -173,7 +173,7 @@ export default function DebugData() {
               <p><strong>Active Org ID:</strong> {orgId || "None"}</p>
             </div>
           ) : (
-            <p>Loading user...</p>
+            <p>Loading user…</p>
           )}
         </CardContent>
       </Card>
@@ -185,7 +185,7 @@ export default function DebugData() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Loading...</p>
+            <p>Loading…</p>
           ) : orgs.length === 0 ? (
             <p className="text-muted-foreground">No organisations found</p>
           ) : (
@@ -210,7 +210,7 @@ export default function DebugData() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Loading...</p>
+            <p>Loading…</p>
           ) : memberships.length === 0 ? (
             <p className="text-muted-foreground">No memberships found</p>
           ) : (
@@ -235,7 +235,7 @@ export default function DebugData() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Loading...</p>
+            <p>Loading…</p>
           ) : properties.length === 0 ? (
             <p className="text-muted-foreground">No properties found</p>
           ) : (
@@ -260,7 +260,7 @@ export default function DebugData() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p>Loading...</p>
+            <p>Loading…</p>
           ) : spaces.length === 0 ? (
             <p className="text-muted-foreground">No spaces found</p>
           ) : (

@@ -120,7 +120,7 @@ export function CalendarHeatMap() {
       {/* Dark Mode Calendar - Full width on mobile with equal padding */}
       <div 
         ref={scrollContainerRef}
-        className="bg-sidebar-background rounded-[5px] shadow-e2 p-4 w-full max-w-md mx-auto touch-pan-x select-none overflow-hidden"
+        className="bg-sidebar-background rounded-sharp shadow-e2 p-4 w-full max-w-md mx-auto touch-pan-x select-none overflow-hidden"
         style={{ 
           transform: scrollLeft !== 0 ? `translateX(${scrollLeft * 0.3}px)` : undefined,
           transition: scrollLeft === 0 ? 'transform 0.3s ease-out' : 'none'
@@ -144,13 +144,13 @@ export function CalendarHeatMap() {
           <div className="flex gap-1">
             <button 
               onClick={goToPrevMonth}
-              className="p-1.5 rounded-[5px] transition-colors bg-sidebar-accent hover:bg-sidebar-accent/80"
+              className="p-1.5 rounded-sharp transition-colors bg-sidebar-accent hover:bg-sidebar-accent/80"
             >
               <ChevronLeft className="w-5 h-5 text-sidebar-foreground" />
             </button>
             <button 
               onClick={goToNextMonth}
-              className="p-1.5 rounded-[5px] transition-colors bg-sidebar-accent hover:bg-sidebar-accent/80"
+              className="p-1.5 rounded-sharp transition-colors bg-sidebar-accent hover:bg-sidebar-accent/80"
             >
               <ChevronRight className="w-5 h-5 text-sidebar-foreground" />
             </button>
@@ -160,7 +160,7 @@ export function CalendarHeatMap() {
         {/* Weekday headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {WEEKDAYS.map(day => (
-            <div key={day} className="text-center font-mono text-[10px] uppercase tracking-wider text-sidebar-muted py-1">
+            <div key={day} className="text-center font-mono text-2xs uppercase tracking-wider text-sidebar-muted py-1">
               {day}
             </div>
           ))}
@@ -203,9 +203,9 @@ export function CalendarHeatMap() {
             key={filter}
             onClick={() => setSelectedFilter(filter)}
             className={cn(
-              'px-3 py-1.5 rounded-[5px] font-mono text-[11px] uppercase tracking-wider transition-all shadow-e1',
+              'px-3 py-1.5 rounded-sharp font-mono text-caption uppercase tracking-wider transition-all shadow-e1',
               selectedFilter === filter
-                ? 'bg-primary text-white'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-concrete/50 text-ink/70 hover:bg-concrete'
             )}
           >
@@ -217,7 +217,7 @@ export function CalendarHeatMap() {
       {/* Heat level legend */}
       <div className="flex gap-6 text-sm justify-center">
         <div className="space-y-2">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Heat Levels</p>
+          <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Heat Levels</p>
           <div className="flex gap-3">
             <div className="flex items-center gap-1.5">
               <div className="w-4 h-4 rounded-full bg-primary/30" />

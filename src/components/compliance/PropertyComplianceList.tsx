@@ -8,7 +8,7 @@ interface PropertyComplianceListProps {
 
 export function PropertyComplianceList({ rules, loading }: PropertyComplianceListProps) {
   if (loading) {
-    return <Text variant="muted">Loading compliance rules...</Text>;
+    return <Text variant="muted">Loading compliance rules…</Text>;
   }
 
   if (rules.length === 0) {

@@ -141,7 +141,7 @@ export function DashboardCalendar({
           row: "flex w-full mt-1 mb-1 py-0 justify-around items-center font-mono",
           cell: "h-[28px] w-[28px] flex-1 max-w-[32px] text-center text-xs p-0 relative font-mono flex items-center justify-center",
           day: "h-[28px] w-[28px] p-0 font-normal font-mono relative rounded-full grid items-center justify-center !relative",
-          day_selected: "bg-primary text-white hover:bg-primary hover:text-white focus:bg-primary focus:text-white",
+          day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
           day_today: "bg-accent/30 text-foreground font-semibold",
           day_outside: "text-muted-foreground opacity-50",
           day_disabled: "text-muted-foreground opacity-50",
@@ -154,8 +154,8 @@ export function DashboardCalendar({
           hasTasks: "has-tasks",
         }}
         components={{
-          IconLeft: () => <ChevronLeft className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
-          IconRight: () => <ChevronRight className="h-6 w-6 text-[#EB6834]" strokeWidth={2.5} />,
+          IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.5} />,
+          IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.5} />,
           CaptionLabel: CustomCaptionLabel,
           Day: (props: any) => {
             const { date, onClick, className: propClassName, displayMonth, ...restProps } = props;
@@ -241,7 +241,7 @@ export function DashboardCalendar({
                 </span>
                 {isTodayDate && (
                   <span 
-                    className="absolute w-8 h-8 rounded-[12px] border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    className="absolute w-8 h-8 rounded-xl border-2 border-white bg-white/90 -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                   />
                 )}
               </button>

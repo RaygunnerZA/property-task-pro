@@ -42,7 +42,7 @@ const priorities: { value: TaskPriority; label: string; icon: React.ReactNode; c
 export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
   return (
     <div className="space-y-4">
-      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <Label className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
         <AlertTriangle className="h-3.5 w-3.5" />
         Priority Level
       </Label>
@@ -56,8 +56,8 @@ export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
                 type="button"
                 onClick={() => onPriorityChange(value)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px]",
-                  "font-mono text-xs uppercase tracking-wide transition-all",
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card",
+                  "font-mono text-xs uppercase tracking-wider transition-all",
                   "select-none cursor-pointer",
                   isSelected
                     ? // Active: Pressed neumorphic with off-white fill (priority colors override when provided)
@@ -79,7 +79,7 @@ export function PriorityTab({ priority, onPriorityChange }: PriorityTabProps) {
         })}
       </div>
 
-      <div className="p-3 rounded-[8px] bg-muted/50 shadow-engraved">
+      <div className="p-3 rounded-card bg-muted/50 shadow-engraved">
         <p className="text-xs text-muted-foreground">
           {priority === "low" && "Low priority tasks appear at the bottom of lists and calendars."}
           {priority === "medium" && "Medium priority tasks appear in standard order."}

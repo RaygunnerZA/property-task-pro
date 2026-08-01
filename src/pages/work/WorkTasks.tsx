@@ -68,7 +68,7 @@ export default function WorkTasks() {
       </div>
 
       {loading ? (
-        <LoadingState message="Loading tasks..." />
+        <LoadingState message="Loading tasks…" />
       ) : filteredTasks && filteredTasks.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {filteredTasks.map((task) => (

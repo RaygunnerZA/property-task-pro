@@ -62,7 +62,7 @@ export default function SettingsBilling() {
                   className={cn(
                     "text-sm font-medium",
                     subscription.status === "active"
-                      ? "text-green-600"
+                      ? "text-success-foreground"
                       : subscription.status === "canceled"
                       ? "text-destructive"
                       : "text-muted-foreground"

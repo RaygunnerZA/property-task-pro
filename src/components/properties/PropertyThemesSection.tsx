@@ -75,7 +75,7 @@ export function PropertyThemesSection({ propertyId }: PropertyThemesSectionProps
   );
 
   if (loading) {
-    return <div className="text-sm text-muted-foreground">Loading themes...</div>;
+    return <div className="text-sm text-muted-foreground">Loading themes…</div>;
   }
 
   return (

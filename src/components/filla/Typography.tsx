@@ -15,9 +15,9 @@ export const Text: React.FC<TextProps> = ({
 }) => {
   const styles = {
     body: 'text-ink text-base leading-relaxed tracking-tight font-sans',
-    label: 'text-ink text-[13px] font-semibold leading-normal font-sans',
+    label: 'text-ink text-sm font-semibold leading-normal font-sans',
     caption: 'text-muted-foreground text-xs leading-normal tracking-tight font-sans',
-    mono: 'text-muted-foreground text-[11px] font-mono uppercase tracking-wide font-medium',
+    mono: 'text-muted-foreground text-caption font-mono uppercase tracking-wider font-medium',
     muted: 'text-muted-foreground text-base leading-relaxed tracking-tight font-sans',
   };
   

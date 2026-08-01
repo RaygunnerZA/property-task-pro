@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import EmptyState from "@/components/EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 import { CheckSquare, MessageSquare, FileText } from "lucide-react";
 import { ContractorTaskMessaging } from "@/components/tasks/ContractorTaskMessaging";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -160,7 +160,7 @@ export default function ContractorTask() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingState message="Loading task..." />
+        <LoadingState message="Loading task…" />
       </div>
     );
   }
@@ -204,7 +204,7 @@ export default function ContractorTask() {
           {/* Description */}
           {task.description && (
             <div className="bg-card rounded-lg p-6 shadow-e1">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Description
               </h3>
               <p className="text-foreground whitespace-pre-wrap">{task.description}</p>
@@ -248,7 +248,7 @@ export default function ContractorTask() {
               <TabsContent value="attachments" className="mt-0 flex-1 overflow-y-auto p-6">
                 {loadingAttachments ? (
                   <div className="flex items-center justify-center py-8">
-                    <LoadingState message="Loading attachments..." />
+                    <LoadingState message="Loading attachments…" />
                   </div>
                 ) : attachments.length === 0 ? (
                   <div className="text-center text-sm text-muted-foreground py-8">

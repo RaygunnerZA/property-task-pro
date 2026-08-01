@@ -36,7 +36,7 @@ interface RightColumnProps {
   hideCentreTabStrip?: boolean;
 }
 
-const panelShellClass = cn(columnShellClass, "rounded-[12px]");
+const panelShellClass = cn(columnShellClass, "rounded-xl");
 
 /**
  * Product centre column (DualPaneLayout `rightColumn`).

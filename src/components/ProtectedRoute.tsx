@@ -2,7 +2,6 @@ import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
-import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
@@ -100,10 +99,14 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
 
 function ProtectedRouteSkeleton() {
   return (
-    <div className="min-h-screen bg-[#F6F4F2] flex items-center justify-center">
-      <div className="text-center">
-        <Skeleton className="h-8 w-48 mx-auto mb-4" />
-        <p className="text-lg text-[#6D7480]">Loading Filla...</p>
+    <div className="min-h-screen bg-background flex items-center justify-center" role="status" aria-live="polite">
+      <div className="flex flex-col items-center gap-4 animate-fade-in">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-input shadow-engraved">
+          <span className="font-display text-2xl font-bold text-primary-deep text-shadow-neu-pressed" aria-hidden="true">
+            F
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground tracking-wide">Loading Filla…</p>
       </div>
     </div>
   );

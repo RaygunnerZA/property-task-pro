@@ -45,15 +45,15 @@ export function OnboardingDemoBanner({ propertyId, className }: OnboardingDemoBa
     <div
       className={cn(
         "mb-2 flex items-start gap-2 rounded-[10px] border-0 bg-card/80 px-3 py-2.5 shadow-md",
-        "ring-1 ring-[#8EC9CE]/35",
+        "ring-1 ring-primary/35",
         className
       )}
       role="status"
     >
-      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#8EC9CE]" aria-hidden />
+      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold text-foreground">You&apos;re viewing example content</p>
-        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+        <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
           Sample tasks, records, and signals teach what Filla can do. Each item is tagged Example or Learn
           Filla. Replace with real data anytime.
         </p>
@@ -64,7 +64,7 @@ export function OnboardingDemoBanner({ propertyId, className }: OnboardingDemoBa
         className={cn(
           "shrink-0 rounded-md p-1 text-muted-foreground transition-colors",
           "hover:bg-muted/60 hover:text-foreground",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EC9CE]/40 focus-visible:ring-offset-0"
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
         )}
         aria-label="Dismiss sample content message"
       >

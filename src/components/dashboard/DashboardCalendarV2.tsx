@@ -519,7 +519,7 @@ export function DashboardCalendarV2({
                 >
                   <span
                     className={cn(
-                      "text-[16px] font-semibold leading-none transition-opacity duration-200 text-center px-1",
+                      "text-base font-semibold leading-none transition-opacity duration-200 text-center px-1",
                       mi === currentMonthIdx
                         ? "text-foreground opacity-100"
                         : "text-muted-foreground opacity-35",
@@ -556,7 +556,7 @@ export function DashboardCalendarV2({
                 >
                   <div
                     className={cn(
-                      "text-[11px] font-mono font-semibold leading-none transition-opacity duration-200 flex flex-col items-center",
+                      "text-caption font-mono font-semibold leading-none transition-opacity duration-200 flex flex-col items-center",
                       yi === currentYearIdx
                         ? "text-foreground opacity-100"
                         : "text-muted-foreground opacity-35",
@@ -585,7 +585,7 @@ export function DashboardCalendarV2({
               }}
               aria-label="Next month"
             >
-              <ChevronUp size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
+              <ChevronUp size={15} className="text-accent" style={{ height: 13, fontSize: 20 }} />
             </button>
             <button
               onClick={() => scrollToMonth(subMonths(shownMonth, 1))}
@@ -600,7 +600,7 @@ export function DashboardCalendarV2({
               }}
               aria-label="Previous month"
             >
-              <ChevronDown size={15} className="text-[#EB6834]" style={{ height: 13, fontSize: 20 }} />
+              <ChevronDown size={15} className="text-accent" style={{ height: 13, fontSize: 20 }} />
             </button>
           </div>
 
@@ -646,13 +646,13 @@ export function DashboardCalendarV2({
                 <Expand
                   size={14}
                   strokeWidth={2}
-                  className="text-[#8EC9CE]"
+                  className="text-primary"
                 />
               ) : (
                 <Shrink
                   size={14}
                   strokeWidth={2}
-                  className="text-[#8EC9CE]"
+                  className="text-primary"
                 />
               )}
             </button>
@@ -671,7 +671,7 @@ export function DashboardCalendarV2({
               {WEEK_DAYS.map(d => (
                 <div
                   key={d}
-                  className="flex-1 min-w-0 text-center text-[10px] font-mono text-muted-foreground"
+                  className="flex-1 min-w-0 text-center text-2xs font-mono text-muted-foreground"
                   style={{ maxWidth: dayCellMaxPx }}
                 >
                   {d}
@@ -763,7 +763,7 @@ export function DashboardCalendarV2({
                         <button
                           onClick={() => onDateSelect?.(date)}
                           className={cn(
-                            "relative font-mono font-normal grid place-items-center text-[11px] p-0 shrink-0",
+                            "relative font-mono font-normal grid place-items-center text-caption p-0 shrink-0",
                             selected  && "font-semibold",
                             outside   && !selected && "text-transparent",
                           )}
@@ -801,7 +801,7 @@ export function DashboardCalendarV2({
                           {showMarkers && todayDate && !selected && (
                             <span
                               aria-hidden
-                              className="absolute rounded-[12px] bg-white/90 border-[3px] border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                              className="absolute rounded-xl bg-white/90 border-[3px] border-white -z-[1] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                               style={{ width: dayBtnSizePx, height: dayBtnSizePx, pointerEvents: "none" }}
                             />
                           )}

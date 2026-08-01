@@ -25,13 +25,13 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
     ? priorityToColor(item.priority)
     : isTask
     ? "bg-primary/70"
-    : "bg-amber-500/60";
+    : "bg-warning-vivid/60";
 
   return (
     <button
       type="button"
       onClick={() => onPress?.(item)}
-      className="w-full flex items-start gap-3 px-3 py-3 rounded-[8px] text-left bg-card shadow-e2 transition-all active:shadow-engraved"
+      className="w-full flex items-start gap-3 px-3 py-3 rounded-card text-left bg-card shadow-e2 transition-all active:shadow-engraved"
     >
       {/* Accent Bar */}
       <div className={`w-1.5 h-12 rounded-full ${accentColor}`} />
@@ -43,10 +43,10 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
           <span className="text-sm font-semibold truncate">{item.title}</span>
 
           <span
-            className={`text-[10px] px-2 py-[2px] rounded-full font-medium shrink-0 ${
+            className={`text-2xs px-2 py-[2px] rounded-full font-medium shrink-0 ${
               isTask
                 ? "bg-primary/10 text-primary"
-                : "bg-amber-500/10 text-amber-700"
+                : "bg-warning-vivid/10 text-warning-foreground"
             }`}
           >
             {isTask ? "Task" : "Reminder"}
@@ -61,7 +61,7 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
 
         {/* Property + Space */}
         {(item.propertyName || item.spaceName) && (
-          <div className="mt-1 text-[11px] text-muted-foreground flex flex-wrap gap-2">
+          <div className="mt-1 text-caption text-muted-foreground flex flex-wrap gap-2">
             {item.propertyName && <span>{item.propertyName}</span>}
             {item.spaceName && <span>• {item.spaceName}</span>}
           </div>
@@ -78,11 +78,11 @@ export const ScheduleItemCard: React.FC<ScheduleItemCardProps> = ({
 function priorityToColor(priority: string) {
   switch (priority) {
     case "urgent":
-      return "bg-red-500/70";
+      return "bg-destructive/70";
     case "high":
-      return "bg-orange-500/70";
+      return "bg-accent/70";
     case "medium":
-      return "bg-yellow-500/70";
+      return "bg-warning-vivid/70";
     case "low":
       return "bg-slate-400/60";
     default:

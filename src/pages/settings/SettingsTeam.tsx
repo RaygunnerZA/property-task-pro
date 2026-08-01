@@ -120,7 +120,7 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
       {/* Name row */}
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">First name</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">First name</Label>
           <Input
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
@@ -129,7 +129,7 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last name</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last name</Label>
           <Input
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
@@ -141,7 +141,7 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
 
       {/* Email */}
       <div className="space-y-1">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email address</Label>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email address</Label>
         <Input
           type="email"
           value={email}
@@ -153,20 +153,20 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
 
       {/* Role */}
       <div className="space-y-1">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</Label>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</Label>
         <Select value={role} onValueChange={setRole}>
           <SelectTrigger className="h-9 text-sm shadow-engraved">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <div className="px-2 py-1 text-[10px] font-mono uppercase text-muted-foreground tracking-wider">Internal</div>
+            <div className="px-2 py-1 text-2xs font-mono uppercase text-muted-foreground tracking-wider">Internal</div>
             {INTERNAL_ORG_ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>
                 {r.label}
                 <span className="ml-2 text-xs text-muted-foreground">{r.description}</span>
               </SelectItem>
             ))}
-            <div className="px-2 py-1 text-[10px] font-mono uppercase text-muted-foreground tracking-wider border-t mt-1 pt-2">External</div>
+            <div className="px-2 py-1 text-2xs font-mono uppercase text-muted-foreground tracking-wider border-t mt-1 pt-2">External</div>
             {EXTERNAL_ORG_ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>
                 {r.label}
@@ -180,7 +180,7 @@ function EditMemberPanel({ member, propertyOptions, onSave, onClose }: EditMembe
       {/* Property access */}
       {propertyOptions.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Property access</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Property access</Label>
           <label className="flex items-center gap-2 cursor-pointer text-sm">
             <input
               type="checkbox"
@@ -260,17 +260,17 @@ function EditInvitePanel({ invite, propertyOptions, onSave, onClose }: EditInvit
   return (
     <div className="mt-2 rounded-[10px] border border-primary/20 bg-primary/5 p-3 space-y-3 shadow-sm">
       <div className="space-y-1">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</Label>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</Label>
         <Select value={role} onValueChange={setRole}>
           <SelectTrigger className="h-9 text-sm shadow-engraved">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <div className="px-2 py-1 text-[10px] font-mono uppercase text-muted-foreground tracking-wider">Internal</div>
+            <div className="px-2 py-1 text-2xs font-mono uppercase text-muted-foreground tracking-wider">Internal</div>
             {INTERNAL_ORG_ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
             ))}
-            <div className="px-2 py-1 text-[10px] font-mono uppercase text-muted-foreground tracking-wider border-t mt-1 pt-2">External</div>
+            <div className="px-2 py-1 text-2xs font-mono uppercase text-muted-foreground tracking-wider border-t mt-1 pt-2">External</div>
             {EXTERNAL_ORG_ROLES.map((r) => (
               <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
             ))}
@@ -280,7 +280,7 @@ function EditInvitePanel({ invite, propertyOptions, onSave, onClose }: EditInvit
 
       {propertyOptions.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Property access</Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Property access</Label>
           <label className="flex items-center gap-2 cursor-pointer text-sm">
             <input
               type="checkbox"
@@ -388,7 +388,7 @@ function RoleBadge({ role }: { role: string }) {
     <Badge
       variant={isOwner ? "default" : isManager ? "secondary" : "outline"}
       className={cn(
-        "w-fit shrink-0 text-[11px] font-mono uppercase",
+        "w-fit shrink-0 text-caption font-mono uppercase",
         isOwner && "bg-primary text-primary-foreground",
         isManager && "bg-secondary text-secondary-foreground",
         isExternal && "border-accent/40 text-accent"
@@ -634,7 +634,7 @@ export default function SettingsTeam() {
       {/* Tab bar */}
       <div>
         <WorkspaceSectionHeading>Team workspace</WorkspaceSectionHeading>
-        <WorkspaceTabList className="mt-2 max-sm:[&_button]:px-2 max-sm:[&_button]:text-[11px]">
+        <WorkspaceTabList className="mt-2 max-sm:[&_button]:px-2 max-sm:[&_button]:text-caption">
           <WorkspaceTabTrigger selected={teamTab === "members"} onClick={() => setTeamTab("members")}>
             Team members
           </WorkspaceTabTrigger>
@@ -691,7 +691,7 @@ export default function SettingsTeam() {
                               {member.email || `${member.user_id.slice(0, 8)}…`}
                             </p>
                             {assignedPropCount > 0 && (
-                              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                              <p className="text-caption text-muted-foreground/70 mt-0.5">
                                 {assignedPropCount} propert{assignedPropCount === 1 ? "y" : "ies"} assigned
                               </p>
                             )}
@@ -708,7 +708,7 @@ export default function SettingsTeam() {
                             onClick={() => setEditMemberId(isEditing ? null : member.id)}
                             title={isEditing ? "Close" : "Edit member"}
                             className={cn(
-                              "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                              "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                               "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                               isEditing && "bg-primary/10 text-primary"
                             )}
@@ -722,7 +722,7 @@ export default function SettingsTeam() {
                               type="button"
                               onClick={() => setDeleteMemberId(member.id)}
                               title="Remove member"
-                              className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -809,7 +809,7 @@ export default function SettingsTeam() {
                                     : "All properties"}
                                 </span>
                               </div>
-                              <p className="text-[11px] text-muted-foreground/70 mt-1">
+                              <p className="text-caption text-muted-foreground/70 mt-1">
                                 Sent {new Date(invite.created_at).toLocaleString()}
                                 {invite.accepted_at ? ` · Accepted ${new Date(invite.accepted_at).toLocaleString()}` : ""}
                               </p>
@@ -822,7 +822,7 @@ export default function SettingsTeam() {
                           <Badge
                             variant={statusBadgeVariant[invite.status]}
                             className={cn(
-                              "w-fit text-[11px] font-mono uppercase",
+                              "w-fit text-caption font-mono uppercase",
                               invite.status === "accepted" && "bg-primary text-primary-foreground"
                             )}
                           >
@@ -841,7 +841,7 @@ export default function SettingsTeam() {
                                 }}
                                 title="Edit invitation"
                                 className={cn(
-                                  "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                                  "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                                   "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                                   isEditing && "bg-primary/10 text-primary"
                                 )}
@@ -868,7 +868,7 @@ export default function SettingsTeam() {
                                     setActionBusyId(null);
                                   }
                                 }}
-                                className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+                                className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
                               >
                                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                               </button>
@@ -890,7 +890,7 @@ export default function SettingsTeam() {
                                   setActionBusyId(null);
                                 }
                               }}
-                              className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
+                              className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
                             >
                               <KeyRound className="h-4 w-4" />
                             </button>
@@ -905,7 +905,7 @@ export default function SettingsTeam() {
                                 setEditInviteId(null);
                               }}
                               className={cn(
-                                "h-8 w-8 rounded-[8px] flex items-center justify-center transition-colors",
+                                "h-8 w-8 rounded-card flex items-center justify-center transition-colors",
                                 "text-muted-foreground hover:text-foreground hover:bg-muted/60",
                                 isSettingPw && "bg-primary/10 text-primary"
                               )}
@@ -933,7 +933,7 @@ export default function SettingsTeam() {
                                     setActionBusyId(null);
                                   }
                                 }}
-                                className="h-8 w-8 rounded-[8px] flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                                className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                               >
                                 <Ban className="h-4 w-4" />
                               </button>
@@ -988,7 +988,7 @@ export default function SettingsTeam() {
           <WorkspaceSurfaceCard title="Internal roles" className="bg-card/80">
             <div className="space-y-3 px-4 pb-4">
               {INTERNAL_ORG_ROLES.map((r) => (
-                <div key={r.value} className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
+                <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5 shrink-0 text-primary" />
                     <span className="text-sm font-medium">{r.label}</span>
@@ -1002,7 +1002,7 @@ export default function SettingsTeam() {
           <WorkspaceSurfaceCard title="External roles" className="bg-card/80">
             <div className="space-y-3 px-4 pb-4">
               {EXTERNAL_ORG_ROLES.map((r) => (
-                <div key={r.value} className="rounded-[8px] border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
+                <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Shield className="h-3.5 w-3.5 shrink-0 text-accent" />
                     <span className="text-sm font-medium">{r.label}</span>

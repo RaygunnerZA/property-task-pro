@@ -344,7 +344,7 @@ export function WhoSection({
             const m = members.find((x) => x.user_id === userId);
             return m ? (
               <div key={userId} className="flex items-center justify-between gap-2 group">
-                <span className="text-[11px] font-mono uppercase truncate flex-1">
+                <span className="text-caption font-mono uppercase truncate flex-1">
                   {m.display_name}
                 </span>
                 <button
@@ -361,7 +361,7 @@ export function WhoSection({
         <button
           type="button"
           onClick={() => handleAddPersonFromDropdown(teamId)}
-          className="mt-2 w-full py-1.5 px-2 rounded-[6px] text-[11px] font-mono uppercase bg-muted/50 hover:bg-muted transition-colors"
+          className="mt-2 w-full py-1.5 px-2 rounded-[6px] text-caption font-mono uppercase bg-muted/50 hover:bg-muted transition-colors"
         >
           {ADD_PERSON_LABEL.toUpperCase()}
         </button>
@@ -375,14 +375,14 @@ export function WhoSection({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "flex flex-col rounded-[8px] transition-all duration-200",
+        "flex flex-col rounded-card transition-all duration-200",
         embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
     >
       <div className="flex items-center gap-1 h-[33px] min-w-0">
         {!embedded ? (
-        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-card bg-background">
           <User className="h-4 w-4 text-muted-foreground" />
         </div>
         ) : null}
@@ -484,8 +484,8 @@ export function WhoSection({
               }}
               placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
               className={cn(
-                "h-[28px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
-                "font-mono text-[11px] uppercase tracking-wide",
+                "h-[28px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
+                "font-mono text-caption uppercase tracking-wider",
                 "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                 "shadow-inset outline-none cursor-text",
                 "transition-[width] duration-150 ease-out"
@@ -526,7 +526,7 @@ export function WhoSection({
         </div>
 
         {hasUnresolved && !isActive && (
-          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500 border border-background" />
+          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-warning-vivid border border-background" />
         )}
       </div>
 
@@ -568,8 +568,8 @@ export function WhoSection({
                 }}
                 placeholder={`Add person to ${secondaryRowTeamName}`}
                 className={cn(
-                  "h-[28px] rounded-[8px] px-2 py-1 shrink-0",
-                  "font-mono text-[11px] uppercase tracking-wide",
+                  "h-[28px] rounded-card px-2 py-1 shrink-0",
+                  "font-mono text-caption uppercase tracking-wider",
                   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                   "shadow-inset outline-none cursor-text",
                   "transition-[width] duration-150 ease-out"

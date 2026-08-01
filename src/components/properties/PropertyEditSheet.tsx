@@ -183,7 +183,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 text-[11px] text-muted-foreground"
+                    className="h-7 gap-1 text-caption text-muted-foreground"
                     onClick={() => {
                       setPropertyImage(null);
                       setImagePreview(null);
@@ -260,7 +260,7 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
           {onArchive ? (
             <button
               type="button"
-              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-[#EB6834]"
+              className="text-caption font-medium text-muted-foreground transition-colors hover:text-accent"
               onClick={() => {
                 onOpenChange(false);
                 onArchive();

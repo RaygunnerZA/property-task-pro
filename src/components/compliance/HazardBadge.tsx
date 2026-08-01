@@ -16,7 +16,7 @@ export function HazardBadge({ hazard, size = "sm", className }: HazardBadgeProps
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded px-1.5 font-medium",
-        size === "sm" ? "text-[10px] py-0.5" : "text-xs py-1",
+        size === "sm" ? "text-2xs py-0.5" : "text-xs py-1",
         "bg-muted/50",
         colorClass,
         className

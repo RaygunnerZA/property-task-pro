@@ -67,9 +67,9 @@ const CATEGORY_COLORS: Record<ChecklistTemplateCategory, string> = {
 };
 
 const CATEGORY_BG: Record<ChecklistTemplateCategory, string> = {
-  compliance: "bg-[#8EC9CE]/10 text-[#5aa3a9]",
-  maintenance: "bg-amber-100 text-amber-700",
-  security: "bg-[#EB6834]/10 text-[#EB6834]",
+  compliance: "bg-primary/10 text-primary-deep",
+  maintenance: "bg-warning/50 text-warning-foreground",
+  security: "bg-accent/10 text-accent",
   operations: "bg-purple-100 text-purple-600",
 };
 
@@ -139,7 +139,7 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
         }
       }}
       className={`group relative rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-[2px] px-5 py-4 flex flex-col gap-3 cursor-pointer text-left w-full ${
-        isVirtual ? "bg-[#8EC9CE]/5" : "bg-card"
+        isVirtual ? "bg-primary/5" : "bg-card"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -148,7 +148,7 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
             {name}
           </p>
           {isVirtual && (
-            <p className="text-[11px] text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
+            <p className="text-caption text-muted-foreground/60 mt-0.5 line-clamp-2 leading-relaxed">
               {entry.preset.description}
             </p>
           )}
@@ -178,7 +178,7 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={onArchive}
-              className="gap-2 text-sm cursor-pointer text-[#EB6834] focus:text-[#EB6834] focus:bg-[#EB6834]/10"
+              className="gap-2 text-sm cursor-pointer text-accent focus:text-accent focus:bg-accent/10"
             >
               <Archive className="h-3.5 w-3.5" />
               Archive
@@ -190,27 +190,27 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
 
       <div className="flex items-center gap-2 flex-wrap">
         {isStarter && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-[#8EC9CE]/10 text-[#5aa3a9]">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-primary/10 text-primary-deep">
             <Sparkles className="h-3 w-3" aria-hidden />
             Starting template
           </span>
         )}
         {showRegulatedBadge && <RegulatedAreaBadge />}
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide ${CATEGORY_BG[category]}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider ${CATEGORY_BG[category]}`}
         >
           {category}
         </span>
-        <span className="text-[11px] text-muted-foreground/60">
+        <span className="text-caption text-muted-foreground/60">
           {itemCount} {itemCount === 1 ? "item" : "items"}
         </span>
         {hasYesNo && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50" title="Contains yes/no items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/50" title="Contains yes/no items">
             <CheckSquare className="h-3 w-3" />
           </span>
         )}
         {hasSig && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/50" title="Contains signature items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/50" title="Contains signature items">
             <FileSignature className="h-3 w-3" />
           </span>
         )}
@@ -546,13 +546,13 @@ export default function ManageTemplates() {
         onClick={() => setPresetBrowserOpen(true)}
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground bg-card shadow-sm hover:shadow-md hover:-translate-y-[1px] transition-all active:scale-[0.98]"
       >
-        <Sparkles className="h-4 w-4 text-[#8EC9CE]" />
+        <Sparkles className="h-4 w-4 text-primary" />
         Starting Templates
       </button>
       <button
         type="button"
         onClick={openCreate}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#8EC9CE] hover:brightness-105 transition-all shadow-md active:scale-[0.98]"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-primary-foreground bg-primary hover:brightness-105 transition-all shadow-md active:scale-[0.98]"
       >
         <Plus className="h-4 w-4" />
         New

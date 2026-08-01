@@ -111,7 +111,7 @@ export function WorkbenchGradientHeader({
       >
         <div
           className={cn(
-            "grid w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-[12px] pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-0 sm:pr-40",
+            "grid w-full min-w-0 auto-rows-min items-start gap-2 rounded-bl-xl pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-0 sm:pr-40",
             "grid-cols-1",
             "sm:grid-cols-workbench-dual",
             "layout:grid-cols-workbench-triple"

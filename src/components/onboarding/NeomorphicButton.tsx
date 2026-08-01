@@ -11,17 +11,15 @@ export function NeomorphicButton({
   children,
   className = "",
   disabled,
-  style: styleProp,
   ...rest
 }: NeomorphicButtonProps) {
-  const baseStyles = "w-full px-6 py-3 rounded-[5px] font-medium transition-all duration-150 ease-out relative";
+  const baseStyles =
+    "w-full px-6 py-3 rounded-sharp font-medium transition-[transform,box-shadow,background-color,color] duration-150 ease-out relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
   const variantStyles = {
-    primary: cn(
-      "text-white",
-      !disabled && "neo-surface",
-      "disabled:opacity-100 disabled:cursor-not-allowed"
-    ),
+    primary: disabled
+      ? "bg-primary/70 text-primary-foreground/70 shadow-inset cursor-not-allowed"
+      : "bg-primary text-primary-foreground shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed",
     secondary: cn(
       "bg-transparent text-foreground",
       !disabled && "neo-surface-light",
@@ -34,29 +32,9 @@ export function NeomorphicButton({
     ),
   };
 
-  const variantShadows = {
-    primary: disabled
-      ? `inset 1px 1px 2px rgba(0,0,0,0.12), inset -1px -1px 2px rgba(255,255,255,0.35)`
-      : `3px 5px 5px 2px rgba(0,0,0,0.13),
-         -3px -3px 5px 0px rgba(255,255,255,0.48),
-         inset 1px 1px 2px 0px rgba(255,255,255,0.5),
-         inset -1px -2px 2px 0px rgba(0,0,0,0.27)`,
-
-    secondary: disabled
-      ? `inset 1px 1px 3px rgba(0,0,0,0.15), inset -1px -1px 3px rgba(255,255,255,0.28)`
-      : `-2px -2px 4px rgba(255,255,255,0.55), 2px 2px 4px rgba(0,0,0,0.1)`,
-
-    ghost: "none",
-  };
-
   return (
     <button
       className={cn(baseStyles, variantStyles[variant], className)}
-      style={{
-        boxShadow: variantShadows[variant],
-        backgroundColor: variant === "primary" ? "#85BABC" : undefined,
-        ...styleProp,
-      }}
       disabled={disabled}
       {...rest}
     >

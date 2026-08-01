@@ -301,7 +301,7 @@ export function InflowPanel({
             {recentSignals.length === 0 ? (
               <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
                 <p className="text-xs font-medium text-foreground/90">{FOUND_SIGNALS_SECTION.emptyTitle}</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-caption leading-relaxed text-muted-foreground">
                   {FOUND_SIGNALS_SECTION.emptyDescription}
                 </p>
               </div>
@@ -362,7 +362,7 @@ export function InflowPanel({
             {recordsToOrganise.length === 0 ? (
               <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
                 <p className="text-xs font-medium text-foreground/90">{RECORDS_TO_ORGANISE_SECTION.emptyTitle}</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-caption leading-relaxed text-muted-foreground">
                   {RECORDS_TO_ORGANISE_SECTION.emptyDescription}
                 </p>
               </div>

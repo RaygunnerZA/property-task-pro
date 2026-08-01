@@ -64,8 +64,8 @@ function Slider({
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="font-mono text-[10px] text-ink">{value}</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="font-mono text-2xs text-ink">{value}</span>
       </div>
       <input 
         type="range" 
@@ -156,8 +156,8 @@ export function CardSandbox() {
               <div className="flex gap-3">
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-mono uppercase">Task</span>
-                    <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-[10px] font-mono uppercase">High</span>
+                    <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-2xs font-mono uppercase">Task</span>
+                    <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-2xs font-mono uppercase">High</span>
                   </div>
                   <h4 className="font-display font-semibold text-ink">Sample Task Card</h4>
                   <p className="text-sm text-muted-foreground line-clamp-2">
@@ -182,7 +182,7 @@ export function CardSandbox() {
           {/* CSS Output */}
           <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button onClick={reset} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="Reset">
                   <RotateCcw className="w-4 h-4 text-white/60" />
@@ -198,7 +198,7 @@ export function CardSandbox() {
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">
@@ -214,10 +214,10 @@ export function CardSandbox() {
         <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
           {/* Background */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Background</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Background</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.backgroundColor}
@@ -232,12 +232,12 @@ export function CardSandbox() {
 
           {/* Border */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Border</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Border</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Radius" value={config.borderRadius} min={0} max={32} onChange={v => update('borderRadius', v)} />
               <Slider label="Width" value={config.borderWidth} min={0} max={4} onChange={v => update('borderWidth', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.borderColor}
@@ -252,14 +252,14 @@ export function CardSandbox() {
 
           {/* Outer Shadow */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Outer Shadow</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Outer Shadow</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="X Offset" value={config.shadowOffsetX} min={-20} max={20} onChange={v => update('shadowOffsetX', v)} />
               <Slider label="Y Offset" value={config.shadowOffsetY} min={-20} max={20} onChange={v => update('shadowOffsetY', v)} />
               <Slider label="Blur" value={config.shadowBlur} min={0} max={40} onChange={v => update('shadowBlur', v)} />
               <Slider label="Spread" value={config.shadowSpread} min={-10} max={10} onChange={v => update('shadowSpread', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.shadowColor}
@@ -273,13 +273,13 @@ export function CardSandbox() {
 
           {/* Inset Shadow */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Inset Shadow (Highlight)</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Inset Shadow (Highlight)</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="X Offset" value={config.insetShadowOffsetX} min={-20} max={20} onChange={v => update('insetShadowOffsetX', v)} />
               <Slider label="Y Offset" value={config.insetShadowOffsetY} min={-20} max={20} onChange={v => update('insetShadowOffsetY', v)} />
               <Slider label="Blur" value={config.insetShadowBlur} min={0} max={20} onChange={v => update('insetShadowBlur', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.insetShadowColor}

@@ -44,7 +44,7 @@ export function HeaderAccountMenu({
             "relative flex h-9 w-9 shrink-0 items-center justify-center outline-none transition-shadow",
             onGradient
               ? gradientHeaderControlClassName("overflow-hidden p-0.5")
-              : "rounded-[12px] bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              : "rounded-xl bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           aria-label="Open account menu"
         >
@@ -75,7 +75,7 @@ export function HeaderAccountMenu({
             </p>
           )}
           {organisation?.name && (
-            <p className="truncate text-[11px] text-muted-foreground/90 pt-0.5">{organisation.name}</p>
+            <p className="truncate text-caption text-muted-foreground/90 pt-0.5">{organisation.name}</p>
           )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

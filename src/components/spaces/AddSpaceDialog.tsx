@@ -262,7 +262,7 @@ export function AddSpaceDialog({
           disabled={loading || !name.trim() || !propertyId || (!initialPropertyId && properties.length === 0)}
           className="flex-1"
         >
-          {loading ? "Creating..." : "Create Space"}
+          {loading ? "Creating…" : "Create Space"}
         </Button>
       </div>
     </div>

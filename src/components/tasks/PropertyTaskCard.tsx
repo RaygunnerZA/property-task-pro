@@ -65,7 +65,7 @@ export const PropertyTaskCard: React.FC<PropertyTaskCardProps> = ({ task, onClic
             {formatTaskDate(task.dueDate instanceof Date ? task.dueDate.toISOString() : task.dueDate)}
           </Text>
           {task.isOverdue && (
-            <span className="flex items-center gap-1 text-red-600">
+            <span className="flex items-center gap-1 text-destructive">
               <AlertCircle className="w-3 h-3" />
               <span className="text-xs font-medium">Overdue</span>
             </span>

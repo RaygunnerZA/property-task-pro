@@ -509,7 +509,7 @@ export function PropertySpaceGroupCarousel({
       <Dialog open={!!renameModal} onOpenChange={(open) => !open && setRenameModal(null)}>
         <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="text-base font-mono uppercase tracking-wide">
+            <DialogTitle className="text-base font-mono uppercase tracking-wider">
               Rename space
             </DialogTitle>
           </DialogHeader>
@@ -523,7 +523,7 @@ export function PropertySpaceGroupCarousel({
                 void confirmRename();
               }
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono uppercase tracking-wide outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono uppercase tracking-wider outline-none focus:ring-2 focus:ring-ring"
             autoFocus
           />
           <DialogFooter className="gap-2 sm:gap-0">
@@ -534,7 +534,6 @@ export function PropertySpaceGroupCarousel({
               variant="primary"
               onClick={() => void confirmRename()}
               disabled={!renameInput.trim() || busy}
-              style={{ backgroundColor: "#8EC9CE" }}
             >
               Save
             </NeomorphicButton>
@@ -545,7 +544,7 @@ export function PropertySpaceGroupCarousel({
       <Dialog open={!!copyModal} onOpenChange={(open) => !open && setCopyModal(null)}>
         <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
           <DialogHeader>
-            <DialogTitle className="text-base font-mono uppercase tracking-wide">
+            <DialogTitle className="text-base font-mono uppercase tracking-wider">
               New space name
             </DialogTitle>
           </DialogHeader>
@@ -559,7 +558,7 @@ export function PropertySpaceGroupCarousel({
                 void confirmCopy();
               }
             }}
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono uppercase tracking-wide outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono uppercase tracking-wider outline-none focus:ring-2 focus:ring-ring"
             autoFocus
           />
           <DialogFooter className="gap-2 sm:gap-0">
@@ -570,7 +569,6 @@ export function PropertySpaceGroupCarousel({
               variant="primary"
               onClick={() => void confirmCopy()}
               disabled={!copyInput.trim() || busy}
-              style={{ backgroundColor: "#8EC9CE" }}
             >
               Add
             </NeomorphicButton>

@@ -6,7 +6,7 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 
 const severityStyles: Record<string, string> = {
   high: "bg-destructive/12 text-destructive",
-  medium: "bg-amber-500/12 text-amber-800 dark:text-amber-300",
+  medium: "bg-warning-vivid/12 text-warning-foreground dark:text-amber-300",
   low: "bg-muted text-muted-foreground",
 };
 
@@ -21,7 +21,7 @@ export function PropertyDriftSummary({ propertyId }: PropertyDriftSummaryProps) 
   return (
     <div className="rounded-lg p-4 shadow-e1 bg-card">
       <div className="flex items-start gap-2">
-        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" aria-hidden />
+        <AlertTriangle className="h-4 w-4 text-warning-foreground shrink-0 mt-0.5" aria-hidden />
         <div className="min-w-0 flex-1">
           <PanelSectionTitle as="h3">Compliance drift</PanelSectionTitle>
           <p className="text-xs text-muted-foreground mt-1 mb-3">
@@ -46,7 +46,7 @@ export function PropertyDriftSummary({ propertyId }: PropertyDriftSummaryProps) 
               <p className="text-sm text-foreground leading-snug min-w-0">{item.ruleTitle}</p>
               <span
                 className={cn(
-                  "shrink-0 rounded-[6px] px-1.5 py-0.5 text-[10px] font-mono uppercase",
+                  "shrink-0 rounded-[6px] px-1.5 py-0.5 text-2xs font-mono uppercase",
                   severityStyles[item.severity] ?? severityStyles.low
                 )}
               >

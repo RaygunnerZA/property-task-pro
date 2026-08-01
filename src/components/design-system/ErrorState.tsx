@@ -27,18 +27,20 @@ export function ErrorState({
   onRetry
 }: ErrorStateProps) {
   return (
-    <Card className={cn("shadow-e1", className)}>
+    <Card className={className} role="alert">
       <CardContent className="pt-6">
         <div className="flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div className="flex-1">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 shadow-engraved">
+            <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
+          </div>
+          <div className="flex-1 min-w-0">
             <p className="text-destructive font-medium">Error</p>
-            <p className="text-sm text-muted-foreground mt-1">{message}</p>
+            <p className="text-sm text-muted-foreground mt-1 break-words">{message}</p>
           </div>
           {onRetry && (
             <button
               onClick={onRetry}
-              className="text-sm text-primary hover:text-primary/80 font-medium"
+              className="rounded-sharp px-2 py-1 text-sm font-medium text-primary-deep transition-colors duration-150 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               Retry
             </button>

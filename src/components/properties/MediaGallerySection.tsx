@@ -92,7 +92,7 @@ export function MediaGallerySection({
           {isUploadingImage ? (
             <>
               <Upload className="h-4 w-4 mr-2 animate-pulse" />
-              Uploading...
+              Uploading…
             </>
           ) : (
             <>
@@ -127,7 +127,7 @@ export function MediaGallerySection({
           {isUploadingImage ? (
             <>
               <Upload className="h-4 w-4 mr-2 animate-pulse" />
-              Uploading...
+              Uploading…
             </>
           ) : (
             <>

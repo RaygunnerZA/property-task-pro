@@ -42,7 +42,7 @@ import {
 
 /** Issues workbench “Open work” — same meta treatment as Recent signals (JetBrains Mono 10 / 600, caps). */
 const WORKBENCH_TASK_META_CLASS =
-  "text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
+  "text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground leading-snug line-clamp-1";
 
 
 // Property Icon Chip Component - shows property icon on property color background
@@ -56,7 +56,7 @@ function PropertyIconChip({ property }: { property: any }) {
   
   return (
     <div
-      className="inline-flex items-center justify-center rounded-[8px] border-0 flex-shrink-0"
+      className="inline-flex items-center justify-center rounded-card border-0 flex-shrink-0"
       style={{
         backgroundColor: iconColor,
         width: '24px',
@@ -286,8 +286,8 @@ function TaskCardComponent({
     const normalizedPriority = priority?.toLowerCase();
     if (normalizedPriority === 'low') return 'bg-transparent'; // Don't show for low
     if (normalizedPriority === 'normal' || normalizedPriority === 'medium') return 'bg-transparent'; // Don't show for normal/medium
-    if (normalizedPriority === 'high') return 'bg-[#FFB84D]'; // Lighter yellow-orange
-    if (normalizedPriority === 'urgent') return 'bg-red-500'; // Red
+    if (normalizedPriority === 'high') return 'bg-warning-vivid';
+    if (normalizedPriority === 'urgent') return 'bg-destructive';
     return 'bg-transparent'; // Default: transparent
   };
 
@@ -317,9 +317,9 @@ function TaskCardComponent({
    *  !absolute/!z-20 beat the paper-texture rule `div[class*="bg-card"] > *`
    *  (index.css) which forces direct card children to relative/z-1. */
   const completionOverlay = isConfirmingComplete ? (
-    <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-[12px] bg-white/60">
+    <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-card bg-card/60">
       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-md animate-complete-pop">
-        <Check className="h-5 w-5 text-white" strokeWidth={3} aria-hidden />
+        <Check className="h-5 w-5 text-primary-foreground" strokeWidth={3} aria-hidden />
       </span>
     </div>
   ) : null;
@@ -343,11 +343,11 @@ function TaskCardComponent({
     dueUrgency != null ? (
       <span
         className={cn(
-          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
-          "font-mono text-[11px] font-medium uppercase tracking-normal leading-none shadow-sm",
+          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-sharp px-2",
+          "font-mono text-caption font-medium uppercase tracking-wider leading-none shadow-sm",
           dueUrgency === "overdue"
-            ? "bg-destructive/90 text-white"
-            : "bg-amber-500/90 text-white"
+            ? "bg-destructive/90 text-destructive-foreground"
+            : "bg-warning-vivid/90 text-foreground"
         )}
       >
         {taskDueUrgencyLabel(dueUrgency)}
@@ -362,17 +362,19 @@ function TaskCardComponent({
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
         {dueUrgencyChip}
         {showDoneButton && !metaCompact ? (
-          <div
-            className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer z-10"
+          <button
+            type="button"
+            aria-label="Mark task done"
+            className="absolute bottom-2 right-2 z-10 cursor-pointer rounded-[6px] opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [@media(pointer:coarse)]:opacity-100"
             onClick={(e) => {
               e.stopPropagation();
               handleDone();
             }}
           >
-            <Badge className="text-[10px] px-2 h-[24px] bg-success text-success-foreground border-0">
+            <Badge className="text-2xs px-2 h-[24px] bg-success text-success-foreground border-0">
               DONE
             </Badge>
-          </div>
+          </button>
         ) : null}
       </TaskCardMediaZone>
     );
@@ -381,11 +383,11 @@ function TaskCardComponent({
       <div 
         className={cn(
           "task-card-horizontal",
-          "rounded-[12px] bg-[rgba(255,255,255,0.6)]",
+          "rounded-card bg-card/60",
           "shadow-e1",
-          "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+          "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
           "overflow-hidden flex flex-row min-h-[80px] relative group",
-          isSelected && "bg-white shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
+          isSelected && "bg-card shadow-e3"
         )}
         onClick={onClick}
       >
@@ -404,21 +406,21 @@ function TaskCardComponent({
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
           {/* Theme/Category */}
           {!metaCompact && themes.length > 0 && (
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">
               {themes[0].name}
             </div>
           )}
           
           {/* Task Title */}
           <div className="flex justify-start items-center gap-2 min-h-[44px] flex-wrap">
-            <h3 className="text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
+            <h3 className="text-base font-medium text-foreground line-clamp-2 leading-tight">
               {t.title}
             </h3>
             {educationChipLabel ? (
               <Badge
                 variant="neutral"
                 size="sm"
-                className="h-[20px] shrink-0 border-0 bg-[#8EC9CE]/15 px-1.5 text-[9px] font-mono font-semibold uppercase tracking-wide text-[#5a9ea3]"
+                className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wider text-primary-deep"
               >
                 {educationChipLabel}
               </Badge>
@@ -451,18 +453,18 @@ function TaskCardComponent({
             ) : (
               <>
                 {spaces.length > 0 && (
-                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+                  <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
                     {spaces[0].name}
                   </Badge>
                 )}
                 {t.due_at && (
-                  <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] flex items-center gap-1 font-mono h-[24px]">
+                  <Badge variant="neutral" size="sm" className="text-2xs px-[5px] flex items-center gap-1 font-mono h-[24px]">
                     <Clock className="h-3 w-3" />
                     {formatTaskDate(t.due_at)}
                   </Badge>
                 )}
                 {teams.length > 0 && teams.map((team: any) => (
-                  <Badge key={team.id} variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+                  <Badge key={team.id} variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
                     {team.name}
                   </Badge>
                 ))}
@@ -489,11 +491,11 @@ function TaskCardComponent({
     <div 
       className={cn(
         "task-card-vertical h-[290px] w-full min-w-0",
-        "rounded-[12px] bg-card/60",
+        "rounded-card bg-card/60",
         "shadow-e1",
-        "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
+        "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
         "overflow-hidden flex flex-col relative group",
-        isSelected && "bg-white/60 shadow-[0_8px_30px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.1)]"
+        isSelected && "bg-card shadow-e3"
       )}
       onClick={onClick}
     >
@@ -503,7 +505,7 @@ function TaskCardComponent({
         {showPriorityDot ? (
           <div
             className={cn(
-              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-[8px] z-10 flex items-center justify-center",
+              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-card z-10 flex items-center justify-center",
               priorityColor
             )}
             style={{
@@ -512,13 +514,13 @@ function TaskCardComponent({
             }}
           >
             {isUrgentPriority ? (
-              <span className="text-white text-[13px] font-bold leading-none">!</span>
+              <span className="text-white text-sm font-bold leading-none">!</span>
             ) : null}
           </div>
         ) : null}
         {!metaCompact && themes.length > 0 ? (
           <div className="absolute bottom-2 left-2 z-10">
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[24px]">
+            <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
               {themes[0].name}
             </Badge>
           </div>
@@ -527,19 +529,19 @@ function TaskCardComponent({
 
       {/* Content */}
       <div className="flex flex-1 flex-col px-[12px] pt-[12px] pb-[12px] min-h-0">
-        <h3 className="pb-[5px] text-[16px] font-medium text-foreground line-clamp-2 leading-tight">
+        <h3 className="pb-[5px] text-base font-medium text-foreground line-clamp-2 leading-tight">
           {t.title}
         </h3>
 
         {locationLine ? (
-          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate">{locationLine}</span>
           </p>
         ) : null}
 
         {dueFormattedLabel ? (
-          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-muted-foreground">
             <Calendar className="h-3 w-3 shrink-0" aria-hidden />
             <span className="truncate">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
           </p>
@@ -547,11 +549,11 @@ function TaskCardComponent({
 
         <div className="relative mt-auto min-h-[32px] pt-3">
           {/* Default footer — relative due + assignee */}
-          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none">
+          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none">
             {dueRelativeLabel ? (
               <span
                 className={cn(
-                  "min-w-0 truncate text-[11px]",
+                  "min-w-0 truncate text-caption",
                   dueUrgency === "overdue" ? "text-destructive" : "text-muted-foreground"
                 )}
               >
@@ -572,7 +574,7 @@ function TaskCardComponent({
           </div>
 
           {/* Hover — CTA buttons */}
-          <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto">
+          <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
             <button
               type="button"
               className={issuesSignalReviewButtonClassName}
@@ -613,7 +615,7 @@ function TaskCardComponent({
               align="end"
               side="top"
               sideOffset={4}
-              className="min-w-[8rem] rounded-[8px] border-border/60 bg-card p-1 shadow-md"
+              className="min-w-[8rem] rounded-card border-border/60 bg-card p-1 shadow-md"
               onClick={(e) => e.stopPropagation()}
             >
               {showDoneButton ? (

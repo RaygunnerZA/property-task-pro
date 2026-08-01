@@ -73,7 +73,7 @@ function WeekStripRow({
 }) {
   const weekDays = useMemo(() => buildWeekDays(weekStart), [weekStart]);
   const daySizeClass = isEmbedded ? "h-7 w-7" : "h-[30px] w-[30px]";
-  const dayTextClass = isEmbedded ? "text-[11px]" : "text-[13px]";
+  const dayTextClass = isEmbedded ? "text-caption" : "text-sm";
 
   return (
     <div className="w-full shrink-0">
@@ -85,7 +85,7 @@ function WeekStripRow({
               key={format(date, "yyyy-MM-dd-dow")}
               className={cn(
                 "min-w-0 flex-1 text-center font-mono font-medium uppercase",
-                isEmbedded ? "text-[0.65rem]" : "text-[10px]",
+                isEmbedded ? "text-[0.65rem]" : "text-2xs",
                 isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
               )}
             >
@@ -111,7 +111,7 @@ function WeekStripRow({
                 type="button"
                 onClick={() => onDateSelect?.(date)}
                 className={cn(
-                  "relative flex flex-col items-center justify-center rounded-[8px] font-mono font-medium transition-colors",
+                  "relative flex flex-col items-center justify-center rounded-card font-mono font-medium transition-colors",
                   daySizeClass,
                   isWeekend && !isSelected && "text-muted-foreground/50"
                 )}
@@ -479,7 +479,7 @@ export function FillaMiniCalendar({
         }}
         className={cn(
           propClassName,
-          "relative font-mono rounded-[8px]",
+          "relative font-mono rounded-card",
           isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]"
         )}
         style={{
@@ -489,7 +489,7 @@ export function FillaMiniCalendar({
       >
         <span
           className={cn(
-            isEmbedded ? "text-[11px]" : "text-[13px]",
+            isEmbedded ? "text-caption" : "text-sm",
             "font-medium",
             isTodayDate && !isSelected && "font-semibold"
           )}
@@ -558,7 +558,7 @@ export function FillaMiniCalendar({
                   head_cell: cn(
                     "flex-1 text-center font-mono font-medium uppercase text-foreground",
                     "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-                    isEmbedded ? "text-[0.65rem]" : "text-[11px]"
+                    isEmbedded ? "text-[0.65rem]" : "text-caption"
                   ),
                   row: "flex w-full justify-between mt-0.5",
                   tbody: cn(
@@ -571,7 +571,7 @@ export function FillaMiniCalendar({
                     isEmbedded ? "h-[30px]" : "h-[28px]"
                   ),
                   day: cn(
-                    "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
+                    "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
                     isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
                   ),
                   day_selected: "",
@@ -686,7 +686,7 @@ export function FillaMiniCalendar({
             head_cell: cn(
               "flex-1 text-center font-mono font-medium uppercase text-foreground",
               "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-              isEmbedded ? "text-[0.65rem]" : "text-[11px]"
+              isEmbedded ? "text-[0.65rem]" : "text-caption"
             ),
             row: "flex w-full justify-between mt-0.5",
             tbody: cn(
@@ -699,7 +699,7 @@ export function FillaMiniCalendar({
               isEmbedded ? "h-[30px]" : "h-[28px]"
             ),
             day: cn(
-              "relative flex flex-col items-center justify-center rounded-[5px] font-medium transition-colors",
+              "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
               isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
             ),
             day_selected: "",

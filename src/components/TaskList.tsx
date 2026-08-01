@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import SkeletonTaskCard from "./SkeletonTaskCard";
-import EmptyState from "./EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 import TaskCard from "./TaskCard";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 

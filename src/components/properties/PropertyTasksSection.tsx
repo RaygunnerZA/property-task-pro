@@ -4,7 +4,6 @@ import { ArrowRight, Filter, AlertTriangle, CircleDot, CalendarClock } from "luc
 import TaskCard from "@/components/TaskCard";
 import { Button } from "@/components/ui/button";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
-import EmptyState from "@/components/EmptyState";
 import { FilterChip } from "@/components/chips/filter";
 
 interface PropertyTasksSectionProps {
@@ -219,7 +218,7 @@ export function PropertyTasksSection({
         onClick={handleViewAll}
         className="w-full justify-between text-muted-foreground hover:text-foreground"
       >
-        <span className="font-mono text-[11px] uppercase tracking-wider">
+        <span className="font-mono text-caption uppercase tracking-wider">
           View all property tasks
         </span>
         <ArrowRight className="h-4 w-4" />

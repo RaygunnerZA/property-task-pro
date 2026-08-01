@@ -26,7 +26,7 @@ export default function VendorTaskDetail() {
         icon={<CheckSquare className="h-6 w-6" />}
         maxWidth="lg"
       >
-        <LoadingState message="Loading task..." />
+        <LoadingState message="Loading task…" />
       </StandardPageWithBack>
     );
   }

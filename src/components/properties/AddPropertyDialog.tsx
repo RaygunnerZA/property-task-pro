@@ -322,7 +322,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
                   disabled={loading}
                   className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
                 >
-                  <X className="w-4 h-4 text-gray-600" />
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
             ) : (
@@ -366,7 +366,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: AddProperty
             onClick={handleSave}
             disabled={loading || (!address.trim() && !nickname.trim())}
           >
-            {loading ? "Creating..." : "Create Property"}
+            {loading ? "Creating…" : "Create Property"}
           </Button>
         </DialogFooter>
       </DialogContent>

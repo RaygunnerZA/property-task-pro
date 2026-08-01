@@ -22,7 +22,7 @@ export function SpaceGroupIdentityCard({
 }: SpaceGroupIdentityCardProps) {
   return (
     <div className="sticky top-0 z-10 bg-background border-b border-border">
-      <div className="bg-card/60 rounded-[8px] overflow-hidden shadow-e1 my-4 mx-2">
+      <div className="bg-card/60 rounded-card overflow-hidden shadow-e1 my-4 mx-2">
         {/* Placeholder Image */}
         <div
           className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50"

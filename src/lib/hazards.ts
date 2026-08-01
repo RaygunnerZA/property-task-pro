@@ -43,12 +43,12 @@ export const HAZARD_ICONS: Record<HazardCategory, string> = {
 
 export const HAZARD_COLORS: Record<HazardCategory, string> = {
   fire: "text-destructive",
-  electrical: "text-amber-600",
-  slip: "text-amber-600",
+  electrical: "text-warning-foreground",
+  slip: "text-warning-foreground",
   water: "text-blue-600",
-  structural: "text-orange-600",
-  obstruction: "text-amber-600",
-  hygiene: "text-teal-600",
+  structural: "text-accent",
+  obstruction: "text-warning-foreground",
+  hygiene: "text-primary-deep",
   ventilation: "text-sky-600",
   unknown: "text-muted-foreground",
 };

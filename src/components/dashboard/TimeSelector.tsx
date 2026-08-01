@@ -259,11 +259,11 @@ export function TimeSelector({
                         zIndex: 1,
                       }}
                     >
-                      <span className="text-[10px] font-medium uppercase tracking-wide pb-[2px]">
+                      <span className="text-2xs font-medium uppercase tracking-wider pb-[2px]">
                         H
                       </span>
                       <span className="relative flex items-center justify-center w-[30px] h-[30px] rounded-full">
-                        <span className="relative z-10 text-sm font-mono font-normal text-[#2A293E]">
+                        <span className="relative z-10 text-sm font-mono font-normal text-ink">
                           {h.toString().padStart(2, "0")}
                         </span>
                       </span>
@@ -354,11 +354,11 @@ export function TimeSelector({
                         zIndex: 1,
                       }}
                     >
-                      <span className="text-[10px] font-medium uppercase tracking-wide pb-[2px]">
+                      <span className="text-2xs font-medium uppercase tracking-wider pb-[2px]">
                         M
                       </span>
                       <span className="relative flex items-center justify-center w-[30px] h-[30px] rounded-full">
-                        <span className="relative z-10 text-sm font-mono font-normal text-[#2A293E]">
+                        <span className="relative z-10 text-sm font-mono font-normal text-ink">
                           {m.toString().padStart(2, "0")}
                         </span>
                       </span>

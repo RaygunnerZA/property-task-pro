@@ -112,7 +112,7 @@ export default function SpaceOrganisationScreen() {
     <>
       <PageHeader>
         <div
-          className="flex h-[60px] items-center rounded-bl-[12px] px-4 pr-20 py-2"
+          className="flex h-[60px] items-center rounded-bl-xl px-4 pr-20 py-2"
           style={{
             backgroundImage: `linear-gradient(90deg, ${headerAccent} 0%, ${headerAccent} 28%, transparent 97%, transparent 100%)`,
           }}
@@ -145,12 +145,12 @@ export default function SpaceOrganisationScreen() {
             <span className="font-semibold text-foreground">{spacesWithIssuesCount}</span> with open
             tasks
           </li>
-          <li className="text-[10px] pt-1">
+          <li className="text-2xs pt-1">
             Groups: Circulation, Habitable / Working, Service — use the work column to open each.
           </li>
         </ul>
       </WorkspaceSurfaceCard>
-      <div className="flex flex-col overflow-hidden rounded-[12px] bg-card/60 shadow-e1">
+      <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
         <PropertySpacesList
           propertyId={propertyId}
           tasks={tasks}
@@ -203,9 +203,8 @@ export default function SpaceOrganisationScreen() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <div
-              className="p-2.5 rounded-xl"
+              className="p-2.5 rounded-xl bg-primary"
               style={{
-                backgroundColor: "#8EC9CE",
                 boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
               }}
             >

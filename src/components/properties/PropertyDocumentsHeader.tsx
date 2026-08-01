@@ -61,7 +61,7 @@ export function PropertyDocumentsHeader({
         </div>
       </div>
       {missingCount > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-warning/10 border border-warning/20">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-card bg-warning/10 border border-warning/20">
           <SemanticChip epistemic="fact" label={`${missingCount} important documents missing`} color="hsl(var(--warning))" />
         </div>
       )}

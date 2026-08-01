@@ -88,7 +88,7 @@ const ManagerDashboard = () => {
         icon={<LayoutDashboard className="h-6 w-6" />}
         maxWidth="xl"
       >
-        <LoadingState message="Loading dashboard..." />
+        <LoadingState message="Loading dashboard…" />
       </StandardPage>
     );
   }

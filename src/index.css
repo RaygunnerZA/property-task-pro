@@ -27,20 +27,29 @@
     --gutter-pane: 1.25rem;
     --gutter-rail: 0.75rem;
 
+    /* Motion tokens — feedback 120ms, state change 200ms, panels/modals 320ms.
+       Enter = ease-out, exit = ease-in, in-place change = ease-in-out. */
+    --duration-fast: 120ms;
+    --duration-default: 200ms;
+    --duration-slow: 320ms;
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
     /* Core Background & Foreground */
     --background: 40 20% 94%;      /* #F1EEE8 - Warm beige */
     --foreground: 248 15% 18%;     /* #2A293E - Dark ink */
 
-    /* Surface Colors */
-    --card: 0 0% 100%;               /* Pure white #ffffff for cards */
+    /* Surface Colors — warm paper, never pure white (Docs 04 §4.1) */
+    --card: 40 20% 98%;              /* #FBFAF8 - Warm paper card */
     --card-foreground: 248 15% 18%; /* Ink text */
 
-    --popover: 0 0% 100%;
+    --popover: 40 20% 98%;
     --popover-foreground: 248 15% 18%;
 
-    /* Primary - Teal */
+    /* Primary - Teal. Ink foreground: white on #8EC9CE fails WCAG AA (~1.8:1), ink passes (~7.7:1) */
     --primary: 185 40% 68%;          /* #8EC9CE rgb(142,201,206) */
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 248 15% 18%;
     --primary-deep: 182 23% 56%;     /* #71AEB3 - Darker teal */
 
     /* Secondary - Light paper tone */
@@ -62,9 +71,11 @@
 
     --success: 145 62% 85%;          /* Light green */
     --success-foreground: 145 70% 25%;
+    --success-vivid: 142 71% 45%;    /* Solid green - status dots / confirmations */
 
     --warning: 43 100% 85%;          /* Light yellow */
     --warning-foreground: 43 100% 35%;
+    --warning-vivid: 36 100% 65%;    /* #FFB84D - high priority / due-soon */
 
     --signal: 30 100% 91%;           /* Warm orange signal */
     --signal-foreground: 16 83% 56%;
@@ -166,9 +177,11 @@
 
     --success: 145 62% 50%;
     --success-foreground: 0 0% 100%;
+    --success-vivid: 142 71% 45%;
 
     --warning: 43 100% 60%;
     --warning-foreground: 248 15% 12%;
+    --warning-vivid: 36 100% 60%;
 
     --signal: 30 100% 70%;
     --signal-foreground: 248 15% 12%;
@@ -306,6 +319,17 @@
   .font-mono {
     font-family: 'JetBrains Mono', 'Menlo', 'Monaco', monospace;
   }
+
+  /* Balanced headings — avoid orphaned last words on titles */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  /* Numerals in stats/tables align when Inter Tight renders digits */
+  [data-stat],
+  .stat-value {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @layer utilities {
@@ -393,6 +417,7 @@
     position: relative;
     z-index: 1;
     font-family: 'JetBrains Mono', Menlo, Monaco, monospace;
+    font-variant-numeric: tabular-nums;
     font-weight: 800;
     font-size: clamp(1.5rem, 4vw, 2.25rem);
     color: hsl(var(--foreground));
@@ -612,6 +637,16 @@
     opacity: 1;
     transition: opacity 180ms ease-out;
   }
+
+  .neo-surface-light:focus-visible {
+    outline: none;
+    box-shadow:
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.12),
+      3px 3px 6px 0px rgba(255, 255, 255, 1),
+      inset -2px -2px 3px 0px rgba(0, 0, 0, 0.08),
+      inset 2px 2px 3px 0px rgba(255, 255, 255, 0.8),
+      0 0 0 2px hsl(var(--primary) / 0.6);
+  }
   
   /* Paper texture utility class - can be applied to any element */
   .bg-paper-texture {
@@ -749,6 +784,43 @@
     }
   }
   
+  /* ── List enter / stagger ─────────────────────────────────────────────────
+     Apply `.list-stagger` to a list container: direct children fade-slide in
+     with a small cascading delay (capped at 12 items so long lists don't lag).
+     Continuity, not spectacle — 6px travel, 200ms, ease-out. */
+  @keyframes list-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .list-stagger > * {
+    animation: list-enter var(--duration-default) var(--ease-out) both;
+  }
+
+  .list-stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .list-stagger > *:nth-child(2) { animation-delay: 30ms; }
+  .list-stagger > *:nth-child(3) { animation-delay: 60ms; }
+  .list-stagger > *:nth-child(4) { animation-delay: 90ms; }
+  .list-stagger > *:nth-child(5) { animation-delay: 120ms; }
+  .list-stagger > *:nth-child(6) { animation-delay: 150ms; }
+  .list-stagger > *:nth-child(7) { animation-delay: 180ms; }
+  .list-stagger > *:nth-child(8) { animation-delay: 210ms; }
+  .list-stagger > *:nth-child(9) { animation-delay: 240ms; }
+  .list-stagger > *:nth-child(10) { animation-delay: 270ms; }
+  .list-stagger > *:nth-child(11) { animation-delay: 300ms; }
+  .list-stagger > *:nth-child(n+12) { animation-delay: 330ms; }
+
+  /* Panel/tab continuity — content fades in with a soft rise */
+  .panel-enter {
+    animation: list-enter var(--duration-slow) var(--ease-out) both;
+  }
+
   /* Gradient mask for scroll indicators */
   .mask-gradient-right {
     mask-image: linear-gradient(to right, black 90%, transparent 100%);

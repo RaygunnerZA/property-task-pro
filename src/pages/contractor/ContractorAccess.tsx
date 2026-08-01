@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import EmptyState from "@/components/EmptyState";
+import { EmptyState } from "@/components/design-system/EmptyState";
 
 /**
  * Contractor Access Page
@@ -62,7 +62,7 @@ export default function ContractorAccess() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <LoadingState message="Validating access token..." />
+        <LoadingState message="Validating access token…" />
       </div>
     );
   }

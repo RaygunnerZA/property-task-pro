@@ -72,13 +72,13 @@ export const AddressAutocompleteInput = forwardRef<
             {label && (
               <label
                 htmlFor={id}
-                className="block text-sm font-medium text-[#6D7480] mb-2 text-center"
+                className="block text-sm font-medium text-muted-foreground mb-2 text-center"
               >
                 {label}
               </label>
             )}
             {host}
-            {error && <p className="mt-2 text-sm text-[#FF6B6B]">{error}</p>}
+            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </div>
         );
       }

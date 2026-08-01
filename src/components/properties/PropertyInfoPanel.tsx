@@ -232,7 +232,7 @@ export function PropertyInfoPanel({ propertyId }: PropertyInfoPanelProps) {
   };
 
   if (detailsLoading || legalLoading || utilitiesLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading property information...</div>;
+    return <div className="p-4 text-sm text-muted-foreground">Loading property information…</div>;
   }
 
   return (

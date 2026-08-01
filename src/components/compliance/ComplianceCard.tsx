@@ -54,9 +54,9 @@ export function ComplianceCard({
       };
     } else if (expiryStatus === "expiring") {
       return {
-        color: "text-amber-600",
-        bgColor: "bg-amber-50",
-        borderColor: "border-amber-200",
+        color: "text-warning-foreground",
+        bgColor: "bg-warning/30",
+        borderColor: "border-warning",
         icon: Clock,
         label: "Expiring Soon",
       };
@@ -83,7 +83,7 @@ export function ComplianceCard({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card shadow-e1",
+        "rounded-card bg-card shadow-e1",
         "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150",
         "overflow-hidden flex flex-row min-h-[80px] relative group",
         "border border-border/50"
@@ -94,7 +94,7 @@ export function ComplianceCard({
         className={cn(
           "w-1 flex-shrink-0",
           expiryStatus === "expired" && "bg-destructive",
-          expiryStatus === "expiring" && "bg-amber-500",
+          expiryStatus === "expiring" && "bg-warning-vivid",
           expiryStatus !== "expired" && expiryStatus !== "expiring" && "bg-success"
         )}
       />
@@ -108,7 +108,7 @@ export function ComplianceCard({
           </h3>
           <div
             className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded-[5px] text-xs font-medium flex-shrink-0",
+              "flex items-center gap-1.5 px-2 py-1 rounded-sharp text-xs font-medium flex-shrink-0",
               statusConfig.bgColor,
               statusConfig.color,
               statusConfig.borderColor,

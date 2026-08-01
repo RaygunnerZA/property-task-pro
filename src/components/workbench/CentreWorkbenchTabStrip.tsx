@@ -46,9 +46,9 @@ export function CentreWorkbenchTabStrip({
             aria-selected={isActive}
             onClick={() => onTabChange(tabId)}
             className={cn(
-              "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-[12px] px-2 py-2 transition-all duration-200",
+              "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-xl px-2 py-2 transition-all duration-200",
               "hover:scale-[1.01] active:scale-[0.99]",
-              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-0 md:rounded-t-[12px] md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
+              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-0 md:rounded-t-xl md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
               isActive && "bg-white/50"
             )}
           >
@@ -80,7 +80,7 @@ export function CentreWorkbenchTabStrip({
             <span
               className={cn(
                 "min-w-0 truncate font-semibold tracking-tight",
-                "text-[13px] leading-tight",
+                "text-sm leading-tight",
                 "md:w-[100px] md:overflow-visible md:whitespace-normal md:text-center md:text-xl md:leading-none",
                 isActive ? "text-foreground" : "text-primary"
               )}

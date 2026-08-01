@@ -24,8 +24,8 @@ export function StatusBanner() {
   const config = {
     offline: {
       message: "Offline — reconnecting…",
-      bg: "bg-amber-50 dark:bg-amber-950/20",
-      border: "border-amber-200 dark:border-amber-800",
+      bg: "bg-warning/30 dark:bg-amber-950/20",
+      border: "border-warning dark:border-amber-800",
       text: "text-amber-900 dark:text-amber-200",
       icon: WifiOff,
       showRetry: false,
@@ -40,8 +40,8 @@ export function StatusBanner() {
     },
     critical: {
       message: "Trying to restore connection",
-      bg: "bg-red-50 dark:bg-red-950/20",
-      border: "border-red-200 dark:border-red-800",
+      bg: "bg-destructive/10 dark:bg-red-950/20",
+      border: "border-destructive/30 dark:border-red-800",
       text: "text-red-900 dark:text-red-200",
       icon: RefreshCw,
       showRetry: true,
@@ -75,7 +75,7 @@ export function StatusBanner() {
             "hover:bg-black/10 dark:hover:bg-white/10"
           )}
         >
-          {isReconnecting ? "Retrying..." : "Retry"}
+          {isReconnecting ? "Retrying…" : "Retry"}
         </Button>
       )}
     </div>

@@ -178,7 +178,7 @@ export function WorkbenchFiltersPopover({
           >
             <Funnel className="h-[18px] w-[18px]" style={{ color: iconColor }} />
             {activeFilterCount > 0 ? (
-              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[10px] font-semibold text-white">
+              <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-2xs font-semibold text-primary-foreground">
                 {activeFilterCount}
               </span>
             ) : null}
@@ -200,7 +200,7 @@ export function WorkbenchFiltersPopover({
             {activeFilterCount > 0 ? (
               <span
                 className={cn(
-                  "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-semibold",
+                  "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-caption font-semibold",
                   variant !== "gradient" && "bg-primary/15 text-primary"
                 )}
                 style={
@@ -363,7 +363,7 @@ export function WorkbenchFiltersPopover({
           <Button
             type="button"
             size="sm"
-            className="rounded-lg bg-[#2A293E] px-4 text-white hover:bg-[#2A293E]/90"
+            className="rounded-lg bg-ink px-4 text-white hover:bg-ink/90"
             onClick={() => {
               applyFilterDraft();
               setFiltersOpen(false);

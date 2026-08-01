@@ -48,7 +48,7 @@ export function ContextSummaryCard({
   const isCompact = variant === "compact";
 
   const shellClassName = cn(
-    "rounded-[12px] overflow-hidden min-h-[100px] max-h-[150px] flex pl-0",
+    "rounded-xl overflow-hidden min-h-[100px] max-h-[150px] flex pl-0",
     isCompact
       ? "box-content flex-row h-[150px] shadow-[1.3px_2px_4px_0px_rgba(0,0,0,0.15),inset_2px_2px_2px_0px_rgba(255,255,255,1)]"
       : "flex-col shadow-e1",

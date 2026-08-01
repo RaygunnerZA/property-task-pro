@@ -29,9 +29,9 @@ const FILTER_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: stri
 ];
 
 const CATEGORY_BG: Record<ChecklistTemplateCategory, string> = {
-  compliance: "bg-[#8EC9CE]/10 text-[#5aa3a9]",
-  maintenance: "bg-amber-100 text-amber-700",
-  security: "bg-[#EB6834]/10 text-[#EB6834]",
+  compliance: "bg-primary/10 text-primary-deep",
+  maintenance: "bg-warning/50 text-warning-foreground",
+  security: "bg-accent/10 text-accent",
   operations: "bg-purple-100 text-purple-600",
 };
 
@@ -68,7 +68,7 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
       className={cn(
         "group relative rounded-2xl px-4 py-3.5 flex flex-col gap-2 transition-all duration-200 cursor-pointer text-left w-full",
         isAdded
-          ? "bg-[#8EC9CE]/8 shadow-sm"
+          ? "bg-primary/8 shadow-sm"
           : "bg-card shadow-md hover:shadow-lg hover:-translate-y-[1px]"
       )}
     >
@@ -78,7 +78,7 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
           <p className="font-semibold text-sm text-foreground leading-snug">
             {preset.name}
           </p>
-          <p className="text-[11px] text-muted-foreground/60 mt-0.5 leading-relaxed">
+          <p className="text-caption text-muted-foreground/60 mt-0.5 leading-relaxed">
             {preset.description}
           </p>
         </div>
@@ -95,12 +95,12 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
           }}
           disabled={isAdding}
           className={cn(
-            "shrink-0 mt-0.5 h-7 rounded-lg px-2.5 text-[11px] font-semibold transition-all duration-150",
+            "shrink-0 mt-0.5 h-7 rounded-lg px-2.5 text-caption font-semibold transition-all duration-150",
             isAdded
-              ? "bg-[#8EC9CE]/20 text-[#5aa3a9] hover:bg-[#8EC9CE]/30"
+              ? "bg-primary/20 text-primary-deep hover:bg-primary/30"
               : isAdding
                 ? "bg-muted text-muted-foreground cursor-wait"
-                : "bg-[#8EC9CE] text-white shadow-sm hover:brightness-105 active:scale-[0.97]"
+                : "bg-primary text-primary-foreground shadow-sm hover:brightness-105 active:scale-[0.97]"
           )}
         >
           {isAdded ? "Open" : isAdding ? "Adding…" : "Add"}
@@ -109,26 +109,26 @@ function PresetCard({ preset, isAdded, isAdding, onAdd, onOpen }: PresetCardProp
 
       {/* Meta row */}
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide bg-[#8EC9CE]/10 text-[#5aa3a9]">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-primary/10 text-primary-deep">
           Starting template
         </span>
         {isRegulatedStarterPreset(preset) && <RegulatedAreaBadge />}
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-mono uppercase tracking-wide ${CATEGORY_BG[preset.category]}`}
+          className={`inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider ${CATEGORY_BG[preset.category]}`}
         >
           {preset.category}
         </span>
-        <span className="text-[11px] text-muted-foreground/50">
+        <span className="text-caption text-muted-foreground/50">
           {preset.items.length} items
         </span>
         {yesNoCount > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40" title="Contains yes/no items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/40" title="Contains yes/no items">
             <CheckSquare className="h-3 w-3" />
             {yesNoCount}
           </span>
         )}
         {sigCount > 0 && (
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/40" title="Contains signature items">
+          <span className="inline-flex items-center gap-1 text-2xs text-muted-foreground/40" title="Contains signature items">
             <FileSignature className="h-3 w-3" />
             {sigCount}
           </span>
@@ -201,7 +201,7 @@ export function PresetPreviewDialog({
           {isAdded ? (
             <Button
               type="button"
-              className="bg-[#8EC9CE] text-white hover:brightness-105"
+              className="bg-primary text-primary-foreground hover:brightness-105"
               onClick={() => {
                 onOpenLibrary?.(preset);
                 onClose();
@@ -212,7 +212,7 @@ export function PresetPreviewDialog({
           ) : (
             <Button
               type="button"
-              className="bg-[#8EC9CE] text-white hover:brightness-105"
+              className="bg-primary text-primary-foreground hover:brightness-105"
               disabled={isAdding}
               onClick={() => onAdd(preset)}
             >
@@ -273,7 +273,7 @@ export function PresetBrowser({
         {/* Header */}
         <SheetHeader className="px-5 pt-5 pb-0 shrink-0">
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="h-4 w-4 text-[#8EC9CE]" />
+            <Sparkles className="h-4 w-4 text-primary" />
             <SheetTitle className="text-base font-semibold">Starting Templates</SheetTitle>
           </div>
           <p className="text-xs text-muted-foreground/70 leading-relaxed">

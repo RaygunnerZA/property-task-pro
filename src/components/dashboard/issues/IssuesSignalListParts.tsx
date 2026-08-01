@@ -9,7 +9,7 @@ const confidenceConfig: Record<
   { label: string; filledBars: number; barColor: string }
 > = {
   low: { label: "Low confidence", filledBars: 1, barColor: "bg-destructive/80" },
-  medium: { label: "Medium confidence", filledBars: 2, barColor: "bg-amber-500/85" },
+  medium: { label: "Medium confidence", filledBars: 2, barColor: "bg-warning-vivid/85" },
   high: { label: "High confidence", filledBars: 3, barColor: "bg-primary/80" },
 };
 
@@ -21,7 +21,7 @@ export function SignalConfidenceIndicator({ level }: { level: SignalConfidenceLe
       title={config.label}
       aria-label={config.label}
     >
-      <span className="text-[10px] leading-none text-muted-foreground whitespace-nowrap">{config.label}</span>
+      <span className="text-2xs leading-none text-muted-foreground whitespace-nowrap">{config.label}</span>
       <div className="flex h-3 items-center gap-0.5">
         {Array.from({ length: 4 }).map((_, i) => (
           <span
@@ -38,7 +38,7 @@ export function SignalConfidenceIndicator({ level }: { level: SignalConfidenceLe
 }
 
 const categoryVariantClass: Record<SignalCategoryVariant, string> = {
-  maintenance: "bg-primary/30 text-[#0d9488]",
+  maintenance: "bg-primary/30 text-primary-deep",
   inspection: "bg-violet-500/15 text-violet-700",
   tenant: "bg-destructive/12 text-destructive",
   default: "bg-muted/60 text-muted-foreground",
@@ -54,7 +54,7 @@ export function SignalCategoryTag({
   return (
     <span
       className={cn(
-        "inline-flex h-6 shrink-0 items-center justify-center rounded-[5px] px-2.5 font-mono text-[11px] font-medium",
+        "inline-flex h-6 shrink-0 items-center justify-center rounded-sharp px-2.5 font-mono text-caption font-medium",
         categoryVariantClass[variant]
       )}
     >
@@ -64,23 +64,23 @@ export function SignalCategoryTag({
 }
 
 /** Shared 8px corner radius + height for Issues signal row controls. */
-const issuesSignalControlRadius = "rounded-[8px]";
+const issuesSignalControlRadius = "rounded-card";
 
 /** Secondary actions (View / Dismiss) on signal rows. */
 export const issuesSignalSecondaryButtonClassName = cn(
   "inline-flex h-7 shrink-0 items-center justify-center border border-border/60 bg-[rgb(237,235,232)]",
   issuesSignalControlRadius,
-  "px-3 text-[11px] font-medium text-foreground",
+  "px-3 text-caption font-medium text-foreground",
   "shadow-[1px_2px_3px_0px_rgba(0,0,0,0.15),-1px_-2px_3px_0px_rgba(255,255,255,0.7),0px_1px_2px_0px_rgba(0,0,0,0.05)]",
   "transition-colors hover:bg-muted/40"
 );
 
 /** Primary Review CTA — teal. */
 export const issuesSignalReviewButtonClassName = cn(
-  "inline-flex h-7 shrink-0 items-center justify-center border-0 bg-[#8DC9CE]",
+  "inline-flex h-7 shrink-0 items-center justify-center border-0 bg-primary",
   issuesSignalControlRadius,
-  "px-3 text-[11px] font-semibold text-white",
-  "shadow-primary-btn transition-all hover:bg-[#85BABC] active:shadow-btn-pressed"
+  "px-3 text-caption font-semibold text-white",
+  "shadow-primary-btn transition-all hover:bg-primary active:shadow-btn-pressed"
 );
 
 /** Overflow (⋯) control — same footprint as row buttons. */

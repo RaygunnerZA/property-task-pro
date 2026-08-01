@@ -47,14 +47,14 @@ export default function ResetPasswordPage() {
             required
           />
 
-          {error && <div className="text-red-500 text-sm">{error}</div>}
+          {error && <div className="text-destructive text-sm">{error}</div>}
 
-          <button type="submit" className="px-4 py-2 bg-primary text-white rounded">
+          <button type="submit" className="px-4 py-2 bg-primary text-primary-foreground rounded">
             Update password
           </button>
         </form>
       ) : (
-        <div className="text-green-600 text-sm">
+        <div className="text-success-foreground text-sm">
           Password updated. Redirecting…
         </div>
       )}

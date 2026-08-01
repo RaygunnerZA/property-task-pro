@@ -86,7 +86,7 @@ interface OperationalStreamCardProps {
 
 const accentClassMap: Record<CardAccent, string> = {
   red: "bg-destructive/70",
-  amber: "bg-amber-500/80",
+  amber: "bg-warning-vivid/80",
   green: "bg-emerald-500/80",
   slate: "bg-slate-400/80",
   teal: "bg-primary/80",
@@ -97,11 +97,11 @@ const emphasisShellMap: Record<StreamCardEmphasis, string> = {
     "rounded-xl bg-card/50 shadow-sm hover:shadow-md px-2.5 py-2 transition-all duration-\[180ms\]",
   standard: "rounded-xl bg-card/60 shadow-e1 hover:shadow-e2 px-3 py-2.5 transition-all duration-\[140ms\]",
   elevated:
-    "rounded-xl bg-card/85 shadow-md hover:shadow-lg px-3 py-2.5 ring-1 ring-[#8EC9CE]/22 transition-all duration-\[180ms\]",
+    "rounded-xl bg-card/85 shadow-md hover:shadow-lg px-3 py-2.5 ring-1 ring-primary/22 transition-all duration-\[180ms\]",
 };
 
 const inlineMinorLinkClass = cn(
-  "text-[11px] font-medium text-muted-foreground underline-offset-2",
+  "text-caption font-medium text-muted-foreground underline-offset-2",
   "hover:text-foreground hover:underline bg-transparent border-0 p-0 cursor-pointer shrink-0"
 );
 
@@ -110,7 +110,7 @@ const issuesDismissOrIgnoreLinkClassName = inlineMinorLinkClass;
 
 /** Issues signal cards — matches Recent “EMAIL FROM … • DATE” meta (JetBrains Mono 10 / 600, caps). */
 export const ISSUES_STREAM_META_CLASSNAME =
-  "text-[10px] font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-snug line-clamp-1";
+  "text-2xs font-mono font-semibold uppercase tracking-wider text-muted-foreground leading-snug line-clamp-1";
 
 function streamActionButtonClass(actionId: string, actionLabel?: string) {
   const id = actionId.toLowerCase();
@@ -134,7 +134,7 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
     return intakeAddRecordMicroClassName;
   }
   return cn(
-    "inline-flex items-center justify-center rounded-[8px] border-0 px-2 py-1 text-[11px] font-semibold text-foreground",
+    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold text-foreground",
     "bg-background shadow-e1 transition-all hover:shadow-md"
   );
 }
@@ -218,7 +218,7 @@ function IssuesUrgentCard({
         {thumbnailUrl ? (
           <IssuesStreamThumbnail url={thumbnailUrl} alt={title} className="mt-0.5" />
         ) : (
-          <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+          <div className="mt-0.5 h-7 w-7 rounded-card bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
             {icon}
           </div>
         )}
@@ -262,7 +262,7 @@ function IssuesUrgentCard({
           ) : null}
         </div>
         {imageUrl ? (
-          <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+          <div className="h-14 w-20 rounded-card bg-muted/40 overflow-hidden shadow-e1 shrink-0">
             <img src={imageUrl} alt="" className="h-full w-full object-cover" />
           </div>
         ) : null}
@@ -410,7 +410,7 @@ export function OperationalStreamCard({
         <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent])} />
 
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+          <div className="mt-0.5 h-7 w-7 rounded-card bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
             {icon}
           </div>
 
@@ -428,7 +428,7 @@ export function OperationalStreamCard({
             </p>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-muted-foreground shadow-sm">
+              <span className="inline-flex rounded-md bg-muted/70 px-2 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
                 {footChip}
               </span>
               {actions.length > 0 && (
@@ -440,7 +440,7 @@ export function OperationalStreamCard({
           </div>
 
           {imageUrl && (
-            <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+            <div className="h-14 w-20 rounded-card bg-muted/40 overflow-hidden shadow-e1 shrink-0">
               <img src={imageUrl} alt="" className="h-full w-full object-cover" />
             </div>
           )}
@@ -473,25 +473,25 @@ export function OperationalStreamCard({
       <div className={cn("absolute left-0 top-0 h-full w-1", accentClassMap[accent])} />
 
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 h-7 w-7 rounded-[8px] bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
+        <div className="mt-0.5 h-7 w-7 rounded-card bg-muted/60 shadow-e1 flex items-center justify-center shrink-0">
           {icon}
         </div>
 
         <div className="min-w-0 flex-1">
           {typeChip && (
-            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
+            <span className="mb-1 inline-block rounded-md bg-muted/70 px-1.5 py-0.5 font-mono text-2xs font-bold uppercase tracking-wider text-muted-foreground shadow-sm">
               {typeChip}
             </span>
           )}
           {reviewBanner && (
-            <p className="mb-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-[#0d9488]">
+            <p className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-wider text-primary-deep">
               {reviewBanner}
             </p>
           )}
           <p className="text-sm font-semibold text-foreground truncate">{title}</p>
           <p className="text-xs text-muted-foreground truncate">{context}</p>
           {whyHere && (
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+            <p className="mt-1 text-caption leading-snug text-muted-foreground">
               <span className="font-medium text-foreground/80">Why this is here:</span> {whyHere}
             </p>
           )}
@@ -500,26 +500,26 @@ export function OperationalStreamCard({
               {labels.map((label) => (
                 <span
                   key={label}
-                  className="rounded-full bg-muted/55 px-2 py-0.5 text-[10px] font-medium leading-tight text-muted-foreground shadow-sm"
+                  className="rounded-full bg-muted/55 px-2 py-0.5 text-2xs font-medium leading-tight text-muted-foreground shadow-sm"
                 >
                   {label}
                 </span>
               ))}
             </div>
           )}
-          {hint && <p className="text-[11px] text-muted-foreground mt-1 truncate">{hint}</p>}
+          {hint && <p className="text-caption text-muted-foreground mt-1 truncate">{hint}</p>}
 
           {(description || statusText || actions.length > 0) && (
             <div className={cn(footerVisible, actionsVisibility !== "always" && "overflow-hidden")}>
               {description && <p className="text-xs text-foreground/90 mb-1.5">{description}</p>}
-              {statusText && <p className="text-[11px] text-muted-foreground mb-2">{statusText}</p>}
+              {statusText && <p className="text-caption text-muted-foreground mb-2">{statusText}</p>}
               {actions.length > 0 && <ActionRow actions={actions} />}
             </div>
           )}
         </div>
 
         {imageUrl && (
-          <div className="h-14 w-20 rounded-[8px] bg-muted/40 overflow-hidden shadow-e1 shrink-0">
+          <div className="h-14 w-20 rounded-card bg-muted/40 overflow-hidden shadow-e1 shrink-0">
             <img src={imageUrl} alt="" className="h-full w-full object-cover" />
           </div>
         )}

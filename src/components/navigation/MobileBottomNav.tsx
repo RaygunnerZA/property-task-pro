@@ -80,7 +80,7 @@ export function MobileBottomNav() {
           aria-label="More"
         >
           <Icon className="h-6 w-6 text-muted-foreground icon-shadow-neu-pressed" />
-          <span className="text-[10px] font-semibold leading-none tracking-tight text-muted-foreground">
+          <span className="text-2xs font-semibold leading-none tracking-tight text-muted-foreground">
             {label}
           </span>
         </button>
@@ -103,13 +103,13 @@ export function MobileBottomNav() {
         <Icon
           className={cn(
             "h-6 w-6 icon-shadow-neu-pressed transition-colors",
-            isActive ? "text-[#3A4A6A]" : "text-muted-foreground"
+            isActive ? "text-ink" : "text-muted-foreground"
           )}
         />
         <span
           className={cn(
-            "text-[10px] font-semibold leading-none tracking-tight transition-colors",
-            isActive ? "text-[#3A4A6A]" : "text-muted-foreground"
+            "text-2xs font-semibold leading-none tracking-tight transition-colors",
+            isActive ? "text-ink" : "text-muted-foreground"
           )}
         >
           {label}

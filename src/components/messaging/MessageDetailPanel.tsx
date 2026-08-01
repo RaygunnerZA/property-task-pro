@@ -284,7 +284,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
                       className={cn(
                         "rounded-lg p-3 max-w-[85%]",
                         isOwnMessage
-                          ? "bg-primary text-white ml-auto"
+                          ? "bg-primary text-primary-foreground ml-auto"
                           : "bg-muted text-foreground"
                       )}
                     >

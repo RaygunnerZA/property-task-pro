@@ -280,7 +280,7 @@ export function PropertySelectorStack({
           <PopoverContent
             align="start"
             sideOffset={8}
-            className="w-[min(92vw,380px)] overflow-hidden rounded-[12px] p-0 shadow-e1"
+            className="w-[min(92vw,380px)] overflow-hidden rounded-xl p-0 shadow-e1"
           >
             {propertyListPanel}
           </PopoverContent>
@@ -293,7 +293,7 @@ export function PropertySelectorStack({
   return (
     <TooltipProvider delayDuration={200}>
       <div className={cn("w-full min-w-0 max-w-full", className)}>
-        <div className="overflow-hidden rounded-[12px] bg-card/60 shadow-e1">
+        <div className="overflow-hidden rounded-xl bg-card/60 shadow-e1">
           <div
             className={cn(
               "flex min-h-[44px] items-center gap-0.5 px-1",

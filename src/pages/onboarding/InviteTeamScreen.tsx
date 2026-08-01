@@ -69,7 +69,7 @@ export default function InviteTeamScreen() {
     }
 
     if (orgLoading) {
-      toast.error("Loading organization information...");
+      toast.error("Loading organization information…");
       return;
     }
 
@@ -170,7 +170,7 @@ export default function InviteTeamScreen() {
             />
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-[#6D7480] mb-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-2">
                 Role
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -183,8 +183,8 @@ export default function InviteTeamScreen() {
                       px-4 py-3 rounded-xl text-sm font-medium capitalize
                       transition-all duration-150 ease-out
                       ${role === r 
-                        ? 'text-[#FF6B6B]' 
-                        : 'text-[#6D7480] hover:text-[#1C1C1C]'
+                        ? 'text-destructive' 
+                        : 'text-muted-foreground hover:text-foreground'
                       }
                     `}
                     style={{
@@ -201,7 +201,7 @@ export default function InviteTeamScreen() {
 
             <button
               onClick={handleAddInvite}
-              className="w-full px-4 py-2 rounded-xl text-[#6D7480] hover:text-[#FF6B6B] transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 py-2 rounded-xl text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center gap-2"
               style={{
                 boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.08), inset -1px -1px 3px rgba(255,255,255,0.7)"
               }}
@@ -213,7 +213,7 @@ export default function InviteTeamScreen() {
 
           {teamInvites.length > 0 && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[#6D7480]">
+              <label className="block text-sm font-medium text-muted-foreground">
                 Pending invites ({teamInvites.length})
               </label>
               {teamInvites.map((invite, index) => (
@@ -225,12 +225,12 @@ export default function InviteTeamScreen() {
                   }}
                 >
                   <div>
-                    <p className="text-sm text-[#1C1C1C]">{invite.email}</p>
-                    <p className="text-xs text-[#6D7480] capitalize">{invite.role}</p>
+                    <p className="text-sm text-foreground">{invite.email}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{invite.role}</p>
                   </div>
                   <button
                     onClick={() => removeTeamInvite(index)}
-                    className="p-1 text-[#6D7480] hover:text-[#FF6B6B] transition-colors"
+                    className="p-1 text-muted-foreground hover:text-destructive transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -246,7 +246,7 @@ export default function InviteTeamScreen() {
               disabled={sending || orgLoading}
             >
               {sending 
-                ? "Sending invitations..." 
+                ? "Sending invitations…" 
                 : teamInvites.length > 0 
                   ? `Send ${teamInvites.length} invite(s)` 
                   : "Continue"}

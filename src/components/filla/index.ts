@@ -36,12 +36,6 @@ export type { InstructionPanelProps } from './InstructionPanel';
 // export { MiniCalendarDayTile } from './MiniCalendarDayTile'; // DELETED
 // export type { CalendarEvent, TaskEvent, ComplianceEvent, DayData } from './MiniCalendar'; // DELETED
 
-// Cards & Tabs
-export { TaskCard } from './TaskCard';
-export type { TaskCardProps } from './TaskCard';
-export { DashboardTabs } from './DashboardTabs';
-export type { DashboardTabsProps, InboxItem, ReminderItem } from './DashboardTabs';
-
 // Deprecated components (exported for backward compatibility during migration)
 // TODO: Remove these once all usages are migrated
 export * from './Surface';
@@ -49,6 +43,3 @@ export * from './Typography';
 export * from './Button';
 export * from './Input';
 export * from './Badge';
-
-// Design tokens (for backward compatibility - prefer tailwind.config.ts)
-export { colors, neuShadows, typography, spacing, radii, shadows } from './tokens';

@@ -213,7 +213,7 @@ function DevToolsDropdownInner() {
           className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
             devMode.enabled
-              ? "bg-teal-100 text-teal-800 shadow-sm"
+              ? "bg-primary/15 text-primary-deep shadow-sm"
               : "bg-muted/60 text-muted-foreground hover:bg-muted"
           )}
         >
@@ -236,7 +236,7 @@ function DevToolsDropdownInner() {
             <ShieldCheck className="mr-2 h-4 w-4" />
             {devMode.enabled ? "Disable" : "Enable"} Dev Mode
             {devMode.enabled && (
-              <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+              <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
             )}
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -251,13 +251,13 @@ function DevToolsDropdownInner() {
               {switchingPersona ? (
                 <Loader2 className="ml-auto h-3.5 w-3.5 animate-spin" />
               ) : activePersona ? (
-                <span className="ml-auto text-[10px] font-mono text-teal-600">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   {activePersona.testId}
                 </span>
               ) : null}
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="w-72">
-              <DropdownMenuLabel className="text-[10px] font-normal text-muted-foreground">
+              <DropdownMenuLabel className="text-2xs font-normal text-muted-foreground">
                 Adds TEST users to your current org, then signs in. Password:
                 TestPassword123! (or VITE_DEV_TEST_PASSWORD)
               </DropdownMenuLabel>
@@ -268,7 +268,7 @@ function DevToolsDropdownInner() {
               >
                 Stay on current session
                 {!devMode.activeTestPersonaId && (
-                  <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+                  <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
                 )}
               </DropdownMenuItem>
               {TEST_PERSONAS.map((persona) => (
@@ -279,15 +279,15 @@ function DevToolsDropdownInner() {
                   className="flex flex-col items-start gap-0.5"
                 >
                   <span className="flex w-full items-center gap-2">
-                    <span className="font-mono text-[10px] text-teal-700">
+                    <span className="font-mono text-2xs text-primary-deep">
                       {persona.testId}
                     </span>
                     <span className="font-medium">{persona.label}</span>
                     {devMode.activeTestPersonaId === persona.id && (
-                      <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-teal-600" />
+                      <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary-deep" />
                     )}
                   </span>
-                  <span className="text-[10px] text-muted-foreground pl-12">
+                  <span className="text-2xs text-muted-foreground pl-12">
                     {persona.membershipRole}
                     {persona.uiRoleOverride ? ` · UI ${persona.uiRoleOverride}` : ""}
                   </span>
@@ -301,7 +301,7 @@ function DevToolsDropdownInner() {
               <UserCircle className="mr-2 h-4 w-4" />
               UI role override
               {devMode.userRoleOverride && (
-                <span className="ml-auto text-[10px] font-mono text-teal-600">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   {devMode.userRoleOverride}
                 </span>
               )}
@@ -317,7 +317,7 @@ function DevToolsDropdownInner() {
                 >
                   {label}
                   {devMode.userRoleOverride === value && (
-                    <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
                   )}
                 </DropdownMenuItem>
               ))}
@@ -350,7 +350,7 @@ function DevToolsDropdownInner() {
               <Clock className="mr-2 h-4 w-4" />
               Simulate Time
               {devMode.simulateTimeShiftDays > 0 && (
-                <span className="ml-auto text-[10px] font-mono text-teal-600">
+                <span className="ml-auto text-2xs font-mono text-primary-deep">
                   +{devMode.simulateTimeShiftDays}d
                 </span>
               )}
@@ -363,7 +363,7 @@ function DevToolsDropdownInner() {
                 >
                   {label}
                   {devMode.simulateTimeShiftDays === days && (
-                    <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+                    <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
                   )}
                 </DropdownMenuItem>
               ))}
@@ -386,13 +386,13 @@ function DevToolsDropdownInner() {
             }}
           >
             {devMode.simulateSlowNetwork ? (
-              <WifiOff className="mr-2 h-4 w-4 text-amber-600" />
+              <WifiOff className="mr-2 h-4 w-4 text-warning-foreground" />
             ) : (
               <Wifi className="mr-2 h-4 w-4" />
             )}
             Simulate Slow Network
             {devMode.simulateSlowNetwork && (
-              <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+              <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
             )}
           </DropdownMenuItem>
 
@@ -415,7 +415,7 @@ function DevToolsDropdownInner() {
             <MonitorSmartphone className="mr-2 h-4 w-4" />
             {devMode.showViewportSimulator ? "Hide" : "Open"} viewport simulator
             {devMode.showViewportSimulator && (
-              <Check className="ml-auto h-3.5 w-3.5 text-teal-600" />
+              <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
             )}
           </DropdownMenuItem>
         </DropdownMenuGroup>

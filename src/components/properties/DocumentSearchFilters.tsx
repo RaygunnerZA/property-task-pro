@@ -46,7 +46,7 @@ export function DocumentSearchFilters({
           placeholder="Search documents..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-9 rounded-[8px]"
+          className="pl-9 rounded-card"
         />
       </div>
       <div className="flex flex-wrap gap-2">

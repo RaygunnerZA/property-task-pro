@@ -46,25 +46,25 @@ function StatusBadge({ status }: { status: ComplianceRuleWithStatus["status"] })
   switch (status) {
     case "overdue":
       return (
-        <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40 bg-destructive/10">
+        <Badge variant="outline" className="text-2xs text-destructive border-destructive/40 bg-destructive/10">
           Overdue
         </Badge>
       );
     case "due_soon":
       return (
-        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+        <Badge variant="outline" className="text-2xs text-warning-foreground border-amber-300 bg-warning/30 dark:bg-amber-950/30">
           Due soon
         </Badge>
       );
     case "scheduled":
       return (
-        <Badge variant="outline" className="text-[10px] text-success border-success/40 bg-success/10">
+        <Badge variant="outline" className="text-2xs text-success border-success/40 bg-success/10">
           Scheduled
         </Badge>
       );
     default:
       return (
-        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+        <Badge variant="outline" className="text-2xs text-muted-foreground">
           No date
         </Badge>
       );
@@ -129,7 +129,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
   return (
     <div
       className={cn(
-        "rounded-[8px] bg-card shadow-e1 border border-border/50",
+        "rounded-card bg-card shadow-e1 border border-border/50",
         "p-4 flex flex-col gap-3"
       )}
     >
@@ -140,7 +140,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
           <span className="font-semibold text-sm text-foreground truncate">
             {rule.name ?? "Unnamed rule"}
           </span>
-          <Badge variant="secondary" className="text-[10px]">
+          <Badge variant="secondary" className="text-2xs">
             {formatFrequency(rule.frequency ?? "annual")}
           </Badge>
           <StatusBadge status={rule.status} />
@@ -198,7 +198,7 @@ export function ComplianceRuleRow({ rule, onEdit }: ComplianceRuleRowProps) {
             className={cn(
               "flex items-center gap-1",
               rule.status === "overdue" && "text-destructive",
-              rule.status === "due_soon" && "text-amber-600"
+              rule.status === "due_soon" && "text-warning-foreground"
             )}
           >
             <Clock className="h-3 w-3" />

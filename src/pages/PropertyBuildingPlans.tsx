@@ -171,7 +171,7 @@ export default function PropertyBuildingPlans() {
         hideHeaderBack
         belowGradientRow={plansScopeBelowRow}
       >
-        <LoadingState message="Loading building plans..." />
+        <LoadingState message="Loading building plans…" />
       </StandardPageWithBack>
     );
   }
@@ -238,7 +238,7 @@ export default function PropertyBuildingPlans() {
               description="Upload a plan file to start processing and review."
             />
           ) : extraction.isLoading ? (
-            <LoadingState message="Loading extraction..." />
+            <LoadingState message="Loading extraction…" />
           ) : (
             <>
               <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ function ReviewSection({
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs font-medium truncate">{displayName}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-caption text-muted-foreground">
                       {row.source_page_id ? `Source page ${row.source_page_id.slice(0, 8)}` : "Source page unknown"}
                     </p>
                   </div>
@@ -407,7 +407,7 @@ function ReviewSection({
                     disabled={isUpdating}
                   />
                   <div className="flex items-center justify-end gap-2 px-2">
-                    <span className="text-[11px] text-muted-foreground">Accept</span>
+                    <span className="text-caption text-muted-foreground">Accept</span>
                     <Switch
                       checked={Boolean(row.is_accepted)}
                       onCheckedChange={(checked) =>

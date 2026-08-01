@@ -18,7 +18,7 @@ export type TaskSpaceRef = {
 
 /** Strip leading articles so "The Boiler Room" resolves like "Boiler Room". */
 function normalizeSpaceLabel(input: string): string {
-  let label = input.trim();
+  const label = input.trim();
   if (!label) return label;
   const lower = label.toLowerCase();
   if (lower.startsWith("the ")) return label.slice(4).trim();

@@ -37,7 +37,7 @@ export function TemplateAddedDialog({
           </Button>
           <Button
             type="button"
-            className="bg-[#8EC9CE] text-white hover:brightness-105"
+            className="bg-primary text-primary-foreground hover:brightness-105"
             onClick={() => {
               onOpenTemplate();
               onOpenChange(false);

@@ -3,7 +3,7 @@ import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { RadialProgress } from "@/components/ui/radial-progress";
 
 const neuTileCoreClass =
-  "rounded-[12px] shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.04),inset_-2px_-2px_3px_0px_rgba(255,255,255,0.45)] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
+  "rounded-xl shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.04),inset_-2px_-2px_3px_0px_rgba(255,255,255,0.45)] transition-colors hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20";
 
 const neuTileMutedBgClass = "bg-background/55";
 
@@ -23,19 +23,19 @@ const subNumberPillClass =
 
 /** Urgent count chip — same dimensions in every tile. */
 const urgentChipClass =
-  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-[5px] border border-destructive/25 bg-destructive/12 px-1 text-[11px] font-semibold tabular-nums leading-none text-destructive shadow-none";
+  "inline-flex h-[18px] min-w-[20px] shrink-0 items-center justify-center rounded-sharp border border-destructive/25 bg-destructive/12 px-1 text-caption font-semibold tabular-nums leading-none text-destructive shadow-none";
 
 const urgentIssuesRowClass =
   "flex w-full shrink-0 items-center justify-center gap-1.5";
 
 /** Two-line label — tight leading so the chip centers cleanly beside it. */
 const urgentIssuesLabelClass =
-  "inline-block min-w-0 max-w-[3.25rem] text-center text-[9px] font-medium leading-tight text-muted-foreground";
+  "inline-block min-w-0 max-w-[3.25rem] text-center text-2xs font-medium leading-tight text-muted-foreground";
 
 function UrgentIssuesFooter({ count, onActivate }: { count: number; onActivate?: () => void }) {
   if (count <= 0) {
     return (
-      <span className="w-full max-w-[4.5rem] text-center text-[9px] leading-tight text-muted-foreground/70">
+      <span className="w-full max-w-[4.5rem] text-center text-2xs leading-tight text-muted-foreground/70">
         No urgent issues
       </span>
     );
@@ -175,7 +175,7 @@ export function PropertySummaryDashboardGrid({
           />
         )}
         <span className={cn(openTasksCountClass, "mt-0.5")}>{openTasksCount}</span>
-        <span className="mb-1 mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.2px] text-muted-foreground">
+        <span className="mb-1 mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.2px] text-muted-foreground">
           OPEN TASKS
         </span>
         <DashedRule className="my-0 max-w-[72px] py-1" />
@@ -190,7 +190,7 @@ export function PropertySummaryDashboardGrid({
             visualWeight="soft"
             aria-label={`${completedLabel}, ${completionPct}%`}
           />
-          <span className="max-w-[88px] pb-1 text-center font-sans text-[10px] font-medium tabular-nums leading-tight tracking-[0.1px] text-muted-foreground">
+          <span className="max-w-[88px] pb-1 text-center font-sans text-2xs font-medium tabular-nums leading-tight tracking-[0.1px] text-muted-foreground">
             {completedLabel}
           </span>
         </div>
@@ -217,7 +217,7 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <span className={bigNumberClass}>{spacesCount}</span>
-        <span className="mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.5px] text-muted-foreground">
+        <span className="mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.5px] text-muted-foreground">
           SPACES
         </span>
         <div className="mt-auto flex w-full flex-col items-center px-0.5 pt-1">
@@ -243,7 +243,7 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <span className={bigNumberClass}>{assetsCount}</span>
-        <span className="mt-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.5px] text-muted-foreground">
+        <span className="mt-1 text-center font-mono text-2xs font-medium uppercase tracking-[0.5px] text-muted-foreground">
           ASSETS
         </span>
         <div className="mt-auto flex w-full flex-col items-center px-0.5 pt-1">
@@ -269,40 +269,40 @@ export function PropertySummaryDashboardGrid({
         }}
       >
         <div className="flex h-[27px] min-h-[27px] items-baseline justify-center gap-1.5">
-          <span className="text-[11px] font-semibold tabular-nums text-foreground/75">
+          <span className="text-caption font-semibold tabular-nums text-foreground/75">
             [{documentsCountLabel}]
           </span>
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.3px] text-muted-foreground">
+          <span className="font-mono text-2xs font-medium uppercase tracking-[0.3px] text-muted-foreground">
             DOCUMENTS
           </span>
         </div>
         <DashedRule className="my-0" />
         <div className="grid min-h-0 flex-1 grid-cols-3 gap-0">
           <div className={subNumberPillClass}>
-            <span className="text-[26px] font-light tabular-nums text-amber-700/75">
+            <span className="text-[26px] font-light tabular-nums text-warning-foreground/75">
               {docDueSoon}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               DUE SOON
             </span>
           </div>
-          <div className="flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[12px] px-1 py-1 shadow-none">
+          <div className="flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 shadow-none">
             <span className="text-[26px] font-light tabular-nums text-orange-800/70">
               {docExpiring}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               EXPIRING
             </span>
           </div>
           <div
             className={cn(
-              "flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-t-none rounded-b-[12px] px-1 py-1 shadow-none"
+              "flex h-[72px] min-h-[36px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-t-none rounded-b-xl px-1 py-1 shadow-none"
             )}
           >
             <span className="text-[26px] font-light tabular-nums text-primary/80">
               {docMissing}
             </span>
-            <span className="text-center font-mono text-[9px] font-medium uppercase leading-tight tracking-normal text-muted-foreground">
+            <span className="text-center font-mono text-2xs font-medium uppercase leading-tight tracking-normal text-muted-foreground">
               MISSING
             </span>
           </div>

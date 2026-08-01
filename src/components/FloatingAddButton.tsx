@@ -81,7 +81,7 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
           >
             <AnimatedIcon icon={Inbox} size={20} animateOnHover animateOnTap animation="pulse" />
             {readyCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8EC9CE] px-1 text-[10px] font-semibold text-white">
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-2xs font-semibold text-primary-foreground">
                 {readyCount > 9 ? '9+' : readyCount}
               </span>
             )}

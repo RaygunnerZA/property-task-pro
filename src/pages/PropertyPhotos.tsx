@@ -46,7 +46,7 @@ export default function PropertyPhotos() {
         action={<PropertyUploadButton label="Upload Photos" />}
       >
         {isLoading ? (
-          <LoadingState message="Loading photos..." />
+          <LoadingState message="Loading photos…" />
         ) : (
           <PropertyPhotoGallery photos={photos} />
         )}

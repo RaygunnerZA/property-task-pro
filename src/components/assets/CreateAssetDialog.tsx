@@ -201,7 +201,7 @@ export function CreateAssetDialog({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={loading || !name.trim()}>
-            {loading ? "Creating..." : "Create Asset"}
+            {loading ? "Creating…" : "Create Asset"}
           </Button>
         </DialogFooter>
       </DialogContent>

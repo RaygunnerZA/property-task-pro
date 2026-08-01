@@ -158,7 +158,7 @@ export function IntakeReviewSheet({
 
         <div className="mt-4 space-y-4">
           {/* Document preview — full width for PDFs and images */}
-          <div className="rounded-[12px] bg-card/80 shadow-e1 overflow-hidden">
+          <div className="rounded-xl bg-card/80 shadow-e1 overflow-hidden">
             <div className="flex items-center justify-between gap-2 border-b border-border/30 px-3 py-2">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
@@ -209,7 +209,7 @@ export function IntakeReviewSheet({
                     title={displayName}
                     className="h-[min(50vh,440px)] w-full border-0 bg-white"
                   />
-                  <p className="px-3 py-2 text-[11px] text-muted-foreground border-t border-border/30">
+                  <p className="px-3 py-2 text-caption text-muted-foreground border-t border-border/30">
                     Preview not showing? Use <strong className="font-medium">Open</strong> above — some mobile browsers need the full tab.
                   </p>
                 </div>
@@ -227,9 +227,9 @@ export function IntakeReviewSheet({
           </div>
 
           {/* AI read */}
-          <div className="rounded-[12px] bg-[#8DC9CE]/10 px-4 py-3 shadow-e1 space-y-2">
+          <div className="rounded-xl bg-primary/10 px-4 py-3 shadow-e1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#5a9ea3]">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary-deep">
                 Filla read
               </span>
               <span className="rounded-full bg-background/80 px-2.5 py-0.5 text-xs font-medium text-foreground shadow-sm">
@@ -263,7 +263,7 @@ export function IntakeReviewSheet({
               onClick={() => onContinue("add_record")}
               className={cn(
                 intakeAddRecordDrawerCardClassName,
-                suggestedMode === "add_record" && "ring-2 ring-[#8DC9CE]/60 ring-offset-2 ring-offset-background"
+                suggestedMode === "add_record" && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background"
               )}
             >
               <div className="flex items-start gap-3">
@@ -281,7 +281,7 @@ export function IntakeReviewSheet({
               onClick={() => onContinue("report_issue")}
               className={cn(
                 intakeReportIssueDrawerCardClassName,
-                suggestedMode === "report_issue" && "ring-2 ring-[#ff6b6b]/50 ring-offset-2 ring-offset-background"
+                suggestedMode === "report_issue" && "ring-2 ring-destructive/50 ring-offset-2 ring-offset-background"
               )}
             >
               <div className="flex items-start gap-3">

@@ -64,8 +64,8 @@ function Slider({ label, value, min, max, step = 1, onChange }: {
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="font-mono text-[10px] text-ink">{value}</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="font-mono text-2xs text-ink">{value}</span>
       </div>
       <input
         type="range"
@@ -151,8 +151,8 @@ export function TypographySandbox() {
               <button
                 onClick={() => setSelectedType('xl')}
                 className={cn(
-                  'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-                  selectedType === 'xl' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                  'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
+                  selectedType === 'xl' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading XL
@@ -160,8 +160,8 @@ export function TypographySandbox() {
               <button
                 onClick={() => setSelectedType('l')}
                 className={cn(
-                  'px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-wider transition-all',
-                  selectedType === 'l' ? 'bg-primary text-white' : 'bg-surface/80 shadow-e1 text-ink/60'
+                  'px-4 py-2 rounded-lg font-mono text-2xs uppercase tracking-wider transition-all',
+                  selectedType === 'l' ? 'bg-primary text-primary-foreground' : 'bg-surface/80 shadow-e1 text-ink/60'
                 )}
               >
                 Heading L
@@ -192,7 +192,7 @@ export function TypographySandbox() {
           {/* CSS Output */}
           <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button onClick={reset} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="Reset">
                   <RotateCcw className="w-4 h-4 text-white/60" />
@@ -208,7 +208,7 @@ export function TypographySandbox() {
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">
@@ -224,7 +224,7 @@ export function TypographySandbox() {
         <div className="space-y-4">
           {/* Typography Settings */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Typography</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Typography</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider 
                 label="Letter Spacing" 
@@ -247,10 +247,10 @@ export function TypographySandbox() {
 
           {/* Shadow Layers */}
           <div className="space-y-3">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Text Shadow Layers</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Text Shadow Layers</h3>
             {currentLayers.map((layer, i) => (
               <div key={i} className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-ink font-medium">
+                <span className="font-mono text-2xs uppercase tracking-wider text-ink font-medium">
                   {i === 0 ? 'Highlight (Light)' : 'Shadow (Dark)'}
                 </span>
                 <div className="grid grid-cols-2 gap-3">
@@ -265,7 +265,7 @@ export function TypographySandbox() {
                     onChange={(v) => updateLayer(i, { opacity: v / 100 })} 
                   />
                   <div className="space-y-1 col-span-2">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                    <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                     <input
                       type="color"
                       value={layer.color}

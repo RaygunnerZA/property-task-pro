@@ -18,7 +18,7 @@ export function DocumentsSection({
   loading = false,
 }: DocumentsSectionProps) {
   if (loading) {
-    return <LoadingState message="Loading documents..." />;
+    return <LoadingState message="Loading documents…" />;
   }
 
   if (documents.length === 0) {

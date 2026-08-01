@@ -66,7 +66,7 @@ export function TaskSection({
           type="button"
           onClick={onToggle}
           className={cn(
-            'flex-1 h-8 flex items-center gap-1.5 px-2 rounded-[5px]',
+            'flex-1 h-8 flex items-center gap-1.5 px-2 rounded-sharp',
             'transition-all duration-150',
             'bg-background',
             'hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card'

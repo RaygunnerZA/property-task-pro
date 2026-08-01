@@ -504,7 +504,7 @@ export default function SettingsProfile() {
               className="w-full max-w-full shadow-engraved border-0 sm:max-w-sm"
             />
             {pendingEmail ? (
-              <div className="rounded-[8px] bg-muted/60 px-3 py-2 text-xs text-muted-foreground sm:max-w-sm">
+              <div className="rounded-card bg-muted/60 px-3 py-2 text-xs text-muted-foreground sm:max-w-sm">
                 <p>
                   Pending verification for <span className="font-medium text-foreground">{pendingEmail}</span>.
                   Confirm the link in that inbox to finish the change.
@@ -552,7 +552,7 @@ export default function SettingsProfile() {
               <Shield className="h-3.5 w-3.5 text-muted-foreground" />
               Role
             </Label>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-[8px] shadow-e1 bg-background text-sm capitalize">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-card shadow-e1 bg-background text-sm capitalize">
               {role || "Member"}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -568,7 +568,7 @@ export default function SettingsProfile() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                Saving…
               </>
             ) : (
               <>
@@ -678,7 +678,7 @@ export default function SettingsProfile() {
                 {changingPassword ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
+                    Updating…
                   </>
                 ) : (
                   <>
@@ -749,7 +749,7 @@ export default function SettingsProfile() {
                 {updatingEmail ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
+                    Sending…
                   </>
                 ) : (
                   "Send verification"

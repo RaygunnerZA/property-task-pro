@@ -88,7 +88,7 @@ export function RecordsActionRail({
             Link to asset / rule
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2 leading-snug">
+        <p className="text-2xs text-muted-foreground mt-2 leading-snug">
           Filla can suggest type, owner, and expiry after upload — review in the list, then confirm.
         </p>
       </WorkspaceSurfaceCard>

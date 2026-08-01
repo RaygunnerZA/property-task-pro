@@ -148,7 +148,7 @@ export function PropertyIdentityStrip({
 
   return (
     <div className="flex w-full flex-col gap-[9px]">
-      <div className="overflow-hidden rounded-[12px] bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)]">
+      <div className="overflow-hidden rounded-xl bg-card/60 shadow-[1px_1px_2px_0px_rgba(0,0,0,0.05),inset_1px_1px_1px_0px_rgba(255,255,255,0.65)]">
         <div
           className="group relative w-full shrink-0 overflow-hidden"
           style={{
@@ -186,7 +186,7 @@ export function PropertyIdentityStrip({
               </p>
             </div>
             {property.address ? (
-              <p className="mt-0.5 pt-[3px] text-[12px] font-medium leading-snug text-white/90 drop-shadow-sm">
+              <p className="mt-0.5 pt-[3px] text-xs font-medium leading-snug text-white/90 drop-shadow-sm">
                 {property.address}
               </p>
             ) : null}
@@ -311,7 +311,7 @@ export function PropertyIdentityStrip({
             <Button
               type="button"
               disabled={isArchivingProperty}
-              className="bg-[#EB6834] text-white shadow-sm hover:bg-[#EB6834]/90"
+              className="bg-accent text-white shadow-sm hover:bg-accent/90"
               onClick={() => void handleConfirmArchiveProperty()}
             >
               {isArchivingProperty ? "Archiving…" : "Archive property"}

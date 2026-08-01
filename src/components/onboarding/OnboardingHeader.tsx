@@ -14,10 +14,7 @@ export function OnboardingLogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="p-2 rounded-lg text-[#6D7480] hover:text-[#FF6B6B] transition-colors duration-150"
-      style={{
-        boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.7)"
-      }}
+      className="p-2 rounded-lg text-muted-foreground shadow-inset hover:text-destructive transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       aria-label="Log out"
       title="Log out"
     >
@@ -56,10 +53,7 @@ export function OnboardingHeader({ title, subtitle, showBack, onBack, showLogout
           {showBack && (
             <button
               onClick={handleBack}
-              className="p-2 rounded-lg text-[#6D7480] hover:text-[#1C1C1C] transition-colors duration-150"
-              style={{
-                boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.7)"
-              }}
+              className="p-2 rounded-lg text-muted-foreground shadow-inset hover:text-foreground transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               aria-label="Go back"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -70,10 +64,7 @@ export function OnboardingHeader({ title, subtitle, showBack, onBack, showLogout
         {showLogout && (
           <button
             onClick={handleLogout}
-            className="p-2 rounded-lg text-[#6D7480] hover:text-[#FF6B6B] transition-colors duration-150"
-            style={{
-              boxShadow: "inset 1px 1px 3px rgba(0,0,0,0.1), inset -1px -1px 3px rgba(255,255,255,0.7)"
-            }}
+            className="p-2 rounded-lg text-muted-foreground shadow-inset hover:text-destructive transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             aria-label="Log out"
             title="Log out"
           >
@@ -82,9 +73,9 @@ export function OnboardingHeader({ title, subtitle, showBack, onBack, showLogout
         )}
       </div>
       
-      <h1 className="text-3xl font-semibold text-[#1C1C1C] mb-2 heading-xl text-center [background-clip:unset] [-webkit-background-clip:unset]">{title}</h1>
+      <h1 className="text-3xl font-semibold text-foreground mb-2 [text-wrap:balance] heading-xl text-center [background-clip:unset] [-webkit-background-clip:unset]">{title}</h1>
       {subtitle && (
-        <p className="text-base text-[#6D7480] text-center">{subtitle}</p>
+        <p className="text-base text-muted-foreground text-center">{subtitle}</p>
       )}
     </div>
   );

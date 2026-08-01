@@ -31,7 +31,7 @@ export function StatusGroupedSection({
   return (
     <div
       className={cn(
-        "rounded-[8px] overflow-hidden shadow-e1",
+        "rounded-card overflow-hidden shadow-e1",
         "transition-all duration-150 ease-out",
         "hover:shadow-e2",
         className

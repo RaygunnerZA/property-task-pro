@@ -52,9 +52,14 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F6F4F2]">
-        <div className="text-center">
-          <p className="text-lg text-[#6D7480]">Loading Filla...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-live="polite">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-input shadow-engraved">
+            <span className="font-display text-2xl font-bold text-primary-deep text-shadow-neu-pressed" aria-hidden="true">
+              F
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground tracking-wide">Loading Filla…</p>
         </div>
       </div>
     );

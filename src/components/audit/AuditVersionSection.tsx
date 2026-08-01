@@ -11,12 +11,12 @@ interface AuditVersionSectionProps {
 
 export default function AuditVersionSection({ version }: AuditVersionSectionProps) {
   return (
-    <div className="printable-section bg-white p-6 border-b border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+    <div className="printable-section bg-white p-6 border-b border-border">
+      <h3 className="text-lg font-semibold text-foreground mb-2">
         Version {version?.version_number ?? '—'}
       </h3>
       
-      <div className="space-y-1 text-sm text-gray-700">
+      <div className="space-y-1 text-sm text-muted-foreground">
         <p>
           <span className="font-semibold">Approved:</span>{' '}
           {version?.approved_at 

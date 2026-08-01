@@ -27,11 +27,11 @@ export const useAuditExport = (): UseAuditExportResult => {
 
   const startExport = async (type: string, options?: any) => {
     setIsExporting(true);
-    setProgress({ step: 'Initializing', progress: 0, message: 'Starting export...' });
+    setProgress({ step: 'Initializing', progress: 0, message: 'Starting export…' });
 
     // Simulate export progress
     await new Promise(resolve => setTimeout(resolve, 1000));
-    setProgress({ step: 'Collecting Data', progress: 33, message: 'Gathering compliance data...' });
+    setProgress({ step: 'Collecting Data', progress: 33, message: 'Gathering compliance data…' });
 
     await new Promise(resolve => setTimeout(resolve, 1000));
     setProgress({ step: 'Generating Report', progress: 66, message: 'Building PDF document...' });

@@ -212,7 +212,7 @@ export function PropertyHubTab({
       aria-selected={isActive}
       onClick={onSelect}
       className={cn(
-        "absolute isolate min-w-0 overflow-visible border-0 pb-2 pt-2 text-center text-[14px] font-semibold leading-none",
+        "absolute isolate min-w-0 overflow-visible border-0 pb-2 pt-2 text-center text-sm font-semibold leading-none",
         "transition-[left,width,height,top,color,filter] duration-300 ease-out",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-1",
         isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground/80"
@@ -230,7 +230,7 @@ export function PropertyHubTab({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-tl-[12px]"
+        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-tl-xl"
         style={{
           height: shapeHeight,
           ...TAB_SHAPE_MASK_STYLE,
@@ -250,7 +250,7 @@ export function PropertyHubTab({
       {!isActive ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] rounded-tl-[12px]"
+          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] rounded-tl-xl"
           style={{
             top: 0,
             height: shapeHeight,

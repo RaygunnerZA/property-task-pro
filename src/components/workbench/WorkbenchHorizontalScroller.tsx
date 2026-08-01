@@ -19,7 +19,7 @@ export function WorkbenchHorizontalScroller({
   return (
     <div className={cn("relative", className)}>
       <div className="overflow-x-auto -mx-1 px-1 scrollbar-hz-teal">
-        <div className={cn("flex min-w-max pb-0.5", gapClassName)}>{children}</div>
+        <div className={cn("list-stagger flex min-w-max pb-0.5", gapClassName)}>{children}</div>
       </div>
       <div
         className="pointer-events-none absolute bottom-0 right-0 top-0 rounded-tr-lg rounded-br-lg"

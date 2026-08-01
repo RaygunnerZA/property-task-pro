@@ -137,7 +137,7 @@ export default function WorkSchedule() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading schedule..." />
+        <LoadingState message="Loading schedule…" />
       ) : (
         <>
           {renderGroup('overdue', groupedTasks.overdue)}

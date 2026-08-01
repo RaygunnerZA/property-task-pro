@@ -90,7 +90,7 @@ export const WeekStripCalendar: React.FC<WeekStripCalendarProps> = ({
               } ${isToday && !isSelected ? "border-2 border-primary" : ""}`}
             >
               {/* Weekday */}
-              <span className="text-[10px] font-medium opacity-80">
+              <span className="text-2xs font-medium opacity-80">
                 {weekdayShort(date)}
               </span>
 

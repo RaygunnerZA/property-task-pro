@@ -65,7 +65,7 @@ function AIDebugPanelInner() {
     <div className="fixed bottom-0 right-0 w-[480px] max-h-[70vh] bg-card border border-border/50 rounded-tl-xl shadow-lg z-[9999] flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/30 bg-muted/40">
         <div className="flex items-center gap-2">
-          <Brain className="h-4 w-4 text-teal-500" />
+          <Brain className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">AI Debug Panel</span>
         </div>
         <button
@@ -91,7 +91,7 @@ function AIDebugPanelInner() {
             className={cn(
               "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors",
               activeTab === key
-                ? "text-teal-600 border-b-2 border-teal-500 bg-teal-50/30"
+                ? "text-primary-deep border-b-2 border-teal-500 bg-primary/15/30"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -148,11 +148,11 @@ function SimulatorTab() {
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="w-full rounded-md border border-border/50 bg-background p-2 text-xs resize-none h-16 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="w-full rounded-md border border-border/50 bg-background p-2 text-xs resize-none h-16 focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <button
           onClick={run}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary-deep text-white text-xs font-medium hover:bg-primary-deep transition-colors"
         >
           <Play className="h-3 w-3" />
           Run Simulation
@@ -200,7 +200,7 @@ function SimulatorTab() {
                 className="flex items-center justify-between py-1 border-b border-border/20 last:border-0"
               >
                 <div>
-                  <span className="font-mono text-teal-600">{chip.type}</span>
+                  <span className="font-mono text-primary-deep">{chip.type}</span>
                   <span className="ml-1 text-muted-foreground">
                     {chip.label}
                   </span>
@@ -236,7 +236,7 @@ function SimulatorTab() {
           </CollapsibleSection>
 
           <CollapsibleSection title="Raw Extraction">
-            <pre className="overflow-x-auto whitespace-pre-wrap text-[10px] font-mono bg-muted/30 rounded p-2">
+            <pre className="overflow-x-auto whitespace-pre-wrap text-2xs font-mono bg-muted/30 rounded p-2">
               {JSON.stringify(result.ruleExtraction, null, 2)}
             </pre>
           </CollapsibleSection>
@@ -270,7 +270,7 @@ function ProfileTab() {
         <select
           value={siteType}
           onChange={(e) => setSiteType(e.target.value)}
-          className="flex-1 rounded-md border border-border/50 bg-background p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="flex-1 rounded-md border border-border/50 bg-background p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
         >
           {["residential", "commercial", "mixed_use", "industrial", "land"].map(
             (t) => (
@@ -283,7 +283,7 @@ function ProfileTab() {
         <select
           value={ownership}
           onChange={(e) => setOwnership(e.target.value)}
-          className="flex-1 rounded-md border border-border/50 bg-background p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500"
+          className="flex-1 rounded-md border border-border/50 bg-background p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
         >
           {["owned", "leased", "rented", "managed", "other"].map((t) => (
             <option key={t} value={t}>
@@ -293,7 +293,7 @@ function ProfileTab() {
         </select>
         <button
           onClick={evaluate}
-          className="px-3 py-1.5 rounded-md bg-teal-600 text-white text-xs font-medium hover:bg-teal-700 transition-colors"
+          className="px-3 py-1.5 rounded-md bg-primary-deep text-white text-xs font-medium hover:bg-primary-deep transition-colors"
         >
           Evaluate
         </button>
@@ -305,7 +305,7 @@ function ProfileTab() {
             <MetricBadge
               label="Compliance"
               value={result.summary.complianceCount}
-              color="text-orange-600"
+              color="text-accent"
             />
             <MetricBadge
               label="Boosts"
@@ -315,12 +315,12 @@ function ProfileTab() {
             <MetricBadge
               label="Warnings"
               value={result.summary.warningCount}
-              color="text-red-600"
+              color="text-destructive"
             />
             <MetricBadge
               label="Time"
               value={`${result.evaluationTimeMs}ms`}
-              color="text-teal-600"
+              color="text-primary-deep"
             />
           </div>
 
@@ -367,7 +367,7 @@ function ProfileTab() {
             {result.result.warnings.map((r, i) => (
               <div
                 key={i}
-                className="py-1 text-amber-600 border-b border-border/20 last:border-0"
+                className="py-1 text-warning-foreground border-b border-border/20 last:border-0"
               >
                 {r.output.kind === "clarity_warning"
                   ? r.output.message
@@ -448,10 +448,10 @@ function PerfTab() {
                 <span
                   className={cn(
                     e.durationMs > 100
-                      ? "text-red-600"
+                      ? "text-destructive"
                       : e.durationMs > 50
-                        ? "text-amber-600"
-                        : "text-green-600"
+                        ? "text-warning-foreground"
+                        : "text-success-foreground"
                   )}
                 >
                   {e.durationMs}ms
@@ -471,7 +471,7 @@ function LogsTab() {
     <div className="space-y-3">
       <div className="space-y-2">
         <h4 className="font-medium">Dev Mode State</h4>
-        <pre className="overflow-x-auto whitespace-pre-wrap text-[10px] font-mono bg-muted/30 rounded p-2">
+        <pre className="overflow-x-auto whitespace-pre-wrap text-2xs font-mono bg-muted/30 rounded p-2">
           {JSON.stringify(
             {
               enabled: devMode.enabled,
@@ -556,7 +556,7 @@ function MetricBadge({
       <span className={cn("text-base font-bold font-mono", color)}>
         {value}
       </span>
-      <span className="text-[10px] text-muted-foreground">{label}</span>
+      <span className="text-2xs text-muted-foreground">{label}</span>
     </div>
   );
 }

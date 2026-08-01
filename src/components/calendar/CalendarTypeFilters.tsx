@@ -52,7 +52,7 @@ export function CalendarTypeFilters({
           const checked = isChecked(type.id);
           return (
             <li key={type.id}>
-              <label className="flex cursor-pointer items-center gap-2.5 text-[13px] text-foreground">
+              <label className="flex cursor-pointer items-center gap-2.5 text-sm text-foreground">
                 <span
                   className={cn(
                     "flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors",

@@ -25,15 +25,15 @@ export default function ExportProgressModal({
         <div className="flex items-start justify-between">
           <div>
             <Heading variant="m">Exporting {type}</Heading>
-            <Text variant="caption" className="text-neutral-600 mt-1">
+            <Text variant="caption" className="text-muted-foreground mt-1">
               {isExporting ? 'Please wait...' : 'Export complete'}
             </Text>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 hover:bg-neutral-100 rounded transition-colors"
+            className="p-1 hover:bg-muted rounded transition-colors"
           >
-            <X className="w-5 h-5 text-neutral-500" />
+            <X className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
 
@@ -42,14 +42,14 @@ export default function ExportProgressModal({
             {/* Progress Bar */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <Text variant="caption" className="text-neutral-700 font-medium">
+                <Text variant="caption" className="text-muted-foreground font-medium">
                   {progress.step}
                 </Text>
-                <Text variant="caption" className="text-neutral-600">
+                <Text variant="caption" className="text-muted-foreground">
                   {progress.progress}%
                 </Text>
               </div>
-              <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all duration-500 ease-out"
                   style={{ width: `${progress.progress}%` }}
@@ -58,7 +58,7 @@ export default function ExportProgressModal({
             </div>
 
             {/* Progress Message */}
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               {isExporting && (
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
               )}
@@ -90,7 +90,7 @@ export default function ExportProgressModal({
               onClick={onClose}
               disabled={isExporting}
             >
-              {isExporting ? 'Exporting...' : 'Close'}
+              {isExporting ? 'Exporting…' : 'Close'}
             </Button>
           )}
         </div>

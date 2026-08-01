@@ -31,7 +31,7 @@ export function InstructionBlock({
   return (
     <div
       className={cn(
-        "rounded-[8px] p-4 bg-card/50 border border-concrete/30 shadow-e1",
+        "rounded-card p-4 bg-card/50 border border-concrete/30 shadow-e1",
         "mb-4 space-y-3",
         className
       )}
@@ -60,7 +60,7 @@ export function InstructionBlock({
             key={idx}
             type="button"
             onClick={button.onClick}
-            className="w-full text-left px-3 py-2 rounded-[8px] bg-background hover:bg-card transition-colors shadow-sm border border-concrete/20 group"
+            className="w-full text-left px-3 py-2 rounded-card bg-background hover:bg-card transition-colors shadow-sm border border-concrete/20 group"
           >
             <div className="font-medium text-sm text-foreground mb-0.5">
               {button.label}

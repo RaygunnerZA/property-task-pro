@@ -45,7 +45,17 @@ export default {
       },
       fontFamily: {
         sans: ['Inter Tight', 'system-ui', 'sans-serif'],
+        display: ['Inter Tight', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
+      },
+      /**
+       * Small end of the Filla type scale. 10px mono uppercase metadata is a
+       * signature Dimensional Paper trait — tracking is baked in per the
+       * small-text rule (tiny + caps text always needs positive tracking).
+       */
+      fontSize: {
+        "2xs": ["0.625rem", { lineHeight: "0.875rem", letterSpacing: "0.02em" }],
+        caption: ["0.6875rem", { lineHeight: "1rem", letterSpacing: "0.015em" }],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -83,10 +93,12 @@ export default {
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",
+          vivid: "hsl(var(--success-vivid))",
         },
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+          vivid: "hsl(var(--warning-vivid))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

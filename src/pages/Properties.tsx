@@ -8,7 +8,6 @@ import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
 import { EmptyState } from '@/components/design-system/EmptyState';
-import { LoadingState } from '@/components/design-system/LoadingState';
 import { PropertyPortfolioMap } from '@/components/properties/PropertyPortfolioMap';
 
 const Properties = () => {
@@ -99,7 +98,16 @@ const Properties = () => {
         icon={<Building2 className="h-6 w-6" />}
         maxWidth="md"
       >
-        <LoadingState message="Loading properties..." />
+        <div className="list-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="animate-pulse rounded-card bg-card/40 p-4 shadow-e1">
+              <div className="mb-4 h-24 rounded-xl bg-foreground/5" />
+              <div className="mb-2 h-4 w-2/3 rounded bg-foreground/10" />
+              <div className="h-3 w-1/3 rounded bg-foreground/10" />
+            </div>
+          ))}
+        </div>
+        <span className="sr-only" role="status">Loading properties…</span>
       </StandardPage>
     );
   }
@@ -121,13 +129,13 @@ const Properties = () => {
       {properties.length > 0 && (
         <div className="mb-6 pb-4 border-b border-border">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Filter by Property
             </h3>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setShowAddProperty(true)}
-                className="flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30"
+                className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30"
                 style={{
                   width: '35px',
                   height: '35px',
@@ -141,7 +149,7 @@ const Properties = () => {
                 <button
                   type="button"
                   onClick={() => setFilteredPropertyId(null)}
-                  className="flex items-center justify-center rounded-[8px] px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition-all duration-200 hover:bg-muted/40"
+                  className="flex items-center justify-center rounded-card px-2 py-1 text-2xs font-semibold uppercase tracking-wider transition-all duration-200 hover:bg-muted/40"
                   style={{
                     minWidth: "35px",
                     height: "35px",

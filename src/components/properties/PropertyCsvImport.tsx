@@ -64,7 +64,7 @@ export function PropertyCsvImport({ onImported }: PropertyCsvImportProps) {
   );
 
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[#FF6B6B] font-medium hover:underline">
+    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-destructive font-medium hover:underline">
       <Upload className="h-4 w-4" />
       <span>{loading ? "Importing…" : "Upload property CSV"}</span>
       <input

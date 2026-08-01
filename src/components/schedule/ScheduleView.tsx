@@ -14,10 +14,10 @@ const SCHEDULE_TIME_COLUMN_CLASS = "w-[81px] sm:w-[5.5rem] flex-shrink-0";
 const SCHEDULE_DAY_DIVIDER_CLASS = "pt-[14px] border-t-2 border-white/50";
 
 const SCHEDULE_DATE_LABEL_CLASS =
-  "text-[13px] font-semibold text-[#85BABC] pb-[11px]";
+  "text-sm font-semibold text-primary pb-[11px]";
 
 const SCHEDULE_TIME_BADGE_CLASS =
-  "text-xs font-mono font-medium uppercase tracking-wide text-muted-foreground w-[50px] h-6 -ml-1 px-[9px] py-[5px] rounded-[12px] bg-black/5 shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)]";
+  "text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground w-[50px] h-6 -ml-1 px-[9px] py-[5px] rounded-xl bg-black/5 shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)]";
 
 function formatScheduleTimeLabel(time: Date, hasSpecificTime: boolean): string | null {
   if (!hasSpecificTime) return null;
@@ -142,7 +142,7 @@ export function ScheduleView({
               <div
                 key={dateKey}
                 id={`schedule-day-${dateKey}`}
-                className={cn("space-y-3", dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS)}
+                className={cn("list-stagger space-y-3", dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS)}
               >
                 {dateTasks.map(({ task, time, hasSpecificTime }, taskIndex) => {
                   const property = task.property_id
@@ -194,10 +194,10 @@ export function ScheduleView({
           {/* Any Time tasks section */}
           {anyTimeTasks.length > 0 && (
             <div className="mt-8 pt-6 border-t border-border/50">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Any Time
               </h3>
-              <div className="space-y-3">
+              <div className="list-stagger space-y-3">
                 {anyTimeTasks.map((task) => {
                   const property = task.property_id
                     ? propertyMap.get(task.property_id)

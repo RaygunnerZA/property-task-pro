@@ -515,7 +515,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="overview"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -528,7 +528,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="activity"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -541,7 +541,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="compliance"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -554,7 +554,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     <TabsTrigger
                       value="graph"
                       className={cn(
-                        "rounded-[8px] transition-all text-sm font-medium",
+                        "rounded-card transition-all text-sm font-medium",
                         "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
                         "data-[state=active]:bg-card",
                         "data-[state=inactive]:bg-transparent",
@@ -657,7 +657,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                                   disabled={isSavingDetails}
                                   className="btn-accent-vibrant"
                                 >
-                                  {isSavingDetails ? "Saving..." : "Save"}
+                                  {isSavingDetails ? "Saving…" : "Save"}
                                 </Button>
                               </div>
                             </div>
@@ -846,10 +846,10 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                               className={cn(
                                 "h-1.5 rounded-full mt-2",
                                 linkedCompliance.some((c) => c.expiry_state === "expired")
-                                  ? "bg-red-500"
+                                  ? "bg-destructive"
                                   : linkedCompliance.some((c) => c.expiry_state === "expiring")
-                                  ? "bg-amber-500"
-                                  : "bg-green-500"
+                                  ? "bg-warning-vivid"
+                                  : "bg-success-vivid"
                               )}
                             />
                             <p className="text-xs text-muted-foreground mt-2">
@@ -944,7 +944,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? "Deleting..." : "Delete"}
+              {isDeleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -962,7 +962,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isArchiving}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleArchive} disabled={isArchiving}>
-              {isArchiving ? "Archiving..." : "Archive"}
+              {isArchiving ? "Archiving…" : "Archive"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1114,7 +1114,7 @@ function LogInspectionModal({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving} className="btn-accent-vibrant">
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </DialogContent>
@@ -1195,7 +1195,7 @@ function AddFileModal({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving || !fileUrl.trim()} className="btn-accent-vibrant">
-            {saving ? "Saving..." : "Add"}
+            {saving ? "Saving…" : "Add"}
           </Button>
         </div>
       </DialogContent>
@@ -1295,7 +1295,7 @@ function LinkComplianceModal({
             disabled={saving || !selectedId || available.length === 0}
             className="btn-accent-vibrant"
           >
-            {saving ? "Linking..." : "Link"}
+            {saving ? "Linking…" : "Link"}
           </Button>
         </div>
       </DialogContent>

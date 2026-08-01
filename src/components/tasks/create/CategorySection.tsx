@@ -206,7 +206,7 @@ export function CategorySection({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "flex flex-col rounded-[8px] transition-all duration-200",
+        "flex flex-col rounded-card transition-all duration-200",
         embedded && "w-full min-w-0",
         !isActive && "hover:bg-muted/30"
       )}
@@ -237,7 +237,7 @@ export function CategorySection({
               Cancel
             </Button>
             <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -245,7 +245,7 @@ export function CategorySection({
 
       <div className="flex items-center gap-2 h-[33px] min-w-0">
         {!embedded ? (
-        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-[8px] bg-background">
+        <div className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-card bg-background">
           <Tag className="h-4 w-4 text-muted-foreground" />
         </div>
         ) : null}
@@ -307,8 +307,8 @@ export function CategorySection({
                 }}
                 placeholder="ADD TAG"
                 className={cn(
-                  "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-[8px] px-2 py-1 shrink-0 flex-shrink-0",
-                  "font-mono text-[11px] uppercase tracking-wide",
+                  "h-[28px] w-[100px] min-w-[100px] max-w-[240px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
+                  "font-mono text-caption uppercase tracking-wider",
                   "bg-background text-muted-foreground/70 placeholder:text-muted-foreground/50",
                   "shadow-inset outline-none cursor-text",
                   "transition-[width] duration-150 ease-out"
@@ -351,7 +351,7 @@ export function CategorySection({
         </div>
 
         {hasUnresolved && !isActive && (
-          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500 border border-background" />
+          <div className="flex-shrink-0 w-2 h-2 rounded-full bg-warning-vivid border border-background" />
         )}
       </div>
     </div>

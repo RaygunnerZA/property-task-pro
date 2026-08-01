@@ -25,7 +25,7 @@ interface RelatedComplianceSectionProps {
 
 function getExpiryColor(expiryState?: string) {
   if (expiryState === "expired") return "text-destructive";
-  if (expiryState === "expiring") return "text-amber-600";
+  if (expiryState === "expiring") return "text-warning-foreground";
   return "text-muted-foreground";
 }
 
@@ -46,7 +46,7 @@ export function RelatedComplianceSection({
         </div>
       )}
       {isLoading ? (
-        <div className="text-xs text-muted-foreground">Loading...</div>
+        <div className="text-xs text-muted-foreground">Loading…</div>
       ) : items.length === 0 && imageHazards.length === 0 ? (
         <div className="text-xs text-muted-foreground py-2">
           No compliance items linked to this property. Add compliance documents to see them here.
@@ -54,8 +54,8 @@ export function RelatedComplianceSection({
       ) : (
         <div className="space-y-2">
           {imageHazards.length > 0 && (
-            <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
-              <div className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-1">
+            <div className="p-2 rounded-lg bg-warning/30 dark:bg-amber-950/20 border border-warning dark:border-amber-800/30">
+              <div className="text-xs font-medium text-warning-foreground dark:text-amber-200 mb-1">
                 Hazards detected in images
               </div>
               <div className="flex flex-wrap gap-1">
@@ -88,7 +88,7 @@ export function RelatedComplianceSection({
                     item.hazards.slice(0, 3).map((h) => (
                       <HazardBadge key={h} hazard={h} size="sm" />
                     ))}
-                  <span className={cn("text-[10px] font-medium", getExpiryColor(item.expiry_state))}>
+                  <span className={cn("text-2xs font-medium", getExpiryColor(item.expiry_state))}>
                     {item.expiry_state === "expired"
                       ? "Expired"
                       : item.expiry_state === "expiring"

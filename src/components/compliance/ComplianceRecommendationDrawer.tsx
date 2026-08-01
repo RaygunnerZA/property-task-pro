@@ -35,7 +35,7 @@ function getRiskConfig(risk: string) {
     case "high":
       return { color: "text-destructive", icon: AlertTriangle };
     case "medium":
-      return { color: "text-amber-600", icon: AlertTriangle };
+      return { color: "text-warning-foreground", icon: AlertTriangle };
     default:
       return { color: "text-muted-foreground", icon: ListTodo };
   }

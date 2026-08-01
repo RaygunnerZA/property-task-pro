@@ -93,7 +93,7 @@ export function TaskCardMinimized({
 
   const priorityColors: Record<string, string> = {
     urgent: "bg-destructive/20 text-destructive border-destructive/30",
-    high: "bg-orange-500/20 text-orange-600 border-orange-500/30",
+    high: "bg-accent/20 text-accent border-accent/30",
     medium: "bg-primary/20 text-primary border-primary/30",
     low: "bg-muted text-muted-foreground border-border",
   };
@@ -102,7 +102,7 @@ export function TaskCardMinimized({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card/70 shadow-e1 border border-border/50",
+        "rounded-card bg-card/70 shadow-e1 border border-border/50",
         "cursor-pointer transition-all duration-300",
         "hover:shadow-md hover:-translate-y-[0.5px]",
         "active:scale-[0.99]"
@@ -119,7 +119,7 @@ export function TaskCardMinimized({
           {/* Property Chip - Small */}
           {property && (
             <div
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] text-2xs font-medium"
               style={{
                 backgroundColor: `${iconColor}20`,
                 color: iconColor,
@@ -136,7 +136,7 @@ export function TaskCardMinimized({
           {/* Milestone Chip - Small */}
           {task._milestoneLabel && (
             <div
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] text-[10px] font-medium"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[4px] text-2xs font-medium"
               style={{
                 backgroundColor: "#8EC9CE20",
                 color: "#8EC9CE",
@@ -153,7 +153,7 @@ export function TaskCardMinimized({
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px] px-1.5 py-0.5",
+                "text-2xs px-1.5 py-0.5",
                 priorityColors[t.priority] || priorityColors.medium
               )}
             >
@@ -163,12 +163,12 @@ export function TaskCardMinimized({
 
           {/* Space/Team indicators - Very compact */}
           {spaces.length > 0 && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-2xs text-muted-foreground">
               {spaces.length}S
             </span>
           )}
           {teams.length > 0 && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-2xs text-muted-foreground">
               {teams.length}T
             </span>
           )}

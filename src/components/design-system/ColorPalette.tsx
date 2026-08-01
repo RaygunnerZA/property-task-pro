@@ -48,7 +48,7 @@ export function ColorPalette() {
                 className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 {copied === color.name ? (
-                  <Check className="w-3.5 h-3.5 text-green-600" />
+                  <Check className="w-3.5 h-3.5 text-success-foreground" />
                 ) : (
                   <Copy className="w-3.5 h-3.5 text-ink/60" />
                 )}
@@ -56,10 +56,10 @@ export function ColorPalette() {
             </div>
             <div className="p-3 space-y-1">
               <p className="font-semibold text-sm text-ink">{color.name}</p>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
                 {color.token}
               </p>
-              <p className="font-mono text-[10px] text-muted-foreground">{color.hex}</p>
+              <p className="font-mono text-2xs text-muted-foreground">{color.hex}</p>
             </div>
           </div>
         ))}

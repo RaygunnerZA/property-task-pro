@@ -45,7 +45,7 @@ export const BottomNav = () => {
                 />
                 <span 
                   className={cn(
-                    "text-[10px] font-semibold tracking-tight transition-colors",
+                    "text-2xs font-semibold tracking-tight transition-colors",
                     isActive ? "text-primary" : "text-muted-foreground"
                   )}
                 >

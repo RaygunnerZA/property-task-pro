@@ -106,7 +106,7 @@ export function FileUploadZone({
           )}
           <div>
             <p className="text-sm font-medium text-foreground">
-              {uploading ? "Uploading..." : "Drop files here or click to upload"}
+              {uploading ? "Uploading…" : "Drop files here or click to upload"}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               HEIC, PNG, JPG/JPEG up to 10MB each

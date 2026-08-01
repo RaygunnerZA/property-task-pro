@@ -111,7 +111,7 @@ export function TemplateDialog({
         <div className="px-6 pb-2 space-y-5">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Template Name
             </Label>
             <Input
@@ -124,7 +124,7 @@ export function TemplateDialog({
 
           {/* Category */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Category
             </Label>
             <Select
@@ -146,7 +146,7 @@ export function TemplateDialog({
 
           {/* Checklist Items */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Checklist Items
             </Label>
             <div className="shadow-engraved rounded-xl px-3 py-3 bg-background min-h-[80px]">
@@ -180,7 +180,7 @@ export function TemplateDialog({
           <Button
             onClick={handleSubmit}
             disabled={!isValid || loading}
-            className="rounded-xl bg-[#8EC9CE] hover:bg-[#7ab8bd] text-white border-0 shadow-primary-btn"
+            className="rounded-xl bg-primary hover:bg-primary text-primary-foreground border-0 shadow-primary-btn"
           >
             {loading ? "Saving…" : mode === "create" ? "Create Template" : "Save Changes"}
           </Button>

@@ -62,9 +62,9 @@ export function SpaceGroupMiniCardsStrip({
   if (loading) {
     return (
       <div className="mb-4 flex gap-2.5 overflow-hidden">
-        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-[8px]" />
-        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-[8px]" />
-        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-[8px]" />
+        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-card" />
+        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-card" />
+        <Skeleton className="h-[155px] w-[120px] flex-shrink-0 rounded-card" />
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function SpaceGroupMiniCardsStrip({
             return (
               <div
                 key={space.id}
-                className="w-[120px] flex-shrink-0 rounded-[5px]"
+                className="w-[120px] flex-shrink-0 rounded-sharp"
                 onClick={() => onSpaceClick?.(space.id)}
               >
                 <SpaceCard

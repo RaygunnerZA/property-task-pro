@@ -100,7 +100,7 @@ export default function SpaceGroupScreen() {
     <>
       <PageHeader className="hidden lg:block">
         <div
-          className="relative flex h-[60px] items-center rounded-bl-[12px] px-4 pr-24 py-2"
+          className="relative flex h-[60px] items-center rounded-bl-xl px-4 pr-24 py-2"
           style={gradientStyle}
         >
           <div className="min-w-0 flex-1">

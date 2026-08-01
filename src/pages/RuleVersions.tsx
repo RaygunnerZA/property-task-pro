@@ -17,7 +17,7 @@ export default function RuleVersions() {
       maxWidth="lg"
     >
       {loading ? (
-        <LoadingState message="Loading versions..." />
+        <LoadingState message="Loading versions…" />
       ) : (
         <div className="space-y-4">
           {(data ?? []).map((v: any) => (

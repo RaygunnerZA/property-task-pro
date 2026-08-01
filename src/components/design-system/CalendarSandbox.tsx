@@ -103,8 +103,8 @@ function Slider({
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="font-mono text-[10px] text-ink">{value}</span>
+        <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="font-mono text-2xs text-ink">{value}</span>
       </div>
       <input 
         type="range" 
@@ -237,11 +237,11 @@ export function CalendarSandbox() {
         <div className="space-y-4">
           {/* Dark Mode Toggle */}
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Preview Mode</span>
+            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Preview Mode</span>
             <button
               onClick={toggleDarkMode}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-[10px] uppercase tracking-wider transition-all',
+                'flex items-center gap-2 px-3 py-1.5 rounded-full font-mono text-2xs uppercase tracking-wider transition-all',
                 config.isDarkMode ? 'bg-ink text-white' : 'bg-surface/80 shadow-e1 text-ink'
               )}
             >
@@ -360,7 +360,7 @@ export function CalendarSandbox() {
           {/* CSS Output */}
           <div className="bg-ink rounded-lg p-3 sm:p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-wider text-white/60">CSS Output</span>
+              <span className="font-mono text-2xs uppercase tracking-wider text-white/60">CSS Output</span>
               <div className="flex gap-2">
                 <button onClick={reset} className="p-1.5 rounded hover:bg-white/10 transition-colors" title="Reset">
                   <RotateCcw className="w-4 h-4 text-white/60" />
@@ -376,7 +376,7 @@ export function CalendarSandbox() {
           {/* Commit Button */}
           <button
             onClick={commitStyles}
-            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-white hover:bg-primary-deep shadow-e1"
+            className="w-full py-3 rounded-lg font-mono text-sm uppercase tracking-wider font-medium transition-all bg-primary text-primary-foreground hover:bg-primary-deep shadow-e1"
           >
             {committed ? (
               <span className="flex items-center justify-center gap-2">
@@ -392,10 +392,10 @@ export function CalendarSandbox() {
         <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
           {/* Card Background */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Card Background</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Card Background</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.cardBackground}
@@ -410,12 +410,12 @@ export function CalendarSandbox() {
 
           {/* Title */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Title</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Title</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.titleFontSize} min={12} max={28} onChange={v => update('titleFontSize', v)} />
               <Slider label="Font Weight" value={config.titleFontWeight} min={300} max={800} step={100} onChange={v => update('titleFontWeight', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
                   value={config.titleFontFamily} 
                   onChange={e => update('titleFontFamily', e.target.value as 'sans' | 'mono')} 
@@ -426,7 +426,7 @@ export function CalendarSandbox() {
                 </select>
               </div>
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.titleColor}
@@ -439,12 +439,12 @@ export function CalendarSandbox() {
 
           {/* Weekdays */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Weekdays</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Weekdays</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.weekdayFontSize} min={8} max={16} onChange={v => update('weekdayFontSize', v)} />
               <Slider label="Font Weight" value={config.weekdayFontWeight} min={300} max={800} step={100} onChange={v => update('weekdayFontWeight', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
                   value={config.weekdayFontFamily} 
                   onChange={e => update('weekdayFontFamily', e.target.value as 'sans' | 'mono')} 
@@ -455,7 +455,7 @@ export function CalendarSandbox() {
                 </select>
               </div>
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.weekdayColor}
@@ -468,12 +468,12 @@ export function CalendarSandbox() {
 
           {/* Dates */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Dates</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Dates</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Font Size" value={config.dateFontSize} min={10} max={18} onChange={v => update('dateFontSize', v)} />
               <Slider label="Font Weight" value={config.dateFontWeight} min={300} max={800} step={100} onChange={v => update('dateFontWeight', v)} />
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Font</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Font</span>
                 <select 
                   value={config.dateFontFamily} 
                   onChange={e => update('dateFontFamily', e.target.value as 'sans' | 'mono')} 
@@ -484,7 +484,7 @@ export function CalendarSandbox() {
                 </select>
               </div>
               <div className="space-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Color</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Color</span>
                 <input
                   type="color"
                   value={config.dateColor}
@@ -497,7 +497,7 @@ export function CalendarSandbox() {
 
           {/* Cell Sizing */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Cell Layout</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Cell Layout</h3>
             <div className="grid grid-cols-2 gap-4">
               <Slider label="Cell Size" value={config.cellSize} min={28} max={56} onChange={v => update('cellSize', v)} />
               <Slider label="Cell Gap" value={config.cellGap} min={0} max={12} onChange={v => update('cellGap', v)} />
@@ -508,11 +508,11 @@ export function CalendarSandbox() {
 
           {/* Heat Colors */}
           <div className="bg-surface/50 rounded-lg shadow-e1 p-3 sm:p-4 space-y-4">
-            <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Heat Colors</h3>
+            <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Heat Colors</h3>
             <Slider label="Heat Noise Texture" value={config.heatNoiseIntensity} min={0} max={80} onChange={v => update('heatNoiseIntensity', v)} />
             <div className="space-y-3">
               <div className="space-y-2">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Low</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Low</span>
                 <div className="grid grid-cols-2 gap-4">
                   <input 
                     type="color" 
@@ -524,7 +524,7 @@ export function CalendarSandbox() {
                 </div>
               </div>
               <div className="space-y-2">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Medium</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Medium</span>
                 <div className="grid grid-cols-2 gap-4">
                   <input 
                     type="color" 
@@ -536,7 +536,7 @@ export function CalendarSandbox() {
                 </div>
               </div>
               <div className="space-y-2">
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">High</span>
+                <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">High</span>
                 <div className="grid grid-cols-2 gap-4">
                   <input 
                     type="color" 

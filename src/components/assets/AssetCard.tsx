@@ -35,9 +35,9 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
   const [iconValue, setIconValue] = useState({ iconName: asset.icon_name || "box", color: iconColor });
 
   const getConditionBadge = (score: number) => {
-    if (score >= 80) return <Badge variant="success" size="sm" className="text-[10px] px-[5px] h-[22px]">Good</Badge>;
-    if (score >= 60) return <Badge variant="warning" size="sm" className="text-[10px] px-[5px] h-[22px]">Fair</Badge>;
-    return <Badge variant="danger" size="sm" className="text-[10px] px-[5px] h-[22px]">Poor</Badge>;
+    if (score >= 80) return <Badge variant="success" size="sm" className="text-2xs px-[5px] h-[22px]">Good</Badge>;
+    if (score >= 60) return <Badge variant="warning" size="sm" className="text-2xs px-[5px] h-[22px]">Fair</Badge>;
+    return <Badge variant="danger" size="sm" className="text-2xs px-[5px] h-[22px]">Poor</Badge>;
   };
 
   const dateAdded = asset.created_at
@@ -46,7 +46,7 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
 
   return (
     <div
-      className="rounded-[12px] bg-white/50 shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[126px]"
+      className="rounded-xl bg-white/50 shadow-e1 cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-150 overflow-hidden flex flex-col h-[126px]"
       onClick={onClick}
     >
       {/* Top band: photo or solid property colour */}
@@ -107,18 +107,18 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
         {/* Chips: space, date, condition */}
         <div className="mt-1.5 flex gap-1.5 flex-wrap items-center shrink-0">
           {spaceName && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] font-mono uppercase h-[22px]">
+            <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[22px]">
               {spaceName}
             </Badge>
           )}
           {dateAdded && (
-            <Badge variant="neutral" size="sm" className="text-[10px] px-[5px] h-[22px] tabular-nums">
+            <Badge variant="neutral" size="sm" className="text-2xs px-[5px] h-[22px] tabular-nums">
               {dateAdded}
             </Badge>
           )}
           {getConditionBadge(conditionScore)}
           {asset.status && asset.status !== "active" && (
-            <Badge variant={asset.status === "retired" ? "neutral" : "warning"} size="sm" className="text-[10px] px-[5px] h-[22px]">
+            <Badge variant={asset.status === "retired" ? "neutral" : "warning"} size="sm" className="text-2xs px-[5px] h-[22px]">
               {asset.status}
             </Badge>
           )}
@@ -127,13 +127,13 @@ export function AssetCard({ asset, property, spaceName, imageUrl, onClick }: Ass
         {/* Condition progress bar - bottom of card */}
         <div className="mt-1 pt-1 px-0.5 border-t border-border/30 shrink-0">
           <div className="flex items-center justify-between mb-0.5 pb-1">
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Condition</span>
-            <span className="text-[10px] font-medium text-muted-foreground tabular-nums">{conditionScore}/100</span>
+            <span className="text-2xs text-muted-foreground uppercase tracking-wider">Condition</span>
+            <span className="text-2xs font-medium text-muted-foreground tabular-nums">{conditionScore}/100</span>
           </div>
           <div className="relative w-full h-3 bg-muted rounded-full overflow-hidden">
             <div
               className={`absolute left-0 top-1/2 -translate-y-1/2 h-[3px] rounded-full transition-all ${
-                conditionScore >= 80 ? "bg-green-500" : conditionScore >= 60 ? "bg-yellow-500" : "bg-red-500"
+                conditionScore >= 80 ? "bg-success-vivid" : conditionScore >= 60 ? "bg-warning-vivid" : "bg-destructive"
               }`}
               style={{ width: `${conditionScore}%` }}
             />

@@ -42,7 +42,7 @@ export default function DesignLibrary() {
               </div>
               <div>
                 <h1 className="font-display text-lg sm:text-xl font-bold text-ink tracking-tight">Filla Design System</h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">v4.0 Dimensional Paper Edition</p>
+                <p className="text-2xs sm:text-xs text-muted-foreground">v4.0 Dimensional Paper Edition</p>
               </div>
             </div>
           </div>
@@ -56,7 +56,7 @@ export default function DesignLibrary() {
                   onClick={() => scrollToSection(section.id)} 
                   className={cn(
                     'flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-full whitespace-nowrap',
-                    'font-mono text-[9px] sm:text-[10px] uppercase tracking-wider',
+                    'font-mono text-2xs sm:text-2xs uppercase tracking-wider',
                     'bg-surface/80 shadow-e1 text-ink/70 hover:text-primary hover:shadow-e2 transition-all'
                   )}
                 >
@@ -92,7 +92,7 @@ export default function DesignLibrary() {
         <section id="responsive"><ResponsiveDemo /></section>
 
         <footer className="pt-6 sm:pt-8 pb-12 sm:pb-16 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+          <p className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">
             Filla Design System • Built with React + Tailwind
           </p>
         </footer>

@@ -70,7 +70,7 @@ export function PropertyIntelligencePanel({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Loading predictions...</p>
+          <p className="text-sm text-muted-foreground">Loading predictions…</p>
         </CardContent>
       </Card>
     );
@@ -129,8 +129,8 @@ export function PropertyIntelligencePanel({
                 </div>
               )}
               {maxCompRisk > 0 && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-warning/30 dark:bg-amber-950/20">
+                  <AlertTriangle className="h-4 w-4 text-warning-foreground" />
                   <span className="text-sm">High-risk compliance profile detected</span>
                 </div>
               )}
@@ -177,10 +177,10 @@ export function PropertyIntelligencePanel({
             return (
               <div
                 key={w.ruleId}
-                className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20"
+                className="flex items-start gap-2 p-2 rounded-lg bg-warning/30 dark:bg-amber-950/20"
               >
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <span className="text-sm text-amber-800 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 text-warning-foreground shrink-0 mt-0.5" />
+                <span className="text-sm text-warning-foreground dark:text-amber-400">
                   {w.output.message}
                 </span>
               </div>

@@ -165,7 +165,7 @@ export function DocumentDetailDrawer({
         </SheetHeader>
 
         {isLoading ? (
-          <div className="flex-1 p-4 text-muted-foreground">Loading...</div>
+          <div className="flex-1 p-4 text-muted-foreground">Loading…</div>
         ) : !document ? (
           <div className="flex-1 p-4 text-muted-foreground">Document not found</div>
         ) : (
@@ -173,7 +173,7 @@ export function DocumentDetailDrawer({
             {/* Preview */}
             <section>
               <h3 className="text-sm font-semibold mb-2">Preview</h3>
-              <div className="rounded-[8px] bg-muted/30 overflow-hidden min-h-[200px] border border-border/30">
+              <div className="rounded-card bg-muted/30 overflow-hidden min-h-[200px] border border-border/30">
                 {document.file_url && (
                   <>
                     {document.file_type?.includes("pdf") ? (
@@ -213,7 +213,7 @@ export function DocumentDetailDrawer({
                   <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="rounded-[8px] mt-1"
+                    className="rounded-card mt-1"
                   />
                 </div>
                 <div>
@@ -221,7 +221,7 @@ export function DocumentDetailDrawer({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-[8px] border border-input bg-background px-3 py-2 text-sm mt-1"
+                    className="w-full rounded-card border border-input bg-background px-3 py-2 text-sm mt-1"
                   >
                     <option value="">Select...</option>
                     {DOCUMENT_CATEGORIES.map((c) => (
@@ -234,7 +234,7 @@ export function DocumentDetailDrawer({
                   <Input
                     value={documentType}
                     onChange={(e) => setDocumentType(e.target.value)}
-                    className="rounded-[8px] mt-1"
+                    className="rounded-card mt-1"
                   />
                 </div>
                 <div>
@@ -243,7 +243,7 @@ export function DocumentDetailDrawer({
                     type="date"
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
-                    className="rounded-[8px] mt-1"
+                    className="rounded-card mt-1"
                   />
                 </div>
                 <div>
@@ -251,7 +251,7 @@ export function DocumentDetailDrawer({
                   <select
                     value={renewalFrequency}
                     onChange={(e) => setRenewalFrequency(e.target.value)}
-                    className="w-full rounded-[8px] border border-input bg-background px-3 py-2 text-sm mt-1"
+                    className="w-full rounded-card border border-input bg-background px-3 py-2 text-sm mt-1"
                   >
                     <option value="">Select...</option>
                     {RENEWAL_OPTIONS.map((r) => (
@@ -264,7 +264,7 @@ export function DocumentDetailDrawer({
                   <Textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="rounded-[8px] mt-1 min-h-[60px]"
+                    className="rounded-card mt-1 min-h-[60px]"
                   />
                 </div>
               </div>
@@ -329,7 +329,7 @@ export function DocumentDetailDrawer({
               </div>
 
               {/* AI suggestions */}
-              <div className="mt-3 p-3 rounded-[8px] bg-primary/5 border border-primary/20">
+              <div className="mt-3 p-3 rounded-card bg-primary/5 border border-primary/20">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary mb-2">
                   <Sparkles className="h-4 w-4" />
                   AI suggests linking

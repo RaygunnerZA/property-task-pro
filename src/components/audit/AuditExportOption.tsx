@@ -51,7 +51,7 @@ export default function AuditExportOption({
           <div className="flex-1 space-y-3">
             <div>
               <Heading variant="m">{title}</Heading>
-              <Text variant="body" className="text-neutral-600 mt-1">
+              <Text variant="body" className="text-muted-foreground mt-1">
                 {description}
               </Text>
             </div>

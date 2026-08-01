@@ -116,7 +116,7 @@ export function GlobalDropZone({ className, compact = false, onUploadComplete }:
   };
 
   return (
-    <section className={cn(compact ? "p-0" : "rounded-[12px] bg-card/70 shadow-e1 p-4", className)}>
+    <section className={cn(compact ? "p-0" : "rounded-xl bg-card/70 shadow-e1 p-4", className)}>
       {!compact && (
         <div className="flex items-center gap-2 mb-3">
           <Inbox className="h-4 w-4 text-primary" />
@@ -168,7 +168,7 @@ export function GlobalDropZone({ className, compact = false, onUploadComplete }:
       {(lastUploaded > 0 || lastFailures.length > 0) && (
         <div className="mt-3 space-y-2">
           {lastUploaded > 0 && (
-            <div className="text-xs text-emerald-700 flex items-center gap-1">
+            <div className="text-xs text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}.
             </div>

@@ -128,7 +128,7 @@ export function AssistantPanelBody({
           if (item.type === "heading" && hasTaskRows) {
             return (
               <div key={idx} className="flex items-center gap-2">
-                <FillaIcon size={12} className="text-[#EB6834] shrink-0" />
+                <FillaIcon size={12} className="text-accent shrink-0" />
                 <p className="text-sm whitespace-pre-wrap">{item.raw}</p>
               </div>
             );
@@ -145,7 +145,7 @@ export function AssistantPanelBody({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-[29px] px-2 py-0 text-xs align-middle bg-[var(--tw-ring-offset-color)] text-[#85BABC] tracking-[0.1px] shadow-[inset_-1px_-1px_2px_0px_rgba(0,0,0,0.05),inset_1px_2px_1.7px_0px_rgba(255,255,255,1)]"
+                    className="h-[29px] px-2 py-0 text-xs align-middle bg-[var(--tw-ring-offset-color)] text-primary tracking-[0.1px] shadow-[inset_-1px_-1px_2px_0px_rgba(0,0,0,0.05),inset_1px_2px_1.7px_0px_rgba(255,255,255,1)]"
                     style={{ fontFamily: '"Inter Tight"' }}
                     onClick={() => {
                       window.dispatchEvent(
@@ -168,7 +168,7 @@ export function AssistantPanelBody({
             return (
               <p
                 key={idx}
-                className="text-[12px] leading-[1.35] text-[#8F8D8A]"
+                className="text-xs leading-[1.35] text-muted-foreground"
                 style={{ fontFamily: '"Inter Tight", system-ui, sans-serif' }}
               >
                 {item.raw}
@@ -218,7 +218,7 @@ export function AssistantPanelBody({
         ))}
         {loading && (
           <div className="rounded-lg p-3 shadow-e1 mr-8 bg-card/75 opacity-100 animate-pulse">
-            <p className="text-sm text-muted-foreground">Thinking...</p>
+            <p className="text-sm text-muted-foreground">Thinking…</p>
           </div>
         )}
         <div ref={messagesEndRef} />

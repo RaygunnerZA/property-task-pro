@@ -101,9 +101,9 @@ export function SpaceThumbnailPickerDialog({
                   type="button"
                   onClick={() => setPending(opt)}
                   className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-[8px] bg-card p-2 text-center shadow-e1 transition-shadow",
+                    "flex flex-col items-center gap-1.5 rounded-card bg-card p-2 text-center shadow-e1 transition-shadow",
                     isSelected
-                      ? "ring-2 ring-[#8EC9CE] shadow-md"
+                      ? "ring-2 ring-primary shadow-md"
                       : "hover:shadow-md"
                   )}
                   aria-pressed={isSelected}
@@ -115,7 +115,7 @@ export function SpaceThumbnailPickerDialog({
                     className="h-16 w-16 object-contain"
                     loading="lazy"
                   />
-                  <span className="line-clamp-2 text-[10px] font-medium leading-tight text-muted-foreground">
+                  <span className="line-clamp-2 text-2xs font-medium leading-tight text-muted-foreground">
                     {opt.label}
                   </span>
                 </button>
@@ -141,7 +141,6 @@ export function SpaceThumbnailPickerDialog({
             variant="primary"
             onClick={() => void handleSave()}
             disabled={busy || !pending}
-            style={{ backgroundColor: "#8EC9CE" }}
           >
             {busy ? "Saving…" : "Use image"}
           </NeomorphicButton>

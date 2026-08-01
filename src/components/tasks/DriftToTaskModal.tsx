@@ -31,7 +31,7 @@ export const DriftToTaskModal: React.FC<DriftToTaskModalProps> = ({
       <Surface variant="floating" className="w-full max-w-lg p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-yellow-600" />
+            <AlertTriangle className="w-6 h-6 text-warning-foreground" />
             <Heading variant="l">Create Task from Drift</Heading>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>

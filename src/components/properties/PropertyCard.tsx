@@ -185,7 +185,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
         onClick={goToPropertyHub}
         onKeyDown={handleCardKeyDown}
         className={cn(
-          "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 flex flex-row w-full h-[100px] items-stretch relative",
+          "bg-card/60 rounded-xl overflow-hidden shadow-e1 flex flex-row w-full h-[100px] items-stretch relative",
           interactiveCardClass,
           className
         )}
@@ -205,7 +205,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
               e.stopPropagation();
               onAddPropertyClick();
             }}
-            className="absolute top-2 right-2 z-10 flex items-center justify-center rounded-[5px] transition-all duration-200 hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+            className="absolute top-2 right-2 z-10 flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30 text-muted-foreground hover:text-foreground"
             style={{ width: '20px', height: '20px' }}
             aria-label="Add property"
           >
@@ -224,7 +224,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
       onClick={goToPropertyHub}
       onKeyDown={handleCardKeyDown}
       className={cn(
-        "bg-card/60 rounded-[12px] overflow-hidden shadow-e1 h-[216px] flex flex-col",
+        "bg-card/60 rounded-xl overflow-hidden shadow-e1 h-[216px] flex flex-col",
         interactiveCardClass,
         className
       )}

@@ -70,13 +70,13 @@ export function ExpandableSpaceChip({
               }
             }}
             placeholder="Sub-space name..."
-            className="w-full px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide rounded border border-input bg-background outline-none focus:ring-1 focus:ring-ring"
+            className="w-full px-1.5 py-0.5 text-2xs font-mono uppercase tracking-wider rounded border border-input bg-background outline-none focus:ring-1 focus:ring-ring"
           />
           <button
             type="button"
             onClick={handleAddSubSpaceSubmit}
             disabled={!newSubSpaceName.trim()}
-            className="mt-1 w-full py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary opacity-100 disabled:opacity-50"
+            className="mt-1 w-full py-0.5 text-2xs font-mono uppercase tracking-wider text-primary opacity-100 disabled:opacity-50"
           >
             Add
           </button>
@@ -88,7 +88,7 @@ export function ExpandableSpaceChip({
           {subSpaces.map((name) => (
             <DropdownMenuItem
               key={name}
-              className="font-mono text-[10px] uppercase tracking-wide cursor-default py-1 px-1.5 min-h-0"
+              className="font-mono text-2xs uppercase tracking-wider cursor-default py-1 px-1.5 min-h-0"
               onSelect={(e) => e.preventDefault()}
             >
               <span className="text-muted-foreground mr-1">•</span>
@@ -106,19 +106,19 @@ export function ExpandableSpaceChip({
               e.preventDefault();
               setIsAddingSubSpace(true);
             }}
-            className="flex-1 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide cursor-pointer rounded py-1 px-1 min-h-0"
+            className="flex-1 flex items-center gap-1 font-mono text-caption uppercase tracking-wider cursor-pointer rounded py-1 px-1 min-h-0"
           >
             <Plus className="h-3 w-3" />
             Sub-space
           </DropdownMenuItem>
-          <span className="text-muted-foreground/60 font-mono text-[10px]">|</span>
+          <span className="text-muted-foreground/60 font-mono text-2xs">|</span>
           <DropdownMenuItem
             onSelect={(e) => {
               e.preventDefault();
               onRename?.();
             }}
             disabled={!onRename}
-            className="flex-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0.5 min-h-0"
+            className="flex-1 flex items-center justify-center gap-1 font-mono text-2xs uppercase tracking-wider cursor-pointer rounded py-0.5 px-0.5 min-h-0"
           >
             <Pencil className="h-3 w-3" />
             Rename
@@ -135,15 +135,15 @@ export function ExpandableSpaceChip({
             onDuplicate?.();
           }}
           disabled={!onDuplicate}
-          className="flex-1 flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide cursor-pointer rounded py-1 px-0.5 min-h-0"
+          className="flex-1 flex items-center gap-1 font-mono text-caption uppercase tracking-wider cursor-pointer rounded py-1 px-0.5 min-h-0"
         >
           <CopyPlus className="h-3 w-3" />
           Duplicate
         </DropdownMenuItem>
-        <span className="text-muted-foreground/60 font-mono text-[10px]">|</span>
+        <span className="text-muted-foreground/60 font-mono text-2xs">|</span>
         <DropdownMenuItem
           onSelect={() => onRemove()}
-          className="flex-1 flex items-center justify-center gap-1 font-mono text-[10px] uppercase tracking-wide cursor-pointer rounded py-0.5 px-0 min-h-0"
+          className="flex-1 flex items-center justify-center gap-1 font-mono text-2xs uppercase tracking-wider cursor-pointer rounded py-0.5 px-0 min-h-0"
         >
           <X className="h-3 w-3" />
           Remove

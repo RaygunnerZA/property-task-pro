@@ -55,7 +55,7 @@ export default function CreateOrganisationScreen() {
     return (
       <OnboardingContainer topRight={<OnboardingLogoutButton />}>
         <div className="animate-fade-in flex min-h-[200px] items-center justify-center">
-          <p className="text-[#6D7480]">Checking your account…</p>
+          <p className="text-muted-foreground">Checking your account…</p>
         </div>
       </OnboardingContainer>
     );
@@ -202,7 +202,7 @@ export default function CreateOrganisationScreen() {
     return (
       <OnboardingContainer topRight={<OnboardingLogoutButton />}>
         <div className="animate-fade-in flex min-h-[200px] items-center justify-center">
-          <p className="text-[#6D7480]">Taking you to the next step…</p>
+          <p className="text-muted-foreground">Taking you to the next step…</p>
         </div>
       </OnboardingContainer>
     );
@@ -239,7 +239,7 @@ export default function CreateOrganisationScreen() {
               onClick={handleCreate}
               disabled={loading || !orgName.trim()}
             >
-              {loading ? "Creating..." : "Continue"}
+              {loading ? "Creating…" : "Continue"}
             </NeomorphicButton>
           </div>
 

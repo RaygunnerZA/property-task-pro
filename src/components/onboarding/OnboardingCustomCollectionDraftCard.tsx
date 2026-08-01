@@ -16,7 +16,7 @@ import {
 const DASHED_LINE_STYLE = {
   height: "1px",
   backgroundImage:
-    "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
+    "repeating-linear-gradient(to right, hsl(var(--border)) 0px, hsl(var(--border)) 4px, transparent 4px, transparent 7px)",
   backgroundSize: "7px 1px",
   backgroundRepeat: "repeat-x" as const,
 };
@@ -45,7 +45,7 @@ export function OnboardingCustomCollectionDraftCard({
 
   return (
     <div className={cn("w-[200px] h-[272px] flex-shrink-0", className)}>
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[8px] bg-card shadow-e1">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-card bg-card shadow-e1">
         <div className="h-[130px] shrink-0 overflow-hidden">
           <SpaceGroupCardBanner
             imageSrc={getSpaceGroupCardIllustration("custom")}
@@ -90,7 +90,7 @@ export function OnboardingCustomCollectionDraftCard({
                 "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-all",
                 "disabled:opacity-50"
               )}
-              style={{ backgroundColor: "#14B8A6" }}
+              style={{ backgroundColor: "hsl(var(--primary-deep))" }}
               aria-label="Create collection"
             >
               <Plus className="h-3.5 w-3.5" />

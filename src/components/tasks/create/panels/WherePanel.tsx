@@ -331,9 +331,9 @@ export function WherePanel({
               resetPropertyModal();
               setShowCreateProperty(true);
             }}
-            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+            className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
           >
-            <span className="text-[12px] uppercase leading-[16px]">PROPERTY</span>
+            <span className="text-xs uppercase leading-[16px]">PROPERTY</span>
             <Plus className="h-3.5 w-3.5" />
           </button>
           
@@ -358,7 +358,7 @@ export function WherePanel({
               
               {/* Other properties (inactive when space selected, visible but muted) */}
               {propertiesLoading ? (
-                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading properties...</p>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">Loading properties…</p>
               ) : filteredProperties.length > 0 ? (
                 filteredProperties.map(property => {
                   const isInactive = selectedSpace && !selectedPropertyIds.includes(property.id);
@@ -412,9 +412,9 @@ export function WherePanel({
                 resetSpaceModal();
                 setShowCreateSpace(true);
               }}
-              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-[8px] h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
+              className="inline-flex items-center gap-1.5 pl-[9px] pr-1.5 py-1.5 rounded-card h-[28px] bg-background text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] shrink-0 font-mono transition-all duration-150 cursor-pointer"
             >
-              <span className="text-[12px] uppercase leading-[16px]">SPACES</span>
+              <span className="text-xs uppercase leading-[16px]">SPACES</span>
               <Plus className="h-3.5 w-3.5" />
             </button>
             
@@ -422,7 +422,7 @@ export function WherePanel({
             <div className="flex-1 overflow-x-auto overflow-y-hidden min-w-0 no-scrollbar">
               <div className="flex items-center gap-2 h-[40px]">
                 {spacesLoading ? (
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces...</p>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces…</p>
                 ) : filteredSpaces.length > 0 || ghostSpaces.length > 0 ? (
                   <>
                     {filteredSpaces.map(space => {
@@ -491,7 +491,7 @@ export function WherePanel({
               />
               
               {propertyImagePreview ? (
-                <div className="relative w-16 h-16 rounded-[8px] overflow-hidden shadow-e1">
+                <div className="relative w-16 h-16 rounded-card overflow-hidden shadow-e1">
                   <img src={propertyImagePreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -505,10 +505,10 @@ export function WherePanel({
                 <button
                   type="button"
                   onClick={() => propertyFileInputRef.current?.click()}
-                  className="w-16 h-16 rounded-[8px] border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
+                  className="w-16 h-16 rounded-card border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:border-primary/50 transition-colors"
                 >
                   <ImagePlus className="h-4 w-4" />
-                  <span className="text-[10px]">Image</span>
+                  <span className="text-2xs">Image</span>
                 </button>
               )}
             </div>
@@ -538,7 +538,7 @@ export function WherePanel({
               onClick={handleCreateProperty}
               disabled={!newPropertyName.trim() || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -600,7 +600,7 @@ export function WherePanel({
               onClick={handleCreateSpace}
               disabled={!newSpaceName.trim() || !primaryPropertyId || creating}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>

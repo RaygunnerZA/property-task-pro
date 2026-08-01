@@ -89,7 +89,7 @@ export function DocumentCard({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-[8px] bg-card shadow-e1",
+        "rounded-card bg-card shadow-e1",
         "cursor-pointer hover:shadow-e2 active:shadow-e1 transition-all duration-150",
         "overflow-hidden flex flex-col min-h-[120px] relative group",
         "border border-border/50"
@@ -101,10 +101,10 @@ export function DocumentCard({
           <img
             src={document.thumbnail_url}
             alt=""
-            className="w-12 h-12 rounded-[5px] object-cover flex-shrink-0"
+            className="w-12 h-12 rounded-sharp object-cover flex-shrink-0"
           />
         ) : (
-          <div className="w-12 h-12 rounded-[5px] bg-muted/50 flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-sharp bg-muted/50 flex items-center justify-center flex-shrink-0">
             <FileIcon className="h-6 w-6 text-muted-foreground" />
           </div>
         )}
@@ -130,17 +130,17 @@ export function DocumentCard({
       {linkedCount > 0 && (
         <div className="px-3 pb-2 flex flex-wrap gap-1">
           {document.linked_spaces?.slice(0, 2).map((s) => (
-            <span key={s.id} className="text-[10px] text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+            <span key={s.id} className="text-2xs text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
               {s.name}
             </span>
           ))}
           {document.linked_assets?.slice(0, 2).map((a) => (
-            <span key={a.id} className="text-[10px] text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
+            <span key={a.id} className="text-2xs text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded">
               {a.name}
             </span>
           ))}
           {linkedCount > 4 && (
-            <span className="text-[10px] text-muted-foreground">+{linkedCount - 4}</span>
+            <span className="text-2xs text-muted-foreground">+{linkedCount - 4}</span>
           )}
         </div>
       )}
@@ -149,7 +149,7 @@ export function DocumentCard({
       {hasAiInsights && (
         <Collapsible defaultOpen={false} className="group/ai">
           <CollapsibleTrigger
-            className="flex items-center gap-1.5 w-full px-3 py-1.5 text-left text-[11px] font-medium text-primary/90 hover:text-primary border-t border-border/30"
+            className="flex items-center gap-1.5 w-full px-3 py-1.5 text-left text-caption font-medium text-primary/90 hover:text-primary border-t border-border/30"
             onClick={(e) => e.stopPropagation()}
           >
             <Sparkles className="h-3 w-3" />
@@ -157,7 +157,7 @@ export function DocumentCard({
             <ChevronDown className="h-3 w-3 ml-auto transition-transform group-data-[state=open]/ai:rotate-180" />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="px-3 pb-2 pt-1 space-y-2 text-[11px] border-t border-border/20" onClick={(e) => e.stopPropagation()}>
+            <div className="px-3 pb-2 pt-1 space-y-2 text-caption border-t border-border/20" onClick={(e) => e.stopPropagation()}>
               {document.document_type && (
                 <p><span className="text-muted-foreground">Type:</span> {document.document_type}</p>
               )}
@@ -182,7 +182,7 @@ export function DocumentCard({
               {hazards.length > 0 && (
                 <div>
                   <span className="text-muted-foreground">Hazards:</span>{" "}
-                  <span className="text-amber-600 font-medium">{hazards.join(", ")}</span>
+                  <span className="text-warning-foreground font-medium">{hazards.join(", ")}</span>
                 </div>
               )}
               {detectedSpaces.length > 0 && (
@@ -201,7 +201,7 @@ export function DocumentCard({
                 <div className="pt-2 space-y-2">
                   {suggestedSpaces.length > 0 && onLinkSpace && (
                     <div>
-                      <span className="text-muted-foreground text-[10px] uppercase">Spaces</span>
+                      <span className="text-muted-foreground text-2xs uppercase">Spaces</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {suggestedSpaces.slice(0, 4).map((s) => (
                           <button
@@ -211,7 +211,7 @@ export function DocumentCard({
                               e.stopPropagation();
                               onLinkSpace(s.id);
                             }}
-                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-2xs hover:bg-primary/20"
                           >
                             {s.name}
                           </button>
@@ -221,7 +221,7 @@ export function DocumentCard({
                   )}
                   {suggestedAssets.length > 0 && onLinkAsset && (
                     <div>
-                      <span className="text-muted-foreground text-[10px] uppercase">Assets</span>
+                      <span className="text-muted-foreground text-2xs uppercase">Assets</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {suggestedAssets.slice(0, 4).map((a) => (
                           <button
@@ -231,7 +231,7 @@ export function DocumentCard({
                               e.stopPropagation();
                               onLinkAsset(a.id);
                             }}
-                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-2xs hover:bg-primary/20"
                           >
                             {a.name}
                           </button>
@@ -241,7 +241,7 @@ export function DocumentCard({
                   )}
                   {suggestedCompliance.length > 0 && onLinkCompliance && (
                     <div>
-                      <span className="text-muted-foreground text-[10px] uppercase flex items-center gap-1">
+                      <span className="text-muted-foreground text-2xs uppercase flex items-center gap-1">
                         <Shield className="h-2.5 w-2.5" /> Compliance
                       </span>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -253,7 +253,7 @@ export function DocumentCard({
                               e.stopPropagation();
                               onLinkCompliance(c.id);
                             }}
-                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] hover:bg-primary/20"
+                            className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-2xs hover:bg-primary/20"
                           >
                             {c.title}
                           </button>
@@ -268,7 +268,7 @@ export function DocumentCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-6 text-[10px] mt-1"
+                  className="h-6 text-2xs mt-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     onLinkItems();
@@ -283,7 +283,7 @@ export function DocumentCard({
       )}
 
       {/* Timestamp */}
-      <div className="px-3 pb-3 text-[10px] text-muted-foreground">
+      <div className="px-3 pb-3 text-2xs text-muted-foreground">
         Updated {formatDistanceToNow(new Date(document.updated_at), { addSuffix: true })}
       </div>
 
@@ -296,7 +296,7 @@ export function DocumentCard({
               e.stopPropagation();
               onOpen();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <ExternalLink className="h-3 w-3" />
             Open
@@ -309,7 +309,7 @@ export function DocumentCard({
               e.stopPropagation();
               onReplace();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <RefreshCw className="h-3 w-3" />
             Replace
@@ -322,7 +322,7 @@ export function DocumentCard({
               e.stopPropagation();
               onLinkItems();
             }}
-            className="flex items-center gap-1 px-2 py-1 rounded-[5px] bg-card shadow-e1 text-xs hover:shadow-e2"
+            className="flex items-center gap-1 px-2 py-1 rounded-sharp bg-card shadow-e1 text-xs hover:shadow-e2"
           >
             <Link2 className="h-3 w-3" />
             Link items

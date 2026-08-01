@@ -84,8 +84,8 @@ export function PropertyProfileSlider({
     cn(
       "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-opacity",
       enabled
-        ? "text-[#EB6834] hover:opacity-80"
-        : "text-[#EB6834]/35 pointer-events-none"
+        ? "text-accent hover:opacity-80"
+        : "text-accent/35 pointer-events-none"
     );
 
   const chevronClass = "h-9 w-9";
@@ -144,7 +144,7 @@ export function PropertyProfileSlider({
             onClick={() => scrollToIndex(index)}
             className={cn(
               "h-1.5 rounded-full transition-all duration-200",
-              activeIndex === index ? "w-6 bg-[#8EC9CE]" : "w-1.5 bg-[#6D7480]/25"
+              activeIndex === index ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/25"
             )}
           />
         ))}

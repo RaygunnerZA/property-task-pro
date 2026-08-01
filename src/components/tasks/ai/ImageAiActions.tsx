@@ -165,13 +165,13 @@ export function ImageAiActions({
 
   return (
     <Collapsible defaultOpen={false} className="group">
-      <CollapsibleTrigger className="flex items-center gap-2 w-full text-left text-sm font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors py-2">
+      <CollapsibleTrigger className="flex items-center gap-2 w-full text-left text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors py-2">
         <Search className="h-4 w-4 text-primary" />
         AI Actions
         <ChevronDown className="h-4 w-4 ml-auto transition-transform group-data-[state=open]:rotate-180" />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="rounded-lg p-3 space-y-4 bg-muted/30 shadow-e1 text-[13px]">
+        <div className="rounded-lg p-3 space-y-4 bg-muted/30 shadow-e1 text-sm">
           {/* A. Detected Items */}
           {hasDetected && (
             <div>
@@ -182,10 +182,10 @@ export function ImageAiActions({
                     <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                     <span>{obj.label || obj.type}</span>
                     {obj.confidence !== undefined && (
-                      <span className="text-muted-foreground text-[11px]">{(obj.confidence * 100).toFixed(0)}%</span>
+                      <span className="text-muted-foreground text-caption">{(obj.confidence * 100).toFixed(0)}%</span>
                     )}
                     {(obj.serial_number || obj.model || obj.expiry_date) && (
-                      <span className="text-muted-foreground text-[11px]">
+                      <span className="text-muted-foreground text-caption">
                         {[obj.serial_number, obj.model, obj.expiry_date].filter(Boolean).join(" · ")}
                       </span>
                     )}
@@ -257,10 +257,10 @@ export function ImageAiActions({
                     {status && (
                       <span
                         className={cn(
-                          "ml-2 rounded px-1.5 text-[10px] font-medium",
-                          status === "green" && "bg-green-500/20 text-green-700",
-                          status === "amber" && "bg-amber-500/20 text-amber-700",
-                          status === "red" && "bg-red-500/20 text-red-700"
+                          "ml-2 rounded px-1.5 text-2xs font-medium",
+                          status === "green" && "bg-success-vivid/20 text-success-foreground",
+                          status === "amber" && "bg-warning-vivid/20 text-warning-foreground",
+                          status === "red" && "bg-destructive/20 text-destructive"
                         )}
                       >
                         {status}

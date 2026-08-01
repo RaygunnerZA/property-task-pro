@@ -359,7 +359,7 @@ export function IconColorPicker({
                   ref={(r) => {
                     colorItemRefs.current[i] = r;
                   }}
-                  className="flex-shrink-0 rounded-[12px] transition-[filter,opacity] duration-100"
+                  className="flex-shrink-0 rounded-xl transition-[filter,opacity] duration-100"
                   style={{
                     width: ITEM_SIZE,
                     height: ITEM_SIZE,

@@ -81,7 +81,7 @@ function HorizontalOverflowRow({ children, className }: { children: ReactNode; c
       >
         <ChevronRight
           className={cn(
-            "h-4 w-4 shrink-0 text-[#85BABC]",
+            "h-4 w-4 shrink-0 text-primary",
             "drop-shadow-[0_0_6px_rgba(142,201,206,0.85)]",
             "animate-[chip-chevron-glow_2.4s_ease-in-out_infinite]"
           )}
@@ -213,7 +213,7 @@ export function IntakeChipRow({
         title={title}
         style={{ width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }}
         className={cn(
-          "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-[8px]",
+          "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-card",
           "transition-[background-color,box-shadow,color] duration-200 ease-out",
           isOpen
             ? "bg-transparent text-muted-foreground shadow-e1"
@@ -269,7 +269,7 @@ export function IntakeChipRow({
     >
       <div className="overflow-hidden">
         {panel && (
-          <div className="!mt-0 rounded-[12px] bg-background/70 px-0.5 py-[3px]">
+          <div className="!mt-0 rounded-xl bg-background/70 px-0.5 py-[3px]">
             <div className="min-w-0 border-b border-border/15 pb-px">
               {panelRow2}
             </div>
@@ -321,7 +321,7 @@ export function IntakeChipRow({
         >
           <ChevronRight
             className={cn(
-              "h-4 w-4 shrink-0 text-[#8EC9CE]",
+              "h-4 w-4 shrink-0 text-primary",
               "drop-shadow-[0_0_6px_rgba(142,201,206,0.85)]",
               "animate-[chip-chevron-glow_2.4s_ease-in-out_infinite]"
             )}

@@ -57,7 +57,7 @@ export function MobileHeaderSearchButton({
         className={cn(
           onGradient
             ? gradientHeaderControlClassName()
-            : "flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            : "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-card shadow-e1 outline-none transition-shadow hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
         aria-label="Search"
       >
@@ -88,7 +88,7 @@ export function MobileHeaderSearchButton({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSubmit();
                 }}
-                placeholder="Search anything..."
+                placeholder="Search anything…"
                 className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/70"
                 aria-label="Search"
                 autoFocus
