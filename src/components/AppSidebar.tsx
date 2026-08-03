@@ -107,7 +107,7 @@ export function AppSidebar() {
   const { openAssistant } = useAssistantContext();
   const entityContext = useMemo(() => {
     const pid = searchParams.get('property');
-    if (pid && ['/issues', '/records', '/agenda', '/', ''].includes(currentPath)) {
+    if (pid && ['/home', '/records', '/agenda', '/', ''].includes(currentPath)) {
       return { type: 'property' as const, id: pid };
     }
     if (currentPath === '/properties' && pid) {
@@ -158,7 +158,7 @@ export function AppSidebar() {
     const params = new URLSearchParams(searchParams);
     params.set('add', 'true');
     const path = currentPath === '' ? '/' : currentPath;
-    const workbenchPaths = new Set(['/', '/issues', '/tasks', '/records', '/agenda']);
+    const workbenchPaths = new Set(['/', '/home', '/tasks', '/records', '/agenda']);
     if (workbenchPaths.has(path)) {
       navigate(`${path}?${params.toString()}`);
       return;
@@ -200,7 +200,7 @@ export function AppSidebar() {
 
     const isActive = isContextItem
       ? item.title === 'Attention'
-        ? currentPath === '/issues' && searchParams.get('property') === hubPropertyId
+        ? currentPath === '/home' && searchParams.get('property') === hubPropertyId
         : item.title === 'Compliance'
           ? currentPath === '/records' &&
             searchParams.get('property') === hubPropertyId &&
@@ -272,9 +272,10 @@ export function AppSidebar() {
           isMobile && "text-sidebar-foreground"
         )}
       >
+        {/* Logo lives on the workbench gradient header from `lg` up; keep it in the nav rail only for offcanvas / narrow. */}
         <div
           className={cn(
-            "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out",
+            "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out lg:hidden",
             open ? "pl-[11px] pr-0" : "flex justify-center px-0"
           )}
         >

@@ -40,7 +40,7 @@ const panelShellClass = cn(columnShellClass, "rounded-xl");
 
 /**
  * Product centre column (DualPaneLayout `rightColumn`).
- * Home → org-wide Attention; `/issues` → property Attention hub; `/records` & `/agenda` → TaskPanel.
+ * Home → org-wide Attention; `/home` → property home; `/records` & `/agenda` → TaskPanel.
  */
 export function RightColumn({
   children,

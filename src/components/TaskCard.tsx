@@ -32,6 +32,7 @@ import {
 } from "@/lib/userDisplayHelpers";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/hooks/useAuth";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import {
   formatTaskDueRelative,
   getTaskDueUrgency,
@@ -204,8 +205,11 @@ function TaskCardComponent({
   const { orgId } = useActiveOrg();
   const { members } = useOrgMembers();
   const { user: currentUser } = useAuth();
+  const { data: orgProperties = [] } = usePropertiesQuery();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  /** Property chip is only useful when the org has more than one property. */
+  const showPropertyIconInMeta = orgProperties.length > 1;
   const [isCompleting, setIsCompleting] = useState(false);
   // Shared confirm/settle phase — also driven by TaskDetailPanel's "Mark Complete"
   // so the list card animates no matter where completion was triggered from.
@@ -371,8 +375,10 @@ function TaskCardComponent({
       : null;
   const dueFormattedLabel = dueDateRaw ? formatTaskDate(dueDateRaw) : null;
   const dueRelativeLabel = formatTaskDueRelative(dueDateRaw);
-  const propertyLabel =
-    property?.nickname || property?.address || property?.name || null;
+  /** Property name is redundant when the org only has one property. */
+  const propertyLabel = showPropertyIconInMeta
+    ? property?.nickname || property?.address || property?.name || null
+    : null;
   const spaceLabel = spaces[0]?.name ?? null;
   const locationLine = [propertyLabel, spaceLabel].filter(Boolean).join(" • ");
 
@@ -427,6 +433,15 @@ function TaskCardComponent({
     const horizontalMedia = (
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
         {dueUrgencyChip}
+        {/* Inside media zone so paper-texture `bg-card > * { relative }` cannot push the thumb */}
+        {showPriorityDot ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute top-[4px] left-[4px] z-10 h-[10px] w-[10px] rounded-full",
+              priorityColor
+            )}
+          />
+        ) : null}
         {showDoneButton && !metaCompact ? (
           <button
             type="button"
@@ -458,15 +473,6 @@ function TaskCardComponent({
         onClick={onClick}
       >
         {completionOverlay}
-        {/* Priority Indicator Circle - Top Left Corner */}
-        {showPriorityDot ? (
-        <div 
-          className={cn(
-            "absolute top-[4px] left-[4px] w-[10px] h-[10px] rounded-full",
-            priorityColor
-          )}
-        />
-        ) : null}
         {thumbnailFirst ? horizontalMedia : null}
         {/* Content */}
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
@@ -495,9 +501,9 @@ function TaskCardComponent({
 
           {/* Property Icon + Space + Date/Time + Teams + From / For */}
           <div className="mt-[7px] flex gap-2 flex-wrap items-center">
-            {property && (
+            {showPropertyIconInMeta && property ? (
               <PropertyIconChips properties={[property]} />
-            )}
+            ) : null}
             {metaCompact ? (
               <>
                 {(spaces[0]?.name || t.due_at) && (

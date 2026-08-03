@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useSearchParams } from "react-router-dom";
 import { Plus, FileText } from "lucide-react";
 import {
   MOBILE_NAV_ITEMS,
   MOBILE_MORE_NAV_URL,
   isMobileNavActive,
 } from "@/lib/mainNavigation";
+import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
@@ -35,6 +36,7 @@ import type { ComponentType } from "react";
  */
 export function MobileBottomNav() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
@@ -42,6 +44,9 @@ export function MobileBottomNav() {
 
   const leftItems = MOBILE_NAV_ITEMS.slice(0, 2);
   const rightItems = MOBILE_NAV_ITEMS.slice(2);
+
+  /** Tasks opens the work-surface Tasks tab, keeping current property scope. */
+  const tasksHref = centreWorkbenchTasksPath("tasks", searchParams);
 
   const handleCreateClick = () => {
     setShowCreateDrawer(true);
@@ -66,6 +71,7 @@ export function MobileBottomNav() {
     const Icon = icon;
     const isMore = to === MOBILE_MORE_NAV_URL;
     const isActive = !isMore && isMobileNavActive(location.pathname, to);
+    const href = to === "/tasks" ? tasksHref : to;
 
     if (isMore) {
       return (
@@ -90,7 +96,7 @@ export function MobileBottomNav() {
     return (
       <Link
         key={to}
-        to={to}
+        to={href}
         className={cn(
           "flex min-w-[4.5rem] flex-col items-center gap-0.5 rounded-lg py-1 transition-all duration-200",
           "hover:scale-105 active:scale-95",

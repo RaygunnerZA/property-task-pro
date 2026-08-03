@@ -1,10 +1,19 @@
-/* @refresh reset */
 /**
  * AssistantContext — Phase 14 FILLA Assistant Mode
  * Global state for Assistant panel open/close and context.
  * When third column is visible, AssistantPanel renders null (concertina owns it).
+ *
+ * Context is pinned on globalThis so Vite HMR cannot create a second
+ * createContext() instance (Provider from one module, useContext from another).
  */
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type Context,
+  type ReactNode,
+} from "react";
 import { AssistantPanel, type AssistantContext as AssistantContextType } from "@/components/assistant/AssistantPanel";
 import { useAssistant } from "@/hooks/useAssistant";
 import { useThirdColumn } from "@/contexts/ThirdColumnContext";
@@ -23,7 +32,19 @@ interface AssistantContextValue {
   onRejectAction: () => void;
 }
 
-const AssistantContext = createContext<AssistantContextValue | null>(null);
+const ASSISTANT_CONTEXT_KEY = "__fillaAssistantReactContext";
+
+function getAssistantReactContext(): Context<AssistantContextValue | null> {
+  const g = globalThis as typeof globalThis & {
+    [ASSISTANT_CONTEXT_KEY]?: Context<AssistantContextValue | null>;
+  };
+  if (!g[ASSISTANT_CONTEXT_KEY]) {
+    g[ASSISTANT_CONTEXT_KEY] = createContext<AssistantContextValue | null>(null);
+  }
+  return g[ASSISTANT_CONTEXT_KEY];
+}
+
+const AssistantContext = getAssistantReactContext();
 
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);

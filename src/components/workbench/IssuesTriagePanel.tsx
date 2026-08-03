@@ -74,7 +74,7 @@ const SIGNAL_STACK_SECTIONS = [
 
 /**
  * Manager signal triage — uploads, review queue, urgent signals, optional open work.
- * Used on `/issues`; not the Home execution surface.
+ * Used on property home (`/home`); not the portfolio Home execution surface.
  */
 export function IssuesTriagePanel({
   tasks = [],

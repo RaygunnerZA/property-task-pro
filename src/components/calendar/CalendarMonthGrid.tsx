@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   addDays,
@@ -20,6 +20,10 @@ import {
   useSensors,
   useDraggable,
   useDroppable,
+  pointerWithin,
+  rectIntersection,
+  MeasuringStrategy,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -41,9 +45,34 @@ import {
 
 const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
+/**
+ * Week row: compact unless any day in that week has 2+ events.
+ * Compact fits date numeral + two-line chip; expands to full for multi-event weeks.
+ */
+const CALENDAR_ROW_COMPACT_PX = 70;
+const CALENDAR_ROW_EXPANDED_PX = 118;
+
 /** Fixed size for every task chip in the month grid (title + property rows). */
 const CALENDAR_TASK_CHIP_CLASS =
   "relative flex h-[42px] min-h-[42px] shrink-0 w-full min-w-0 flex-col overflow-hidden cursor-grab touch-none rounded pt-[3px] pb-0.5 pl-3 pr-0.5 text-left text-2xs leading-tight active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
+
+/** Single-line chip while click-and-hold / dragging (morning ↔ afternoon). */
+const CALENDAR_TASK_CHIP_COMPACT_CLASS =
+  "relative flex h-[22px] min-h-[22px] shrink-0 w-full min-w-0 items-center overflow-hidden cursor-grab touch-none rounded py-0 pl-3 pr-0.5 text-left text-2xs leading-none active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
+
+/** Match TouchSensor delay so the chip collapses as drag arms. */
+const CALENDAR_CHIP_HOLD_MS = 150;
+
+/** Prefer morning/afternoon drop zones under the pointer (ignore chip hit targets). */
+const calendarDropCollision: CollisionDetection = (args) => {
+  const dropsOnly = (collisions: ReturnType<CollisionDetection>) =>
+    collisions.filter((c) => String(c.id).startsWith("drop|"));
+
+  const pointerHits = dropsOnly(pointerWithin(args));
+  if (pointerHits.length > 0) return pointerHits;
+
+  return dropsOnly(rectIntersection(args));
+};
 
 type CalendarMonthGridProps = {
   month: Date;
@@ -91,6 +120,10 @@ type CalendarTaskChipProps = {
   selectedTaskId?: string | null;
   onTaskClick?: (taskId: string) => void;
   isDragOverlay?: boolean;
+  /** Single-line chip while click-and-hold / drag so morning ↔ afternoon halves are reachable. */
+  singleLine?: boolean;
+  onHoldStart?: () => void;
+  onHoldEnd?: () => void;
 };
 
 function CalendarTaskChip({
@@ -99,6 +132,9 @@ function CalendarTaskChip({
   selectedTaskId,
   onTaskClick,
   isDragOverlay,
+  singleLine = false,
+  onHoldStart,
+  onHoldEnd,
 }: CalendarTaskChipProps) {
   const task = placement.task as {
     id: string;
@@ -108,7 +144,9 @@ function CalendarTaskChip({
     priority?: string | null;
   };
   const priorityDotClass = taskPriorityDotClass(task.priority);
-  const propertyLabel = taskPropertyLabel(task, propertyMap);
+  /** Property name is redundant when only one property exists in scope. */
+  const propertyLabel =
+    propertyMap.size > 1 ? taskPropertyLabel(task, propertyMap) : "";
   const calType = inferCalendarType(placement.task) as CalendarTypeId;
   const color = getCalendarTypeColor(calType);
 
@@ -121,6 +159,7 @@ function CalendarTaskChip({
   });
 
   const chipBackground = calendarTypeColorWithAlpha(color, 0.35);
+  const title = task.title || "Task";
 
   return (
     <button
@@ -128,12 +167,16 @@ function CalendarTaskChip({
       type="button"
       style={{ backgroundColor: chipBackground }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
+      onPointerDown={() => onHoldStart?.()}
+      onPointerUp={() => onHoldEnd?.()}
+      onPointerCancel={() => onHoldEnd?.()}
       onClick={(e) => {
         e.stopPropagation();
         onTaskClick?.(task.id);
       }}
       className={cn(
-        CALENDAR_TASK_CHIP_CLASS,
+        singleLine ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
+        "transition-[height,min-height] duration-150 ease-out",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -141,23 +184,32 @@ function CalendarTaskChip({
       {priorityDotClass ? (
         <span
           className={cn(
-            "pointer-events-none absolute left-1 top-1.5 h-[5px] w-[5px] rounded-full",
+            "pointer-events-none absolute left-1 rounded-full",
+            singleLine ? "top-1/2 h-[4px] w-[4px] -translate-y-1/2" : "top-1.5 h-[5px] w-[5px]",
             priorityDotClass
           )}
           aria-hidden
         />
       ) : null}
-      <span
-        className="min-h-0 flex-1 overflow-hidden font-medium leading-[11px] line-clamp-2 text-ink"
-        title={task.title || "Task"}
-      >
-        {task.title || "Task"}
-      </span>
-      {propertyLabel ? (
-        <span className="shrink-0 truncate text-2xs leading-none text-ink opacity-90">
-          {propertyLabel}
+      {singleLine ? (
+        <span className="min-w-0 flex-1 truncate font-medium text-ink" title={title}>
+          {title}
         </span>
-      ) : null}
+      ) : (
+        <>
+          <span
+            className="min-h-0 flex-1 overflow-hidden font-medium leading-[11px] line-clamp-2 text-ink"
+            title={title}
+          >
+            {title}
+          </span>
+          {propertyLabel ? (
+            <span className="shrink-0 truncate text-2xs leading-none text-ink opacity-90">
+              {propertyLabel}
+            </span>
+          ) : null}
+        </>
+      )}
     </button>
   );
 }
@@ -178,9 +230,11 @@ function DayDropZone({ dateKey, period, isDragging }: DayDropZoneProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        "pointer-events-auto z-0",
+        // Above chips while dragging so halves stay targetable in compact rows.
+        isDragging ? "pointer-events-auto z-[4]" : "pointer-events-none z-0",
         periodSlotClass(period),
-        isDragging && isOver && "bg-primary/10 ring-1 ring-inset ring-primary/25"
+        isDragging && "bg-muted/15",
+        isDragging && isOver && "bg-primary/15 ring-1 ring-inset ring-primary/30"
       )}
       aria-hidden
     />
@@ -198,6 +252,8 @@ type CalendarDayCellProps = {
   propertyMap: Map<string, { nickname?: string; name?: string; address?: string }>;
   isDragging: boolean;
   isWeekendColumn?: boolean;
+  /** Half-height week (0–1 events/day); expands when the week has a 2+ event day. */
+  compact?: boolean;
 };
 
 function CalendarDayCell({
@@ -211,32 +267,79 @@ function CalendarDayCell({
   propertyMap,
   isDragging,
   isWeekendColumn = false,
+  compact = false,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
   const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
   const isTodayDate = isToday(date);
+  const [holding, setHolding] = useState(false);
+  const holdTimerRef = useRef<number | null>(null);
 
-  const visiblePlacements = placements.slice(0, 3);
+  const maxVisible = compact ? 1 : 3;
+  const visiblePlacements = placements.slice(0, maxVisible);
   const overflow = placements.length - visiblePlacements.length;
+  const rowMinHeight = compact ? CALENDAR_ROW_COMPACT_PX : CALENDAR_ROW_EXPANDED_PX;
+  const singleEvent = placements.length === 1;
+
+  /**
+   * Single-event days show the two-line chip at rest (compact weeks).
+   * Click-and-hold or active drag → single-line, pinned to its half, so the
+   * other morning/afternoon drop zone stays clear.
+   */
+  const collapseForPeriodMove =
+    singleEvent && ((compact && holding) || isDragging);
+
+  const clearHoldTimer = useCallback(() => {
+    if (holdTimerRef.current != null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }, []);
+
+  const startHold = useCallback(() => {
+    if (!compact || !singleEvent) return;
+    clearHoldTimer();
+    holdTimerRef.current = window.setTimeout(() => {
+      setHolding(true);
+      holdTimerRef.current = null;
+    }, CALENDAR_CHIP_HOLD_MS);
+  }, [clearHoldTimer, compact, singleEvent]);
+
+  const endHold = useCallback(() => {
+    clearHoldTimer();
+    if (!isDragging) setHolding(false);
+  }, [clearHoldTimer, isDragging]);
+
+  useEffect(() => {
+    if (!isDragging) setHolding(false);
+  }, [isDragging]);
+
+  useEffect(() => () => clearHoldTimer(), [clearHoldTimer]);
 
   return (
     <div
       className={cn(
-        "relative flex h-full min-h-[118px] flex-col border-b border-r border-white/60 px-[3px] pt-[3px] pb-1.5 text-left",
+        "relative flex h-full flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left",
+        compact ? "pb-0.5" : "pb-1.5",
         !inMonth && "bg-muted/10 text-muted-foreground/50",
         isDragging && "hover:bg-muted/20",
         isWeekendColumn && "opacity-50"
       )}
+      style={{ minHeight: rowMinHeight }}
     >
       <button
         type="button"
         onClick={() => onDateSelect?.(date)}
-        className="relative z-[2] -mx-px inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium"
+        className={cn(
+          "relative z-[2] -mx-px inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+          compact ? "h-5 w-5" : "h-6 w-6"
+        )}
       >
         <span
           className={cn(
-            "inline-flex h-6 w-6 items-center justify-center rounded-sharp",
+            "inline-flex items-center justify-center rounded-sharp",
+            compact ? "h-5 w-5" : "h-6 w-6",
             isSelected && "bg-white text-foreground",
             isTodayDate && !isSelected && "ring-1 ring-accent/60"
           )}
@@ -248,16 +351,39 @@ function CalendarDayCell({
       <div className="relative min-h-0 flex-1">
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
-        <div className="relative z-[1] flex flex-col gap-0.5">
-          {visiblePlacements.map((placement) => (
-            <CalendarTaskChip
-              key={placement.id}
-              placement={placement}
-              propertyMap={propertyMap}
-              selectedTaskId={selectedTaskId}
-              onTaskClick={onTaskClick}
-            />
-          ))}
+        <div
+          className={cn(
+            "relative z-[1] flex min-h-0 flex-1 flex-col gap-0.5",
+            collapseForPeriodMove && "h-full",
+            // Source chips must not steal the drop target under the pointer.
+            isDragging && "pointer-events-none"
+          )}
+        >
+          {visiblePlacements.map((placement) => {
+            const period = placement.period;
+            const pinToHalf =
+              collapseForPeriodMove && (period === "morning" || period === "afternoon");
+            return (
+              <div
+                key={placement.id}
+                className={cn(
+                  pinToHalf && "absolute inset-x-0 z-[1]",
+                  pinToHalf && period === "morning" && "top-0",
+                  pinToHalf && period === "afternoon" && "bottom-0"
+                )}
+              >
+                <CalendarTaskChip
+                  placement={placement}
+                  propertyMap={propertyMap}
+                  selectedTaskId={selectedTaskId}
+                  onTaskClick={onTaskClick}
+                  singleLine={collapseForPeriodMove}
+                  onHoldStart={startHold}
+                  onHoldEnd={endHold}
+                />
+              </div>
+            );
+          })}
         </div>
         {overflow > 0 ? (
           <span className="absolute bottom-0 right-0 z-[2] text-2xs text-muted-foreground">
@@ -267,6 +393,16 @@ function CalendarDayCell({
       </div>
     </div>
   );
+}
+
+function weekNeedsExpandedHeight(
+  week: Date[],
+  placementsByDate: Map<string, CalendarTaskPlacement[]>
+): boolean {
+  return week.some((date) => {
+    const key = format(date, "yyyy-MM-dd");
+    return (placementsByDate.get(key)?.length ?? 0) >= 2;
+  });
 }
 
 export function CalendarMonthGrid({
@@ -309,6 +445,27 @@ export function CalendarMonthGrid({
     return groupPlacementsByDate(buildCalendarPlacements(tasks));
   }, [tasks]);
 
+  /** Per-week row height: compact unless any day that week has 2+ events. */
+  const weekRowHeights = useMemo(
+    () =>
+      weeks.map((week) =>
+        weekNeedsExpandedHeight(week, placementsByDate)
+          ? CALENDAR_ROW_EXPANDED_PX
+          : CALENDAR_ROW_COMPACT_PX
+      ),
+    [weeks, placementsByDate]
+  );
+
+  const isDraggingAny = activePlacement != null;
+
+  /** Expand all week rows while dragging so morning/afternoon halves are large enough to hit. */
+  const gridTemplateRows = useMemo(() => {
+    if (isDraggingAny) {
+      return weeks.map(() => `${CALENDAR_ROW_EXPANDED_PX}px`).join(" ");
+    }
+    return weekRowHeights.map((h) => `${h}px`).join(" ");
+  }, [isDraggingAny, weeks, weekRowHeights]);
+
   const flatDays = useMemo(() => weeks.flat(), [weeks]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -319,9 +476,9 @@ export function CalendarMonthGrid({
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      const { active, over } = event;
       setActivePlacement(null);
       setActiveChipWidth(null);
-      const { active, over } = event;
       if (!over || !onTaskReschedule) return;
 
       const parsed = parsePlacementDragId(String(active.id));
@@ -356,6 +513,10 @@ export function CalendarMonthGrid({
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={calendarDropCollision}
+      measuring={{
+        droppable: { strategy: MeasuringStrategy.Always },
+      }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
@@ -374,9 +535,14 @@ export function CalendarMonthGrid({
             </div>
           ))}
         </div>
-        <div className="grid shrink-0 grid-cols-7 [grid-template-rows:repeat(6,118px)]">
+        <div
+          className="grid shrink-0 grid-cols-7"
+          style={{ gridTemplateRows }}
+        >
           {flatDays.map((date, index) => {
             const key = format(date, "yyyy-MM-dd");
+            const weekIndex = Math.floor(index / 7);
+            const compact = weekRowHeights[weekIndex] === CALENDAR_ROW_COMPACT_PX;
             const isWeekendColumn = index % 7 >= 5;
             return (
               <CalendarDayCell
@@ -389,8 +555,9 @@ export function CalendarMonthGrid({
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedTaskId}
                 propertyMap={propertyMap}
-                isDragging={activePlacement != null}
+                isDragging={isDraggingAny}
                 isWeekendColumn={isWeekendColumn}
+                compact={compact}
               />
             );
           })}

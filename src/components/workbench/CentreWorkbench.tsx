@@ -88,9 +88,9 @@ export function CentreWorkbench({
       <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
         <div
           className={cn(
-            "flex shrink-0 items-stretch gap-2",
-            activeTab === "tasks" ? "mb-0" : "mb-3",
-            hideTabStrip && "hidden md:flex"
+            "mb-3 shrink-0 items-stretch gap-2",
+            // Avoid `flex` + `hidden` on the same node — last utility in the stylesheet wins.
+            hideTabStrip ? "hidden md:flex" : "flex"
           )}
         >
           <CentreWorkbenchTabStrip
@@ -99,9 +99,9 @@ export function CentreWorkbench({
             className="min-w-0 flex-1"
           />
 
-          {/* Below layout (1480px): no right-rail intake — stack CTAs beside the tab strip. */}
+          {/* Tablet/desktop below layout: CTAs beside tab strip. Phone uses FAB instead. */}
           {onOpenIntake ? (
-            <div className="layout:hidden flex w-[148px] shrink-0 flex-col justify-center gap-1.5 self-stretch py-1.5 md:w-[160px] md:py-3">
+            <div className="hidden w-[160px] shrink-0 flex-col justify-center gap-1.5 self-stretch py-3 md:flex layout:hidden">
               <IntakeActionButton
                 mode="add_record"
                 variant="compact"
@@ -118,19 +118,8 @@ export function CentreWorkbench({
           ) : null}
         </div>
 
-        {activeTab === "tasks" ? (
-          showMobileCalendar ? (
-            <CentreWorkbenchMobileCalendar
-              tasks={tasks}
-              properties={properties}
-              tasksLoading={tasksLoading}
-              selectedDate={selectedDate}
-              onDateSelect={onDateSelect}
-              selectedPropertyIds={selectedPropertyIds}
-              className="mb-1"
-            />
-          ) : null
-        ) : (
+        {/* Phone: same calendar → content spacing on Inflow and Tasks (md+ calendar is hidden). */}
+        {showMobileCalendar || activeTab === "inflow" ? (
           <div className="mb-4 flex shrink-0 flex-col gap-3">
             {showMobileCalendar ? (
               <CentreWorkbenchMobileCalendar
@@ -142,13 +131,15 @@ export function CentreWorkbench({
                 selectedPropertyIds={selectedPropertyIds}
               />
             ) : null}
-            <WorkbenchTaskFilterBar
-              tasks={tasks}
-              properties={properties}
-              hidePrimaryUrgentChip={activeTab === "inflow"}
-            />
+            {activeTab === "inflow" ? (
+              <WorkbenchTaskFilterBar
+                tasks={tasks}
+                properties={properties}
+                hidePrimaryUrgentChip
+              />
+            ) : null}
           </div>
-        )}
+        ) : null}
 
         <div key={activeTab} className="panel-enter min-h-0 flex-1">
           {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}

@@ -57,7 +57,7 @@ interface LeftColumnProps {
  * Calendar + Properties
  * 
  * Desktop: Fixed side rail (~330px), sticky on scroll
- * Mobile: Full width, stacked above RightColumn (home-hub) or beside work surface
+ * Mobile home: full width scope chrome only (centre collapsed via DualPane)
  */
 export function LeftColumn({ 
   tasks = [], 

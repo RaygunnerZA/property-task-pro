@@ -17,6 +17,14 @@ interface DualPaneLayoutProps {
    * Centre (Inflow · Tasks · Calendar) sits full-width under the header.
    */
   collapseLeftOnPhone?: boolean;
+  /**
+   * Phone: keep both columns visible, stacked vertically, and defer the dual-column
+   * grid until `md`. Prefer this over collapsing when home should show scope + work.
+   *
+   * Note: use mobile-first `hidden md:*` utilities — `max-md:*` variants are not
+   * reliably generated in this project's Tailwind build.
+   */
+  stackOnPhone?: boolean;
 }
 
 /**
@@ -27,12 +35,14 @@ interface DualPaneLayoutProps {
  * - layout+: optional third column
  *
  * Home-hub phone (`collapseCentreOnPhone`):
- * - < md: left (scope) only — centre hidden; work lives on `/tasks`
+ * - < md: left only — centre (Quick Wins / Inflow…) hidden
  * - md+: dual/triple grid
  *
  * Work-surface phone (`collapseLeftOnPhone`):
- * - < md: centre only (property rail hidden)
+ * - < md: centre only (property rail hidden) — Inflow | Tasks | Calendar
  * - md+: dual/triple grid
+ *
+ * Optional (`stackOnPhone`): left above centre on phone (neither column hidden).
  */
 export function DualPaneLayout({
   leftColumn,
@@ -41,38 +51,43 @@ export function DualPaneLayout({
   header,
   collapseCentreOnPhone = false,
   collapseLeftOnPhone = false,
+  stackOnPhone = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
 
-  /** Phone uses exclusive surfaces; dual grid starts at md when either column is collapsed. */
-  const dualGridFromPhone = collapseCentreOnPhone || collapseLeftOnPhone;
+  /** Defer dual-column grid to `md` whenever phone uses a special column policy. */
+  const dualGridFromPhone =
+    collapseCentreOnPhone || collapseLeftOnPhone || stackOnPhone;
 
   const stickyColClass = cn(
     hasHeader
       ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
       : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
-    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
-    collapseLeftOnPhone && "max-md:hidden"
+    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail"
   );
 
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
-    dualGridFromPhone
-      ? "md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
-      : "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pb-4",
+    // When collapsing centre on phone, avoid a bare `flex` that would override `hidden`.
+    collapseCentreOnPhone
+      ? "hidden md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
+      : dualGridFromPhone
+        ? "md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
+        : "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pb-4",
     hasThirdColumn
       ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pb-5"
       : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pb-5",
-    collapseCentreOnPhone && "max-md:hidden",
     /** Phone work-surface: centre is the only column — no leftover left-rail gutter. */
-    collapseLeftOnPhone && "max-md:px-gutter-rail max-md:pt-0"
+    collapseLeftOnPhone && "px-gutter-rail pt-0 md:px-1 md:pt-0"
   );
 
   return (
     <div className="flex min-h-screen w-full min-w-0 flex-col">
       {hasHeader && (
-        <div className="w-full shrink-0 max-lg:min-h-[var(--header-height,70px)]">{header}</div>
+        <div className="w-full shrink-0 min-h-[var(--header-height,70px)] lg:min-h-0">
+          {header}
+        </div>
       )}
 
       <div
@@ -91,12 +106,15 @@ export function DualPaneLayout({
                   ? "layout:grid layout:grid-cols-workbench-triple"
                   : "layout:grid layout:grid-cols-workbench-center-max",
               ],
-          collapseLeftOnPhone && "max-md:pt-2"
+          collapseLeftOnPhone && "pt-2 md:pt-[14px]",
+          stackOnPhone && "gap-4 md:gap-0"
         )}
       >
         <div
           className={cn(
-            "flex w-full min-w-0 max-w-full shrink-0 flex-col gap-3 px-gutter-rail",
+            "w-full min-w-0 max-w-full shrink-0 flex-col gap-3 px-gutter-rail",
+            // `hidden` + `flex` conflict if both are unconditional — pick one display mode.
+            collapseLeftOnPhone ? "hidden md:flex" : "flex",
             stickyColClass
           )}
         >

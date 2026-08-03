@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { DevModeProvider, isDevBuild } from "@/context/DevModeContext";
 import { SystemStatusProvider } from "@/providers/SystemStatusProvider";
@@ -30,6 +30,12 @@ initAnalytics();
 
 function RouteBoundary({ title, children }: { title: string; children: ReactNode }) {
   return <ErrorBoundary regionTitle={title}>{children}</ErrorBoundary>;
+}
+
+/** Redirect while keeping `?property=` and other query params. */
+function RedirectPreserveQuery({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={`${to}${search}`} replace />;
 }
 
 // Lazy load all page components (except Login and AppLayout which load instantly)
@@ -314,9 +320,18 @@ const App = () => {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
 
-                                {/* Workbench pages (formerly Issues | Records | Schedule tabs) */}
-                                <Route path="/issues" element={<RouteBoundary title="Attention"><Dashboard workbenchPanel="issues" /></RouteBoundary>} />
-                                <Route path="/attention" element={<Navigate to="/issues" replace />} />
+                                {/* Property home (scope chrome + Inflow · Tasks · Calendar) */}
+                                <Route
+                                  path="/home"
+                                  element={
+                                    <RouteBoundary title="Home">
+                                      <Dashboard workbenchPanel="issues" />
+                                    </RouteBoundary>
+                                  }
+                                />
+                                {/* Legacy Attention URLs → property home */}
+                                <Route path="/issues" element={<RedirectPreserveQuery to="/home" />} />
+                                <Route path="/attention" element={<RedirectPreserveQuery to="/home" />} />
                                 <Route path="/records" element={<RouteBoundary title="Records"><Dashboard workbenchPanel="records" /></RouteBoundary>} />
                                 <Route path="/agenda" element={<RouteBoundary title="Schedule"><Dashboard workbenchPanel="schedule" /></RouteBoundary>} />
                                 

@@ -22,19 +22,21 @@ type TasksListTab = "all" | "urgent" | "my";
 const TASKS_LIST_TABS: {
   id: TasksListTab;
   label: string;
+  /** Use `\n` for an intentional mobile line break (rendered with `whitespace-pre-line`). */
   subtitle: string;
   illustrationSrc: string;
 }[] = [
   {
     id: "all",
     label: "All",
-    subtitle: "Every open task in scope — including work assigned to others, newest first.",
+    subtitle:
+      "Every open task in scope —\nincluding work assigned to others, newest first.",
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
   },
   {
     id: "urgent",
     label: "Urgent",
-    subtitle: "High-priority work that needs action soon.",
+    subtitle: "High-priority work that\nneeds action soon.",
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.urgent,
   },
   {
@@ -152,56 +154,69 @@ export function TasksWorkbenchPanel({
     TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
 
   return (
-    <div className="min-w-0 -mt-[30px]">
-      <section className="min-w-0 rounded-2xl bg-transparent pb-1 pt-0">
+    <div className="min-w-0">
+      <section className="min-w-0 rounded-2xl bg-transparent py-1">
+        {/* Mobile: tighter tab row + description; md+ matches other workbench section headers. */}
         <div className="flex w-full min-w-0 items-end gap-3 px-2">
-          <div
-            role="tablist"
-            aria-label="Task lists"
-            className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1"
-          >
-            {TASKS_LIST_TABS.map((tab, index) => {
-              const selected = listTab === tab.id;
-              const count = tabCounts[tab.id];
-              return (
-                <div key={tab.id} className="flex items-center gap-x-2">
-                  {index > 0 ? (
-                    <span
-                      className="text-xl font-normal leading-tight text-muted-foreground/35"
-                      aria-hidden
-                    >
-                      |
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    onClick={() => setListTab(tab.id)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 text-xl leading-tight tracking-tight transition-colors",
-                      selected
-                        ? cn(workbenchSectionTitleClassName, "text-foreground")
-                        : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
-                    )}
+          <div className="min-w-0 flex-1">
+            <div
+              role="tablist"
+              aria-label="Task lists"
+              className="flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
+            >
+              {TASKS_LIST_TABS.map((tab, index) => {
+                const selected = listTab === tab.id;
+                const count = tabCounts[tab.id];
+                return (
+                  <div
+                    key={tab.id}
+                    className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2"
                   >
-                    {tab.label}
-                    <span
+                    {index > 0 ? (
+                      <span
+                        className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                        aria-hidden
+                      >
+                        |
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      onClick={() => setListTab(tab.id)}
                       className={cn(
-                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
-                        selected ? "text-muted-foreground" : "text-muted-foreground/60"
+                        "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                        selected
+                          ? cn(
+                              workbenchSectionTitleClassName,
+                              "text-lg text-foreground md:text-xl"
+                            )
+                          : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
                       )}
                     >
-                      {count}
-                    </span>
-                  </button>
-                </div>
-              );
-            })}
+                      {tab.label}
+                      <span
+                        className={cn(
+                          "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
+                          selected ? "text-muted-foreground" : "text-muted-foreground/60"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
+              {activeTabMeta.subtitle}
+            </p>
           </div>
 
           <div
-            className="flex aspect-square w-[min(6.5rem,28%)] max-h-[6.5rem] shrink-0 translate-y-[30px] items-end justify-end"
+            className="pointer-events-none flex aspect-square w-[min(5.25rem,22%)] max-h-[5.25rem] shrink-0 items-end justify-end md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
             aria-hidden
           >
             <img
@@ -214,11 +229,7 @@ export function TasksWorkbenchPanel({
           </div>
         </div>
 
-        <p className="mt-2 px-2 text-sm leading-snug text-muted-foreground">
-          {activeTabMeta.subtitle}
-        </p>
-
-        <div className="mt-5 mb-5 px-2">
+        <div className="mt-3 px-2 md:mt-5 md:mb-5">
           <WorkbenchTaskFilterBar
             tasks={tasks}
             properties={properties}
@@ -227,7 +238,7 @@ export function TasksWorkbenchPanel({
           />
         </div>
 
-        <div className="px-2">
+        <div className="mt-3 px-2 md:mt-0">
           <TaskList
             tasks={visibleTasks}
             properties={properties}

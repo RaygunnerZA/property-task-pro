@@ -451,9 +451,14 @@ export default function Dashboard({
     }
   }, [workbenchPanel, searchParams, navigateToWorkbenchSection, setSearchParams]);
 
-  /** Property-scoped hub lives on `/issues` (Attention) — redirect legacy `/?property=`. */
+  /**
+   * Property-scoped hub lives on `/home` — redirect legacy `/?property=` only.
+   * Do not run on `/tasks` (work-surface): that route also uses workbenchPanel="home"
+   * and a bare `?property=` must stay on `/tasks`.
+   */
   useEffect(() => {
     if (workbenchPanel !== "home") return;
+    if (pathname !== "/" && pathname !== "") return;
     const pid = searchParams.get("property");
     if (!pid) return;
     if (searchParams.get(WORKBENCH_PANEL_TAB_QUERY) || searchParams.get(WORKBENCH_TAB_ALIAS_QUERY)) {
@@ -463,8 +468,8 @@ export default function Dashboard({
     params.delete(WORKBENCH_PANEL_TAB_QUERY);
     params.delete(WORKBENCH_TAB_ALIAS_QUERY);
     const qs = params.toString();
-    navigate(`/issues${qs ? `?${qs}` : ""}`, { replace: true });
-  }, [workbenchPanel, searchParams, navigate]);
+    navigate(`/home${qs ? `?${qs}` : ""}`, { replace: true });
+  }, [workbenchPanel, pathname, searchParams, navigate]);
 
   // When property scope changes on a dedicated workbench page, strip stale panelTab query keys.
   useEffect(() => {
@@ -757,7 +762,7 @@ export default function Dashboard({
       params.set(WORKBENCH_ISSUES_FILTER_QUERY, "open");
       params.set(WORKBENCH_TASK_PRIORITY_QUERY, "urgent");
       const qs = params.toString();
-      navigate(`/issues${qs ? `?${qs}` : ""}`);
+      navigate(`/home${qs ? `?${qs}` : ""}`);
       return;
     }
     // Set the filter to apply, which will trigger TaskList to apply it.
@@ -1041,6 +1046,7 @@ export default function Dashboard({
         <DualPaneLayout
           collapseCentreOnPhone={workbenchLayout.collapseCentreOnPhone}
           collapseLeftOnPhone={workbenchLayout.collapseLeftOnPhone}
+          stackOnPhone={workbenchLayout.stackOnPhone}
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}

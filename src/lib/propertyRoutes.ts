@@ -18,7 +18,7 @@ export const WORKBENCH_SPACE_QUERY = "space";
 
 export type WorkbenchPanelTab = "issues" | "records" | "schedule";
 
-/** Home hub vs dedicated workbench page (`/issues`, `/records`, `/agenda`). */
+/** Portfolio hub (`/`) vs property home (`/home`) vs dedicated workbench pages (`/records`, `/agenda`). */
 export type DashboardWorkbenchPanel = "home" | WorkbenchPanelTab;
 
 /** Primary slices inside the Records workspace (URL-backed on the hub). */
@@ -137,9 +137,9 @@ export function propertySubPath(propertyId: string, segment: PropertySubRoute): 
   }
 }
 
-/** Canonical URL for the property Attention hub (`/issues`) with optional query params. */
+/** Canonical URL for property home (`/home`) with optional query params. */
 export function propertyHubPath(propertyId: string, extra?: Record<string, string>): string {
-  return workbenchScopedPath("/issues", propertyId, extra);
+  return workbenchScopedPath("/home", propertyId, extra);
 }
 
 /** Property-scoped spaces organise screen. */
@@ -173,8 +173,7 @@ export function propertyHubPeoplePath(_propertyId: string): string {
 }
 
 /**
- * Property hub with Issues selected and an optional sub-filter (e.g. open tasks).
- * Default workbench tab is Issues when `panelTab` is omitted.
+ * Property home (`/home`) with an optional Inflow sub-filter (e.g. open tasks).
  */
 export function propertyHubIssuesPath(
   propertyId: string,
@@ -185,7 +184,7 @@ export function propertyHubIssuesPath(
   if (f && f !== "all") {
     extra[WORKBENCH_ISSUES_FILTER_QUERY] = f;
   }
-  return workbenchScopedPath("/issues", propertyId, extra);
+  return workbenchScopedPath("/home", propertyId, extra);
 }
 
 /** Day agenda workbench (`/agenda`). */

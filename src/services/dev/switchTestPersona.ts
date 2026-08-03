@@ -93,5 +93,5 @@ export async function switchTestPersona(
   }
 
   queryClient.clear();
-  window.location.assign("/issues");
+  window.location.assign("/home");
 }

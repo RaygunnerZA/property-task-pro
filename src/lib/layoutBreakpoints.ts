@@ -4,8 +4,8 @@
  *
  * See `Docs/04_UI_System.md` §4.2 and `lib/workbenchLayoutMode.ts` for presentation rules:
  * - `sm` / `workbenchTwoColumn` (640px): default hub dual-pane (left | centre).
- * - `phone` / Tailwind `md` (768px): nav-driven phone mode — home-hub collapses centre;
- *   work-surface keeps a full-screen centre. Prefer this over ad-hoc sm/md mixes.
+ * - `phone` / Tailwind `md` (768px): nav-driven phone mode — home is left/scope only;
+ *   `/tasks` is full-screen centre (Inflow | Tasks | Calendar). Prefer this over ad-hoc sm/md mixes.
  * - `sidebarRail` / Tailwind `md` (768px): persistent condensed nav rail vs offcanvas + bottom nav.
  * - `workspace` (1100px): property hub modules (three columns).
  * - `layout` (1480px): app shell three-column dashboard / property right rail.
@@ -18,7 +18,7 @@ export const LAYOUT_BREAKPOINTS = {
   workbenchTwoColumn: 640,
   /**
    * Phone / nav-driven workbench (Tailwind `md`, 768px).
-   * Below: home-hub is scope-only; work surfaces are full-screen routes.
+   * Below: home shows property/portfolio chrome only; `/tasks` is centre-only.
    * At/above: DualPane dual-column grid applies even on home-hub.
    */
   phone: 768,

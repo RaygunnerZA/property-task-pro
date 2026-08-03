@@ -88,7 +88,10 @@ export function normalizeCentreCalendarView(
   return raw === "schedule" ? "schedule" : "calendar";
 }
 
-/** Deep link from property cards → `/tasks` work column. */
+/**
+ * Canonical work-surface URL: `/tasks` (+ optional `?property=` / `panelTab=`).
+ * Tasks tab is the default on `/tasks`, so `panelTab` is omitted when `tab === "tasks"`.
+ */
 export function centreWorkbenchTasksPath(
   tab: CentreWorkbenchTab,
   searchParams?: URLSearchParams | string

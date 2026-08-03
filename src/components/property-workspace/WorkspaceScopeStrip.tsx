@@ -30,7 +30,7 @@ export function WorkspaceScopeStrip({
           containerMaxWidthClass,
           "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-center",
           "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(260px,300px)]",
-          "workspace:gap-[24px]"
+          "workspace:gap-[44px]"
         )}
       >
         <div className="min-w-0 flex justify-start">{children}</div>

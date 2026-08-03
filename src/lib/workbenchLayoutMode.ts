@@ -6,19 +6,19 @@ import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
  * @see Docs/04_UI_System.md §4.2 — Desktop operational workbench vs Mobile work-execution-first
  * @see LAYOUT_BREAKPOINTS.phone in layoutBreakpoints.ts (768px / Tailwind `md`)
  *
- * | Surface        | Route example | Desktop                         | Phone (< phone bp)                                          |
- * |----------------|---------------|---------------------------------|-------------------------------------------------------------|
- * | `home-hub`     | `/`           | Left scope + centre work column | Left (property) only; stats → Inflow / Tasks / Calendar     |
- * | `work-surface` | `/tasks`      | Same dual/triple columns        | Centre only (left rail hidden) — Inflow | Tasks | Calendar  |
+ * | Surface        | Route example           | Desktop                         | Phone (< phone bp)                                              |
+ * |----------------|-------------------------|---------------------------------|-----------------------------------------------------------------|
+ * | `home-hub`     | `/`, `/home?property=`  | Left scope + centre work column | Left only (property / portfolio chrome through Spaces…Records)   |
+ * | `work-surface` | `/tasks`                | Same dual/triple columns        | Centre only — Inflow \| Tasks \| Calendar tab strip + content   |
  *
- * Phone does not stack desktop columns. Bottom nav + routes carry UX weight.
- * Property is scope (filters the current surface), not a parallel nav tree.
+ * On phone, PropertySummaryPanel Inflow · Tasks · Calendar cells deep-link to `/tasks`
+ * (work-surface). Property is scope (filters the current surface), not a parallel nav tree.
  */
 export type WorkbenchSurfaceRole = "home-hub" | "work-surface";
 
 export type PropertyCentreNavContract = {
   /**
-   * Home-hub phone: property summary stats deep-link into Inflow · Tasks · Calendar.
+   * Phone: property summary stats double as Inflow · Tasks · Calendar entry
    * (to review → Inflow, open tasks → Tasks, upcoming events → Calendar)
    */
   showBelowPhone: boolean;
@@ -28,22 +28,27 @@ export type PropertyCentreNavContract = {
 
 export type WorkbenchLayoutContract = {
   surfaceRole: WorkbenchSurfaceRole;
-  /** DualPane: hide centre column and defer dual-column grid until phone+. */
+  /** DualPane: hide centre column below the phone breakpoint. */
   collapseCentreOnPhone: boolean;
   /**
    * DualPane: hide left (property) rail below the phone breakpoint.
-   * Work-surface phone = centre work only (property card / identity strip removed).
+   * Work-surface phone (`/tasks`) = centre work only.
    */
   collapseLeftOnPhone: boolean;
   /**
+   * DualPane: stack left above centre below `md` (neither column hidden).
+   * Unused for current home/work contracts; kept for DualPane flexibility.
+   */
+  stackOnPhone: boolean;
+  /**
    * Hide the centre Inflow · Tasks · Calendar tab strip below the phone breakpoint.
-   * Home-hub: true (centre collapsed; entry is via property summary stats).
-   * Work-surface: false — tab strip sits below the header on all three screens.
+   * Home hides the strip (and the whole centre); work-surface keeps it visible.
    */
   hideCentreTabStripOnPhone: boolean;
   propertyCentreNav: PropertyCentreNavContract;
 };
 
+/** Portfolio carousel home (`/`) — not property home (`/home`). */
 export function isHomeHubPath(pathname: string): boolean {
   return pathname === "/" || pathname === "";
 }
@@ -57,13 +62,19 @@ export function resolveWorkbenchLayout(args: {
   workbenchPanel: DashboardWorkbenchPanel;
 }): WorkbenchLayoutContract {
   const { pathname, workbenchPanel } = args;
-  const homeHub = isHomeHubPath(pathname) && workbenchPanel === "home";
+  /** Portfolio (`/`) and property home (`/home`) share the phone scope-only contract. */
+  const homeHub =
+    pathname === "/home" ||
+    workbenchPanel === "issues" ||
+    (isHomeHubPath(pathname) && workbenchPanel === "home");
 
   if (homeHub) {
     return {
       surfaceRole: "home-hub",
+      /** Phone: scope chrome only — Quick Wins / centre work live on `/tasks`. */
       collapseCentreOnPhone: true,
       collapseLeftOnPhone: false,
+      stackOnPhone: false,
       hideCentreTabStripOnPhone: true,
       propertyCentreNav: {
         showBelowPhone: true,
@@ -77,6 +88,7 @@ export function resolveWorkbenchLayout(args: {
     collapseCentreOnPhone: false,
     /** Phone: property rail hidden — Inflow / Tasks / Calendar fill below the header. */
     collapseLeftOnPhone: true,
+    stackOnPhone: false,
     /** Full-screen Inflow · Tasks · Calendar — tab strip always below header. */
     hideCentreTabStripOnPhone: false,
     propertyCentreNav: {
@@ -86,10 +98,10 @@ export function resolveWorkbenchLayout(args: {
   };
 }
 
-/** True when centre-tab clicks on phone home should navigate to the work route. */
+/** True when centre-tab / summary clicks on phone home should navigate to `/tasks`. */
 export function shouldRouteCentreTabsToWorkSurface(
   layout: WorkbenchLayoutContract,
   isPhoneViewport: boolean
 ): boolean {
-  return layout.surfaceRole === "home-hub" && isPhoneViewport;
+  return layout.propertyCentreNav.routeToWorkSurface && isPhoneViewport;
 }

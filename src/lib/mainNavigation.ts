@@ -28,16 +28,20 @@ export const MAIN_NAV_ITEMS: MainNavItem[] = [
 
 /** Former workbench tabs — now standalone routes. */
 export const WORKBENCH_SECTION_ROUTES = {
-  /** Property Attention hub (replaces legacy Issues triage). */
-  attention: "/issues",
-  issues: "/issues",
+  /** Property home (Inflow · Tasks · Calendar with property scope). */
+  attention: "/home",
+  issues: "/home",
   records: "/records",
   schedule: "/agenda",
 } as const;
 
 export function isMainNavActive(pathname: string, url: string): boolean {
   if (url === "/") {
-    return pathname === "/" || pathname === "/dashboard";
+    return (
+      pathname === "/" ||
+      pathname === "/home" ||
+      pathname === "/dashboard"
+    );
   }
   return pathname === url || pathname.startsWith(`${url}/`);
 }
@@ -59,6 +63,7 @@ export function isMobileNavActive(pathname: string, url: string): boolean {
   if (url === "/") {
     return (
       pathname === "/" ||
+      pathname === "/home" ||
       pathname === "/dashboard" ||
       pathname === "/issues" ||
       pathname === "/attention"
@@ -86,6 +91,7 @@ export function isMobileNavActive(pathname: string, url: string): boolean {
 export const MOBILE_HEADER_EXCLUDED_PATHS = new Set([
   "/",
   "",
+  "/home",
   "/issues",
   "/attention",
   "/records",
