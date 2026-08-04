@@ -10,7 +10,7 @@ import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina
 import { SpaceGroupIdentityCard } from "@/components/spaces/SpaceGroupIdentityCard";
 import { SpaceGroupMiniCardsStrip } from "@/components/spaces/SpaceGroupMiniCardsStrip";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { SuggestedSpacesStrip } from "@/components/spaces/SuggestedSpacesStrip";
@@ -165,15 +165,11 @@ export default function SpaceGroupScreen() {
           {
             id: "create",
             title: "Create Task",
-            isExpanded: expandedSection === "create",
-            onToggle: () => setExpandedSection((s) => (s === "create" ? null : "create")),
+            variant: "static",
             children: (
-              <CreateTaskModal
-                open={showCreateTask}
-                onOpenChange={(open) => {
-                  setShowCreateTask(open);
-                  if (!open) setExpandedSection(null);
-                }}
+              <IntakeModal
+                open
+                onOpenChange={() => undefined}
                 onTaskCreated={() => {
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
                   queryClient.invalidateQueries({ queryKey: ["tasks", undefined, propertyId] });
@@ -181,26 +177,26 @@ export default function SpaceGroupScreen() {
                 defaultPropertyId={propertyId}
                 variant="column"
                 headless
+                initialIntakeMode="report_issue"
               />
             ),
           },
-          {
-            id: "details",
-            title: selectedTaskId ? "Task Details" : "Task Details",
-            isExpanded: expandedSection === "details",
-            onToggle: () => setExpandedSection((s) => (s === "details" ? null : "details")),
-            children: selectedTaskId ? (
-              <TaskDetailPanel
-                taskId={selectedTaskId}
-                onClose={() => setSelectedTaskId(null)}
-                variant="column"
-              />
-            ) : (
-              <div className="p-4 text-sm text-muted-foreground">
-                Select a task to view details
-              </div>
-            ),
-          },
+          ...(selectedTaskId
+            ? [
+                {
+                  id: "details" as const,
+                  title: "Task Details",
+                  variant: "static" as const,
+                  children: (
+                    <TaskDetailPanel
+                      taskId={selectedTaskId}
+                      onClose={() => setSelectedTaskId(null)}
+                      variant="column"
+                    />
+                  ),
+                },
+              ]
+            : []),
           {
             id: "assistant",
             title: "Filla AI",
@@ -319,7 +315,7 @@ export default function SpaceGroupScreen() {
 
       {/* Create Task Modal - for narrow screens */}
       {showCreateTask && !isLargeScreen && (
-        <CreateTaskModal
+        <IntakeModal
           open={showCreateTask}
           onOpenChange={setShowCreateTask}
           onTaskCreated={() => {
@@ -328,6 +324,7 @@ export default function SpaceGroupScreen() {
           }}
           defaultPropertyId={propertyId}
           variant="modal"
+          initialIntakeMode="report_issue"
         />
       )}
     </div>

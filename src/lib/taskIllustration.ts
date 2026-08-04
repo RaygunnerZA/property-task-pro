@@ -116,21 +116,35 @@ function firstUploadedTaskImageUrl(task: Record<string, unknown> | null | undefi
     file_url?: string;
   }>(task.images);
 
+  const pickRealUpload = (url: string | null | undefined): string | null => {
+    if (!url || isTaskSpaceIllustrationUrl(url)) return null;
+    return url;
+  };
+
   const firstImage =
     images.find((attachment) => {
+      const candidate =
+        pickRealUpload(attachment?.thumbnail_url) || pickRealUpload(attachment?.file_url);
+      if (!candidate) return false;
       const fileType = String(attachment?.file_type || "").toLowerCase();
       const fileName = String(attachment?.file_name || "").toLowerCase();
-      return (
+      if (
         fileType.startsWith("image/") ||
         /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName)
-      );
-    }) ?? (images.length > 0 ? images[0] : null);
+      ) {
+        return true;
+      }
+      // tasks_view / legacy rows may only expose file_url
+      return !fileType;
+    }) ?? null;
 
   return (
-    firstImage?.thumbnail_url ||
-    firstImage?.file_url ||
-    (typeof task.primary_image_url === "string" ? task.primary_image_url : null) ||
-    (typeof task.image_url === "string" ? task.image_url : null)
+    pickRealUpload(firstImage?.thumbnail_url) ||
+    pickRealUpload(firstImage?.file_url) ||
+    pickRealUpload(
+      typeof task.primary_image_url === "string" ? task.primary_image_url : null
+    ) ||
+    pickRealUpload(typeof task.image_url === "string" ? task.image_url : null)
   );
 }
 

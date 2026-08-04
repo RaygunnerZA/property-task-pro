@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
+import { toErrorMessage } from "@/lib/error";
 
 export interface TaskMessage {
   id: string;
@@ -14,45 +15,33 @@ export interface TaskMessage {
   created_at: string;
 }
 
+/**
+ * Read-only fetch for task Activity messages.
+ * Does not create conversations — create happens on send in TaskMessaging.
+ */
 async function fetchTaskMessages(orgId: string, taskId: string): Promise<TaskMessage[]> {
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
     .select("id")
     .eq("org_id", orgId)
     .eq("task_id", taskId)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
-  if (convError && convError.code !== "PGRST116") {
+  if (convError) {
     throw convError;
   }
 
-  let conversationId: string | null = null;
-
-  if (!conversation) {
-    const { data: newConv, error: createError } = await supabase
-      .from("conversations")
-      .insert({
-        org_id: orgId,
-        task_id: taskId,
-        channel: "task",
-        subject: `Task ${taskId}`,
-      } as any)
-      .select("id")
-      .single();
-
-    if (createError) {
-      throw createError;
-    }
-    conversationId = newConv.id;
-  } else {
-    conversationId = conversation.id;
+  if (!conversation?.id) {
+    return [];
   }
 
   const { data, error: err } = await supabase
     .from("messages")
     .select("*")
     .eq("org_id", orgId)
-    .eq("conversation_id", conversationId)
+    .eq("conversation_id", conversation.id)
     .order("created_at", { ascending: true });
 
   if (err) {
@@ -77,14 +66,10 @@ export function useTaskMessages(taskId: string | undefined) {
     await queryClient.invalidateQueries({ queryKey: ["task-messages", orgId, taskId] });
   }, [queryClient, orgId, taskId]);
 
-  const err = query.error;
-  const errorMessage =
-    err == null ? null : err instanceof Error ? err.message : String(err);
-
   return {
     messages: query.data ?? [],
     loading: query.isLoading,
-    error: errorMessage,
+    error: query.error ? toErrorMessage(query.error, "Couldn't load messages") : null,
     refresh,
   };
 }

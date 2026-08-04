@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { toErrorMessage } from "@/lib/error";
 import type { Json } from "@/integrations/supabase/types";
 
 export type TaskTimelineEventType = "status_change" | "assignment" | "comment" | "attachment";
@@ -92,7 +93,7 @@ export function useTaskTimeline(taskId: string | undefined | null) {
   return {
     data,
     isLoading: query.isLoading,
-    error: query.error as Error | null,
+    error: query.error ? new Error(toErrorMessage(query.error, "Couldn't load activity")) : null,
     refetch: query.refetch,
   };
 }

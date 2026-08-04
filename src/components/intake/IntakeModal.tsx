@@ -64,6 +64,8 @@ import {
   type IntakeChipSlotId,
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
+import { IntakeStaggeredSections } from "@/components/intake/IntakeStaggeredSections";
+import { DueTimeScroller } from "@/components/tasks/create/DueTimeScroller";
 import { AISuggestionChips } from "@/components/tasks/create/AISuggestionChips";
 import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
 import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
@@ -79,7 +81,7 @@ import type { IntakeSourceArtifact } from "@/types/intake-item";
 import type { TempImage } from "@/types/temp-image";
 import { confirmIntakeItem, downloadInboxFile } from "@/services/intake/intakeUpload";
 import { INTAKE_ITEMS_QUERY_KEY } from "@/hooks/useIntakeItems";
-import { format, addDays, addMonths, startOfDay } from "date-fns";
+import { format, addDays, startOfDay } from "date-fns";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { Input } from "@/components/ui/input";
 import { useCategories } from "@/hooks/useCategories";
@@ -134,9 +136,57 @@ function buildFallbackTitleFromDescription(input: string): string {
     }
   }
 
+  // Prefer a short verb phrase when present (fix/repair/…).
+  const actionMatch = normalized.match(
+    /\b((?:please\s+)?(?:fix|repair|replace|check|clean|install|inspect|paint|upload|service|clear|unblock|reset|replace)\b[^,.!?]{0,48})/i
+  );
+  if (actionMatch?.[1]) {
+    let phrase = actionMatch[1]
+      .replace(/^\s*please\s+/i, "")
+      .replace(/\b(today|tomorrow|tonight|asap|urgent(ly)?)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[.!?,:;]+$/, "");
+    const words = phrase.split(" ").filter(Boolean).slice(0, 5);
+    if (words.length >= 2) {
+      phrase = words.join(" ");
+      return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+    }
+  }
+
   const firstClause = normalized.split(/[,.!?]/)[0]?.trim() || normalized;
-  const words = firstClause.split(" ").filter(Boolean).slice(0, 8);
-  if (words.length === 0) return "";
+  const stop = new Set([
+    "a",
+    "an",
+    "and",
+    "at",
+    "for",
+    "from",
+    "in",
+    "of",
+    "on",
+    "or",
+    "please",
+    "pls",
+    "the",
+    "to",
+    "with",
+    "can",
+    "you",
+    "we",
+    "i",
+    "today",
+    "tomorrow",
+    "tonight",
+  ]);
+  const words = firstClause
+    .split(" ")
+    .map((w) => w.replace(/^[^\w]+|[^\w]+$/g, ""))
+    .filter((w) => w && !stop.has(w.toLowerCase()))
+    .slice(0, 5);
+  if (words.length === 0) {
+    return firstClause.split(" ").filter(Boolean).slice(0, 4).join(" ");
+  }
   const title = words.join(" ").replace(/[.!?,:;]+$/, "");
   return title.charAt(0).toUpperCase() + title.slice(1);
 }
@@ -198,6 +248,8 @@ export interface IntakeModalProps {
   onOpenChange: (open: boolean) => void;
   onTaskCreated?: (taskId: string) => void;
   defaultPropertyId?: string;
+  /** Prefill linked spaces (e.g. Space detail Add Task). */
+  defaultSpaceIds?: string[];
   variant?: "modal" | "column";
   headless?: boolean;
   /** When the modal opens (uncontrolled), start in this mode. Ignored when `intakeMode` is controlled. */
@@ -232,6 +284,7 @@ export function IntakeModal({
   onOpenChange,
   onTaskCreated,
   defaultPropertyId,
+  defaultSpaceIds,
   variant = "modal",
   headless = false,
   initialIntakeMode = "report_issue",
@@ -519,8 +572,9 @@ export function IntakeModal({
   useEffect(() => {
     if (!defaultPropertyId) return;
     setPropertyId(defaultPropertyId);
-    setSelectedSpaceIds([]);
-  }, [defaultPropertyId]);
+    const spacesKey = (defaultSpaceIds ?? []).join(",");
+    setSelectedSpaceIds(spacesKey ? spacesKey.split(",") : []);
+  }, [defaultPropertyId, defaultSpaceIds?.join(",")]);
 
   useEffect(() => {
     if (!openChipSlot) {
@@ -1205,17 +1259,20 @@ export function IntakeModal({
   }, []);
 
   const formatDueDateLabel = useCallback((value: string) => {
+    const hasTime = value.includes("T");
     const dateValue = value.split("T")[0];
     const normalizedDateValue = dateValue.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1").replace(/,/g, "").trim();
     const isoLike = /^\d{4}-\d{2}-\d{2}$/.test(normalizedDateValue);
-    const dateObj = normalizedDateValue
-      ? new Date(isoLike ? `${normalizedDateValue}T00:00:00` : normalizedDateValue)
+    const dateObj = value
+      ? new Date(hasTime ? value : isoLike ? `${normalizedDateValue}T00:00:00` : normalizedDateValue)
       : new Date();
     const isValidDateObj = !Number.isNaN(dateObj.getTime());
     if (!isValidDateObj) return dateValue.toUpperCase();
     const today = startOfDay(new Date());
-    if (dateObj.getTime() === today.getTime()) return "TODAY";
-    if (dateObj.getTime() === addDays(today, 1).getTime()) return "TOMORROW";
+    const dayOnly = startOfDay(dateObj);
+    if (!hasTime && dayOnly.getTime() === today.getTime()) return "TODAY";
+    if (!hasTime && dayOnly.getTime() === addDays(today, 1).getTime()) return "TOMORROW";
+    if (hasTime) return format(dateObj, "d MMM · h:mma").toUpperCase();
     return format(dateObj, "EEE d MMM").toUpperCase();
   }, []);
 
@@ -1334,9 +1391,8 @@ export function IntakeModal({
       });
     });
 
-    // Only show the property chip once at least one other semantic chip is present.
-    // This keeps the row empty until the user's description produces the first chip.
-    if (selectedProperty && chips.length > 0) {
+    // Multi-property orgs show the property chip; single-property orgs default it silently.
+    if (selectedProperty && chips.length > 0 && (properties?.length ?? 0) > 1) {
       chips.unshift({
         id: `where-property-${selectedProperty.id}`,
         slot: "where",
@@ -1363,6 +1419,7 @@ export function IntakeModal({
     members,
     priority,
     priorityDefined,
+    properties?.length,
     repeatPreset,
     propertyId,
     selectedAssets,
@@ -2295,15 +2352,20 @@ export function IntakeModal({
         const today = startOfDay(new Date());
         const quick = [
           { label: "TODAY", date: format(today, "yyyy-MM-dd") },
-          { label: "TOMORROW", date: format(addDays(today, 1), "yyyy-MM-dd") },
-          { label: "7 DAYS", date: format(addDays(today, 7), "yyyy-MM-dd") },
-          { label: "1 MO", date: format(addMonths(today, 1), "yyyy-MM-dd") },
+          { label: "TOM", date: format(addDays(today, 1), "yyyy-MM-dd") },
+          { label: "7D", date: format(addDays(today, 7), "yyyy-MM-dd") },
+          { label: "14D", date: format(addDays(today, 14), "yyyy-MM-dd") },
         ];
-        const selectedDueDate = dueDate ? new Date(`${dueDate}T00:00:00`) : undefined;
+        const selectedDueDate = dueDate
+          ? new Date(dueDate.includes("T") ? dueDate : `${dueDate}T00:00:00`)
+          : undefined;
         const selectedMilestoneDate = milestoneDraftDate ? new Date(`${milestoneDraftDate}T00:00:00`) : undefined;
-        const activeWhenDate = dueDate;
+        const activeWhenDate = dueDate ? dueDate.split("T")[0] : "";
         const dueDateChipLabel = dueDate
-          ? `DUE ${format(new Date(`${dueDate}T00:00:00`), "d MMMM").toUpperCase()}`
+          ? (() => {
+              const d = new Date(dueDate.includes("T") ? dueDate : `${dueDate}T09:00:00`);
+              return format(d, dueDate.includes("T") ? "d MMM · h:mma" : "d MMMM").toUpperCase();
+            })()
           : "DUE DATE";
         const applyQuick = (date: string) => {
           setIntakeWhenCustom(false);
@@ -2388,7 +2450,7 @@ export function IntakeModal({
                     setMilestoneNameDraft("");
                   }}
                   truncate={false}
-                  className="shrink-0 text-caption"
+                  className="relative z-[1] shrink-0 min-w-[140px] max-w-[220px] text-caption"
                 />
               ) : (
                 <SemanticChip
@@ -2396,7 +2458,6 @@ export function IntakeModal({
                   label="ADD MILESTONE"
                   truncate={false}
                   pressOnPointerDown
-                  transferOnPress
                   onPress={startMilestoneEntry}
                   className="shrink-0 text-caption"
                 />
@@ -2450,20 +2511,31 @@ export function IntakeModal({
 
             {intakeWhenCustom && whenTab !== "repeat" && (
               <div className="flex w-full min-w-0 flex-col gap-2">
-                <FillaMiniCalendar
-                  variant="embedded"
-                  className="w-fit rounded-lg bg-background/80 p-2 shadow-none border-0"
-                  selectedDate={calendarSelected}
-                  onDateSelect={(date) => {
-                    if (!date) return;
-                    const next = format(date, "yyyy-MM-dd");
-                    if (milestoneEntryOpen) {
-                      setMilestoneDraftDate(next);
-                    } else {
-                      setDueDate(next);
-                    }
-                  }}
-                />
+                <div className="flex w-full min-w-0 items-start gap-3">
+                  <FillaMiniCalendar
+                    variant="embedded"
+                    className="w-fit rounded-lg bg-background/80 p-2 shadow-none border-0"
+                    selectedDate={calendarSelected}
+                    onDateSelect={(date) => {
+                      if (!date) return;
+                      const next = format(date, "yyyy-MM-dd");
+                      if (milestoneEntryOpen) {
+                        setMilestoneDraftDate(next);
+                      } else {
+                        const existingTime = dueDate.includes("T")
+                          ? dueDate.split("T")[1]?.slice(0, 8) || "09:00:00"
+                          : "09:00:00";
+                        setDueDate(`${next}T${existingTime}`);
+                      }
+                    }}
+                  />
+                  {!milestoneEntryOpen ? (
+                    <DueTimeScroller
+                      dueDate={dueDate || `${format(today, "yyyy-MM-dd")}T09:00:00`}
+                      onDueDateChange={setDueDate}
+                    />
+                  ) : null}
+                </div>
                 {milestones.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     {milestones.map((milestone) => (
@@ -3458,12 +3530,12 @@ export function IntakeModal({
     ? "Save Document"
     : primaryIsCompliance
       ? "Add Record"
-      : "Report Issue";
+      : "Create Task";
 
   const descriptionPlaceholder =
     intakeMode === "add_record"
       ? "What are you recording? Add a certificate, inspection, or note…"
-      : "What needs attention?";
+      : "What Needs Doing?";
 
   const intakeModeSwitcher = (
     <div
@@ -3472,7 +3544,7 @@ export function IntakeModal({
       role="tablist"
       aria-label="Intake type"
     >
-      {(["add_record", "report_issue"] as const).map((m) => (
+      {(["report_issue", "add_record"] as const).map((m) => (
         <button
           key={m}
           type="button"
@@ -3483,8 +3555,8 @@ export function IntakeModal({
             "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-card px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
-                ? "bg-destructive text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-                : "bg-primary text-primary-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                ? "bg-primary text-primary-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                : "bg-[hsl(16_82%_56%)] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -3504,7 +3576,7 @@ export function IntakeModal({
               truncateIntakeTabLabels && "truncate"
             )}
           >
-            {m === "report_issue" ? "Report Issue" : "Add Record"}
+            {m === "report_issue" ? "Create Task" : "Add Record"}
           </span>
         </button>
       ))}
@@ -3613,7 +3685,7 @@ export function IntakeModal({
           <AlertDialogHeader>
             <AlertDialogTitle>Switch and clear draft?</AlertDialogTitle>
             <AlertDialogDescription>
-              Switching between Report Issue and Add Record will clear your description, uploads, and checklist draft.
+              Switching between Create Task and Add Record will clear your description, uploads, and checklist draft.
               Location selections can stay if you continue.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -3713,7 +3785,7 @@ export function IntakeModal({
                 </>
               ) : (
                 <>
-                  <DialogTitle className="sr-only">Report Issue or add a record</DialogTitle>
+                  <DialogTitle className="sr-only">Create Task or add a record</DialogTitle>
                   <DialogDescription className="sr-only">
                     Create a task from an issue report or add a compliance record with photos and context.
                   </DialogDescription>
@@ -3782,7 +3854,7 @@ export function IntakeModal({
                   placeholder="Generated title…"
                   className="w-full h-9 px-3 rounded-lg bg-input shadow-engraved text-sm border-0 focus:ring-2 focus:ring-primary/30"
                 />
-                {aiExtractError && !aiLoading && description.trim().length >= 8 && (
+                {aiExtractError && !aiLoading && description.trim().length >= 8 && !title.trim() && (
                   <p className="text-caption text-muted-foreground px-0.5">
                     AI title hint unavailable — you can still edit the title above.
                   </p>
@@ -3795,7 +3867,7 @@ export function IntakeModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={descriptionPlaceholder}
                 rows={3}
-                className="w-full px-3 py-2 text-sm border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"
+                className="w-full px-3 py-2 text-[15px] border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"
               />
               {hasDescriptionDraft && (
                 <div>
@@ -3827,7 +3899,7 @@ export function IntakeModal({
               <p className="text-xs text-foreground">
                 {intakeMode === "report_issue"
                   ? "This upload looks like a compliance record. Switch to Add Record?"
-                  : "This looks like an on-site issue. Switch to Report Issue?"}
+                  : "This looks like an on-site issue. Switch to Create Task?"}
               </p>
               <div className="flex flex-wrap gap-2 shrink-0">
                 <IntakeActionButton
@@ -3909,14 +3981,150 @@ export function IntakeModal({
             />
           )}
 
-          {/* 4. Context chip row */}
-          <IntakeChipRow
-            chips={intakeRowChips}
-            onOpenSlot={setOpenChipSlot}
-            openSlot={openChipSlot}
-            onCloseSlot={() => setOpenChipSlot(null)}
-            renderSlotContent={renderSlotContent}
-          />
+          {/* 4. Context: staggered Create Task sections, or chip rail for Add Record */}
+          {intakeMode === "report_issue" ? (
+            <IntakeStaggeredSections
+              active={hasDescriptionDraft}
+              whoFacts={intakeRowChips
+                .filter((c) => c.slot === "who")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              whereFacts={intakeRowChips
+                .filter((c) => c.slot === "where")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              whenFacts={intakeRowChips
+                .filter((c) => c.slot === "when")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              priorityFacts={intakeRowChips
+                .filter((c) => c.slot === "priority")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              whoHover={[
+                { id: "who-person", label: "+ PERSON", onPress: () => setOpenChipSlot("who") },
+                { id: "who-team", label: "+ TEAM", onPress: () => setOpenChipSlot("who") },
+              ]}
+              whereHover={[
+                {
+                  id: "where-space",
+                  label: "+ SPACE",
+                  onPress: () => setOpenChipSlot("where"),
+                },
+                ...((properties?.length ?? 0) > 1
+                  ? [
+                      {
+                        id: "where-property",
+                        label: "+ PROPERTY",
+                        onPress: () => setOpenChipSlot("where"),
+                      },
+                    ]
+                  : []),
+              ]}
+              whenHover={[
+                {
+                  id: "when-today",
+                  label: "TODAY",
+                  onPress: () => {
+                    setIntakeWhenCustom(false);
+                    setDueDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+                  },
+                },
+                {
+                  id: "when-tom",
+                  label: "TOM",
+                  onPress: () => {
+                    setIntakeWhenCustom(false);
+                    setDueDate(format(addDays(startOfDay(new Date()), 1), "yyyy-MM-dd"));
+                  },
+                },
+                {
+                  id: "when-7d",
+                  label: "7D",
+                  onPress: () => {
+                    setIntakeWhenCustom(false);
+                    setDueDate(format(addDays(startOfDay(new Date()), 7), "yyyy-MM-dd"));
+                  },
+                },
+                {
+                  id: "when-14d",
+                  label: "14D",
+                  onPress: () => {
+                    setIntakeWhenCustom(false);
+                    setDueDate(format(addDays(startOfDay(new Date()), 14), "yyyy-MM-dd"));
+                  },
+                },
+                {
+                  id: "when-custom",
+                  label: "CUSTOM",
+                  onPress: () => {
+                    setIntakeWhenCustom(true);
+                    setWhenTab("due");
+                    setOpenChipSlot("when");
+                  },
+                },
+              ]}
+              priorityHover={[
+                {
+                  id: "pri-urgent",
+                  label: "URGENT",
+                  onPress: () => {
+                    setPriority("urgent");
+                    setPriorityDefined(true);
+                  },
+                },
+                {
+                  id: "pri-high",
+                  label: "HIGH",
+                  onPress: () => {
+                    setPriority("high");
+                    setPriorityDefined(true);
+                  },
+                },
+                {
+                  id: "pri-normal",
+                  label: "NORMAL",
+                  onPress: () => {
+                    setPriority("medium");
+                    setPriorityDefined(true);
+                  },
+                },
+                {
+                  id: "pri-low",
+                  label: "LOW",
+                  onPress: () => {
+                    setPriority("low");
+                    setPriorityDefined(true);
+                  },
+                },
+              ]}
+              optionalChips={[
+                { id: "asset-add", label: "+ ASSET", onPress: () => setOpenChipSlot("asset") },
+                { id: "tag-add", label: "+ TAG", onPress: () => setOpenChipSlot("category") },
+                { id: "rule-add", label: "+ RULE", onPress: () => setOpenChipSlot("compliance") },
+              ]}
+              openSlot={openChipSlot}
+              onOpenSlot={setOpenChipSlot}
+              whereSatisfiedWithoutChip={(properties?.length ?? 0) <= 1 && Boolean(propertyId)}
+              slotPanel={
+                openChipSlot
+                  ? (() => {
+                      const rows = renderSlotContent(openChipSlot, () => setOpenChipSlot(null));
+                      return (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-1.5">{rows.row2}</div>
+                          {rows.row3 ? <div>{rows.row3}</div> : null}
+                        </div>
+                      );
+                    })()
+                  : null
+              }
+            />
+          ) : (
+            <IntakeChipRow
+              chips={intakeRowChips}
+              onOpenSlot={setOpenChipSlot}
+              openSlot={openChipSlot}
+              onCloseSlot={() => setOpenChipSlot(null)}
+              renderSlotContent={renderSlotContent}
+            />
+          )}
 
       </div>
 
@@ -3946,7 +4154,7 @@ export function IntakeModal({
             onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
             className="w-full pt-1.5 flex justify-end items-start text-xs text-muted-foreground hover:text-foreground underline"
           >
-            {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Report Issue"}
+            {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Create Task"}
           </button>
           {userChoseWorkflow !== null && (
             <button
@@ -3954,7 +4162,7 @@ export function IntakeModal({
               onClick={() => setUserChoseWorkflow(null)}
               className="text-xs text-muted-foreground hover:text-foreground underline"
             >
-              Use {intakeMode === "report_issue" ? "Report Issue" : "Add Record"} defaults
+              Use {intakeMode === "report_issue" ? "Create Task" : "Add Record"} defaults
             </button>
           )}
         </div>

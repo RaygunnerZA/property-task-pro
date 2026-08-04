@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Upload, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, MessageSquare } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, MessageSquare, Camera, Pencil } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -40,8 +40,6 @@ import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useCategories } from "@/hooks/useCategories";
-import { useAssistantContext } from "@/contexts/AssistantContext";
-import { FillaIcon } from "@/components/filla/FillaIcon";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { WhoSection } from "./create/WhoSection";
 import type { PendingInvitation } from "./create/tabs/WhoTab";
@@ -68,15 +66,25 @@ import {
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
 import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
-import { TaskDetailChecklistTab } from "@/components/tasks/detail/TaskDetailChecklistTab";
 import {
-  DEFAULT_TASK_DETAIL_CONTEXT,
-  type TaskDetailContextId,
-} from "@/components/tasks/detail/taskDetailContexts";
+  TaskDetailHeroMeta,
+  TaskDetailFillaUnderstood,
+  TaskDetailRelated,
+  type FillaUnderstoodItem,
+  type TaskDetailRelatedLink,
+} from "@/components/tasks/detail/TaskDetailHeroMeta";
+import { TaskDetailChecklistTab } from "@/components/tasks/detail/TaskDetailChecklistTab";
+import { useSubtasks } from "@/hooks/useSubtasks";
+import { propertyHubPath, propertyHubRecordsPath } from "@/lib/propertyRoutes";
 import {
   clearTaskCompletionMotion,
   playTaskCompletionMotion,
 } from "@/lib/taskCompletionMotion";
+import {
+  resolveTaskAssignerUser,
+  resolveTaskAssigneeUsers,
+} from "@/lib/userDisplayHelpers";
+import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -86,10 +94,11 @@ interface TaskDetailPanelProps {
 
 /**
  * Task Detail Panel
- * 
- * Modal/column panel for viewing and editing task details.
- * Create Task aesthetic: image slider, description 18pt, multi-column metadata, CTA at bottom.
- * - V2.1 contexts: Overview | Checklist | Evidence | Activity
+ *
+ * Modal/column for viewing and acting on a task. AI-first layout aligned with Create Task:
+ * single scroll (Description → Checklist → Evidence → Timeline), hero image, context chips,
+ * Filla understood, Related links. Constitutional contexts preserved as scroll sections
+ * (@Docs/05_Task_Engine.md §5.6) rather than tabs.
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
@@ -123,6 +132,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   });
 
   const { toast } = useToast();
+  const { subtasks } = useSubtasks(taskId);
   const queryClient = useQueryClient();
   const deleteTaskMutation = useDeleteTaskMutation();
   const updateTaskMutation = useUpdateTaskMutation();
@@ -130,7 +140,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("open");
   const [priority, setPriority] = useState<string>("normal");
-  const [activeContext, setActiveContext] = useState<TaskDetailContextId>(DEFAULT_TASK_DETAIL_CONTEXT);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -139,6 +148,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [taskEditOpen, setTaskEditOpen] = useState(false);
+  const [commentFocusKey, setCommentFocusKey] = useState(0);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [dueDate, setDueDate] = useState("");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
@@ -505,41 +515,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     [task, propertySpaces]
   );
 
-  const metaLine = useMemo(() => {
-    const parts: string[] = [];
-    if (dueDate) {
-      const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
-      if (isValid(d)) parts.push(format(d, "d MMM").toUpperCase());
-    }
-    if (selectedUserId) {
-      const m = members.find((x) => x.user_id === selectedUserId);
-      const name = m?.display_name || m?.nickname || m?.email || "";
-      const first = name.trim().split(/\s+/)[0];
-      if (first) parts.push(first.toUpperCase());
-    } else if (selectedTeamIds.length > 0) {
-      const team = taskTeams.find((t) => selectedTeamIds.includes(t.id));
-      if (team?.name) parts.push(team.name.toUpperCase());
-    }
-    const propName =
-      (task as any)?.property?.nickname ||
-      (task as any)?.property_name ||
-      "";
-    const spacesRaw = (task as any)?.spaces;
-    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
-    const spaceNames = (selectedSpaceIds.length > 0 ? selectedSpaceIds : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean))
-      .map((id) => resolveSpaceLabel(id as string))
-      .filter(Boolean);
-    if (propName) {
-      parts.push(
-        spaceNames.length > 0
-          ? `${propName.toUpperCase()}: ${spaceNames.map((n) => n.toUpperCase()).join(", ")}`
-          : propName.toUpperCase()
-      );
-    } else if (spaceNames.length > 0) {
-      parts.push(spaceNames.map((n) => n.toUpperCase()).join(", "));
-    }
-    return parts.join(" • ");
-  }, [dueDate, members, selectedUserId, selectedTeamIds, task, taskTeams, selectedSpaceIds, resolveSpaceLabel]);
+  const dueChipLabel = useMemo(() => {
+    if (!dueDate) return null;
+    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
+    return isValid(d) ? format(d, "d MMM").toUpperCase() : null;
+  }, [dueDate]);
 
   const formatDueChipLabel = useCallback((dateStr: string) => {
     const d = dateStr.includes("T") ? parseISO(dateStr) : parseISO(`${dateStr}T12:00:00`);
@@ -916,17 +896,145 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   );
 
   /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
-  const { userId } = useDataContext();
+  const { userId, user } = useDataContext();
   const allAttachments = (task as any)?.images ?? [];
   const imageAttachments = useMemo(
     () =>
       (Array.isArray(allAttachments) ? allAttachments : []).filter((attachment: any) => {
+        const src = attachment?.file_url || attachment?.thumbnail_url || "";
+        // Ignore space mini-card art stored on tasks.image_url — not a real upload
+        if (isTaskSpaceIllustrationUrl(src)) return false;
         const fileType = String(attachment?.file_type || "").toLowerCase();
         const fileName = String(attachment?.file_name || "").toLowerCase();
-        return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
+        // image_url fallback from tasks_view may omit mime / file_name
+        if (!fileType && !fileName && src) return true;
+        return (
+          fileType.startsWith("image/") ||
+          /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName)
+        );
       }),
     [allAttachments]
   );
+  const assignerUser = useMemo(
+    () => resolveTaskAssignerUser(task as any, members, user),
+    [task, members, user]
+  );
+  const assigneeUser = useMemo(
+    () => resolveTaskAssigneeUsers(task as any, members, "#8EC9CE", user)[0] ?? null,
+    [task, members, user]
+  );
+
+  const propertyLabel = useMemo(() => {
+    return (
+      ((task as any)?.property?.nickname ||
+        (task as any)?.property_name ||
+        null) as string | null
+    );
+  }, [task]);
+
+  const spaceLabel = useMemo(() => {
+    const spacesRaw = (task as any)?.spaces;
+    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
+    const ids =
+      selectedSpaceIds.length > 0
+        ? selectedSpaceIds
+        : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean);
+    const names = ids.map((id) => resolveSpaceLabel(id as string)).filter(Boolean);
+    return names.length > 0 ? names.join(", ") : null;
+  }, [task, selectedSpaceIds, resolveSpaceLabel]);
+
+  const fillaUnderstoodItems = useMemo((): FillaUnderstoodItem[] => {
+    const items: FillaUnderstoodItem[] = [
+      {
+        id: "person",
+        label: assigneeUser?.name || "Assignee",
+        kind: "person",
+        present: Boolean(assigneeUser),
+      },
+      {
+        id: "location",
+        label: propertyLabel || spaceLabel || "Location",
+        kind: "location",
+        present: Boolean(propertyLabel || spaceLabel),
+      },
+      {
+        id: "date",
+        label: dueChipLabel || "Due date",
+        kind: "date",
+        present: Boolean(dueChipLabel),
+      },
+      {
+        id: "asset",
+        label:
+          taskAssets.find((a) => selectedAssetIds.includes(a.id))?.name || "Asset",
+        kind: "asset",
+        present: selectedAssetIds.length > 0,
+      },
+    ];
+    if (priority === "urgent" || priority === "high") {
+      items.push({
+        id: "priority",
+        label: priority === "urgent" ? "Urgent" : "High priority",
+        kind: "priority",
+        present: true,
+      });
+    }
+    return items;
+  }, [
+    assigneeUser,
+    propertyLabel,
+    spaceLabel,
+    dueChipLabel,
+    taskAssets,
+    selectedAssetIds,
+    priority,
+  ]);
+
+  const relatedLinks = useMemo((): TaskDetailRelatedLink[] => {
+    const links: TaskDetailRelatedLink[] = [];
+    const propId = (task as any)?.property_id as string | undefined;
+    if (propId && propertyLabel) {
+      links.push({
+        id: `property-${propId}`,
+        label: propertyLabel,
+        href: propertyHubPath(propId),
+        kind: "property",
+      });
+    }
+    const spacesRaw = (task as any)?.spaces;
+    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
+    const spaceIds =
+      selectedSpaceIds.length > 0
+        ? selectedSpaceIds
+        : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean);
+    for (const sid of spaceIds) {
+      if (!propId || !sid) continue;
+      links.push({
+        id: `space-${sid}`,
+        label: resolveSpaceLabel(sid as string),
+        href: `/properties/${propId}/spaces/${sid}`,
+        kind: "space",
+      });
+    }
+    for (const asset of taskAssets.filter((a) => selectedAssetIds.includes(a.id))) {
+      links.push({
+        id: `asset-${asset.id}`,
+        label: asset.name || "Asset",
+        href: `/assets/${asset.id}`,
+        kind: "asset",
+      });
+    }
+    if (propId) {
+      links.push({
+        id: `records-${propId}`,
+        label: "Records",
+        href: propertyHubRecordsPath(propId),
+        kind: "record",
+      });
+    }
+    return links;
+  }, [task, propertyLabel, selectedSpaceIds, resolveSpaceLabel, taskAssets, selectedAssetIds]);
+
   const documentAttachments = useMemo(
     () =>
       (Array.isArray(allAttachments) ? allAttachments : []).filter((attachment: any) => {
@@ -963,7 +1071,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }, [task, title, status, priority, dueDate, milestones]);
 
-  const { openAssistant } = useAssistantContext();
   const { uploadFile, uploading: isUploadingImage } = useFileUpload({
     taskId,
     propertyId: propertyId ?? undefined,
@@ -1001,7 +1108,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           <DialogHeader className="sr-only">
             <DialogTitle>{title ?? "Task details"}</DialogTitle>
             <DialogDescription id="task-detail-panel-desc">
-              Task detail: Overview, Checklist, Evidence, and Activity.
+            Task detail: description, checklist, evidence, and timeline.
             </DialogDescription>
           </DialogHeader>
           {content}
@@ -1045,236 +1152,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const evidenceMediaSection = (
     <div className="space-y-4">
-      <div className="space-y-3">
-          {imageAttachments.length > 0 ? (
-            <div className="flex gap-3 items-start w-full">
-              {selectedImageIndex !== null && imageAttachments[selectedImageIndex] && (
-                <div className="w-[70%] max-w-[70%] min-w-0 shrink-0">
-                  <button
-                    type="button"
-                    className="relative w-full max-w-full rounded-[10px] overflow-hidden bg-muted shadow-sm cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => {
-                      const selectedImage = imageAttachments[selectedImageIndex];
-                      if (selectedImage?.id) {
-                        setEditingImageId(selectedImage.id);
-                        setShowAnnotationEditor(true);
-                        return;
-                      }
-                      setLightboxOpen(true);
-                    }}
-                  >
-                    <img
-                      src={
-                        imageAttachments[selectedImageIndex].optimized_url ||
-                        imageAttachments[selectedImageIndex].file_url ||
-                        imageAttachments[selectedImageIndex].thumbnail_url
-                      }
-                      alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
-                      className="w-full max-h-[min(45vh,340px)] object-contain bg-muted/40"
-                      onError={(e) => {
-                        const img = imageAttachments[selectedImageIndex];
-                        if (img.file_url && (e.target as HTMLImageElement).src !== img.file_url) {
-                          (e.target as HTMLImageElement).src = img.file_url;
-                        }
-                      }}
-                    />
-                    <TaskImageAnnotationOverlay
-                      annotations={imageAttachments[selectedImageIndex].annotation_json}
-                    />
-                  </button>
-                </div>
-              )}
-              <div className="flex-1 min-w-0 flex gap-2 justify-end items-stretch">
-                <div className="flex flex-col gap-1.5 max-h-[min(45vh,340px)] overflow-y-auto overflow-x-hidden pr-0.5 [&::-webkit-scrollbar]:w-1.5">
-                  {imageAttachments.map((image: any, index: number) => (
-                    <button
-                      key={image.id}
-                      type="button"
-                      className={cn(
-                        "aspect-square w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 bg-muted rounded-card overflow-hidden cursor-pointer hover:opacity-90 transition-opacity relative border-2 shadow-e1",
-                        selectedImageIndex === index ? "border-primary" : "border-transparent"
-                      )}
-                      onClick={() => setSelectedImageIndex(index)}
-                    >
-                      <img
-                        src={image.thumbnail_url || image.file_url}
-                        alt={image.file_name || "Task image"}
-                        className="w-full h-full object-contain bg-muted/40"
-                        onError={(e) => {
-                          if (image.thumbnail_url && image.file_url) {
-                            (e.target as HTMLImageElement).src = image.file_url;
-                          }
-                        }}
-                      />
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-2 shrink-0 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                    className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-                    title="Ask FILLA"
-                    aria-label="Open Assistant"
-                  >
-                    <FillaIcon size={18} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => taskImageInputRef.current?.click()}
-                    disabled={isUploadingImage}
-                    className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                    title="Upload image"
-                    aria-label="Upload image"
-                  >
-                    <Upload className="h-5 w-5 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2 justify-end items-end">
-              <button
-                type="button"
-                onClick={() => openAssistant({ type: "task", id: taskId, name: (task as any)?.title })}
-                className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all"
-                title="Ask FILLA"
-                aria-label="Open Assistant"
-              >
-                <FillaIcon size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={() => taskImageInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="h-[35px] w-[35px] rounded-card flex items-center justify-center bg-muted/50 shadow-e1 hover:shadow-e2 transition-all disabled:opacity-50"
-                title="Upload image"
-                aria-label="Upload image"
-              >
-                <Upload className="h-5 w-5 text-muted-foreground" />
-              </button>
-            </div>
-          )}
-          <input
-            ref={taskImageInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = e.target.files;
-              if (files) {
-                Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
-                e.target.value = "";
-              }
-            }}
-          />
-      </div>
-      {documentAttachments.length > 0 ? (
-        <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
-            Documents ({documentAttachments.length})
-          </div>
-          <div className="space-y-1.5">
-            {documentAttachments.map((attachment: any) => (
-              <button
-                key={attachment.id}
-                type="button"
-                onClick={() => setSelectedDocument(attachment)}
-                className="w-full rounded-card bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
-              >
-                <span className="block truncate font-medium text-foreground">
-                  {attachment.file_name || "Document"}
-                </span>
-                <span className="block text-caption text-muted-foreground">
-                  {attachment.file_type || "file"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          No files yet. Upload photos above or attach documents from the field app.
-        </p>
-      )}
-    </div>
-  );
-
-  const overviewSection = (
-    <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-2xs uppercase tracking-wider text-muted-foreground shrink-0">
-              Status:
-            </span>
-            <span
-              className={cn(
-                "inline-flex h-[28px] items-center rounded-card bg-white px-2.5 py-1 font-mono text-2xs font-medium uppercase tracking-wide shadow-none",
-                statusChipTextClass
-              )}
-            >
-              {statusChipLabel}
-            </span>
-            {priority === "urgent" && (
-              <span className="inline-flex h-[28px] items-center rounded-card bg-white px-2.5 font-mono text-2xs font-medium uppercase tracking-wide text-destructive shadow-none">
-                URGENT
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-start justify-between gap-3 min-w-0">
-            {taskEditOpen ? (
-              <div className="min-w-0 flex-1">
-                <IntakeChipRow
-                  layout="interleaved"
-                  chips={taskDetailChips}
-                  onOpenSlot={setOpenChipSlot}
-                  openSlot={openChipSlot}
-                  onCloseSlot={() => setOpenChipSlot(null)}
-                  renderSlotContent={renderTaskDetailSlotContent}
-                />
-              </div>
-            ) : metaLine ? (
-              <p className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-wide text-foreground leading-snug">
-                {metaLine}
-              </p>
-            ) : (
-              <p className="min-w-0 flex-1 font-mono text-2xs uppercase tracking-wide text-muted-foreground leading-snug">
-                No date, assignee, or location
-              </p>
-            )}
-            <button
-              type="button"
-              className="shrink-0 font-sans text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => {
-                setTaskEditOpen((open) => {
-                  const next = !open;
-                  if (!next) setOpenChipSlot(null);
-                  return next;
-                });
-              }}
-            >
-              {taskEditOpen ? "Done" : "Edit"}
-            </button>
-          </div>
-
-          <p className="text-lg text-foreground leading-relaxed">
-            {(task as any)?.description || "No description provided"}
-          </p>
-    </div>
-  );
-
-  const activitySection = (
-    <div className="space-y-4">
-      <div className="flex max-h-[min(360px,50dvh)] min-h-[200px] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm">
-        <TaskMessaging taskId={taskId} />
-      </div>
-      <GraphInsightPanel
-        start={{ type: "task", id: taskId }}
-        depth={2}
-        variant="minimal"
-        className="mb-1"
-      />
       {imageAttachments.length > 0 && (() => {
         const img = imageAttachments[selectedImageIndex ?? 0] as any;
         const orgId = (task as any)?.org_id;
@@ -1300,63 +1177,209 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           />
         );
       })()}
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          Timeline
-        </h3>
-        {timelineLoading ? (
-          <div className="space-y-2 py-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+      {documentAttachments.length > 0 ? (
+        <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">
+            Documents ({documentAttachments.length})
           </div>
-        ) : timelineError ? (
-          <p className="text-muted-foreground text-sm">
-            Couldn’t load activity.{" "}
-            <button
-              type="button"
-              className="text-primary underline-offset-2 hover:underline"
-              onClick={() => void refetchTimeline()}
-            >
-              Retry
-            </button>
-          </p>
-        ) : (
-          <TaskTimeline events={timelineEvents} />
-        )}
+          <div className="space-y-1.5">
+            {documentAttachments.map((attachment: any) => (
+              <button
+                key={attachment.id}
+                type="button"
+                onClick={() => setSelectedDocument(attachment)}
+                className="w-full rounded-card bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
+              >
+                <span className="block truncate font-medium text-foreground">
+                  {attachment.file_name || "Document"}
+                </span>
+                <span className="block text-caption text-muted-foreground">
+                  {attachment.file_type || "file"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : imageAttachments.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Photos are shown above. Attach documents from the field app when needed.
+        </p>
+      ) : null}
+    </div>
+  );
+
+  const descriptionSection = (
+    <div className="space-y-3">
+      {taskEditOpen ? (
+        <IntakeChipRow
+          layout="interleaved"
+          chips={taskDetailChips}
+          onOpenSlot={setOpenChipSlot}
+          openSlot={openChipSlot}
+          onCloseSlot={() => setOpenChipSlot(null)}
+          renderSlotContent={renderTaskDetailSlotContent}
+        />
+      ) : null}
+      <p className="text-base text-foreground leading-relaxed">
+        {(task as any)?.description || "No description provided"}
+      </p>
+      {taskEditOpen && hasEdits && canManageTask ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="shadow-e1"
+          onClick={handleUpdateTask}
+          disabled={isUpdating}
+        >
+          {isUpdating ? "…" : "Save changes"}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const timelineSection = (
+    <div className="space-y-4">
+      {timelineLoading ? (
+        <div className="space-y-2 py-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      ) : timelineError ? (
+        <p className="text-muted-foreground text-sm">
+          Couldn&apos;t load timeline.{" "}
+          <button
+            type="button"
+            className="text-primary underline-offset-2 hover:underline"
+            onClick={() => void refetchTimeline()}
+          >
+            Retry
+          </button>
+        </p>
+      ) : (
+        <TaskTimeline events={timelineEvents} />
+      )}
+      <div
+        id="task-detail-comment"
+        className="flex max-h-[min(280px,40dvh)] min-h-[160px] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm"
+      >
+        <TaskMessaging taskId={taskId} focusComposeKey={commentFocusKey} />
       </div>
+      <GraphInsightPanel
+        start={{ type: "task", id: taskId }}
+        depth={2}
+        variant="minimal"
+        className="mb-1"
+      />
     </div>
   );
 
   const panelContent = (
     <>
+      <input
+        ref={taskImageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files) {
+            Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
+            e.target.value = "";
+          }
+        }}
+      />
       <TaskDetailContent
         title={taskTitle}
-        activeContext={activeContext}
-        onContextChange={setActiveContext}
         scrollRef={panelScrollRef}
-        overview={overviewSection}
-        checklist={<TaskDetailChecklistTab taskId={taskId} canEdit={canManageTask} />}
-        evidence={evidenceMediaSection}
-        activity={activitySection}
+        hero={
+          <TaskDetailHeroMeta
+            images={imageAttachments
+              .map((image: any, index: number) => ({
+                id: String(image.id || `img-${index}`),
+                src: image.thumbnail_url || image.optimized_url || image.file_url || "",
+                heroSrc: image.optimized_url || image.file_url || image.thumbnail_url || "",
+                alt: image.file_name || `Task image ${index + 1}`,
+              }))
+              .filter((image) => Boolean(image.src))}
+            selectedIndex={selectedImageIndex}
+            onSelectImage={setSelectedImageIndex}
+            onOpenImage={(index) => {
+              setSelectedImageIndex(index);
+              const selectedImage = imageAttachments[index] as any;
+              if (selectedImage?.id) {
+                setEditingImageId(selectedImage.id);
+                setShowAnnotationEditor(true);
+                return;
+              }
+              setLightboxOpen(true);
+            }}
+            statusLabel={statusChipLabel}
+            statusClassName={statusChipTextClass}
+            urgent={priority === "urgent"}
+            dueLabel={dueChipLabel}
+            propertyLabel={propertyLabel}
+            spaceLabel={spaceLabel}
+            assignee={assigneeUser}
+            reporter={assignerUser}
+          />
+        }
+        fillaUnderstood={<TaskDetailFillaUnderstood items={fillaUnderstoodItems} />}
+        description={descriptionSection}
+        sections={[
+          {
+            id: "checklist",
+            title: "Checklist",
+            content: <TaskDetailChecklistTab taskId={taskId} canEdit={canManageTask} />,
+            hidden: subtasks.length === 0 && !canManageTask,
+          },
+          {
+            id: "evidence",
+            title: "Evidence",
+            content: evidenceMediaSection,
+            hidden: imageAttachments.length === 0 && documentAttachments.length === 0,
+          },
+          {
+            id: "timeline",
+            title: "Timeline",
+            content: timelineSection,
+          },
+          {
+            id: "related",
+            title: "Related",
+            content: <TaskDetailRelated links={relatedLinks} />,
+            hidden: relatedLinks.length === 0,
+          },
+        ]}
       />
 
-      {/* CTA panel — primary: Mark Complete; overflow menu */}
       <div className="flex flex-col gap-1.5 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
         <div className="flex gap-2 items-center min-w-0 w-full">
           <Button
             variant="outline"
             className="shrink-0 shadow-e1 text-foreground"
-            onClick={() => setActiveContext("activity")}
+            onClick={() => taskImageInputRef.current?.click()}
+            disabled={isUploadingImage}
+          >
+            <Camera className="h-4 w-4 mr-1.5 shrink-0" />
+            {isUploadingImage ? "…" : "Add Photo"}
+          </Button>
+          <Button
+            variant="outline"
+            className="shrink-0 shadow-e1 text-foreground"
+            onClick={() => {
+              setCommentFocusKey((k) => k + 1);
+              requestAnimationFrame(() => {
+                document.getElementById("task-detail-comment")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              });
+            }}
           >
             <MessageSquare className="h-4 w-4 mr-1.5 shrink-0" />
-            Activity
+            Comment
           </Button>
-          {hasEdits && canManageTask && (
-            <Button variant="outline" className="shrink-0 shadow-e1 text-foreground" onClick={handleUpdateTask} disabled={isUpdating}>
-              {isUpdating ? "…" : "Update"}
-            </Button>
-          )}
           {canManageTask && (
             <Button
               variant={status === "completed" ? "secondary" : "default"}
@@ -1396,10 +1419,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     taskId,
                     propertyId: propId,
                   });
-                  // Close the panel so the list is visible, then play the card's
-                  // confirm/settle motion before invalidating — otherwise the
-                  // refetch would remove the card mid-animation (or behind the
-                  // modal, where the user never sees what happened).
                   onClose();
                   await playTaskCompletionMotion(taskId);
                   await queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -1437,6 +1456,27 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setTaskEditOpen(true);
+                    requestAnimationFrame(() => {
+                      panelScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                    });
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                {taskEditOpen ? (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setTaskEditOpen(false);
+                      setOpenChipSlot(null);
+                    }}
+                  >
+                    Done editing
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   onClick={async () => {
                     if (isUpdating || !task) return;
@@ -1556,7 +1596,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     </>
   );
 
-  // Single column: Header, primary image, gallery, then tabs (all in panelContent)
+  // Single-scroll detail body + sticky task actions
   return (
     <>
     {panelWrapper(

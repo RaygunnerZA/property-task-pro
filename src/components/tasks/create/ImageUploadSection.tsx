@@ -382,7 +382,7 @@ export function ImageUploadSection({
           <p className="text-xs font-normal text-muted-foreground pr-[5px] leading-[17px]">
             {intakeMode === "add_record"
               ? "Add certificate, inspection, or document — drag & drop or choose file"
-              : "Add photos or files — capture the issue (drag & drop or choose)"}
+              : "Add photos or files"}
           </p>
           <p className="mt-1 text-2xs text-primary">50 MB max file size</p>
         </div>

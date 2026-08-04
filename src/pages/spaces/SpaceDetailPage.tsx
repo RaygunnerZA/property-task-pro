@@ -14,7 +14,7 @@ import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
 import { TaskList } from "@/components/tasks/TaskList";
-import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { FolderOpen, Package, Shield, FileText, Sparkles, ArrowLeft, Plus, ListChecks, Pencil } from "lucide-react";
@@ -239,15 +239,11 @@ export default function SpaceDetailPage() {
           {
             id: "create",
             title: "Create Task",
-            isExpanded: expandedSection === "create",
-            onToggle: () => setExpandedSection((s) => (s === "create" ? null : "create")),
+            variant: "static",
             children: (
-              <CreateTaskModal
-                open={showCreateTask}
-                onOpenChange={(open) => {
-                  setShowCreateTask(open);
-                  if (!open) setExpandedSection(null);
-                }}
+              <IntakeModal
+                open
+                onOpenChange={() => undefined}
                 onTaskCreated={() => {
                   queryClient.invalidateQueries({ queryKey: ["tasks"] });
                   queryClient.invalidateQueries({ queryKey: ["tasks", undefined, propertyId] });
@@ -256,20 +252,26 @@ export default function SpaceDetailPage() {
                 defaultSpaceIds={spaceId ? [spaceId] : []}
                 variant="column"
                 headless
+                initialIntakeMode="report_issue"
               />
             ),
           },
-          {
-            id: "details",
-            title: "Task Details",
-            isExpanded: expandedSection === "details",
-            onToggle: () => setExpandedSection((s) => (s === "details" ? null : "details")),
-            children: selectedTaskId ? (
-              <TaskDetailPanel taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} variant="column" />
-            ) : (
-              <div className="p-4 text-sm text-muted-foreground">Select a task to view details</div>
-            ),
-          },
+          ...(selectedTaskId
+            ? [
+                {
+                  id: "details" as const,
+                  title: "Task Details",
+                  variant: "static" as const,
+                  children: (
+                    <TaskDetailPanel
+                      taskId={selectedTaskId}
+                      onClose={() => setSelectedTaskId(null)}
+                      variant="column"
+                    />
+                  ),
+                },
+              ]
+            : []),
           {
             id: "assistant",
             title: "Filla AI",
@@ -522,7 +524,7 @@ export default function SpaceDetailPage() {
       />
 
       {showCreateTask && !isLargeScreen && (
-        <CreateTaskModal
+        <IntakeModal
           open={showCreateTask}
           onOpenChange={setShowCreateTask}
           onTaskCreated={() => {
@@ -532,6 +534,7 @@ export default function SpaceDetailPage() {
           defaultPropertyId={propertyId}
           defaultSpaceIds={spaceId ? [spaceId] : []}
           variant="modal"
+          initialIntakeMode="report_issue"
         />
       )}
 

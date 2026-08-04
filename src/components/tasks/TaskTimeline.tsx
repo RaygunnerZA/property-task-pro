@@ -27,15 +27,10 @@ const getEventIcon = (type: TaskTimelineEventType) => {
 
 export const TaskTimeline: React.FC<TaskTimelineProps> = ({ events }) => {
   return (
-    <Surface variant="neomorphic" className="p-4 border-t border-white/60">
-      <div className="flex items-center gap-2 mb-4">
-        <Clock className="w-4 h-4 text-muted-foreground" />
-        <Text variant="label">Activity timeline</Text>
-      </div>
-
+    <Surface variant="neomorphic" className="p-4">
       {events.length === 0 ? (
         <Text variant="caption" className="text-center py-4">
-          No audit entries for this task yet
+          No history for this task yet
         </Text>
       ) : (
         <div className="space-y-4">

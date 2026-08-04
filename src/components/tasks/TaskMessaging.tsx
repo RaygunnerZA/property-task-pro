@@ -8,10 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2, Paperclip, Image as ImageIcon, X, FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toErrorMessage } from "@/lib/error";
 import { format } from "date-fns";
 
 interface TaskMessagingProps {
   taskId: string;
+  /** Increment to focus the comment composer (e.g. footer Comment action). */
+  focusComposeKey?: number;
 }
 
 interface AttachmentPreview {
@@ -20,7 +23,7 @@ interface AttachmentPreview {
   id: string;
 }
 
-export function TaskMessaging({ taskId }: TaskMessagingProps) {
+export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProps) {
   const { messages, loading, error, refresh } = useTaskMessages(taskId);
   const { orgId } = useActiveOrg();
   const { user, userId } = useDataContext();
@@ -30,8 +33,17 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composeRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!focusComposeKey) return;
+    const el = composeRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.focus();
+  }, [focusComposeKey]);
 
   // Fetch attachments for messages
   useEffect(() => {
@@ -258,11 +270,11 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
       setMessageText("");
       setAttachments([]);
       await refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error sending message:", err);
       toast({
         title: "Error",
-        description: err.message || "Failed to send message",
+        description: toErrorMessage(err, "Failed to send message"),
         variant: "destructive",
       });
     } finally {
@@ -468,10 +480,11 @@ export function TaskMessaging({ taskId }: TaskMessagingProps) {
             </Button>
           </div>
           <Textarea
+            ref={composeRef}
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type your message... (Press Enter to send)"
+            placeholder="Add a comment… (Enter to send)"
             className={cn(
               "flex-1 rounded-lg bg-background resize-none",
               "shadow-engraved border-0",

@@ -8,7 +8,7 @@ import { archiveTask } from "@/services/tasks/taskMutations";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { getTaskSpaceIllustration } from "@/lib/taskIllustration";
+import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
 
 // Property icon mapping
@@ -58,33 +58,10 @@ export function TaskCardActive({
   // Memoize task mapping and image parsing
   const { t, imageUrl, themes, spaces, assignedUsers, teams } = useMemo(() => {
     const mappedTask = mapTask(task);
-    
-    // Get image from images array
-    let images: any[] = [];
-    if (task?.images) {
-      if (typeof task.images === 'string') {
-        try {
-          images = JSON.parse(task.images);
-        } catch {
-          images = [];
-        }
-      } else if (Array.isArray(task.images)) {
-        images = task.images;
-      }
-    }
-    
-    const firstImage = images.length > 0 ? images[0] : null;
-    const uploadedUrl =
-      firstImage?.thumbnail_url ||
-      firstImage?.file_url ||
-      task?.primary_image_url ||
-      task?.image_url ||
-      (task as any)?.image_url;
-    
-    // Parse themes, spaces, and teams
+
     let themesArray: any[] = [];
     if (task?.themes) {
-      if (typeof task.themes === 'string') {
+      if (typeof task.themes === "string") {
         try {
           themesArray = JSON.parse(task.themes);
         } catch {
@@ -94,10 +71,10 @@ export function TaskCardActive({
         themesArray = task.themes;
       }
     }
-    
+
     let spacesArray: any[] = [];
     if (task?.spaces) {
-      if (typeof task.spaces === 'string') {
+      if (typeof task.spaces === "string") {
         try {
           spacesArray = JSON.parse(task.spaces);
         } catch {
@@ -107,10 +84,10 @@ export function TaskCardActive({
         spacesArray = task.spaces;
       }
     }
-    
+
     let teamsArray: any[] = [];
     if (task?.teams) {
-      if (typeof task.teams === 'string') {
+      if (typeof task.teams === "string") {
         try {
           teamsArray = JSON.parse(task.teams);
         } catch {
@@ -120,14 +97,10 @@ export function TaskCardActive({
         teamsArray = task.teams;
       }
     }
-    
-    const url =
-      uploadedUrl ||
-      getTaskSpaceIllustration(spacesArray, task?.title ?? mappedTask.title);
 
     return {
       t: mappedTask,
-      imageUrl: url,
+      imageUrl: resolveTaskDisplayImageUrl(task, task?.title ?? mappedTask.title),
       themes: themesArray,
       spaces: spacesArray,
       teams: teamsArray,

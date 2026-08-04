@@ -88,7 +88,7 @@ export type IntakeActionButtonPairProps = {
   reportIssueDisabled?: boolean;
 };
 
-/** Side-by-side Add Record + Report Issue — same order and styling everywhere. */
+/** Side-by-side Create Task + Add Record — Create Task first. */
 export function IntakeActionButtonPair({
   variant = "micro",
   layout = "row",
@@ -105,8 +105,8 @@ export function IntakeActionButtonPair({
         className
       )}
     >
-      <IntakeActionButton mode="add_record" variant={variant} onClick={onAddRecord} disabled={addRecordDisabled} />
       <IntakeActionButton mode="report_issue" variant={variant} onClick={onReportIssue} disabled={reportIssueDisabled} />
+      <IntakeActionButton mode="add_record" variant={variant} onClick={onAddRecord} disabled={addRecordDisabled} />
     </div>
   );
 }

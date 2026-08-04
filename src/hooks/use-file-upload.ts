@@ -104,27 +104,30 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
 
       const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(fileName);
 
-      const { data: attachmentData, error: attachError } = await supabase.rpc("create_attachment_record", {
-        p_org_id: orgId,
-        p_file_url: urlData.publicUrl,
-        p_parent_type: "task",
-        p_parent_id: taskId,
-        p_file_name: file.name,
-        p_file_type: file.type,
-        p_file_size: file.size,
-        p_thumbnail_url: null,
-      });
+      // Direct insert (create_attachment_record RPC is not present on all envs).
+      const { data: attachment, error: attachError } = await supabase
+        .from("attachments")
+        .insert({
+          org_id: orgId,
+          parent_type: "task",
+          parent_id: taskId,
+          file_url: urlData.publicUrl,
+          file_name: file.name,
+          file_type: file.type || null,
+          file_size: file.size,
+          upload_status: "complete",
+        })
+        .select("id")
+        .single();
 
       if (attachError) {
         if (import.meta.env.DEV) {
-          console.warn("[use-file-upload] Attachment RPC error:", attachError.message);
+          console.warn("[use-file-upload] Attachment insert error:", attachError.message);
         }
         throw new Error(`Failed to create attachment: ${attachError.message}`);
       }
 
-      const attachment = Array.isArray(attachmentData) ? attachmentData[0] : attachmentData;
-
-      if (!attachment) {
+      if (!attachment?.id) {
         throw new Error("Failed to create attachment: no data returned");
       }
 

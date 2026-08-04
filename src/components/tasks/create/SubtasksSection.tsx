@@ -226,7 +226,7 @@ export function SubtasksSection({
       {/* Description Area */}
       {showDescription && (
         <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
-          <Textarea placeholder="What needs doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-base font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+          <Textarea placeholder="What Needs Doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-[17px] font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
         </div>
       )}
 
@@ -280,7 +280,7 @@ export function SubtasksSection({
                 setPickerOpen((prev) => !prev);
               }}
             >
-              Load Checklist
+              Templates
             </button>
             <span className="text-muted-foreground/30">|</span>
             <button

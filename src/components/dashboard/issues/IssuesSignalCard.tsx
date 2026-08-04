@@ -147,7 +147,7 @@ export function IssuesSignalCard({
         : [
             {
               id: "report-issue",
-              label: "Report Issue",
+              label: "Create Task",
               onClick: () => runFixtureAction("report-issue", item, ctx),
             },
             {

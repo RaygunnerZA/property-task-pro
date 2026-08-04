@@ -151,8 +151,8 @@ export function SemanticChip({
 
   const epistemicStyles =
     epistemic === "fact"
-      ? "bg-card text-foreground"
-      : "bg-background text-muted-foreground opacity-75";
+      ? "bg-card text-foreground shadow-e1"
+      : "bg-background text-muted-foreground shadow-e1";
 
   const interactionStyles =
     interaction === "entry"
@@ -164,7 +164,7 @@ export function SemanticChip({
   const baseStyles = cn(
     "relative inline-flex items-center gap-1.5 rounded-card flex-shrink-0",
     "font-mono uppercase tracking-wide whitespace-nowrap",
-    "transition-[max-width,width] duration-200 ease-out",
+    "transition-[max-width,width,box-shadow] duration-200 ease-out",
     heightClass,
     textClass,
     epistemicStyles,
@@ -178,7 +178,7 @@ export function SemanticChip({
     epistemic === "proposal" &&
       (removable
         ? "pl-2.5 pr-1 py-1 min-w-[40px] max-w-[160px] group-hover:max-w-none group-hover:z-10"
-        : "px-2 py-1 max-w-[160px]"),
+        : "px-2.5 py-1 max-w-[160px]"),
     epistemic === "fact" && !onPress && !dropdown && "cursor-default",
     (onPress || dropdown) && "cursor-pointer select-none",
     onPress && !isPressed && "hover:opacity-90",
