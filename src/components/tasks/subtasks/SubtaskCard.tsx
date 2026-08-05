@@ -125,6 +125,9 @@ function stringToColor(str?: string): string {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
+import type { ChecklistStepResponseInput } from "@/lib/checklistStepResponse";
+import { StepExecuteControls } from "./StepExecuteControls";
+
 interface SubtaskCardProps {
   subtask: SubtaskData;
   index: number;
@@ -138,6 +141,12 @@ interface SubtaskCardProps {
   onBackspaceDelete: (id: string) => void;
   onFocusPrevious: (id: string) => void;
   onFocusNext: (id: string) => void;
+  onSubmitResponse?: (id: string, response: ChecklistStepResponseInput) => void | Promise<void>;
+  responseBusy?: boolean;
+  onClearResponse?: (id: string) => void | Promise<void>;
+  /** Execute mode: allow delete/duplicate without entering full authoring. */
+  canEditStructure?: boolean;
+  onRequestAuthoring?: () => void;
 }
 
 export function SubtaskCard({
@@ -153,6 +162,11 @@ export function SubtaskCard({
   onBackspaceDelete,
   onFocusPrevious,
   onFocusNext,
+  onSubmitResponse,
+  responseBusy = false,
+  onClearResponse,
+  canEditStructure = false,
+  onRequestAuthoring,
 }: SubtaskCardProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
@@ -413,19 +427,32 @@ export function SubtaskCard({
             <div className="w-4 shrink-0" aria-hidden />
           )}
 
-          {/* Circle checkbox — marks step complete */}
-          {currentType !== "divider" && (
+          {/* Circle checkbox — not used for pure formatting steps */}
+          {currentType !== "divider" && currentType !== "title" && currentType !== "note" && (
             <button
               type="button"
-              disabled={isCreator}
+              disabled={
+                isCreator ||
+                responseBusy ||
+                (!isCreator && currentType !== "check" && !subtask.is_completed)
+              }
               onClick={() => {
                 if (isCreator) return;
+                // Only plain check steps complete from the circle; other types use StepExecuteControls.
+                if (currentType !== "check") return;
+                if (onSubmitResponse && !subtask.is_completed) {
+                  void onSubmitResponse(subtask.id, {
+                    value: "done",
+                    metadata: { answer: "checked" },
+                  });
+                  return;
+                }
                 onUpdate(subtask.id, { is_completed: !subtask.is_completed });
               }}
               className={cn(
                 "shrink-0 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
-                !isCreator && "cursor-pointer",
-                isCreator && "cursor-default"
+                !isCreator && currentType === "check" && "cursor-pointer",
+                (isCreator || currentType !== "check") && "cursor-default"
               )}
               aria-label={
                 subtask.is_completed
@@ -444,6 +471,10 @@ export function SubtaskCard({
                 )}
               />
             </button>
+          )}
+          {/* Spacer so title/note align with other rows */}
+          {(currentType === "title" || currentType === "note") && (
+            <div className="h-[14px] w-[14px] shrink-0" aria-hidden />
           )}
 
           {/* Divider step — render a horizontal rule instead of input */}
@@ -491,7 +522,7 @@ export function SubtaskCard({
                   currentType === "title" ? "text-lg md:text-lg font-semibold" : "text-sm md:text-sm",
                   currentType === "note" && "italic",
                   !isCreator && "cursor-default",
-                  !isCreator && subtask.is_completed && "text-muted-foreground line-through"
+                  !isCreator && subtask.is_completed && !isStructureOnly && "text-muted-foreground line-through"
                 )}
                 style={{
                   border: "none",
@@ -541,41 +572,34 @@ export function SubtaskCard({
             hasNote={!!subtask.note}
             hasFollowupIfFailed={subtask.has_followup_if_failed}
             assignedUserName={subtask.assigned_user_name}
+            canClearResponse={Boolean(
+              !isCreator &&
+                (subtask.is_completed || subtask.response_value || subtask.signed_at)
+            )}
+            canEditStructure={!isCreator && canEditStructure}
             onToggleRequired={handleToggleRequired}
             onAddNote={handleAddNote}
             onToggleFollowupIfFailed={handleToggleFollowup}
             onOpenAssignPicker={() => setAssignPickerOpen(true)}
             onDuplicate={() => onDuplicate(subtask.id)}
             onDelete={handleDelete}
+            onClearResponse={
+              onClearResponse ? () => void onClearResponse(subtask.id) : undefined
+            }
+            onRequestAuthoring={onRequestAuthoring}
           />
 
-          {/* ── Right-side step-type affordances ─────────────────── */}
-          {!isStructureOnly && (
+          {/* ── Right-side step-type affordances (authoring preview) ── */}
+          {isCreator && !isStructureOnly && (
             <>
               {currentType === "yes_no" && (
-                <div className="shrink-0 flex items-center rounded-lg bg-primary shadow-[inset_1px_6.5px_7.2px_0px_rgba(0,0,0,0.25),inset_-1px_-3.9px_3.5px_0px_rgba(255,255,255,0.53),inset_0px_-1.1px_0.6px_0px_rgba(255,255,255,1)] px-0.5 pt-0.5 pb-[3px] w-[68px] border-none">
-                  <button
-                    type="button"
-                    disabled={isCreator}
-                    onClick={() => {
-                      if (isCreator) return;
-                      onUpdate(subtask.id, { is_completed: true });
-                    }}
-                    className="h-6 px-[9px] rounded-md flex items-center text-2xs font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)] disabled:cursor-default"
-                  >
+                <div className="shrink-0 flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5 w-[72px] border-none">
+                  <span className="h-6 flex-1 rounded-md flex items-center justify-center text-2xs font-medium text-muted-foreground/60 bg-card shadow-sm">
                     No
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isCreator}
-                    onClick={() => {
-                      if (isCreator) return;
-                      onUpdate(subtask.id, { is_completed: true });
-                    }}
-                    className="h-6 px-[6px] rounded-md flex items-center text-2xs font-medium text-white/75 disabled:cursor-default"
-                  >
+                  </span>
+                  <span className="h-6 flex-1 rounded-md flex items-center justify-center text-2xs font-medium text-muted-foreground/60 bg-card shadow-sm">
                     Yes
-                  </button>
+                  </span>
                 </div>
               )}
 
@@ -776,14 +800,23 @@ export function SubtaskCard({
           </div>
         )}
 
-        {/* Below-row affordance for text type */}
-        {currentType === "text" && (
+        {/* Below-row affordance for text type (authoring preview) */}
+        {isCreator && currentType === "text" && (
           <div className="ml-[46px] mr-2 pb-2 -mt-0.5">
             <div className="h-7 rounded-md px-2.5 flex items-center bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-xs text-muted-foreground/40 italic">
               Type your answer…
             </div>
           </div>
         )}
+
+        {/* Assignee compliance capture */}
+        {!isCreator && onSubmitResponse ? (
+          <StepExecuteControls
+            subtask={subtask}
+            busy={responseBusy}
+            onSubmit={(response) => onSubmitResponse(subtask.id, response)}
+          />
+        ) : null}
 
         {/* ── Follow-up Branch (if failed) ─────────────────────────── */}
         {subtask.has_followup_if_failed && (

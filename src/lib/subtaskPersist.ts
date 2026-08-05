@@ -53,6 +53,13 @@ export function rowToChecklistItem(row: {
   is_required?: boolean | null;
   is_completed?: boolean | null;
   completed?: boolean | null;
+  response_value?: string | null;
+  response_json?: Record<string, unknown> | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
+  response_attachment_id?: string | null;
+  signed_by?: string | null;
+  signed_at?: string | null;
 }): SubtaskData {
   const legacyYesNo = Boolean(row.is_yes_no);
   const legacySignature = Boolean(row.requires_signature);
@@ -75,5 +82,12 @@ export function rowToChecklistItem(row: {
     is_yes_no: legacy.is_yes_no,
     requires_signature: legacy.requires_signature,
     is_completed: Boolean(row.is_completed || row.completed),
+    response_value: row.response_value ?? null,
+    response_json: row.response_json ?? null,
+    completed_by: row.completed_by ?? null,
+    completed_at: row.completed_at ?? null,
+    response_attachment_id: row.response_attachment_id ?? null,
+    signed_by: row.signed_by ?? null,
+    signed_at: row.signed_at ?? null,
   };
 }

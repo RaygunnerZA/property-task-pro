@@ -1,6 +1,8 @@
 export { SubtaskCard } from "./SubtaskCard";
 export { SubtaskList } from "./SubtaskList";
 export { SubtaskOptionsMenu } from "./SubtaskOptionsMenu";
+export { StepExecuteControls } from "./StepExecuteControls";
+export { SignaturePad } from "./SignaturePad";
 export type { SubtaskData, StepNote, StepType, StepTypeConfig } from "./SubtaskCard";
 export {
   STEP_TYPE_CONFIG,

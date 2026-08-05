@@ -50,6 +50,15 @@ export interface SubtaskData {
   followup?: { title: string; step_type?: StepType };
   /** Completion state when executing a checklist on Task Detail. */
   is_completed?: boolean;
+  /** Recorded compliance answer (yes/no, number, text, scan code, …). */
+  response_value?: string | null;
+  /** Structured response metadata. */
+  response_json?: Record<string, unknown> | null;
+  completed_by?: string | null;
+  completed_at?: string | null;
+  response_attachment_id?: string | null;
+  signed_by?: string | null;
+  signed_at?: string | null;
 }
 
 /** Whether this step is indented as a nested checklist item. */

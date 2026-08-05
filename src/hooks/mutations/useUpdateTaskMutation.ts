@@ -53,6 +53,7 @@ export function useUpdateTaskMutation() {
     onSuccess: (data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       void queryClient.invalidateQueries({ queryKey: ["task", variables.taskId] });
+      void queryClient.invalidateQueries({ queryKey: ["task-audit-log", variables.orgId, variables.taskId] });
       if (data.org_id) {
         void queryClient.invalidateQueries({
           queryKey: ["tasks-briefing", data.org_id, null],

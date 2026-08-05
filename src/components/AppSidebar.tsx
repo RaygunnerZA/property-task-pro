@@ -197,7 +197,10 @@ export function AppSidebar() {
     >
       <SidebarContent
         className={cn(
-          "relative z-[60] flex h-full flex-col py-4 pointer-events-auto",
+          "relative z-[60] flex h-full flex-col pointer-events-auto",
+          // Desktop: sit Home under the full-bleed gradient, aligned with the property card top
+          // (header 73px + DualPane gap 14px − nav item py-2.5 so the icon meets the card edge).
+          "py-4 lg:pb-4 lg:pt-[77px]",
           open ? "px-3" : "px-1.5",
           isMobile && "text-sidebar-foreground"
         )}

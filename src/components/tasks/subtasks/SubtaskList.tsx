@@ -25,6 +25,19 @@ interface SubtaskListProps {
   isCreator?: boolean;
   onSubtasksChange: (subtasks: SubtaskData[]) => void;
   onReorder?: (ids: string[]) => void;
+  /** Persist a compliance response for an execute-mode step. */
+  onSubmitResponse?: (
+    id: string,
+    response: import("@/lib/checklistStepResponse").ChecklistStepResponseInput
+  ) => void | Promise<void>;
+  responseBusyId?: string | null;
+  onClearResponse?: (id: string) => void | Promise<void>;
+  /** Execute mode structure actions (task editors). */
+  canEditStructure?: boolean;
+  onRequestAuthoring?: () => void;
+  /** When set, delete/duplicate persist outside local authoring drafts. */
+  onDeleteStep?: (id: string) => void | Promise<void>;
+  onDuplicateStep?: (id: string) => void | Promise<void>;
 }
 
 export function SubtaskList({
@@ -32,6 +45,13 @@ export function SubtaskList({
   isCreator = true,
   onSubtasksChange,
   onReorder,
+  onSubmitResponse,
+  responseBusyId = null,
+  onClearResponse,
+  canEditStructure = false,
+  onRequestAuthoring,
+  onDeleteStep,
+  onDuplicateStep,
 }: SubtaskListProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -78,6 +98,10 @@ export function SubtaskList({
 
   const handleDelete = useCallback(
     (id: string) => {
+      if (onDeleteStep) {
+        void onDeleteStep(id);
+        return;
+      }
       const index = subtasks.findIndex((s) => s.id === id);
       const newSubtasks = subtasks.filter((s) => s.id !== id);
       onSubtasksChange(newSubtasks);
@@ -88,11 +112,15 @@ export function SubtaskList({
         setFocusedId(newSubtasks[focusIndex].id);
       }
     },
-    [subtasks, onSubtasksChange]
+    [subtasks, onSubtasksChange, onDeleteStep]
   );
 
   const handleDuplicate = useCallback(
     (id: string) => {
+      if (onDuplicateStep) {
+        void onDuplicateStep(id);
+        return;
+      }
       const subtask = subtasks.find((s) => s.id === id);
       if (!subtask) return;
 
@@ -108,7 +136,7 @@ export function SubtaskList({
       onSubtasksChange(newSubtasks);
       setFocusedId(newSubtask.id);
     },
-    [subtasks, onSubtasksChange]
+    [subtasks, onSubtasksChange, onDuplicateStep]
   );
 
   const handleEnterPress = useCallback(
@@ -188,6 +216,11 @@ export function SubtaskList({
               onBackspaceDelete={handleBackspaceDelete}
               onFocusPrevious={handleFocusPrevious}
               onFocusNext={handleFocusNext}
+              onSubmitResponse={onSubmitResponse}
+              responseBusy={responseBusyId === subtask.id}
+              onClearResponse={onClearResponse}
+              canEditStructure={canEditStructure}
+              onRequestAuthoring={onRequestAuthoring}
             />
           ))}
         </div>

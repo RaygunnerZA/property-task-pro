@@ -6,8 +6,16 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 import { useSubtasks } from "@/hooks/useSubtasks";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useAuth } from "@/hooks/useAuth";
 import { applyTemplateToTask } from "@/services/tasks/taskMutations";
+import {
+  completeChecklistStep,
+  clearChecklistStepResponse,
+  getChecklistGeoCached,
+} from "@/services/checklist/completeChecklistStep";
 import { useToast } from "@/hooks/use-toast";
+import { toErrorMessage } from "@/lib/error";
+import type { ChecklistStepResponseInput } from "@/lib/checklistStepResponse";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,11 +144,12 @@ export function TaskDetailChecklistTab({
 }: TaskDetailChecklistTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { orgId } = useActiveOrg();
+  const { user } = useAuth();
   const {
     subtasks,
     loading,
     createSubtask,
-    toggleSubtask,
     deleteSubtask,
     updateSubtask,
     updateSubtaskOrder,
@@ -148,36 +157,68 @@ export function TaskDetailChecklistTab({
   } = useSubtasks(taskId);
 
   const [editorItems, setEditorItems] = useState<SubtaskData[]>([]);
+  const [responseBusyId, setResponseBusyId] = useState<string | null>(null);
+  /** Allow authoring checklist structure without full task edit mode (Add item). */
+  const [checklistAuthoring, setChecklistAuthoring] = useState(false);
 
   useEffect(() => {
     setEditorItems(subtasks.map(rowToChecklistItem));
   }, [subtasks]);
 
+  useEffect(() => {
+    if (editMode) setChecklistAuthoring(false);
+  }, [editMode]);
+
+  // Prefetch GPS so the first Mark done is not cold (reused ~60s for rapid completions).
+  useEffect(() => {
+    if (!canEdit) return;
+    void getChecklistGeoCached();
+  }, [canEdit, taskId]);
+
   const bumpCount = () => {
     void queryClient.invalidateQueries({ queryKey: ["task-subtask-count", taskId] });
+    void queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+    void queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
   };
 
   /** Authoring mode: change structure/types. Otherwise show requirements for completion. */
-  const isAuthoring = canEdit && editMode;
+  const isAuthoring = canEdit && (editMode || checklistAuthoring);
+
+  const handleSubmitResponse = async (stepId: string, response: ChecklistStepResponseInput) => {
+    if (!orgId || !user?.id || !canEdit) {
+      throw new Error("Sign in to record checklist responses.");
+    }
+    const step = editorItems.find((s) => s.id === stepId);
+    if (!step) throw new Error("Checklist step not found.");
+
+    setResponseBusyId(stepId);
+    try {
+      await completeChecklistStep({
+        orgId,
+        taskId,
+        subtaskId: stepId,
+        stepType: getStepType(step),
+        response,
+        userId: user.id,
+      });
+      bumpCount();
+      await refresh();
+      toast({ title: "Response recorded" });
+    } catch (err) {
+      toast({
+        title: "Couldn't record response",
+        description: toErrorMessage(err),
+        variant: "destructive",
+      });
+      throw err;
+    } finally {
+      setResponseBusyId(null);
+    }
+  };
 
   const handleEditorChange = async (next: SubtaskData[]) => {
     if (!isAuthoring) {
-      // Completion / execute mode — only completion toggles are persisted here.
-      for (const item of next) {
-        const before = editorItems.find((s) => s.id === item.id);
-        if (!before) continue;
-        if (Boolean(before.is_completed) !== Boolean(item.is_completed)) {
-          const ok = await toggleSubtask(item.id);
-          if (!ok) {
-            toast({ title: "Couldn't update step", variant: "destructive" });
-            await refresh();
-            return;
-          }
-        }
-      }
-      setEditorItems(next);
-      bumpCount();
-      await refresh();
+      // Execute mode persists via onSubmitResponse — ignore structure edits.
       return;
     }
 
@@ -258,32 +299,88 @@ export function TaskDetailChecklistTab({
     await refresh();
   };
 
+  const handleClearResponse = async (stepId: string) => {
+    if (!orgId || !canEdit) return;
+    setResponseBusyId(stepId);
+    try {
+      await clearChecklistStepResponse({ orgId, subtaskId: stepId });
+      bumpCount();
+      await refresh();
+      toast({ title: "Response cleared" });
+    } catch (err) {
+      toast({
+        title: "Couldn't clear response",
+        description: toErrorMessage(err),
+        variant: "destructive",
+      });
+    } finally {
+      setResponseBusyId(null);
+    }
+  };
+
   const handleAddItem = async () => {
     if (!canEdit) return;
-    if (isAuthoring) {
-      const blank: SubtaskData = {
-        id: crypto.randomUUID(),
-        title: "",
-        is_yes_no: false,
-        requires_signature: false,
-        step_type: "check",
-      };
-      void handleEditorChange([...editorItems, blank]);
-      return;
-    }
-    const created = await createSubtask("New checklist item", { step_type: "check" });
+    // Enter checklist authoring so the new row is editable with format options.
+    setChecklistAuthoring(true);
+    const created = await createSubtask("", {
+      step_type: "check",
+      order_index: editorItems.length,
+    });
     if (!created) {
       toast({ title: "Couldn't add item", variant: "destructive" });
       return;
     }
     bumpCount();
+    await refresh();
+  };
+
+  const handleStructureDelete = async (stepId: string) => {
+    if (!canEdit) return;
+    const ok = await deleteSubtask(stepId);
+    if (!ok) {
+      toast({ title: "Couldn't remove item", variant: "destructive" });
+      return;
+    }
+    bumpCount();
+    await refresh();
+  };
+
+  const handleStructureDuplicate = async (stepId: string) => {
+    if (!canEdit) return;
+    const source = editorItems.find((s) => s.id === stepId);
+    if (!source) return;
+    const stepType = getStepType(source);
+    const legacy = stepTypeToLegacy(stepType);
+    const created = await createSubtask(
+      source.title.trim() ? `${source.title} (copy)` : "",
+      {
+        is_yes_no: legacy.is_yes_no,
+        requires_signature: legacy.requires_signature,
+        step_type: stepType,
+        is_sub_step: resolveIsSubStep(source),
+        is_required: Boolean(source.is_required),
+        order_index: editorItems.length,
+      }
+    );
+    if (!created) {
+      toast({ title: "Couldn't duplicate item", variant: "destructive" });
+      return;
+    }
+    bumpCount();
+    await refresh();
   };
 
   if (loading) {
     return <LoadingState message="Loading checklist…" />;
   }
 
-  const doneCount = subtasks.filter((row) => Boolean(row.is_completed || row.completed)).length;
+  const actionableSteps = subtasks.filter((row) => {
+    const stepType = String(row.step_type ?? "");
+    return stepType !== "title" && stepType !== "note" && stepType !== "divider";
+  });
+  const doneCount = actionableSteps.filter((row) =>
+    Boolean(row.is_completed || row.completed || row.response_value || row.signed_at)
+  ).length;
 
   return (
     <div className="space-y-3">
@@ -291,21 +388,32 @@ export function TaskDetailChecklistTab({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
-            {subtasks.length > 0 ? (
+            {actionableSteps.length > 0 ? (
               <p className="text-[11px] text-muted-foreground tabular-nums">
-                {doneCount}/{subtasks.length} done
+                {doneCount}/{actionableSteps.length} done
               </p>
             ) : null}
           </div>
           {canEdit ? (
-            <button
-              type="button"
-              onClick={() => void handleAddItem()}
-              className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              Add item
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {checklistAuthoring && !editMode ? (
+                <button
+                  type="button"
+                  onClick={() => setChecklistAuthoring(false)}
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Done editing
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void handleAddItem()}
+                className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add item
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -321,9 +429,34 @@ export function TaskDetailChecklistTab({
           subtasks={editorItems}
           isCreator={isAuthoring}
           onSubtasksChange={(next) => {
-            if (!isAuthoring && !canEdit) return;
+            if (!isAuthoring) return;
             void handleEditorChange(next);
           }}
+          onSubmitResponse={
+            !isAuthoring && canEdit
+              ? (id, response) => handleSubmitResponse(id, response)
+              : undefined
+          }
+          responseBusyId={responseBusyId}
+          onClearResponse={
+            !isAuthoring && canEdit
+              ? (id) => handleClearResponse(id)
+              : undefined
+          }
+          canEditStructure={!isAuthoring && canEdit}
+          onRequestAuthoring={
+            !isAuthoring && canEdit ? () => setChecklistAuthoring(true) : undefined
+          }
+          onDeleteStep={
+            !isAuthoring && canEdit
+              ? (id) => handleStructureDelete(id)
+              : undefined
+          }
+          onDuplicateStep={
+            !isAuthoring && canEdit
+              ? (id) => handleStructureDuplicate(id)
+              : undefined
+          }
         />
       )}
 

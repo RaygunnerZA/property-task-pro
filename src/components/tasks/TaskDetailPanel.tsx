@@ -403,6 +403,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       await supabase.from("task_assets").delete().eq("task_id", taskId);
       queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({
+        queryKey: ["task-audit-log", (task as any)?.org_id, taskId],
+      });
       refreshTask();
     } catch (err: any) {
       toast({ title: "Couldn't update property", description: err.message, variant: "destructive" });
@@ -1156,12 +1159,47 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           aria-describedby="task-detail-panel-desc"
           onPointerDownOutside={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            // Portaled menus (checklist •••, overflow) render outside DialogContent;
+            // without this, Radix treats the click as dismiss and the menu never works.
+            const t = event.target;
+            if (
+              t instanceof Element &&
+              (t.closest('[data-radix-popper-content-wrapper]') ||
+                t.closest('[role="menu"]') ||
+                t.closest('[role="listbox"]') ||
+                t.closest('[data-radix-select-content]') ||
+                t.closest('[data-radix-popover-content]'))
+            ) {
+              event.preventDefault();
+            }
           }}
           onInteractOutside={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            const t = event.target;
+            if (
+              t instanceof Element &&
+              (t.closest('[data-radix-popper-content-wrapper]') ||
+                t.closest('[role="menu"]') ||
+                t.closest('[role="listbox"]') ||
+                t.closest('[data-radix-select-content]') ||
+                t.closest('[data-radix-popover-content]'))
+            ) {
+              event.preventDefault();
+            }
           }}
           onFocusOutside={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            const t = event.target;
+            if (
+              t instanceof Element &&
+              (t.closest('[data-radix-popper-content-wrapper]') ||
+                t.closest('[role="menu"]') ||
+                t.closest('[role="listbox"]') ||
+                t.closest('[data-radix-select-content]') ||
+                t.closest('[data-radix-popover-content]'))
+            ) {
+              event.preventDefault();
+            }
           }}
           onEscapeKeyDown={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();

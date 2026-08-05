@@ -133,13 +133,25 @@
   }
 
   @media (min-width: 1024px) {
+    .dashboard-workbench,
+    .calendar-page {
+      /* Match .page-header--workbench-desktop height */
+      --header-height: 73px;
+    }
+
     .dashboard-workbench .page-header--workbench-desktop,
     .calendar-page .page-header--workbench-desktop {
       height: 73px;
       min-height: 73px;
       padding-top: 0;
+      padding-left: 0;
       box-sizing: border-box;
       overflow: visible;
+      /* Paint above the fixed left nav so the gradient spans the full viewport width */
+      z-index: 55;
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
     }
   }
 
