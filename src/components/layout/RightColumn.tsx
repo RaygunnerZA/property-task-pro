@@ -27,6 +27,8 @@ interface RightColumnProps {
   onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
+  /** Opens Add to Filla after promoting an external email signal. */
+  onOpenAddToFilla?: () => void;
   recordsView?: RecordsView;
   onRecordsViewChange?: (view: RecordsView) => void;
   workbenchPanel?: DashboardWorkbenchPanel;
@@ -61,6 +63,7 @@ export function RightColumn({
   onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake,
+  onOpenAddToFilla,
   recordsView,
   onRecordsViewChange,
   workbenchPanel = "home",
@@ -96,6 +99,7 @@ export function RightColumn({
           onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
+          onOpenAddToFilla={onOpenAddToFilla}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
@@ -115,6 +119,7 @@ export function RightColumn({
           onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
+          onOpenAddToFilla={onOpenAddToFilla}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}

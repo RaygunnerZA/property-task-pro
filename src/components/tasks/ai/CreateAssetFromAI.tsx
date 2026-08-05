@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { cn } from "@/lib/utils";
 
 export interface CreateAssetFromAIPayload {
@@ -68,6 +70,7 @@ export function CreateAssetFromAI({
   onAssetCreated,
 }: CreateAssetFromAIProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(prefilled?.name || "");
   const [category, setCategory] = useState(prefilled?.category || "");
   const [serialNumber, setSerialNumber] = useState(prefilled?.serial_number || "");
@@ -112,6 +115,8 @@ export function CreateAssetFromAI({
 
       if (error) throw error;
       if (!data?.id) throw new Error("No asset returned");
+
+      await invalidateAssetQueries(queryClient);
 
       toast({ title: "Asset created", description: "New asset linked to image" });
       onOpenChange(false);

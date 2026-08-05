@@ -16,10 +16,12 @@ import {
   intakeReportIssueMicroClassName,
   intakeReportIssueStackedClassName,
   intakeFabSatelliteReportClassName,
+  intakeReportIssuePanelFooterClassName,
+  intakeAddRecordPanelFooterClassName,
 } from "@/lib/intake-action-buttons";
 import type { IntakeMode } from "@/types/intake";
 
-export type IntakeActionButtonVariant = "toolbar" | "micro" | "compact" | "stacked" | "fab";
+export type IntakeActionButtonVariant = "toolbar" | "micro" | "compact" | "stacked" | "fab" | "panel";
 
 const variantClassName: Record<IntakeMode, Record<IntakeActionButtonVariant, string>> = {
   add_record: {
@@ -28,6 +30,7 @@ const variantClassName: Record<IntakeMode, Record<IntakeActionButtonVariant, str
     compact: intakeAddRecordCompactClassName,
     stacked: intakeAddRecordStackedClassName,
     fab: intakeFabSatelliteAddClassName,
+    panel: intakeAddRecordPanelFooterClassName,
   },
   report_issue: {
     toolbar: intakeReportIssueButtonClassName,
@@ -35,6 +38,7 @@ const variantClassName: Record<IntakeMode, Record<IntakeActionButtonVariant, str
     compact: intakeReportIssueCompactClassName,
     stacked: intakeReportIssueStackedClassName,
     fab: intakeFabSatelliteReportClassName,
+    panel: intakeReportIssuePanelFooterClassName,
   },
 };
 

@@ -42,6 +42,8 @@ export interface MyWorkPanelProps {
   onMessageClick?: (messageId: string) => void;
   onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
+  /** Opens Add to Filla after promoting an external email signal. */
+  onOpenAddToFilla?: () => void;
   onTabChange?: (tab: string) => void;
   onRecordsViewChange?: (view: RecordsView) => void;
   /** When true, omits "View all" links (already on the dedicated Attention route). */
@@ -138,6 +140,7 @@ export function MyWorkPanel({
   onMessageClick,
   onAttentionItemSelect,
   onOpenIntake,
+  onOpenAddToFilla,
   onTabChange,
   onRecordsViewChange,
   hideViewAllLinks = false,
@@ -227,6 +230,7 @@ export function MyWorkPanel({
     onTabChange,
     onRecordsViewChange,
     onboardingEducationMode,
+    onOpenAddToFilla,
   });
 
   const handleViewAllIssues = () => {

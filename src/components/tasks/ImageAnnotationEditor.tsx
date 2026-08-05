@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { ArrowRight, Square, Circle, Type, Pen, X, Trash2, Save, RotateCcw, Undo2, Redo2 } from "lucide-react";
+import { ArrowRight, Square, Circle, Type, Pen, X, RotateCcw, Undo2, Redo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -99,13 +99,8 @@ export function ImageAnnotationEditor({
     return JSON.stringify(annotations) !== JSON.stringify(lastSavedAnnotations);
   }, [annotations, lastSavedAnnotations]);
 
-  // Single layer visible at a time to avoid duplicate drawing (each version is full state)
-  const displayAnnotations = useMemo(() => {
-    if (editSessions.length === 0) return annotations;
-    if (visibleSessionIds.length === 0) return [];
-    const session = editSessions.find((s) => visibleSessionIds.includes(s.id));
-    return session ? session.annotations : [];
-  }, [annotations, editSessions, visibleSessionIds]);
+  // Always render the live edit buffer. History versions can be loaded into it via the header.
+  const displayAnnotations = annotations;
 
   // Define drawSelectionHandles first (used by drawAnnotations)
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, annotation: Annotation) => {
@@ -637,12 +632,31 @@ export function ImageAnnotationEditor({
   const handleCancel = useCallback(() => {
     if (hasUnsavedChanges) {
       const shouldDiscard = window.confirm(
-        "You have unsaved annotations. Are you sure you want to close without saving?"
+        "You have unsaved annotations. Close without saving?"
       );
       if (!shouldDiscard) return;
     }
     onCancel();
   }, [hasUnsavedChanges, onCancel]);
+
+  const loadSession = useCallback(
+    (sessionId: string) => {
+      const session = editSessions.find((s) => s.id === sessionId);
+      if (!session) return;
+      if (hasUnsavedChanges) {
+        const ok = window.confirm("Replace current annotations with this version? Unsaved changes will be lost.");
+        if (!ok) return;
+      }
+      const next = JSON.parse(JSON.stringify(session.annotations)) as Annotation[];
+      setAnnotations(next);
+      setHistory([next]);
+      setHistoryIndex(0);
+      setLastSavedAnnotations(next);
+      setSelectedAnnotationId(null);
+      setVisibleSessionIds([sessionId]);
+    },
+    [editSessions, hasUnsavedChanges]
+  );
 
   const getRelativeCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
     if (!canvasRef.current || !imageSize) return null;
@@ -1140,6 +1154,37 @@ export function ImageAnnotationEditor({
     }
   };
 
+  const handleDone = useCallback(async () => {
+    if (!hasUnsavedChanges) {
+      onCancel();
+      return;
+    }
+    const result = await handleSave();
+    if (result !== "failed") {
+      onCancel();
+    }
+  }, [hasUnsavedChanges, handleSave, onCancel]);
+
+  // Escape: clear selection → cancel text → close editor
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (inlineTextEditor) {
+        cancelInlineTextEditing();
+        return;
+      }
+      if (selectedAnnotationId) {
+        setSelectedAnnotationId(null);
+        return;
+      }
+      handleCancel();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [handleCancel, inlineTextEditor, selectedAnnotationId, cancelInlineTextEditing]);
+
   const selectedAnnotation = annotations.find((a) => a.annotationId === selectedAnnotationId);
 
   useEffect(() => {
@@ -1171,190 +1216,90 @@ export function ImageAnnotationEditor({
     setSelectedAnnotationId(null);
   }, [initialAnnotations, hasUnsavedChanges, inlineTextEditor]);
 
-  // Track tool changes
-  useEffect(() => {
-  }, [currentTool, imageSize, annotations.length, isMobile]);
+  const toolButtonClass = (active: boolean) =>
+    cn(
+      "flex items-center justify-center rounded-lg transition-colors",
+      isMobile ? "h-11 w-11" : "h-9 w-9",
+      active ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
+    );
+
+  const selectTool = (tool: ToolType) => {
+    if (isDrawing) {
+      setIsDrawing(false);
+      setDrawStart(null);
+      setTempAnnotation(null);
+    }
+    setCurrentTool((prev) => (prev === tool ? null : tool));
+  };
 
   return (
-    <div 
-      className={cn(
-        "fixed inset-0 z-[9999] bg-black/80 flex flex-col",
-        isMobile ? "fullscreen" : ""
-      )}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Annotate image"
+      className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
       onClick={(e) => {
-        const targetEl = e.target as HTMLElement;
-        // Don't close on overlay click - only close via Cancel button
-        if (targetEl?.closest('button')) {
-          return; // Let button handle its own click
-        }
-        if (e.target === e.currentTarget) {
-          e.stopPropagation();
-        }
+        if (e.target === e.currentTarget) handleCancel();
       }}
     >
-      {/* Toolbar - Top on desktop, bottom on mobile for thumb access */}
-      <div className={cn(
-        "absolute flex items-center gap-1 p-2 bg-black/60 backdrop-blur-sm rounded-lg z-10",
-        isMobile ? "bottom-4 left-1/2 -translate-x-1/2 flex-wrap justify-center" : "top-4 left-4"
-      )}>
-        {/* Undo/Redo buttons */}
+      {/* Top bar — always visible exit + primary action */}
+      <header className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:px-4">
         <button
-          onClick={handleUndo}
-          disabled={historyIndex === 0}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            historyIndex === 0 && "opacity-50 cursor-not-allowed"
-          )}
-          title="Undo"
+          type="button"
+          onClick={handleCancel}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Close"
         >
-          <Undo2 className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
+          <X className="h-5 w-5" />
         </button>
-        <button
-          onClick={handleRedo}
-          disabled={historyIndex === history.length - 1}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            historyIndex === history.length - 1 && "opacity-50 cursor-not-allowed"
-          )}
-          title="Redo"
-        >
-          <Redo2 className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-        <div className="w-px h-6 bg-white/20 mx-1" />
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "arrow" ? null : "arrow";
-              // Cancel any active drawing when switching tools
-              if (isDrawing) {
-                setIsDrawing(false);
-                setDrawStart(null);
-                setTempAnnotation(null);
-              }
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error('Error in arrow tool click:', error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "arrow" && "bg-white/20"
-          )}
-          title="Arrow"
-        >
-          <ArrowRight className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "rect" ? null : "rect";
-              // Cancel any active drawing when switching tools
-              if (isDrawing) {
-                setIsDrawing(false);
-                setDrawStart(null);
-                setTempAnnotation(null);
-              }
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error('Error in rect tool click:', error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "rect" && "bg-white/20"
-          )}
-          title="Rectangle"
-        >
-          <Square className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "circle" ? null : "circle";
-              // Cancel any active drawing when switching tools
-              if (isDrawing) {
-                setIsDrawing(false);
-                setDrawStart(null);
-                setTempAnnotation(null);
-              }
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error('Error in circle tool click:', error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "circle" && "bg-white/20"
-          )}
-          title="Circle"
-        >
-          <Circle className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "text" ? null : "text";
-              if (isDrawing) {
-                setIsDrawing(false);
-                setDrawStart(null);
-                setTempAnnotation(null);
-              }
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error("Error selecting text tool:", error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "text" && "bg-white/20"
-          )}
-          title="Text"
-        >
-          <Type className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-        <button
-          onClick={(e) => {
-            try {
-              e.preventDefault();
-              e.stopPropagation();
-              const newTool = currentTool === "freedraw" ? null : "freedraw";
-              if (isDrawing) {
-                setIsDrawing(false);
-                setDrawStart(null);
-                setTempAnnotation(null);
-              }
-              setCurrentTool(newTool);
-            } catch (error) {
-              console.error("Error selecting free draw tool:", error);
-            }
-          }}
-          className={cn(
-            "rounded hover:bg-white/10 transition-colors",
-            isMobile ? "p-3 min-w-[44px] min-h-[44px] flex items-center justify-center" : "p-2",
-            currentTool === "freedraw" && "bg-white/20"
-          )}
-          title="Free draw"
-        >
-          <Pen className={cn("text-white", isMobile ? "h-6 w-6" : "h-5 w-5")} />
-        </button>
-      </div>
 
-      {/* Canvas Container */}
-      <div ref={containerRef} className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-white">Annotate</p>
+          <p className="truncate text-xs text-white/55">
+            {autosaveStatus === "saving"
+              ? "Saving…"
+              : autosaveStatus === "saved"
+                ? "Saved"
+                : hasUnsavedChanges
+                  ? "Unsaved changes"
+                  : "Esc to close"}
+          </p>
+        </div>
+
+        {editSessions.length > 1 ? (
+          <select
+            className="max-w-[10rem] truncate rounded-md border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white outline-none sm:max-w-[14rem]"
+            value={visibleSessionIds[0] ?? ""}
+            onChange={(e) => loadSession(e.target.value)}
+            aria-label="Annotation version"
+          >
+            {editSessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.id === "original" ? "Original" : session.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
+
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void handleDone()}
+          disabled={isSaving}
+          className="shrink-0 bg-primary text-primary-foreground shadow-none"
+        >
+          {isSaving ? "Saving…" : hasUnsavedChanges ? "Save & close" : "Done"}
+        </Button>
+      </header>
+
+      {/* Canvas */}
+      <div
+        ref={containerRef}
+        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleCancel();
+        }}
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
@@ -1366,10 +1311,11 @@ export function ImageAnnotationEditor({
           onTouchMove={handleCanvasTouchMove}
           onTouchEnd={handleCanvasTouchEnd}
           onTouchCancel={handleCanvasTouchEnd}
-          className={cn("max-w-full max-h-full", inlineTextEditor ? "cursor-text" : "cursor-crosshair")}
-          style={{
-            touchAction: "none"
-          }}
+          className={cn(
+            "max-h-full max-w-full rounded-md shadow-lg",
+            inlineTextEditor ? "cursor-text" : "cursor-crosshair"
+          )}
+          style={{ touchAction: "none" }}
         />
         {inlineTextEditor && (() => {
           const pos = getInlineEditorPosition();
@@ -1393,7 +1339,7 @@ export function ImageAnnotationEditor({
                   cancelInlineTextEditing();
                 }
               }}
-              className="absolute z-20 rounded-md border border-white/20 bg-black/75 px-2 py-1 text-white text-sm shadow-md outline-none focus:ring-2 focus:ring-primary"
+              className="absolute z-20 rounded-md border border-white/20 bg-black/80 px-2 py-1.5 text-sm text-white shadow-md outline-none focus:ring-2 focus:ring-primary"
               style={{
                 left: `${pos.left}px`,
                 top: `${pos.top}px`,
@@ -1402,319 +1348,114 @@ export function ImageAnnotationEditor({
               autoCorrect="on"
               autoCapitalize="sentences"
               spellCheck
-              placeholder="Type text..."
+              placeholder="Type text…"
             />
           );
         })()}
       </div>
 
-      {editSessions.length > 0 && (
-        <div className="absolute left-4 bottom-4 z-10 w-[280px] max-h-[45vh] overflow-auto rounded-lg bg-black/70 backdrop-blur-md p-3 border border-white/10">
-          <div className="text-white text-xs font-semibold mb-2">Layers</div>
-          <div className="space-y-2">
-            {editSessions.map((session) => {
-              const checked = visibleSessionIds.includes(session.id);
-              const displayLabel = session.id === "original" ? "Original" : session.label;
-              const dateStr = new Date(session.createdAt).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
-              return (
-                <label key={session.id} className="flex items-start gap-2 text-white/90 text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      setVisibleSessionIds((prev) => {
-                        if (prev.includes(session.id)) return prev.filter((id) => id !== session.id);
-                        return [session.id];
-                      });
-                    }}
-                    className="mt-0.5"
-                  />
-                  {session.id === "original" ? (
-                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-2xs" aria-hidden>
-                      —
-                    </div>
-                  ) : session.userAvatarUrl ? (
-                    <img src={session.userAvatarUrl} alt={session.userDisplayName} className="h-5 w-5 rounded-full object-cover" />
-                  ) : (
-                    <div className="h-5 w-5 rounded-full bg-white/20 flex items-center justify-center text-2xs">
-                      {session.userDisplayName.slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{displayLabel}</span>
-                    <span className="block text-white/60">{dateStr}</span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Context Panel - Bottom-right, only when annotation selected */}
-      {selectedAnnotation && (
-        <div className="absolute bottom-20 right-4 bg-black/70 backdrop-blur-md rounded-lg p-4 space-y-3 min-w-[240px] border border-white/10 z-10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-white text-sm font-semibold">Edit Annotation</span>
-            <button
-              onClick={() => setSelectedAnnotationId(null)}
-              className="text-white/70 hover:text-white transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Color Picker */}
-          <div className="space-y-1.5">
-            <label className="text-white/80 text-xs font-medium">
-              {selectedAnnotation.type === "text" ? "Text Color" : "Stroke Color"}
-            </label>
-            <div className="flex gap-1.5 flex-wrap">
-              {Object.entries(ANNOTATION_COLORS).map(([color, hex]) => (
-                <button
-                  key={color}
-                  onClick={() => {
-                    setAnnotations(
-                      annotations.map((a) =>
-                        a.annotationId === selectedAnnotationId
-                          ? selectedAnnotation.type === "text"
-                            ? { ...a, textColor: color as AnnotationColor }
-                            : { ...a, strokeColor: color as AnnotationColor }
-                          : a
-                      )
-                    );
-                  }}
-                  className={cn(
-                    "w-7 h-7 rounded border-2 transition-all",
-                    (selectedAnnotation.type === "text"
-                      ? selectedAnnotation.textColor
-                      : selectedAnnotation.strokeColor) === color
-                      ? "border-white scale-110"
-                      : "border-transparent hover:scale-105"
-                  )}
-                  style={{ backgroundColor: hex }}
-                  title={color}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Fill Color (rect/circle only) */}
-          {(selectedAnnotation.type === "rect" || selectedAnnotation.type === "circle") && (
-            <div className="space-y-1.5">
-              <label className="text-white/80 text-xs font-medium">Fill Color</label>
-              <div className="flex gap-1.5 flex-wrap">
-                <button
-                  onClick={() => {
-                    setAnnotations(
-                      annotations.map((a) =>
-                        a.annotationId === selectedAnnotationId
-                          ? { ...a, fillColor: "transparent" }
-                          : a
-                      )
-                    );
-                  }}
-                  className={cn(
-                    "w-7 h-7 rounded border-2 transition-all bg-transparent",
-                    selectedAnnotation.fillColor === "transparent" || !selectedAnnotation.fillColor
-                      ? "border-white scale-110"
-                      : "border-white/30 hover:scale-105"
-                  )}
-                  title="Transparent"
-                />
-                {Object.entries(ANNOTATION_COLORS).map(([color, hex]) => (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      setAnnotations(
-                        annotations.map((a) =>
-                          a.annotationId === selectedAnnotationId
-                            ? { ...a, fillColor: color as AnnotationColor }
-                            : a
-                        )
-                      );
-                    }}
-                    className={cn(
-                      "w-7 h-7 rounded border-2 transition-all",
-                      selectedAnnotation.fillColor === color
-                        ? "border-white scale-110"
-                        : "border-transparent hover:scale-105"
-                    )}
-                    style={{ backgroundColor: hex }}
-                    title={color}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Line Width (not for text) */}
-          {selectedAnnotation.type !== "text" && (
-            <div className="space-y-1.5">
-              <label className="text-white/80 text-xs font-medium">Line Width</label>
-              <div className="flex gap-1.5">
-                {(["thin", "medium", "bold"] as const).map((width) => (
-                  <button
-                    key={width}
-                    onClick={() => {
-                      setAnnotations(
-                        annotations.map((a) =>
-                          a.annotationId === selectedAnnotationId
-                            ? { ...a, strokeWidth: width }
-                            : a
-                        )
-                      );
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 rounded text-xs font-medium text-white transition-colors",
-                      selectedAnnotation.strokeWidth === width
-                        ? "bg-white/20"
-                        : "hover:bg-white/10"
-                    )}
-                  >
-                    {width}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Text editing controls (text only) */}
-          {selectedAnnotation.type === "text" && (
-            <div className="space-y-1.5">
-              <label className="text-white/80 text-xs font-medium">Text</label>
+      {/* Selected annotation — compact inspector */}
+      {selectedAnnotation ? (
+        <div className="absolute bottom-24 left-1/2 z-20 w-[min(92vw,20rem)] -translate-x-1/2 rounded-xl border border-white/10 bg-black/80 p-3 shadow-lg backdrop-blur-md sm:bottom-28">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-medium capitalize text-white/90">
+              {selectedAnnotation.type}
+            </span>
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => startInlineTextEditing(selectedAnnotation.annotationId)}
-                className="w-full px-3 py-2 rounded text-xs font-medium text-white bg-white/10 hover:bg-white/20 transition-colors text-left"
+                type="button"
+                onClick={handleDelete}
+                className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/15"
               >
-                Edit text directly on image
+                Delete
               </button>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => {
-                    setAnnotations(
-                      annotations.map((a) =>
-                        a.annotationId === selectedAnnotationId
-                          ? { ...a, background: "none" }
-                          : a
-                      )
-                    );
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded text-xs font-medium text-white transition-colors",
-                    selectedAnnotation.background === "none"
-                      ? "bg-white/20"
-                      : "hover:bg-white/10"
-                  )}
-                >
-                  None
-                </button>
-                <button
-                  onClick={() => {
-                    setAnnotations(
-                      annotations.map((a) =>
-                        a.annotationId === selectedAnnotationId
-                          ? { ...a, background: "soft" }
-                          : a
-                      )
-                    );
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded text-xs font-medium text-white transition-colors",
-                    selectedAnnotation.background === "soft"
-                      ? "bg-white/20"
-                      : "hover:bg-white/10"
-                  )}
-                >
-                  Soft
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAnnotationId(null)}
+                className="rounded-md p-1 text-white/60 hover:bg-white/10 hover:text-white"
+                aria-label="Deselect"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-          )}
-
-          {/* Delete Button */}
-          <button
-            onClick={handleDelete}
-            className="w-full px-3 py-2 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded text-sm flex items-center justify-center gap-2 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-        </div>
-      )}
-
-      {/* Top-right controls: autosave status + close */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2 text-white text-sm">
-            {autosaveStatus === "saving" && (
-              <>
-                <div className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full" />
-                <span>Saving…</span>
-              </>
-            )}
-            {autosaveStatus === "saved" && (
-              <>
-                <div className="h-3 w-3 bg-success-vivid rounded-full" />
-                <span>Saved</span>
-              </>
-            )}
-            {autosaveStatus === "idle" && hasUnsavedChanges && (
-              <span className="text-white/70">Unsaved changes</span>
-            )}
           </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(ANNOTATION_COLORS).map(([color, hex]) => (
+              <button
+                key={color}
+                type="button"
+                onClick={() => {
+                  setAnnotations(
+                    annotations.map((a) =>
+                      a.annotationId === selectedAnnotationId
+                        ? selectedAnnotation.type === "text"
+                          ? { ...a, textColor: color as AnnotationColor }
+                          : { ...a, strokeColor: color as AnnotationColor }
+                        : a
+                    )
+                  );
+                }}
+                className={cn(
+                  "h-6 w-6 rounded-full border-2 transition-transform",
+                  (selectedAnnotation.type === "text"
+                    ? selectedAnnotation.textColor
+                    : selectedAnnotation.strokeColor) === color
+                    ? "scale-110 border-white"
+                    : "border-transparent"
+                )}
+                style={{ backgroundColor: hex }}
+                title={color}
+              />
+            ))}
+          </div>
+          {selectedAnnotation.type === "text" ? (
+            <button
+              type="button"
+              onClick={() => startInlineTextEditing(selectedAnnotation.annotationId)}
+              className="mt-2 w-full rounded-md bg-white/10 px-2 py-1.5 text-left text-xs text-white hover:bg-white/15"
+            >
+              Edit text on image
+            </button>
+          ) : null}
         </div>
-        <Button
-          onClick={handleCancel}
-          variant="outline"
-          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
-        >
-          CLOSE
-        </Button>
-      </div>
+      ) : null}
 
-      {/* Save/Cancel/Reset Buttons - Bottom-right */}
-      <div className="absolute bottom-4 right-4 flex gap-2 z-10">
-        <Button
-          onClick={handleCancel}
-          variant="outline"
-          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
-        >
-          Cancel
-        </Button>
-        <Button
+      {/* Bottom tool strip */}
+      <footer className="relative z-20 flex shrink-0 items-center justify-center gap-1 border-t border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:gap-1.5 sm:px-4">
+        <button type="button" onClick={handleUndo} disabled={historyIndex === 0} className={toolButtonClass(false)} title="Undo" aria-label="Undo">
+          <Undo2 className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", historyIndex === 0 && "opacity-40")} />
+        </button>
+        <button type="button" onClick={handleRedo} disabled={historyIndex >= history.length - 1} className={toolButtonClass(false)} title="Redo" aria-label="Redo">
+          <Redo2 className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", historyIndex >= history.length - 1 && "opacity-40")} />
+        </button>
+        <div className="mx-1 h-6 w-px bg-white/15" />
+        <button type="button" onClick={() => selectTool("arrow")} className={toolButtonClass(currentTool === "arrow")} title="Arrow" aria-label="Arrow">
+          <ArrowRight className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
+        <button type="button" onClick={() => selectTool("rect")} className={toolButtonClass(currentTool === "rect")} title="Rectangle" aria-label="Rectangle">
+          <Square className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
+        <button type="button" onClick={() => selectTool("circle")} className={toolButtonClass(currentTool === "circle")} title="Circle" aria-label="Circle">
+          <Circle className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
+        <button type="button" onClick={() => selectTool("text")} className={toolButtonClass(currentTool === "text")} title="Text" aria-label="Text">
+          <Type className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
+        <button type="button" onClick={() => selectTool("freedraw")} className={toolButtonClass(currentTool === "freedraw")} title="Draw" aria-label="Draw">
+          <Pen className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
+        <div className="mx-1 h-6 w-px bg-white/15" />
+        <button
+          type="button"
           onClick={handleReset}
-          variant="outline"
-          className="bg-black/50 border-white/20 text-white hover:bg-black/70"
           disabled={JSON.stringify(annotations) === JSON.stringify(initialAnnotations)}
+          className={toolButtonClass(false)}
+          title="Reset"
+          aria-label="Reset annotations"
         >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset
-        </Button>
-        <Button
-          onClick={async () => {
-            const result = await handleSave();
-            if (result !== "failed") {
-              onCancel();
-            }
-          }}
-          disabled={isSaving}
-          className="bg-primary text-primary-foreground"
-        >
-          {isSaving ? (
-            <>
-              <span className="animate-spin mr-2">⏳</span>
-              Saving…
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </>
-          )}
-        </Button>
-      </div>
-
+          <RotateCcw className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", JSON.stringify(annotations) === JSON.stringify(initialAnnotations) && "opacity-40")} />
+        </button>
+      </footer>
     </div>
   );
 }

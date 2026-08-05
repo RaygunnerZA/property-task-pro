@@ -49,13 +49,23 @@ export const dialogContentXWideClass =
 export const dialogContent960Class =
   "w-full min-w-0 max-w-[min(960px,calc(100vw-2rem))]";
 
-/** Right slide-over detail panel (task/message/signal modals on narrow layouts). */
-export const slideOverPanelClass =
-  "fixed z-50 flex min-w-0 w-full max-w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl max-lg:left-1/2 max-lg:top-4 max-lg:max-h-[calc(100dvh-2rem)] max-lg:-translate-x-1/2 lg:right-0 lg:top-0 lg:h-full lg:max-h-full lg:w-[min(100%,480px)] lg:max-w-full lg:translate-x-0 lg:rounded-none lg:border-0";
+/** Dimmed backdrop behind centered detail sheets. */
+export const slideOverBackdropClass = "fixed inset-0 z-40 bg-black/50";
 
-/** Wider slide-over (inbox / message detail). */
+/**
+ * Full-viewport flex host that truly centers the sheet.
+ * Prefer this over `top-1/2 -translate-y-1/2` (translate often fails to apply / gets overridden).
+ */
+export const slideOverCenterHostClass =
+  "fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none";
+
+/** Centered detail sheet card (pair with {@link slideOverCenterHostClass}). */
+export const slideOverPanelClass =
+  "pointer-events-auto flex min-h-0 min-w-0 w-full max-w-[min(32rem,calc(100vw-2rem))] max-h-[min(90dvh,calc(100dvh-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl";
+
+/** Wider centered detail sheet card. */
 export const slideOverPanelWideClass =
-  "fixed z-50 flex min-w-0 w-full max-w-[min(32rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl max-lg:left-1/2 max-lg:top-4 max-lg:max-h-[calc(100dvh-2rem)] max-lg:-translate-x-1/2 lg:right-0 lg:top-0 lg:h-full lg:max-h-full lg:w-[min(100%,600px)] lg:max-w-full lg:translate-x-0 lg:rounded-none lg:border-0";
+  "pointer-events-auto flex min-h-0 min-w-0 w-full max-w-[min(36rem,calc(100vw-2rem))] max-h-[min(90dvh,calc(100dvh-2rem))] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl";
 
 /** Workbench / property column shell — prevents flex/grid overflow on narrow viewports. */
 export const columnShellClass = "flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col";

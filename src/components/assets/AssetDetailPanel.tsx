@@ -448,7 +448,10 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   return (
     <>
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className={cn(dialogContent960Class, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}>
+        <DialogContent
+          hideCloseButton
+          className={cn(dialogContent960Class, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}
+        >
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Details</DialogTitle>
             <DialogDescription>View and edit asset details</DialogDescription>

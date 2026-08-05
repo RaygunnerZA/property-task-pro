@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 /** Standard assignee / profile avatar — matches header account menu (h-8 w-8). */
 export const APP_USER_AVATAR_SIZE = 32;
 
-/** Task card meta chips — match PropertyIconChip (24×24, rounded-card). */
-export const TASK_CARD_META_CHIP_SIZE = 24;
+/** Task card / detail meta chips — match PropertyIconChip & META_CHIP_AVATAR_SIZE (28×28). */
+export const TASK_CARD_META_CHIP_SIZE = 28;
 
 interface UserAvatarProps {
   imageUrl?: string | null;

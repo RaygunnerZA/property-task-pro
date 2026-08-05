@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2,
@@ -16,6 +17,7 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 
 const MORE_MENU_ITEMS = [
   { to: "/properties", label: "Properties", icon: Building2, description: "Portfolio and property hubs" },
@@ -33,18 +35,25 @@ type MobileMoreMenuDrawerProps = {
 };
 
 /**
- * Mobile “More” slider — Properties, Spaces, Assets, Records, Reports, Help, Settings.
+ * Mobile “More” slider — Properties (multi-property only), Spaces, Assets, Records, Reports, Help, Settings.
  */
 export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawerProps) {
+  const { data: properties = [] } = usePropertiesQuery();
+  const isMultiProperty = properties.length > 1;
+  const items = useMemo(
+    () => MORE_MENU_ITEMS.filter((item) => item.label !== "Properties" || isMultiProperty),
+    [isMultiProperty]
+  );
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="border-b border-border/50 text-left">
           <DrawerTitle>More</DrawerTitle>
-          <DrawerDescription>Properties, records, reports, and settings</DrawerDescription>
+          <DrawerDescription>Records, reports, and settings</DrawerDescription>
         </DrawerHeader>
         <nav className="space-y-1 p-4 pb-8" aria-label="More navigation">
-          {MORE_MENU_ITEMS.map(({ to, label, icon: Icon, description }) => (
+          {items.map(({ to, label, icon: Icon, description }) => (
             <Link
               key={label}
               to={to}

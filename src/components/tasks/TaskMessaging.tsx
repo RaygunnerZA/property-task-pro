@@ -1,20 +1,33 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTaskMessages } from "@/hooks/useTaskMessages";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDataContext } from "@/contexts/DataContext";
+import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, Paperclip, Image as ImageIcon, X, FileText, Download } from "lucide-react";
+import { Send, Loader2, Upload, Image as ImageIcon, X, FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toErrorMessage } from "@/lib/error";
 import { format } from "date-fns";
+import { UserAvatar, TASK_CARD_META_CHIP_SIZE } from "@/components/tasks/UserAvatar";
+import {
+  memberAccentColor,
+  userAvatarUrl,
+  userDisplayName,
+} from "@/lib/userDisplayHelpers";
+import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
 
 interface TaskMessagingProps {
   taskId: string;
   /** Increment to focus the comment composer (e.g. footer Comment action). */
   focusComposeKey?: number;
+  /** Lightweight activity-feed layout (no chat bubbles). */
+  variant?: "chat" | "activity";
+  /** Hide the inline composer (footer Comment scrolls here / focuses separately). */
+  hideComposer?: boolean;
 }
 
 interface AttachmentPreview {
@@ -23,11 +36,43 @@ interface AttachmentPreview {
   id: string;
 }
 
-export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProps) {
+function resolveMessageAuthor(
+  authorUserId: string | null | undefined,
+  authorName: string | null | undefined,
+  members: ReturnType<typeof useOrgMembers>["members"],
+  currentUser: ReturnType<typeof useDataContext>["user"],
+  currentUserId: string | null | undefined
+) {
+  const id = authorUserId || "";
+  const member = id ? members.find((m) => m.user_id === id) : undefined;
+  const isSelf = Boolean(id && currentUserId && id === currentUserId);
+  const name =
+    member?.display_name ||
+    member?.nickname ||
+    authorName ||
+    (isSelf ? userDisplayName(currentUser) : undefined) ||
+    "Someone";
+  const imageUrl =
+    member?.avatar_url || (isSelf ? userAvatarUrl(currentUser) : undefined) || undefined;
+  return {
+    name,
+    imageUrl,
+    accentColor: memberAccentColor(id || name),
+  };
+}
+
+export function TaskMessaging({
+  taskId,
+  focusComposeKey = 0,
+  variant = "chat",
+  hideComposer = false,
+}: TaskMessagingProps) {
   const { messages, loading, error, refresh } = useTaskMessages(taskId);
   const { orgId } = useActiveOrg();
   const { user, userId } = useDataContext();
+  const { members } = useOrgMembers();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
@@ -45,12 +90,11 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
     el.focus();
   }, [focusComposeKey]);
 
-  // Fetch attachments for messages
   useEffect(() => {
     if (messages.length === 0) return;
 
     const fetchAttachments = async () => {
-      const messageIds = messages.map(m => m.id);
+      const messageIds = messages.map((m) => m.id);
       const { data, error: attachError } = await supabase
         .from("attachments")
         .select("*")
@@ -74,13 +118,12 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
       setMessageAttachments(attachmentsMap);
     };
 
-    fetchAttachments();
+    void fetchAttachments();
   }, [messages]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, attachments.length]);
 
   const handleFileSelect = (files: FileList | null, isImage: boolean) => {
     if (!files) return;
@@ -101,7 +144,7 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
         id: attachmentId,
       };
 
-      if (isImage) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           preview.preview = e.target?.result as string;
@@ -111,6 +154,11 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
       } else {
         setAttachments((prev) => [...prev, preview]);
       }
+    });
+
+    requestAnimationFrame(() => {
+      composeRef.current?.focus();
+      composeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
   };
 
@@ -140,7 +188,6 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
     setIsSending(true);
 
     try {
-      // Find or create conversation for this task
       const { data: conversation, error: convError } = await supabase
         .from("conversations")
         .select("id")
@@ -155,7 +202,6 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
       let conversationId: string;
 
       if (!conversation) {
-        // Create conversation if it doesn't exist
         const { data: newConv, error: createError } = await supabase
           .from("conversations")
           .insert({
@@ -175,11 +221,11 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
         conversationId = conversation.id;
       }
 
-      // Get user email for author name
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
       const authorName = authUser?.email?.split("@")[0] || "User";
 
-      // Insert message (even if empty, to attach files)
       const { data: message, error: insertError } = await supabase
         .from("messages")
         .insert({
@@ -187,7 +233,11 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
           conversation_id: conversationId,
           author_user_id: userId,
           author_name: authorName,
-          body: messageText.trim() || (attachments.length > 0 ? `Sent ${attachments.length} file${attachments.length > 1 ? 's' : ''}` : ""),
+          body:
+            messageText.trim() ||
+            (attachments.length > 0
+              ? `Sent ${attachments.length} file${attachments.length > 1 ? "s" : ""}`
+              : ""),
           source: "web",
           direction: "outbound",
         } as any)
@@ -198,13 +248,11 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
         throw insertError;
       }
 
-      // Upload attachments
       if (attachments.length > 0 && message) {
         const uploadedAttachments = [];
 
         for (const attachment of attachments) {
           try {
-            // Upload to storage
             const fileExt = attachment.file.name.split(".").pop();
             const fileName = `org/${orgId}/messages/${message.id}/${crypto.randomUUID()}.${fileExt}`;
 
@@ -220,23 +268,17 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
               continue;
             }
 
-            // Get public URL
-            const { data: urlData } = supabase.storage
-              .from("task-images")
-              .getPublicUrl(fileName);
+            const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(fileName);
 
-            // Create attachment record
-            const { error: attachError } = await supabase
-              .from("attachments")
-              .insert({
-                org_id: orgId,
-                file_url: urlData.publicUrl,
-                file_name: attachment.file.name,
-                file_type: attachment.file.type,
-                file_size: attachment.file.size,
-                parent_type: "message",
-                parent_id: message.id,
-              } as any);
+            const { error: attachError } = await supabase.from("attachments").insert({
+              org_id: orgId,
+              file_url: urlData.publicUrl,
+              file_name: attachment.file.name,
+              file_type: attachment.file.type,
+              file_size: attachment.file.size,
+              parent_type: "message",
+              parent_id: message.id,
+            } as any);
 
             if (attachError) {
               console.error("Attachment insert error:", attachError);
@@ -251,7 +293,7 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
         if (uploadedAttachments.length > 0) {
           toast({
             title: "Message sent",
-            description: `Sent with ${uploadedAttachments.length} attachment${uploadedAttachments.length > 1 ? 's' : ''}`,
+            description: `Sent with ${uploadedAttachments.length} attachment${uploadedAttachments.length > 1 ? "s" : ""}`,
           });
         } else if (attachments.length > 0) {
           toast({
@@ -270,6 +312,8 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
       setMessageText("");
       setAttachments([]);
       await refresh();
+      markTaskCommentSeen(taskId);
+      void queryClient.invalidateQueries({ queryKey: ["task-comment-signals", orgId] });
     } catch (err: unknown) {
       console.error("Error sending message:", err);
       toast({
@@ -285,9 +329,16 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
+
+  const placeholder = useMemo(() => {
+    if (attachments.length > 0) {
+      return "Add a caption (optional) — press send to upload";
+    }
+    return "Add a comment… (Enter to send)";
+  }, [attachments.length]);
 
   if (error) {
     return (
@@ -298,99 +349,169 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Messages Area */}
-      <div
-        className={cn(
-          "overflow-y-auto min-h-0",
-          messages.length === 0 && !loading
-            ? "flex-none px-4 py-2"
-            : "flex-1 p-4 space-y-3"
-        )}
-      >
+    <div className="flex flex-col gap-3">
+      <div className={cn("min-h-0 px-0.5", variant === "activity" ? "space-y-4" : "space-y-2.5")}>
         {loading ? (
-          <div className="flex items-center justify-center h-full min-h-[4rem]">
+          <div className="flex items-center justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="py-1 text-center text-muted-foreground">
-            <p className="text-sm">No messages yet. Start the conversation!</p>
-          </div>
+          variant === "activity" ? (
+            <p className="text-sm text-muted-foreground">No comments yet.</p>
+          ) : null
         ) : (
           messages.map((message) => {
             const isOwnMessage = message.author_user_id === userId;
             const messageAtts = messageAttachments.get(message.id) || [];
+            const author = resolveMessageAuthor(
+              message.author_user_id,
+              message.author_name,
+              members,
+              user,
+              userId
+            );
 
-            return (
-              <div
-                key={message.id}
-                className={cn(
-                  "rounded-lg p-3 max-w-[85%]",
-                  isOwnMessage
-                    ? "bg-primary text-primary-foreground ml-auto"
-                    : "bg-input text-foreground"
-                )}
-              >
-                <div className="flex items-start justify-between gap-2 mb-1">
-                  <span className="text-sm font-medium">
-                    {message.author_name || "Unknown User"}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs",
-                      isOwnMessage ? "text-white/70" : "text-muted-foreground"
-                    )}
-                  >
-                    {format(new Date(message.created_at), "HH:mm")}
-                  </span>
-                </div>
-                {message.body && (
-                  <p className="text-sm whitespace-pre-wrap mb-2">{message.body}</p>
-                )}
-                {messageAtts.length > 0 && (
-                  <div className="space-y-2 mt-2">
-                    {messageAtts.map((attachment) => {
-                      const isImage = attachment.file_type?.startsWith("image/");
-                      return (
-                        <div
-                          key={attachment.id}
-                          className={cn(
-                            "rounded-md overflow-hidden",
-                            isOwnMessage ? "bg-white/20" : "bg-background/50"
-                          )}
-                        >
-                          {isImage ? (
+            if (variant === "activity") {
+              return (
+                <div key={message.id} className="flex gap-2.5">
+                  <UserAvatar
+                    imageUrl={author.imageUrl}
+                    name={author.name}
+                    propertyColor={author.accentColor}
+                    size={22}
+                    shape="card"
+                    className="mt-0.5 !h-[22px] !w-[22px] !min-h-[22px] !min-w-[22px] shrink-0 rounded-[7px]"
+                  />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="text-sm font-medium text-foreground">{author.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(message.created_at), "MMM d, HH:mm")}
+                      </span>
+                    </div>
+                    {message.body ? (
+                      <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                        {message.body}
+                      </p>
+                    ) : null}
+                    {messageAtts.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {messageAtts.map((attachment) => {
+                          const isImage = attachment.file_type?.startsWith("image/");
+                          return isImage ? (
                             <a
+                              key={attachment.id}
                               href={attachment.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="block"
+                              className="block overflow-hidden rounded-md"
                             >
                               <img
                                 src={attachment.file_url}
                                 alt={attachment.file_name || "Attachment"}
-                                className="max-w-full h-auto max-h-48 object-contain"
+                                className="h-16 w-16 object-cover"
                               />
                             </a>
                           ) : (
                             <a
+                              key={attachment.id}
                               href={attachment.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity"
+                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                             >
-                              <FileText className="h-4 w-4 flex-shrink-0" />
-                              <span className="text-xs truncate flex-1">
-                                {attachment.file_name || "Attachment"}
-                              </span>
-                              <Download className="h-3 w-3 flex-shrink-0" />
+                              <FileText className="h-3.5 w-3.5" />
+                              {attachment.file_name || "Attachment"}
                             </a>
-                          )}
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
-                )}
+                </div>
+              );
+            }
+
+            return (
+              <div
+                key={message.id}
+                className={cn("flex gap-2 max-w-[92%]", isOwnMessage ? "ml-auto flex-row-reverse" : "")}
+              >
+                <UserAvatar
+                  imageUrl={author.imageUrl}
+                  name={author.name}
+                  propertyColor={author.accentColor}
+                  size={TASK_CARD_META_CHIP_SIZE}
+                  shape="card"
+                  className="mt-0.5 shrink-0"
+                />
+                <div
+                  className={cn(
+                    "min-w-0 rounded-lg p-3",
+                    isOwnMessage
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-input text-foreground"
+                  )}
+                  title={author.name}
+                >
+                  <div className="mb-1 flex items-center justify-end">
+                    <span
+                      className={cn(
+                        "text-2xs font-mono uppercase tracking-wide",
+                        isOwnMessage ? "text-white/70" : "text-muted-foreground"
+                      )}
+                    >
+                      {format(new Date(message.created_at), "HH:mm")}
+                    </span>
+                  </div>
+                  {message.body && (
+                    <p className="text-sm whitespace-pre-wrap mb-1">{message.body}</p>
+                  )}
+                  {messageAtts.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {messageAtts.map((attachment) => {
+                        const isImage = attachment.file_type?.startsWith("image/");
+                        return (
+                          <div
+                            key={attachment.id}
+                            className={cn(
+                              "rounded-md overflow-hidden",
+                              isOwnMessage ? "bg-white/20" : "bg-background/50"
+                            )}
+                          >
+                            {isImage ? (
+                              <a
+                                href={attachment.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={attachment.file_url}
+                                  alt={attachment.file_name || "Attachment"}
+                                  className="max-w-full h-auto max-h-48 object-contain"
+                                />
+                              </a>
+                            ) : (
+                              <a
+                                href={attachment.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity"
+                              >
+                                <FileText className="h-4 w-4 flex-shrink-0" />
+                                <span className="text-xs truncate flex-1">
+                                  {attachment.file_name || "Attachment"}
+                                </span>
+                                <Download className="h-3 w-3 flex-shrink-0" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })
@@ -398,120 +519,131 @@ export function TaskMessaging({ taskId, focusComposeKey = 0 }: TaskMessagingProp
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Attachment Previews */}
-      {attachments.length > 0 && (
-        <div className="border-t border-border/20 p-3 space-y-2">
-          <div className="flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="relative rounded-md overflow-hidden shadow-e1"
-              >
-                {attachment.preview ? (
-                  <div className="relative">
-                    <img
-                      src={attachment.preview}
-                      alt={attachment.file.name}
-                      className="h-20 w-20 object-cover"
-                    />
-                    <button
-                      onClick={() => removeAttachment(attachment.id)}
-                      className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 p-2 bg-background/50">
-                    <FileText className="h-4 w-4" />
-                    <span className="text-xs truncate max-w-[100px]">
-                      {attachment.file.name}
-                    </span>
-                    <button
-                      onClick={() => removeAttachment(attachment.id)}
-                      className="p-1 hover:bg-background rounded"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Unified compose box: attach controls stacked top-left; caption below thumbs */}
+      {!hideComposer ? (
+      <div className="rounded-[12px] bg-background shadow-engraved p-2.5">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            handleFileSelect(e.target.files, true);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            handleFileSelect(e.target.files, false);
+            e.target.value = "";
+          }}
+        />
 
-      {/* Input Area */}
-      <div className="border-t border-border/20 p-4">
-        <div className="flex gap-2">
-          <div className="flex gap-1">
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFileSelect(e.target.files, true)}
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFileSelect(e.target.files, false)}
-            />
-            <Button
+        <div className="flex items-start gap-2">
+          <div className="flex shrink-0 flex-col gap-1.5">
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
               onClick={() => imageInputRef.current?.click()}
-              className="h-8 w-8 p-0"
+              className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
+              aria-label="Attach image"
+              title="Attach image"
             >
-              <ImageIcon className="h-4 w-4" />
-            </Button>
-            <Button
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="h-8 w-8 p-0"
+              className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
+              aria-label="Upload file"
+              title="Upload file"
             >
-              <Paperclip className="h-4 w-4" />
-            </Button>
+              <Upload className="h-4 w-4 text-muted-foreground" />
+            </button>
           </div>
-          <Textarea
-            ref={composeRef}
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add a comment… (Enter to send)"
-            className={cn(
-              "flex-1 rounded-lg bg-background resize-none",
-              "shadow-engraved border-0",
-              "focus:ring-2 focus:ring-primary/30"
-            )}
-            rows={2}
-            disabled={isSending}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={(!messageText.trim() && attachments.length === 0) || isSending}
-            className={cn(
-              "rounded-lg text-white self-end",
-              "bg-primary hover:bg-primary",
-              "shadow-primary-btn"
-            )}
-            size="sm"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+
+          <div className="min-w-0 flex-1 space-y-2">
+            {attachments.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground px-0.5">
+                  Not uploaded yet — press send
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="relative overflow-hidden rounded-card shadow-e1"
+                    >
+                      {attachment.preview ? (
+                        <div className="relative h-16 w-16">
+                          <img
+                            src={attachment.preview}
+                            alt={attachment.file.name}
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(attachment.id)}
+                            className="absolute right-0.5 top-0.5 rounded-full bg-background/90 p-0.5 shadow-e1"
+                            aria-label="Remove attachment"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex max-w-[140px] items-center gap-1.5 bg-muted/40 px-2 py-1.5">
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate text-2xs">{attachment.file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(attachment.id)}
+                            className="shrink-0 rounded p-0.5 hover:bg-background"
+                            aria-label="Remove attachment"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex items-end gap-1.5">
+              <Textarea
+                ref={composeRef}
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                className={cn(
+                  "min-h-[4.5rem] flex-1 resize-none border-0 bg-transparent px-1 py-1.5 shadow-none",
+                  "focus-visible:ring-0 focus-visible:ring-offset-0"
+                )}
+                rows={3}
+                disabled={isSending}
+              />
+              <Button
+                type="button"
+                onClick={() => void handleSend()}
+                disabled={(!messageText.trim() && attachments.length === 0) || isSending}
+                className="h-8 w-8 shrink-0 rounded-card p-0 shadow-primary-btn"
+                size="sm"
+                aria-label="Send message"
+                title={attachments.length > 0 ? "Send to upload" : "Send"}
+              >
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+      ) : null}
     </div>
   );
 }
-

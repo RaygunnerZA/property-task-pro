@@ -115,27 +115,33 @@ export const ISSUES_STREAM_META_CLASSNAME =
 function streamActionButtonClass(actionId: string, actionLabel?: string) {
   const id = actionId.toLowerCase();
   const label = (actionLabel ?? "").toLowerCase();
-  const isIssueCta =
+  const isCreateTaskCta =
     id === "report-issue" ||
     id === "create-inspection-task" ||
     id === "treat-as-issue" ||
     label.includes("report issue") ||
-    label.includes("treat as issue");
+    label.includes("treat as issue") ||
+    label.includes("create task");
 
-  if (isIssueCta) {
+  if (isCreateTaskCta) {
     return intakeReportIssueMicroClassName;
   }
-  if (actionId === "add-record") return intakeAddRecordMicroClassName;
-  if (actionId === "signal-review") return intakeAddRecordMicroClassName;
-  if (actionId === "signal-convert") return intakeAddRecordMicroClassName;
-  /** Resolve, Assign permissions, Assign location — primary triage (teal). */
-  if (actionId === "signal-assign") return intakeAddRecordMicroClassName;
-  if (actionId === "signal-open") {
+  if (
+    id === "add-record" ||
+    id === "signal-review" ||
+    id === "signal-convert" ||
+    id === "signal-assign" ||
+    id === "signal-open" ||
+    id === "onboarding-quick-win" ||
+    label.includes("add record") ||
+    label.includes("review") ||
+    label === "start"
+  ) {
     return intakeAddRecordMicroClassName;
   }
   return cn(
     "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-foreground",
-    "bg-background shadow-e1 transition-all hover:shadow-md"
+    "bg-card shadow-e1 transition-all hover:shadow-md"
   );
 }
 

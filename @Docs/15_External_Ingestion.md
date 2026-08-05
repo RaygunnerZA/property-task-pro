@@ -17,6 +17,10 @@ Receive → Secure attach (inbox bucket) → Org resolution → AI classificatio
 System-detected intake (`signals`):
 Unknown external sender email → `emit_signal` (`kind=email`, `disposition=needs_review`, `review_state=needs_classification`) → Issues / Needs review. Managers triage; does **not** appear in the member's Add to Filla pending list.
 
+Manager promote (Issues Action Layer):
+*   **Convert to review** calls `promote_external_email_signal(signal_id)` → creates `intake_items` (`source_type=forwarded_email`, `created_by` = manager) from `payload.attachment_paths` (or a text-only row from preview), marks the signal `converted_to_record`, then runs `intake-process` and opens Add to Filla.
+*   **Dismiss** resolves the signal without creating intake rows.
+
 Member email routing:
 *   `From` matches org member → `create_intake_item_from_email` (`source_type=forwarded_email`) → same review pipeline as uploads.
 *   Unknown `From` → signal only (`subtype=ingestion.external_email`); attachments stored under org inbox path for triage payload.

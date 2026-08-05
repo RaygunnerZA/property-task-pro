@@ -1,4 +1,5 @@
 import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -8,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { SubtasksSection } from "./create/SubtasksSection";
 import { ImageUploadSection } from "./create/ImageUploadSection";
+import { ingestIntakeMediaFiles } from "@/utils/ingestIntakeMediaFiles";
+import { useToast } from "@/hooks/use-toast";
 import type { TaskCreatedSource } from "@/hooks/mutations/useCreateTaskMutation";
 import { useCreateTaskForm } from "./create/useCreateTaskForm";
 import { useCreateTaskAIPipeline } from "./create/useCreateTaskAIPipeline";
@@ -62,6 +65,7 @@ export function CreateTaskModal({
 }: CreateTaskModalProps) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
 
   // ─── Form state (extracted to useCreateTaskForm) ─────────────────────────
 
@@ -125,6 +129,31 @@ export function CreateTaskModal({
     defaultAssetIds,
     prefill,
   });
+
+  const imagesRef = useRef(images);
+  const taskFilesRef = useRef(taskFiles);
+  imagesRef.current = images;
+  taskFilesRef.current = taskFiles;
+
+  const handlePasteImages = useCallback(
+    (files: File[]) => {
+      void ingestIntakeMediaFiles({
+        incomingFiles: files,
+        images: imagesRef.current,
+        files: taskFilesRef.current,
+        onImagesChange: setImages,
+        onFilesChange: setTaskFiles,
+        onOversized: (oversizedCount) => {
+          toast({
+            title: "File too large",
+            description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
+            variant: "destructive",
+          });
+        },
+      });
+    },
+    [setImages, setTaskFiles, toast]
+  );
 
   // ─── AI pipeline (extracted to useCreateTaskAIPipeline) ──────────────────
 
@@ -279,6 +308,7 @@ export function CreateTaskModal({
             onSubtasksChange={setSubtasks}
             description={description}
             onDescriptionChange={setDescription}
+            onPasteImages={handlePasteImages}
             className="bg-transparent"
           templates={templates}
           recentTemplateIds={recentTemplateIds}

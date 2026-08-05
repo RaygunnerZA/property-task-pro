@@ -1,13 +1,15 @@
 import React from "react";
-import { Surface, Text } from "@/components/filla";
 import { Clock, CheckCircle, AlertCircle, MessageSquare, User } from "lucide-react";
 import { format } from "date-fns";
 import type { TaskTimelineEvent, TaskTimelineEventType } from "@/hooks/useTaskTimeline";
+import { cn } from "@/lib/utils";
 
 export type { TaskTimelineEvent };
 
 interface TaskTimelineProps {
   events: TaskTimelineEvent[];
+  /** Lightweight feed without neomorphic card chrome. */
+  variant?: "card" | "activity";
 }
 
 const getEventIcon = (type: TaskTimelineEventType) => {
@@ -25,44 +27,62 @@ const getEventIcon = (type: TaskTimelineEventType) => {
   }
 };
 
-export const TaskTimeline: React.FC<TaskTimelineProps> = ({ events }) => {
-  return (
-    <Surface variant="neomorphic" className="p-4">
-      {events.length === 0 ? (
-        <Text variant="caption" className="text-center py-4">
-          No history for this task yet
-        </Text>
-      ) : (
-        <div className="space-y-4">
-          {events.map((event, index) => {
-            const EventIcon = getEventIcon(event.type);
-            const isLast = index === events.length - 1;
+export const TaskTimeline: React.FC<TaskTimelineProps> = ({
+  events,
+  variant = "card",
+}) => {
+  if (events.length === 0) {
+    return variant === "activity" ? null : (
+      <p className="py-4 text-center text-sm text-muted-foreground">No history for this task yet</p>
+    );
+  }
 
-            return (
-              <div key={event.id} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-background border border-concrete flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <EventIcon className="w-4 h-4 text-primary" />
-                  </div>
-                  {!isLast && <div className="w-0.5 flex-1 bg-concrete/50 my-1" />}
-                </div>
+  const list = (
+    <div className={cn(variant === "activity" ? "space-y-3" : "space-y-4")}>
+      {events.map((event, index) => {
+        const EventIcon = getEventIcon(event.type);
+        const isLast = index === events.length - 1;
 
-                <div className="flex-1 pb-4">
-                  <Text variant="body" className="text-sm mb-1">
-                    {event.description}
-                  </Text>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {event.author ? <Text variant="caption">{event.author}</Text> : null}
-                    <Text variant="caption">
-                      {format(new Date(event.timestamp), "MMM d, h:mm a")}
-                    </Text>
-                  </div>
+        if (variant === "activity") {
+          return (
+            <div key={event.id} className="flex gap-2.5">
+              <div className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
+                <EventIcon className="h-3 w-3" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-sm leading-snug text-foreground">{event.description}</p>
+                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                  {event.author ? <span>{event.author}</span> : null}
+                  <span>{format(new Date(event.timestamp), "MMM d, HH:mm")}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
-    </Surface>
+            </div>
+          );
+        }
+
+        return (
+          <div key={event.id} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-concrete bg-background shadow-sm">
+                <EventIcon className="h-4 w-4 text-primary" />
+              </div>
+              {!isLast && <div className="my-1 w-0.5 flex-1 bg-concrete/50" />}
+            </div>
+
+            <div className="flex-1 pb-4">
+              <p className="mb-1 text-sm text-foreground">{event.description}</p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {event.author ? <span>{event.author}</span> : null}
+                <span>{format(new Date(event.timestamp), "MMM d, h:mm a")}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
+
+  if (variant === "activity") return list;
+
+  return <div className="rounded-[12px] bg-card/60 p-4 shadow-e1">{list}</div>;
 };

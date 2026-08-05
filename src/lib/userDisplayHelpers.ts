@@ -1,25 +1,30 @@
 import type { User } from "@supabase/supabase-js";
 import type { OrgMember } from "@/hooks/useOrgMembers";
 
-/** Distinct member accents — same palette as profile/invite avatar colors. */
+/** Distinct member accents — built-in palette so every user id maps to a stable colour. */
 export const MEMBER_AVATAR_COLORS = [
-  "#8EC9CE",
-  "#EB6834",
-  "#6B8E9B",
-  "#D4A373",
-  "#A78BFA",
-  "#F472B6",
-  "#34D399",
-  "#FBBF24",
+  "#8EC9CE", // teal
+  "#EB6834", // coral
+  "#6B8E9B", // slate
+  "#D4A373", // sand
+  "#A78BFA", // violet
+  "#F472B6", // pink
+  "#34D399", // emerald
+  "#FBBF24", // amber
+  "#60A5FA", // blue
+  "#F87171", // red
+  "#2DD4BF", // cyan
+  "#C084FC", // purple
 ] as const;
 
 /** Stable accent per user id so team members stay visually distinct on cards. */
 export function memberAccentColor(userId: string | null | undefined): string {
   if (!userId) return MEMBER_AVATAR_COLORS[0];
-  let hash = 0;
+  // FNV-1a — spreads UUID strings better than simple char accumulation
+  let hash = 2166136261;
   for (let i = 0; i < userId.length; i++) {
-    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-    hash |= 0;
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
   return MEMBER_AVATAR_COLORS[Math.abs(hash) % MEMBER_AVATAR_COLORS.length];
 }
@@ -104,9 +109,8 @@ function resolveOrgPerson(
     taskImageUrl ||
     member?.avatar_url ||
     (isCurrentUser ? userAvatarUrl(currentUser) : undefined);
-  const accentColor =
-    (isCurrentUser ? userAvatarColor(currentUser) : undefined) ||
-    memberAccentColor(userId);
+  // Always derive from user id — profile `avatar_color` often defaults to brand teal for everyone
+  const accentColor = memberAccentColor(userId);
 
   return {
     id: userId,
@@ -147,16 +151,22 @@ export function resolveTaskAssigneeUsers(
 /**
  * Assigner / “From” person — uses existing `owner_user_id` (or legacy `created_by` if present).
  * Task Engine lists assignee only; owner_user_id is an existing tasks column used as assigner.
+ *
+ * @param options.hideWhenSameAsAssignee — when true (default), omit assigner if identical to assignee
+ *   (task cards). Pass false for Task Detail meta where both chips are shown.
  */
 export function resolveTaskAssignerUser(
   task: TaskPeopleFields | null | undefined,
   members: OrgMember[],
-  currentUser?: User | null
+  currentUser?: User | null,
+  options?: { hideWhenSameAsAssignee?: boolean }
 ): TaskPersonAvatar | null {
   const assignerId = task?.owner_user_id || task?.created_by || null;
   if (!assignerId) return null;
-  // Same person as assignee — only show For.
-  if (task?.assigned_user_id && assignerId === task.assigned_user_id) return null;
+  const hideWhenSame = options?.hideWhenSameAsAssignee !== false;
+  if (hideWhenSame && task?.assigned_user_id && assignerId === task.assigned_user_id) {
+    return null;
+  }
   return resolveOrgPerson(assignerId, members, currentUser);
 }
 

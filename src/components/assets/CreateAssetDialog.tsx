@@ -4,6 +4,7 @@
  * Uses ai_icon_search to infer icon from name + type.
  */
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { toast } from "sonner";
 
 interface CreateAssetDialogProps {
@@ -56,6 +58,7 @@ export function CreateAssetDialog({
   onAssetCreated,
 }: CreateAssetDialogProps) {
   const { orgId } = useActiveOrg();
+  const queryClient = useQueryClient();
   const [name, setName] = useState(defaultName || "");
   useEffect(() => {
     if (open && defaultName) setName(defaultName);
@@ -83,61 +86,61 @@ export function CreateAssetDialog({
 
     setLoading(true);
     try {
-
       const { data: inserted, error: insertError } = await supabase
-      .from("assets")
-      .insert({
-        org_id: orgId,
-        property_id: propertyId,
-        space_id: spaceId || null,
-        name: name.trim(),
-        asset_type: type || null,
-        serial_number: serialNumber.trim() || null,
-        condition_score: 100,
-        status: "active",
-        icon_name: iconName || "box",
-      })
-      .select("id")
-      .single();
-    
-    if (insertError) {
-      console.error("Asset creation error:", insertError);
-      throw insertError;
-    }
-    
-    toast.success("Asset created!");
+        .from("assets")
+        .insert({
+          org_id: orgId,
+          property_id: propertyId,
+          space_id: spaceId || null,
+          name: name.trim(),
+          asset_type: type || null,
+          serial_number: serialNumber.trim() || null,
+          condition_score: 100,
+          status: "active",
+          icon_name: iconName || "box",
+        })
+        .select("id")
+        .single();
 
-      // Reset form
+      if (insertError) {
+        console.error("Asset creation error:", insertError);
+        throw insertError;
+      }
+
+      await invalidateAssetQueries(queryClient);
+
+      toast.success("Asset created!");
+
       setName("");
       setType("");
       setSerialNumber("");
       setIconName("");
       onOpenChange(false);
 
-      // Refresh assets list and/or auto-select new asset
       if (inserted?.id) onAssetCreated?.(inserted.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create asset failed:", err);
-      toast.error(err.message || "Failed to create asset");
+      toast.error(err instanceof Error ? err.message : "Failed to create asset");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    if (!loading) {
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (loading && !nextOpen) return;
+    if (!nextOpen) {
       setName("");
       setType("");
       setSerialNumber("");
       setIconName("");
-      onOpenChange(false);
     }
+    onOpenChange(nextOpen);
   };
 
   const searchText = [name, type].filter(Boolean).join(" ").trim();
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Add New Asset</DialogTitle>
@@ -195,7 +198,7 @@ export function CreateAssetDialog({
         <DialogFooter>
           <Button
             variant="outline"
-            onClick={handleClose}
+            onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
             Cancel

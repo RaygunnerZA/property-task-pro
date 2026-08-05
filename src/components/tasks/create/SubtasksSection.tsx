@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
 
 // Re-export for backwards compatibility
 export type SubtaskInput = SubtaskData;
@@ -38,6 +39,8 @@ interface SubtasksSectionProps {
   embedded?: boolean;
   description?: string;
   onDescriptionChange?: (description: string) => void;
+  /** When pasting an image into the description, parent adds it like Add Photo. */
+  onPasteImages?: (files: File[]) => void;
   className?: string;
   templates?: ChecklistTemplate[];
   recentTemplateIds?: string[];
@@ -56,6 +59,7 @@ export function SubtasksSection({
   embedded = false,
   description = "",
   onDescriptionChange,
+  onPasteImages,
   templates = [],
   recentTemplateIds = [],
   activeTemplateName,
@@ -226,7 +230,21 @@ export function SubtasksSection({
       {/* Description Area */}
       {showDescription && (
         <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
-          <Textarea placeholder="What Needs Doing?" value={description} onChange={e => onDescriptionChange?.(e.target.value)} rows={2} className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-[17px] font-normal text-foreground placeholder:text-muted-foreground/60 resize-none" style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }} />
+          <Textarea
+            placeholder="What Needs Doing?"
+            value={description}
+            onChange={e => onDescriptionChange?.(e.target.value)}
+            onPaste={(e) => {
+              if (!onPasteImages) return;
+              const files = clipboardImageFiles(e.clipboardData);
+              if (files.length === 0) return;
+              e.preventDefault();
+              onPasteImages(files);
+            }}
+            rows={2}
+            className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-[17px] font-normal text-foreground placeholder:text-muted-foreground/60 resize-none"
+            style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }}
+          />
         </div>
       )}
 

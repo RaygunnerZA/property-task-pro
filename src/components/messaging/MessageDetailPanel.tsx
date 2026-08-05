@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, MoreVertical, MessageSquare, FileText, Clock, User, Send, Download } from "lucide-react";
 import { useMessages } from "@/hooks/useMessages";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -6,7 +7,12 @@ import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { columnShellClass, slideOverPanelWideClass } from "@/lib/layoutClasses";
+import {
+  columnShellClass,
+  slideOverBackdropClass,
+  slideOverCenterHostClass,
+  slideOverPanelWideClass,
+} from "@/lib/layoutClasses";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -21,11 +27,9 @@ interface MessageDetailPanelProps {
 
 /**
  * Message Detail Panel
- * 
- * Right-side panel for viewing message details and conversation thread
- * - Modal variant: Fixed position, slides in from right (mobile)
- * - Column variant: Renders as third column in grid layout (desktop)
- * - Shows message details, conversation thread, and attachments
+ *
+ * - Modal variant: centered viewport sheet (below `layout` / third column)
+ * - Column variant: third column in the workbench grid (desktop)
  */
 export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: MessageDetailPanelProps) {
   const { messages, loading, error, refresh } = useMessages();
@@ -138,22 +142,16 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
       );
     }
 
-    return (
+    return createPortal(
       <>
-        <div
-          className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div
-          className={cn(
-            slideOverPanelWideClass,
-            "transform transition-transform duration-300 ease-out translate-x-0"
-          )}
-        >
-          {loadingContent}
+        <div className={slideOverBackdropClass} onClick={onClose} aria-hidden="true" />
+        <div className={slideOverCenterHostClass}>
+          <div role="dialog" aria-modal="true" aria-label="Loading message" className={slideOverPanelWideClass}>
+            {loadingContent}
+          </div>
         </div>
-      </>
+      </>,
+      document.body
     );
   }
 
@@ -181,22 +179,16 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
       );
     }
 
-    return (
+    return createPortal(
       <>
-        <div
-          className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-        <div
-          className={cn(
-            slideOverPanelWideClass,
-            "transform transition-transform duration-300 ease-out translate-x-0"
-          )}
-        >
-          {errorContent}
+        <div className={slideOverBackdropClass} onClick={onClose} aria-hidden="true" />
+        <div className={slideOverCenterHostClass}>
+          <div role="dialog" aria-modal="true" aria-label="Message error" className={slideOverPanelWideClass}>
+            {errorContent}
+          </div>
         </div>
-      </>
+      </>,
+      document.body
     );
   }
 
@@ -373,7 +365,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
                   <Button
                     onClick={handleSend}
                     disabled={!messageText.trim() || isSending}
-                    className="shrink-0"
+                    className="h-10 shrink-0 shadow-primary-btn"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -450,26 +442,22 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
     );
   }
 
-  // Modal variant: render with backdrop and fixed positioning
-  return (
+  // Modal variant: centered sheet (below layout / third-column breakpoint)
+  return createPortal(
     <>
-      {/* Backdrop for mobile */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40 md:hidden"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      
-      {/* Panel */}
-      <div
-        className={cn(
-          slideOverPanelWideClass,
-          "transform transition-transform duration-300 ease-out translate-x-0"
-        )}
-      >
-        {panelContent}
+      <div className={slideOverBackdropClass} onClick={onClose} aria-hidden="true" />
+      <div className={slideOverCenterHostClass}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Message details"
+          className={slideOverPanelWideClass}
+        >
+          {panelContent}
+        </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

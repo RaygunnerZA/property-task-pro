@@ -151,6 +151,21 @@ export const intakeReportIssueStackedClassName = cn(
   "transition-all hover:bg-primary/90"
 );
 
+/** Detail panel / modal sticky footers (Task Detail–aligned height + primary shadow). */
+export const intakeReportIssuePanelFooterClassName = cn(
+  "inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-card border-0 px-3 text-sm font-medium leading-none",
+  onCta,
+  createTaskBg,
+  "shadow-primary-btn transition-all hover:brightness-105 active:shadow-btn-pressed"
+);
+
+export const intakeAddRecordPanelFooterClassName = cn(
+  "inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-card border-0 px-3 text-sm font-medium leading-none",
+  onCta,
+  addRecordBg,
+  "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] transition-all hover:brightness-95"
+);
+
 export const INTAKE_ADD_RECORD_LABEL = "Add Record";
 /** Task-creation path (mode `report_issue`) — product label is Create Task. */
 export const INTAKE_REPORT_ISSUE_LABEL = "Create Task";

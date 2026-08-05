@@ -931,6 +931,7 @@ export default function Dashboard({
                           onClose={handleClosePanel}
                           variant="column"
                           onOpenIntake={handleOpenIntake}
+                          onOpenAddToFilla={() => setShowAddToFilla(true)}
                         />
                       )}
                     </div>
@@ -1110,6 +1111,7 @@ export default function Dashboard({
             onIssuesFilterChange={handleIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={handleOpenIntake}
+            onOpenAddToFilla={() => setShowAddToFilla(true)}
             recordsView={recordsView}
             onRecordsViewChange={handleRecordsViewChange}
             workbenchPanel={workbenchPanel}
@@ -1166,6 +1168,7 @@ export default function Dashboard({
             onClose={handleClosePanel}
             variant="modal"
             onOpenIntake={handleOpenIntake}
+            onOpenAddToFilla={() => setShowAddToFilla(true)}
           />
         )
       )}

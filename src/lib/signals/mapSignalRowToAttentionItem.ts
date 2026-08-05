@@ -74,15 +74,26 @@ export function mapSignalRowToAttentionItem(
     whyHere: isExternalEmail
       ? "This email came from an address that is not a member of your organisation."
       : undefined,
-    fixtureActions: {
-      primary: {
-        id: canCreateTask ? "signal-accept" : "signal-open",
-        label: canCreateTask ? "Create task" : "Review",
-      },
-      secondary: [
-        { id: "signal-snooze", label: "Snooze" },
-        { id: "dismiss", label: "Dismiss" },
-      ],
-    },
+    fixtureActions: isExternalEmail
+      ? {
+          primary: {
+            id: "signal-promote-intake",
+            label: "Convert to review",
+          },
+          secondary: [
+            { id: "signal-snooze", label: "Snooze" },
+            { id: "dismiss", label: "Dismiss" },
+          ],
+        }
+      : {
+          primary: {
+            id: canCreateTask ? "signal-accept" : "signal-open",
+            label: canCreateTask ? "Create task" : "Review",
+          },
+          secondary: [
+            { id: "signal-snooze", label: "Snooze" },
+            { id: "dismiss", label: "Dismiss" },
+          ],
+        },
   };
 }

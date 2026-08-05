@@ -35,6 +35,8 @@ export interface IssuesTriagePanelProps {
   onIssuesFilterChange?: (filter: WorkbenchIssuesFilter) => void;
   selectedPropertyIds?: Set<string>;
   onOpenIntake?: (mode: IntakeMode) => void;
+  /** Opens Add to Filla after promoting an external email signal. */
+  onOpenAddToFilla?: () => void;
   /** Navigate to Records after promoting a signal (e.g. compliance). */
   onTabChange?: (tab: string) => void;
   onRecordsViewChange?: (view: RecordsView) => void;
@@ -90,6 +92,7 @@ export function IssuesTriagePanel({
   onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake,
+  onOpenAddToFilla,
   onTabChange,
   onRecordsViewChange,
   pageTitle = "Issues",
@@ -116,6 +119,7 @@ export function IssuesTriagePanel({
     selectedPropertyIds,
     onTabChange,
     onRecordsViewChange,
+    onOpenAddToFilla,
   });
 
   const showSignalFeed = issuesFilter === "all" || issuesFilter === "urgent";

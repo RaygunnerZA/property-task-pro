@@ -155,6 +155,14 @@ const TAB_SHAPE_MASK_STYLE: CSSProperties = {
   maskRepeat: "no-repeat",
 };
 
+/**
+ * Match the masked tab silhouette so the active tab’s rectangular hit box
+ * does not steal clicks from tabs stacked underneath (e.g. Assets under Spaces).
+ * Coordinates are object-bounding-box percentages derived from {@link TAB_SHAPE_PATH}.
+ */
+const TAB_SHAPE_CLIP_PATH =
+  "polygon(0% 98.5%, 97% 98.5%, 81.3% 6.2%, 76% 0%, 6.7% 0%, 0% 16.2%)";
+
 const ACTIVE_FILL_SHADOW = "inset 1px 1px 1px 0px rgba(255, 255, 255, 1)";
 
 const INACTIVE_FILL_SHADOW =
@@ -226,6 +234,8 @@ export function PropertyHubTab({
           isFirst || isVisuallyFront ? undefined : 3,
         paddingRight: isVisuallyLast ? 9 : isVisuallyFront ? undefined : 10,
         zIndex,
+        clipPath: TAB_SHAPE_CLIP_PATH,
+        WebkitClipPath: TAB_SHAPE_CLIP_PATH,
       }}
     >
       <span

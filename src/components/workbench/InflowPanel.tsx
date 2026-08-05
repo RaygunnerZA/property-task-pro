@@ -102,6 +102,7 @@ export function InflowPanel({
   onMessageClick,
   onAttentionItemSelect,
   onOpenIntake,
+  onOpenAddToFilla,
   onTabChange,
   onRecordsViewChange,
   hideViewAllLinks = false,
@@ -173,6 +174,7 @@ export function InflowPanel({
     onTabChange,
     onRecordsViewChange,
     onboardingEducationMode,
+    onOpenAddToFilla,
   });
 
   const reviewItems = useMemo(

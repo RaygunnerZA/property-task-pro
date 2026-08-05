@@ -1,6 +1,6 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Calendar, Check, Clock, MapPin, MoreHorizontal } from "lucide-react";
+import { Calendar, Check, Clock, MapPin, MessageCircle, MoreHorizontal, ArrowRight } from "lucide-react";
 import {
   COMPLETE_COLLAPSE_MS,
   clearTaskCompletionMotion,
@@ -39,6 +39,7 @@ import {
   taskDueUrgencyLabel,
 } from "@/lib/taskDueUrgency";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
+import { useTaskCommentSignal } from "@/hooks/useTaskCommentSignals";
 import {
   issuesSignalOverflowButtonClassName,
   issuesSignalReviewButtonClassName,
@@ -116,10 +117,7 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
   );
 }
 
-const TASK_META_PERSON_LABEL_CLASS =
-  "text-2xs font-mono font-semibold uppercase tracking-wide text-muted-foreground leading-none";
-
-/** From (assigner) then For (assignee) — avatars match property icon chip size/radius. */
+/** Assigner → assignee avatars (no FROM/FOR labels). Alone: avatar only, no label. */
 function TaskCardPeopleMeta({
   assigner,
   assignee,
@@ -132,38 +130,50 @@ function TaskCardPeopleMeta({
   if (!assigner && !assignee) return null;
   const size = TASK_CARD_META_CHIP_SIZE;
 
+  if (assigner && assignee) {
+    return (
+      <div
+        className={cn("flex items-center gap-1 shrink-0", className)}
+        title={
+          [assigner.name && `From ${assigner.name}`, assignee.name && `For ${assignee.name}`]
+            .filter(Boolean)
+            .join(" → ") || undefined
+        }
+      >
+        <UserAvatar
+          imageUrl={assigner.imageUrl}
+          name={assigner.name}
+          propertyColor={assigner.accentColor}
+          size={size}
+          shape="card"
+        />
+        <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+        <UserAvatar
+          imageUrl={assignee.imageUrl}
+          name={assignee.name}
+          propertyColor={assignee.accentColor}
+          size={size}
+          shape="card"
+        />
+      </div>
+    );
+  }
+
+  const alone = assignee ?? assigner;
+  if (!alone) return null;
+
   return (
-    <div className={cn("flex items-center gap-1.5 shrink-0", className)}>
-      {assigner ? (
-        <div
-          className="flex items-center gap-1"
-          title={assigner.name ? `From ${assigner.name}` : "From"}
-        >
-          <span className={TASK_META_PERSON_LABEL_CLASS}>From</span>
-          <UserAvatar
-            imageUrl={assigner.imageUrl}
-            name={assigner.name}
-            propertyColor={assigner.accentColor}
-            size={size}
-            shape="card"
-          />
-        </div>
-      ) : null}
-      {assignee ? (
-        <div
-          className="flex items-center gap-1"
-          title={assignee.name ? `For ${assignee.name}` : "For"}
-        >
-          <span className={TASK_META_PERSON_LABEL_CLASS}>For</span>
-          <UserAvatar
-            imageUrl={assignee.imageUrl}
-            name={assignee.name}
-            propertyColor={assignee.accentColor}
-            size={size}
-            shape="card"
-          />
-        </div>
-      ) : null}
+    <div
+      className={cn("flex items-center shrink-0", className)}
+      title={alone.name || undefined}
+    >
+      <UserAvatar
+        imageUrl={alone.imageUrl}
+        name={alone.name}
+        propertyColor={alone.accentColor}
+        size={size}
+        shape="card"
+      />
     </div>
   );
 }
@@ -208,6 +218,7 @@ function TaskCardComponent({
   const { data: orgProperties = [] } = usePropertiesQuery();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const commentSignal = useTaskCommentSignal(task?.id);
   /** Property chip is only useful when the org has more than one property. */
   const showPropertyIconInMeta = orgProperties.length > 1;
   const [isCompleting, setIsCompleting] = useState(false);
@@ -415,7 +426,8 @@ function TaskCardComponent({
     dueUrgency != null ? (
       <span
         className={cn(
-          "absolute top-1.5 right-2 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
+          "absolute top-1.5 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
+          commentSignal ? "right-8" : "right-2",
           "font-mono text-2xs font-medium uppercase tracking-wide leading-none shadow-sm",
           dueUrgency === "overdue"
             ? "bg-destructive/90 text-white"
@@ -425,6 +437,21 @@ function TaskCardComponent({
         {taskDueUrgencyLabel(dueUrgency)}
       </span>
     ) : null;
+
+  const newCommentBubble = commentSignal ? (
+    <span
+      className="pointer-events-none absolute top-1.5 right-1.5 z-20 flex h-5 w-5 items-center justify-center drop-shadow-sm"
+      title="New comment"
+      aria-label="New comment"
+    >
+      <MessageCircle
+        className="h-[18px] w-[18px]"
+        style={{ color: commentSignal.accentColor, fill: commentSignal.accentColor }}
+        strokeWidth={0}
+        aria-hidden
+      />
+    </span>
+  ) : null;
 
   // Horizontal layout (thumbnail left or right)
   if (layout === 'horizontal') {
@@ -473,6 +500,7 @@ function TaskCardComponent({
         onClick={onClick}
       >
         {completionOverlay}
+        {newCommentBubble}
         {thumbnailFirst ? horizontalMedia : null}
         {/* Content */}
         <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
@@ -566,6 +594,7 @@ function TaskCardComponent({
       onClick={onClick}
     >
       {completionOverlay}
+      {newCommentBubble}
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
         {dueUrgencyChip}
         {showPriorityDot ? (

@@ -59,6 +59,10 @@ import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import {
+  clipboardImageFiles,
+  ingestIntakeMediaFiles,
+} from "@/utils/ingestIntakeMediaFiles";
+import {
   IntakeChipRow,
   type IntakeChipRowChip,
   type IntakeChipSlotId,
@@ -310,6 +314,10 @@ export function IntakeModal({
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
   const [images, setImages] = useState<TempImage[]>([]);
   const [taskFiles, setTaskFiles] = useState<PendingTaskFile[]>([]);
+  const imagesRef = useRef(images);
+  const taskFilesRef = useRef(taskFiles);
+  imagesRef.current = images;
+  taskFilesRef.current = taskFiles;
   const [userChoseWorkflow, setUserChoseWorkflow] = useState<WorkflowHint | null>(null);
 
   const isIntakeControlled =
@@ -478,6 +486,30 @@ export function IntakeModal({
   const patchImage = useCallback((localId: string, patch: Partial<TempImage>) => {
     setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
   }, []);
+
+  /** Paste image from clipboard into the Add Photo panel (same path as file picker). */
+  const handleDescriptionPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const pastedImages = clipboardImageFiles(event.clipboardData);
+      if (pastedImages.length === 0) return;
+      event.preventDefault();
+      void ingestIntakeMediaFiles({
+        incomingFiles: pastedImages,
+        images: imagesRef.current,
+        files: taskFilesRef.current,
+        onImagesChange: setImages,
+        onFilesChange: setTaskFiles,
+        onOversized: (oversizedCount) => {
+          toast({
+            title: "File too large",
+            description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
+            variant: "destructive",
+          });
+        },
+      });
+    },
+    [toast]
+  );
 
   const handleAnalysisComplete = useCallback((localId: string, result: import("@/types/temp-image").ImageAnalysisResult) => {
     setImages((prev) =>
@@ -3865,6 +3897,7 @@ export function IntakeModal({
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                onPaste={handleDescriptionPaste}
                 placeholder={descriptionPlaceholder}
                 rows={3}
                 className="w-full px-3 py-2 text-[15px] border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"

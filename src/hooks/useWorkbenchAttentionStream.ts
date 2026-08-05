@@ -14,6 +14,7 @@ import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
 import { useSignalActions } from "@/hooks/useSignalActions";
+import { usePromoteExternalEmailSignal } from "@/hooks/usePromoteExternalEmailSignal";
 import { mapSignalRowToAttentionItem } from "@/lib/signals/mapSignalRowToAttentionItem";
 import {
   SIGNAL_UI_FIXTURES_RECENT,
@@ -33,6 +34,8 @@ export type UseWorkbenchAttentionStreamOptions = {
   onRecordsViewChange?: (view: RecordsView) => void;
   /** When true, skip dev signal fixtures; education UI uses dedicated fixtures. */
   onboardingEducationMode?: boolean;
+  /** Opens Add to Filla sheet after promoting an external email signal. */
+  onOpenAddToFilla?: () => void;
 };
 
 function propertyLabel(
@@ -50,6 +53,7 @@ export function useWorkbenchAttentionStream({
   onTabChange,
   onRecordsViewChange,
   onboardingEducationMode = false,
+  onOpenAddToFilla,
 }: UseWorkbenchAttentionStreamOptions) {
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
   const propertySubsetSelected = isPropertySubsetSelected(selectedPropertyIds, allPropertyIds);
@@ -84,6 +88,7 @@ export function useWorkbenchAttentionStream({
     propertyIds: propertyIdsForSignals,
   });
   const { dismiss, snooze, acceptRecommendation } = useSignalActions();
+  const promoteExternalEmail = usePromoteExternalEmailSignal();
 
   const [resolvedAttentionIds, setResolvedAttentionIds] = useState<Set<string>>(new Set());
   const [attentionComplianceDrafts, setAttentionComplianceDrafts] = useState<ComplianceRecord[]>([]);
@@ -301,6 +306,12 @@ export function useWorkbenchAttentionStream({
     if (actionId === "dismiss" || actionId === "ignore") {
       await dismiss.mutateAsync(item.signalId);
       resolveAttentionItem(item.id);
+      return true;
+    }
+    if (actionId === "signal-promote-intake") {
+      await promoteExternalEmail.mutateAsync(item.signalId);
+      resolveAttentionItem(item.id);
+      onOpenAddToFilla?.();
       return true;
     }
     return false;

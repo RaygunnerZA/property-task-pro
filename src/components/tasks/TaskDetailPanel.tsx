@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, MessageSquare, Camera, Pencil } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, Upload, Pencil, MessageSquare } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
-import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
@@ -48,7 +48,7 @@ import { WhereSection } from "./create/WhereSection";
 import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
-import { format, isValid, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
@@ -66,16 +66,13 @@ import {
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
 import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
+import { TaskDetailHeroMeta } from "@/components/tasks/detail/TaskDetailHeroMeta";
 import {
-  TaskDetailHeroMeta,
-  TaskDetailFillaUnderstood,
-  TaskDetailRelated,
-  type FillaUnderstoodItem,
-  type TaskDetailRelatedLink,
-} from "@/components/tasks/detail/TaskDetailHeroMeta";
-import { TaskDetailChecklistTab } from "@/components/tasks/detail/TaskDetailChecklistTab";
-import { useSubtasks } from "@/hooks/useSubtasks";
-import { propertyHubPath, propertyHubRecordsPath } from "@/lib/propertyRoutes";
+  TaskDetailChecklistTab,
+  TaskDetailChecklistActions,
+} from "@/components/tasks/detail/TaskDetailChecklistTab";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
   clearTaskCompletionMotion,
   playTaskCompletionMotion,
@@ -95,10 +92,9 @@ interface TaskDetailPanelProps {
 /**
  * Task Detail Panel
  *
- * Modal/column for viewing and acting on a task. AI-first layout aligned with Create Task:
- * single scroll (Description → Checklist → Evidence → Timeline), hero image, context chips,
- * Filla understood, Related links. Constitutional contexts preserved as scroll sections
- * (@Docs/05_Task_Engine.md §5.6) rather than tabs.
+ * Continuous task page: Overview (hero evidence + metadata + description) →
+ * Checklist → Activity. Constitutional contexts from @Docs/05_Task_Engine.md §5.6
+ * with evidence folded into the hero.
  */
 export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
@@ -132,7 +128,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   });
 
   const { toast } = useToast();
-  const { subtasks } = useSubtasks(taskId);
+  const { data: orgProperties = [] } = usePropertiesQuery();
+  const { role: orgRole } = useActiveOrg();
+  const canManageTemplates = orgRole === "owner" || orgRole === "manager";
   const queryClient = useQueryClient();
   const deleteTaskMutation = useDeleteTaskMutation();
   const updateTaskMutation = useUpdateTaskMutation();
@@ -148,8 +146,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [taskEditOpen, setTaskEditOpen] = useState(false);
-  const [commentFocusKey, setCommentFocusKey] = useState(0);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
+  const [evidenceSlideIndex, setEvidenceSlideIndex] = useState(0);
+  const [focusComposeKey, setFocusComposeKey] = useState(0);
   const [dueDate, setDueDate] = useState("");
   const [repeatRule, setRepeatRule] = useState<RepeatRule | undefined>();
   const [localPropertyId, setLocalPropertyId] = useState("");
@@ -179,6 +178,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   useEffect(() => {
     setTaskEditOpen(false);
     setOpenChipSlot(null);
+  }, [taskId]);
+
+  // Opening detail clears the “new comment” bubble on task cards
+  useEffect(() => {
+    if (!taskId) return;
+    markTaskCommentSeen(taskId);
   }, [taskId]);
 
   // Update scalar local state when task data loads
@@ -473,15 +478,23 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return (
       (
         {
-          open: "OPEN",
-          in_progress: "IN PROGRESS",
-          waiting_review: "WAITING REVIEW",
-          completed: "DONE",
-          archived: "ARCHIVED",
+          open: "Open",
+          in_progress: "In progress",
+          waiting_review: "Waiting review",
+          completed: "Done",
+          archived: "Archived",
         } as Record<string, string>
-      )[status] || status.toUpperCase()
+      )[status] || status
     );
   }, [status]);
+
+  const dueChipLabel = useMemo(() => {
+    if (!dueDate) return null;
+    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
+    if (!isValid(d)) return null;
+    const hasTime = dueDate.includes("T");
+    return hasTime ? format(d, "EEE d MMM · HH:mm") : format(d, "EEE d MMM");
+  }, [dueDate]);
 
   const statusChipTextClass = useMemo(() => {
     if (status === "open") return "text-success-foreground";
@@ -515,11 +528,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     [task, propertySpaces]
   );
 
-  const dueChipLabel = useMemo(() => {
-    if (!dueDate) return null;
-    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
-    return isValid(d) ? format(d, "d MMM").toUpperCase() : null;
-  }, [dueDate]);
+  const statusTone = useMemo(() => {
+    if (status === "open") return "open" as const;
+    if (status === "in_progress") return "progress" as const;
+    if (status === "waiting_review") return "review" as const;
+    if (status === "completed" || status === "archived") return "done" as const;
+    return "other" as const;
+  }, [status]);
 
   const formatDueChipLabel = useCallback((dateStr: string) => {
     const d = dateStr.includes("T") ? parseISO(dateStr) : parseISO(`${dateStr}T12:00:00`);
@@ -916,7 +931,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     [allAttachments]
   );
   const assignerUser = useMemo(
-    () => resolveTaskAssignerUser(task as any, members, user),
+    () =>
+      resolveTaskAssignerUser(task as any, members, user, {
+        hideWhenSameAsAssignee: false,
+      }),
     [task, members, user]
   );
   const assigneeUser = useMemo(
@@ -924,116 +942,63 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     [task, members, user]
   );
 
-  const propertyLabel = useMemo(() => {
-    return (
-      ((task as any)?.property?.nickname ||
-        (task as any)?.property_name ||
-        null) as string | null
-    );
-  }, [task]);
-
-  const spaceLabel = useMemo(() => {
-    const spacesRaw = (task as any)?.spaces;
-    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
-    const ids =
-      selectedSpaceIds.length > 0
-        ? selectedSpaceIds
-        : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean);
-    const names = ids.map((id) => resolveSpaceLabel(id as string)).filter(Boolean);
-    return names.length > 0 ? names.join(", ") : null;
-  }, [task, selectedSpaceIds, resolveSpaceLabel]);
-
-  const fillaUnderstoodItems = useMemo((): FillaUnderstoodItem[] => {
-    const items: FillaUnderstoodItem[] = [
-      {
-        id: "person",
-        label: assigneeUser?.name || "Assignee",
-        kind: "person",
-        present: Boolean(assigneeUser),
-      },
-      {
-        id: "location",
-        label: propertyLabel || spaceLabel || "Location",
-        kind: "location",
-        present: Boolean(propertyLabel || spaceLabel),
-      },
-      {
-        id: "date",
-        label: dueChipLabel || "Due date",
-        kind: "date",
-        present: Boolean(dueChipLabel),
-      },
-      {
-        id: "asset",
-        label:
-          taskAssets.find((a) => selectedAssetIds.includes(a.id))?.name || "Asset",
-        kind: "asset",
-        present: selectedAssetIds.length > 0,
-      },
-    ];
-    if (priority === "urgent" || priority === "high") {
-      items.push({
-        id: "priority",
-        label: priority === "urgent" ? "Urgent" : "High priority",
-        kind: "priority",
-        present: true,
-      });
-    }
-    return items;
-  }, [
-    assigneeUser,
-    propertyLabel,
-    spaceLabel,
-    dueChipLabel,
-    taskAssets,
-    selectedAssetIds,
-    priority,
-  ]);
-
-  const relatedLinks = useMemo((): TaskDetailRelatedLink[] => {
-    const links: TaskDetailRelatedLink[] = [];
+  const propertyChip = useMemo(() => {
     const propId = (task as any)?.property_id as string | undefined;
-    if (propId && propertyLabel) {
-      links.push({
-        id: `property-${propId}`,
-        label: propertyLabel,
-        href: propertyHubPath(propId),
-        kind: "property",
-      });
-    }
-    const spacesRaw = (task as any)?.spaces;
-    const spacesArr = Array.isArray(spacesRaw) ? spacesRaw : [];
-    const spaceIds =
-      selectedSpaceIds.length > 0
-        ? selectedSpaceIds
-        : spacesArr.map((s: { id?: string }) => s.id).filter(Boolean);
-    for (const sid of spaceIds) {
-      if (!propId || !sid) continue;
-      links.push({
-        id: `space-${sid}`,
-        label: resolveSpaceLabel(sid as string),
-        href: `/properties/${propId}/spaces/${sid}`,
-        kind: "space",
-      });
-    }
-    for (const asset of taskAssets.filter((a) => selectedAssetIds.includes(a.id))) {
-      links.push({
-        id: `asset-${asset.id}`,
-        label: asset.name || "Asset",
-        href: `/assets/${asset.id}`,
-        kind: "asset",
-      });
-    }
-    if (propId) {
-      links.push({
-        id: `records-${propId}`,
-        label: "Records",
-        href: propertyHubRecordsPath(propId),
-        kind: "record",
-      });
-    }
-    return links;
-  }, [task, propertyLabel, selectedSpaceIds, resolveSpaceLabel, taskAssets, selectedAssetIds]);
+    if (!propId) return null;
+    const fromOrg = orgProperties.find((p: any) => p.id === propId);
+    return {
+      id: propId,
+      iconName: fromOrg?.icon_name ?? null,
+      iconColorHex: fromOrg?.icon_color_hex ?? "#8EC9CE",
+    };
+  }, [task, orgProperties]);
+
+  const locationLabel = useMemo(() => {
+    const propName =
+      (task as any)?.property?.nickname ||
+      (task as any)?.property_name ||
+      orgProperties.find((p: any) => p.id === (task as any)?.property_id)?.nickname ||
+      orgProperties.find((p: any) => p.id === (task as any)?.property_id)?.address ||
+      null;
+    const spaceNames = selectedSpaceIds
+      .map((id) => resolveSpaceLabel(id))
+      .filter((name) => name && name !== "Space");
+    const parts = [propName, ...spaceNames].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [task, orgProperties, selectedSpaceIds, resolveSpaceLabel]);
+
+  const assetLabels = useMemo(
+    () =>
+      taskAssets
+        .filter((a) => selectedAssetIds.includes(a.id))
+        .map((a) => (a.name || "Asset").toUpperCase()),
+    [taskAssets, selectedAssetIds]
+  );
+
+  const tagLabels = useMemo(() => {
+    const cats = (task as any)?.categories;
+    const fromTask = Array.isArray(cats) ? cats : [];
+    const ids = selectedThemeIds.length > 0 ? selectedThemeIds : fromTask.map((c: any) => c.id);
+    return ids
+      .map((id: string) => {
+        const fromTaskCat = fromTask.find((c: any) => c.id === id);
+        if (fromTaskCat?.name) return String(fromTaskCat.name).toUpperCase();
+        const fromOrg = orgCategories.find((c) => c.id === id);
+        return (fromOrg?.name || "Tag").toUpperCase();
+      })
+      .filter(Boolean);
+  }, [task, selectedThemeIds, orgCategories]);
+
+  const complianceLabel = useMemo(() => {
+    if (!isCompliance) return null;
+    return (complianceLevel || "Compliance rule").toUpperCase();
+  }, [isCompliance, complianceLevel]);
+
+  const priorityChipLabel = useMemo(() => {
+    if (priority === "urgent") return "URGENT";
+    if (priority === "high") return "HIGH";
+    return null;
+  }, [priority]);
 
   const documentAttachments = useMemo(
     () =>
@@ -1052,6 +1017,22 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setSelectedImageIndex(0);
     }
   }, [imageAttachments, selectedImageIndex]);
+
+  const evidenceItems = useMemo(() => {
+    const extraImages = imageAttachments.slice(1);
+    return [...extraImages, ...documentAttachments];
+  }, [imageAttachments, documentAttachments]);
+
+  useEffect(() => {
+    if (evidenceItems.length === 0) {
+      setEvidenceSlideIndex(0);
+      return;
+    }
+    if (evidenceSlideIndex >= evidenceItems.length) {
+      setEvidenceSlideIndex(0);
+    }
+  }, [evidenceItems, evidenceSlideIndex]);
+
   const createdBy = (task as any)?.created_by ?? null;
   const assignedUserId = task?.assigned_user_id ?? null;
   const isAssigner = !!userId && createdBy === userId;
@@ -1098,6 +1079,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         open={true}
         onOpenChange={(open) => {
           if (!open && showAnnotationEditor) return;
+          if (!open && lightboxOpen) {
+            setLightboxOpen(false);
+            return;
+          }
           if (!open) onClose();
         }}
       >
@@ -1149,64 +1134,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   }
 
   const taskTitle = String((task as any)?.title ?? "Task");
-
-  const evidenceMediaSection = (
-    <div className="space-y-4">
-      {imageAttachments.length > 0 && (() => {
-        const img = imageAttachments[selectedImageIndex ?? 0] as any;
-        const orgId = (task as any)?.org_id;
-        if (!orgId) return null;
-        return (
-          <ImageAiActions
-            attachment={img}
-            assets={assets}
-            complianceItems={complianceItems.map((c: any) => ({
-              id: c.id,
-              title: c.title,
-              expiry_date: c.expiry_date,
-            }))}
-            orgId={orgId}
-            propertyId={propertyId}
-            taskId={taskId}
-            onRefresh={() => {
-              refreshTask();
-              queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
-              queryClient.invalidateQueries({ queryKey: ["assets", orgId, propertyId] });
-              queryClient.invalidateQueries({ queryKey: ["compliance", orgId] });
-            }}
-          />
-        );
-      })()}
-      {documentAttachments.length > 0 ? (
-        <div className="rounded-[10px] bg-muted/35 p-2 shadow-none">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
-            Documents ({documentAttachments.length})
-          </div>
-          <div className="space-y-1.5">
-            {documentAttachments.map((attachment: any) => (
-              <button
-                key={attachment.id}
-                type="button"
-                onClick={() => setSelectedDocument(attachment)}
-                className="w-full rounded-card bg-background/70 px-3 py-2 text-left text-xs shadow-e1 hover:shadow-e2 transition-shadow"
-              >
-                <span className="block truncate font-medium text-foreground">
-                  {attachment.file_name || "Document"}
-                </span>
-                <span className="block text-caption text-muted-foreground">
-                  {attachment.file_type || "file"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : imageAttachments.length > 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Photos are shown above. Attach documents from the field app when needed.
-        </p>
-      ) : null}
-    </div>
-  );
+  const taskDescription = String((task as any)?.description ?? "").trim();
+  const titleMatchesDescription =
+    Boolean(taskDescription) &&
+    taskDescription.toLowerCase() === taskTitle.trim().toLowerCase();
 
   const descriptionSection = (
     <div className="space-y-3">
@@ -1220,33 +1151,28 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           renderSlotContent={renderTaskDetailSlotContent}
         />
       ) : null}
-      <p className="text-base text-foreground leading-relaxed">
-        {(task as any)?.description || "No description provided"}
-      </p>
-      {taskEditOpen && hasEdits && canManageTask ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="shadow-e1"
-          onClick={handleUpdateTask}
-          disabled={isUpdating}
-        >
-          {isUpdating ? "…" : "Save changes"}
-        </Button>
-      ) : null}
+      {titleMatchesDescription ? (
+        <p className="text-sm text-muted-foreground">No additional details</p>
+      ) : (
+        <p className="text-base leading-relaxed text-foreground">
+          {taskDescription || "No description provided"}
+        </p>
+      )}
     </div>
   );
 
-  const timelineSection = (
-    <div className="space-y-4">
+  const hasTimelineActivity = !timelineLoading && !timelineError && (timelineEvents?.length ?? 0) > 0;
+
+  const activitySection = (
+    <div id="task-detail-comment" className="space-y-6">
       {timelineLoading ? (
-        <div className="space-y-2 py-2">
+        <div className="space-y-2 py-1">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
         </div>
       ) : timelineError ? (
-        <p className="text-muted-foreground text-sm">
-          Couldn&apos;t load timeline.{" "}
+        <p className="text-sm text-muted-foreground">
+          Couldn&apos;t load activity.{" "}
           <button
             type="button"
             className="text-primary underline-offset-2 hover:underline"
@@ -1255,20 +1181,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             Retry
           </button>
         </p>
-      ) : (
-        <TaskTimeline events={timelineEvents} />
-      )}
-      <div
-        id="task-detail-comment"
-        className="flex max-h-[min(280px,40dvh)] min-h-[160px] flex-col overflow-hidden rounded-[10px] bg-muted/25 shadow-sm"
-      >
-        <TaskMessaging taskId={taskId} focusComposeKey={commentFocusKey} />
-      </div>
-      <GraphInsightPanel
-        start={{ type: "task", id: taskId }}
-        depth={2}
-        variant="minimal"
-        className="mb-1"
+      ) : hasTimelineActivity ? (
+        <TaskTimeline events={timelineEvents} variant="activity" />
+      ) : null}
+      <TaskMessaging
+        taskId={taskId}
+        variant="activity"
+        focusComposeKey={focusComposeKey}
       />
     </div>
   );
@@ -1291,9 +1210,12 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       />
       <TaskDetailContent
         title={taskTitle}
+        showTitle={false}
         scrollRef={panelScrollRef}
+        descriptionHeading={titleMatchesDescription ? false : "Overview"}
         hero={
           <TaskDetailHeroMeta
+            title={taskTitle}
             images={imageAttachments
               .map((image: any, index: number) => ({
                 id: String(image.id || `img-${index}`),
@@ -1314,72 +1236,41 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }
               setLightboxOpen(true);
             }}
+            onAddEvidence={() => taskImageInputRef.current?.click()}
+            isUploadingEvidence={isUploadingImage}
             statusLabel={statusChipLabel}
-            statusClassName={statusChipTextClass}
-            urgent={priority === "urgent"}
+            statusTone={statusTone}
             dueLabel={dueChipLabel}
-            propertyLabel={propertyLabel}
-            spaceLabel={spaceLabel}
+            locationLabel={locationLabel}
+            assigner={assignerUser}
             assignee={assigneeUser}
-            reporter={assignerUser}
           />
         }
-        fillaUnderstood={<TaskDetailFillaUnderstood items={fillaUnderstoodItems} />}
         description={descriptionSection}
         sections={[
           {
             id: "checklist",
-            title: "Checklist",
-            content: <TaskDetailChecklistTab taskId={taskId} canEdit={canManageTask} />,
-            hidden: subtasks.length === 0 && !canManageTask,
+            title: null,
+            content: (
+              <TaskDetailChecklistTab
+                taskId={taskId}
+                canEdit={canManageTask}
+                canManageTemplates={canManageTemplates}
+              />
+            ),
+            hidden: false,
           },
           {
-            id: "evidence",
-            title: "Evidence",
-            content: evidenceMediaSection,
-            hidden: imageAttachments.length === 0 && documentAttachments.length === 0,
-          },
-          {
-            id: "timeline",
-            title: "Timeline",
-            content: timelineSection,
-          },
-          {
-            id: "related",
-            title: "Related",
-            content: <TaskDetailRelated links={relatedLinks} />,
-            hidden: relatedLinks.length === 0,
+            id: "activity",
+            title: "Activity",
+            content: activitySection,
+            hidden: false,
           },
         ]}
       />
 
-      <div className="flex flex-col gap-1.5 pt-1 pb-4 px-4 border-0 flex-shrink-0 bg-transparent text-foreground sticky bottom-0">
+      <div className="flex flex-col gap-1.5 pt-2 pb-4 px-4 border-0 flex-shrink-0 bg-background/95 backdrop-blur-sm text-foreground sticky bottom-0 z-10">
         <div className="flex gap-2 items-center min-w-0 w-full">
-          <Button
-            variant="outline"
-            className="shrink-0 shadow-e1 text-foreground"
-            onClick={() => taskImageInputRef.current?.click()}
-            disabled={isUploadingImage}
-          >
-            <Camera className="h-4 w-4 mr-1.5 shrink-0" />
-            {isUploadingImage ? "…" : "Add Photo"}
-          </Button>
-          <Button
-            variant="outline"
-            className="shrink-0 shadow-e1 text-foreground"
-            onClick={() => {
-              setCommentFocusKey((k) => k + 1);
-              requestAnimationFrame(() => {
-                document.getElementById("task-detail-comment")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                });
-              });
-            }}
-          >
-            <MessageSquare className="h-4 w-4 mr-1.5 shrink-0" />
-            Comment
-          </Button>
           {canManageTask && (
             <Button
               variant={status === "completed" ? "secondary" : "default"}
@@ -1448,10 +1339,41 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               {status === "completed" ? "Completed" : "Mark Complete"}
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0 shadow-e1 text-foreground"
+            onClick={() => {
+              setFocusComposeKey((k) => k + 1);
+              requestAnimationFrame(() => {
+                document.getElementById("task-detail-comment")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              });
+            }}
+            aria-label="Comment"
+            title="Comment"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 shrink-0 shadow-e1 text-foreground"
+            onClick={() => taskImageInputRef.current?.click()}
+            disabled={isUploadingImage}
+            aria-label={isUploadingImage ? "Uploading evidence" : "Upload evidence"}
+            title={isUploadingImage ? "Uploading…" : "Upload evidence"}
+          >
+            <Upload className={cn("h-4 w-4", isUploadingImage && "animate-pulse")} />
+          </Button>
           {canManageTask && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="shrink-0 shadow-e1 text-foreground gap-1.5">
+                <Button variant="outline" className="shrink-0 shadow-e1 text-foreground gap-1.5" aria-label="More">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -1477,6 +1399,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                     Done editing
                   </DropdownMenuItem>
                 ) : null}
+                {hasEdits ? (
+                  <DropdownMenuItem onClick={handleUpdateTask} disabled={isUpdating}>
+                    Save changes
+                  </DropdownMenuItem>
+                ) : null}
+                <TaskDetailChecklistActions
+                  taskId={taskId}
+                  canEdit={canManageTask}
+                  canManageTemplates={canManageTemplates}
+                  hasItems
+                  menuOnly
+                />
                 <DropdownMenuItem
                   onClick={async () => {
                     if (isUpdating || !task) return;
@@ -1666,60 +1600,95 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     {/* Image lightbox modal */}
     {lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null && createPortal(
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
-        onClick={() => setLightboxOpen(false)}
+        className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Image preview"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setLightboxOpen(false);
+        }}
       >
-        <button
-          type="button"
-          className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
-          onClick={() => setLightboxOpen(false)}
-          aria-label="Close lightbox"
-        >
-          <X className="h-6 w-6" />
-        </button>
-
-        {imageAttachments.length > 1 && (
-          <>
-            <button
+        <header className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md">
+          <button
+            type="button"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+            onClick={() => setLightboxOpen(false)}
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">Evidence</p>
+            <p className="truncate text-xs text-white/55">
+              {selectedImageIndex + 1} / {imageAttachments.length} · Esc to close
+            </p>
+          </div>
+          {imageAttachments[selectedImageIndex]?.id ? (
+            <Button
               type="button"
-              className="absolute left-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+              size="sm"
+              variant="secondary"
+              className="shrink-0"
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedImageIndex((selectedImageIndex - 1 + imageAttachments.length) % imageAttachments.length);
+                const img = imageAttachments[selectedImageIndex];
+                if (!img?.id) return;
+                setLightboxOpen(false);
+                setEditingImageId(img.id);
+                setShowAnnotationEditor(true);
               }}
-              aria-label="Previous image"
             >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              type="button"
-              className="absolute right-4 z-10 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedImageIndex((selectedImageIndex + 1) % imageAttachments.length);
-              }}
-              aria-label="Next image"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          </>
-        )}
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Annotate
+            </Button>
+          ) : null}
+        </header>
 
-        <img
-          src={imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].optimized_url}
-          alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
-          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-          onError={(e) => {
-            const img = imageAttachments[selectedImageIndex];
-            if (img.optimized_url && (e.target as HTMLImageElement).src !== img.optimized_url) {
-              (e.target as HTMLImageElement).src = img.optimized_url;
-            }
+        <div
+          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLightboxOpen(false);
           }}
-        />
+        >
+          {imageAttachments.length > 1 && (
+            <>
+              <button
+                type="button"
+                className="absolute left-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:left-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedImageIndex((selectedImageIndex - 1 + imageAttachments.length) % imageAttachments.length);
+                }}
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:right-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedImageIndex((selectedImageIndex + 1) % imageAttachments.length);
+                }}
+                aria-label="Next image"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
 
-        <div className="absolute bottom-4 text-white/70 text-sm">
-          {selectedImageIndex + 1} / {imageAttachments.length}
+          <img
+            src={imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].optimized_url}
+            alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
+            className="max-h-full max-w-full rounded-md object-contain shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+            onError={(e) => {
+              const img = imageAttachments[selectedImageIndex];
+              if (img.optimized_url && (e.target as HTMLImageElement).src !== img.optimized_url) {
+                (e.target as HTMLImageElement).src = img.optimized_url;
+              }
+            }}
+          />
         </div>
       </div>,
       document.body
@@ -1922,8 +1891,21 @@ function ImageAnnotationEditorWrapper({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center">
-        <div className="text-white/80 text-sm">Loading annotations…</div>
+      <div className="fixed inset-0 z-[9999] flex flex-col bg-black/90">
+        <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-white/10 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <p className="text-sm text-white/80">Loading annotations…</p>
+        </header>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        </div>
       </div>
     );
   }
@@ -1936,12 +1918,8 @@ function ImageAnnotationEditorWrapper({
       initialAnnotations={annotations}
       editSessions={editSessions}
       detectionOverlays={detectionOverlays}
-      onSave={async (anns, isAutosave) => {
+      onSave={async (anns) => {
         await saveAnnotations(anns);
-        // Only close on manual save, not autosave
-        if (!isAutosave) {
-          onClose();
-        }
       }}
       onCancel={onClose}
     />

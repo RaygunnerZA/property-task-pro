@@ -2,7 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { X, Camera, Upload, SquarePen, AlertCircle, FileText, Loader2, BadgeCheck, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TempImage, UploadStatus } from "@/types/temp-image";
-import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
+import { cleanupTempImage } from "@/utils/image-optimization";
+import {
+  ingestIntakeMediaFiles,
+  INTAKE_MAX_FILE_SIZE,
+  type PendingIntakeFile,
+} from "@/utils/ingestIntakeMediaFiles";
 import { ImageAnnotationEditor } from "@/components/tasks/ImageAnnotationEditor";
 import type { Annotation } from "@/types/image-annotations";
 import { useToast } from "@/hooks/use-toast";
@@ -13,13 +18,7 @@ import {
   isMeaningfulSuggestedType,
 } from "@/lib/intakeWorkflowSignals";
 
-export interface PendingTaskFile {
-  local_id: string;
-  file: File;
-  display_name: string;
-  file_size: number;
-  file_type: string;
-}
+export type PendingTaskFile = PendingIntakeFile;
 
 interface ImageUploadSectionProps {
   images: TempImage[];
@@ -52,7 +51,7 @@ export function ImageUploadSection({
   const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
   const [dragActive, setDragActive] = useState(false);
 
-  const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_FILE_SIZE = INTAKE_MAX_FILE_SIZE;
 
   // Cleanup blob URLs on unmount only
   useEffect(() => {
@@ -63,105 +62,21 @@ export function ImageUploadSection({
   }, []);
 
   const handleFileSelect = async (incomingFiles: FileList | null) => {
-    if (!incomingFiles) return;
-
-    const nextImages = [...images];
-    const newFiles: PendingTaskFile[] = [];
-    const imageJobs: Promise<void>[] = [];
-    let oversizedCount = 0;
-    const commitImages = () => onImagesChange([...nextImages]);
-
-    for (const file of Array.from(incomingFiles)) {
-      if (file.size > MAX_FILE_SIZE) {
-        oversizedCount += 1;
-        continue;
-      }
-
-      if (!file.type.startsWith("image/")) {
-        newFiles.push({
-          local_id: crypto.randomUUID(),
-          file,
-          display_name: file.name,
-          file_size: file.size,
-          file_type: file.type || "application/octet-stream",
+    await ingestIntakeMediaFiles({
+      incomingFiles,
+      images,
+      files,
+      onImagesChange,
+      onFilesChange,
+      maxFileSize: MAX_FILE_SIZE,
+      onOversized: (oversizedCount) => {
+        toast({
+          title: "File too large",
+          description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
+          variant: "destructive",
         });
-        continue;
-      }
-
-      const localId = crypto.randomUUID();
-      const provisionalUrl = URL.createObjectURL(file);
-      const provisionalImage: TempImage = {
-        local_id: localId,
-        display_name: file.name,
-        original_file: file,
-        thumbnail_blob: file,
-        optimized_blob: file,
-        annotation_json: [],
-        uploaded: false,
-        upload_status: "pending",
-        thumbnail_url: provisionalUrl,
-        optimized_url: provisionalUrl,
-      };
-      // Instant preview path: add a provisional image immediately, then upgrade it.
-      nextImages.push(provisionalImage);
-      commitImages();
-
-      const job = createTempImage(file)
-        .then((tempImage) => {
-          const idx = nextImages.findIndex((img) => img.local_id === localId);
-          if (idx === -1) {
-            cleanupTempImage(tempImage);
-            return;
-          }
-          const existing = nextImages[idx];
-          if (existing.thumbnail_url === existing.optimized_url && existing.thumbnail_url) {
-            URL.revokeObjectURL(existing.thumbnail_url);
-          } else {
-            if (existing.thumbnail_url) URL.revokeObjectURL(existing.thumbnail_url);
-            if (existing.optimized_url) URL.revokeObjectURL(existing.optimized_url);
-          }
-          nextImages[idx] = {
-            ...tempImage,
-            local_id: localId,
-            display_name: existing.display_name,
-            original_file: existing.original_file,
-            annotation_json: existing.annotation_json ?? [],
-            uploaded: existing.uploaded,
-            upload_status: existing.upload_status ?? "pending",
-          };
-          commitImages();
-        })
-        .catch((error) => {
-          console.error(`Failed to process "${file.name}":`, error);
-          const idx = nextImages.findIndex((img) => img.local_id === localId);
-          if (idx !== -1) {
-            const failed = nextImages[idx];
-            nextImages[idx] = {
-              ...failed,
-              upload_status: "failed",
-              upload_error: "Image processing failed",
-            };
-            commitImages();
-          }
-        });
-      imageJobs.push(job);
-    }
-
-    if (imageJobs.length > 0) {
-      await Promise.allSettled(imageJobs);
-    }
-
-    if (oversizedCount > 0) {
-      toast({
-        title: "File too large",
-        description: `${oversizedCount} file${oversizedCount === 1 ? "" : "s"} exceeded 50MB.`,
-        variant: "destructive",
-      });
-    }
-
-    if (newFiles.length > 0) {
-      onFilesChange([...files, ...newFiles]);
-    }
+      },
+    });
   };
 
   const removeImage = (index: number) => {
@@ -645,12 +560,8 @@ export function ImageUploadSection({
       {showAnnotationEditor && editingImageIndex !== null && images[editingImageIndex] && (
         <TempImageAnnotationEditor
           tempImage={images[editingImageIndex]}
-          onSave={(annotations, isAutosave) => {
+          onSave={(annotations) => {
             updateImageAnnotations(editingImageIndex, annotations);
-            if (!isAutosave) {
-              setShowAnnotationEditor(false);
-              setEditingImageIndex(null);
-            }
           }}
           onCancel={() => {
             setShowAnnotationEditor(false);
@@ -669,7 +580,7 @@ function TempImageAnnotationEditor({
   onCancel,
 }: {
   tempImage: TempImage;
-  onSave: (annotations: Annotation[], isAutosave: boolean) => void;
+  onSave: (annotations: Annotation[], isAutosave?: boolean) => void;
   onCancel: () => void;
 }) {
   return (
@@ -679,8 +590,7 @@ function TempImageAnnotationEditor({
       taskId={''} // No task yet
       initialAnnotations={tempImage.annotation_json || []}
       onSave={async (annotations, isAutosave) => {
-        // For temp images, always save (autosave or manual)
-        onSave(annotations, Boolean(isAutosave));
+        onSave(annotations, isAutosave);
       }}
       onCancel={onCancel}
     />

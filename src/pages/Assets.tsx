@@ -35,6 +35,7 @@ import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeB
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
 import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
@@ -325,7 +326,8 @@ const Assets = () => {
       setConditionScore("100");
       setIconName("");
       setPendingFiles([]);
-      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      await invalidateAssetQueries(queryClient);
+      setSelectedAssetId(newAsset.id);
     } catch (err: unknown) {
       console.error("Error saving asset:", err);
       toast.error(err instanceof Error ? err.message : "Failed to save asset");

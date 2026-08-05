@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { 
   Package,
-  FolderOpen,
-  Shield,
   FileText,
   Wrench,
   History,
@@ -14,13 +12,8 @@ import {
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import {
-  propertyHubIssuesPath,
-  propertySubPath,
-  WORKBENCH_RECORDS_VIEW_QUERY,
-  normalizeRecordsView,
-} from '@/lib/propertyRoutes';
 import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
+import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
 import fillaLogo from '@/assets/filla-logo.svg';
 import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
 import fillaDarkLogo from '@/assets/filla-dark.png';
@@ -30,36 +23,7 @@ import { useAssistantContext } from '@/contexts/AssistantContext';
 import { APP_VERSION } from '@/config/version';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Property context — deep links (workbench home is global Home + scope chips)
-const propertyContextItems = [
-  {
-    title: 'Attention',
-    icon: CheckSquare,
-    getUrl: (id: string) => propertyHubIssuesPath(id),
-  },
-  {
-    title: 'Assets',
-    icon: Package,
-    getUrl: (id: string) => `/assets?property=${encodeURIComponent(id)}`,
-  },
-  {
-    title: 'Compliance',
-    icon: Shield,
-    getUrl: (id: string) => propertySubPath(id, 'compliance'),
-  },
-  {
-    title: 'Documents',
-    icon: FileText,
-    getUrl: (id: string) => propertySubPath(id, 'documents'),
-  },
-  {
-    title: 'Spaces',
-    icon: FolderOpen,
-    getUrl: (id: string) => propertySubPath(id, 'spaces-organise'),
-  },
-];
-
-// Asset context items (from Appendix A: Overview, Tasks, Maintenance, History, Documents, Photos, Warranty)
+/** Asset context items (Appendix A: Overview, Tasks, Maintenance, History, Documents, Photos, Warranty) */
 const assetContextItems = [
   {
     title: 'Overview',
@@ -105,25 +69,18 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
-  const entityContext = useMemo(() => {
-    const pid = searchParams.get('property');
-    if (pid && ['/home', '/records', '/agenda', '/', ''].includes(currentPath)) {
-      return { type: 'property' as const, id: pid };
-    }
-    if (currentPath === '/properties' && pid) {
-      return { type: 'property' as const, id: pid };
-    }
-    if (currentPath === '/assets' && pid) {
-      return { type: 'property' as const, id: pid };
-    }
-    const propertyMatch = currentPath.match(/^\/(?:properties|property)\/([^/]+)/);
-    if (propertyMatch) {
-      return {
-        type: 'property' as const,
-        id: propertyMatch[1],
-      };
-    }
+  const { data: properties = [] } = usePropertiesQuery();
+  const isMultiProperty = properties.length > 1;
 
+  const mainNavItems = useMemo(
+    () =>
+      MAIN_NAV_ITEMS.filter(
+        (item) => item.title !== "Properties" || isMultiProperty
+      ),
+    [isMultiProperty]
+  );
+
+  const entityContext = useMemo(() => {
     const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
     if (assetMatch) {
       return {
@@ -133,26 +90,13 @@ export function AppSidebar() {
     }
 
     return null;
-  }, [currentPath, searchParams]);
+  }, [currentPath]);
 
   const contextItems = useMemo(() => {
     if (!entityContext) return [];
-    
-    if (entityContext.type === 'property') {
-      return propertyContextItems;
-    } else if (entityContext.type === 'asset') {
-      return assetContextItems;
-    }
-    
+    if (entityContext.type === 'asset') return assetContextItems;
     return [];
   }, [entityContext]);
-
-  const hidePropertyContextSidebar = useMemo(() => {
-    if (!entityContext || entityContext.type !== 'property') return false;
-    const path = currentPath === '' ? '/' : currentPath;
-    const isHubRoot = path === '/';
-    return isHubRoot && Boolean(searchParams.get('property'));
-  }, [currentPath, searchParams, entityContext]);
 
   const handleCreateNew = () => {
     const params = new URLSearchParams(searchParams);
@@ -194,23 +138,9 @@ export function AppSidebar() {
   ) => {
     const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
     const urlBase = url.split('?')[0];
-    const hubQuery = url.includes('?') ? new URLSearchParams(url.split('?')[1]) : null;
-    const hubPropertyId = hubQuery?.get('property');
-    const liveRecordsView = normalizeRecordsView(searchParams.get(WORKBENCH_RECORDS_VIEW_QUERY));
 
     const isActive = isContextItem
-      ? item.title === 'Attention'
-        ? currentPath === '/home' && searchParams.get('property') === hubPropertyId
-        : item.title === 'Compliance'
-          ? currentPath === '/records' &&
-            searchParams.get('property') === hubPropertyId &&
-            liveRecordsView === 'compliance'
-          : item.title === 'Documents'
-            ? currentPath === '/records' &&
-              searchParams.get('property') === hubPropertyId &&
-              liveRecordsView === 'documents'
-            : currentPath === urlBase ||
-              (isContextItem && currentPath.startsWith(urlBase + '/'))
+      ? currentPath === urlBase || currentPath.startsWith(urlBase + '/')
       : isMainNavActive(currentPath, url);
 
     const IconComponent = item.icon;
@@ -306,12 +236,12 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {MAIN_NAV_ITEMS.map((item) => renderNavItem(item))}
+              {mainNavItems.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {entityContext && contextItems.length > 0 && !hidePropertyContextSidebar && (
+        {entityContext && contextItems.length > 0 && (
           <SidebarGroup className="mt-8">
             {open && (
               <SidebarGroupLabel
@@ -320,7 +250,7 @@ export function AppSidebar() {
                   isMobile ? "text-white/50" : "text-foreground/50"
                 )}
               >
-                {entityContext.type === 'property' ? 'Property' : 'Asset'} Context
+                Asset Context
               </SidebarGroupLabel>
             )}
             <SidebarGroupContent>

@@ -40,7 +40,11 @@ function runFixtureAction(
       if (handled) return;
       // fall through for unhandled actions
     });
-    if (["signal-accept", "signal-snooze", "dismiss", "ignore"].includes(actionId)) {
+    if (
+      ["signal-accept", "signal-snooze", "dismiss", "ignore", "signal-promote-intake"].includes(
+        actionId
+      )
+    ) {
       return;
     }
   }

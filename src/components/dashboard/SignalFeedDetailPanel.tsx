@@ -1,11 +1,20 @@
-import { X } from "lucide-react";
-import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
+import { useState } from "react";
+import { Inbox, Loader2, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { IntakeActionButton, IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { columnShellClass, slideOverPanelClass } from "@/lib/layoutClasses";
+import {
+  columnShellClass,
+  slideOverBackdropClass,
+  slideOverCenterHostClass,
+  slideOverPanelClass,
+} from "@/lib/layoutClasses";
 import type { SignalKind } from "@/types/workbenchSignals";
 import { ISSUES_STREAM_META_CLASSNAME } from "@/components/dashboard/OperationalStreamCard";
 import type { IntakeMode } from "@/types/intake";
+import { usePromoteExternalEmailSignal } from "@/hooks/usePromoteExternalEmailSignal";
+import { useSignalActions } from "@/hooks/useSignalActions";
 
 /** Serializable snapshot for workbench signal / attention rows (matches TaskPanel AttentionItem fields used in UI). */
 export type SignalFeedDetailSnapshot = {
@@ -40,6 +49,8 @@ interface SignalFeedDetailPanelProps {
   onClose: () => void;
   variant?: "modal" | "column";
   onOpenIntake?: (mode: IntakeMode) => void;
+  /** Opens Add to Filla after promoting an external email signal. */
+  onOpenAddToFilla?: () => void;
 }
 
 const GROUP_LABEL: Record<SignalFeedDetailSnapshot["group"], string> = {
@@ -57,11 +68,43 @@ export function SignalFeedDetailPanel({
   onClose,
   variant = "modal",
   onOpenIntake,
+  onOpenAddToFilla,
 }: SignalFeedDetailPanelProps) {
   const metaLine = snapshot.context?.trim();
+  const isExternalEmail = snapshot.signalSubtype === "ingestion.external_email";
+  const promote = usePromoteExternalEmailSignal();
+  const { dismiss } = useSignalActions();
+  const [actionPending, setActionPending] = useState<"promote" | "dismiss" | null>(null);
+
+  const handlePromote = async () => {
+    if (!snapshot.signalId || actionPending) return;
+    setActionPending("promote");
+    try {
+      await promote.mutateAsync(snapshot.signalId);
+      onOpenAddToFilla?.();
+      onClose();
+    } catch {
+      // toast handled by hook
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  const handleDismiss = async () => {
+    if (!snapshot.signalId || actionPending) return;
+    setActionPending("dismiss");
+    try {
+      await dismiss.mutateAsync(snapshot.signalId);
+      onClose();
+    } catch {
+      // toast handled by hook
+    } finally {
+      setActionPending(null);
+    }
+  };
 
   const panelInner = (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/40 px-4 py-3 shadow-paper-edge">
         <div className="min-w-0">
           <p className="text-2xs font-semibold uppercase tracking-wider text-primary">
@@ -71,9 +114,9 @@ export function SignalFeedDetailPanel({
         </div>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-8 w-8 shrink-0"
+          className="h-8 w-8 shrink-0 shadow-e1 text-foreground"
           onClick={onClose}
           aria-label="Close"
         >
@@ -85,13 +128,17 @@ export function SignalFeedDetailPanel({
         {metaLine ? <p className={ISSUES_STREAM_META_CLASSNAME}>{metaLine}</p> : null}
         {snapshot.whyHere?.trim() ? (
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Why this is here</p>
+            <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
+              Why this is here
+            </p>
             <p className="mt-1 text-sm leading-relaxed text-foreground">{snapshot.whyHere.trim()}</p>
           </div>
         ) : null}
         {snapshot.description?.trim() ? (
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Details</p>
+            <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
+              Details
+            </p>
             <p className="mt-1 text-sm leading-relaxed text-foreground">{snapshot.description.trim()}</p>
           </div>
         ) : null}
@@ -103,24 +150,30 @@ export function SignalFeedDetailPanel({
             </p>
           </div>
         ) : null}
-        {snapshot.signalSubtype === "ingestion.external_email" && snapshot.signalPayload ? (
+        {isExternalEmail && snapshot.signalPayload ? (
           <div className="space-y-3 rounded-xl bg-muted/25 p-3 text-sm shadow-e1">
             {snapshot.signalPayload.from ? (
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Sender</p>
+                <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
+                  Sender
+                </p>
                 <p className="mt-0.5 text-foreground">{String(snapshot.signalPayload.from)}</p>
               </div>
             ) : null}
             {snapshot.signalPayload.subject ? (
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Subject</p>
+                <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
+                  Subject
+                </p>
                 <p className="mt-0.5 text-foreground">{String(snapshot.signalPayload.subject)}</p>
               </div>
             ) : null}
             {Array.isArray(snapshot.signalPayload.attachment_paths) &&
             snapshot.signalPayload.attachment_paths.length > 0 ? (
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Attachments</p>
+                <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
+                  Attachments
+                </p>
                 <ul className="mt-1 list-inside list-disc text-xs text-foreground">
                   {(snapshot.signalPayload.attachment_paths as string[]).map((path) => (
                     <li key={path} className="truncate">
@@ -133,8 +186,8 @@ export function SignalFeedDetailPanel({
           </div>
         ) : null}
         {snapshot.recommendation ? (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="rounded-xl bg-muted/25 p-3 text-sm shadow-e1">
+            <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
               Recommended action
             </p>
             <p className="mt-1 font-medium text-foreground">
@@ -147,33 +200,77 @@ export function SignalFeedDetailPanel({
             ) : null}
           </div>
         ) : null}
-        {onOpenIntake ? (
+      </div>
+
+      {isExternalEmail && snapshot.signalId ? (
+        <div className="flex shrink-0 flex-col gap-2 px-4 pb-4 pt-1">
+          <IntakeActionButton
+            mode="add_record"
+            variant="panel"
+            className="w-full"
+            disabled={actionPending !== null}
+            onClick={() => void handlePromote()}
+            showIcon={false}
+          >
+            {actionPending === "promote" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Converting…
+              </>
+            ) : (
+              <>
+                <Inbox className="h-4 w-4" aria-hidden />
+                Convert to review
+              </>
+            )}
+          </IntakeActionButton>
+          <button
+            type="button"
+            disabled={actionPending !== null}
+            onClick={() => void handleDismiss()}
+            className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-card text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-50"
+          >
+            {actionPending === "dismiss" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Dismissing…
+              </>
+            ) : (
+              "Dismiss"
+            )}
+          </button>
+        </div>
+      ) : onOpenIntake ? (
+        <div className="flex shrink-0 flex-col gap-1.5 px-4 pb-4 pt-1">
           <IntakeActionButtonPair
-            variant="micro"
-            className="pt-1"
+            variant="panel"
+            className="w-full gap-2"
             onAddRecord={() => onOpenIntake("add_record")}
             onReportIssue={() => onOpenIntake("report_issue")}
           />
-        ) : null}
-      </div>
-    </>
+        </div>
+      ) : null}
+    </div>
   );
 
   if (variant === "column") {
     return <div className={cn(columnShellClass, "overflow-hidden bg-card")}>{panelInner}</div>;
   }
 
-  return (
+  return createPortal(
     <>
-      <div className="fixed inset-0 z-40 bg-black/80 max-lg:block lg:hidden" onClick={onClose} aria-hidden="true" />
-      <div
-        className={cn(
-          slideOverPanelClass,
-          "transform transition-transform duration-300 ease-out translate-x-0"
-        )}
-      >
-        {panelInner}
+      <div className={slideOverBackdropClass} onClick={onClose} aria-hidden="true" />
+      <div className={slideOverCenterHostClass}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={snapshot.title}
+          className={slideOverPanelClass}
+        >
+          {panelInner}
+        </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
