@@ -74,8 +74,20 @@ async function uploadSubtaskEvidence(params: {
   file: Blob;
   fileName: string;
   fileType: string;
+  /** When false, skip task-gallery rollup (signatures stay checklist-only). */
+  rollupToTaskGallery?: boolean;
+  metadata?: Record<string, unknown>;
 }): Promise<{ attachmentId: string; fileUrl: string }> {
-  const { orgId, taskId, subtaskId, file, fileName, fileType } = params;
+  const {
+    orgId,
+    taskId,
+    subtaskId,
+    file,
+    fileName,
+    fileType,
+    rollupToTaskGallery = true,
+    metadata,
+  } = params;
   const ext = fileName.split(".").pop() || "bin";
   const path = `org/${orgId}/tasks/${taskId}/subtasks/${subtaskId}/${crypto.randomUUID()}.${ext}`;
 
@@ -99,6 +111,7 @@ async function uploadSubtaskEvidence(params: {
       file_type: fileType || null,
       file_size: file.size,
       upload_status: "complete",
+      metadata: metadata ?? {},
     })
     .select("id")
     .single();
@@ -107,16 +120,21 @@ async function uploadSubtaskEvidence(params: {
     throw new Error(attachError?.message || "Failed to create attachment");
   }
 
-  await supabase.from("attachments").insert({
-    org_id: orgId,
-    parent_type: "task",
-    parent_id: taskId,
-    file_url: urlData.publicUrl,
-    file_name: fileName,
-    file_type: fileType || null,
-    file_size: file.size,
-    upload_status: "complete",
-  });
+  // Photos/files may appear in the task gallery; signatures must not — they are
+  // viewed via checklist "View evidence" and must not become the task thumbnail.
+  if (rollupToTaskGallery) {
+    await supabase.from("attachments").insert({
+      org_id: orgId,
+      parent_type: "task",
+      parent_id: taskId,
+      file_url: urlData.publicUrl,
+      file_name: fileName,
+      file_type: fileType || null,
+      file_size: file.size,
+      upload_status: "complete",
+      metadata: metadata ?? {},
+    });
+  }
 
   return { attachmentId: attachment.id as string, fileUrl: urlData.publicUrl as string };
 }
@@ -175,9 +193,11 @@ export async function completeChecklistStep({
       file: blob,
       fileName: "signature.png",
       fileType: "image/png",
+      rollupToTaskGallery: false,
+      metadata: { evidence_kind: "signature" },
     });
     attachmentId = uploaded.attachmentId;
-    fileMeta = { signature_image: true, file_url: uploaded.fileUrl };
+    fileMeta = { signature_image: true, file_url: uploaded.fileUrl, evidence_kind: "signature" };
   } else if (response.file) {
     const uploaded = await uploadSubtaskEvidence({
       orgId,
@@ -186,6 +206,8 @@ export async function completeChecklistStep({
       file: response.file,
       fileName: response.file.name,
       fileType: response.file.type || "application/octet-stream",
+      rollupToTaskGallery: stepType === "photo",
+      metadata: { evidence_kind: stepType === "photo" ? "photo" : "file" },
     });
     attachmentId = uploaded.attachmentId;
     fileMeta = {

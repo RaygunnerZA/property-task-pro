@@ -83,6 +83,7 @@ import {
   resolveTaskAssigneeUsers,
 } from "@/lib/userDisplayHelpers";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
+import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -205,6 +206,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       setMilestones(Array.isArray(rawMs) ? rawMs : (typeof rawMs === 'string' ? JSON.parse(rawMs) : []));
       const attachmentList = Array.isArray((task as any).images) ? (task as any).images : [];
       const hasImageAttachment = attachmentList.some((attachment: any) => {
+        if (isSignatureEvidenceAttachment(attachment)) return false;
         const fileType = String(attachment?.file_type || "").toLowerCase();
         const fileName = String(attachment?.file_name || "").toLowerCase();
         return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
@@ -933,6 +935,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         const src = attachment?.file_url || attachment?.thumbnail_url || "";
         // Ignore space mini-card art stored on tasks.image_url — not a real upload
         if (isTaskSpaceIllustrationUrl(src)) return false;
+        // Signatures are checklist evidence only — not gallery / hero thumbnails
+        if (isSignatureEvidenceAttachment(attachment)) return false;
         const fileType = String(attachment?.file_type || "").toLowerCase();
         const fileName = String(attachment?.file_name || "").toLowerCase();
         // image_url fallback from tasks_view may omit mime / file_name

@@ -1,5 +1,6 @@
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { getSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 import type { SignalKind } from "@/types/workbenchSignals";
 
 /** Path prefix for default task thumbnails sourced from space mini-card art. */
@@ -123,6 +124,7 @@ function firstUploadedTaskImageUrl(task: Record<string, unknown> | null | undefi
 
   const firstImage =
     images.find((attachment) => {
+      if (isSignatureEvidenceAttachment(attachment)) return false;
       const candidate =
         pickRealUpload(attachment?.thumbnail_url) || pickRealUpload(attachment?.file_url);
       if (!candidate) return false;

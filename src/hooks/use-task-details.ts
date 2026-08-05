@@ -3,6 +3,7 @@ import { useSupabase } from "../integrations/supabase/useSupabase";
 import { useActiveOrg } from "./useActiveOrg";
 import type { Tables } from "../integrations/supabase/types_new";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 
 type TaskRow = Tables<"tasks">;
 
@@ -121,7 +122,7 @@ export function useTaskDetails(taskId: string | undefined) {
       if (!taskId || !orgId) return [];
       const { data, error } = await supabase
         .from("attachments")
-        .select("id, file_url, thumbnail_url, optimized_url, file_name, file_type, annotation_json, created_at, parent_type, parent_id, org_id")
+        .select("id, file_url, thumbnail_url, optimized_url, file_name, file_type, annotation_json, created_at, parent_type, parent_id, org_id, metadata")
         .eq("parent_type", "task")
         .eq("parent_id", taskId)
         .eq("org_id", orgId)
@@ -131,7 +132,9 @@ export function useTaskDetails(taskId: string | undefined) {
         console.error("Error fetching task attachments:", error);
         return [];
       }
-      return (data || []).map((att: any) => ({
+      return (data || [])
+        .filter((att: any) => !isSignatureEvidenceAttachment(att))
+        .map((att: any) => ({
         id: att.id,
         file_url: att.file_url,
         thumbnail_url: att.thumbnail_url,
@@ -140,6 +143,7 @@ export function useTaskDetails(taskId: string | undefined) {
         file_type: att.file_type,
         annotation_json: Array.isArray(att.annotation_json) ? att.annotation_json : [],
         created_at: att.created_at,
+        metadata: att.metadata ?? null,
       }));
     },
     enabled: !!taskId && !!orgId && isValidTaskId && !orgLoading,
@@ -179,6 +183,7 @@ export function useTaskDetails(taskId: string | undefined) {
       }
     })();
     const firstImageAttachment = resolvedImages.find((attachment: any) => {
+      if (isSignatureEvidenceAttachment(attachment)) return false;
       const fileType = String(attachment?.file_type || "").toLowerCase();
       const fileName = String(attachment?.file_name || "").toLowerCase();
       return fileType.startsWith("image/") || /\.(png|jpe?g|webp|gif|heic|heif|bmp|svg)$/.test(fileName);
