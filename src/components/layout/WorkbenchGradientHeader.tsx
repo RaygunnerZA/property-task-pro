@@ -16,6 +16,9 @@ import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { cn } from "@/lib/utils";
 
+/** Matches DualPane left-rail `sm:pl-[12px]` so the gradient lines up with the property card. */
+const HEADER_ALIGN_INSET_CLASS = "left-3";
+
 /** Gradient strip: colour solid until ~33%, then fades to transparent, with paper grain. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
   return paperTexturedGradientHeaderStyle(color);
@@ -118,14 +121,17 @@ export function WorkbenchGradientHeader({
             "layout:grid-cols-workbench-triple"
           )}
         >
-          {/* Full-bleed gradient: extends left over the icon rail / left nav column. */}
+          {/* Inset gradient so its left edge matches the property card, not the sidebar. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 lg:-left-[var(--sidebar-width-icon)]"
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-0 rounded-l-xl",
+              HEADER_ALIGN_INSET_CLASS
+            )}
             style={headerStyle}
           />
 
-          <div className="relative z-10 flex min-w-0 items-center gap-2.5 pl-5 pr-3 sm:pl-7 sm:pr-[18px] sm:pt-[22px]">
+          <div className="relative z-10 flex min-w-0 items-center gap-2.5 px-3 sm:px-[18px] sm:pt-[22px]">
             <Link
               to="/"
               className="flex shrink-0 items-center rounded-md outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"

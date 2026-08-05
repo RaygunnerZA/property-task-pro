@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
@@ -8,6 +9,13 @@ import {
 import { useDataContext } from "@/contexts/DataContext";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
+import {
+  useTaskCommentSignalsMap,
+} from "@/hooks/useTaskCommentSignals";
+import {
+  isTaskCommentSignalNew,
+  TASK_COMMENT_SEEN_EVENT,
+} from "@/lib/taskCommentSeen";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import {
   isOnboardingDemoTask,
@@ -17,10 +25,10 @@ import { isStaffTrainingTask } from "@/lib/staffTraining";
 import { cn } from "@/lib/utils";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
-type TasksListTab = "all" | "urgent" | "my";
+type TasksListTab = "all" | "urgent" | "my" | "messages";
 
 const TASKS_LIST_TABS: {
-  id: TasksListTab;
+  id: Exclude<TasksListTab, "messages">;
   label: string;
   /** Use `\n` for an intentional mobile line break (rendered with `whitespace-pre-line`). */
   subtitle: string;
@@ -46,6 +54,12 @@ const TASKS_LIST_TABS: {
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork,
   },
 ];
+
+const MESSAGES_TAB_META = {
+  id: "messages" as const,
+  subtitle: "Open tasks with unread messages.",
+  illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview,
+};
 
 const TERMINAL_TASK_STATUSES = new Set(["completed", "archived", "done"]);
 
@@ -78,8 +92,18 @@ function sortRecentlyAdded(tasks: any[]) {
   );
 }
 
+function useTaskCommentSeenTick() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onSeen = () => setTick((n) => n + 1);
+    window.addEventListener(TASK_COMMENT_SEEN_EVENT, onSeen);
+    return () => window.removeEventListener(TASK_COMMENT_SEEN_EVENT, onSeen);
+  }, []);
+  return tick;
+}
+
 /**
- * Tasks tab — single list with All / Urgent / My tasks tabs.
+ * Tasks tab — single list with All / Urgent / My tasks (+ Messages when unread).
  * All (default) is sorted by recently added; includes work assigned to others.
  */
 export function TasksWorkbenchPanel({
@@ -96,6 +120,8 @@ export function TasksWorkbenchPanel({
   const memberRole =
     identityMode === "manager" ? "manager" : identityMode === "staff" ? "staff" : "owner";
   const [listTab, setListTab] = useState<TasksListTab>("all");
+  const { data: latestByTask } = useTaskCommentSignalsMap();
+  const seenTick = useTaskCommentSeenTick();
 
   // List tabs replace Due / Urgent / My Tasks chips — clear them so they don't double-filter.
   useEffect(() => {
@@ -138,20 +164,50 @@ export function TasksWorkbenchPanel({
     [scopedOpenTasks]
   );
 
+  const messageTasks = useMemo(() => {
+    void seenTick;
+    if (!latestByTask) return [];
+    return scopedOpenTasks.filter((task) => {
+      const latest = latestByTask[String(task.id)];
+      if (!latest) return false;
+      return isTaskCommentSignalNew({
+        taskId: String(task.id),
+        createdAt: latest.createdAt,
+        authorUserId: latest.authorUserId,
+        currentUserId: userId,
+      });
+    });
+  }, [scopedOpenTasks, latestByTask, userId, seenTick]);
+
+  const messagesTabVisible = messageTasks.length >= 1;
+
+  // If unread messages clear while on the Messages tab, fall back to All.
+  useEffect(() => {
+    if (listTab === "messages" && !messagesTabVisible) {
+      setListTab("all");
+    }
+  }, [listTab, messagesTabVisible]);
+
   const tabCounts: Record<TasksListTab, number> = {
     all: allTasks.length,
     urgent: urgentTasks.length,
     my: myTasks.length,
+    messages: messageTasks.length,
   };
 
   const visibleTasks = useMemo(() => {
     if (listTab === "urgent") return sortRecentlyAdded(urgentTasks);
     if (listTab === "my") return sortRecentlyAdded(myTasks);
+    if (listTab === "messages") return sortRecentlyAdded(messageTasks);
     return allTasks;
-  }, [listTab, allTasks, urgentTasks, myTasks]);
+  }, [listTab, allTasks, urgentTasks, myTasks, messageTasks]);
 
   const activeTabMeta =
-    TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
+    listTab === "messages"
+      ? MESSAGES_TAB_META
+      : TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
+
+  const MessagesIcon = messageTasks.length > 1 ? MessageSquareMore : MessageSquare;
 
   return (
     <div className="min-w-0">
@@ -208,6 +264,49 @@ export function TasksWorkbenchPanel({
                   </div>
                 );
               })}
+
+              {messagesTabVisible ? (
+                <div className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2">
+                  <span
+                    className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                    aria-hidden
+                  >
+                    |
+                  </span>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={listTab === "messages"}
+                    aria-label={`Messages, ${tabCounts.messages} unread`}
+                    onClick={() => setListTab("messages")}
+                    className={cn(
+                      "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                      listTab === "messages"
+                        ? cn(
+                            workbenchSectionTitleClassName,
+                            "text-lg text-foreground md:text-xl"
+                          )
+                        : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                    )}
+                  >
+                    <MessagesIcon
+                      className="h-[1cap] w-[1cap] shrink-0"
+                      strokeWidth={listTab === "messages" ? 2.25 : 1.75}
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
+                        listTab === "messages"
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/60"
+                      )}
+                    >
+                      {tabCounts.messages}
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
