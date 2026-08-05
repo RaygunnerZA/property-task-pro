@@ -33,23 +33,20 @@ import {
 import { SubtaskOptionsMenu } from "./SubtaskOptionsMenu";
 import { cn } from "@/lib/utils";
 import type { OrgMember } from "@/hooks/useOrgMembers";
+import {
+  getStepType,
+  resolveIsSubStep,
+  stepTypeToLegacy,
+  STEP_TYPES_ORDERED,
+  type StepNote,
+  type StepType,
+  type SubtaskData,
+} from "./stepTypes";
+
+export type { StepNote, StepType, SubtaskData };
+export { getStepType, resolveIsSubStep, stepTypeToLegacy, STEP_TYPES_ORDERED };
 
 // ─── Step Type System ─────────────────────────────────────────────────────────
-
-export type StepType =
-  | "check"
-  | "yes_no"
-  | "text"
-  | "number"
-  | "photo"
-  | "file"
-  | "signature"
-  | "scan"
-  | "pass_fail"
-  | "title"
-  | "note"
-  | "sub_step"
-  | "divider";
 
 export interface StepTypeConfig {
   icon: LucideIcon;
@@ -72,66 +69,12 @@ export const STEP_TYPE_CONFIG: Record<StepType, StepTypeConfig> = {
   divider:   { icon: Minus,       label: "Divider"    },
 };
 
-/** @deprecated — use RESPONSE_TYPES / FORMAT_TYPES internally. Kept for external compatibility. */
-export const STEP_TYPES_ORDERED: StepType[] = [
-  "check", "yes_no", "text", "number", "photo", "file", "signature", "scan", "pass_fail",
-];
-
 const RESPONSE_TYPES: StepType[] = [
   "check", "yes_no", "text", "number", "photo", "file", "signature", "scan", "pass_fail",
 ];
 
-const FORMAT_TYPES: StepType[] = ["title", "note", "sub_step", "divider"];
-
-// ─── SubtaskData ──────────────────────────────────────────────────────────────
-
-export interface StepNote {
-  text: string;
-  created_at: string;
-  created_by_name?: string;
-  created_by_avatar?: string;
-}
-
-export interface SubtaskData {
-  id: string;
-  title: string;
-  /** @deprecated Use step_type. Kept for DB / RPC compatibility. */
-  is_yes_no: boolean;
-  /** @deprecated Use step_type. Kept for DB / RPC compatibility. */
-  requires_signature: boolean;
-  /** UI-layer step type. Supersedes is_yes_no / requires_signature. */
-  step_type?: StepType;
-  /** When true, a red asterisk is shown and completion is mandatory. */
-  is_required?: boolean;
-  /** When true, shows a follow-up branch indicator for failed checks. */
-  has_followup_if_failed?: boolean;
-  /** Org user ID pre-assigned to complete this step. */
-  assigned_user_id?: string;
-  /** Display name of the assigned user (denormalised for quick render). */
-  assigned_user_name?: string;
-  /** Inline annotation note attached to this step. */
-  note?: StepNote;
-  /** Follow-up step shown when this step is marked failed. */
-  followup?: { title: string; step_type?: StepType };
-}
-
-/** Resolve the effective step type from a SubtaskData record. */
-export function getStepType(step: SubtaskData): StepType {
-  if (step.step_type) return step.step_type;
-  if (step.is_yes_no) return "yes_no";
-  if (step.requires_signature) return "signature";
-  return "check";
-}
-
-/** Sync the legacy boolean fields from a step type (for DB compat). */
-export function stepTypeToLegacy(
-  type: StepType
-): Pick<SubtaskData, "is_yes_no" | "requires_signature"> {
-  return {
-    is_yes_no: type === "yes_no",
-    requires_signature: type === "signature",
-  };
-}
+/** Structural-only types — mutually exclusive with response types. */
+const STRUCTURE_ONLY_TYPES: StepType[] = ["title", "note", "divider"];
 
 // ─── Keyword Detection ────────────────────────────────────────────────────────
 
@@ -241,9 +184,8 @@ export function SubtaskCard({
   };
 
   const currentType = getStepType(subtask);
-  const { icon: StepIcon } = STEP_TYPE_CONFIG[currentType];
-  const isFormatType = FORMAT_TYPES.includes(currentType);
-  const isSubStep = currentType === "sub_step";
+  const isStructureOnly = STRUCTURE_ONLY_TYPES.includes(currentType);
+  const isSubStep = resolveIsSubStep(subtask);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -293,6 +235,24 @@ export function SubtaskCard({
       e.preventDefault();
       setIsFocused(false);
       onEnterPress(subtask.id);
+    } else if (e.key === "Tab") {
+      e.preventDefault();
+      if (e.shiftKey) {
+        if (!isSubStep) return;
+        onUpdate(subtask.id, {
+          is_sub_step: false,
+          ...(subtask.step_type === "sub_step"
+            ? { step_type: "check", ...stepTypeToLegacy("check") }
+            : {}),
+        });
+      } else {
+        onUpdate(subtask.id, {
+          is_sub_step: true,
+          ...(subtask.step_type === "sub_step"
+            ? { step_type: "check", ...stepTypeToLegacy("check") }
+            : {}),
+        });
+      }
     } else if (e.key === "Backspace" && subtask.title === "") {
       e.preventDefault();
       if (backspaceCount >= 1) {
@@ -327,9 +287,41 @@ export function SubtaskCard({
   };
 
   const handleTypeSelect = (type: StepType) => {
+    // Indent is orthogonal — toggle without replacing response type
+    if (type === "sub_step") {
+      const next = !isSubStep;
+      onUpdate(subtask.id, {
+        is_sub_step: next,
+        ...(subtask.step_type === "sub_step"
+          ? { step_type: "check", ...stepTypeToLegacy("check") }
+          : {}),
+      });
+      return;
+    }
+
+    if (STRUCTURE_ONLY_TYPES.includes(type)) {
+      onUpdate(subtask.id, {
+        step_type: type,
+        ...stepTypeToLegacy(type),
+        ...(type === "divider" ? { is_sub_step: false } : {}),
+      });
+      return;
+    }
+
+    // Response type — keep indent
     onUpdate(subtask.id, {
       step_type: type,
       ...stepTypeToLegacy(type),
+      is_sub_step: isSubStep || subtask.step_type === "sub_step",
+    });
+  };
+
+  const handleOutdent = () => {
+    onUpdate(subtask.id, {
+      is_sub_step: false,
+      ...(subtask.step_type === "sub_step"
+        ? { step_type: "check", ...stepTypeToLegacy("check") }
+        : {}),
     });
   };
 
@@ -412,18 +404,46 @@ export function SubtaskCard({
           className="group/row flex items-center gap-[3px] pl-0 pr-0 py-0 rounded"
           style={{ backgroundColor: "rgba(255, 255, 255, 0)", height: "42px" }}
         >
-          {/* Drag Handle */}
-          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
-            <GripVertical className="h-4 w-4 text-muted-foreground/40" />
-          </div>
-
-          {/* Circle checkbox — marks step complete (decorative in creator mode) */}
-          {currentType !== "divider" && (
-            <div className="shrink-0 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center">
-              {!isCreator && (
-                <Check className="h-2.5 w-2.5 text-accent opacity-0 group-hover/row:opacity-30 transition-opacity" />
-              )}
+          {/* Drag Handle — authoring only */}
+          {isCreator ? (
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
+              <GripVertical className="h-4 w-4 text-muted-foreground/40" />
             </div>
+          ) : (
+            <div className="w-4 shrink-0" aria-hidden />
+          )}
+
+          {/* Circle checkbox — marks step complete */}
+          {currentType !== "divider" && (
+            <button
+              type="button"
+              disabled={isCreator}
+              onClick={() => {
+                if (isCreator) return;
+                onUpdate(subtask.id, { is_completed: !subtask.is_completed });
+              }}
+              className={cn(
+                "shrink-0 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
+                !isCreator && "cursor-pointer",
+                isCreator && "cursor-default"
+              )}
+              aria-label={
+                subtask.is_completed
+                  ? `Mark ${subtask.title || "step"} incomplete`
+                  : `Mark ${subtask.title || "step"} complete`
+              }
+            >
+              <Check
+                className={cn(
+                  "h-2.5 w-2.5 text-accent transition-opacity",
+                  subtask.is_completed
+                    ? "opacity-100"
+                    : isCreator
+                      ? "opacity-0"
+                      : "opacity-0 group-hover/row:opacity-30"
+                )}
+              />
+            </button>
           )}
 
           {/* Divider step — render a horizontal rule instead of input */}
@@ -465,10 +485,13 @@ export function SubtaskCard({
                 onKeyDown={handleKeyDown}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
+                readOnly={!isCreator}
                 className={cn(
                   "w-full min-h-[32px] max-h-[64px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none overflow-y-auto",
                   currentType === "title" ? "text-lg md:text-lg font-semibold" : "text-sm md:text-sm",
-                  currentType === "note" && "italic"
+                  currentType === "note" && "italic",
+                  !isCreator && "cursor-default",
+                  !isCreator && subtask.is_completed && "text-muted-foreground line-through"
                 )}
                 style={{
                   border: "none",
@@ -527,16 +550,32 @@ export function SubtaskCard({
           />
 
           {/* ── Right-side step-type affordances ─────────────────── */}
-          {!isFormatType && (
+          {!isStructureOnly && (
             <>
               {currentType === "yes_no" && (
                 <div className="shrink-0 flex items-center rounded-lg bg-primary shadow-[inset_1px_6.5px_7.2px_0px_rgba(0,0,0,0.25),inset_-1px_-3.9px_3.5px_0px_rgba(255,255,255,0.53),inset_0px_-1.1px_0.6px_0px_rgba(255,255,255,1)] px-0.5 pt-0.5 pb-[3px] w-[68px] border-none">
-                  <span className="h-6 px-[9px] rounded-md flex items-center text-2xs font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)]">
+                  <button
+                    type="button"
+                    disabled={isCreator}
+                    onClick={() => {
+                      if (isCreator) return;
+                      onUpdate(subtask.id, { is_completed: true });
+                    }}
+                    className="h-6 px-[9px] rounded-md flex items-center text-2xs font-medium text-muted-foreground/50 bg-card shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.8)] disabled:cursor-default"
+                  >
                     No
-                  </span>
-                  <span className="h-6 px-[6px] rounded-md flex items-center text-2xs font-medium text-white/75">
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isCreator}
+                    onClick={() => {
+                      if (isCreator) return;
+                      onUpdate(subtask.id, { is_completed: true });
+                    }}
+                    className="h-6 px-[6px] rounded-md flex items-center text-2xs font-medium text-white/75 disabled:cursor-default"
+                  >
                     Yes
-                  </span>
+                  </button>
                 </div>
               )}
 
@@ -633,8 +672,8 @@ export function SubtaskCard({
           )}
         </div>
 
-        {/* ── Inline type selector — expands when step is focused ──── */}
-        {currentType !== "divider" && (
+        {/* ── Inline type selector — authoring only ──── */}
+        {isCreator && currentType !== "divider" && (
           <div
             className={cn(
               "grid transition-[grid-template-rows] duration-200 ease-out",
@@ -679,10 +718,11 @@ export function SubtaskCard({
                   }}
                 />
 
-                {/* Format types — teal tint */}
+                {/* Format / structure types — teal tint; sub_step toggles indent */}
                 {(["title", "note", "sub_step", "divider"] as StepType[]).map((type, i) => {
                   const { icon: TypeIcon } = STEP_TYPE_CONFIG[type];
-                  const isSelected = currentType === type;
+                  const isSelected =
+                    type === "sub_step" ? isSubStep : currentType === type;
                   const delay = (RESPONSE_TYPES.length + 1 + i) * 22;
                   return (
                     <button
@@ -701,18 +741,24 @@ export function SubtaskCard({
                         transform: isFocused ? "translateX(0)" : "translateX(-6px)",
                         transition: `opacity 0.15s ease ${delay}ms, transform 0.15s ease ${delay}ms, color 0.1s`,
                       }}
-                      title={STEP_TYPE_CONFIG[type].label}
+                      title={
+                        type === "sub_step"
+                          ? isSubStep
+                            ? "Sub-step (on)"
+                            : "Sub-step"
+                          : STEP_TYPE_CONFIG[type].label
+                      }
                     >
                       <TypeIcon className="h-3 w-3 shrink-0" />
                     </button>
                   );
                 })}
 
-                {/* Outdent — only when current type is sub_step */}
+                {/* Outdent — only when indented */}
                 {isSubStep && (
                   <button
                     type="button"
-                    onMouseDown={(e) => { e.preventDefault(); handleTypeSelect("check"); }}
+                    onMouseDown={(e) => { e.preventDefault(); handleOutdent(); }}
                     className="flex items-center h-[22px] w-[22px] justify-center rounded-sm bg-transparent transition-all focus:outline-none hover:bg-card hover:shadow-[1px_2px_2px_0px_rgba(0,0,0,0.12),-2px_-2px_2px_0px_rgba(255,255,255,0.7)]"
                     style={{
                       color: "rgba(42,41,62,0.5)",

@@ -27,6 +27,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { includesMeetingSignal, minuteKeyFromDate } from "./createTaskModalMeetingSignals";
 import type { SubtaskInput } from "./SubtasksSection";
 import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
+import {
+  parseChecklistTemplateItems,
+  serializeChecklistTemplateItems,
+} from "@/lib/checklistTemplateItems";
 import type { PendingTaskFile } from "./ImageUploadSection";
 import type { MilestoneItem } from "./WhenSection";
 import type { PendingInvitation } from "./tabs/WhoTab";
@@ -215,9 +219,7 @@ export function useCreateTaskForm({
   }), []);
 
   const normalizeChecklistItems = useCallback((items: SubtaskInput[]) => {
-    return items
-      .map((s) => ({ title: s.title.trim(), is_yes_no: Boolean(s.is_yes_no), requires_signature: Boolean(s.requires_signature) }))
-      .filter((item) => item.title.length > 0);
+    return serializeChecklistTemplateItems(items);
   }, []);
 
   const rememberRecentTemplate = useCallback((id: string) => {
@@ -234,21 +236,7 @@ export function useCreateTaskForm({
       toast({ title: "Template not found", variant: "destructive" });
       return;
     }
-    const rawItems = Array.isArray(template.items) ? template.items : [];
-    const parsedSubtasks = rawItems
-      .map((item): SubtaskInput | null => {
-        if (typeof item === "string") {
-          const t = item.trim();
-          return t ? makeSubtaskFromText(t) : null;
-        }
-        if (item && typeof item === "object") {
-          const c = item as { title?: string; label?: string; is_yes_no?: boolean; requires_signature?: boolean };
-          const t = (c.title || c.label || "").trim();
-          return t ? { id: crypto.randomUUID(), title: t, is_yes_no: Boolean(c.is_yes_no), requires_signature: Boolean(c.requires_signature) } : null;
-        }
-        return null;
-      })
-      .filter((item): item is SubtaskInput => Boolean(item));
+    const parsedSubtasks = parseChecklistTemplateItems(template.items);
 
     if (parsedSubtasks.length === 0) {
       toast({ title: "Template is empty", description: "No checklist items to import.", variant: "destructive" });

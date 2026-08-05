@@ -49,6 +49,7 @@ import { mergeAiPeopleIntoChips } from "@/services/ai/mergeAiPeopleChips";
 import { enrichSuggestionChipsWithEntities } from "@/services/ai/enrichSuggestionChipsWithEntities";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
+import { toErrorMessage } from "@/lib/error";
 import {
   intakeFooterSubmitAddRecordClassName,
   intakeFooterSubmitReportIssueClassName,
@@ -74,6 +75,11 @@ import { AISuggestionChips } from "@/components/tasks/create/AISuggestionChips";
 import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
 import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
 import type { SubtaskData } from "@/components/tasks/subtasks";
+import {
+  parseChecklistTemplateItems,
+  serializeChecklistTemplateItems,
+} from "@/lib/checklistTemplateItems";
+import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
@@ -700,13 +706,7 @@ export function IntakeModal({
   }), []);
 
   const normalizeChecklistItems = useCallback((items: SubtaskData[]) => {
-    return items
-      .map((subtask) => ({
-        title: subtask.title.trim(),
-        is_yes_no: Boolean(subtask.is_yes_no),
-        requires_signature: Boolean(subtask.requires_signature),
-      }))
-      .filter((item) => item.title.length > 0);
+    return serializeChecklistTemplateItems(items);
   }, []);
 
   const importTemplateItems = useCallback((incomingTemplateId: string) => {
@@ -720,33 +720,7 @@ export function IntakeModal({
       return;
     }
 
-    const rawItems = Array.isArray(template.items) ? template.items : [];
-    const parsedSubtasks = rawItems
-      .map((item): SubtaskData | null => {
-        if (typeof item === "string") {
-          const title = item.trim();
-          return title ? makeSubtaskFromText(title) : null;
-        }
-        if (item && typeof item === "object") {
-          const candidate = item as {
-            title?: string;
-            label?: string;
-            is_yes_no?: boolean;
-            requires_signature?: boolean;
-          };
-          const title = (candidate.title || candidate.label || "").trim();
-          if (!title) return null;
-          return {
-            id: crypto.randomUUID(),
-            title,
-            is_yes_no: Boolean(candidate.is_yes_no),
-            requires_signature: Boolean(candidate.requires_signature),
-            step_type: "check",
-          };
-        }
-        return null;
-      })
-      .filter((item): item is SubtaskData => Boolean(item));
+    const parsedSubtasks = parseChecklistTemplateItems(template.items);
 
     if (parsedSubtasks.length === 0) {
       toast({
@@ -3340,22 +3314,30 @@ export function IntakeModal({
       }
 
       const normalizedSubtasks = subtasks
-        .map((step, index) => ({
-          task_id: newTask.id,
-          org_id: orgId,
-          title: step.title.trim(),
-          is_yes_no: Boolean(step.is_yes_no),
-          requires_signature: Boolean(step.requires_signature),
-          order_index: index,
-          is_completed: false,
-          completed: false,
-        }))
-        .filter((step) => step.title.length > 0);
+        .map((step, index) => {
+          const fields = buildSubtaskPersistFields(step, index);
+          if (!fields.title) return null;
+          return {
+            task_id: newTask.id,
+            org_id: orgId,
+            ...fields,
+          };
+        })
+        .filter(Boolean);
 
       if (normalizedSubtasks.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: subtaskError } = await (supabase as any).from("subtasks").insert(normalizedSubtasks);
-        if (subtaskError) throw subtaskError;
+        if (subtaskError) {
+          console.error("[IntakeModal] Error saving checklist:", subtaskError);
+          toast({
+            title: "Task created, checklist incomplete",
+            description: toErrorMessage(subtaskError, "Couldn't save checklist items."),
+            variant: "destructive",
+          });
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["task-subtask-count", newTask.id] });
+        }
       }
 
       if (selectedSpaceIds.length > 0) {
@@ -3399,8 +3381,7 @@ export function IntakeModal({
       onOpenChange(false);
       resetForm();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      showIntakeError("Could not create task", message);
+      showIntakeError("Could not create task", toErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

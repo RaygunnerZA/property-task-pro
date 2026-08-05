@@ -1,19 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { useSubtasks } from "@/hooks/useSubtasks";
 import { useChecklistTemplates } from "@/hooks/useChecklistTemplates";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { applyTemplateToTask } from "@/services/tasks/taskMutations";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  SubtaskList,
+  type SubtaskData,
+  getStepType,
+  stepTypeToLegacy,
+  resolveIsSubStep,
+} from "@/components/tasks/subtasks";
+import { rowToChecklistItem } from "@/lib/subtaskPersist";
 
 type TaskDetailChecklistTabProps = {
   taskId: string;
@@ -22,6 +30,8 @@ type TaskDetailChecklistTabProps = {
   canManageTemplates?: boolean;
   /** When true, only render the list (header actions are rendered by the parent). */
   listOnly?: boolean;
+  /** Use the create-task style editor (step types, indent, etc.). */
+  editMode?: boolean;
 };
 
 /** Template actions for overflow menus (Task Detail More menu). */
@@ -70,14 +80,14 @@ export function TaskDetailChecklistActions({
         {canEdit && templates.map((t) => (
           <DropdownMenuItem
             key={t.id}
-            onClick={() => void handleApplyTemplate(t.id)}
+            onSelect={() => void handleApplyTemplate(t.id)}
             disabled={applyingTemplateId === t.id || templatesLoading}
           >
             Apply “{t.name}”
           </DropdownMenuItem>
         ))}
         {canManageTemplates ? (
-          <DropdownMenuItem onClick={() => navigate("/manage/templates")}>
+          <DropdownMenuItem onSelect={() => navigate("/manage/templates")}>
             Manage checklists
           </DropdownMenuItem>
         ) : null}
@@ -90,7 +100,7 @@ export function TaskDetailChecklistActions({
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {!hasItems && canEdit && templates.length > 0 ? (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
@@ -100,11 +110,11 @@ export function TaskDetailChecklistActions({
               Use template
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+          <DropdownMenuContent align="start" className="z-[120] max-h-64 overflow-y-auto">
             {templates.map((t) => (
               <DropdownMenuItem
                 key={t.id}
-                onClick={() => void handleApplyTemplate(t.id)}
+                onSelect={() => void handleApplyTemplate(t.id)}
                 disabled={applyingTemplateId === t.id}
               >
                 {t.name}
@@ -122,38 +132,176 @@ export function TaskDetailChecklistTab({
   canEdit,
   canManageTemplates = false,
   listOnly = false,
+  editMode = false,
 }: TaskDetailChecklistTabProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const {
     subtasks,
     loading,
     createSubtask,
     toggleSubtask,
     deleteSubtask,
+    updateSubtask,
+    updateSubtaskOrder,
+    refresh,
   } = useSubtasks(taskId);
+
+  const [editorItems, setEditorItems] = useState<SubtaskData[]>([]);
+
+  useEffect(() => {
+    setEditorItems(subtasks.map(rowToChecklistItem));
+  }, [subtasks]);
+
+  const bumpCount = () => {
+    void queryClient.invalidateQueries({ queryKey: ["task-subtask-count", taskId] });
+  };
+
+  /** Authoring mode: change structure/types. Otherwise show requirements for completion. */
+  const isAuthoring = canEdit && editMode;
+
+  const handleEditorChange = async (next: SubtaskData[]) => {
+    if (!isAuthoring) {
+      // Completion / execute mode — only completion toggles are persisted here.
+      for (const item of next) {
+        const before = editorItems.find((s) => s.id === item.id);
+        if (!before) continue;
+        if (Boolean(before.is_completed) !== Boolean(item.is_completed)) {
+          const ok = await toggleSubtask(item.id);
+          if (!ok) {
+            toast({ title: "Couldn't update step", variant: "destructive" });
+            await refresh();
+            return;
+          }
+        }
+      }
+      setEditorItems(next);
+      bumpCount();
+      await refresh();
+      return;
+    }
+
+    const prev = editorItems;
+    setEditorItems(next);
+
+    const serverIds = new Set(subtasks.map((s) => String(s.id)));
+    const nextIds = new Set(next.map((s) => s.id));
+
+    for (const item of prev) {
+      if (serverIds.has(item.id) && !nextIds.has(item.id)) {
+        const ok = await deleteSubtask(item.id);
+        if (!ok) {
+          toast({ title: "Couldn't remove item", variant: "destructive" });
+          await refresh();
+          return;
+        }
+      }
+    }
+
+    let createdAny = false;
+    for (let index = 0; index < next.length; index++) {
+      const item = next[index];
+      const stepType = getStepType(item);
+      const legacy = stepTypeToLegacy(stepType);
+      const isSubStep = resolveIsSubStep(item);
+      if (!serverIds.has(item.id)) {
+        const created = await createSubtask(item.title.trim() || "Checklist item", {
+          is_yes_no: legacy.is_yes_no,
+          requires_signature: legacy.requires_signature,
+          step_type: stepType,
+          is_sub_step: isSubStep,
+          is_required: Boolean(item.is_required),
+          order_index: index,
+        });
+        if (!created) {
+          toast({ title: "Couldn't add item", variant: "destructive" });
+          await refresh();
+          return;
+        }
+        createdAny = true;
+        continue;
+      }
+
+      const before = prev.find((s) => s.id === item.id);
+      if (
+        before &&
+        (before.title !== item.title ||
+          getStepType(before) !== stepType ||
+          resolveIsSubStep(before) !== isSubStep ||
+          Boolean(before.is_required) !== Boolean(item.is_required) ||
+          Boolean(before.is_yes_no) !== legacy.is_yes_no ||
+          Boolean(before.requires_signature) !== legacy.requires_signature)
+      ) {
+        const ok = await updateSubtask(item.id, {
+          title: item.title,
+          is_yes_no: legacy.is_yes_no,
+          requires_signature: legacy.requires_signature,
+          step_type: stepType,
+          is_sub_step: isSubStep,
+          is_required: Boolean(item.is_required),
+          order_index: index,
+        });
+        if (!ok) {
+          toast({ title: "Couldn't update item", variant: "destructive" });
+          await refresh();
+          return;
+        }
+      }
+    }
+
+    const persistedOrder = next.map((s) => s.id).filter((id) => serverIds.has(id));
+    if (!createdAny && persistedOrder.length > 1) {
+      await updateSubtaskOrder(persistedOrder);
+    }
+
+    bumpCount();
+    await refresh();
+  };
 
   const handleAddItem = async () => {
     if (!canEdit) return;
-    const created = await createSubtask("New checklist item");
+    if (isAuthoring) {
+      const blank: SubtaskData = {
+        id: crypto.randomUUID(),
+        title: "",
+        is_yes_no: false,
+        requires_signature: false,
+        step_type: "check",
+      };
+      void handleEditorChange([...editorItems, blank]);
+      return;
+    }
+    const created = await createSubtask("New checklist item", { step_type: "check" });
     if (!created) {
       toast({ title: "Couldn't add item", variant: "destructive" });
+      return;
     }
+    bumpCount();
   };
 
   if (loading) {
     return <LoadingState message="Loading checklist…" />;
   }
 
+  const doneCount = subtasks.filter((row) => Boolean(row.is_completed || row.completed)).length;
+
   return (
     <div className="space-y-3">
       {!listOnly ? (
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-medium text-foreground">Checklist</h3>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
+            {subtasks.length > 0 ? (
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                {doneCount}/{subtasks.length} done
+              </p>
+            ) : null}
+          </div>
           {canEdit ? (
             <button
               type="button"
               onClick={() => void handleAddItem()}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+              className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               Add item
@@ -162,46 +310,23 @@ export function TaskDetailChecklistTab({
         </div>
       ) : null}
 
-      {subtasks.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No checklist items yet.</p>
+      {editorItems.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {isAuthoring
+            ? "No checklist items yet. Add steps like Create Task."
+            : "No checklist items yet."}
+        </p>
       ) : (
-        <ul className="divide-y divide-border/40">
-          {subtasks.map((row) => {
-            const done = Boolean(row.is_completed || row.completed);
-            return (
-              <li key={row.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                  checked={done}
-                  disabled={!canEdit}
-                  onChange={() => void toggleSubtask(row.id)}
-                  aria-label={`Mark ${row.title} complete`}
-                />
-                <span
-                  className={cn(
-                    "flex-1 text-sm leading-snug text-foreground",
-                    done && "text-muted-foreground line-through"
-                  )}
-                >
-                  {row.title}
-                </span>
-                {canEdit ? (
-                  <button
-                    type="button"
-                    className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-                    onClick={() => void deleteSubtask(row.id)}
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
+        <SubtaskList
+          subtasks={editorItems}
+          isCreator={isAuthoring}
+          onSubtasksChange={(next) => {
+            if (!isAuthoring && !canEdit) return;
+            void handleEditorChange(next);
+          }}
+        />
       )}
 
-      {/* Keep template manage available for empty state without crowding the page */}
       {!listOnly && subtasks.length === 0 && canEdit ? (
         <TaskDetailChecklistActions
           taskId={taskId}

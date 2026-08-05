@@ -28,6 +28,8 @@ import type { SubtaskInput } from "./SubtasksSection";
 import type { PendingTaskFile } from "./ImageUploadSection";
 import type { PendingInvitation } from "./tabs/WhoTab";
 import type { CreateTaskPrefill } from "../CreateTaskModal";
+import { toErrorMessage } from "@/lib/error";
+import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 
 export interface UseCreateTaskSubmitProps {
   // Auth
@@ -82,6 +84,7 @@ export function useCreateTaskSubmit({
   pendingInvitations,
   images,
   taskFiles,
+  subtasks,
   appliedChips,
   aiTitleGenerated,
   chipSuggestedIcon,
@@ -228,6 +231,37 @@ export function useCreateTaskSubmit({
       });
 
       const taskId = newTask.id;
+
+      // ── Checklist / subtasks ───────────────────────────────────────────────
+
+      const normalizedSubtasks = subtasks
+        .map((step, index) => {
+          const fields = buildSubtaskPersistFields(step, index);
+          if (!fields.title) return null;
+          return {
+            task_id: taskId,
+            org_id: orgId,
+            ...fields,
+          };
+        })
+        .filter(Boolean);
+
+      if (normalizedSubtasks.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: subtaskError } = await (supabase as any)
+          .from("subtasks")
+          .insert(normalizedSubtasks);
+        if (subtaskError) {
+          console.error("[useCreateTaskSubmit] Error saving checklist:", subtaskError);
+          toast({
+            title: "Task created, checklist incomplete",
+            description: toErrorMessage(subtaskError, "Couldn't save checklist items."),
+            variant: "destructive",
+          });
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["task-subtask-count", taskId] });
+        }
+      }
 
       // ── Background attachment uploads ─────────────────────────────────────
 
@@ -402,7 +436,7 @@ export function useCreateTaskSubmit({
     orgId, orgLoading, title, description, propertyId, selectedPropertyIds,
     selectedSpaceIds, selectedThemeIds, selectedAssetIds, priority, dueDate,
     milestones, assignedUserId, assignedTeamIds, pendingInvitations,
-    images, taskFiles, appliedChips, aiTitleGenerated, chipSuggestedIcon,
+    images, taskFiles, subtasks, appliedChips, aiTitleGenerated, chipSuggestedIcon,
     generateVerbLabel, prefill, taskCreatedSource, resetForm, onOpenChange, onTaskCreated,
   ]);
 

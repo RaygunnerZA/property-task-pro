@@ -8,6 +8,8 @@ export type TaskDetailScrollSection = {
   content: ReactNode;
   /** Skip empty sections. */
   hidden?: boolean;
+  /** Stronger surface treatment (e.g. Checklist). */
+  elevated?: boolean;
 };
 
 export type TaskDetailContentProps = {
@@ -16,9 +18,11 @@ export type TaskDetailContentProps = {
   title: string;
   /** Hero image + readable metadata. */
   hero?: ReactNode;
-  /** Description body — omit section heading when `descriptionHeading` is false. */
-  description: ReactNode;
+  /** Description body — omit section when empty / heading false. */
+  description?: ReactNode | null;
   descriptionHeading?: boolean | string;
+  /** Hide the description block entirely. */
+  hideDescription?: boolean;
   sections: TaskDetailScrollSection[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
@@ -35,19 +39,21 @@ export function TaskDetailContent({
   hero,
   description,
   descriptionHeading = "Description",
+  hideDescription = false,
   sections,
   scrollRef,
   className,
 }: TaskDetailContentProps) {
   const visibleSections = sections.filter((s) => !s.hidden);
+  const showDescription = !hideDescription && description != null;
 
   return (
     <div
       ref={scrollRef}
       className={cn("flex-1 overflow-y-auto min-h-0 flex flex-col", className)}
     >
-      <div className="px-5 pt-5 pb-20 space-y-8">
-        <header className="space-y-6">
+      <div className="px-5 pt-4 pb-3 space-y-6">
+        <header className="space-y-4">
           {showTitle ? (
             <h2 className="text-xl font-semibold text-foreground leading-snug tracking-tight pr-2">
               {title}
@@ -56,20 +62,26 @@ export function TaskDetailContent({
           {hero}
         </header>
 
-        <section className="space-y-3" aria-label="Description">
-          {descriptionHeading ? (
-            <h3 className="text-sm font-medium text-foreground">
-              {typeof descriptionHeading === "string" ? descriptionHeading : "Description"}
-            </h3>
-          ) : null}
-          {description}
-        </section>
+        {showDescription ? (
+          <section className="space-y-2" aria-label="Description">
+            {descriptionHeading ? (
+              <h3 className="text-sm font-medium text-foreground">
+                {typeof descriptionHeading === "string" ? descriptionHeading : "Description"}
+              </h3>
+            ) : null}
+            {description}
+          </section>
+        ) : null}
 
         {visibleSections.map((section) => (
           <section
             key={section.id}
             id={`task-detail-${section.id}`}
-            className="space-y-3"
+            className={cn(
+              "space-y-3",
+              section.elevated &&
+                "rounded-[12px] bg-muted/25 px-3.5 py-3.5 shadow-e1"
+            )}
           >
             {section.title ? (
               typeof section.title === "string" ? (

@@ -314,6 +314,7 @@ export function TaskMessaging({
       await refresh();
       markTaskCommentSeen(taskId);
       void queryClient.invalidateQueries({ queryKey: ["task-comment-signals", orgId] });
+      void queryClient.invalidateQueries({ queryKey: ["task-comment-count", taskId] });
     } catch (err: unknown) {
       console.error("Error sending message:", err);
       toast({
@@ -349,8 +350,8 @@ export function TaskMessaging({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className={cn("min-h-0 px-0.5", variant === "activity" ? "space-y-4" : "space-y-2.5")}>
+    <div className="flex flex-col gap-2">
+      <div className={cn("min-h-0 px-0.5", variant === "activity" ? "space-y-5" : "space-y-2.5")}>
         {loading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -373,29 +374,28 @@ export function TaskMessaging({
 
             if (variant === "activity") {
               return (
-                <div key={message.id} className="flex gap-2.5">
+                <div key={message.id} className="flex gap-3">
                   <UserAvatar
                     imageUrl={author.imageUrl}
                     name={author.name}
                     propertyColor={author.accentColor}
-                    size={22}
+                    size={20}
                     shape="card"
-                    className="mt-0.5 !h-[22px] !w-[22px] !min-h-[22px] !min-w-[22px] shrink-0 rounded-[7px]"
+                    className="mt-0.5 !h-5 !w-5 !min-h-5 !min-w-5 shrink-0 rounded-[6px]"
                   />
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className="text-sm font-medium text-foreground">{author.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(message.created_at), "MMM d, HH:mm")}
-                      </span>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">{author.name}</span>
+                      {" · "}
+                      {format(new Date(message.created_at), "MMM d · HH:mm")}
+                    </p>
                     {message.body ? (
                       <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
                         {message.body}
                       </p>
                     ) : null}
                     {messageAtts.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 pt-1">
+                      <div className="flex flex-wrap gap-2 pt-0.5">
                         {messageAtts.map((attachment) => {
                           const isImage = attachment.file_type?.startsWith("image/");
                           return isImage ? (
@@ -409,7 +409,7 @@ export function TaskMessaging({
                               <img
                                 src={attachment.file_url}
                                 alt={attachment.file_name || "Attachment"}
-                                className="h-16 w-16 object-cover"
+                                className="h-14 w-14 object-cover"
                               />
                             </a>
                           ) : (
@@ -521,7 +521,7 @@ export function TaskMessaging({
 
       {/* Unified compose box: attach controls stacked top-left; caption below thumbs */}
       {!hideComposer ? (
-      <div className="rounded-[12px] bg-background shadow-engraved p-2.5">
+      <div className="rounded-[12px] bg-input p-2.5 shadow-engraved">
         <input
           ref={imageInputRef}
           type="file"

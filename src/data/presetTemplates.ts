@@ -440,13 +440,20 @@ export function presetItemsToSubtasks(
   title: string;
   is_yes_no: boolean;
   requires_signature: boolean;
-  step_type: "check";
+  step_type: "check" | "yes_no" | "signature";
+  is_sub_step: boolean;
+  is_required: boolean;
 }> {
-  return items.map((item) => ({
-    id: crypto.randomUUID(),
-    title: item.title,
-    is_yes_no: item.is_yes_no,
-    requires_signature: item.requires_signature,
-    step_type: "check" as const,
-  }));
+  return items.map((item) => {
+    const step_type = item.is_yes_no ? "yes_no" : item.requires_signature ? "signature" : "check";
+    return {
+      id: crypto.randomUUID(),
+      title: item.title,
+      is_yes_no: item.is_yes_no,
+      requires_signature: item.requires_signature,
+      step_type,
+      is_sub_step: false,
+      is_required: false,
+    };
+  });
 }

@@ -9,6 +9,7 @@ export {
 } from "./TaskDetailHeroMeta";
 export type {
   TaskDetailImageThumb,
+  TaskDetailStatusCounts,
   FillaUnderstoodItem,
   TaskDetailRelatedLink,
 } from "./TaskDetailHeroMeta";

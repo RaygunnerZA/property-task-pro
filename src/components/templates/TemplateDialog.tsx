@@ -47,7 +47,15 @@ interface TemplateDialogProps {
 }
 
 function makeItem(title = ""): SubtaskData {
-  return { id: crypto.randomUUID(), title, is_yes_no: false, requires_signature: false };
+  return {
+    id: crypto.randomUUID(),
+    title,
+    is_yes_no: false,
+    requires_signature: false,
+    step_type: "check",
+    is_sub_step: false,
+    is_required: false,
+  };
 }
 
 export function TemplateDialog({

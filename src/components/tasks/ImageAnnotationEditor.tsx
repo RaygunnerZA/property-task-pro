@@ -1154,7 +1154,7 @@ export function ImageAnnotationEditor({
     }
   };
 
-  const handleDone = useCallback(async () => {
+  const handleDone = async () => {
     if (!hasUnsavedChanges) {
       onCancel();
       return;
@@ -1163,7 +1163,7 @@ export function ImageAnnotationEditor({
     if (result !== "failed") {
       onCancel();
     }
-  }, [hasUnsavedChanges, handleSave, onCancel]);
+  };
 
   // Escape: clear selection → cancel text → close editor
   useEffect(() => {
@@ -1237,16 +1237,23 @@ export function ImageAnnotationEditor({
       role="dialog"
       aria-modal="true"
       aria-label="Annotate image"
-      className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
+      className="fixed inset-0 z-[10000] flex flex-col bg-black/90 pointer-events-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}
     >
       {/* Top bar — always visible exit + primary action */}
-      <header className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:px-4">
+      <header
+        className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:px-4 pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
-          onClick={handleCancel}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleCancel();
+          }}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           aria-label="Close"
         >
@@ -1284,7 +1291,11 @@ export function ImageAnnotationEditor({
         <Button
           type="button"
           size="sm"
-          onClick={() => void handleDone()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void handleDone();
+          }}
           disabled={isSaving}
           className="shrink-0 bg-primary text-primary-foreground shadow-none"
         >
@@ -1421,7 +1432,10 @@ export function ImageAnnotationEditor({
       ) : null}
 
       {/* Bottom tool strip */}
-      <footer className="relative z-20 flex shrink-0 items-center justify-center gap-1 border-t border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:gap-1.5 sm:px-4">
+      <footer
+        className="relative z-20 flex shrink-0 items-center justify-center gap-1 border-t border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md sm:gap-1.5 sm:px-4 pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button type="button" onClick={handleUndo} disabled={historyIndex === 0} className={toolButtonClass(false)} title="Undo" aria-label="Undo">
           <Undo2 className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", historyIndex === 0 && "opacity-40")} />
         </button>

@@ -3,6 +3,12 @@ import { supabase as _supabase } from '@/integrations/supabase/client';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabase = _supabase as any;
 import type { ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
+import {
+  parseChecklistTemplateItems,
+  serializeChecklistTemplateItems,
+  type ChecklistTemplateItemJson,
+} from "@/lib/checklistTemplateItems";
+import { getStepType, stepTypeToLegacy } from "@/components/tasks/subtasks/stepTypes";
 
 function isMissingColumnError(
   error: { code?: string; message?: string } | null,
@@ -16,11 +22,7 @@ function usesLegacyTemplateItems(error: { code?: string; message?: string } | nu
   return isMissingColumnError(error, "items") || isMissingColumnError(error, "category");
 }
 
-export interface TemplateItem {
-  title: string;
-  is_yes_no: boolean;
-  requires_signature: boolean;
-}
+export type TemplateItem = ChecklistTemplateItemJson;
 
 export interface SaveTemplateArgs {
   orgId: string;
@@ -44,15 +46,18 @@ async function insertLegacyTemplateItems(
 ) {
   if (items.length === 0) return { error: null };
 
-  const rows = items.map((item, index) => ({
-    org_id: orgId,
-    template_id: templateId,
-    title: item.title,
-    order_index: index,
-    is_yes_no: item.is_yes_no,
-    requires_signature: item.requires_signature,
-    is_archived: false,
-  }));
+  const rows = items.map((item, index) => {
+    const legacy = stepTypeToLegacy(getStepType(item));
+    return {
+      org_id: orgId,
+      template_id: templateId,
+      title: item.title,
+      order_index: index,
+      is_yes_no: legacy.is_yes_no,
+      requires_signature: legacy.requires_signature,
+      is_archived: false,
+    };
+  });
 
   return supabase.from("checklist_template_items").insert(rows);
 }
@@ -157,24 +162,19 @@ export async function duplicateTemplate(
 }
 
 export function normalizeItems(
-  items: Array<{ title: string; is_yes_no?: boolean; requires_signature?: boolean } | string>
-): TemplateItem[] {
-  return items
-    .map((item) => {
-      if (typeof item === "string") {
-        const title = item.trim();
-        return title ? { title, is_yes_no: false, requires_signature: false } : null;
+  items: Array<
+    | {
+        title: string;
+        is_yes_no?: boolean;
+        requires_signature?: boolean;
+        step_type?: string;
+        is_sub_step?: boolean;
+        is_required?: boolean;
       }
-      const title = (item.title ?? "").trim();
-      return title
-        ? {
-            title,
-            is_yes_no: Boolean(item.is_yes_no),
-            requires_signature: Boolean(item.requires_signature),
-          }
-        : null;
-    })
-    .filter((item): item is TemplateItem => item !== null);
+    | string
+  >
+): TemplateItem[] {
+  return serializeChecklistTemplateItems(parseChecklistTemplateItems(items));
 }
 
 /** Map legacy checklist_template_items rows to JSONB item shape. */
@@ -186,11 +186,13 @@ export function legacyTemplateItemsToJson(
     order_index?: number | null;
   }>
 ): TemplateItem[] {
-  return [...rows]
-    .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-    .map((row) => ({
-      title: row.title,
-      is_yes_no: Boolean(row.is_yes_no),
-      requires_signature: Boolean(row.requires_signature),
-    }));
+  return serializeChecklistTemplateItems(
+    [...rows]
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      .map((row) => ({
+        title: row.title,
+        is_yes_no: Boolean(row.is_yes_no),
+        requires_signature: Boolean(row.requires_signature),
+      }))
+  );
 }

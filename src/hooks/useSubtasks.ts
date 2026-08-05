@@ -28,7 +28,7 @@ export function useSubtasks(taskId?: string) {
       .select("*")
       .eq("task_id", taskId)
       .eq("org_id", orgId)
-      .eq("is_archived", false)
+      .or("is_archived.eq.false,is_archived.is.null")
       .order("order_index", { ascending: true });
 
     if (err) setError(err.message);
@@ -47,6 +47,9 @@ export function useSubtasks(taskId?: string) {
     is_yes_no?: boolean;
     requires_signature?: boolean;
     order_index?: number;
+    step_type?: string;
+    is_sub_step?: boolean;
+    is_required?: boolean;
   }) {
     if (!taskId || !orgId) return null;
 
@@ -58,9 +61,13 @@ export function useSubtasks(taskId?: string) {
         title,
         is_yes_no: options?.is_yes_no ?? false,
         requires_signature: options?.requires_signature ?? false,
+        step_type: options?.step_type ?? "check",
+        is_sub_step: options?.is_sub_step ?? false,
+        is_required: options?.is_required ?? false,
         order_index: options?.order_index ?? subtasks.length,
         is_completed: false,
         completed: false,
+        is_archived: false,
       })
       .select()
       .single();
@@ -110,6 +117,32 @@ export function useSubtasks(taskId?: string) {
     return true;
   }
 
+  async function updateSubtask(
+    subtaskId: string,
+    updates: {
+      title?: string;
+      is_yes_no?: boolean;
+      requires_signature?: boolean;
+      order_index?: number;
+      step_type?: string;
+      is_sub_step?: boolean;
+      is_required?: boolean;
+    }
+  ) {
+    const { error: err } = await supabase
+      .from("subtasks")
+      .update(updates)
+      .eq("id", subtaskId);
+
+    if (err) {
+      setError(err.message);
+      return false;
+    }
+
+    await fetchSubtasks();
+    return true;
+  }
+
   async function updateSubtaskOrder(subtaskIds: string[]) {
     const updates = subtaskIds.map((id, index) => ({
       id,
@@ -140,6 +173,7 @@ export function useSubtasks(taskId?: string) {
     createSubtask, 
     toggleSubtask, 
     deleteSubtask,
+    updateSubtask,
     updateSubtaskOrder,
   };
 }

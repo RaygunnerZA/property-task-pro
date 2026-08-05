@@ -26,6 +26,7 @@ export interface UpdateTaskVariables {
   propertyId?: string | null;
   updates: {
     title?: string;
+    description?: string | null;
     status?: TaskStatus;
     priority?: TaskPriority;
     due_date?: string | null;

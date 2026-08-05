@@ -38,23 +38,24 @@ export const TaskTimeline: React.FC<TaskTimelineProps> = ({
   }
 
   const list = (
-    <div className={cn(variant === "activity" ? "space-y-3" : "space-y-4")}>
+    <div className={cn(variant === "activity" ? "space-y-5" : "space-y-4")}>
       {events.map((event, index) => {
         const EventIcon = getEventIcon(event.type);
         const isLast = index === events.length - 1;
 
         if (variant === "activity") {
           return (
-            <div key={event.id} className="flex gap-2.5">
-              <div className="mt-0.5 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
-                <EventIcon className="h-3 w-3" />
+            <div key={event.id} className="flex gap-3">
+              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground/70">
+                <EventIcon className="h-3.5 w-3.5" />
               </div>
               <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-sm leading-snug text-foreground">{event.description}</p>
-                <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                  {event.author ? <span>{event.author}</span> : null}
-                  <span>{format(new Date(event.timestamp), "MMM d, HH:mm")}</span>
-                </div>
+                <p className="text-sm leading-relaxed text-foreground/90">{event.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {[event.author, format(new Date(event.timestamp), "MMM d · HH:mm")]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
               </div>
             </div>
           );

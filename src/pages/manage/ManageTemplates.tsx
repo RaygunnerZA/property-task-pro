@@ -53,6 +53,7 @@ import {
   isRegulatedStarterPreset,
 } from "@/data/presetTemplates";
 import type { SubtaskData } from "@/components/tasks/subtasks";
+import { parseChecklistTemplateItems } from "@/lib/checklistTemplateItems";
 
 const FILTER_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: string }> = [
   { id: "all", label: "All" },
@@ -74,24 +75,7 @@ const CATEGORY_BG: Record<ChecklistTemplateCategory, string> = {
 };
 
 function parseItems(raw: unknown): SubtaskData[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .map((item) => {
-      if (typeof item === "string") {
-        return item.trim()
-          ? { id: crypto.randomUUID(), title: item.trim(), is_yes_no: false, requires_signature: false }
-          : null;
-      }
-      if (item && typeof item === "object") {
-        const { title = "", label = "", is_yes_no = false, requires_signature = false } = item as Record<string, unknown>;
-        const t = ((title as string) || (label as string) || "").trim();
-        return t
-          ? { id: crypto.randomUUID(), title: t, is_yes_no: Boolean(is_yes_no), requires_signature: Boolean(requires_signature) }
-          : null;
-      }
-      return null;
-    })
-    .filter(Boolean) as SubtaskData[];
+  return parseChecklistTemplateItems(raw);
 }
 
 interface TemplateCardProps {
@@ -346,13 +330,7 @@ export default function ManageTemplates() {
     if (!orgId) return;
     setSubmitting(true);
 
-    const normalizedItems = normalizeItems(
-      value.items.map((i) => ({
-        title: i.title,
-        is_yes_no: i.is_yes_no,
-        requires_signature: i.requires_signature,
-      }))
-    );
+    const normalizedItems = normalizeItems(value.items);
 
     try {
       if (dialogState?.mode === "edit") {

@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
-import { SubtaskCard, SubtaskData } from "./SubtaskCard";
+import { SubtaskCard, SubtaskData, resolveIsSubStep } from "./SubtaskCard";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 
 interface SubtaskListProps {
@@ -114,12 +114,15 @@ export function SubtaskList({
   const handleEnterPress = useCallback(
     (id: string) => {
       const index = subtasks.findIndex((s) => s.id === id);
+      const prev = index >= 0 ? subtasks[index] : undefined;
       const newSubtask: SubtaskData = {
         id: crypto.randomUUID(),
         title: "",
         is_yes_no: false,
         requires_signature: false,
         step_type: "check",
+        // Continue nest level when adding after an indented step
+        is_sub_step: prev ? resolveIsSubStep(prev) : false,
       };
 
       const newSubtasks = [...subtasks];

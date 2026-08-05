@@ -6,5 +6,6 @@ export {
   STEP_TYPE_CONFIG,
   STEP_TYPES_ORDERED,
   getStepType,
+  resolveIsSubStep,
   stepTypeToLegacy,
 } from "./SubtaskCard";
