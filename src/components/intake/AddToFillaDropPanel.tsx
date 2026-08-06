@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils";
 import addToFillaIllustration from "@/assets/add-to-filla-drop.png";
 
 const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
+
+/** Full-size illustration (non-compact); 15% smaller than the prior 180×160 art. */
+const ILLUSTRATION_H_PX = Math.round(180 * 0.85);
+const ILLUSTRATION_W_PX = Math.round(160 * 0.85);
+const ILLUSTRATION_DIM_DELAY_MS = 20_000;
+const ILLUSTRATION_DIM_OPACITY = 0.5;
 
 interface AddToFillaDropPanelProps {
   className?: string;
@@ -39,6 +45,12 @@ export function AddToFillaDropPanel({
   const [uploading, setUploading] = useState(false);
   const [lastUploaded, setLastUploaded] = useState(0);
   const [lastFailures, setLastFailures] = useState<string[]>([]);
+  const [illustrationDimmed, setIllustrationDimmed] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setIllustrationDimmed(true), ILLUSTRATION_DIM_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const uploadSingleFile = async (file: File) => {
     if (!orgId) {
@@ -168,8 +180,13 @@ export function AddToFillaDropPanel({
           <div
             className={cn(
               "shrink-0 flex items-center justify-center rounded-[10px]",
-              compact ? "h-12 w-12 bg-primary/10" : "h-[180px] w-[160px]"
+              compact ? "h-12 w-12 bg-primary/10" : undefined
             )}
+            style={
+              compact
+                ? undefined
+                : { height: ILLUSTRATION_H_PX, width: ILLUSTRATION_W_PX }
+            }
           >
             {uploading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary-deep" />
@@ -178,9 +195,21 @@ export function AddToFillaDropPanel({
                 src={addToFillaIllustration}
                 alt=""
                 className={cn(
-                  "object-contain",
-                  compact ? "h-9 w-9" : "h-[180px] w-[160px]"
+                  "object-contain transition-opacity duration-700 ease-in-out motion-reduce:transition-none",
+                  compact ? "h-9 w-9" : undefined
                 )}
+                style={
+                  compact
+                    ? undefined
+                    : {
+                        height: ILLUSTRATION_H_PX,
+                        width: ILLUSTRATION_W_PX,
+                        opacity:
+                          illustrationDimmed && !dragActive
+                            ? ILLUSTRATION_DIM_OPACITY
+                            : 1,
+                      }
+                }
                 draggable={false}
               />
             )}

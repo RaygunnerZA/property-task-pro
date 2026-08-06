@@ -15,15 +15,16 @@ import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { SuggestedSpacesStrip } from "@/components/spaces/SuggestedSpacesStrip";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";
-import { PageHeader } from "@/components/design-system/PageHeader";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
+import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import { FillaIcon } from "@/components/filla/FillaIcon";
 import { toast } from "sonner";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 
 /**
  * Space Group Screen - Template for all space groups (Circulation, Service Areas, etc.)
@@ -47,7 +48,7 @@ export default function SpaceGroupScreen() {
   const [isLargeScreen, setIsLargeScreen] = useState(false);
   const [expandedSection, setExpandedSection] = useState<"add-space" | "create" | "details" | "assistant" | null>("add-space");
 
-  const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading: assistantLoading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
+  const { isOpen: assistantOpen, closeAssistant, assistantContext, messages, proposedAction, loading: assistantLoading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
   useEffect(() => {
     const check = () => setIsLargeScreen(window.innerWidth >= LAYOUT_BREAKPOINTS.layout);
@@ -92,41 +93,9 @@ export default function SpaceGroupScreen() {
     return <LoadingState />;
   }
 
-  const gradientStyle = {
-    backgroundImage: `linear-gradient(to right, ${group.color} 0%, ${group.color} 20%, transparent 70%, transparent 100%)`,
-  };
-
   const header = (
     <>
-      <PageHeader className="hidden lg:block">
-        <div
-          className="relative flex h-[60px] items-center rounded-bl-xl px-4 pr-24 py-2"
-          style={gradientStyle}
-        >
-          <div className="min-w-0 flex-1">
-            <h1 className="text-2xl font-semibold leading-tight text-white">{group.label}</h1>
-            <p className="mt-1 text-sm text-white/80">
-              {property?.nickname || property?.address || "Add spaces"}
-            </p>
-          </div>
-          {propertyId && (
-            <button
-              type="button"
-              onClick={() =>
-                openAssistant({
-                  type: "property",
-                  id: propertyId,
-                  name: property?.nickname || property?.address || "Property",
-                })
-              }
-              className="absolute right-[5.5rem] top-1/2 z-10 -translate-y-1/2 rounded-lg bg-white/20 p-2 transition-colors hover:bg-white/30"
-              aria-label="Open Assistant"
-            >
-              <FillaIcon size={20} className="brightness-0 invert" />
-            </button>
-          )}
-        </div>
-      </PageHeader>
+      <GlobalAppHeader accentColor={group.color || FILLA_TURQUOISE} />
       {propertyId && groupSlug && (
         <WorkspaceScopeStrip>
           <PropertyPageScopeBar
@@ -229,7 +198,7 @@ export default function SpaceGroupScreen() {
   ) : undefined;
 
   return (
-    <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-workbench property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       <DualPaneLayout
         header={header}
         leftColumn={
@@ -254,9 +223,14 @@ export default function SpaceGroupScreen() {
         }
         rightColumn={
           <div className="min-h-screen bg-background overflow-y-auto">
-            {/* Mini space cards at top */}
+            <div className="px-[15px] pt-[15px]">
+              <PageContentTitle
+                title={group.label}
+                subtitle={property?.nickname || property?.address || "Add spaces"}
+              />
+            </div>
             {propertyId && groupSlug && group?.color && (
-              <div className="px-[15px] pt-[15px]">
+              <div className="px-[15px]">
                 <SpaceGroupMiniCardsStrip
                   propertyId={propertyId}
                   groupSlug={groupSlug}
@@ -269,7 +243,6 @@ export default function SpaceGroupScreen() {
             )}
 
             <div className="p-[15px] space-y-6">
-              {/* Add Space button - opens modal on narrow, concertina on wide */}
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">Add spaces</h2>
                 {!isLargeScreen && (

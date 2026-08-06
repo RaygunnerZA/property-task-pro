@@ -96,9 +96,14 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
               aria-hidden={!isExpanded}
               className={cn(
                 "overflow-hidden transition-[max-height,opacity] duration-300 ease-in-out",
-                section.id === "details" && "shadow-[3px_4px_5.4px_0px_rgba(0,0,0,0.15),-3px_-7px_4.8px_0px_rgba(255,255,255,0.7)]",
-                section.id === "details" && "rounded-xl",
-                isExpanded ? "max-h-[70vh] opacity-100 overflow-y-auto" : "max-h-0 opacity-0 pointer-events-none"
+                section.id === "details" &&
+                  "rounded-xl shadow-[3px_4px_5.4px_0px_rgba(0,0,0,0.15),-3px_-7px_4.8px_0px_rgba(255,255,255,0.7)] [overflow-anchor:none]",
+                isExpanded
+                  ? // Details: grow with content (top-aligned); scroll the column, not an inner 70vh frame.
+                    section.id === "details"
+                    ? "max-h-none opacity-100"
+                    : "max-h-[70vh] opacity-100 overflow-y-auto"
+                  : "max-h-0 opacity-0 pointer-events-none"
               )}
             >
               {section.children}

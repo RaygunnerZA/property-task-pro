@@ -1,9 +1,7 @@
 import { ReactNode } from "react";
-import { PageHeader } from "./PageHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { MobilePageTitleBar } from "@/components/design-system/MobilePageTitleBar";
-import { createGradientHeaderStyle } from "@/components/layout/WorkbenchGradientHeader";
-import { useThemeColor } from "@/hooks/useThemeColor";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
+import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +14,7 @@ interface StandardPageProps {
   maxWidth?: "sm" | "md" | "lg" | "xl" | "full";
   showBottomNav?: boolean;
   className?: string;
+  /** @deprecated No longer applied — header chrome is shared; kept for call-site compat. */
   headerClassName?: string;
   contentClassName?: string;
   /**
@@ -23,13 +22,16 @@ interface StandardPageProps {
    * Pass a property colour only on property-scoped pages.
    */
   headerAccentColor?: string;
+  /** Omit in-content title when the page renders its own heading. */
+  hideTitle?: boolean;
 }
 
 /**
  * StandardPage - A standardized page layout component
  *
  * Provides consistent structure across all pages:
- * - Gradient header strip (Filla turquoise by default)
+ * - Full-bleed logo + gradient + search header (same as workbench)
+ * - Page title in the main content column
  * - Consistent max-width containers
  * - Optional bottom navigation
  */
@@ -42,13 +44,11 @@ export function StandardPage({
   maxWidth = "md",
   showBottomNav = false,
   className,
-  headerClassName,
   contentClassName,
   headerAccentColor,
+  hideTitle = false,
 }: StandardPageProps) {
   const accent = headerAccentColor?.trim() || FILLA_TURQUOISE;
-  const headerStyle = createGradientHeaderStyle(accent);
-  useThemeColor(accent);
 
   const maxWidthClasses = {
     sm: "max-w-md",
@@ -61,47 +61,22 @@ export function StandardPage({
   return (
     <div
       className={cn(
-        "min-h-screen bg-background",
+        "dashboard-workbench min-h-screen bg-background",
         showBottomNav ? "pb-20" : "pb-6",
         className,
       )}
     >
-      <PageHeader
-        className={cn("hidden lg:block !bg-transparent shadow-none border-0", headerClassName)}
-        toolbarSurface="gradient"
-        accentColor={accent}
-      >
-        <div
-          className={cn(
-            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-xl px-gutter-page pr-24 sm:pr-32",
-            maxWidthClasses[maxWidth],
-          )}
-          style={headerStyle}
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            {icon && (
-              <span className="shrink-0 text-white [&_svg]:text-white">{icon}</span>
-            )}
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold leading-tight text-white heading-l">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-1 text-sm text-white/85">{subtitle}</p>
-              )}
-            </div>
-          </div>
-          {action && (
-            <div className="flex shrink-0 items-center gap-2 [&_button]:border-white/30 [&_button]:text-white">
-              {action}
-            </div>
-          )}
-        </div>
-      </PageHeader>
+      <GlobalAppHeader accentColor={accent} />
 
-      <MobilePageTitleBar title={title} subtitle={subtitle} icon={icon} action={action} />
-
-      <div className={cn("mx-auto px-gutter-page py-8", maxWidthClasses[maxWidth], contentClassName)}>
+      <div className={cn("mx-auto px-gutter-page py-6 sm:py-8", maxWidthClasses[maxWidth], contentClassName)}>
+        {!hideTitle ? (
+          <PageContentTitle
+            title={title}
+            subtitle={subtitle}
+            icon={icon}
+            action={action}
+          />
+        ) : null}
         {children}
       </div>
 

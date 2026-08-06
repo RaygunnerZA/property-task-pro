@@ -148,6 +148,22 @@ export default function Dashboard({
   >(undefined);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
   const tabBeforeCreateTaskRef = useRef<string>("issues");
+  /** Keep Create Task / Add Record + Task Details top-aligned when a task opens. */
+  const thirdColumnScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const pinThirdColumnTop = useCallback(() => {
+    const el = thirdColumnScrollRef.current;
+    if (!el) return;
+    // Double rAF: wait for intake collapse + details mount before pinning.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const scroller =
+          (el.closest("[data-workbench-third-column]") as HTMLElement | null) ??
+          el;
+        scroller.scrollTop = 0;
+      });
+    });
+  }, []);
   const prevSearchStringRef = useRef<string | undefined>(undefined);
   const workbenchPropertyInitRef = useRef(false);
   const prevWorkbenchPropertyIdRef = useRef<string | null | undefined>(undefined);
@@ -528,19 +544,21 @@ export default function Dashboard({
       if (isLargeScreen) {
         setExpandedSection("details");
         setIntakeMinimized(true);
+        pinThirdColumnTop();
       }
     };
 
     window.addEventListener("filla:assistant-open-task", onOpenTask);
     return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
-  }, [isLargeScreen, handleWorkbenchTabChange]);
+  }, [isLargeScreen, handleWorkbenchTabChange, pinThirdColumnTop]);
 
   const handleTaskClick = (taskId: string) => {
     if (isLargeScreen) {
-      setExpandedSection('details');
+      setExpandedSection("details");
       setIntakeMinimized(true);
+      pinThirdColumnTop();
     }
-    setSelectedItem({ type: 'task', id: taskId });
+    setSelectedItem({ type: "task", id: taskId });
   };
 
   const handleAttentionItemSelect = useCallback(
@@ -548,6 +566,7 @@ export default function Dashboard({
       if (isLargeScreen) {
         setExpandedSection("details");
         setIntakeMinimized(true);
+        pinThirdColumnTop();
       }
       if (payload.kind === "message") {
         setSelectedItem({ type: "message", id: payload.messageId });
@@ -559,7 +578,7 @@ export default function Dashboard({
         });
       }
     },
-    [isLargeScreen]
+    [isLargeScreen, pinThirdColumnTop]
   );
 
   const handleOpenIntake = useCallback((mode: IntakeMode = "report_issue") => {
@@ -600,6 +619,7 @@ export default function Dashboard({
     if (isLargeScreen) {
       setExpandedSection("details");
       setIntakeMinimized(true);
+      pinThirdColumnTop();
     }
     setSelectedItem({ type: "message", id: messageId });
   };
@@ -849,7 +869,10 @@ export default function Dashboard({
   }, [orgId, intakeScopedPropertyId, queryClient]);
 
   const thirdColumnContent = isLargeScreen ? (
-    <div className="flex min-w-0 max-w-full flex-col pt-4 pr-1 pb-0 pl-1">
+    <div
+      ref={thirdColumnScrollRef}
+      className="flex min-w-0 max-w-full flex-col justify-start pt-4 pr-1 pb-0 pl-1 [overflow-anchor:none]"
+    >
       {activeTab === "records" && intakeScopedPropertyId ? (
         <div className="pb-[16px] shrink-0">
           <RecordsActionRail
@@ -865,9 +888,6 @@ export default function Dashboard({
             reanalyseBusy={recordsReanalyseBusy}
           />
         </div>
-      ) : intakeMinimized ? (
-        /* CTAs live in the wide header; keep third column clear when intake is minimised */
-        null
       ) : (
         <div className="pb-[20px]">
           <IntakeModal
@@ -879,6 +899,8 @@ export default function Dashboard({
             headless
             intakeMode={workbenchIntakeMode}
             onIntakeModeChange={setWorkbenchIntakeMode}
+            collapseComposer={intakeMinimized}
+            onExpandComposer={handleOpenIntake}
           />
         </div>
       )}
@@ -1041,7 +1063,6 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
-              onOpenIntake={handleOpenIntake}
             />
           }
         leftColumn={

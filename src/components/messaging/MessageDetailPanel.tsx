@@ -83,9 +83,16 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
     fetchAttachments();
   }, [conversationMessages]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll within the thread only — never drag workbench/third-column scrollers.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const end = messagesEndRef.current;
+    if (!end || conversationMessages.length === 0) return;
+    const scroller = end.closest("[data-messages-scroller]") as HTMLElement | null;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+      return;
+    }
+    end.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [conversationMessages]);
 
   const handleSend = async () => {

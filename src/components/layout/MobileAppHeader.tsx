@@ -1,74 +1,27 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { PropertySelectorStack } from "@/components/properties/PropertySelectorStack";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 import { MobileHeaderSearchButton } from "@/components/layout/MobileHeaderSearchButton";
 import { createGradientHeaderStyle } from "@/components/layout/WorkbenchGradientHeader";
-import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
-import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { useAppHeaderPropertyScope } from "@/hooks/useAppHeaderPropertyScope";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { FILLA_TURQUOISE, resolveHeaderAccentColor } from "@/lib/brandColors";
-import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import fillaDarkLogo from "@/assets/filla-dark.png";
 import { cn } from "@/lib/utils";
 
-function propertyIdFromPath(pathname: string): string | null {
-  const match = pathname.match(/^\/properties\/([^/]+)/);
-  return match?.[1] ?? null;
-}
-
 /**
- * Global mobile app header for routes outside the workbench gradient header.
- * Non-property screens: Filla turquoise gradient.
- * `/properties/:id…` screens: that property’s colour (fallback turquoise).
+ * Fallback mobile app header for routes that do not render GlobalAppHeader /
+ * WorkbenchGradientHeader. Logo + gradient + search match the workbench chrome.
  */
 export function MobileAppHeader() {
-  const { pathname } = useLocation();
-  const { data: properties = [] } = usePropertiesQuery();
-  const { data: tasks = [] } = useTasksQuery();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(() => new Set());
+  const scope = useAppHeaderPropertyScope();
+  const headerStyle = useMemo(
+    () => createGradientHeaderStyle(scope.accentColor),
+    [scope.accentColor]
+  );
+  useThemeColor(scope.accentColor);
 
-  const routePropertyId = propertyIdFromPath(pathname);
-  const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
-
-  useEffect(() => {
-    if (properties.length === 0) return;
-    if (routePropertyId && allPropertyIds.includes(routePropertyId)) {
-      setSelectedPropertyIds(new Set([routePropertyId]));
-      return;
-    }
-    const pid = searchParams.get("property");
-    if (pid && allPropertyIds.includes(pid)) {
-      setSelectedPropertyIds(new Set([pid]));
-      return;
-    }
-    setSelectedPropertyIds((prev) => (prev.size === 0 ? new Set(allPropertyIds) : prev));
-  }, [properties.length, allPropertyIds, searchParams, routePropertyId]);
-
-  const accentColor = useMemo(() => {
-    if (routePropertyId) {
-      const p = properties.find((x) => x.id === routePropertyId) as
-        | { icon_color_hex?: string | null }
-        | undefined;
-      return resolveHeaderAccentColor(p?.icon_color_hex, { propertyScoped: true });
-    }
-    return FILLA_TURQUOISE;
-  }, [routePropertyId, properties]);
-
-  const headerStyle = useMemo(() => createGradientHeaderStyle(accentColor), [accentColor]);
-  useThemeColor(accentColor);
-
-  const handleSelectionChange = (next: Set<string>) => {
-    setSelectedPropertyIds(next);
-    if (routePropertyId) return;
-    const params = new URLSearchParams(searchParams);
-    if (isAllPropertiesActive(next, allPropertyIds) || next.size === 0) {
-      params.delete("property");
-    } else if (next.size === 1) {
-      params.set("property", Array.from(next)[0]);
-    }
-    setSearchParams(params, { replace: true });
-  };
+  const showPropertySelector = scope.properties.length > 1;
 
   return (
     <header
@@ -78,16 +31,27 @@ export function MobileAppHeader() {
       )}
       style={headerStyle}
     >
-      <PropertySelectorStack
-        variant="gradientHeader"
-        properties={properties}
-        tasks={tasks}
-        selectedPropertyIds={selectedPropertyIds}
-        onSelectionChange={handleSelectionChange}
-        className="min-w-0 flex-1"
-      />
-      <MobileHeaderSearchButton variant="onGradient" accentColor={accentColor} />
-      <HeaderAccountMenu variant="onGradient" accentColor={accentColor} />
+      <Link
+        to="/"
+        className="flex shrink-0 items-center outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+        aria-label="Go to home"
+      >
+        <img src={fillaDarkLogo} alt="Filla" className="ml-0.5 h-[28px] w-auto" />
+      </Link>
+      {showPropertySelector ? (
+        <PropertySelectorStack
+          variant="gradientHeader"
+          properties={scope.properties}
+          tasks={scope.tasks}
+          selectedPropertyIds={scope.selectedPropertyIds}
+          onSelectionChange={scope.onPropertySelectionChange}
+          className="min-w-0 flex-1"
+        />
+      ) : (
+        <div className="min-w-0 flex-1" />
+      )}
+      <MobileHeaderSearchButton variant="onGradient" accentColor={scope.accentColor} />
+      <HeaderAccountMenu variant="onGradient" accentColor={scope.accentColor} />
     </header>
   );
 }

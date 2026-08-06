@@ -50,9 +50,12 @@ export function TaskDetailContent({
   return (
     <div
       ref={scrollRef}
-      className={cn("flex-1 overflow-y-auto min-h-0 flex flex-col", className)}
+      className={cn(
+        "flex min-h-0 flex-1 flex-col justify-start overflow-y-auto [overflow-anchor:none]",
+        className
+      )}
     >
-      <div className="px-5 pt-4 pb-3 space-y-6">
+      <div className="space-y-6 px-5 pb-3 pt-4">
         <header className="space-y-4">
           {showTitle ? (
             <h2 className="text-xl font-semibold text-foreground leading-snug tracking-tight pr-2">

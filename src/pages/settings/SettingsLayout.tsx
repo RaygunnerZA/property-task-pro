@@ -149,7 +149,6 @@ export function SettingsLayout() {
       icon={<Settings className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-full overflow-x-hidden py-4 sm:py-6"
-      headerClassName="[&_h1]:text-xl [&_h1]:sm:text-2xl"
     >
       <SettingsWorkbenchProvider>
         <SettingsThreeColumnFrame navItemsVisible={visibleNavItems} />

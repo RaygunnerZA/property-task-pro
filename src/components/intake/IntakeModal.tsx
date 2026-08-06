@@ -277,6 +277,13 @@ export interface IntakeModalProps {
   initialSourceArtifact?: IntakeSourceArtifact;
   /** Opened after IntakeReviewSheet — locked filing intent, review-oriented chrome. */
   fromIntakeReview?: boolean;
+  /**
+   * Column only: collapse the composer so Create Task / Add Record become action buttons
+   * in the tab slot (e.g. while Task Details is open below).
+   */
+  collapseComposer?: boolean;
+  /** Called when a collapsed action button is pressed (expands composer in that mode). */
+  onExpandComposer?: (mode: IntakeMode) => void;
 }
 
 interface UploadedAttachment {
@@ -305,6 +312,8 @@ export function IntakeModal({
   initialImages,
   initialSourceArtifact,
   fromIntakeReview = false,
+  collapseComposer = false,
+  onExpandComposer,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -3550,7 +3559,7 @@ export function IntakeModal({
       ? "What are you recording? Add a certificate, inspection, or note…"
       : "What Needs Doing?";
 
-  const intakeModeSwitcher = (
+  const intakeModeTabs = (
     <div
       ref={intakeTabListRef}
       className="flex h-12 w-full min-w-0 flex-nowrap items-stretch gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
@@ -3568,7 +3577,7 @@ export function IntakeModal({
             "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-card px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
-                ? "bg-primary text-primary-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                ? "bg-primary text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
                 : "bg-[hsl(16_82%_56%)] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
               : "text-muted-foreground hover:text-foreground"
           )}
@@ -3593,6 +3602,55 @@ export function IntakeModal({
           </span>
         </button>
       ))}
+    </div>
+  );
+
+  /** Same slot as tabs — both CTAs raised when composer is collapsed for Task Details. */
+  const intakeCollapsedActions = (
+    <div
+      className="flex h-9 w-full min-w-0 flex-nowrap items-stretch gap-1.5"
+      role="group"
+      aria-label="Create task or add record"
+    >
+      <IntakeActionButton
+        mode="report_issue"
+        variant="micro"
+        className="h-9 min-h-9 flex-1 justify-center px-2.5 text-sm font-semibold"
+        onClick={() => onExpandComposer?.("report_issue")}
+      />
+      <IntakeActionButton
+        mode="add_record"
+        variant="micro"
+        className="h-9 min-h-9 flex-1 justify-center px-2.5 text-sm font-semibold"
+        onClick={() => onExpandComposer?.("add_record")}
+      />
+    </div>
+  );
+
+  const intakeModeSwitcher = (
+    <div className={cn("relative w-full min-w-0", collapseComposer ? "h-9" : "h-12")}>
+      <div
+        className={cn(
+          "absolute inset-0 transition-all duration-300 ease-out",
+          collapseComposer
+            ? "pointer-events-none scale-[0.98] opacity-0"
+            : "scale-100 opacity-100"
+        )}
+        aria-hidden={collapseComposer}
+      >
+        {intakeModeTabs}
+      </div>
+      <div
+        className={cn(
+          "absolute inset-0 transition-all duration-300 ease-out",
+          collapseComposer
+            ? "scale-100 opacity-100"
+            : "pointer-events-none scale-[0.98] opacity-0"
+        )}
+        aria-hidden={!collapseComposer}
+      >
+        {intakeCollapsedActions}
+      </div>
     </div>
   );
 
@@ -3818,26 +3876,35 @@ export function IntakeModal({
         </DialogHeader>
       )}
 
+      {variant === "column" && headless && (
+        <div className="shrink-0 px-2 pt-2 pb-1">{intakeModeSwitcher}</div>
+      )}
+
       <div
         className={cn(
           "flex-1 py-3 space-y-3 min-h-0",
           variant === "column" && headless
             ? "overflow-visible px-2 rounded-[23px]"
-            : "overflow-y-auto overscroll-contain px-4"
+            : "overflow-y-auto overscroll-contain px-4",
+          variant === "column" &&
+            headless &&
+            collapseComposer &&
+            "max-h-0 overflow-hidden py-0 opacity-0 pointer-events-none transition-[max-height,opacity,padding] duration-300 ease-out",
+          variant === "column" &&
+            headless &&
+            !collapseComposer &&
+            "transition-[max-height,opacity,padding] duration-300 ease-out"
         )}
         style={
-          variant === "column" && headless
+          variant === "column" && headless && !collapseComposer
             ? {
                 background:
                   "linear-gradient(0deg, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, 0.5) 100%)",
               }
             : undefined
         }
+        aria-hidden={variant === "column" && headless && collapseComposer}
       >
-          {variant === "column" && headless && (
-            <div className="shrink-0 -mt-1 mb-1">{intakeModeSwitcher}</div>
-          )}
-
           {/* 1. Upload */}
           <ImageUploadSection
             images={images}
@@ -4143,7 +4210,20 @@ export function IntakeModal({
       </div>
 
       {/* 6. Footer: one adaptive primary + secondary override */}
-      <div className="px-4 pt-3 pb-5 border-t border-border/30 space-y-2">
+      <div
+        className={cn(
+          "px-4 pt-3 pb-5 border-t border-border/30 space-y-2",
+          variant === "column" &&
+            headless &&
+            collapseComposer &&
+            "max-h-0 overflow-hidden border-0 p-0 opacity-0 pointer-events-none transition-[max-height,opacity,padding] duration-300 ease-out",
+          variant === "column" &&
+            headless &&
+            !collapseComposer &&
+            "transition-[max-height,opacity,padding] duration-300 ease-out"
+        )}
+        aria-hidden={variant === "column" && headless && collapseComposer}
+      >
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 border-0 btn-neomorphic" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
@@ -4279,13 +4359,19 @@ export function IntakeModal({
     return (
       <div
         className={cn(
-          "flex flex-col h-full min-h-0 p-0 gap-0 rounded-[23px] border-0",
-          "shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
+          "flex flex-col min-h-0 p-0 gap-0 border-0 transition-[box-shadow,border-radius,background-color] duration-300 ease-out",
+          collapseComposer
+            ? "h-auto rounded-none bg-transparent shadow-none"
+            : "h-full rounded-[23px] shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
         )}
-        style={{
-          ...PAPER_TEXTURE_STYLE,
-          backgroundColor: "hsl(var(--background))",
-        }}
+        style={
+          collapseComposer
+            ? undefined
+            : {
+                ...PAPER_TEXTURE_STYLE,
+                backgroundColor: "hsl(var(--background))",
+              }
+        }
       >
         {content}
       </div>

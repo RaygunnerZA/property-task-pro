@@ -127,7 +127,10 @@ export function DualPaneLayout({
         <div className={centreShellClass}>{rightColumn}</div>
 
         {hasThirdColumn && (
-          <div className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto">
+          <div
+            data-workbench-third-column
+            className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto layout:self-start layout:[overflow-anchor:none]"
+          >
             {thirdColumn}
           </div>
         )}

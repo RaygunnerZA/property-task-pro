@@ -1,8 +1,7 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
-import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import {
   MobileWorkbenchHeaderRow,
   MobileWorkbenchHeaderSearchTrigger,
@@ -15,7 +14,6 @@ import type { PropertySelectorRowProperty } from "@/components/properties/Proper
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { cn } from "@/lib/utils";
-import type { IntakeMode } from "@/types/intake";
 
 /** Desktop workbench header band height (keep in sync with `index.css` / shell offset). */
 const DESKTOP_HEADER_BAND_PX = 73;
@@ -34,10 +32,6 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
-  /** Wide layout: Create Task + Add Record in the header’s third column. */
-  onOpenIntake?: (mode: IntakeMode) => void;
-  /** Optional extra controls for the wide third-column header slot. */
-  headerActions?: ReactNode;
 };
 
 export function WorkbenchGradientHeader({
@@ -49,7 +43,6 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
-  onOpenIntake,
 }: WorkbenchGradientHeaderProps) {
   const showPropertySelector = properties.length > 1;
 
@@ -175,22 +168,14 @@ export function WorkbenchGradientHeader({
             />
           </div>
 
+          {/* Spacer aligns with the third workbench column (intake / details live in-column). */}
           <div
             className={cn(
-              "relative z-10 hidden min-w-0 items-center justify-start gap-2 self-stretch",
-              "layout:flex layout:pt-5 layout:pl-1"
+              "relative z-10 hidden min-w-0 self-stretch",
+              "layout:block"
             )}
-          >
-            {onOpenIntake ? (
-              <IntakeActionButtonPair
-                variant="micro"
-                layout="row"
-                className="flex-nowrap gap-2 [&_button]:h-9 [&_button]:min-h-9 [&_button]:px-3 [&_button]:text-sm"
-                onAddRecord={() => onOpenIntake("add_record")}
-                onReportIssue={() => onOpenIntake("report_issue")}
-              />
-            ) : null}
-          </div>
+            aria-hidden
+          />
         </div>
       </PageHeader>
     </>

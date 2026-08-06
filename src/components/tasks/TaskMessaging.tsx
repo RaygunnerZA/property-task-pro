@@ -86,8 +86,9 @@ export function TaskMessaging({
     if (!focusComposeKey) return;
     const el = composeRef.current;
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.focus();
+    // Nearest only — never drag the workbench / third-column scrollers.
+    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    el.focus({ preventScroll: true });
   }, [focusComposeKey]);
 
   useEffect(() => {
@@ -122,8 +123,18 @@ export function TaskMessaging({
   }, [messages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, attachments.length]);
+    // Activity feed lives inside Task Details' page scroll — auto scrollIntoView
+    // jumps the workbench/third column to the bottom when a task opens.
+    if (variant === "activity") return;
+    const end = messagesEndRef.current;
+    if (!end || messages.length === 0) return;
+    const scroller = end.closest("[data-messages-scroller]") as HTMLElement | null;
+    if (scroller) {
+      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
+      return;
+    }
+    end.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }, [messages, attachments.length, variant]);
 
   const handleFileSelect = (files: FileList | null, isImage: boolean) => {
     if (!files) return;
@@ -157,8 +168,12 @@ export function TaskMessaging({
     });
 
     requestAnimationFrame(() => {
-      composeRef.current?.focus();
-      composeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      composeRef.current?.focus({ preventScroll: true });
+      composeRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
     });
   };
 

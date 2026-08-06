@@ -106,18 +106,18 @@ export function CentreWorkbench({
 
           {/* Tablet/desktop below layout: CTAs beside tab strip. Phone uses FAB instead. */}
           {onOpenIntake ? (
-            <div className="hidden w-[160px] shrink-0 flex-col justify-center gap-1.5 self-stretch py-3 md:flex layout:hidden">
-              <IntakeActionButton
-                mode="add_record"
-                variant="compact"
-                className="h-auto min-h-0 w-full flex-1 justify-center gap-2 px-2.5 text-base font-medium leading-none [&>svg]:h-4 [&>svg]:w-4"
-                onClick={() => onOpenIntake("add_record")}
-              />
+            <div className="hidden w-[148px] shrink-0 flex-col justify-center gap-1.5 self-center md:flex layout:hidden">
               <IntakeActionButton
                 mode="report_issue"
-                variant="compact"
-                className="h-auto min-h-0 w-full flex-1 justify-center gap-2 px-2.5 text-base font-medium leading-none [&>svg]:h-4 [&>svg]:w-4"
+                variant="micro"
+                className="h-9 min-h-9 w-full justify-center gap-1.5 px-2.5 text-sm font-semibold leading-none"
                 onClick={() => onOpenIntake("report_issue")}
+              />
+              <IntakeActionButton
+                mode="add_record"
+                variant="micro"
+                className="h-9 min-h-9 w-full justify-center gap-1.5 px-2.5 text-sm font-semibold leading-none"
+                onClick={() => onOpenIntake("add_record")}
               />
             </div>
           ) : null}

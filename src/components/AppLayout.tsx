@@ -5,6 +5,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { AssistantProvider } from '@/contexts/AssistantContext';
+import { AppChromeProvider, useAppChrome } from '@/contexts/AppChromeContext';
 import { isDevBuild } from '@/context/DevModeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
@@ -20,14 +21,15 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-export function AppLayout({
-  children
-}: AppLayoutProps) {
+function AppLayoutShell({ children }: AppLayoutProps) {
   const queryClient = useQueryClient();
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
+  const chrome = useAppChrome();
+  const ownsChromeHeader = chrome?.ownsHeader ?? false;
   const isHubHome = isMobileHeaderExcludedPath(pathname);
-  const headerAboveNav = isWorkbenchHeaderAboveNavPath(pathname);
+  const headerAboveNav = isWorkbenchHeaderAboveNavPath(pathname) || ownsChromeHeader;
+  const showMobileAppHeader = !isHubHome && !ownsChromeHeader;
 
   useEffect(() => {
     if ('scrollRestoration' in history) {
@@ -55,7 +57,7 @@ export function AppLayout({
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-h-screen min-w-0">
-          {!isHubHome && <MobileAppHeader />}
+          {showMobileAppHeader && <MobileAppHeader />}
 
           <main 
             ref={mainRef}
@@ -90,5 +92,13 @@ export function AppLayout({
         </SidebarProvider>
       </AssistantProvider>
     </ThirdColumnProvider>
+  );
+}
+
+export function AppLayout({ children }: AppLayoutProps) {
+  return (
+    <AppChromeProvider>
+      <AppLayoutShell>{children}</AppLayoutShell>
+    </AppChromeProvider>
   );
 }

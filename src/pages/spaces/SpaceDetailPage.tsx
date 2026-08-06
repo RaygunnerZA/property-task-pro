@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
-import { PageHeader } from "@/components/design-system/PageHeader";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
+import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { EmptyState } from "@/components/design-system/EmptyState";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -20,10 +21,10 @@ import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { FolderOpen, Package, Shield, FileText, Sparkles, ArrowLeft, Plus, ListChecks, Pencil } from "lucide-react";
 import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
-import { FillaIcon } from "@/components/filla/FillaIcon";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
 import {
   SpaceVisualPicker,
@@ -50,7 +51,6 @@ export default function SpaceDetailPage() {
   const {
     isOpen: assistantOpen,
     closeAssistant,
-    openAssistant,
     assistantContext,
     messages,
     proposedAction,
@@ -198,39 +198,7 @@ export default function SpaceDetailPage() {
     return result.displayUrl;
   };
 
-  const headerElement = (
-    <PageHeader>
-      <div
-        className="px-4 py-2 h-[60px] flex items-center justify-between rounded-bl-xl"
-        style={{
-          backgroundImage: "linear-gradient(to right, #8EC9CE 0%, #8EC9CE 20%, transparent 70%, transparent 100%)",
-        }}
-      >
-        <div className="flex items-center gap-3 w-[248px] min-w-0">
-          <button
-            type="button"
-            onClick={() => navigate(`/properties/${propertyId}/spaces/organise`)}
-            className="shrink-0 text-white hover:bg-white/20 rounded-md p-1.5 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold text-white leading-tight">{spaceName}</h1>
-            <p className="text-sm text-white/85 truncate">{propertyName}</p>
-          </div>
-        </div>
-        {spaceId && (
-          <button
-            onClick={() => openAssistant({ type: "space", id: spaceId, name: spaceName })}
-            className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
-            aria-label="Open Assistant"
-          >
-            <FillaIcon size={20} className="brightness-0 invert" />
-          </button>
-        )}
-      </div>
-    </PageHeader>
-  );
+  const headerElement = <GlobalAppHeader accentColor={FILLA_TURQUOISE} />;
 
   const thirdColumnContent = propertyId && spaceId ? (
     <div className="flex min-w-0 max-w-full flex-col pt-3 pr-1 pb-0 pl-1 min-h-0">
@@ -304,12 +272,22 @@ export default function SpaceDetailPage() {
   ) : undefined;
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+    <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <DualPaneLayout
         header={headerElement}
         leftColumn={
           <div className="h-auto md:h-screen flex flex-col overflow-y-auto md:overflow-hidden w-full max-w-full pl-0">
             <div className="p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/properties/${propertyId}/spaces/organise`)}
+                className="mb-2 -ml-1 shrink-0"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+              <PageContentTitle title={spaceName} subtitle={propertyName} />
               <div className="bg-card/60 rounded-card shadow-e1 overflow-hidden">
                 <div className="group/space-hero relative w-full aspect-[4/3] flex items-center justify-center bg-muted/40">
                   <img

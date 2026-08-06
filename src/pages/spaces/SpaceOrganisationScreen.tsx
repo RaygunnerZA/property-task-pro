@@ -9,7 +9,7 @@ import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
 import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { PageHeader } from "@/components/design-system/PageHeader";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { Button } from "@/components/ui/button";
 import { FileUp, Plus } from "lucide-react";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
@@ -22,13 +22,8 @@ import {
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
-import { createGradientHeaderStyle } from "@/components/layout/WorkbenchGradientHeader";
-import { GradientHeaderMaskedIcon } from "@/components/layout/GradientHeaderMaskedIcon";
-import { gradientHeaderSearchFieldClassName } from "@/lib/gradientHeaderControls";
-import { useThemeColor } from "@/hooks/useThemeColor";
-import { cn } from "@/lib/utils";
-
-const WORKBENCH_SEARCH_ICON = "/icons/workbench/search.svg";
+import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 
 type SpacesWorkTab = "groups" | "issues";
 
@@ -122,9 +117,8 @@ export default function SpaceOrganisationScreen() {
   );
 
   const headerAccent =
-    (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() || "#8EC9CE";
-  const headerStyle = createGradientHeaderStyle(headerAccent);
-  useThemeColor(headerAccent);
+    (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
+    FILLA_TURQUOISE;
 
   if (propertyLoading || !propertyId) {
     return <LoadingState />;
@@ -132,56 +126,7 @@ export default function SpaceOrganisationScreen() {
 
   const header = (
     <>
-      <PageHeader
-        className="page-header--spaces-organise !bg-transparent shadow-none border-0"
-        toolbarSurface="gradient"
-        accentColor={headerAccent}
-      >
-        <div
-          className={cn(
-            "mx-auto grid w-full max-w-[1480px] min-w-0 items-center gap-3 rounded-bl-xl",
-            "min-h-[var(--workbench-header-band,79px)] px-gutter-page pr-24 sm:pr-40",
-            "grid-cols-1",
-            "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(0,280px)] workspace:gap-[24px]"
-          )}
-          style={headerStyle}
-        >
-          <div className="flex min-w-0 items-center py-3 workspace:py-0 workspace:pt-[18px] workspace:pb-3">
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold leading-tight text-white">Spaces</h1>
-              <p className="mt-0.5 truncate text-sm leading-snug text-white/85">
-                {property ? `${property.nickname || property.address}` : "Organise your spaces"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex min-w-0 max-w-[700px] items-center pb-3 workspace:pb-0 workspace:pt-5">
-            <div className={gradientHeaderSearchFieldClassName("w-full")}>
-              <div className="flex min-w-0 flex-1 items-center px-3">
-                <input
-                  type="search"
-                  value={spaceSearchQuery}
-                  onChange={(e) => setSpaceSearchQuery(e.target.value)}
-                  placeholder="Search spaces"
-                  className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
-                  aria-label="Search spaces"
-                />
-              </div>
-              <span
-                className="inline-flex shrink-0 items-center justify-center px-3"
-                aria-hidden
-              >
-                <GradientHeaderMaskedIcon
-                  src={WORKBENCH_SEARCH_ICON}
-                  color={headerAccent}
-                />
-              </span>
-            </div>
-          </div>
-
-          <div className="hidden min-w-0 workspace:block" aria-hidden />
-        </div>
-      </PageHeader>
+      <GlobalAppHeader accentColor={headerAccent} />
       <WorkspaceScopeStrip>
         <PropertyPageScopeBar
           propertyId={propertyId}
@@ -232,6 +177,24 @@ export default function SpaceOrganisationScreen() {
 
   const workColumn = (
     <div className="space-y-5">
+      <PageContentTitle
+        title="Spaces"
+        subtitle={
+          property
+            ? `${property.nickname || property.address}`
+            : "Organise your spaces"
+        }
+      />
+      <div className="min-w-0">
+        <input
+          type="search"
+          value={spaceSearchQuery}
+          onChange={(e) => setSpaceSearchQuery(e.target.value)}
+          placeholder="Search spaces"
+          className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label="Search spaces"
+        />
+      </div>
       <div>
         <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
         <WorkspaceTabList>
@@ -350,7 +313,7 @@ export default function SpaceOrganisationScreen() {
   );
 
   return (
-    <div className="property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-workbench property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
       {showAddSpace && (

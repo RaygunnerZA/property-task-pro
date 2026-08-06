@@ -174,6 +174,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
+  const actionRowRef = useRef<HTMLDivElement | null>(null);
+  const [hideActionIcons, setHideActionIcons] = useState(false);
   const prevHydratedTaskIdRef = useRef<string | null>(null);
   const prevAssetTaskIdRef = useRef<string | null>(null);
 
@@ -1108,6 +1110,24 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   // Show CTA to any authenticated user who can view the task (fallback when created_by not in view)
   const canManageTask = !!userId && (isAssigner || isAssignee || !createdBy);
 
+  // Narrow third-column footer: wrap labels; drop icons when buttons still overflow.
+  useEffect(() => {
+    const row = actionRowRef.current;
+    if (!row) return;
+    const measure = () => {
+      const buttons = row.querySelectorAll<HTMLElement>("[data-task-action]");
+      let hide = false;
+      buttons.forEach((btn) => {
+        if (btn.clientWidth > 0 && btn.clientWidth < 104) hide = true;
+      });
+      setHideActionIcons(hide);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    measure();
+    return () => ro.disconnect();
+  }, [canManageTask, taskEditOpen, status]);
+
   const hasEdits = useMemo(() => {
     const origMs = (task as any)?.milestones;
     const origMsJson = JSON.stringify(Array.isArray(origMs) ? origMs : []);
@@ -1413,7 +1433,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       />
 
       <div className="flex flex-col gap-1.5 pt-2 pb-4 px-4 border-0 flex-shrink-0 bg-background/95 backdrop-blur-sm text-foreground sticky bottom-0 z-10">
-        <div className="flex min-w-0 w-full items-center gap-2">
+        <div ref={actionRowRef} className="flex min-w-0 w-full items-stretch gap-2">
           {canManageTask && taskEditOpen ? (
             <Button
               type="button"
@@ -1428,10 +1448,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           ) : null}
           {canManageTask && (
             <Button
+              data-task-action
               variant={status === "completed" ? "secondary" : "default"}
               className={cn(
-                "min-w-0 flex-1 basis-0 overflow-hidden",
-                status !== "completed" && "shadow-primary-btn"
+                "h-auto min-h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden whitespace-normal px-2 py-1.5",
+                status !== "completed" && "shadow-primary-btn text-white"
               )}
               onClick={async () => {
                 if (status === "completed") return;
@@ -1490,32 +1511,58 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }}
               disabled={isUpdating}
             >
-              <CheckSquare className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 truncate">
-                {status === "completed" ? "Completed" : "Mark Complete"}
+              {!hideActionIcons ? (
+                <CheckSquare className="h-4 w-4 shrink-0" aria-hidden />
+              ) : null}
+              <span className="flex min-w-0 flex-col items-center text-center text-xs font-medium leading-tight">
+                {status === "completed" ? (
+                  "Completed"
+                ) : (
+                  <>
+                    <span>Mark</span>
+                    <span>Complete</span>
+                  </>
+                )}
               </span>
             </Button>
           )}
           <Button
+            data-task-action
             type="button"
             variant="outline"
-            className="h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden px-3 shadow-e1 text-foreground"
+            className="h-auto min-h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden whitespace-normal px-2 py-1.5 shadow-e1 text-foreground"
             onClick={() => taskImageInputRef.current?.click()}
             disabled={isUploadingImage}
             aria-label={isUploadingImage ? "Uploading evidence" : "Upload evidence"}
             title={isUploadingImage ? "Uploading…" : "Upload evidence"}
           >
-            <Upload className={cn("h-4 w-4 shrink-0", isUploadingImage && "animate-pulse")} />
-            <span className="min-w-0 truncate text-sm">
-              {isUploadingImage ? "Uploading…" : "Upload Evidence"}
+            {!hideActionIcons ? (
+              <Upload
+                className={cn("h-4 w-4 shrink-0", isUploadingImage && "animate-pulse")}
+                aria-hidden
+              />
+            ) : null}
+            <span className="flex min-w-0 flex-col items-center text-center text-xs font-medium leading-tight">
+              {isUploadingImage ? (
+                "Uploading…"
+              ) : (
+                <>
+                  <span>Upload</span>
+                  <span>Evidence</span>
+                </>
+              )}
             </span>
           </Button>
           {canManageTask && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="shrink-0 shadow-e1 text-foreground gap-1.5" aria-label="More">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-auto min-h-10 w-10 shrink-0 shadow-e1 text-foreground"
+                  aria-label="More"
+                >
                   <MoreVertical className="h-4 w-4" />
-                  <span className="hidden sm:inline text-sm">More</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="z-[120]">

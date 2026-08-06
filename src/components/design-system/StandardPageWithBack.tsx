@@ -1,10 +1,11 @@
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "./PageHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { MobilePageTitleBar } from "@/components/design-system/MobilePageTitleBar";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
+import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { Button } from "@/components/ui/button";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ interface StandardPageWithBackProps {
   action?: ReactNode;
   backTo?: string;
   onBack?: () => void;
-  /** Hide the header “Back” control (e.g. when using property scope row below). */
+  /** Hide the in-content “Back” control (e.g. when using property scope row below). */
   hideHeaderBack?: boolean;
   /** Row directly under the gradient strip, left-aligned (matches workbench scope bar). */
   belowGradientRow?: ReactNode;
@@ -23,30 +24,19 @@ interface StandardPageWithBackProps {
   maxWidth?: "sm" | "md" | "lg" | "xl" | "full";
   showBottomNav?: boolean;
   className?: string;
+  /** @deprecated No longer applied — header chrome is shared; kept for call-site compat. */
   headerClassName?: string;
   contentClassName?: string;
-  /** Property-style horizontal gradient + light header text (matches dashboard / workbench). */
+  /** Property-style accent for the shared gradient header. */
   headerAccentColor?: string;
-  /** Omit icon, title, and subtitle from the gradient row (e.g. title rendered in workspace column 2). */
+  /** Omit in-content title when the page renders its own heading. */
   hideTitleInHeader?: boolean;
 }
 
 /**
  * StandardPageWithBack - StandardPage variant with back button
- * 
- * For detail pages that need a back button in the header.
- * 
- * @example
- * ```tsx
- * <StandardPageWithBack
- *   title="Property Details"
- *   subtitle="123 Main St"
- *   backTo="/"
- *   icon={<Building2 className="h-6 w-6" />}
- * >
- *   <PropertyContent />
- * </StandardPageWithBack>
- * ```
+ *
+ * Uses the shared logo / gradient / search chrome; title + Back live in the main column.
  */
 export function StandardPageWithBack({
   title,
@@ -61,20 +51,19 @@ export function StandardPageWithBack({
   maxWidth = "md",
   showBottomNav = false,
   className,
-  headerClassName,
   contentClassName,
   headerAccentColor,
   hideTitleInHeader = false,
 }: StandardPageWithBackProps) {
   const navigate = useNavigate();
-  const accent = headerAccentColor?.trim();
-  
+  const accent = headerAccentColor?.trim() || FILLA_TURQUOISE;
+
   const maxWidthClasses = {
-    sm: "max-w-md",        // Mobile-first, single column
-    md: "max-w-4xl",       // Tablet, comfortable reading width
-    lg: "max-w-6xl",       // Desktop, two-column layouts
-    xl: "max-w-7xl",       // Large desktop, multi-column
-    full: "max-w-full"     // Full width, no constraints
+    sm: "max-w-md",
+    md: "max-w-4xl",
+    lg: "max-w-6xl",
+    xl: "max-w-7xl",
+    full: "max-w-full",
   };
 
   const handleBack = () => {
@@ -86,7 +75,6 @@ export function StandardPageWithBack({
       navigate(backTo);
       return;
     }
-    // Direct landings or empty stack: avoid no-op / leaving the app unexpectedly
     if (typeof window !== "undefined" && window.history.length > 1) {
       navigate(-1);
     } else {
@@ -94,93 +82,18 @@ export function StandardPageWithBack({
     }
   };
 
-  const headerBarStyle = accent
-    ? {
-        backgroundImage: `linear-gradient(90deg, ${accent} 0%, ${accent} 28%, transparent 97%, transparent 100%)`,
-      }
-    : undefined;
+  const showTitle = !hideTitleInHeader;
 
   return (
     <div
       className={cn(
-        "min-h-screen bg-background",
+        "dashboard-workbench min-h-screen bg-background",
         showBottomNav ? "pb-20" : "pb-6",
-        /* Gradient + scope strip (~60px + ~48px) for workspace sticky columns */
         belowGradientRow != null && "property-workbench-scope-header",
         className
       )}
     >
-      <PageHeader
-        className={cn("hidden lg:block", accent && "!bg-transparent shadow-none border-0", headerClassName)}
-        toolbarSurface={accent ? "gradient" : "plain"}
-      >
-        <div
-          className={cn(
-            "mx-auto flex h-[60px] min-h-[60px] items-center justify-between rounded-bl-xl px-gutter-page pr-24 sm:pr-32",
-            maxWidthClasses[maxWidth]
-          )}
-          style={headerBarStyle}
-        >
-          <div className="flex min-w-0 flex-1 items-center gap-3">
-            {!hideHeaderBack && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className={cn(
-                  "shrink-0",
-                  accent && "text-white hover:bg-white/15 hover:text-white"
-                )}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            )}
-            {!hideTitleInHeader ? (
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                {icon && (
-                  <span
-                    className={cn("shrink-0", accent ? "text-white [&_svg]:text-white" : "icon-primary")}
-                  >
-                    {icon}
-                  </span>
-                )}
-                <div className="min-w-0">
-                  <h1
-                    className={cn(
-                      "text-2xl font-semibold leading-tight truncate heading-l",
-                      accent ? "text-white" : "text-foreground"
-                    )}
-                  >
-                    {title}
-                  </h1>
-                  {subtitle && (
-                    <p
-                      className={cn(
-                        "text-sm mt-1 truncate",
-                        accent ? "text-white/85" : "text-muted-foreground"
-                      )}
-                    >
-                      {subtitle}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="min-w-0 flex-1" aria-hidden="true" />
-            )}
-          </div>
-          {action && (
-            <div className={cn("flex shrink-0 items-center gap-2", accent && "[&_button]:text-white [&_button]:border-white/30")}>
-              {action}
-            </div>
-          )}
-        </div>
-      </PageHeader>
-
-      {!hideTitleInHeader && belowGradientRow == null ? (
-        <MobilePageTitleBar title={title} subtitle={subtitle} icon={icon} action={action} />
-      ) : null}
+      <GlobalAppHeader accentColor={accent} />
 
       {belowGradientRow != null && (
         <WorkspaceScopeStrip containerMaxWidthClass={maxWidthClasses[maxWidth]}>
@@ -189,6 +102,25 @@ export function StandardPageWithBack({
       )}
 
       <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
+        {showTitle && !hideHeaderBack ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="mb-3 -ml-2 shrink-0"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+        ) : null}
+        {showTitle ? (
+          <PageContentTitle
+            title={title}
+            subtitle={subtitle}
+            icon={icon}
+            action={action}
+          />
+        ) : null}
         {children}
       </div>
 
@@ -196,4 +128,3 @@ export function StandardPageWithBack({
     </div>
   );
 }
-
