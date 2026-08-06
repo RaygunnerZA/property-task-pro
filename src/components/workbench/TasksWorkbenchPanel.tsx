@@ -211,10 +211,13 @@ export function TasksWorkbenchPanel({
 
   return (
     <div className="min-w-0">
-      <section className="min-w-0 rounded-2xl bg-transparent py-1">
-        {/* Mobile: tighter tab row + description; md+ matches other workbench section headers. */}
-        <div className="flex w-full min-w-0 items-end gap-3 px-2">
-          <div className="min-w-0 flex-1">
+      <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
+        {/*
+          items-start so the illustration doesn’t push “All” down (was items-end → ~75px gap).
+          CentreWorkbench owns the 55px space above this title.
+        */}
+        <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
+          <div className="min-w-0 flex-1 pr-[min(5.5rem,24%)] md:pr-[min(6.5rem,28%)]">
             <div
               role="tablist"
               aria-label="Task lists"
@@ -315,14 +318,14 @@ export function TasksWorkbenchPanel({
           </div>
 
           <div
-            className="pointer-events-none flex aspect-square w-[min(5.25rem,22%)] max-h-[5.25rem] shrink-0 items-end justify-end md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
+            className="pointer-events-none absolute right-2 top-0 flex aspect-square w-[min(5.25rem,22%)] max-h-[5.25rem] items-start justify-end md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
             aria-hidden
           >
             <img
               key={activeTabMeta.illustrationSrc}
               src={activeTabMeta.illustrationSrc}
               alt=""
-              className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
+              className="mt-[-2px] h-full w-full overflow-hidden object-contain object-top drop-shadow-sm"
               decoding="async"
             />
           </div>

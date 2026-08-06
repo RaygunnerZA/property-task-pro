@@ -226,7 +226,7 @@ export function InflowPanel({
   }
 
   return (
-    <div className="min-w-0 space-y-6">
+    <div className="min-w-0 space-y-6 pt-0">
       {onboardingEducationMode && focusedPropertyId && (
         <AttentionEducationSummary
           propertyId={focusedPropertyId}
@@ -250,7 +250,7 @@ export function InflowPanel({
       ) : (
         <>
           {(reviewItems.length > 0 || needsAttentionTasks.length > 0) && (
-            <section className="min-w-0 rounded-2xl bg-transparent py-1">
+            <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
               <IssuesWorkbenchSectionHeader
                 title="Needs attention"
                 subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}

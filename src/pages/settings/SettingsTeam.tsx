@@ -487,7 +487,6 @@ export default function SettingsTeam() {
         <WorkspaceSurfaceCard
           title="Roles & permissions"
           description="What each preset can do in Filla today."
-          className="bg-card/80"
         >
           <ul className="space-y-2 px-4 pb-4 text-xs text-muted-foreground leading-relaxed">
             <li><span className="font-medium text-foreground">Invite flow</span> — assign a role when you send an invitation.</li>
@@ -711,10 +710,10 @@ export default function SettingsTeam() {
                     <div
                       key={member.user_id}
                       className={cn(
-                        "rounded-[10px] border bg-card transition-all duration-200",
+                        "rounded-[10px] border bg-card/60 transition-all duration-200",
                         isEditing
                           ? "border-primary/30 shadow-sm"
-                          : "border-border shadow-e1"
+                          : "border-border/40 shadow-e1"
                       )}
                     >
                       <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -830,8 +829,8 @@ export default function SettingsTeam() {
                       className={cn(
                         "rounded-[10px] border transition-all duration-200",
                         isEditing || isSettingPw
-                          ? "border-primary/30 bg-card shadow-sm"
-                          : "border-border bg-card shadow-e1"
+                          ? "border-primary/30 bg-card/60 shadow-sm"
+                          : "border-border/40 bg-card/60 shadow-e1"
                       )}
                     >
                       <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -1027,7 +1026,7 @@ export default function SettingsTeam() {
       {/* ── Roles & permissions ── */}
       {teamTab === "roles" && (
         <div className="space-y-6">
-          <WorkspaceSurfaceCard title="Internal roles" className="bg-card/80">
+          <WorkspaceSurfaceCard title="Internal roles">
             <div className="space-y-3 px-4 pb-4">
               {INTERNAL_ORG_ROLES.map((r) => (
                 <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">
@@ -1041,7 +1040,7 @@ export default function SettingsTeam() {
             </div>
           </WorkspaceSurfaceCard>
 
-          <WorkspaceSurfaceCard title="External roles" className="bg-card/80">
+          <WorkspaceSurfaceCard title="External roles">
             <div className="space-y-3 px-4 pb-4">
               {EXTERNAL_ORG_ROLES.map((r) => (
                 <div key={r.value} className="rounded-card border border-border/40 bg-background/60 px-3 py-2.5 shadow-sm">

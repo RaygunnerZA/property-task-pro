@@ -1413,7 +1413,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       />
 
       <div className="flex flex-col gap-1.5 pt-2 pb-4 px-4 border-0 flex-shrink-0 bg-background/95 backdrop-blur-sm text-foreground sticky bottom-0 z-10">
-        <div className="flex gap-2 items-center min-w-0 w-full">
+        <div className="flex min-w-0 w-full items-center gap-2">
           {canManageTask && taskEditOpen ? (
             <Button
               type="button"
@@ -1430,7 +1430,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             <Button
               variant={status === "completed" ? "secondary" : "default"}
               className={cn(
-                "min-w-0 flex-1 shrink",
+                "min-w-0 flex-1 basis-0 overflow-hidden",
                 status !== "completed" && "shadow-primary-btn"
               )}
               onClick={async () => {
@@ -1490,21 +1490,23 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }}
               disabled={isUpdating}
             >
-              <CheckSquare className="h-4 w-4 mr-1.5 shrink-0" />
-              {status === "completed" ? "Completed" : "Mark Complete"}
+              <CheckSquare className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 truncate">
+                {status === "completed" ? "Completed" : "Mark Complete"}
+              </span>
             </Button>
           )}
           <Button
             type="button"
             variant="outline"
-            className="h-10 shrink-0 gap-1.5 px-3 shadow-e1 text-foreground"
+            className="h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden px-3 shadow-e1 text-foreground"
             onClick={() => taskImageInputRef.current?.click()}
             disabled={isUploadingImage}
             aria-label={isUploadingImage ? "Uploading evidence" : "Upload evidence"}
             title={isUploadingImage ? "Uploading…" : "Upload evidence"}
           >
-            <Upload className={cn("h-4 w-4", isUploadingImage && "animate-pulse")} />
-            <span className="text-sm">
+            <Upload className={cn("h-4 w-4 shrink-0", isUploadingImage && "animate-pulse")} />
+            <span className="min-w-0 truncate text-sm">
               {isUploadingImage ? "Uploading…" : "Upload Evidence"}
             </span>
           </Button>

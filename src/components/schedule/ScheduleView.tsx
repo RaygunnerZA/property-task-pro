@@ -116,11 +116,19 @@ export function ScheduleView({
 
   useEffect(() => {
     if (!selectedDate) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
     const dateKey = format(startOfDay(selectedDate), "yyyy-MM-dd");
-    const target = scrollContainerRef.current?.querySelector(`#schedule-day-${dateKey}`);
-    if (target instanceof HTMLElement) {
-      target.scrollIntoView({ block: "start", behavior: "auto" });
-    }
+    const target = container.querySelector(`#schedule-day-${dateKey}`);
+    if (!(target instanceof HTMLElement)) return;
+
+    // Scroll only this list — `scrollIntoView` also moves ancestor page/shell scrollers
+    // (e.g. switching Calendar → Schedule on the workbench jumps the desktop layout).
+    const top =
+      target.getBoundingClientRect().top -
+      container.getBoundingClientRect().top +
+      container.scrollTop;
+    container.scrollTo({ top: Math.max(0, top), behavior: "auto" });
   }, [selectedDate, dates]);
 
   return (

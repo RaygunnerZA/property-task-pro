@@ -42,8 +42,8 @@ export function WorkspaceTabTrigger({
       className={cn(
         "px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
         selected
-          ? "bg-card text-foreground shadow-e1"
-          : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+          ? "bg-card/60 text-foreground shadow-e1"
+          : "text-muted-foreground hover:text-foreground hover:bg-card/40"
       )}
     >
       {children}

@@ -41,22 +41,26 @@ export function IssuesWorkbenchSectionHeader({
     return (
       <div
         className={cn(
-          "flex w-full min-w-0 items-end gap-3 px-2",
+          // items-start + absolute art: title stays at the top (matches CentreWorkbench 55px gap).
+          "relative flex w-full min-w-0 items-start gap-3 px-2",
           spacious ? "my-5" : "my-0",
           className
         )}
       >
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pr-[min(6.5rem,28%)]">
           <h2 className={workbenchSectionTitleClassName}>{title}</h2>
           {subtitle ? (
             <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
           ) : null}
         </div>
-        <div className="flex aspect-square w-[min(6.25rem,26%)] max-h-[6.25rem] shrink-0 items-end justify-end">
+        <div
+          className="pointer-events-none absolute right-2 top-0 flex aspect-square w-[min(6.25rem,26%)] max-h-[6.25rem] items-start justify-end"
+          aria-hidden
+        >
           <img
             src={illustrationSrc}
             alt=""
-            className="mb-[-2px] mt-[-2px] h-full w-full overflow-hidden object-contain object-bottom drop-shadow-sm"
+            className="mt-[-2px] h-full w-full overflow-hidden object-contain object-top drop-shadow-sm"
             decoding="async"
           />
         </div>

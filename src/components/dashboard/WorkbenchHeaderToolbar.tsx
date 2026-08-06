@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
-import { WorkbenchFiltersPopover } from "@/components/dashboard/WorkbenchFiltersPopover";
 import { GradientHeaderMaskedIcon } from "@/components/layout/GradientHeaderMaskedIcon";
 import {
   gradientHeaderSearchFieldClassName,
@@ -12,6 +11,7 @@ type WorkbenchHeaderToolbarProps = {
   className?: string;
   /** On dashboard gradient header: no outer chrome — controls float on the strip. */
   variant?: "default" | "gradient";
+  /** @deprecated Unused — kept for call-site compatibility. */
   properties?: { id: string; name?: string | null; nickname?: string | null; address?: string | null }[];
   onAskFilla?: (query: string) => void;
   accentColor?: string;
@@ -20,7 +20,6 @@ type WorkbenchHeaderToolbarProps = {
 export function WorkbenchHeaderToolbar({
   className,
   variant = "default",
-  properties = [],
   onAskFilla,
   accentColor = "#8EC9CE",
 }: WorkbenchHeaderToolbarProps) {
@@ -84,13 +83,6 @@ export function WorkbenchHeaderToolbar({
           )}
         </button>
       </div>
-
-      <WorkbenchFiltersPopover
-        properties={properties}
-        mode="toolbar"
-        variant={variant}
-        accentColor={accentColor}
-      />
     </div>
   );
 }

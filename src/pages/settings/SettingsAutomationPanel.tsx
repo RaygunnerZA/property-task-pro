@@ -120,7 +120,7 @@ export default function SettingsAutomationPanel() {
                   className={cn(
                     "min-h-[44px] w-full min-w-0 flex-1 py-3 px-3 rounded-[6px] text-sm font-medium transition-all capitalize sm:px-4",
                     mode === m
-                      ? "bg-card shadow-e1 text-primary"
+                      ? "bg-card/60 shadow-e1 text-primary"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >

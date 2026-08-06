@@ -227,8 +227,9 @@ const Sidebar = React.forwardRef<
       />
       <div
         className={cn(
-          /* Above main content + sticky headers so sidebar links stay clickable */
-          "fixed top-0 bottom-0 z-50 hidden h-svh transition-[left,right,width,box-shadow] ease-out md:flex",
+          /* Above main content so sidebar links stay clickable; sits under workbench header when offset is set */
+          "fixed bottom-0 z-50 hidden transition-[left,right,width,box-shadow,top,height] ease-out md:flex",
+          "top-0 h-svh",
           isIconRail
             ? "w-[--sidebar-width-icon] group-data-[state=expanded]:w-[--sidebar-width] group-data-[state=expanded]:shadow-md"
             : "w-[--sidebar-width]",
@@ -244,6 +245,7 @@ const Sidebar = React.forwardRef<
             (variant === "floating" || variant === "inset") &&
             "p-2",
         )}
+        data-sidebar-rail=""
         style={{ transitionDuration: `${SIDEBAR_EXPAND_MS}ms` }}
         onMouseEnter={handleRailEnter}
         onMouseLeave={handleRailLeave}

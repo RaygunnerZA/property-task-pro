@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
-import { WorkbenchFiltersPopover } from "@/components/dashboard/WorkbenchFiltersPopover";
+import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import {
   MobileWorkbenchHeaderRow,
   MobileWorkbenchHeaderSearchTrigger,
@@ -15,9 +15,10 @@ import type { PropertySelectorRowProperty } from "@/components/properties/Proper
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { cn } from "@/lib/utils";
+import type { IntakeMode } from "@/types/intake";
 
-/** Matches DualPane left-rail `sm:pl-[12px]` so the gradient lines up with the property card. */
-const HEADER_ALIGN_INSET_CLASS = "left-3";
+/** Desktop workbench header band height (keep in sync with `index.css` / shell offset). */
+const DESKTOP_HEADER_BAND_PX = 73;
 
 /** Gradient strip: colour solid until ~33%, then fades to transparent, with paper grain. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
@@ -33,6 +34,10 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
+  /** Wide layout: Create Task + Add Record in the header’s third column. */
+  onOpenIntake?: (mode: IntakeMode) => void;
+  /** Optional extra controls for the wide third-column header slot. */
+  headerActions?: ReactNode;
 };
 
 export function WorkbenchGradientHeader({
@@ -44,6 +49,7 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
+  onOpenIntake,
 }: WorkbenchGradientHeaderProps) {
   const showPropertySelector = properties.length > 1;
 
@@ -54,7 +60,7 @@ export function WorkbenchGradientHeader({
       <img
         src={fillaDarkLogo}
         alt="Filla"
-        className="h-[28px] w-auto shrink-0"
+        className="ml-1.5 h-[28px] w-auto shrink-0"
       />
       {showPropertySelector ? (
         <PropertySelectorStack
@@ -76,7 +82,7 @@ export function WorkbenchGradientHeader({
       <PageHeader
         showAccountMenu
         showSearch
-        showFilter
+        showFilter={false}
         style={headerStyle}
         accentColor={accentColor}
         className="page-header--workbench-mobile lg:hidden"
@@ -89,14 +95,6 @@ export function WorkbenchGradientHeader({
             accentColor={accentColor}
           />
         }
-        mobileFilterSlot={
-          <WorkbenchFiltersPopover
-            properties={properties}
-            mode="icon"
-            variant="gradient"
-            accentColor={accentColor}
-          />
-        }
       >
         <MobileWorkbenchHeaderRow
           searchOpen={mobileSearchOpen}
@@ -106,6 +104,32 @@ export function WorkbenchGradientHeader({
           accentColor={accentColor}
         />
       </PageHeader>
+
+      {/*
+        Fixed full-viewport colour wash + paper noise (L→R fade to transparent).
+        Fixed so it escapes main overflow-x clipping and sits above the left nav.
+      */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-[54] hidden lg:block"
+        style={{ ...headerStyle, height: DESKTOP_HEADER_BAND_PX }}
+      />
+      <div
+        className="fixed top-0 z-[56] hidden items-center lg:flex"
+        style={{ height: DESKTOP_HEADER_BAND_PX, left: 0 }}
+      >
+        <Link
+          to="/"
+          className="flex shrink-0 items-center rounded-md pl-5 outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
+          aria-label="Go to home"
+        >
+          <img
+            src={fillaDarkLogo}
+            alt="Filla"
+            className="h-[28px] w-auto"
+          />
+        </Link>
+      </div>
 
       <PageHeader
         showAccountMenu={false}
@@ -121,28 +145,8 @@ export function WorkbenchGradientHeader({
             "layout:grid-cols-workbench-triple"
           )}
         >
-          {/* Inset gradient so its left edge matches the property card, not the sidebar. */}
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-0 right-0 rounded-l-xl",
-              HEADER_ALIGN_INSET_CLASS
-            )}
-            style={headerStyle}
-          />
-
-          <div className="relative z-10 flex min-w-0 items-center gap-2.5 px-3 sm:px-[18px] sm:pt-[22px]">
-            <Link
-              to="/"
-              className="flex shrink-0 items-center rounded-md outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
-              aria-label="Go to home"
-            >
-              <img
-                src={fillaDarkLogo}
-                alt="Filla"
-                className="h-[28px] w-auto"
-              />
-            </Link>
+          {/* Spacer column under the fixed logo / above the property rail */}
+          <div className="relative z-10 flex min-w-0 items-center gap-2.5 px-3 sm:px-[18px] sm:pt-[22px] sm:pl-2">
             {showPropertySelector ? (
               <PropertySelectorStack
                 variant="gradientHeader"
@@ -171,7 +175,22 @@ export function WorkbenchGradientHeader({
             />
           </div>
 
-          <div className="relative z-10 hidden min-w-0 layout:block" aria-hidden />
+          <div
+            className={cn(
+              "relative z-10 hidden min-w-0 items-center justify-start gap-2 self-stretch",
+              "layout:flex layout:pt-5 layout:pl-1"
+            )}
+          >
+            {onOpenIntake ? (
+              <IntakeActionButtonPair
+                variant="micro"
+                layout="row"
+                className="flex-nowrap gap-2 [&_button]:h-9 [&_button]:min-h-9 [&_button]:px-3 [&_button]:text-sm"
+                onAddRecord={() => onOpenIntake("add_record")}
+                onReportIssue={() => onOpenIntake("report_issue")}
+              />
+            ) : null}
+          </div>
         </div>
       </PageHeader>
     </>

@@ -49,7 +49,6 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { AddToFillaDropPanel } from "@/components/intake/AddToFillaDropPanel";
 import { AddToFillaSheet } from "@/components/intake/AddToFillaSheet";
 import { cn } from "@/lib/utils";
@@ -867,24 +866,8 @@ export default function Dashboard({
           />
         </div>
       ) : intakeMinimized ? (
-        /* ── Minimised intake — keep primary CTAs bold (matches TaskPanel toolbar) */
-        <div className="mb-2 shrink-0 w-full min-w-0">
-          <div
-            className={cn(
-              "w-full min-h-12 h-12 rounded-[15px] bg-background overflow-visible",
-              "shadow-[inset_2px_1px_2px_0px_rgba(0,0,0,0.1),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.61)]"
-            )}
-          >
-            <div className="px-2 py-[6px]">
-              <IntakeActionButtonPair
-                variant="toolbar"
-                layout="grid"
-                onAddRecord={() => handleOpenIntake("add_record")}
-                onReportIssue={() => handleOpenIntake("report_issue")}
-              />
-            </div>
-          </div>
-        </div>
+        /* CTAs live in the wide header; keep third column clear when intake is minimised */
+        null
       ) : (
         <div className="pb-[20px]">
           <IntakeModal
@@ -1058,6 +1041,7 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
+              onOpenIntake={handleOpenIntake}
             />
           }
         leftColumn={

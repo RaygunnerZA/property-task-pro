@@ -39,6 +39,13 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { computeAllPropertiesSummaryMetrics } from "@/lib/propertySummaryMetrics";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { useTrackpadCarouselWheel } from "@/hooks/useTrackpadHorizontalScroll";
+import {
+  PROPERTY_HERO_UNDERLAY,
+  propertyHeroFrameHeight,
+  propertyHeroImageOpacity,
+  propertyHeroSettleTransition,
+  usePropertyHeroSettle,
+} from "@/hooks/usePropertyHeroSettle";
 import { cn } from "@/lib/utils";
 import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 
@@ -101,6 +108,9 @@ function AllPropertiesCarouselSlide({
   const { orgId } = useActiveOrg();
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [displayRevision, setDisplayRevision] = useState(0);
+  const { settled: heroSettled, hoverBind: heroHoverBind } = usePropertyHeroSettle();
+  const heroHeight = propertyHeroFrameHeight(160, heroSettled);
+  const heroTransition = propertyHeroSettleTransition();
 
   const displaySettings = useMemo(
     () => (orgId ? getAllPropertiesDisplaySettings(orgId) : {}),
@@ -143,7 +153,15 @@ function AllPropertiesCarouselSlide({
         isSelected ? "border-primary/50" : "border-border/20"
       )}
     >
-      <div className="group relative w-full shrink-0 overflow-hidden rounded-t-xl" style={{ height: "160px" }}>
+      <div
+        className="group relative w-full shrink-0 overflow-hidden rounded-t-xl"
+        style={{
+          height: heroHeight,
+          backgroundColor: PROPERTY_HERO_UNDERLAY,
+          transition: heroTransition,
+        }}
+        {...heroHoverBind}
+      >
         <button
           type="button"
           onClick={onSelectSlide}
@@ -151,7 +169,15 @@ function AllPropertiesCarouselSlide({
           aria-label="Select all properties view"
           className="relative block h-full w-full overflow-hidden rounded-t-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          <img src={allPropertiesHero} alt="" className="h-full w-full object-cover" />
+          <img
+            src={allPropertiesHero}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{
+              opacity: propertyHeroImageOpacity(heroSettled),
+              transition: heroTransition,
+            }}
+          />
 
           <div
             className="pointer-events-none absolute inset-0"
@@ -259,6 +285,9 @@ function PropertyCarouselSlide({
   });
   const { data: propertyTasksView = [] } = useTasksQuery(property.id);
   const { members } = useOrgMembers();
+  const { settled: heroSettled, hoverBind: heroHoverBind } = usePropertyHeroSettle();
+  const heroHeight = propertyHeroFrameHeight(160, heroSettled);
+  const heroTransition = propertyHeroSettleTransition();
 
   const displayName = property.nickname || property.address;
   const iconColor = property.icon_color_hex || "#8EC9CE";
@@ -329,15 +358,22 @@ function PropertyCarouselSlide({
         aria-label={`Select ${displayName}`}
         className="relative block w-full shrink-0 overflow-hidden rounded-t-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         style={{
-          height: "160px",
-          backgroundColor: property.thumbnail_url ? undefined : iconColor,
+          height: heroHeight,
+          backgroundColor: PROPERTY_HERO_UNDERLAY,
+          transition: heroTransition,
         }}
+        onMouseEnter={heroHoverBind.onMouseEnter}
+        onMouseLeave={heroHoverBind.onMouseLeave}
       >
         {property.thumbnail_url ? (
           <img
             src={property.thumbnail_url}
             alt=""
             className="h-full w-full object-cover"
+            style={{
+              opacity: propertyHeroImageOpacity(heroSettled),
+              transition: heroTransition,
+            }}
           />
         ) : null}
 

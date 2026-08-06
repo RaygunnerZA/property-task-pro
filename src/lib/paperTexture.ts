@@ -9,13 +9,20 @@ export function paperTexturedColorStyle(fillColor: string): CSSProperties {
   };
 }
 
-/** Layer paper grain over a horizontal fade gradient (workbench header strip). */
+/** Layer paper grain over a horizontal fade gradient (workbench header strip).
+ * Colour is full opacity on the left and fades to transparent on the right so the
+ * page paper/noise shows through — seamless with the surface below.
+ */
 export function paperTexturedGradientHeaderStyle(color: string): CSSProperties {
   return {
-    backgroundColor: color,
-    backgroundImage: `var(--paper-texture), linear-gradient(90deg, ${color} 0%, ${color} 33%, transparent 100%)`,
+    backgroundColor: "transparent",
+    backgroundImage: [
+      `linear-gradient(90deg, ${color} 0%, ${color} 33%, transparent 100%)`,
+      "var(--paper-texture)",
+    ].join(", "),
     backgroundSize: "100%, 100%",
-    backgroundBlendMode: "multiply, normal",
+    backgroundRepeat: "no-repeat, repeat",
+    backgroundBlendMode: "normal, multiply",
   };
 }
 

@@ -144,8 +144,32 @@
       height: 73px;
       min-height: 73px;
       padding-top: 0;
+      padding-left: 0;
       box-sizing: border-box;
       overflow: visible;
+      /* Above scrolling content; nav rail is offset below this band */
+      z-index: 55;
+      background: transparent;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    /*
+     * Workbench shell: icon rail starts under the full-bleed gradient header
+     * (header is structurally above left navigation).
+     */
+    .app-shell--workbench-header {
+      --app-shell-header-offset: 73px;
+    }
+
+    .app-shell--workbench-header [data-sidebar-rail] {
+      top: var(--app-shell-header-offset);
+      height: calc(100svh - var(--app-shell-header-offset));
+    }
+
+    /* Align Home with the property card top (DualPane column gap is 14px). */
+    .app-shell--workbench-header [data-sidebar="content"] {
+      padding-top: 0.875rem; /* 14px */
     }
   }
 
@@ -270,10 +294,13 @@
     background-color: hsl(var(--background));
   }
 
-  /* Paper background for all main content areas */
+  /*
+   * Paper on explicit page surfaces only.
+   * Do NOT paint every <main> — Settings’ tall min-h main was stretching the
+   * noise SVG into a dark “glitch” panel behind short content. Body already
+   * carries the page texture.
+   */
   .bg-background,
-  main,
-  [role="main"],
   div[class*="bg-background"],
   div[class*="bg-white"] {
     background-image: var(--paper-texture) !important;

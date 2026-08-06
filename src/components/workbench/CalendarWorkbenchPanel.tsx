@@ -181,7 +181,7 @@ export function CalendarWorkbenchPanel({
   );
 
   return (
-    <div className="flex min-h-0 flex-col space-y-4">
+    <div className="flex min-h-0 flex-col space-y-4 pt-0">
       <SegmentControl
         options={VIEW_OPTIONS}
         selectedId={view}

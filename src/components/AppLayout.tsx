@@ -9,8 +9,12 @@ import { isDevBuild } from '@/context/DevModeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
 import { MobileAppHeader } from '@/components/layout/MobileAppHeader';
-import { isMobileHeaderExcludedPath } from '@/lib/mainNavigation';
+import {
+  isMobileHeaderExcludedPath,
+  isWorkbenchHeaderAboveNavPath,
+} from '@/lib/mainNavigation';
 import { DevToolsOverlays } from '@/components/dev/DevToolsOverlays';
+import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -23,6 +27,7 @@ export function AppLayout({
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const isHubHome = isMobileHeaderExcludedPath(pathname);
+  const headerAboveNav = isWorkbenchHeaderAboveNavPath(pathname);
 
   useEffect(() => {
     if ('scrollRestoration' in history) {
@@ -41,7 +46,12 @@ export function AppLayout({
     <ThirdColumnProvider>
       <AssistantProvider>
         <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative">
+      <div
+        className={cn(
+          "min-h-screen flex w-full max-w-full min-w-0 overflow-x-hidden bg-background relative",
+          headerAboveNav && "app-shell--workbench-header"
+        )}
+      >
         <AppSidebar />
         
         <div className="flex-1 flex flex-col min-h-screen min-w-0">

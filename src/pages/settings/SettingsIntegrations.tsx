@@ -53,7 +53,7 @@ export function ConnectedAccountsPanel({ className }: ConnectedAccountsPanelProp
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] bg-card/80 px-4 py-3 shadow-e1">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] bg-card/60 px-4 py-3 shadow-e1">
             <div className="flex items-center gap-3">
               <Calendar className="h-5 w-5 text-primary" />
               <div>
@@ -78,7 +78,7 @@ export function ConnectedAccountsPanel({ className }: ConnectedAccountsPanelProp
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] bg-card/80 px-4 py-3 shadow-e1">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] bg-card/60 px-4 py-3 shadow-e1">
             <div className="flex items-center gap-3">
               <Cloud className="h-5 w-5 text-primary" />
               <div>

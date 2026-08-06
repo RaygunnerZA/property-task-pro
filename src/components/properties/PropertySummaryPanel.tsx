@@ -1,6 +1,6 @@
-import { useCallback, useMemo, type CSSProperties } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ChevronUp } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaIcon } from "@/components/filla/FillaIcon";
@@ -246,7 +246,9 @@ function CountRow({
 
   if (!onActivate) {
     return (
-      <div className="flex items-center justify-between gap-2 py-1">{content(false)}</div>
+      <div className="ml-auto flex w-full max-w-[118px] items-center justify-between gap-2 py-1">
+        {content(false)}
+      </div>
     );
   }
 
@@ -254,7 +256,14 @@ function CountRow({
     <button
       type="button"
       onClick={onActivate}
-      className="group/row flex w-full items-center justify-between gap-2 rounded-xl py-1 pl-[11px] pr-[3px] text-left text-sm shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)] transition-[background-color,transform] duration-150 ease-out hover:bg-muted/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className={cn(
+        "group/row ml-auto flex w-full max-w-[118px] items-center justify-between gap-2 rounded-xl py-1 pl-2.5 pr-[3px] text-left text-sm",
+        "bg-transparent shadow-none",
+        "transition-[background-color,box-shadow,transform] duration-150 ease-out",
+        "hover:bg-muted/30 hover:shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)]",
+        "active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+        "focus-visible:bg-muted/30 focus-visible:shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)]"
+      )}
     >
       {content(true)}
     </button>
@@ -355,6 +364,7 @@ export function PropertySummaryPanel({
   const showPhoneWorkEntries = showCentreNavBelowPhone || variant === "compact";
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [metricsExpanded, setMetricsExpanded] = useState(true);
   const propertyName = property.nickname || property.address;
   const { data: scopedSignals = [] } = useSignalsQuery({
     propertyIds: portfolioSignals ? undefined : [property.id],
@@ -562,34 +572,59 @@ export function PropertySummaryPanel({
         </div>
 
         {variant === "full" ? (
-          <div
-            className={cn(
-              "flex items-start gap-0 border-b border-dashed border-border/40 px-1 pb-1 pt-4",
-              sectionRevealClass
-            )}
-            style={sectionRevealStyle(1)}
-          >
-            <div className="flex w-[42%] min-w-[96px] shrink-0 flex-col items-center">
-              <RadialProgress
-                value={metrics.completionPct}
-                size={78}
-                thickness={5}
-                innerDiscSize={57}
-                labelMarginLeft={4}
-                embed
-                visualWeight="soft"
-                aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
-              />
-              <p className="mt-1 max-w-[96px] text-center text-2xs font-medium leading-tight text-muted-foreground">
-                {metrics.completedLabel}
-              </p>
+          <div className={cn(sectionRevealClass)} style={sectionRevealStyle(1)}>
+            <div
+              className={cn(
+                "grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none",
+                metricsExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              )}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="flex items-start gap-1 border-b border-dashed border-border/40 px-1 pb-2 pt-[7px]">
+                  <div className="flex w-[52%] min-w-[118px] shrink-0 flex-col items-center justify-center">
+                    <RadialProgress
+                      value={metrics.completionPct}
+                      size={100}
+                      thickness={7}
+                      innerDiscSize={74}
+                      labelMarginLeft={6}
+                      embed
+                      visualWeight="soft"
+                      aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
+                    />
+                    <p className="mt-1.5 max-w-[112px] text-center text-2xs font-medium leading-tight text-muted-foreground">
+                      {metrics.completedLabel}
+                    </p>
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 flex-col items-stretch justify-center gap-0.5 border-l border-dashed border-border/35 py-1 pl-1.5 pr-0.5">
+                    <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
+                    <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
+                    <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
+                    <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-[2px] border-l border-dashed border-border/35 pb-[11px] pl-2">
-              <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
-              <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
-              <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
-              <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
+            <div className="flex flex-col items-center pb-[10px] pt-0.5">
+              <button
+                type="button"
+                onClick={() => setMetricsExpanded((open) => !open)}
+                aria-expanded={metricsExpanded}
+                aria-label={
+                  metricsExpanded ? "Collapse property metrics" : "Expand property metrics"
+                }
+                className="flex w-full items-center justify-center rounded-lg py-0.5 text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+              >
+                <ChevronUp
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+                    !metricsExpanded && "rotate-180"
+                  )}
+                  strokeWidth={2.2}
+                />
+              </button>
             </div>
           </div>
         ) : null}

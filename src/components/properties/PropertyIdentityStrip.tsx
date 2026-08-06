@@ -16,6 +16,13 @@ import {
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import {
+  PROPERTY_HERO_UNDERLAY,
+  propertyHeroFrameHeight,
+  propertyHeroImageOpacity,
+  propertyHeroSettleTransition,
+  usePropertyHeroSettle,
+} from "@/hooks/usePropertyHeroSettle";
 import { PropertySummaryPanel } from "@/components/properties/PropertySummaryPanel";
 import {
   PropertyHubNavCards,
@@ -103,6 +110,9 @@ export function PropertyIdentityStrip({
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showArchivePropertyDialog, setShowArchivePropertyDialog] = useState(false);
   const [isArchivingProperty, setIsArchivingProperty] = useState(false);
+  const { settled: heroSettled, hoverBind: heroHoverBind } = usePropertyHeroSettle();
+  const heroHeight = propertyHeroFrameHeight(210, heroSettled);
+  const heroTransition = propertyHeroSettleTransition();
 
   const displayName = property.nickname || property.address;
   const iconColor = property.icon_color_hex || "#8EC9CE";
@@ -152,20 +162,26 @@ export function PropertyIdentityStrip({
         <div
           className="group relative w-full shrink-0 overflow-hidden"
           style={{
-            height: "210px",
-            backgroundColor: property.thumbnail_url ? undefined : iconColor,
+            height: heroHeight,
+            backgroundColor: PROPERTY_HERO_UNDERLAY,
+            transition: heroTransition,
           }}
+          {...heroHoverBind}
         >
           {property.thumbnail_url ? (
             <img
               src={property.thumbnail_url}
               alt={displayName}
               className="h-full w-full object-cover"
+              style={{
+                opacity: propertyHeroImageOpacity(heroSettled),
+                transition: heroTransition,
+              }}
             />
           ) : null}
 
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[210px]"
+            className="pointer-events-none absolute inset-0"
             style={{
               background:
                 "linear-gradient(18.4deg, rgba(31, 49, 86, 0.56) 22%, rgba(33, 51, 80, 0) 48%, rgba(0, 0, 0, 0) 100%)",
@@ -208,7 +224,7 @@ export function PropertyIdentityStrip({
           </button>
 
           <div
-            className="pointer-events-none absolute left-0 right-0 top-0 h-[210px]"
+            className="pointer-events-none absolute inset-0"
             style={{
               boxShadow:
                 "inset 2px 2px 2px 0px rgba(255,255,255,0.4), inset -1px -1px 2px 0px rgba(0,0,0,0.1)",

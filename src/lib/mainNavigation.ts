@@ -106,3 +106,11 @@ export const HUB_PATHS = MOBILE_HEADER_EXCLUDED_PATHS;
 export function isMobileHeaderExcludedPath(pathname: string): boolean {
   return MOBILE_HEADER_EXCLUDED_PATHS.has(pathname);
 }
+
+/**
+ * Desktop workbench gradient header sits above the icon rail (full-bleed).
+ * Matches pages that render {@link WorkbenchGradientHeader}.
+ */
+export function isWorkbenchHeaderAboveNavPath(pathname: string): boolean {
+  return isMobileHeaderExcludedPath(pathname);
+}

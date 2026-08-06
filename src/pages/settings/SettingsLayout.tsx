@@ -67,10 +67,10 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
       <nav
         aria-label="Settings sections"
         className={cn(
-          "sticky top-0 z-20 -mx-gutter-page border-b border-border/15 bg-background/90 px-gutter-page py-2 backdrop-blur-md",
+          "sticky top-0 z-20 -mx-gutter-page border-b border-border/15 bg-background/80 px-gutter-page py-2 backdrop-blur-md",
           "flex min-w-0 snap-x snap-mandatory flex-row gap-1 overflow-x-auto overscroll-x-contain pb-2 pt-0.5",
           "scrollbar-hz-teal touch-pan-x",
-          "lg:static lg:z-0 lg:mx-0 lg:flex lg:h-full lg:min-h-[min(50vh,480px)] lg:flex-col lg:gap-1 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
+          "lg:static lg:z-0 lg:mx-0 lg:flex lg:flex-col lg:gap-1 lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none"
         )}
       >
         {navItemsVisible.map((item) => {
@@ -79,13 +79,14 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
             <NavLink
               key={item.path}
               to={item.path}
+              end={item.path === "/settings"}
               className={({ isActive }) =>
                 cn(
                   "flex min-h-[44px] shrink-0 snap-start items-center gap-2 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-all",
                   "lg:w-full lg:min-h-0",
                   isActive
-                    ? "bg-card text-foreground shadow-e1"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                    ? "bg-card/60 text-foreground shadow-e1"
+                    : "text-muted-foreground hover:bg-card/40 hover:text-foreground"
                 )
               }
             >
@@ -111,8 +112,8 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
         </button>
       </nav>
 
-      {/* Middle — selected section */}
-      <main className="min-h-[min(50vh,480px)] min-w-0 max-w-full overflow-x-hidden lg:min-h-[50vh]">
+      {/* Middle — selected section (no min-h: avoids empty textured “glitch” panels) */}
+      <main className="min-w-0 max-w-full overflow-x-hidden">
         <Outlet />
       </main>
 

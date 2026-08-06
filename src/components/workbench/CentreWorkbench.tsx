@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { CentreWorkbenchTabStrip } from "@/components/workbench/CentreWorkbenchTabStrip";
 import { CentreWorkbenchMobileCalendar } from "@/components/workbench/CentreWorkbenchMobileCalendar";
 import { InflowPanel } from "@/components/workbench/InflowPanel";
@@ -12,6 +11,9 @@ import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const centreScrollClass =
   "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-2 pb-4 max-pane:px-2";
+
+/** Space from the tab strip’s white bottom border to the first panel title. */
+const PANEL_BELOW_TABS_GAP_CLASS = "pt-[55px]";
 
 export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;
@@ -91,7 +93,7 @@ export function CentreWorkbench({
       <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
         <div
           className={cn(
-            "mb-3 shrink-0 items-stretch gap-2",
+            "shrink-0 items-stretch gap-2",
             // Avoid `flex` + `hidden` on the same node — last utility in the stylesheet wins.
             hideTabStrip ? "hidden md:flex" : "flex"
           )}
@@ -121,30 +123,30 @@ export function CentreWorkbench({
           ) : null}
         </div>
 
-        {/* Phone: same calendar → content spacing on Inflow and Tasks (md+ calendar is hidden). */}
-        {showMobileCalendar || activeTab === "inflow" ? (
-          <div className="mb-4 flex shrink-0 flex-col gap-3">
-            {showMobileCalendar ? (
-              <CentreWorkbenchMobileCalendar
-                tasks={tasks}
-                properties={properties}
-                tasksLoading={tasksLoading}
-                selectedDate={selectedDate}
-                onDateSelect={onDateSelect}
-                selectedPropertyIds={selectedPropertyIds}
-              />
-            ) : null}
-            {activeTab === "inflow" ? (
-              <WorkbenchTaskFilterBar
-                tasks={tasks}
-                properties={properties}
-                hidePrimaryUrgentChip
-              />
-            ) : null}
+        {/* Phone only — does not affect the 55px desktop gap below the tab border. */}
+        {showMobileCalendar ? (
+          <div className="mt-3 md:hidden">
+            <CentreWorkbenchMobileCalendar
+              tasks={tasks}
+              properties={properties}
+              tasksLoading={tasksLoading}
+              selectedDate={selectedDate}
+              onDateSelect={onDateSelect}
+              selectedPropertyIds={selectedPropertyIds}
+              className="mb-0"
+            />
           </div>
         ) : null}
 
-        <div key={activeTab} className="panel-enter min-h-0 flex-1">
+        <div
+          key={activeTab}
+          className={cn(
+            "panel-enter min-h-0 flex-1",
+            // Inflow / Tasks / Calendar: 55px from tab border → first title.
+            // Phone with week calendar above: tighter gap after the calendar.
+            showMobileCalendar ? "pt-3 md:pt-[55px]" : PANEL_BELOW_TABS_GAP_CLASS
+          )}
+        >
           {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}
           {activeTab === "tasks" && <TasksWorkbenchPanel {...sharedPanelProps} />}
           {activeTab === "calendar" && (
