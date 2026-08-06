@@ -1,6 +1,6 @@
 /**
  * PropertyScreenLayout - Framework V2 layout wrapper
- * Left: ~330px | Middle: max 700px | Right: max 330px (≥1480px only)
+ * Left: ~330px | Middle: max 700px | Right: max 330px (≥1280px / `layout` breakpoint)
  * Uses DualPaneLayout for consistent breakpoints.
  */
 import { ReactNode } from "react";
@@ -12,7 +12,7 @@ interface PropertyScreenLayoutProps {
   leftColumn: ReactNode;
   /** Middle column content (max 700px) - main content */
   middleColumn: ReactNode;
-  /** Right column content (max 330px, only ≥1480px) - quick actions */
+  /** Right column content (max 330px, only ≥1280px / `layout`) - quick actions */
   rightColumn?: ReactNode;
   /** Optional header spanning the full workbench width (above left, middle, and right columns). */
   header?: ReactNode;

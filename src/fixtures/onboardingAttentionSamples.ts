@@ -1,26 +1,42 @@
 import type { AttentionItem } from "@/components/dashboard/issues/issuesAttentionItem";
 
-const EXAMPLE = "Example";
+/** Fixture primary actions — routed in IssuesSignalCard.runFixtureAction. */
+export type OnboardingFixtureActionId =
+  | "complete-profile"
+  | "create-asset"
+  | "upload-document"
+  | "create-task"
+  | "review-certificate"
+  | "create-service-task"
+  | "categorise-document"
+  | "review-signal"
+  | "create-prep-task"
+  | "view-certificate"
+  | "view-asset"
+  | "review-documents"
+  | "dismiss"
+  | "ignore";
 
 function reviewItem(
   id: string,
   title: string,
   description: string,
-  actionLabel: string,
-  imageUrl: string
+  action: { id: OnboardingFixtureActionId; label: string },
+  imageUrl: string,
+  opts?: { tip?: boolean }
 ): AttentionItem {
   return {
     id: `onboarding:review:${id}`,
     group: "review",
     title,
-    context: EXAMPLE,
+    context: opts?.tip ? "Tip" : "Needs a decision",
     description,
-    whyHere: "Filla needs your judgement before routing this.",
+    whyHere: "Filla surfaces items like this so you can confirm before routing work.",
     isUiFixture: true,
     isOnboardingExample: true,
     imageUrl,
     fixtureActions: {
-      primary: { id: "signal-review", label: actionLabel },
+      primary: action,
       secondary: [{ id: "dismiss", label: "Dismiss" }],
     },
   };
@@ -31,13 +47,14 @@ function recentSignal(
   title: string,
   description: string,
   imageUrl: string,
+  action: { id: OnboardingFixtureActionId; label: string },
   kind: AttentionItem["signalKind"] = "ai_suggestion"
 ): AttentionItem {
   return {
     id: `onboarding:signal:${id}`,
     group: "recent",
     title,
-    context: `Confidence: ${EXAMPLE}`,
+    context: "Tip — how Filla surfaces updates",
     description,
     signalKind: kind,
     footChipLabel: "SIGNAL",
@@ -46,7 +63,7 @@ function recentSignal(
     imageUrl,
     confidenceLevel: "medium",
     fixtureActions: {
-      primary: { id: "signal-open", label: "Review" },
+      primary: action,
       secondary: [{ id: "dismiss", label: "Dismiss" }],
     },
   };
@@ -58,12 +75,12 @@ function recordItem(id: string, title: string, category: string, imageUrl: strin
     group: "review",
     title,
     context: `Suggested category: ${category}`,
-    description: `${EXAMPLE} — Filla can organise and monitor records like this once you upload documents.`,
+    description: "Once you upload documents, Filla can categorise and monitor records like this.",
     isUiFixture: true,
     isOnboardingExample: true,
     imageUrl,
     fixtureActions: {
-      primary: { id: "signal-convert", label: "Categorise" },
+      primary: { id: "categorise-document", label: "Categorise" },
       secondary: [{ id: "dismiss", label: "Dismiss" }],
     },
     complianceSeed: {
@@ -74,100 +91,138 @@ function recordItem(id: string, title: string, category: string, imageUrl: strin
   };
 }
 
-function quickWin(id: string, title: string, subtitle: string, imageUrl: string): AttentionItem {
+function quickWin(
+  id: string,
+  title: string,
+  subtitle: string,
+  imageUrl: string,
+  action: { id: OnboardingFixtureActionId; label: string }
+): AttentionItem {
   return {
     id: `onboarding:quick:${id}`,
     group: "recent",
     title,
     context: subtitle,
-    description: `${EXAMPLE} — complete in under a minute to see how Filla works.`,
-    footChipLabel: "QUICK WIN",
+    description: "Complete this setup step in under a minute.",
+    footChipLabel: "SETUP",
     isUiFixture: true,
     isOnboardingExample: true,
     imageUrl,
     fixtureActions: {
-      primary: { id: "onboarding-quick-win", label: "Start" },
+      primary: action,
     },
   };
 }
 
-/** Needs review queue — education examples (DB tasks also seeded; these reinforce Attention UI). */
+/** Needs review — tips that teach triage / compliance decisions. */
 export const ONBOARDING_NEEDS_ATTENTION: AttentionItem[] = [
   reviewItem(
     "fire-ext",
     "Review Fire Extinguisher Certificate",
-    "A certificate was uploaded but needs confirmation.",
-    "Review",
-    "/spaces/mini-cards/first-aid.png"
+    "A certificate was uploaded but needs confirmation before it becomes a monitored record.",
+    { id: "review-certificate", label: "Review certificate" },
+    "/spaces/mini-cards/first-aid.png",
+    { tip: true }
   ),
   reviewItem(
     "boiler",
     "Boiler Service Due Soon",
-    "Annual service due in 14 days.",
-    "Schedule",
-    "/spaces/mini-cards/boiler-room.png"
+    "Annual service due in 14 days — create a task so someone owns the work.",
+    { id: "create-service-task", label: "Create service task" },
+    "/spaces/mini-cards/boiler-room.png",
+    { tip: true }
   ),
   reviewItem(
     "unknown-doc",
     "Unknown Document Uploaded",
-    "Filla couldn't identify a recently uploaded file.",
-    "Categorise",
-    "/spaces/mini-cards/archive-room.png"
+    "Filla couldn't identify a recently uploaded file. Categorise it so it can be monitored.",
+    { id: "categorise-document", label: "Categorise document" },
+    "/spaces/mini-cards/archive-room.png",
+    { tip: true }
   ),
 ];
 
-/** Signals — demonstrate AI value. */
+/** Signals — tips that demonstrate AI / environmental value. */
 export const ONBOARDING_SIGNALS: AttentionItem[] = [
   recentSignal(
     "electricity",
     "High Electricity Usage",
-    "Energy use increased compared to last month.",
+    "Energy use increased compared to last month. Review the signal or raise a check.",
     "/spaces/mini-cards/electrical-room.png",
+    { id: "create-task", label: "Create inspection task" },
     "ai_warning"
   ),
   recentSignal(
     "rain",
     "Heavy Rain Expected This Week",
-    "Check roofs, gutters, and drainage.",
+    "Check roofs, gutters, and drainage before the weather hits.",
     "/spaces/mini-cards/garden.png",
+    { id: "create-prep-task", label: "Create prep task" },
     "weather"
   ),
   recentSignal(
     "fire-cert",
     "Fire Safety Certificate Expires Soon",
-    "Expiry detected in uploaded document.",
+    "Expiry detected in an uploaded document — open the certificate or set a renewal task.",
     "/spaces/mini-cards/first-aid.png",
+    { id: "view-certificate", label: "View certificate" },
     "document"
   ),
   recentSignal(
     "warranty",
     "Boiler Warranty Found",
-    "Warranty document identified and linked to asset.",
+    "A warranty document was identified and linked to an asset. Confirm it on the asset.",
     "/spaces/mini-cards/boiler-room.png",
+    { id: "view-asset", label: "View asset" },
     "ai_suggestion"
   ),
   recentSignal(
     "multi-review",
     "Multiple Documents Need Review",
-    "Filla found information but needs confirmation.",
+    "Filla found information in uploads but needs confirmation before filing.",
     "/spaces/mini-cards/archive-room.png",
+    { id: "review-documents", label: "Review documents" },
     "upload"
   ),
 ];
 
-/** Records to organise — education examples. */
+/** Records to organise — tips that teach filing. */
 export const ONBOARDING_RECORDS: AttentionItem[] = [
   recordItem("insurance", "Building Insurance Policy", "Insurance", "/spaces/mini-cards/archive-room.png"),
   recordItem("lighting", "Emergency Lighting Report", "Compliance", "/spaces/mini-cards/electrical-room.png"),
   recordItem("water", "Water System Inspection", "Maintenance", "/spaces/mini-cards/boiler-room.png"),
 ];
 
-/** Quick wins — fast actions. */
+/** Quick wins — real onboarding / setup steps (not generic “Start”). */
 export const ONBOARDING_QUICK_WINS: AttentionItem[] = [
-  quickWin("profile", "Complete Your Property Profile", "80% complete", "/spaces/mini-cards/office.png"),
-  quickWin("asset", "Add Your First Asset", "Boilers, lifts, vehicles, appliances", "/spaces/mini-cards/plant-room.png"),
-  quickWin("upload", "Upload One Document", "Drag and drop any PDF or image", "/spaces/mini-cards/archive-room.png"),
-  quickWin("task", "Create Your First Task", "See how Filla organises work", "/spaces/mini-cards/kitchen.png"),
+  quickWin(
+    "profile",
+    "Complete Your Property Profile",
+    "Nickname, type, and contacts",
+    "/spaces/mini-cards/office.png",
+    { id: "complete-profile", label: "Complete profile" }
+  ),
+  quickWin(
+    "asset",
+    "Add Your First Asset",
+    "Boilers, lifts, vehicles, appliances",
+    "/spaces/mini-cards/plant-room.png",
+    { id: "create-asset", label: "Create an asset" }
+  ),
+  quickWin(
+    "upload",
+    "Upload One Document",
+    "Drag and drop any PDF or image",
+    "/spaces/mini-cards/archive-room.png",
+    { id: "upload-document", label: "Upload document" }
+  ),
+  quickWin(
+    "task",
+    "Create Your First Task",
+    "See how Filla organises work",
+    "/spaces/mini-cards/kitchen.png",
+    { id: "create-task", label: "Create a task" }
+  ),
 ];
 
 export const ONBOARDING_EDUCATION_SUMMARY = {

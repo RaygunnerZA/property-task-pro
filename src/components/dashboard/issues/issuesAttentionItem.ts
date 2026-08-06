@@ -156,6 +156,7 @@ export function formatAuthorDisplayName(rawAuthor?: string | null): string {
 }
 
 export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDetailSnapshot {
+  const setupStep = item.footChipLabel?.toUpperCase() === "SETUP";
   return {
     id: item.id,
     group: item.group,
@@ -164,6 +165,7 @@ export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDe
     description: item.description,
     whyHere: item.whyHere,
     footChipLabel: item.footChipLabel,
+    headerLabel: setupStep ? "Setup step" : item.isOnboardingExample ? "Example" : undefined,
     signalKind: item.signalKind,
     messageId: item.messageId,
     complianceSeed: item.complianceSeed,
@@ -171,5 +173,6 @@ export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDe
     signalSubtype: item.signalSubtype,
     signalId: item.signalId,
     signalPayload: item.signalPayload,
+    fixtureActions: item.fixtureActions,
   };
 }

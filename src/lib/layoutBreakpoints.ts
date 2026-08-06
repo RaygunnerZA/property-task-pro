@@ -8,7 +8,8 @@
  *   `/tasks` is full-screen centre (Inflow | Tasks | Calendar). Prefer this over ad-hoc sm/md mixes.
  * - `sidebarRail` / Tailwind `md` (768px): persistent condensed nav rail vs offcanvas + bottom nav.
  * - `workspace` (1100px): property hub modules (three columns).
- * - `layout` (1480px): app shell three-column dashboard / property right rail.
+ * - `layout` (1280px): app shell three-column dashboard / property right rail.
+ *   Sized for common laptop CSS widths (13″ Retina ~1440, 1366×768, 1280×800), not only large desktops.
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
  */
 export const LAYOUT_BREAKPOINTS = {
@@ -29,15 +30,25 @@ export const LAYOUT_BREAKPOINTS = {
   sidebarRail: 768,
   /** Property workspace / compliance: stacked → three-column */
   workspace: 1100,
-  /** App shell: two-column tablet → three-column desktop */
-  layout: 1480,
+  /**
+   * App shell: two-column tablet → three-column desktop.
+   * 1280 fits default 13″ laptop scaling and most Windows laptop widths; rails flex via
+   * `grid-cols-workbench-triple` minmax tracks so the third column does not force overflow.
+   */
+  layout: 1280,
 } as const;
 
 /** Hub left / right rails on desktop (DualPaneLayout, WorkbenchGradientHeader). */
 export const WORKBENCH_SIDE_RAIL_PX = 330;
 
+/** Soft minimum for side rails when the triple grid must compress on smaller laptops. */
+export const WORKBENCH_SIDE_RAIL_MIN_PX = 260;
+
 /** Hub / workbench middle column max width (DualPaneLayout, PropertyScreenLayout, etc.) */
 export const WORK_SURFACE_MAX_PX = 700;
+
+/** Soft minimum for the centre track when the triple grid compresses. */
+export const WORK_SURFACE_MIN_PX = 420;
 
 /** Property workspace action / AI rail max width beside the work surface */
 export const WORKSPACE_ACTION_RAIL_MAX_PX = 280;

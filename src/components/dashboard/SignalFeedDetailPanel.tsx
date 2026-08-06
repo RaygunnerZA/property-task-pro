@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Inbox, Loader2, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { IntakeActionButton, IntakeActionButtonPair } from "@/components/intake/IntakeActionButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,10 @@ import { ISSUES_STREAM_META_CLASSNAME } from "@/components/dashboard/Operational
 import type { IntakeMode } from "@/types/intake";
 import { usePromoteExternalEmailSignal } from "@/hooks/usePromoteExternalEmailSignal";
 import { useSignalActions } from "@/hooks/useSignalActions";
+import {
+  fixtureActionVisualMode,
+  performOnboardingFixtureAction,
+} from "@/lib/onboardingFixtureActions";
 
 /** Serializable snapshot for workbench signal / attention rows (matches TaskPanel AttentionItem fields used in UI). */
 export type SignalFeedDetailSnapshot = {
@@ -25,6 +30,8 @@ export type SignalFeedDetailSnapshot = {
   description?: string;
   whyHere?: string;
   footChipLabel?: string;
+  /** Overrides group label in the detail header (e.g. "Setup step"). */
+  headerLabel?: string;
   signalKind?: SignalKind;
   messageId?: string;
   complianceSeed?: {
@@ -37,6 +44,11 @@ export type SignalFeedDetailSnapshot = {
   signalSubtype?: string;
   signalId?: string;
   signalPayload?: Record<string, unknown>;
+  /** Onboarding / fixture CTAs — when set, replace generic Create Task / Add Record. */
+  fixtureActions?: {
+    primary: { id: string; label: string };
+    secondary?: { id: string; label: string }[];
+  };
 };
 
 /** Card click on Issues stream → workbench third column / modal (not a DB entity). */
@@ -70,11 +82,23 @@ export function SignalFeedDetailPanel({
   onOpenIntake,
   onOpenAddToFilla,
 }: SignalFeedDetailPanelProps) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const propertyId = searchParams.get("property");
   const metaLine = snapshot.context?.trim();
   const isExternalEmail = snapshot.signalSubtype === "ingestion.external_email";
   const promote = usePromoteExternalEmailSignal();
   const { dismiss } = useSignalActions();
   const [actionPending, setActionPending] = useState<"promote" | "dismiss" | null>(null);
+
+  const runFixtureCta = (actionId: string) => {
+    const result = performOnboardingFixtureAction(actionId, {
+      navigate,
+      propertyId,
+      onOpenIntake,
+    });
+    if (result !== "noop") onClose();
+  };
 
   const handlePromote = async () => {
     if (!snapshot.signalId || actionPending) return;
@@ -103,12 +127,20 @@ export function SignalFeedDetailPanel({
     }
   };
 
+  const fixturePrimary = snapshot.fixtureActions?.primary;
+  const fixtureSecondary = (snapshot.fixtureActions?.secondary ?? []).filter(
+    (a) => a.id !== "dismiss" && a.id !== "ignore"
+  );
+  const fixtureDismiss = (snapshot.fixtureActions?.secondary ?? []).find(
+    (a) => a.id === "dismiss" || a.id === "ignore"
+  );
+
   const panelInner = (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/40 px-4 py-3 shadow-paper-edge">
         <div className="min-w-0">
           <p className="text-2xs font-semibold uppercase tracking-wider text-primary">
-            {GROUP_LABEL[snapshot.group]}
+            {snapshot.headerLabel ?? GROUP_LABEL[snapshot.group]}
           </p>
           <h2 className="mt-1 text-base font-semibold leading-snug text-ink">{snapshot.title}</h2>
         </div>
@@ -239,6 +271,39 @@ export function SignalFeedDetailPanel({
               "Dismiss"
             )}
           </button>
+        </div>
+      ) : fixturePrimary ? (
+        <div className="flex shrink-0 flex-col gap-2 px-4 pb-4 pt-1">
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
+            <IntakeActionButton
+              mode={fixtureActionVisualMode(fixturePrimary.id)}
+              variant="panel"
+              className="w-full flex-1"
+              onClick={() => runFixtureCta(fixturePrimary.id)}
+            >
+              {fixturePrimary.label}
+            </IntakeActionButton>
+            {fixtureSecondary.map((action) => (
+              <IntakeActionButton
+                key={action.id}
+                mode={fixtureActionVisualMode(action.id)}
+                variant="panel"
+                className="w-full flex-1"
+                onClick={() => runFixtureCta(action.id)}
+              >
+                {action.label}
+              </IntakeActionButton>
+            ))}
+          </div>
+          {fixtureDismiss ? (
+            <button
+              type="button"
+              onClick={() => runFixtureCta(fixtureDismiss.id)}
+              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-card text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+              {fixtureDismiss.label}
+            </button>
+          ) : null}
         </div>
       ) : onOpenIntake ? (
         <div className="flex shrink-0 flex-col gap-1.5 px-4 pb-4 pt-1">

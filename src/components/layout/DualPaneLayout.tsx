@@ -32,7 +32,7 @@ interface DualPaneLayoutProps {
  *
  * Default (desktop / tablet dual):
  * - sm–layout: 330px side rail | centre (max 700px)
- * - layout+: optional third column
+ * - layout+ (≥1280px): optional third column; rails flex via workbench-triple minmax
  *
  * Home-hub phone (`collapseCentreOnPhone`):
  * - < md: left only — centre (Quick Wins / Inflow…) hidden
@@ -64,7 +64,10 @@ export function DualPaneLayout({
     hasHeader
       ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
       : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
-    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail"
+    dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
+    // Triple grid: fill the track and allow compression below the 330px preferred rail.
+    hasThirdColumn &&
+      "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-2 layout:pr-2"
   );
 
   const centreShellClass = cn(
@@ -76,7 +79,7 @@ export function DualPaneLayout({
         ? "md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
         : "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pb-4",
     hasThirdColumn
-      ? "layout:min-w-0 layout:overflow-y-auto layout:px-1 layout:pb-5"
+      ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-y-auto layout:px-1 layout:pb-5"
       : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pb-5",
     /** Phone work-surface: centre is the only column — no leftover left-rail gutter. */
     collapseLeftOnPhone && "px-gutter-rail pt-0 md:px-1 md:pt-0"

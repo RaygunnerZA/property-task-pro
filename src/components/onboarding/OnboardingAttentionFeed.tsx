@@ -25,14 +25,25 @@ export type OnboardingAttentionFeedProps = {
   recentItems?: AttentionItem[];
 };
 
-function ExampleSectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function ExampleSectionHeader({
+  title,
+  subtitle,
+  showExampleBadge = true,
+}: {
+  title: string;
+  subtitle: string;
+  /** Tips / demo rows keep “Example”; real setup steps (Quick wins) omit it. */
+  showExampleBadge?: boolean;
+}) {
   return (
     <div className="px-0.5">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <h2 className={workbenchSectionTitleClassName}>{title}</h2>
-        <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep">
-          Example
-        </span>
+        {showExampleBadge ? (
+          <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep">
+            Example
+          </span>
+        ) : null}
       </div>
       <p className="mt-0.5 text-base text-muted-foreground">{subtitle}</p>
     </div>
@@ -71,7 +82,8 @@ export function OnboardingAttentionFeed({
       <section className="space-y-2">
         <ExampleSectionHeader
           title="Quick wins"
-          subtitle="Actions you can complete in under a minute."
+          subtitle="Setup steps you can complete in under a minute."
+          showExampleBadge={false}
         />
         <IssuesScrollColumn
           title=""

@@ -1,5 +1,11 @@
 import type { Config } from "tailwindcss";
-import { LAYOUT_BREAKPOINTS, WORKBENCH_SIDE_RAIL_PX, WORK_SURFACE_MAX_PX } from "./src/lib/layoutBreakpoints";
+import {
+  LAYOUT_BREAKPOINTS,
+  WORKBENCH_SIDE_RAIL_MIN_PX,
+  WORKBENCH_SIDE_RAIL_PX,
+  WORK_SURFACE_MAX_PX,
+  WORK_SURFACE_MIN_PX,
+} from "./src/lib/layoutBreakpoints";
 
 export default {
   darkMode: ["class"],
@@ -33,7 +39,8 @@ export default {
       gridTemplateColumns: {
         "workbench-dual": `${WORKBENCH_SIDE_RAIL_PX}px minmax(0, 1fr)`,
         "workbench-center-max": `${WORKBENCH_SIDE_RAIL_PX}px minmax(450px, ${WORK_SURFACE_MAX_PX}px)`,
-        "workbench-triple": `${WORKBENCH_SIDE_RAIL_PX}px ${WORK_SURFACE_MAX_PX}px minmax(0, ${WORKBENCH_SIDE_RAIL_PX}px)`,
+        /** Flexible tracks so 13″ / 1280–1440 CSS widths keep all three columns without overflow. */
+        "workbench-triple": `minmax(${WORKBENCH_SIDE_RAIL_MIN_PX}px, ${WORKBENCH_SIDE_RAIL_PX}px) minmax(${WORK_SURFACE_MIN_PX}px, ${WORK_SURFACE_MAX_PX}px) minmax(${WORKBENCH_SIDE_RAIL_MIN_PX}px, ${WORKBENCH_SIDE_RAIL_PX}px)`,
       },
       screens: {
         /** Property workspace / compliance: stacked → three-column */

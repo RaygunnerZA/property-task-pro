@@ -2,7 +2,7 @@ import * as React from "react";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 /**
- * True at the app `layout` breakpoint (1480px+) — three-column workbench + right rail.
+ * True at the app `layout` breakpoint (1280px+) — three-column workbench + right rail.
  * Mirrors Tailwind `layout:` and {@link DualPaneLayout} third column visibility.
  */
 export function useMinLayoutBreakpoint() {

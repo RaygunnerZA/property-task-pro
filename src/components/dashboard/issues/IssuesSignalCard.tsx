@@ -1,5 +1,6 @@
 import type { MutableRefObject } from "react";
 import { AlertTriangle, HelpCircle, Upload } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import {
@@ -7,6 +8,7 @@ import {
   type AttentionItem,
 } from "@/components/dashboard/issues/issuesAttentionItem";
 import { formatRecentSignalSubtitle, signalCategoryForKind } from "@/lib/signalDisplayMeta";
+import { performOnboardingFixtureAction } from "@/lib/onboardingFixtureActions";
 import { resolveAttentionStreamThumbnail } from "@/lib/taskIllustration";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import type { IntakeMode } from "@/types/intake";
@@ -31,9 +33,19 @@ function runFixtureAction(
     addAttentionItemToCompliance: (item: AttentionItem) => void;
     onOpenIntake?: (mode: IntakeMode) => void;
     onMessageClick?: (messageId: string) => void;
+    navigate: (to: string) => void;
+    propertyId: string | null;
   }
 ) {
-  const { resolveAttentionItem, handleSignalAction, addAttentionItemToCompliance, onOpenIntake, onMessageClick } = ctx;
+  const {
+    resolveAttentionItem,
+    handleSignalAction,
+    addAttentionItemToCompliance,
+    onOpenIntake,
+    onMessageClick,
+    navigate,
+    propertyId,
+  } = ctx;
 
   if (item.signalId && handleSignalAction) {
     void handleSignalAction(actionId, item).then((handled) => {
@@ -49,43 +61,20 @@ function runFixtureAction(
     }
   }
 
-  switch (actionId) {
-    case "report-issue":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "ignore":
-    case "dismiss":
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-open":
-      if (item.messageId) onMessageClick?.(item.messageId);
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-review":
-      onOpenIntake?.("add_record");
-      resolveAttentionItem(item.id);
-      break;
-    case "treat-as-issue":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-assign":
-      onOpenIntake?.("report_issue");
-      resolveAttentionItem(item.id);
-      break;
-    case "signal-convert":
-      if (item.complianceSeed) addAttentionItemToCompliance(item);
-      else onOpenIntake?.("add_record");
-      resolveAttentionItem(item.id);
-      break;
-    case "onboarding-quick-win":
-      onOpenIntake?.("add_record");
-      resolveAttentionItem(item.id);
-      break;
-    default:
-      resolveAttentionItem(item.id);
+  if (actionId === "signal-open") {
+    if (item.messageId) onMessageClick?.(item.messageId);
+    resolveAttentionItem(item.id);
+    return;
   }
+
+  if (actionId === "signal-convert" && item.complianceSeed) {
+    addAttentionItemToCompliance(item);
+    resolveAttentionItem(item.id);
+    return;
+  }
+
+  performOnboardingFixtureAction(actionId, { navigate, propertyId, onOpenIntake });
+  resolveAttentionItem(item.id);
 }
 
 /**
@@ -101,12 +90,18 @@ export function IssuesSignalCard({
   onMessageClick,
   onAttentionItemSelect,
 }: IssuesSignalCardProps) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const propertyId = searchParams.get("property");
+
   const ctx = {
     resolveAttentionItem,
     handleSignalAction,
     addAttentionItemToCompliance,
     onOpenIntake,
     onMessageClick,
+    navigate,
+    propertyId,
   };
 
   const cardActivate =

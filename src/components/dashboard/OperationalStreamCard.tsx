@@ -118,10 +118,16 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
   const isCreateTaskCta =
     id === "report-issue" ||
     id === "create-inspection-task" ||
+    id === "create-task" ||
+    id === "create-service-task" ||
+    id === "create-prep-task" ||
     id === "treat-as-issue" ||
     label.includes("report issue") ||
     label.includes("treat as issue") ||
-    label.includes("create task");
+    label.includes("create task") ||
+    label.includes("create service") ||
+    label.includes("create prep") ||
+    label.includes("create inspection");
 
   if (isCreateTaskCta) {
     return intakeReportIssueMicroClassName;
@@ -132,10 +138,23 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
     id === "signal-convert" ||
     id === "signal-assign" ||
     id === "signal-open" ||
-    id === "onboarding-quick-win" ||
+    id === "upload-document" ||
+    id === "categorise-document" ||
+    id === "review-certificate" ||
+    id === "review-documents" ||
+    id === "view-certificate" ||
+    id === "review-signal" ||
+    id === "complete-profile" ||
+    id === "create-asset" ||
+    id === "view-asset" ||
     label.includes("add record") ||
+    label.includes("upload") ||
+    label.includes("categorise") ||
     label.includes("review") ||
-    label === "start"
+    label.includes("complete profile") ||
+    label.includes("create an asset") ||
+    label.includes("view asset") ||
+    label.includes("view certificate")
   ) {
     return intakeAddRecordMicroClassName;
   }
