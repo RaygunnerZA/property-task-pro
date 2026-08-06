@@ -25,9 +25,14 @@ export function normalizeString(str: string): string {
 
 /**
  * Split text into words (≥ 3 chars) for keyword-level matching.
+ * Strips punctuation so "matthew," still matches member "Matthew".
  */
 export function extractWords(text: string): string[] {
-  return text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9'-]/g, ""))
+    .filter((w) => w.length > 2);
 }
 
 // ─── Levenshtein Distance ───────────────────────────────────────

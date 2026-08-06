@@ -1282,20 +1282,32 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     <div className="space-y-3">
       {taskEditOpen ? (
         <>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task title"
-            className="w-full h-10 rounded-lg bg-input px-3 text-sm font-medium shadow-engraved border-0 outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          <textarea
-            value={descriptionDraft}
-            onChange={(e) => setDescriptionDraft(e.target.value)}
-            placeholder="What needs doing?"
-            rows={3}
-            className="w-full rounded-lg bg-input px-3 py-2 text-sm shadow-engraved border-0 outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-          />
+          <div className="rounded-lg bg-input shadow-engraved overflow-hidden">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Task title"
+              className="w-full h-10 bg-transparent px-3 text-sm font-medium border-0 outline-none focus:ring-0"
+            />
+            <textarea
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              placeholder="What needs doing?"
+              rows={3}
+              className="w-full bg-transparent px-3 py-2 text-sm border-0 outline-none focus:ring-0 resize-none"
+            />
+            {/* Create-task style: add checklist under description when none exists yet */}
+            {canManageTask && checklistItemCount === 0 ? (
+              <TaskDetailChecklistTab
+                taskId={taskId}
+                canEdit={canManageTask}
+                canManageTemplates={canManageTemplates}
+                editMode
+                composerEmbed
+              />
+            ) : null}
+          </div>
           <IntakeChipRow
             layout="interleaved"
             chips={taskDetailChips}
@@ -1421,7 +1433,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 editMode={taskEditOpen}
               />
             ),
-            hidden: false,
+            // Hide empty Checklist card; add-checklist lives in the description while editing.
+            hidden: checklistItemCount === 0,
           },
           {
             id: "activity",

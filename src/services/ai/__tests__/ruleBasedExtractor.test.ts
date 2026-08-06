@@ -152,6 +152,36 @@ describe("extractChipsFromText — person detection", () => {
     expect(matchedFrank!.score).toBeGreaterThanOrEqual(0.8);
   });
 
+  it("lowercase 'matthew,' with trailing comma matches org member Matthew", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      members: [{ id: "m2", user_id: "u-matt", display_name: "Matthew Jones" }],
+    };
+    const result = extractChipsFromText(
+      makeContext("matthew, tomorrow can you please fix the gate at the lower cottage"),
+      entities
+    );
+    const matched = result.chips.find(
+      (c) => c.type === "person" && c.resolvedEntityId === "u-matt"
+    );
+    expect(matched).toBeDefined();
+    expect(matched!.blockingRequired).toBe(false);
+  });
+
+  it("matt ↔ matthew alias matches org member", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      members: [{ id: "m3", user_id: "u-matt2", display_name: "Matt Lee" }],
+    };
+    const result = extractChipsFromText(
+      makeContext("matthew please check the boiler"),
+      entities
+    );
+    expect(
+      result.chips.some((c) => c.type === "person" && c.resolvedEntityId === "u-matt2")
+    ).toBe(true);
+  });
+
   it("non-name verb words are excluded", () => {
     const result = extract("Fix the broken pipe and clean the drain");
     const people = result.chips.filter((c) => c.type === "person");
@@ -241,6 +271,23 @@ describe("extractChipsFromText — space detection", () => {
       c.label.toLowerCase().includes("bowling alley")
     );
     expect(alley).toBeDefined();
+  });
+
+  it("bare venue keyword 'bar' alone does not invent a space chip", () => {
+    // Regression: OCR/noise or unrelated tokens used to surface ADD BAR.
+    const result = extract("matthew tomorrow please fix the gate at the lower cottage");
+    const bar = result.chips.find(
+      (c) => c.type === "space" && c.label.toLowerCase() === "bar"
+    );
+    expect(bar).toBeUndefined();
+  });
+
+  it("'at the bar' still suggests a space ghost when clearly located", () => {
+    const result = extract("Meet the plumber at the bar tomorrow");
+    const bar = result.chips.find(
+      (c) => c.type === "space" && c.label.toLowerCase().includes("bar")
+    );
+    expect(bar).toBeDefined();
   });
 
   // Regression: "set" (3 chars) used to falsely match a "Closet" space because

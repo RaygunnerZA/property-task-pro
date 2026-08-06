@@ -373,30 +373,37 @@ function detectSpaces(
     matchedSpaces.add(phraseLower);
   }
 
+  // Bare venue keywords ("bar", "cafe") are too noisy — only suggest a ghost space when
+  // the match is multi-word ("bowling alley") or clearly located ("at the bar" / "in the cafe").
+  const LOCATION_CUE_RE = /\b(?:at|in|near|to)\s+(?:the\s+)?$/i;
   for (const { keyword, patterns } of spaceKeywordPatterns) {
     if (text.includes(keyword) && !matchedSpaces.has(keyword)) {
       for (const pattern of patterns) {
         const match = text.match(pattern);
-        if (match) {
-          const spaceName = match[0].replace(/^the\s+/i, '').trim();
-          const spaceNameLower = spaceName.toLowerCase();
-          if (matchedSpaces.has(spaceNameLower)) break;
-          const formattedName = spaceName.split(' ')
-            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-            .join(' ');
-          chips.push({
-            id: `space-ghost-${spaceNameLower.replace(/\s+/g, '-')}`,
-            type: 'space',
-            value: formattedName,
-            label: formattedName,
-            score: 0.55,
-            source: 'rule',
-            blockingRequired: true,
-            metadata: { detectedAs: 'space_keyword' }
-          });
-          matchedSpaces.add(spaceNameLower);
-          break;
-        }
+        if (!match || match.index == null) continue;
+        const spaceName = match[0].replace(/^the\s+/i, "").trim();
+        const spaceNameLower = spaceName.toLowerCase();
+        if (matchedSpaces.has(spaceNameLower)) break;
+        const tokenCount = spaceNameLower.split(/\s+/).filter(Boolean).length;
+        const prefix = text.slice(Math.max(0, match.index - 24), match.index);
+        const hasLocationCue = LOCATION_CUE_RE.test(prefix) || /^the\s+/i.test(match[0]);
+        if (tokenCount < 2 && !hasLocationCue) break;
+        const formattedName = spaceName
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ");
+        chips.push({
+          id: `space-ghost-${spaceNameLower.replace(/\s+/g, "-")}`,
+          type: "space",
+          value: formattedName,
+          label: formattedName,
+          score: tokenCount >= 2 ? 0.6 : 0.55,
+          source: "rule",
+          blockingRequired: true,
+          metadata: { detectedAs: "space_keyword" },
+        });
+        matchedSpaces.add(spaceNameLower);
+        break;
       }
     }
   }
@@ -546,10 +553,33 @@ const BEFORE_ARRIVAL_PATTERN =
 
 const COMMON_FIRST_NAMES = new Set([
   "alex", "ben", "bianca", "bob", "chris", "dan", "david", "emma", "frank", "george", "hannah",
-  "harry", "isla", "jack", "james", "jane", "john", "josh", "kate", "liam", "lucy",
-  "mark", "matt", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah",
+  "harry", "isla", "jack", "james", "jane", "john", "josh", "justin", "kate", "liam", "lucy",
+  "mark", "matt", "matthew", "mia", "noah", "oliver", "paul", "peter", "rachel", "ryan", "sarah",
   "sam", "simon", "sophie", "thomas", "tom",
 ]);
+
+/** Nickname ↔ full-name pairs for org-member matching only (not bob→Bobby fuzzy). */
+const FIRST_NAME_ALIASES: Record<string, readonly string[]> = {
+  matt: ["matthew"],
+  matthew: ["matt"],
+  tom: ["thomas"],
+  thomas: ["tom"],
+  alex: ["alexander", "alexandra"],
+  alexander: ["alex"],
+  alexandra: ["alex"],
+  chris: ["christopher", "christine"],
+  christopher: ["chris"],
+  christine: ["chris"],
+  sam: ["samuel", "samantha"],
+  samuel: ["sam"],
+  samantha: ["sam"],
+  josh: ["joshua"],
+  joshua: ["josh"],
+  dan: ["daniel"],
+  daniel: ["dan"],
+  ben: ["benjamin"],
+  benjamin: ["ben"],
+};
 
 const NUMBER_WORDS: Record<string, number> = {
   a: 1,
@@ -613,9 +643,13 @@ function detectPersons(
   const matchedNames = new Set<string>(); // tracks already-matched lowercased names
 
   const wordMatchesMemberNamePart = (word: string, part: string): boolean => {
-    const wl = word.toLowerCase();
-    const pl = part.toLowerCase();
+    const wl = word.toLowerCase().replace(/[^a-z'-]/g, "");
+    const pl = part.toLowerCase().replace(/[^a-z'-]/g, "");
+    if (!wl || !pl) return false;
     if (wl === pl) return true;
+    if (FIRST_NAME_ALIASES[wl]?.includes(pl) || FIRST_NAME_ALIASES[pl]?.includes(wl)) {
+      return true;
+    }
     // Avoid matching "bob" → member "Bobby" — keep + INVITE BOB for unknown assignees.
     if (COMMON_FIRST_NAMES.has(wl) || COMMON_FIRST_NAMES.has(pl)) return false;
     return isFuzzyMatch(wl, pl);

@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useDataContext } from "@/contexts/DataContext";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
 import type { IntakeMode } from "@/types/intake";
@@ -317,6 +318,7 @@ export function IntakeModal({
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
+  const { userId: currentUserId } = useDataContext();
   const queryClient = useQueryClient();
   const createTaskMutation = useCreateTaskMutation();
   const { templates, refresh: refreshChecklistTemplates } = useChecklistTemplates(open);
@@ -446,6 +448,8 @@ export function IntakeModal({
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [priorityDefined, setPriorityDefined] = useState(false);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
+  /** Prevents resolved person chips from bouncing back after the user clears WHO. */
+  const userClearedAssigneeRef = useRef(false);
   const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
   const [templateId, setTemplateId] = useState("");
@@ -1025,9 +1029,7 @@ export function IntakeModal({
     }
   }, [openChipSlot, milestoneDraftDate]);
 
-  // Auto-apply date only — person/team chips are shown in the suggestion strip for the user to
-  // tap intentionally. Auto-applying them caused chips to "bounce" back after manual removal
-  // because the effect would immediately re-apply the same entity from chipSuggestions.
+  // Auto-apply date when empty.
   useEffect(() => {
     const dateChip = chipSuggestions.find((c) => c.type === "date" && c.resolvedEntityId);
     if (!dueDate && dateChip?.resolvedEntityId && typeof dateChip.resolvedEntityId === "string") {
@@ -1035,6 +1037,23 @@ export function IntakeModal({
       if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v.split("T")[0] || v);
     }
   }, [chipSuggestions, dueDate]);
+
+  // Auto-apply a single org member named in the message into WHO (e.g. "matthew, …").
+  // Guarded by userClearedAssigneeRef so clearing WHO does not bounce the chip back.
+  useEffect(() => {
+    if (assignedUserId || userClearedAssigneeRef.current) return;
+    if (intakeMode !== "report_issue") return;
+    const resolvedPeople = chipSuggestions.filter(
+      (c) =>
+        c.type === "person" &&
+        c.resolvedEntityId &&
+        !c.blockingRequired &&
+        c.resolvedEntityId !== currentUserId
+    );
+    const uniqueIds = [...new Set(resolvedPeople.map((c) => c.resolvedEntityId as string))];
+    if (uniqueIds.length !== 1) return;
+    setAssignedUserId(uniqueIds[0]);
+  }, [chipSuggestions, assignedUserId, intakeMode, currentUserId]);
 
   useEffect(() => {
     if (priorityDefined || intakeMode !== "report_issue") return;
@@ -1307,7 +1326,10 @@ export function IntakeModal({
         label: assignedMember.display_name.toUpperCase(),
         epistemic: "fact",
         removable: true,
-        onRemove: () => setAssignedUserId(undefined),
+        onRemove: () => {
+          userClearedAssigneeRef.current = true;
+          setAssignedUserId(undefined);
+        },
       });
     }
 
@@ -1463,20 +1485,70 @@ export function IntakeModal({
     });
   }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, selectedAssetIds]);
 
-  /** Person invite verbs always lead the AI strip (INVITE BOB before FIX CREW / ADD COTTAGE). */
+  /**
+   * Person invite verbs lead the strip. When the org is small (≤3 others),
+   * also surface those teammates as soft WHO suggestions so Filla can predict assignees.
+   */
   const suggestionStripChips = useMemo(() => {
-    const base = filteredChipSuggestions;
-    const seen = new Set(base.map((c) => c.id));
-    const personInvites = chipSuggestions.filter(
-      (c) =>
-        c.type === "person" &&
-        c.blockingRequired &&
-        !c.resolvedEntityId &&
-        !dismissedSuggestionIds.has(c.id)
+    const out: SuggestedChip[] = [];
+    const seenIds = new Set<string>();
+    const seenResolvedPeople = new Set<string>();
+
+    const push = (chip: SuggestedChip) => {
+      if (dismissedSuggestionIds.has(chip.id) || seenIds.has(chip.id)) return;
+      if (chip.type === "person" && chip.resolvedEntityId) {
+        if (seenResolvedPeople.has(chip.resolvedEntityId)) return;
+        seenResolvedPeople.add(chip.resolvedEntityId);
+      }
+      seenIds.add(chip.id);
+      out.push(chip);
+    };
+
+    for (const chip of chipSuggestions) {
+      if (chip.type === "person" && chip.blockingRequired && !chip.resolvedEntityId) {
+        push(chip);
+      }
+    }
+
+    const otherMembers = (members ?? []).filter(
+      (m) => m.user_id && m.user_id !== currentUserId && m.user_id !== assignedUserId
     );
-    const prepend = personInvites.filter((c) => !seen.has(c.id));
-    return [...prepend, ...base];
-  }, [filteredChipSuggestions, chipSuggestions, dismissedSuggestionIds]);
+    if (
+      intakeMode === "report_issue" &&
+      description.trim().length >= 8 &&
+      otherMembers.length > 0 &&
+      otherMembers.length <= 3
+    ) {
+      for (const m of otherMembers) {
+        push({
+          id: `person-soft-${m.user_id}`,
+          type: "person",
+          value: m.user_id,
+          label: m.display_name || "Teammate",
+          score: 0.52,
+          source: "fallback",
+          resolvedEntityId: m.user_id,
+          blockingRequired: false,
+          metadata: { detectedAs: "small_team_suggestion" },
+        });
+      }
+    }
+
+    for (const chip of filteredChipSuggestions) {
+      push(chip);
+    }
+
+    return out;
+  }, [
+    filteredChipSuggestions,
+    chipSuggestions,
+    dismissedSuggestionIds,
+    members,
+    currentUserId,
+    assignedUserId,
+    intakeMode,
+    description,
+  ]);
 
   // Auto-apply assets that match DB entities mentioned in the description (like due date).
   useEffect(() => {
@@ -1508,6 +1580,7 @@ export function IntakeModal({
     (chip: SuggestedChip, resolutionEntityId: string) => {
       switch (chip.type) {
         case "person":
+          userClearedAssigneeRef.current = false;
           setAssignedUserId(resolutionEntityId);
           break;
         case "team":
@@ -1810,6 +1883,7 @@ export function IntakeModal({
         };
 
         const pickMember = (userId: string) => {
+          userClearedAssigneeRef.current = false;
           setAssignedUserId(userId);
           setIntakeWhoInviteDraft(null);
           resetWhoInput();
@@ -1985,6 +2059,7 @@ export function IntakeModal({
                   truncate={false}
                   pressOnPointerDown
                   onPress={() => {
+                    userClearedAssigneeRef.current = true;
                     setAssignedUserId(undefined);
                     setAssignedTeamIds([]);
                   }}
@@ -3427,6 +3502,7 @@ export function IntakeModal({
     }
     setPriority("medium");
     setPriorityDefined(false);
+    userClearedAssigneeRef.current = false;
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
     setSubtasks([]);

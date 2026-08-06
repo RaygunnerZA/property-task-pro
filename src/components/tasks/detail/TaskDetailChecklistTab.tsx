@@ -40,6 +40,11 @@ type TaskDetailChecklistTabProps = {
   listOnly?: boolean;
   /** Use the create-task style editor (step types, indent, etc.). */
   editMode?: boolean;
+  /**
+   * Compact create-task style affordance for the description area when the task
+   * has no checklist yet (hover “Add step” + templates).
+   */
+  composerEmbed?: boolean;
 };
 
 /** Template actions for overflow menus (Task Detail More menu). */
@@ -141,6 +146,7 @@ export function TaskDetailChecklistTab({
   canManageTemplates = false,
   listOnly = false,
   editMode = false,
+  composerEmbed = false,
 }: TaskDetailChecklistTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -371,6 +377,7 @@ export function TaskDetailChecklistTab({
   };
 
   if (loading) {
+    if (composerEmbed) return null;
     return <LoadingState message="Loading checklist…" />;
   }
 
@@ -382,9 +389,35 @@ export function TaskDetailChecklistTab({
     Boolean(row.is_completed || row.completed || row.response_value || row.signed_at)
   ).length;
 
+  // Create-task style: empty checklist is just an “Add step” row under the description.
+  if (composerEmbed && editorItems.length === 0 && canEdit) {
+    return (
+      <div className="group/checklist-embed border-t border-border/15 pt-1">
+        <button
+          type="button"
+          onClick={() => void handleAddItem()}
+          className="flex w-full items-center gap-2 py-[3px] pl-[2px] text-left"
+        >
+          <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50 opacity-0 transition-opacity group-hover/checklist-embed:opacity-100" />
+          <span className="flex-1 text-sm text-muted-foreground/50 opacity-0 transition-opacity group-hover/checklist-embed:opacity-100">
+            Add step
+          </span>
+        </button>
+        <div className="flex items-center justify-end gap-2 pr-1 pb-1 text-xs text-muted-foreground/60 opacity-0 transition-opacity group-hover/checklist-embed:opacity-100">
+          <TaskDetailChecklistActions
+            taskId={taskId}
+            canEdit={canEdit}
+            canManageTemplates={canManageTemplates}
+            hasItems={false}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {!listOnly ? (
+      {!listOnly && !composerEmbed ? (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
@@ -460,13 +493,26 @@ export function TaskDetailChecklistTab({
         />
       )}
 
-      {!listOnly && subtasks.length === 0 && canEdit ? (
+      {!listOnly && !composerEmbed && subtasks.length === 0 && canEdit ? (
         <TaskDetailChecklistActions
           taskId={taskId}
           canEdit={canEdit}
           canManageTemplates={canManageTemplates}
           hasItems={false}
         />
+      ) : null}
+
+      {composerEmbed && editorItems.length > 0 && canEdit ? (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void handleAddItem()}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/90"
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add item
+          </button>
+        </div>
       ) : null}
     </div>
   );
